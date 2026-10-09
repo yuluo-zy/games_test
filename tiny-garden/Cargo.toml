@@ -22,3 +22,30 @@ bevy_tasks = { version = "=0.19.1", default-features = false, features = ["multi
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# Iteration profile. An unoptimized Bevy is the single largest source of the
+# "it takes ages before the picture updates" feeling: shader processing,
+# render preparation and pipeline creation all run roughly an order of
+# magnitude slower at opt-level 0. Dependencies are therefore optimized even
+# in dev builds.
+#
+# Geometry and kit fitting now dominate edit latency: selectively optimize
+# these CPU-heavy crates, keeping the command/UI adapter quick to rebuild.
+[profile.dev]
+opt-level = 0
+
+# `debug = false` here keeps Bevy's object code out of the link line's debug
+# sections, which is what makes linking the desktop binary the slowest step of
+# an incremental build. Workspace crates keep full debug info.
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.dev.package.garden-generation]
+opt-level = 2
+
+[profile.dev.package.garden-presentation]
+opt-level = 1
+
+[profile.dev.package.garden-bevy]
+opt-level = 1

@@ -1,4 +1,5 @@
 //! Deterministic layout and mesh compilation, independent of engine assets.
+pub mod incremental;
 pub mod mesh;
 use garden_domain::{BlockId, Building, BuildingId, Facade, Placement, Roof};
 use garden_geometry::Rect;

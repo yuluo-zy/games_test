@@ -31,7 +31,7 @@ impl MaterialKey {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GeometryProfile {
     pub wall_thickness: f64,
     pub frame_width: f64,
@@ -325,13 +325,22 @@ fn wall_quad(
     );
 }
 
-fn walls(b: &mut Builder, block: &BlockLayout, p: GeometryProfile) -> Result<(), MeshError> {
+fn walls(
+    b: &mut Builder,
+    block: &BlockLayout,
+    p: GeometryProfile,
+    frames: bool,
+    only_face: Option<Face>,
+) -> Result<(), MeshError> {
     let material = match block.facade {
         Facade::Stone => MaterialKey::Stone,
         Facade::Plaster => MaterialKey::Plaster,
         Facade::Timber => MaterialKey::Timber,
     };
     for face in [Face::Front, Face::Back, Face::Left, Face::Right] {
+        if only_face.is_some_and(|wanted| wanted != face) {
+            continue;
+        }
         let length = match face {
             Face::Front | Face::Back => block.footprint.width,
             _ => block.footprint.depth,
@@ -377,6 +386,9 @@ fn walls(b: &mut Builder, block: &BlockLayout, p: GeometryProfile) -> Result<(),
                     ],
                     normal,
                 );
+            }
+            if !frames {
+                continue;
             }
             wall_quad(
                 b,
@@ -569,6 +581,16 @@ pub fn compile_mesh(
     layout: &BuildingLayout,
     profile: GeometryProfile,
 ) -> Result<BuildingMesh, MeshError> {
+    compile_mesh_with_frames(layout, profile, true)
+}
+
+/// External art kits supply their own frames and recessed infill. Apertures and
+/// reveals still belong to the structural compiler, avoiding double geometry.
+pub fn compile_mesh_with_frames(
+    layout: &BuildingLayout,
+    profile: GeometryProfile,
+    frames: bool,
+) -> Result<BuildingMesh, MeshError> {
     profile.validate()?;
     if layout.blocks.is_empty() || layout.blocks.len() > 3 {
         return Err(MeshError("invalid block count"));
@@ -615,7 +637,36 @@ pub fn compile_mesh(
                 return Err(MeshError("invalid window layout"));
             }
         }
-        walls(&mut b, block, profile)?;
+        walls(&mut b, block, profile, frames, None)?;
+        roof(&mut b, block, profile);
+    }
+    let batches = b
+        .batches
+        .into_iter()
+        .map(|(material, data)| MeshBatch { material, data })
+        .collect::<Vec<_>>();
+    for batch in &batches {
+        batch.data.validate()?;
+    }
+    Ok(BuildingMesh { batches })
+}
+
+/// Local-coordinate structural chunk. Inputs are resolved and validated by the
+/// part planner; roof and wall chunks deliberately have separate dependencies.
+pub fn compile_structure_part(
+    block: &BlockLayout,
+    profile: GeometryProfile,
+    face: Option<Face>,
+    frames: bool,
+) -> Result<BuildingMesh, MeshError> {
+    profile.validate()?;
+    let mut b = Builder {
+        batches: BTreeMap::new(),
+        tile: profile.uv_meters_per_tile,
+    };
+    if let Some(face) = face {
+        walls(&mut b, block, profile, frames, Some(face))?;
+    } else {
         roof(&mut b, block, profile);
     }
     let batches = b

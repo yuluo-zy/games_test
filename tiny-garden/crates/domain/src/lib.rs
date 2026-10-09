@@ -131,8 +131,18 @@ pub enum BuildingEdit {
         block: BlockId,
         stories: Stories,
     },
+    SetFacade {
+        block: BlockId,
+        facade: Facade,
+    },
     AddBlock(BlockDraft),
     RemoveBlock(BlockId),
+    /// Absolute local position; descendants keep their relative placement.
+    TranslateBlock {
+        block: BlockId,
+        x: f64,
+        z: f64,
+    },
     Move(Placement),
 }
 
@@ -163,29 +173,31 @@ impl Building {
         match edit {
             BuildingEdit::AddBlock(block) => draft.blocks.push(block),
             BuildingEdit::Move(placement) => draft.placement = placement,
+            BuildingEdit::TranslateBlock { block, x, z } => {
+                let original = self.block(block).ok_or(DomainError("unknown block"))?;
+                let dx = x - original.footprint.x;
+                let dz = z - original.footprint.z;
+                let moved = descendants(&draft.blocks, block);
+                for b in &mut draft.blocks {
+                    if moved.contains(&b.id) {
+                        b.footprint.x += dx;
+                        b.footprint.z += dz;
+                    }
+                }
+            }
             BuildingEdit::RemoveBlock(id) => {
                 if self.block(id).is_none() {
                     return Err(DomainError("unknown block"));
                 }
-                let mut removed = BTreeSet::from([id]);
-                loop {
-                    let old = removed.len();
-                    for block in &draft.blocks {
-                        if block.parent.is_some_and(|p| removed.contains(&p)) {
-                            removed.insert(block.id);
-                        }
-                    }
-                    if old == removed.len() {
-                        break;
-                    }
-                }
+                let removed = descendants(&draft.blocks, id);
                 draft.blocks.retain(|b| !removed.contains(&b.id));
             }
             edit => {
                 let id = match &edit {
                     BuildingEdit::Resize { block, .. }
                     | BuildingEdit::SetRoof { block, .. }
-                    | BuildingEdit::SetStories { block, .. } => *block,
+                    | BuildingEdit::SetStories { block, .. }
+                    | BuildingEdit::SetFacade { block, .. } => *block,
                     _ => unreachable!(),
                 };
                 let block = draft
@@ -203,11 +215,27 @@ impl Building {
                     }
                     BuildingEdit::SetRoof { roof, .. } => block.roof_intent = roof,
                     BuildingEdit::SetStories { stories, .. } => block.stories = stories,
+                    BuildingEdit::SetFacade { facade, .. } => block.facade = facade,
                     _ => unreachable!(),
                 }
             }
         }
         Self::try_new(draft)
+    }
+}
+
+fn descendants(blocks: &[BlockDraft], root: BlockId) -> BTreeSet<BlockId> {
+    let mut ids = BTreeSet::from([root]);
+    loop {
+        let count = ids.len();
+        for b in blocks {
+            if b.parent.is_some_and(|id| ids.contains(&id)) {
+                ids.insert(b.id);
+            }
+        }
+        if count == ids.len() {
+            return ids;
+        }
     }
 }
 
@@ -303,6 +331,63 @@ pub fn sample_building(id: BuildingId, width: f64, height: f64) -> BuildingDraft
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn translating_a_supported_block_moves_its_descendants_atomically() {
+        let mut d = draft();
+        let mut middle = child();
+        middle.footprint.width = 6.;
+        middle.footprint.depth = 4.;
+        let mut top = child();
+        top.id = BlockId::new(3).unwrap();
+        top.parent = Some(middle.id);
+        top.footprint = Rect {
+            x: 2.,
+            z: 2.,
+            width: 2.,
+            depth: 2.,
+        };
+        d.blocks.extend([middle, top]);
+        let original = Building::try_new(d).unwrap();
+        let moved = original
+            .edited(BuildingEdit::TranslateBlock {
+                block: BlockId::new(2).unwrap(),
+                x: 1.5,
+                z: 1.2,
+            })
+            .unwrap();
+        assert_eq!(moved.blocks()[0], original.blocks()[0]);
+        assert_eq!(
+            moved.block(BlockId::new(3).unwrap()).unwrap().footprint.x,
+            2.5
+        );
+        assert!((moved.block(BlockId::new(3).unwrap()).unwrap().footprint.z - 2.2).abs() < 1e-8);
+        assert!(
+            original
+                .edited(BuildingEdit::TranslateBlock {
+                    block: BlockId::new(2).unwrap(),
+                    x: 8.,
+                    z: 1.
+                })
+                .is_err()
+        );
+        assert!(
+            original
+                .edited(BuildingEdit::TranslateBlock {
+                    block: BlockId::new(2).unwrap(),
+                    x: f64::NAN,
+                    z: 1.
+                })
+                .is_err()
+        );
+        assert_eq!(
+            original
+                .block(BlockId::new(2).unwrap())
+                .unwrap()
+                .footprint
+                .x,
+            1.
+        );
+    }
     #[test]
     fn three_level_support_tree_removes_subtree_without_mutating_original() {
         let mut d = draft();

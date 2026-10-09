@@ -15,7 +15,7 @@ $allowed = @{
     'garden-domain' = @('garden-geometry')
     'garden-application' = @('garden-domain', 'garden-geometry')
     'garden-generation' = @('garden-domain', 'garden-geometry')
-    'garden-bevy' = @('garden-domain', 'garden-application', 'garden-generation', 'garden-geometry', 'bevy_app', 'bevy_ecs', 'bevy_tasks')
+    'garden-bevy' = @('garden-domain', 'garden-application', 'garden-generation', 'garden-geometry', 'bevy_app', 'bevy_ecs', 'bevy_tasks', 'bevy_mikktspace')
     'garden-presentation' = @('garden-domain', 'garden-application', 'garden-generation', 'garden-geometry', 'garden-bevy', 'bevy', 'serde', 'serde_json')
 }
 

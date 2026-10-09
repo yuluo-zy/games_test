@@ -151,6 +151,19 @@ impl Editor {
     pub fn revision(&self, id: BuildingId) -> Option<u64> {
         self.revisions.get(&id).copied()
     }
+    /// Includes removed/undone blocks; ordinary edits never recycle identity.
+    pub fn next_block_id(&self, building: BuildingId) -> Result<BlockId, EditError> {
+        if !self.objects.contains_key(&building) {
+            return Err(EditError::Missing);
+        }
+        self.used_blocks
+            .get(&building)
+            .and_then(|ids| ids.last())
+            .map_or(0, |id| id.get())
+            .checked_add(1)
+            .and_then(BlockId::new)
+            .ok_or(EditError::CounterExhausted)
+    }
     pub fn rules_revision(&self) -> u64 {
         self.rules_revision
     }
@@ -337,11 +350,27 @@ impl Editor {
         Ok(())
     }
     pub fn take_requests(&mut self, limit: usize) -> Vec<BuildRequest> {
-        (0..limit)
-            .filter_map(|_| {
-                self.pending_order
-                    .pop_first()
-                    .and_then(|(_, id)| self.pending.remove(&id))
+        self.take_requests_where(limit, |_| true)
+    }
+    /// Busy buildings keep their latest target pending without blocking other
+    /// buildings behind them. History/commands are never coalesced here.
+    pub fn take_requests_where(
+        &mut self,
+        limit: usize,
+        mut eligible: impl FnMut(BuildingId) -> bool,
+    ) -> Vec<BuildRequest> {
+        let selected = self
+            .pending_order
+            .iter()
+            .copied()
+            .filter(|(_, id)| eligible(*id))
+            .take(limit)
+            .collect::<Vec<_>>();
+        selected
+            .into_iter()
+            .filter_map(|key| {
+                self.pending_order.remove(&key);
+                self.pending.remove(&key.1)
             })
             .collect()
     }
@@ -405,6 +434,24 @@ mod tests {
                 roof,
             },
         }
+    }
+    #[test]
+    fn busy_building_keeps_latest_target_without_blocking_other_buildings() {
+        let mut editor = Editor::new(16);
+        editor.execute(create()).unwrap();
+        let other = BuildingId::new(2).unwrap();
+        editor
+            .execute(EditCommand::Create(sample_building(other, 3., 3.)))
+            .unwrap();
+        editor.execute(roof(Roof::Flat)).unwrap();
+        editor.execute(roof(Roof::Hipped)).unwrap();
+        let requests = editor.take_requests_where(4, |building| building != id());
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].ticket.building, other);
+        let requests = editor.take_requests_where(4, |_| true);
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].ticket, editor.latest_ticket(id()).unwrap());
+        assert_eq!(editor.undo_count(), 4);
     }
     #[test]
     fn dispatch_order_is_not_biased_toward_low_object_ids() {

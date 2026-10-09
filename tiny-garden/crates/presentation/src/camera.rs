@@ -14,14 +14,18 @@ impl Plugin for OrbitCameraPlugin {
         if !app.is_plugin_added::<PointerRouterPlugin>() {
             app.add_plugins(PointerRouterPlugin);
         }
-        app.add_systems(
+        app.init_resource::<PanMode>().add_systems(
             Update,
-            (mouse_view, button_view)
+            (mouse_view, pan_view, button_view)
                 .chain()
                 .in_set(DesktopInputSet::Camera),
         );
     }
 }
+
+/// UI switches the view adapter without camera code depending on editor state.
+#[derive(Resource, Default)]
+pub struct PanMode(pub bool);
 
 #[derive(Component, Clone, Copy)]
 pub enum CameraAction {
@@ -47,6 +51,7 @@ pub struct OrbitCamera {
     pose: Pose,
     home: Pose,
     dragging: bool,
+    pan_anchor: Option<Vec3>,
 }
 impl OrbitCamera {
     pub fn from_view(position: Vec3, target: Vec3) -> Option<Self> {
@@ -69,6 +74,7 @@ impl OrbitCamera {
             pose,
             home: pose,
             dragging: false,
+            pan_anchor: None,
         })
     }
 
@@ -113,6 +119,7 @@ impl OrbitCamera {
     }
     fn action(&mut self, action: CameraAction) {
         self.dragging = false;
+        self.pan_anchor = None;
         match action {
             CameraAction::Left => self.rotate(Vec2::new(-60.0, 0.0)),
             CameraAction::Right => self.rotate(Vec2::new(60.0, 0.0)),
@@ -121,6 +128,47 @@ impl OrbitCamera {
             CameraAction::Near => self.zoom(1.0),
             CameraAction::Far => self.zoom(-1.0),
             CameraAction::Home => self.pose = self.home,
+        }
+    }
+}
+fn ground_point(camera: &Camera, transform: &Transform, cursor: Vec2) -> Option<Vec3> {
+    let ray = camera
+        .viewport_to_world(&GlobalTransform::from(*transform), cursor)
+        .ok()?;
+    if ray.direction.y.abs() < 1e-6 {
+        return None;
+    }
+    let distance = -ray.origin.y / ray.direction.y;
+    (distance.is_finite() && distance >= 0.0).then(|| ray.get_point(distance))
+}
+fn pan_view(
+    frame: Res<PointerFrame>,
+    mode: Res<PanMode>,
+    mut cameras: Query<(&Camera, &mut OrbitCamera, &mut Transform)>,
+) {
+    for (camera, mut orbit, mut transform) in &mut cameras {
+        if !mode.0 || frame.cancel_world {
+            orbit.pan_anchor = None;
+            continue;
+        }
+        if frame.world_begin {
+            orbit.pan_anchor = frame
+                .cursor
+                .and_then(|cursor| ground_point(camera, &transform, cursor));
+        }
+        if (frame.world_held || frame.world_finish)
+            && let Some(anchor) = orbit.pan_anchor
+            && let Some(point) = frame
+                .cursor
+                .and_then(|cursor| ground_point(camera, &transform, cursor))
+        {
+            let delta = anchor - point;
+            orbit.pose.target.x = (orbit.pose.target.x + delta.x).clamp(-100.0, 100.0);
+            orbit.pose.target.z = (orbit.pose.target.z + delta.z).clamp(-100.0, 100.0);
+            *transform = orbit.transform();
+        }
+        if frame.world_finish {
+            orbit.pan_anchor = None;
         }
     }
 }
@@ -181,6 +229,95 @@ mod tests {
         );
         assert!(OrbitCamera::from_view(Vec3::ZERO, Vec3::ZERO).is_none());
         assert!(OrbitCamera::from_view(Vec3::NAN, Vec3::ZERO).is_none());
+    }
+    #[test]
+    fn ground_pan_keeps_drag_anchor_under_cursor_and_home_restores_view() {
+        let mut app = App::new();
+        app.init_resource::<PointerFrame>()
+            .insert_resource(PanMode(true))
+            .add_systems(Update, pan_view);
+        let orbit = camera();
+        let home = orbit.transform();
+        let mut view = Camera::default();
+        view.computed.clip_from_view =
+            Mat4::perspective_infinite_reverse_rh(std::f32::consts::PI / 3.0, 1.5, 0.1);
+        view.computed.target_info = Some(bevy::camera::RenderTargetInfo {
+            physical_size: UVec2::new(1440, 960),
+            scale_factor: 1.0,
+        });
+        let start = view
+            .world_to_viewport(&GlobalTransform::from(home), Vec3::ZERO)
+            .unwrap();
+        let end = start + Vec2::new(80.0, 30.0);
+        let entity = app.world_mut().spawn((view, orbit, home)).id();
+        *app.world_mut().resource_mut::<PointerFrame>() = PointerFrame {
+            cursor: Some(start),
+            world_begin: true,
+            world_held: true,
+            ..default()
+        };
+        app.update();
+        *app.world_mut().resource_mut::<PointerFrame>() = PointerFrame {
+            cursor: Some(end),
+            world_held: true,
+            ..default()
+        };
+        app.update();
+        let camera = app.world().get::<Camera>(entity).unwrap();
+        let transform = app.world().get::<Transform>(entity).unwrap();
+        assert!(
+            camera
+                .world_to_viewport(&GlobalTransform::from(*transform), Vec3::ZERO)
+                .unwrap()
+                .distance(end)
+                < 0.01
+        );
+        assert!((transform.translation.y - home.translation.y).abs() < 0.001);
+        *app.world_mut().resource_mut::<PointerFrame>() = PointerFrame {
+            cancel_world: true,
+            ..default()
+        };
+        app.update();
+        assert!(
+            app.world()
+                .get::<OrbitCamera>(entity)
+                .unwrap()
+                .pan_anchor
+                .is_none()
+        );
+        app.world_mut()
+            .get_mut::<OrbitCamera>(entity)
+            .unwrap()
+            .action(CameraAction::Home);
+        assert_eq!(
+            app.world().get::<OrbitCamera>(entity).unwrap().transform(),
+            home
+        );
+    }
+    #[test]
+    fn pan_is_disabled_outside_camera_tool_and_mode_switch_releases_anchor() {
+        let mut app = App::new();
+        app.init_resource::<PointerFrame>()
+            .init_resource::<PanMode>()
+            .add_systems(Update, pan_view);
+        let mut orbit = camera();
+        orbit.pan_anchor = Some(Vec3::ZERO);
+        let home = orbit.transform();
+        let entity = app.world_mut().spawn((Camera::default(), orbit, home)).id();
+        *app.world_mut().resource_mut::<PointerFrame>() = PointerFrame {
+            cursor: Some(Vec2::ONE),
+            world_held: true,
+            ..default()
+        };
+        app.update();
+        assert_eq!(*app.world().get::<Transform>(entity).unwrap(), home);
+        assert!(
+            app.world()
+                .get::<OrbitCamera>(entity)
+                .unwrap()
+                .pan_anchor
+                .is_none()
+        );
     }
     #[test]
     fn zoom_and_pitch_stay_bounded_and_ignore_invalid_input() {

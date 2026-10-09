@@ -2,7 +2,7 @@
 
 Rust + Bevy 的原创自由建造微缩庭院项目，先开发 Windows 桌面鼠标版，手机/触摸后续移植。首版聚焦多层建筑外观、自动立面、屋顶、退台与编辑闭环，不做室内、宠物或手柄。
 
-当前为开发中的灰盒，不是已完成游戏。工程包含独立领域/编辑核心、异步布局和 Mesh 生成、桌面镜头，以及正在验证的选择/拖拽建造工具；正式资产、连续画面动画、道路关系和存档尚未完成。
+当前为开发中的桌面编辑原型，不是已完成游戏。工程包含独立领域/编辑核心、异步布局和 Mesh 生成、桌面镜头，以及选择/拖拽建造、移动、尺寸与历史工具。首批 Blender 门窗、烟囱和四套表面贴图已接入；全量正式资产、连续画面动画、道路关系和存档尚未完成。具体操作与限制见工程 README。
 
 ## 运行与检查
 
@@ -10,7 +10,7 @@ Rust ≥ 1.95。Bevy 固定 0.19.1，依赖解析记录在 Cargo.lock。
 
 ```powershell
 cd tiny-garden
-cargo run -p garden-presentation --features desktop --bin showcase --locked
+cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
 cargo test --workspace --all-targets --all-features --locked
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 ./scripts/check-boundaries.ps1

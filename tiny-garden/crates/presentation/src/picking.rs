@@ -1,12 +1,29 @@
 //! Click-only broad phase + exact CPU triangle picking of the displayed mesh.
 use crate::renderer::DisplayedBuilding;
 use bevy::prelude::*;
+use garden_domain::BlockId;
+
+#[derive(Debug, Clone, Copy)]
+pub struct PartHit {
+    pub distance: f32,
+    pub block: BlockId,
+}
 
 pub fn hit_distance(
     ray: Ray3d,
     building: &DisplayedBuilding,
     transform: &Transform,
 ) -> Option<f32> {
+    hit_part(ray, building, transform).map(|hit| hit.distance)
+}
+
+/// Semantic block identity comes from the actually displayed chunk, not an AABB
+/// or a target layout that is still waiting for upload/transition.
+pub fn hit_part(
+    ray: Ray3d,
+    building: &DisplayedBuilding,
+    transform: &Transform,
+) -> Option<PartHit> {
     let inverse = transform.compute_affine().inverse();
     let origin = inverse.transform_point3(ray.origin);
     let direction = inverse.transform_vector3(*ray.direction);
@@ -24,15 +41,23 @@ pub fn hit_distance(
             batch.data.indices.chunks_exact(3).filter_map(|t| {
                 let p = &batch.data.positions;
                 triangle_hit(
-                    origin,
+                    origin - Vec3::from_array(batch.offset),
                     direction,
                     Vec3::from_array(p[t[0] as usize]),
                     Vec3::from_array(p[t[1] as usize]),
                     Vec3::from_array(p[t[2] as usize]),
                 )
+                .map(|distance| PartHit {
+                    distance,
+                    block: batch.id.part.block,
+                })
             })
         })
-        .min_by(f32::total_cmp)
+        .min_by(|a, b| {
+            a.distance
+                .total_cmp(&b.distance)
+                .then(a.block.cmp(&b.block))
+        })
 }
 fn box_hit(origin: Vec3, direction: Vec3, min: Vec3, max: Vec3) -> bool {
     let mut near = 0.0f32;
@@ -100,7 +125,9 @@ mod tests {
                 request_serial: 1,
             },
             target: Arc::new(layout),
-            mesh: Arc::new(mesh),
+            mesh: Arc::new(garden_generation::incremental::PreparedBuilding::whole(
+                mesh,
+            )),
             min: Vec3::new(-1.0, -1.0, -1.0),
             max: Vec3::new(7.0, 7.0, 7.0),
         };

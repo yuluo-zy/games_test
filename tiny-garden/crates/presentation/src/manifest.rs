@@ -241,7 +241,9 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let summary = manifest.check(&root, false).unwrap();
         assert_eq!(summary.approved, 0);
-        assert!(summary.planned >= 26);
+        assert_eq!(summary.planned, 22);
+        assert_eq!(summary.blockout, 4);
+        assert_eq!(summary.triangles, 1468);
         assert!(manifest.check(&root, true).is_err());
         for path in ["../a.glb", "/a.glb", "D:/a.glb", "a\\b.glb"] {
             assert!(!safe_path(path));
@@ -256,6 +258,7 @@ mod tests {
         let mut value: Value = serde_json::from_str(MANIFEST).unwrap();
         value["records"][0]["status"] = "approved".into();
         value["records"][0]["file"] = "a.glb".into();
+        value["records"][0]["license"] = "pending".into();
         assert!(AssetManifest::parse(&value.to_string()).is_err());
     }
     #[test]
