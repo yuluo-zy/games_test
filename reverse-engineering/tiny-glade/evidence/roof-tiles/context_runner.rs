@@ -1,0 +1,3 @@
+#[path="D:/game/reverse-engineering/tiny-glade/reconstruction/roof/surface.rs"] mod surface;
+#[path="D:/game/reverse-engineering/tiny-glade/reconstruction/roof/tiles.rs"] mod tiles;
+use std::io::{self,BufRead};fn main(){for l in io::stdin().lock().lines(){let l=l.unwrap();let x:Vec<_>=l.split_whitespace().collect();let d=|s:&str|{(0..s.len()).step_by(2).map(|i|u8::from_str_radix(&s[i..i+2],16).unwrap()).collect::<Vec<_>>()};let rect:[u8;24]=d(x[0]).try_into().unwrap();let roof:[u8;88]=d(x[1]).try_into().unwrap();let ctx=tiles::rectangular_context_from_observed(&rect,&roof);let mut out=Vec::new();out.extend(ctx.bottom_rect.bytes());out.extend(ctx.top_rect.bytes());for x in ctx.basis{out.extend(x.to_le_bytes());}for b in out{print!("{b:02x}");}println!();}}

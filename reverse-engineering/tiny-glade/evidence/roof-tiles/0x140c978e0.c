@@ -1,0 +1,21 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 FUN_140c978e0(longlong param_1,float param_2)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined4 uVar3;
+  float fVar4;
+  
+  fVar1 = _DAT_142934674;
+  fVar4 = (_DAT_142925904 - param_2) * _DAT_142934674;
+  fVar2 = (float)func_0x000142923f10(*(undefined4 *)(param_1 + 0xc),_DAT_142934674);
+  fVar4 = (float)(~-(uint)(fVar2 < 0.0) & (uint)fVar2 | (uint)(fVar1 + fVar2) & -(uint)(fVar2 < 0.0)
+                 ) + fVar4;
+  uVar3 = func_0x000142923e80(fVar4);
+  func_0x000142923fd0(fVar4);
+  return uVar3;
+}
+

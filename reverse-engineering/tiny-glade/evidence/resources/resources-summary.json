@@ -1,0 +1,1415 @@
+{
+  "evidence_id": "TG-RES-BASELINE-20261010",
+  "target": "D:\\game\\ljxsj_92385\\Tiny Glade",
+  "target_execution": false,
+  "search_boundary": "Complete on-disk recursive file inventory; all assets/*.json parsed; representative text configuration samples; shader format reused from existing static evidence.",
+  "prior_evidence": {
+    "path": "D:\\game\\TinyGlade_逆向初查\\initial-analysis.json",
+    "sha256": "e7f2a5c7a7b9ab30217340020ea9ce712c654f473b661f7744db1de6386cb67a",
+    "reused_sections": [
+      "E05_resource_inventory",
+      "E06_json_structure_samples",
+      "E07_shader_format"
+    ]
+  },
+  "inventory": {
+    "assets": {
+      "file_count": 966,
+      "total_bytes": 2022411165,
+      "extensions": {
+        ".bank": 37,
+        ".json": 627,
+        ".ttf": 85,
+        ".txt": 11,
+        ".ron": 91,
+        ".jpg": 31,
+        ".yml": 15,
+        ".cube": 21,
+        ".png": 8,
+        ".glb": 1,
+        ".snapshot": 36,
+        ".vdf": 3
+      },
+      "subdirectories": {
+        "audio": {
+          "file_count": 37,
+          "total_bytes": 1502571944
+        },
+        "colors.json": {
+          "file_count": 1,
+          "total_bytes": 3846
+        },
+        "data": {
+          "file_count": 1,
+          "total_bytes": 30998513
+        },
+        "fonts": {
+          "file_count": 97,
+          "total_bytes": 186679382
+        },
+        "glade": {
+          "file_count": 106,
+          "total_bytes": 1641424
+        },
+        "gpu_selection_header.jpg": {
+          "file_count": 1,
+          "total_bytes": 41555
+        },
+        "lang": {
+          "file_count": 15,
+          "total_bytes": 292357
+        },
+        "luts": {
+          "file_count": 28,
+          "total_bytes": 15906603
+        },
+        "meshes": {
+          "file_count": 484,
+          "total_bytes": 263639907
+        },
+        "nani_meshes.ron": {
+          "file_count": 1,
+          "total_bytes": 14477
+        },
+        "prefabs": {
+          "file_count": 29,
+          "total_bytes": 7741
+        },
+        "starting-builds": {
+          "file_count": 101,
+          "total_bytes": 20396332
+        },
+        "steam-controller": {
+          "file_count": 3,
+          "total_bytes": 149472
+        },
+        "tod": {
+          "file_count": 1,
+          "total_bytes": 11136
+        },
+        "ui": {
+          "file_count": 59,
+          "total_bytes": 49557
+        },
+        "vulkan_allowlist_defaults.ron": {
+          "file_count": 1,
+          "total_bytes": 213
+        },
+        "window_icon.png": {
+          "file_count": 1,
+          "total_bytes": 6706
+        }
+      }
+    },
+    "assets-src": {
+      "file_count": 16,
+      "total_bytes": 5752,
+      "extensions": {
+        ".ron": 16
+      }
+    },
+    "compiled-assets": {
+      "file_count": 389,
+      "total_bytes": 311687779,
+      "extensions": {
+        ".texture": 388,
+        ".ron": 1
+      }
+    },
+    "compiled-shaders": {
+      "file_count": 404,
+      "total_bytes": 13562443,
+      "extensions": {
+        ".bin": 404
+      }
+    },
+    "build-info": {
+      "file_count": 3,
+      "total_bytes": 489664,
+      "extensions": {
+        ".lock": 1,
+        ".json": 2
+      }
+    }
+  },
+  "inventory_matches_prior": {
+    "assets": true,
+    "assets-src": true,
+    "compiled-assets": true,
+    "compiled-shaders": true
+  },
+  "source_availability": {
+    "assets_src_extensions": {
+      ".ron": 16
+    },
+    "rust_source_files": [],
+    "shader_source_files": [],
+    "conclusion": "assets-src consists of 16 texture build descriptions; this supplied directory is a shipped distribution with symbols/build metadata, not a complete Rust/HLSL source repository."
+  },
+  "json_parsing": {
+    "parsed_file_count": 627,
+    "parse_failures": [],
+    "mesh_attribute_schema_count": 483
+  },
+  "shader_format_reused": {
+    "file_count": 404,
+    "spirv_magic_candidates": 404,
+    "first_code_instruction_boundary_valid": 404,
+    "limitations": "只验证头和指令边界，没有做完整 SPIR-V 语义验证或 GPU 执行。"
+  },
+  "shader_feature_samples_reused": [
+    {
+      "file": "_mouse_terrain_raycast.cs.hlsl_cs_main_0.bin",
+      "bytes": 8644,
+      "first_16_bytes_hex": "01000000000000000700000063735f6d",
+      "spirv_magic_offset": 23,
+      "valid_instruction_boundary_to_code_end": true,
+      "first_code_word_count": 1914,
+      "instruction_count": 252,
+      "debug_name_samples": [
+        "type.sampler",
+        "sampler_default",
+        "type.$Globals",
+        "mouse_ray_origin",
+        "mouse_ray_dir",
+        "terrain_heightmap_dims",
+        "visual_terrain_heightmap_dims",
+        "stroke_indices_dims",
+        "$Globals",
+        "type.2d.image",
+        "terrain_heightmap",
+        "type.2d.image",
+        "stroke_indices",
+        "type.RWStructuredBuffer.CsOut",
+        "CsOut",
+        "mouse_raycast_position",
+        "terrain_stroke_index",
+        "my_buffer",
+        "cs_main",
+        "type.sampled.image"
+      ],
+      "spirv_version_word": "0x10300"
+    },
+    {
+      "file": "_nani_gothic_window_bricks.raster.hlsl_b903e43ffb3da915.bin",
+      "bytes": 89872,
+      "first_16_bytes_hex": "02000000010000000700000076735f6d",
+      "spirv_magic_offset": 23,
+      "valid_instruction_boundary_to_code_end": true,
+      "first_code_word_count": 11859,
+      "instruction_count": 1952,
+      "debug_name_samples": [
+        "type.ConstantBuffer.FrameConstants",
+        "sun_color",
+        "sky_low_color",
+        "sky_high_color",
+        "fog_tint_thickness",
+        "fake_light_color",
+        "fake_light_dir",
+        "fake_light2_color",
+        "fake_light2_dir",
+        "frame_index",
+        "delta_time_seconds",
+        "ev_mult",
+        "glade_theme_id",
+        "inner_rendering_resolution",
+        "game_time_sec",
+        "game_time_frac",
+        "editing_highlight_color",
+        "time_of_day",
+        "dir_to_sun",
+        "camera_idx",
+        "dir_to_moon",
+        "render_overrides",
+        "global_mip_bias",
+        "highlighted_transient_stair_edge_id",
+        "pad1",
+        "pad2",
+        "debug_tweakers",
+        "view_constants",
+        "ViewConstants",
+        "view_to_clip",
+        "clip_to_view",
+        "view_to_sample",
+        "sample_to_view",
+        "world_to_view",
+        "view_to_world",
+        "world_to_sample",
+        "clip_to_prev_clip",
+        "prev_view_to_prev_clip",
+        "prev_clip_to_prev_view",
+        "prev_world_to_prev_view",
+        "prev_view_to_prev_world",
+        "sample_offset_pixels",
+        "sample_offset_clip",
+        "prev_sample_offset_pixels",
+        "prev_sample_offset_clip",
+        "frame_constants",
+        "type.$Globals",
+        "current_view_index",
+        "terrain_heightmap_dims",
+        "visual_terrain_heightmap_dims",
+        "highlight_mode",
+        "highlight_bricks_to_delete",
+        "brush_position",
+        "bool_render_shadows",
+        "eraser_mult",
+        "$Globals",
+        "type.StructuredBuffer.uint",
+        "instance_indirection_buffer",
+        "type.StructuredBuffer.InstanceData",
+        "InstanceData",
+        "xform",
+        "seed",
+        "_wall_id",
+        "wallspace_x_range_packed",
+        "_is_wooden",
+        "bone_0_pos",
+        "bone_0_normal_packed",
+        "bone_1_pos",
+        "bone_1_normal_packed",
+        "bone_2_pos",
+        "bone_2_normal_packed",
+        "Affine3Packed",
+        "data",
+        "nani_instance_data",
+        "wall_color_ids",
+        "in.var.Vertex_Position",
+        "in.var.Vertex_Normal",
+        "in.var.Vertex_UV",
+        "in.var.is_bevel",
+        "in.var.brick_id",
+        "in.var.bbx_x",
+        "out.var.C0",
+        "out.var.C1",
+        "out.var.C2",
+        "out.var.C5",
+        "out.var.C7",
+        "out.var.C10",
+        "out.var.C11",
+        "out.var.C12",
+        "out.var.C13",
+        "out.var.C14",
+        "vs_main"
+      ],
+      "spirv_version_word": "0x10300"
+    },
+    {
+      "file": "_nani_gothic_window_bricks.raster.hlsl_f0adff76827e73ff.bin",
+      "bytes": 61216,
+      "first_16_bytes_hex": "02000000010000000700000076735f6d",
+      "spirv_magic_offset": 23,
+      "valid_instruction_boundary_to_code_end": true,
+      "first_code_word_count": 11126,
+      "instruction_count": 1784,
+      "debug_name_samples": [
+        "type.ConstantBuffer.FrameConstants",
+        "sun_color",
+        "sky_low_color",
+        "sky_high_color",
+        "fog_tint_thickness",
+        "fake_light_color",
+        "fake_light_dir",
+        "fake_light2_color",
+        "fake_light2_dir",
+        "frame_index",
+        "delta_time_seconds",
+        "ev_mult",
+        "glade_theme_id",
+        "inner_rendering_resolution",
+        "game_time_sec",
+        "game_time_frac",
+        "editing_highlight_color",
+        "time_of_day",
+        "dir_to_sun",
+        "camera_idx",
+        "dir_to_moon",
+        "render_overrides",
+        "global_mip_bias",
+        "highlighted_transient_stair_edge_id",
+        "pad1",
+        "pad2",
+        "debug_tweakers",
+        "view_constants",
+        "ViewConstants",
+        "view_to_clip",
+        "clip_to_view",
+        "view_to_sample",
+        "sample_to_view",
+        "world_to_view",
+        "view_to_world",
+        "world_to_sample",
+        "clip_to_prev_clip",
+        "prev_view_to_prev_clip",
+        "prev_clip_to_prev_view",
+        "prev_world_to_prev_view",
+        "prev_view_to_prev_world",
+        "sample_offset_pixels",
+        "sample_offset_clip",
+        "prev_sample_offset_pixels",
+        "prev_sample_offset_clip",
+        "frame_constants",
+        "type.$Globals",
+        "current_view_index",
+        "terrain_heightmap_dims",
+        "visual_terrain_heightmap_dims",
+        "highlight_mode",
+        "highlight_bricks_to_delete",
+        "brush_position",
+        "bool_render_shadows",
+        "eraser_mult",
+        "$Globals",
+        "type.StructuredBuffer.uint",
+        "instance_indirection_buffer",
+        "type.StructuredBuffer.InstanceData",
+        "InstanceData",
+        "xform",
+        "seed",
+        "_wall_id",
+        "wallspace_x_range_packed",
+        "_is_wooden",
+        "bone_0_pos",
+        "bone_0_normal_packed",
+        "bone_1_pos",
+        "bone_1_normal_packed",
+        "bone_2_pos",
+        "bone_2_normal_packed",
+        "Affine3Packed",
+        "data",
+        "nani_instance_data",
+        "in.var.Vertex_Position",
+        "in.var.Vertex_Normal",
+        "in.var.Vertex_UV",
+        "in.var.is_bevel",
+        "in.var.brick_id",
+        "in.var.bbx_x",
+        "out.var.C0",
+        "out.var.C1",
+        "out.var.C2",
+        "out.var.C5",
+        "out.var.C7",
+        "out.var.C10",
+        "out.var.C11",
+        "out.var.C12",
+        "out.var.C13",
+        "out.var.C14",
+        "vs_main"
+      ],
+      "spirv_version_word": "0x10300"
+    },
+    {
+      "file": "_roof_tiles_gravity.cs.hlsl_cs_main_0.bin",
+      "bytes": 15790,
+      "first_16_bytes_hex": "01000000000000000700000063735f6d",
+      "spirv_magic_offset": 23,
+      "valid_instruction_boundary_to_code_end": true,
+      "first_code_word_count": 3778,
+      "instruction_count": 533,
+      "debug_name_samples": [
+        "type.StructuredBuffer.FrameConstants",
+        "FrameConstants",
+        "sun_color",
+        "sky_low_color",
+        "sky_high_color",
+        "fog_tint_thickness",
+        "fake_light_color",
+        "fake_light_dir",
+        "fake_light2_color",
+        "fake_light2_dir",
+        "frame_index",
+        "delta_time_seconds",
+        "ev_mult",
+        "glade_theme_id",
+        "inner_rendering_resolution",
+        "game_time_sec",
+        "game_time_frac",
+        "editing_highlight_color",
+        "time_of_day",
+        "dir_to_sun",
+        "camera_idx",
+        "dir_to_moon",
+        "render_overrides",
+        "global_mip_bias",
+        "highlighted_transient_stair_edge_id",
+        "pad1",
+        "pad2",
+        "debug_tweakers",
+        "view_constants",
+        "ViewConstants",
+        "view_to_clip",
+        "clip_to_view",
+        "view_to_sample",
+        "sample_to_view",
+        "world_to_view",
+        "view_to_world",
+        "world_to_sample",
+        "clip_to_prev_clip",
+        "prev_view_to_prev_clip",
+        "prev_clip_to_prev_view",
+        "prev_world_to_prev_view",
+        "prev_view_to_prev_world",
+        "sample_offset_pixels",
+        "sample_offset_clip",
+        "prev_sample_offset_pixels",
+        "prev_sample_offset_clip",
+        "frame_constants_storage_buffer",
+        "type.ConstantBuffer.PushConstants",
+        "first_instance",
+        "instance_count",
+        "wall_height_delta",
+        "roof_pivot_y",
+        "animation_t",
+        "push_constants",
+        "type.RWStructuredBuffer.RoofShingle",
+        "RoofShingle",
+        "base_position",
+        "current_height",
+        "clipping_plane__",
+        "scale__t",
+        "rotation_quat__",
+        "roof_id",
+        "velocity__rotation",
+        "animation_t",
+        "seed",
+        "is_circle",
+        "is_main_roof_body",
+        "__alias_instanced_data",
+        "cs_main"
+      ],
+      "spirv_version_word": "0x10300"
+    }
+  ],
+  "toolchain_direct_record": {
+    "RUSTC_COMMIT": "05f9846f893b09a1be1fc8560e33fc3c815cfecb",
+    "RUSTC_MAJOR": "1",
+    "RUSTC_MINOR": "86",
+    "RUSTC_PATCH": "0",
+    "LLVM_MAJOR": "19",
+    "LLVM_MINOR": "1",
+    "LLVM_PATCH": "7",
+    "OPT_LEVEL": "3",
+    "DEBUG": "true",
+    "NUM_JOBS": "16",
+    "TARGET": "x86_64-pc-windows-msvc",
+    "HOST": "x86_64-unknown-linux-gnu"
+  },
+  "samples": {
+    "assets-src/textures/roof/assets.ron": {
+      "bytes": 195,
+      "sha256": "5e3295f99076e06de24648070f03508164238b5cf854d5b6342296a70f2ba0f8",
+      "text": "(\n    default: (\n        gamma: Linear,\n        resize: (1024, 1024),\n        mips: Full,\n    ),\n    assets: {\n        \"roof_tile_damage\": (\n            compression: Grayscale,\n        ),\n    }\n)"
+    },
+    "assets-src/textures/wood_detail/assets.ron": {
+      "bytes": 292,
+      "sha256": "1523e95ec0653d5c02b8d4067d94864097203e15e815ac37efc5c03cb1796c5a",
+      "text": "(\n    default: (\n        gamma: Linear,\n        resize: (1024, 1024),\n        mips: Full,\n    ),\n    assets: {\n        \"edge_damage\": (\n            resize: (512, 512),\n            compression: Grayscale,\n        ),\n        \"roughness\": (\n            compression: Grayscale,\n        ),\n    }\n)"
+    },
+    "assets/prefabs/clearing/tree/default.ron": {
+      "bytes": 1012,
+      "sha256": "6438edeebe70e5e7d7ab883dc4fb3253bc2d0f94c68e3e422383f1b04095b1b0",
+      "text": "(\n    parts: {\n        \"canopy\": (\n            render: (\n                mesh_processor: Code(\n                    name: \"extract_canopy\",\n                ),\n                shader: \"tree_canopy\",\n            ),\n            rt: (\n                mesh: Aabb,\n                mesh_scale: [0.9, 0.9, 0.9],\n                summer_albedo: [0.09, 0.18, 0.06],\n                autumn_albedo: [0.18, 0.12, 0.06],\n                winter_albedo: [0.18, 0.12, 0.06],\n                semantic: Canopy,\n            ),\n            audio: (\n                trigger: (\n                    shape: Aabb,\n                    // Don't trigger audio until camera is well inside the volume.\n                    shape_scale: [0.8, 1.0, 0.8],\n                    kind: \"Tree\",\n                ),\n            ),\n        ),\n        \"trunk\": (\n            render: (\n                mesh_processor: Code(\n                    name: \"extract_trunk\",\n                ),\n                shader: \"tree_trunk\",\n            ),\n        ),\n    },\n)\n"
+    },
+    "assets/glade/summer/trees.json": {
+      "bytes": 1026,
+      "sha256": "bd60e3b564533899bdabcb2081dfb638cc4caef81ce777c089e491195131a0d2",
+      "schema": {
+        "path": "assets/glade/summer/trees.json",
+        "type": "array",
+        "count": 9,
+        "first_item": {
+          "type": "object",
+          "keys": [
+            "prefab",
+            "placements"
+          ]
+        }
+      },
+      "data": [
+        {
+          "prefab": "clearing/tree/mid1",
+          "placements": "trees/mid_distance_trees_1.json"
+        },
+        {
+          "prefab": "clearing/tree/mid2",
+          "placements": "trees/mid_distance_trees_2.json"
+        },
+        {
+          "prefab": "clearing/tree/branchy1",
+          "placements": "trees/branchy_trees_1.json"
+        },
+        {
+          "prefab": "clearing/tree/branchy2",
+          "placements": "trees/branchy_trees_2.json"
+        },
+        {
+          "prefab": "clearing/tree/bush",
+          "placements": "trees/bushes.json",
+          "billboard_expansion_scale": 0.5
+        },
+        {
+          "prefab": "clearing/tree/mid3",
+          "placements": "trees/clearing_edge1.json"
+        },
+        {
+          "prefab": "clearing/tree/mid4",
+          "placements": "trees/clearing_edge2.json"
+        },
+        {
+          "prefab": "clearing/tree/mid5",
+          "placements": "trees/clearing_edge3.json"
+        },
+        {
+          "prefab": "clearing/tree/far",
+          "placements": "trees/bg_terrain_trees.json",
+          "billboard_expansion_scale": 2.2
+        }
+      ]
+    },
+    "assets/glade/summer/plants.json": {
+      "bytes": 538,
+      "sha256": "610c5973c7be80458896da7c715b64a1de35c94032ce3f08dd18b61b81c68d1f",
+      "schema": {
+        "path": "assets/glade/summer/plants.json",
+        "type": "array",
+        "count": 4,
+        "first_item": {
+          "type": "object",
+          "keys": [
+            "shader",
+            "mesh",
+            "placements"
+          ]
+        }
+      },
+      "data": [
+        {
+          "shader": "meadow_plant_shader",
+          "mesh": "plant_thistle",
+          "placements": "plants/flowers.json"
+        },
+        {
+          "shader": "meadow_plant_shader",
+          "mesh": "plant_leafy",
+          "placements": "plants/leafy_plants.json"
+        },
+        {
+          "shader": "meadow_plant_shader",
+          "mesh": "plant_thistle",
+          "placements": "plants/terrain_plant1.json"
+        },
+        {
+          "shader": "meadow_plant_shader",
+          "mesh": "plant_leafy",
+          "placements": "plants/terrain_plant2.json"
+        }
+      ]
+    },
+    "assets/glade/summer/settings.json": {
+      "bytes": 27,
+      "sha256": "2c1956de315316ca61ba44ae40c3ecaa54be243da35480b087e9153305a722d5",
+      "schema": {
+        "path": "assets/glade/summer/settings.json",
+        "type": "object",
+        "keys": [
+          "butterflies"
+        ],
+        "fields": {
+          "butterflies": {
+            "type": "bool"
+          }
+        }
+      }
+    },
+    "assets/glade/summer/textures.json": {
+      "bytes": 333,
+      "sha256": "290d38ae286d135f059367e4dbc715f44af94972b1b293995aec244a1821e440",
+      "schema": {
+        "path": "assets/glade/summer/textures.json",
+        "type": "object",
+        "keys": [
+          "ivy_leaf_color",
+          "canopy_flowers_depth",
+          "leaf_particle_colors",
+          "terrain_texture",
+          "grass_patch",
+          "flower1",
+          "lilypad_flower",
+          "canopy_color",
+          "bark_color_naked"
+        ],
+        "fields": {
+          "ivy_leaf_color": {
+            "type": "str"
+          },
+          "canopy_flowers_depth": {
+            "type": "str"
+          },
+          "leaf_particle_colors": {
+            "type": "str"
+          },
+          "terrain_texture": {
+            "type": "str"
+          },
+          "grass_patch": {
+            "type": "str"
+          },
+          "flower1": {
+            "type": "str"
+          },
+          "lilypad_flower": {
+            "type": "str"
+          },
+          "canopy_color": {
+            "type": "str"
+          },
+          "bark_color_naked": {
+            "type": "str"
+          }
+        }
+      }
+    },
+    "assets/glade/summer/grading.json": {
+      "bytes": 160,
+      "sha256": "08664940e1a339949596678657611fe288fd39ce17d03607e245c6e94d4c8acf",
+      "schema": {
+        "path": "assets/glade/summer/grading.json",
+        "type": "object",
+        "keys": [
+          "bypass_color",
+          "contrast",
+          "current_grading_lut",
+          "ev_shift",
+          "grading_strength",
+          "saturation"
+        ],
+        "fields": {
+          "bypass_color": {
+            "type": "bool"
+          },
+          "contrast": {
+            "type": "float"
+          },
+          "current_grading_lut": {
+            "type": "str"
+          },
+          "ev_shift": {
+            "type": "float"
+          },
+          "grading_strength": {
+            "type": "float"
+          },
+          "saturation": {
+            "type": "float"
+          }
+        }
+      }
+    },
+    "assets/tod/default.json": {
+      "bytes": 11136,
+      "sha256": "e3bd28fb2fd29354de9c8af2d396ca8b45f4eb2b693cccac88a3e647a7a4ab0d",
+      "schema": {
+        "path": "assets/tod/default.json",
+        "type": "object",
+        "keys": [
+          "entries"
+        ],
+        "fields": {
+          "entries": {
+            "type": "array",
+            "count": 15,
+            "first_item": {
+              "type": "object",
+              "keys": [
+                "time_of_day",
+                "snapshot",
+                "temp_ui_id"
+              ]
+            }
+          }
+        }
+      },
+      "first_entry": {
+        "time_of_day": 0.0,
+        "snapshot": {
+          "sun_sky": {
+            "sun_tint_color": [
+              0.32866657,
+              0.2976653,
+              0.19989444
+            ],
+            "moon_tint_color": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "sky_low_color": [
+              0.17390057,
+              0.27138948,
+              0.32448062
+            ],
+            "sky_high_color": [
+              0.107430175,
+              0.12669688,
+              0.27529913
+            ]
+          },
+          "base_fog_thickness": 0.046,
+          "fog_tint": [
+            0.76491785,
+            1.0672204,
+            1.0263494
+          ],
+          "speed_bias": -1.0
+        },
+        "temp_ui_id": 11309646118622107426
+      },
+      "entry_count": 15
+    },
+    "assets/data/rocky_terrain.json": {
+      "bytes": 30998513,
+      "sha256": "0f63a7250df5a3382017dbdc3652748f33899750e3a65c5aef3727415b9183b7",
+      "schema": {
+        "path": "assets/data/rocky_terrain.json",
+        "type": "object",
+        "keys": [
+          "vertices",
+          "triangles"
+        ],
+        "fields": {
+          "vertices": {
+            "type": "array",
+            "count": 148794,
+            "first_item": {
+              "type": "object",
+              "keys": [
+                "position",
+                "cell_bby",
+                "cell_id",
+                "dir_to_centroid",
+                "is_corner"
+              ]
+            }
+          },
+          "triangles": {
+            "type": "array",
+            "count": 49598,
+            "first_item": {
+              "type": "object",
+              "keys": [
+                "neighbours",
+                "is_top"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "assets/meshes/roof_tile.json": {
+      "bytes": 1430,
+      "sha256": "b7fcde0db9b0b5dff445cee9c4849e3f1dacf0148666ad6973d69a188644b1e7",
+      "schema": {
+        "path": "assets/meshes/roof_tile.json",
+        "type": "object",
+        "keys": [
+          "attributes",
+          "Vertex_Position",
+          "indices"
+        ],
+        "fields": {
+          "attributes": {
+            "type": "array",
+            "count": 1,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "indices": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position"
+        ],
+        "buffers": {
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 20
+          },
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 90
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.5940297842025757,
+            -0.5,
+            -0.5
+          ],
+          "max": [
+            0.5940297842025757,
+            0.5,
+            0.5
+          ]
+        }
+      }
+    },
+    "assets/meshes/roof_tile_lod1.json": {
+      "bytes": 1575,
+      "sha256": "c36b13efb503285f5f6c9c7d9d0435c0d9078a47849b3e43d400c7a1ae3933ca",
+      "schema": {
+        "path": "assets/meshes/roof_tile_lod1.json",
+        "type": "object",
+        "keys": [
+          "attributes",
+          "indices",
+          "Vertex_Position"
+        ],
+        "fields": {
+          "attributes": {
+            "type": "array",
+            "count": 1,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "indices": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position"
+        ],
+        "buffers": {
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 36
+          },
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 8
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.5,
+            -0.5,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        }
+      }
+    },
+    "assets/meshes/brick.json": {
+      "bytes": 68577,
+      "sha256": "0afc0447e5353d837b8b14734db1ebcb80e63edebccd05209c495b2cd243cd53",
+      "schema": {
+        "path": "assets/meshes/brick.json",
+        "type": "object",
+        "keys": [
+          "indices",
+          "attributes",
+          "is_bevel",
+          "Vertex_Normal",
+          "Vertex_Position"
+        ],
+        "fields": {
+          "indices": {
+            "type": "object",
+            "keys": [
+              "buffer",
+              "type"
+            ]
+          },
+          "attributes": {
+            "type": "array",
+            "count": 3,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "is_bevel": {
+            "type": "object",
+            "keys": [
+              "buffer",
+              "type"
+            ]
+          },
+          "Vertex_Normal": {
+            "type": "object",
+            "keys": [
+              "buffer",
+              "type"
+            ]
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "buffer",
+              "type"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position",
+          "Vertex_Normal",
+          "is_bevel"
+        ],
+        "buffers": {
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 900
+          },
+          "is_bevel": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 600
+          },
+          "Vertex_Normal": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 600
+          },
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 600
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.5,
+            -0.5,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        }
+      }
+    },
+    "assets/meshes/window_cottage_1x1.json": {
+      "bytes": 735023,
+      "sha256": "00dd31d9f466ff67bd354cd0dd342356b1240402f8cefd0c3728fe6a7af0f35f",
+      "schema": {
+        "path": "assets/meshes/window_cottage_1x1.json",
+        "type": "object",
+        "keys": [
+          "attributes",
+          "indices",
+          "Vertex_Position",
+          "Vertex_Normal",
+          "Vertex_Color"
+        ],
+        "fields": {
+          "attributes": {
+            "type": "array",
+            "count": 3,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "indices": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Normal": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Color": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position",
+          "Vertex_Normal",
+          "Vertex_Color"
+        ],
+        "buffers": {
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 1704
+          },
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 1704
+          },
+          "Vertex_Normal": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 1704
+          },
+          "Vertex_Color": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 1704
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.39000001549720764,
+            -0.8379999995231628,
+            -0.42500001192092896
+          ],
+          "max": [
+            0.39000001549720764,
+            0.800000011920929,
+            0.42500001192092896
+          ]
+        }
+      }
+    },
+    "assets/meshes/decorators/door.json": {
+      "bytes": 4715,
+      "sha256": "791e84d50c7a6e15c01b1360e679322d7ca576547c23aefc50ec72f7afc3f24f",
+      "schema": {
+        "path": "assets/meshes/decorators/door.json",
+        "type": "object",
+        "keys": [
+          "attributes",
+          "indices",
+          "Vertex_Position",
+          "Vertex_Normal",
+          "Vertex_Color"
+        ],
+        "fields": {
+          "attributes": {
+            "type": "array",
+            "count": 3,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "indices": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Normal": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Color": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position",
+          "Vertex_Normal",
+          "Vertex_Color"
+        ],
+        "buffers": {
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 36
+          },
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 36
+          },
+          "Vertex_Normal": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 36
+          },
+          "Vertex_Color": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 36
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.6000000238418579,
+            -1.25,
+            -0.375
+          ],
+          "max": [
+            0.6000000238418579,
+            1.25,
+            0.375
+          ]
+        }
+      }
+    },
+    "assets/meshes/path_pebble.json": {
+      "bytes": 4211,
+      "sha256": "8f95a40308b2c5e864473e5b2c3e3e3d86e34ba3401767aae452026045c72c68",
+      "schema": {
+        "path": "assets/meshes/path_pebble.json",
+        "type": "object",
+        "keys": [
+          "attributes",
+          "indices",
+          "Vertex_Position",
+          "Vertex_Normal"
+        ],
+        "fields": {
+          "attributes": {
+            "type": "array",
+            "count": 2,
+            "first_item": {
+              "type": "str"
+            }
+          },
+          "indices": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Position": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          },
+          "Vertex_Normal": {
+            "type": "object",
+            "keys": [
+              "type",
+              "buffer"
+            ]
+          }
+        },
+        "attributes": [
+          "Vertex_Position",
+          "Vertex_Normal"
+        ],
+        "buffers": {
+          "indices": {
+            "type": [
+              "int",
+              1
+            ],
+            "count": 57
+          },
+          "Vertex_Position": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 35
+          },
+          "Vertex_Normal": {
+            "type": [
+              "float",
+              3
+            ],
+            "count": 35
+          }
+        },
+        "position_bounds": {
+          "min": [
+            -0.4035239815711975,
+            -0.18000000715255737,
+            -0.28305456042289734
+          ],
+          "max": [
+            0.33074939250946045,
+            0.019999995827674866,
+            0.32634514570236206
+          ]
+        }
+      }
+    },
+    "compiled-assets/textures/list.ron": {
+      "bytes": 8763,
+      "sha256": "204fb6d0a2e629a4965adac67d925d5aa919fc1f76fb86ee277a1c5369244eb6"
+    },
+    "build-info/Cargo.lock": {
+      "bytes": 224933,
+      "sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd"
+    },
+    "build-info/toolchain-info.json": {
+      "bytes": 355,
+      "sha256": "166dc7325cb76749c8f8fb075b8cccac52678891258675b297756f030e4c4e2d"
+    }
+  },
+  "binary_format_candidates": [
+    {
+      "path": "compiled-assets/textures/autumn_canopy.texture",
+      "bytes": 349588,
+      "first48_hex": "8321504808000000021d6986d095558771109613ebd0450f0262098a97665d878114906b992ce001a8047fc01f4bd562",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "compiled-assets/textures/autumn_ivy_leaf_color.texture",
+      "bytes": 349588,
+      "first48_hex": "832150480800000060ffbf0af5e90c1602838a8afcfafafaa042e1ffefe144512d800800924e18b618098342212a954a",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "assets/starting-builds/demo/00-demo2/snapshots/11519500871291546481.snapshot",
+      "bytes": 369205,
+      "first48_hex": "536e617073686f74d0180000000000007b224465636f7261746f7273223a7b22737461746573223a5b5b225465727261",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "assets/starting-builds/demo/01-demo3/snapshots/17798710246010479337.snapshot",
+      "bytes": 365204,
+      "first48_hex": "536e617073686f74c11b0000000000007b224465636f7261746f7273223a7b22737461746573223a5b5b7b2257616c6c",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "assets/audio/Desktop/animals.assets.bank",
+      "bytes": 675904,
+      "first48_hex": "5249464638500a0046455620464d5420080000008e0000008c0000004c495354ba0a000050524f4a424e4b4920000000",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "assets/audio/Desktop/animals.bank",
+      "bytes": 40688,
+      "first48_hex": "52494646e89e000046455620464d5420080000008e0000008c0000004c495354cc9e000050524f4a424e4b4920000000",
+      "format_status": "unparsed header; extension alone is not proof"
+    },
+    {
+      "path": "assets/meshes/brick.glb",
+      "bytes": 11944,
+      "first48_hex": "676c544602000000a82e00001c0500004a534f4e7b0a09226173736574223a7b0a09092276657273696f6e223a22322e",
+      "format_status": "glTF binary magic candidate; no runtime inference"
+    }
+  ],
+  "unknowns": [
+    "Compiled texture binary container/format and compression metadata are not decoded.",
+    "Snapshot serialization, schema version, and object graph are not decoded.",
+    "No behavior, update ordering, attachment thresholds, generation equations, or transition timing can be concluded from resource names alone.",
+    "Prior SPIR-V parsing covers first embedded module boundaries, not all stages/full semantic validation/GPU execution."
+  ],
+  "artifacts": [
+    "file-inventory.tsv",
+    "json-schemas.json",
+    "dependency-evidence.json",
+    "resource-analysis-questions.json",
+    "command-schemas.json"
+  ],
+  "command_resources": {
+    "evidence_id": "TG-RES-COMMANDS-20261010",
+    "history_count": 33,
+    "edit_chain_entry_count": 2120,
+    "command_tag_counts": {
+      "WallNewSystem": 682,
+      "Path": 234,
+      "Terrain": 102,
+      "Roof": 241,
+      "DecoratorV5": 345,
+      "Garden": 53,
+      "Color": 114,
+      "Tree": 609,
+      "Wall": 242,
+      "Water": 140,
+      "Stairs": 9,
+      "Cobblestone2": 2,
+      "Cobblestone1": 1
+    },
+    "observation": "Shipped editable history command and diff schemas are parseable; runtime processing and snapshot decoding remain unverified."
+  },
+  "current_scope": "Only original Tiny Glade implementation reconstruction; no other-engine/project mapping.",
+  "history_reconstruction": "../../reconstruction/history/observed-history-schema.json",
+  "findings": "findings.md"
+}

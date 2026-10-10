@@ -1,0 +1,52 @@
+{
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "ok": true,
+  "full_game_executed": false,
+  "pe_entry_invoked": false,
+  "oracle": "original x64 function bytes directly executed in isolated Python child, profile point generators emulated in Unicorn",
+  "external_dependency": {
+    "import_dll": "api-ms-win-crt-math-l1-1-0.dll",
+    "import_name": "powf",
+    "actual_dll": "C:\\Windows\\System32\\ucrtbase.dll",
+    "version": "10.0.19041.3636 (WinBuild.160101.0800)",
+    "sha256": "3c60056371f82e4744185b6f2fa0c69042b1e78804685944132974dd13f3b6d9"
+  },
+  "counts": {
+    "transform": 240,
+    "curve": 460,
+    "profile": 209,
+    "height": 2500,
+    "fixture_section": 6560,
+    "eave": 2500,
+    "sample": 5513,
+    "section": 3004,
+    "fixture_height": 1312,
+    "whole_profile_chain": 1512
+  },
+  "fixture_source": {
+    "path": "evidence/roof-fixtures.json",
+    "sha256": "b5e5b6c52ae4f55e17adf79d84348b73eae2b82c48c813873a37527e0b1e9f3c",
+    "snapshots": 328,
+    "wall_shapes": "synthetic circle/rectangle; original scene replay not performed",
+    "ridge_dir_encoding": "both raw bits tested; history Width/Length mapping not claimed"
+  },
+  "failures": [],
+  "failure_count": 0,
+  "output_comparison": "exact bits and exact written bytes; circle unwritten tail preserved",
+  "scope": {
+    "get_roof_shape": "entire function and original powf imported API resolved in current Windows environment, no core stub",
+    "height": "entire non-panic function",
+    "eave": "entire function",
+    "profile": "entire point generation until CurveU constructor; allocation bridge; native CRT powf bridge",
+    "transform": "all SIMD/scalar loop paths through CurveU consumer boundary; allocation bridge",
+    "curve": "entire Curve2 constructor including error branches and duplicate policy; allocation/deallocation bridge; compare ownership-independent metadata, cumulative points_u and length",
+    "sample": "entire coordinate lookup, position and tangent functions with original inverse_lerp dependency, no numerical stubs",
+    "whole_profile_chain": "full profile_curve_normalized -> original Curve2 ctor -> profile_curve_ws -> original Curve2 ctor; allocator/free/nativepowf bridges; compare all points, points_u and length"
+  },
+  "limitations": [
+    "Current host CRT dependency is recorded; original game process dependency version was not observed",
+    "Curve2 ownership pointer values and allocation failures not reconstructed",
+    "height panic path, coordinate panic formatting and MXCSR flags not covered",
+    "no runtime game execution, rendering or shader validation"
+  ]
+}

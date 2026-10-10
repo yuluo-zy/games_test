@@ -1,0 +1,28 @@
+{
+  "input_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "target_execution": false,
+  "analysis_scope": "只在PDB精确函数范围内反汇编；没有全程序分析或类型导入",
+  "functions": [
+    {
+      "name": "utils::inverse_lerp",
+      "va": "0x140c904a0",
+      "end_exclusive": "0x140c904b0",
+      "code_size": 16,
+      "evidence": "module759.txt",
+      "line": 847,
+      "instructions": [
+        "140c904a0: SUBSS XMM2,XMM0",
+        "140c904a4: SUBSS XMM1,XMM0",
+        "140c904a8: DIVSS XMM2,XMM1",
+        "140c904ac: MOVAPS XMM0,XMM2",
+        "140c904af: RET"
+      ],
+      "merged_auxiliary_entries": [],
+      "decompile_completed": true,
+      "error": "",
+      "signature_status": "参数与类型由反编译器推测，尚未还原真实Rust签名",
+      "pseudocode": "\nfloat tg_utils_inverse_lerp(float param_1,float param_2,float param_3)\n\n{\n  return (param_3 - param_1) / (param_2 - param_1);\n}\n\n"
+    }
+  ],
+  "ok": true
+}

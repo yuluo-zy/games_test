@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "total_cases": 6624,
+  "counts": {
+    "clamp": 4680,
+    "max": 648,
+    "gable": 648,
+    "flat": 648
+  },
+  "failures": [],
+  "candidate_sources": {
+    "reconstruction/wall/height_rules.rs": "a518c1364af4473f41f528815f3a720e9f0ea647f86b678dbbd9449b128728a7"
+  },
+  "functions": [
+    {
+      "name": "clamp_wall_height resolved numeric policy",
+      "entry": "0x140ac8040",
+      "end": "0x140ac80bd",
+      "scope": "suffix of PDB-confirmed 422-byte original game function; map/query lookup represented by prepared resolved state"
+    },
+    {
+      "name": "PublicWallState::{max_y,max_y_gable,flat_roof_y}",
+      "scope": "complete original game leaf functions including observed panic on absent cache"
+    }
+  ],
+  "limitations": [
+    "Clamp hash lookup, wall existence/validity checks and Bevy query lookup are outside tested numeric policy",
+    "Special flag producer semantic is unknown",
+    "MXCSR=0x1f80; floating exception flags and panic message/unwind not compared",
+    "No std/Bevy/glam/hash implementation was reconstructed"
+  ]
+}

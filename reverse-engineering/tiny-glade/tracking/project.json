@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "target": "D:/game/ljxsj_92385/Tiny Glade",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "objective": "完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为",
+  "overall_completion_percent": null,
+  "percent_policy": "完整功能枚举与验收分母尚未建立，不从函数数、文件数或里程碑数量推算整游戏百分比",
+  "milestones": [
+    {
+      "id": "M00",
+      "title": "原作身份与研究输入",
+      "status": "complete",
+      "depends_on": [],
+      "acceptance": [
+        "RNE/PDB 匹配身份；副本哈希一致；EXE 差异登记"
+      ],
+      "evidence": [
+        "evidence/binary/baseline.json",
+        "workspace/input/identity.json"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M01",
+      "title": "可构建 Rust 工程与证据追踪",
+      "status": "complete",
+      "depends_on": [
+        "M00"
+      ],
+      "acceptance": [
+        "Cargo 锁定构建成功；每个已验收算法对应原作地址/报告；追踪工具可复现"
+      ],
+      "evidence": [
+        "reconstruction/Cargo.toml",
+        "reconstruction/Cargo.lock",
+        "evidence/project-build-verification.json",
+        "scripts/update-progress.py"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M02",
+      "title": "已定位 Roof 状态函数",
+      "status": "complete",
+      "depends_on": [
+        "M00"
+      ],
+      "acceptance": [
+        "Roof::new/ty/is_gable 的观察输出通过机器码差分；浮点/内存边界登记"
+      ],
+      "evidence": [
+        "reconstruction/roof/roof_state.rs",
+        "evidence/native/roof-state-verification.json"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M03",
+      "title": "屋顶曲面核心",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "原作实际曲面类型及参数来源确定；曲面/导数/法线 Rust 可运行；各原作分支差分通过"
+      ],
+      "evidence": [
+        "reconstruction/roof/surface.rs",
+        "evidence/roof-surface/verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "截面/profile/Curve2构造与采样完整CPU链；23810用例"
+      }
+    },
+    {
+      "id": "M04",
+      "title": "脊线与屋顶形状组装",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "脊向/脊长/檐口/屋顶分支输入输出明确；完整几何子链 Rust 与机器码差分"
+      ],
+      "evidence": [
+        "reconstruction/roof/ridge.rs",
+        "evidence/roof-ridge/verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "脊长/脊向/尖顶偏移及世界点/线段；14776用例"
+      }
+    },
+    {
+      "id": "M05",
+      "title": "铺瓦核心",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "屋顶采样到瓦实例布局/索引/变换的完整原作链恢复；CPU/GPU职责明确；差分通过"
+      ],
+      "evidence": [
+        "reconstruction/roof/pipeline.rs",
+        "evidence/roof-pipeline-verification.json",
+        "evidence/roof-tiles/circular-verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "矩形33输入19024条完整记录；圆形37输入11467条，其中12为完整原函数入口"
+      }
+    },
+    {
+      "id": "M06",
+      "title": "屋顶编辑与完整场景验收",
+      "status": "in_progress",
+      "depends_on": [
+        "M02",
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "acceptance": [
+        "历史命令到状态/曲面/脊线/瓦实例贯通；矩形、圆形及原作其他已观察类型编辑与撤销验证"
+      ],
+      "evidence": [
+        "reconstruction/roof/edit_rules.rs",
+        "evidence/source-edits/verification.json",
+        "evidence/source-edits/findings.md"
+      ],
+      "remaining": [
+        "实体解析/失败分支与游戏系统注册、事件读取调度",
+        "create/update/delete/switch生命周期与游戏状态消费者",
+        "最终场景验收后置"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "4514案例：已解析Roof/Event的编辑后段、变化量与数值通知规则；ECS查询/调度未完成；场景后置"
+      }
+    },
+    {
+      "id": "M07",
+      "title": "世界数据/历史/保存恢复",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "33 历史样本消费者、版本迁移、ID与快照恢复实现；撤销/重做/重放与原作对照；缺失样本显式登记"
+      ],
+      "evidence": [
+        "reconstruction/history/findings.md",
+        "reconstruction/history/sample-verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "in_progress",
+        "scope": "静态历史结构已解析；Rust消费者/字段映射待恢复"
+      }
+    },
+    {
+      "id": "M08",
+      "title": "墙体与砖/支撑/开口",
+      "status": "in_progress",
+      "depends_on": [
+        "M01",
+        "M07"
+      ],
+      "acceptance": [
+        "各实际原作形状与相交关系实现；墙编辑到实例输出差分；建筑场景验收"
+      ],
+      "evidence": [
+        "reconstruction/wall/height_rules.rs",
+        "evidence/scope-priorities/wall-rules-verification.json"
+      ],
+      "remaining": [
+        "clamp对象查询/合法性与特殊flag生产者",
+        "墙轮廓、砖块/支撑/开口源码和原码校验",
+        "最终场景验收后置"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "6624案例：已解析状态的墙高约束后段及3个标高缓存叶函数；墙轮廓/砖/支撑/开口待恢复"
+      }
+    },
+    {
+      "id": "M09",
+      "title": "门窗/装饰/附着关系",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M07",
+        "M08"
+      ],
+      "acceptance": [
+        "放置/尺寸/变形/冲突/宿主变化与恢复实现；原作样本与局部规则验证"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M10",
+      "title": "地形/道路/水/园景",
+      "status": "not_started",
+      "depends_on": [
+        "M01",
+        "M07"
+      ],
+      "acceptance": [
+        "坐标/笔刷/曲线/插值及跨对象变化传播实现；对应原作场景操作对照"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M11",
+      "title": "输入/拾取/任务调度",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M08",
+        "M09",
+        "M10"
+      ],
+      "acceptance": [
+        "原作时序与脏更新依赖明确；连续拖动、反向、撤销与异步任务一致性通过"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M12",
+      "title": "资源/着色器/渲染",
+      "status": "not_started",
+      "depends_on": [
+        "M01",
+        "M06",
+        "M08",
+        "M09",
+        "M10"
+      ],
+      "acceptance": [
+        "原作实际 pass、实例、材质与资源格式恢复；固定相机画面及性能对照"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M13",
+      "title": "生态/天气/音频/UI/相机",
+      "status": "not_started",
+      "depends_on": [
+        "M07",
+        "M11",
+        "M12"
+      ],
+      "acceptance": [
+        "观察到的外围系统行为/参数/资源依赖逐项实现并验证"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M14",
+      "title": "完整 Rust 游戏集成验收",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M07",
+        "M08",
+        "M09",
+        "M10",
+        "M11",
+        "M12",
+        "M13"
+      ],
+      "acceptance": [
+        "可运行交互游戏；全部确认的原作功能清单关闭；历史、场景、视觉、性能及异常恢复回归通过"
+      ],
+      "evidence": [],
+      "remaining": []
+    }
+  ],
+  "local_algorithms": [
+    {
+      "name": "WindowSize::aspect_ratio",
+      "status": "verified_local",
+      "source": "reconstruction/math/window_aspect.rs",
+      "report": "evidence/native/window-aspect-verification.json",
+      "scope": "仅局部 f32 结果，1280 输入"
+    },
+    {
+      "name": "Roof::new/ty/is_gable",
+      "status": "verified_local",
+      "source": "reconstruction/roof/roof_state.rs",
+      "report": "evidence/native/roof-state-verification.json",
+      "scope": "仅字节写入/布尔返回；256 构造器 + 两函数各1348输入"
+    },
+    {
+      "name": "Roof surface/Curve2",
+      "status": "verified_local",
+      "source": "reconstruction/roof/surface.rs",
+      "report": "evidence/roof-surface/verification.json",
+      "scope": "23810用例，原指令/CRT/曲线链；异常范围见报告"
+    },
+    {
+      "name": "RoofRidgeDims/tip",
+      "status": "verified_local",
+      "source": "reconstruction/roof/ridge.rs",
+      "report": "evidence/roof-ridge/verification.json",
+      "scope": "14776用例，点/线段脊线核心"
+    },
+    {
+      "name": "Rectangular CPU full pipeline",
+      "status": "verified_local",
+      "source": "reconstruction/roof/pipeline.rs",
+      "report": "evidence/roof-pipeline-verification.json",
+      "scope": "33完整输入、19024条64字节记录；没有prepared geometry注入"
+    },
+    {
+      "name": "Circular CPU tiles",
+      "status": "verified_local",
+      "source": "reconstruction/roof/tiles.rs",
+      "report": "evidence/roof-tiles/circular-verification.json",
+      "scope": "37输入、11467记录；25prepared/12完整入口"
+    },
+    {
+      "name": "Wall height numeric policy / cached heights",
+      "status": "verified_local",
+      "source": "reconstruction/wall/height_rules.rs",
+      "report": "evidence/scope-priorities/wall-rules-verification.json",
+      "scope": "6624案例；clamp仅数值后段，3个缓存叶函数含缺失panic条件；ECS/哈希实现排除"
+    },
+    {
+      "name": "Roof resolved edit core / feedback rules",
+      "status": "verified_local",
+      "source": "reconstruction/roof/edit_rules.rs",
+      "report": "evidence/source-edits/verification.json",
+      "scope": "4514案例；完整88字节状态、changed tick、变化量、gable重建及反馈数值；已解析后段，不是完整ECS系统"
+    }
+  ],
+  "system_acceptances": [],
+  "next_actions": [
+    "S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器",
+    "S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则",
+    "S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half",
+    "S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放"
+  ],
+  "known_gaps": [
+    "发行树/PDB没有取回作者原始Rust文本，当前为行为恢复源码",
+    "Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实",
+    "屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成",
+    "22个快照引用目标缺失",
+    "完整游戏、场景回放与GPU尚未验收，后两项按用户要求后置"
+  ],
+  "updated_at_utc": "2026-10-10T10:38:19.651657+00:00",
+  "rust_project": "reconstruction/Cargo.toml",
+  "engine_dependency_evidence": "evidence/resources/dependency-evidence.json",
+  "current_priority": "source_recovery_first",
+  "deferred_work": [
+    "场景回放与运行交互验收：用户要求当前不做",
+    "GPU/渲染/着色器动态算法：用户要求当前不做"
+  ],
+  "source_discovery": "evidence/source-discovery/report.json",
+  "source_recovery_status": "SOURCE_RECOVERY.md",
+  "project_memory": "PROJECT_MEMORY.md",
+  "source_task_backlog": "TASK_BACKLOG.md",
+  "dependency_policy": "tracking/dependency-policy.json",
+  "engine": {
+    "family": "Bevy",
+    "version": "0.16.0",
+    "fork": true,
+    "fork_provenance": "explicit user statement",
+    "version_provenance": "original Cargo.lock and PDB",
+    "fork_repository": null,
+    "fork_commit": null,
+    "policy": "reuse dependency code; recover only game rules and necessary evidenced fork differences"
+  },
+  "dependency_reuse": {
+    "status": "verified",
+    "report": "evidence/roof-tiles/dependency-boundary.json",
+    "versions": {
+      "fastrand": "1.8.0",
+      "glam": "0.29.3",
+      "half": "2.4.1"
+    },
+    "counted_as_game_source_recovery": false
+  }
+}

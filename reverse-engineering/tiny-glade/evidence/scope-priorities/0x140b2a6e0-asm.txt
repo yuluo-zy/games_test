@@ -1,0 +1,23 @@
+
+D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140b2a6e0: 48 83 ec 58                 	subq	$0x58, %rsp
+140b2a6e4: f6 81 08 01 00 00 01        	testb	$0x1, 0x108(%rcx)
+140b2a6eb: 74 15                       	je	0x140b2a702 <.text+0xb29702>
+140b2a6ed: f3 0f 10 81 0c 01 00 00     	movss	0x10c(%rcx), %xmm0
+140b2a6f5: f3 0f 58 05 23 3c f5 01     	addss	0x1f53c23(%rip), %xmm0  # 0x142a7e320
+140b2a6fd: 48 83 c4 58                 	addq	$0x58, %rsp
+140b2a701: c3                          	retq
+140b2a702: 48 8d 05 97 07 fc 01        	leaq	0x1fc0797(%rip), %rax   # 0x142aeaea0
+140b2a709: 48 89 44 24 28              	movq	%rax, 0x28(%rsp)
+140b2a70e: 48 c7 44 24 30 01 00 00 00  	movq	$0x1, 0x30(%rsp)
+140b2a717: 48 c7 44 24 38 08 00 00 00  	movq	$0x8, 0x38(%rsp)
+140b2a720: 0f 57 c0                    	xorps	%xmm0, %xmm0
+140b2a723: 0f 11 44 24 40              	movups	%xmm0, 0x40(%rsp)
+140b2a728: 48 8d 15 81 07 fc 01        	leaq	0x1fc0781(%rip), %rdx   # 0x142aeaeb0
+140b2a72f: 48 8d 4c 24 28              	leaq	0x28(%rsp), %rcx
+140b2a734: e8 57 ec da 01              	callq	0x1428d9390 <.text+0x28d8390>
+140b2a739: cc                          	int3

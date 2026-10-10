@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "prepared_profile_cases": 25,
+  "whole_function_cases": 12,
+  "original_tiles": 11467,
+  "failures": [],
+  "math_call_counts": {
+    "ceilf": 359,
+    "sinf": 38946,
+    "cosf": 38946,
+    "fmodf": 28968,
+    "atanf": 9656,
+    "powf": 228
+  },
+  "scope": "Prepared-profile cases and entire original circular function entry\u2192RET; original curve construction, profile generation, geometry, random splits, RNG and f16 instructions; only allocator, free, CRT math and emit sink bridges",
+  "full_game_executed": false,
+  "limitations": [
+    "Prepared-profile tests inject curve at exact profile_curve_ws return boundary; full-function tests run original constructors too",
+    "Full-function roof parameters drawn from shipped histories; circle sizes/poses are synthetic because history-to-wall-state replay is not yet recovered",
+    "CRT bridges invoke current host Windows ucrtbase float functions",
+    "ECS sparse writer replaced by capture at original closure; compare all 64 emitted bytes"
+  ],
+  "rust_candidate_sha256": "0b643d6d41ffd1d4c0adf9476ba412c64e999dbe99ec6bc931e64543b249c68b",
+  "crt_dependency": {
+    "path": "C:\\Windows\\System32\\ucrtbase.dll",
+    "sha256": "3c60056371f82e4744185b6f2fa0c69042b1e78804685944132974dd13f3b6d9",
+    "functions": [
+      "ceilf",
+      "sinf",
+      "cosf",
+      "atanf",
+      "fmodf",
+      "powf"
+    ]
+  }
+}
