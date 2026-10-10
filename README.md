@@ -25,6 +25,7 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 - [模块架构](tiny-garden/docs/模块架构.md)
 - [验证记录与未完成项](tiny-garden/docs/验证记录.md)
 - [美术资产制作计划](tiny-garden/docs/美术资产制作计划.md)
+- [Tiny Glade 本地资源盘点与 Excel](tiny-garden/docs/research/README.md)
 - [产品架构](TinyGlade_类手游_产品架构.md)
 - [开发需求](TinyGlade_类手游_开发需求文档.md)
 - [建筑变化与资产扩展](TinyGlade_类手游_建筑变化与资产扩展设计.md)
