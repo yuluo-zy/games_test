@@ -79,7 +79,13 @@ fn box_hit(origin: Vec3, direction: Vec3, min: Vec3, max: Vec3) -> bool {
     }
     true
 }
-fn triangle_hit(origin: Vec3, direction: Vec3, a: Vec3, b: Vec3, c: Vec3) -> Option<f32> {
+pub(crate) fn triangle_hit(
+    origin: Vec3,
+    direction: Vec3,
+    a: Vec3,
+    b: Vec3,
+    c: Vec3,
+) -> Option<f32> {
     let edge1 = b - a;
     let edge2 = c - a;
     let h = direction.cross(edge2);

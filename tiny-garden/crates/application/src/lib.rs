@@ -1,5 +1,7 @@
 //! Editing transactions, bounded history and latest-wins generation requests.
 //! This layer has no dependency on ECS, task executors or renderer.
+pub mod context;
+mod strokes;
 pub mod tools;
 use garden_domain::{BlockId, Building, BuildingDraft, BuildingEdit, BuildingId, DomainError};
 use std::{
@@ -7,6 +9,7 @@ use std::{
     fmt,
     sync::Arc,
 };
+pub use strokes::StrokeEdit;
 
 #[derive(Debug, Clone)]
 pub enum EditCommand {
@@ -19,6 +22,8 @@ pub enum EditCommand {
     CommitPreview(Preview),
     Undo,
     Redo,
+    Stroke(StrokeEdit),
+    Context(context::ContextEdit),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,14 +96,23 @@ struct Patch {
     before: Option<Arc<Building>>,
     after: Option<Arc<Building>>,
 }
+#[derive(Debug, Clone)]
+enum History {
+    Building(Patch),
+    Stroke(strokes::StrokePatch),
+    Context(Box<context::ContextPatch>),
+}
 
+#[derive(Clone)]
 pub struct Editor {
     objects: BTreeMap<BuildingId, Arc<Building>>,
     // Tombstones prevent reuse after deletion; an Entity is never a domain ID.
     revisions: BTreeMap<BuildingId, u64>,
     used_blocks: BTreeMap<BuildingId, BTreeSet<BlockId>>,
-    undo: VecDeque<Patch>,
-    redo: Vec<Patch>,
+    undo: VecDeque<History>,
+    redo: Vec<History>,
+    strokes: strokes::StrokeState,
+    context: context::ContextState,
     history_limit: usize,
     clock: u64,
     session: u64,
@@ -116,6 +130,8 @@ impl Editor {
             used_blocks: BTreeMap::new(),
             undo: VecDeque::new(),
             redo: Vec::new(),
+            strokes: strokes::StrokeState::default(),
+            context: context::ContextState::default(),
             history_limit,
             clock: 0,
             session: 1,
@@ -184,9 +200,12 @@ impl Editor {
     }
 
     pub fn execute(&mut self, command: EditCommand) -> Result<Option<Change>, EditError> {
+        self.context.last = context::ChangeSet::default();
         match command {
             EditCommand::Undo => return self.undo(),
             EditCommand::Redo => return self.redo(),
+            EditCommand::Stroke(edit) => return self.execute_stroke(edit),
+            EditCommand::Context(edit) => return self.execute_context(edit),
             _ => (),
         }
         let patch = match command {
@@ -242,7 +261,10 @@ impl Editor {
                     after: Some(after),
                 }
             }
-            EditCommand::Undo | EditCommand::Redo => unreachable!(),
+            EditCommand::Undo
+            | EditCommand::Redo
+            | EditCommand::Stroke(_)
+            | EditCommand::Context(_) => unreachable!(),
         };
         if let (Some(after), Some(used)) = (&patch.after, self.used_blocks.get(&patch.id)) {
             for block in after.blocks() {
@@ -261,24 +283,24 @@ impl Editor {
             if self.undo.len() == self.history_limit {
                 self.undo.pop_front();
             }
-            self.undo.push_back(patch);
+            self.undo.push_back(History::Building(patch));
         }
         Ok(Some(change))
     }
 
     fn undo(&mut self) -> Result<Option<Change>, EditError> {
         let patch = self.undo.back().ok_or(EditError::EmptyHistory)?.clone();
-        let change = self.apply(&patch, false)?;
+        let change = self.apply_history(&patch, false)?;
         self.undo.pop_back();
         self.redo.push(patch);
-        Ok(Some(change))
+        Ok(change)
     }
     fn redo(&mut self) -> Result<Option<Change>, EditError> {
         let patch = self.redo.last().ok_or(EditError::EmptyHistory)?.clone();
-        let change = self.apply(&patch, true)?;
+        let change = self.apply_history(&patch, true)?;
         self.redo.pop();
         self.undo.push_back(patch);
-        Ok(Some(change))
+        Ok(change)
     }
     fn next_serial(&mut self) -> Result<u64, EditError> {
         let next = self
@@ -311,6 +333,12 @@ impl Editor {
                     .remove(&(old.ticket.request_serial, patch.id));
             }
         }
+        let regions = before
+            .iter()
+            .chain(after.iter())
+            .map(|b| Self::building_bounds(b))
+            .collect();
+        self.note_change(context::ObjectRef::Building(patch.id), regions, serial);
         Ok(Change {
             building: patch.id,
             revision: serial,
@@ -397,6 +425,14 @@ impl Editor {
             .ok_or(EditError::CounterExhausted)?;
         self.session = session;
         self.clock = serial;
+        self.strokes = strokes::StrokeState {
+            revision: serial,
+            ..Default::default()
+        };
+        self.context = context::ContextState {
+            revision: serial,
+            ..Default::default()
+        };
         self.objects = objects;
         self.revisions = self.objects.keys().map(|&id| (id, serial)).collect();
         self.used_blocks = self

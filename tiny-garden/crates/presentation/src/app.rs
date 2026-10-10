@@ -41,21 +41,31 @@ struct Capture {
     tools_review: bool,
     review_phase: u8,
     closeup: bool,
+    wall_review: bool,
+    context_review: bool,
 }
 pub fn run() {
     let mut args = std::env::args().skip(1);
-    let (path, review, tools_review, closeup) = match args.next().as_deref() {
-        None => (None, false, false, false),
-        Some(flag @ ("--capture" | "--review-capture" | "--tools-review" | "--art-closeup")) => (
+    let (path, review, tools_review, closeup, wall_review, context_review) = match args
+        .next()
+        .as_deref()
+    {
+        None => (None, false, false, false, false, false),
+        Some(
+            flag @ ("--capture" | "--review-capture" | "--tools-review" | "--art-closeup"
+            | "--wall-review" | "--context-review"),
+        ) => (
             Some(PathBuf::from(
                 args.next().expect("capture requires a PNG path"),
             )),
             flag == "--review-capture" || flag == "--tools-review",
             flag == "--tools-review",
             flag == "--art-closeup",
+            flag == "--wall-review",
+            flag == "--context-review",
         ),
         _ => panic!(
-            "usage: tiny-garden [--capture PATH.png | --review-capture PATH.png | --tools-review PATH.png | --art-closeup PATH.png]"
+            "usage: tiny-garden [--capture PATH.png | --review-capture PATH.png | --tools-review PATH.png | --art-closeup PATH.png | --wall-review PATH.png]"
         ),
     };
     assert!(args.next().is_none(), "unexpected arguments");
@@ -113,6 +123,8 @@ pub fn run() {
             tools_review,
             review_phase: 0,
             closeup,
+            wall_review,
+            context_review,
         })
         .add_plugins((
             GardenPlugin::default()
@@ -122,18 +134,207 @@ pub fn run() {
             PresentationPlugin::new(art).with_house_textures(),
             OrbitCameraPlugin,
             DesktopEditorPlugin,
+            ui::ToolbarPlugin,
             crate::preview::PreviewPlugin(ArtCatalog::warm_stone().geometry()),
+            crate::strokes::StrokePlugin,
         ))
         .add_systems(Startup, (setup_scene, setup_ui))
         .add_systems(
             Update,
-            (prepare_review, capture)
+            (
+                prepare_review,
+                prepare_wall_review,
+                prepare_context_review,
+                capture,
+            )
                 .chain()
                 .after(garden_bevy::GardenSet::Collect),
         )
         .run();
 }
 
+// GPU fixture uses the same command/history and projection pipeline as players.
+// CPU gesture tests separately exercise screen rays and pointer cancellation.
+fn prepare_wall_review(world: &mut World) {
+    use garden_application::{EditCommand, StrokeEdit};
+    use garden_domain::strokes::{Point, Stroke, StrokeId, StrokeKind};
+    let capture = world.resource::<Capture>();
+    if !capture.wall_review || capture.review_phase >= 4 {
+        return;
+    }
+    let phase = capture.review_phase;
+    if world.resource::<RenderStats>().buildings != 6 {
+        return;
+    }
+    let editor = world.resource::<EditorState>().editor();
+    if phase > 0
+        && world.resource::<crate::strokes::StrokeDisplay>().revision
+            != Some(editor.world_revision())
+    {
+        return;
+    }
+    let stroke = |id, kind, points, width| Stroke {
+        id: StrokeId(id),
+        kind,
+        points,
+        width,
+        height: 2.8,
+    };
+    let op = match phase {
+        0 => Operation::Edit(EditCommand::Stroke(StrokeEdit::Create(stroke(
+            1,
+            StrokeKind::Wall,
+            vec![Point { x: -14., z: -13. }, Point { x: 0., z: -13. }],
+            0.45,
+        )))),
+        1 => {
+            if editor.stroke(StrokeId(1)).is_none() {
+                return;
+            }
+            Operation::Edit(EditCommand::Stroke(StrokeEdit::Create(stroke(
+                2,
+                StrokeKind::Path,
+                vec![Point { x: -7., z: -14.5 }, Point { x: -7., z: -9. }],
+                1.8,
+            ))))
+        }
+        2 => {
+            if editor.stroke(StrokeId(2)).is_none() {
+                return;
+            }
+            Operation::Edit(EditCommand::Stroke(StrokeEdit::Delete {
+                id: StrokeId(2),
+                expected_revision: editor.stroke_revision(),
+            }))
+        }
+        _ => {
+            if editor.stroke(StrokeId(2)).is_some() {
+                return;
+            }
+            Operation::Edit(EditCommand::Undo)
+        }
+    };
+    if world.resource_mut::<CommandInbox>().submit(op).is_ok() {
+        world.resource_mut::<Capture>().review_phase += 1;
+        world.resource_mut::<DesktopEditor>().status =
+            "墙路验收：画路自动开拱，删除恢复，撤销重新开拱。".into();
+    }
+}
+
+/// 真实 GPU 管线的可重复场景：原子创建、道路删除、撤销恢复及一致显示交接。
+fn prepare_context_review(world: &mut World) {
+    use garden_application::{EditCommand, StrokeEdit, context::ContextEdit};
+    use garden_domain::{context::*, strokes::*, terrain::*};
+    use std::sync::Arc;
+    let capture = world.resource::<Capture>();
+    if !capture.context_review || capture.review_phase >= 3 {
+        return;
+    }
+    let phase = capture.review_phase;
+    if world.resource::<RenderStats>().buildings != 6
+        || !world.resource::<garden_bevy::PendingTargets>().is_empty()
+        || world
+            .resource::<garden_bevy::context::ContextProjection>()
+            .busy
+    {
+        return;
+    }
+    let editor = world.resource::<EditorState>().editor();
+    if world.resource::<crate::strokes::StrokeDisplay>().revision != Some(editor.world_revision()) {
+        return;
+    }
+    let point = |x, z| Point { x, z };
+    let op = if phase == 0 {
+        let mut terrain = TerrainDocument::default();
+        for _ in 0..4 {
+            terrain = terrain
+                .brushed(BrushSample {
+                    center: point(-1., 6.),
+                    radius: 2.,
+                    amount: 0.2,
+                    kind: BrushKind::Raise,
+                })
+                .unwrap();
+        }
+        // 另一个露出地面的起伏用于视觉验收；主丘仍位于建筑根轮廓下测试地基。
+        for _ in 0..4 {
+            terrain = terrain
+                .brushed(BrushSample {
+                    center: point(3., 3.),
+                    radius: 2.,
+                    amount: 0.2,
+                    kind: BrushKind::Raise,
+                })
+                .unwrap();
+        }
+        let mut edits = vec![ContextEdit::Terrain(Arc::new(terrain))];
+        for (id, points, height, width) in [
+            (1, vec![point(-10., -13.), point(0., -13.)], 2.8, 0.4),
+            (2, vec![point(-15., -1.), point(-15., 6.)], 0., 1.4),
+            (3, vec![point(-15., -1.), point(-9., -1.)], 0., 0.8),
+            (4, vec![point(-18., -13.), point(-10.1, -13.)], 1.0, 0.4),
+            (5, vec![point(-7., -14.5), point(-7., -9.5)], 0., 1.4),
+        ] {
+            let stroke = Stroke {
+                id: StrokeId(id),
+                kind: StrokeKind::Path,
+                points,
+                width,
+                height,
+            };
+            let mut intent = LinearIntent::legacy(&stroke);
+            intent.mode = StructureMode::Auto;
+            edits.push(ContextEdit::Stroke { stroke, intent });
+        }
+        for (id, building, along) in [(1, 2, 1.3), (2, 2, 2.3), (3, 4, 3.)] {
+            let b = editor.get(BuildingId::new(building).unwrap()).unwrap();
+            edits.push(ContextEdit::PutOpening(OpeningIntent {
+                id: OpeningId(id),
+                host: WallAnchor {
+                    building: b.id(),
+                    block: b.blocks()[0].id,
+                    face: WallFace::Front,
+                },
+                along,
+                elevation: 1.4,
+                width: 0.9,
+                height: 1.2,
+                style: 0,
+            }));
+        }
+        Operation::Edit(EditCommand::Context(ContextEdit::Batch(edits)))
+    } else if phase == 1 {
+        assert!(
+            world
+                .resource::<garden_bevy::context::ContextProjection>()
+                .semantic
+                .diagnostics
+                .contains(&garden_generation::context::Diagnostic::Sleeping(
+                    OpeningId(3)
+                ))
+        );
+        Operation::Edit(EditCommand::Stroke(StrokeEdit::Delete {
+            id: StrokeId(2),
+            expected_revision: editor.stroke_revision(),
+        }))
+    } else {
+        assert!(
+            !world
+                .resource::<garden_bevy::context::ContextProjection>()
+                .semantic
+                .diagnostics
+                .contains(&garden_generation::context::Diagnostic::Sleeping(
+                    OpeningId(3)
+                ))
+        );
+        Operation::Edit(EditCommand::Undo)
+    };
+    if world.resource_mut::<CommandInbox>().submit(op).is_ok() {
+        world.resource_mut::<Capture>().review_phase += 1;
+        world.resource_mut::<DesktopEditor>().status =
+            "上下文验收：三态、路口、拱门、连窗、休眠恢复与起伏地基。".into();
+    }
+}
 fn setup_scene(
     mut commands: Commands,
     mut inbox: ResMut<CommandInbox>,
@@ -179,6 +380,7 @@ fn setup_scene(
     // Fixtures are a loaded scene, not six player edits in undo history.
     inbox.submit(Operation::ReplaceScene(buildings)).unwrap();
     commands.spawn((
+        crate::context_tools::GroundBase,
         Mesh3d(meshes.add(Cuboid::new(53.0, 0.35, 34.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgb_u8(135, 157, 115),
@@ -207,7 +409,9 @@ fn setup_scene(
         },
         Transform::from_xyz(25.0, 18.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    let (eye, target) = if capture.closeup {
+    let (eye, target) = if capture.context_review {
+        (Vec3::new(10., 26., -30.), Vec3::new(-9., 1., -1.))
+    } else if capture.closeup {
         (Vec3::new(-9.0, 7.0, -17.0), Vec3::new(-16.5, 2.0, -7.0))
     } else {
         (Vec3::new(34.0, 32.0, -46.0), Vec3::new(0.0, 3.0, 0.0))
@@ -241,7 +445,7 @@ fn setup_ui(
     server: Res<AssetServer>,
     mut font: ResMut<UiFont>,
 ) {
-    if capture.closeup {
+    if capture.closeup || capture.context_review {
         return;
     }
     let handle = server.load(ui::FONT_PATH);
@@ -395,6 +599,14 @@ fn prepare_tools_review(world: &mut World, phase: u8) {
     capture.review_phase = phase + 1;
     capture.ready_frames = 0;
 }
+fn scene_pending_ready(
+    editor: &EditorState,
+    strokes: &crate::strokes::StrokeDisplay,
+    stats: &RenderStats,
+) -> bool {
+    strokes.revision == Some(editor.editor().world_revision())
+        && stats.buildings == editor.editor().objects().count()
+}
 #[derive(SystemParam)]
 struct CaptureScene<'w> {
     stats: Res<'w, RenderStats>,
@@ -402,6 +614,7 @@ struct CaptureScene<'w> {
     art: Res<'w, ArtLoadState>,
     server: Res<'w, AssetServer>,
     font: Res<'w, UiFont>,
+    strokes: Res<'w, crate::strokes::StrokeDisplay>,
 }
 fn capture(
     mut commands: Commands,
@@ -417,6 +630,7 @@ fn capture(
         art,
         server,
         font,
+        strokes,
     } = scene;
     let Some(path) = capture.path.clone() else {
         return;
@@ -430,6 +644,21 @@ fn capture(
         return;
     }
     if capture.review && capture.review_phase < if capture.tools_review { 5 } else { 3 } {
+        return;
+    }
+    if capture.wall_review
+        && (capture.review_phase < 4
+            || editor
+                .editor()
+                .stroke(garden_domain::strokes::StrokeId(2))
+                .is_none()
+            || strokes.revision != Some(editor.editor().world_revision()))
+    {
+        return;
+    }
+    if capture.context_review
+        && (capture.review_phase < 3 || !scene_pending_ready(&editor, &strokes, &stats))
+    {
         return;
     }
     if stats.buildings != editor.editor().objects().count() || stats.buildings == 0 {

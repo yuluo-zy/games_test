@@ -151,3 +151,4 @@ mod tests {
         assert!(outer.subtract(outer).is_empty());
     }
 }
+pub mod linear;

@@ -177,7 +177,7 @@ fn render_readiness_ack_is_required_before_publishing_a_group() {
             .resource::<Staging>()
             .0
             .values()
-            .any(|s| s.pending.is_empty())
+            .any(|s| s.upload.pending.is_empty())
     });
     assert_eq!(app.world().resource::<RenderStats>().buildings, 0);
     let bridge = app.world().resource::<MeshReadiness>().clone();
@@ -206,7 +206,7 @@ fn coherent_crossfade_switches_pick_pose_at_midpoint_and_reclaims_on_delete() {
             .resource::<Fades>()
             .0
             .get(&root)
-            .is_some_and(|f| f.switched)
+            .is_some_and(|f| f.handoff.switched)
     });
     assert_ne!(
         app.world().get::<DisplayedBuilding>(root).unwrap().ticket,
@@ -336,7 +336,7 @@ fn visible_cold_fade_keeps_old_opaque_picture_until_pipeline_ack() {
             .resource::<Staging>()
             .0
             .values()
-            .any(|s| s.pending.is_empty())
+            .any(|s| s.upload.pending.is_empty())
     });
     let ready = app
         .world()
@@ -370,7 +370,7 @@ fn visible_cold_fade_keeps_old_opaque_picture_until_pipeline_ack() {
     for _ in 0..5 {
         tick(&mut app);
     }
-    assert_eq!(app.world().resource::<Fades>().0[&root].elapsed, 0.);
+    assert_eq!(app.world().resource::<Fades>().0[&root].handoff.elapsed, 0.);
     let old_child = app.world().resource::<Fades>().0[&root].retired[0].child;
     let material = &app
         .world()
@@ -412,7 +412,7 @@ fn newer_target_cancels_unstarted_shader_wait_without_deleting_old_picture() {
             .resource::<Staging>()
             .0
             .values()
-            .any(|s| s.pending.is_empty())
+            .any(|s| s.upload.pending.is_empty())
     });
     let ready = app
         .world()
@@ -428,7 +428,7 @@ fn newer_target_cancels_unstarted_shader_wait_without_deleting_old_picture() {
         .ready
         .extend(ready);
     tick(&mut app);
-    assert!(!app.world().resource::<Fades>().0[&root].started);
+    assert!(!app.world().resource::<Fades>().0[&root].handoff.started);
     height(&mut app, id, 12.);
     tick(&mut app);
     assert!(app.world().resource::<Fades>().0.is_empty());

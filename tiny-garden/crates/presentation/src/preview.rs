@@ -1,5 +1,5 @@
-//! Constant-size low-cost candidate pool. Never scales the detailed house or
-//! creates domain objects, generation jobs, history entries or pickable meshes.
+//! 固定容量的低成本候选展示，消费公共结构规则及缓存，不重建正式网格。
+//! 简化拓扑只用于预览，不产生领域变更、历史或可拾取的正式对象。
 use crate::editor::DesktopEditor;
 use bevy::{
     asset::RenderAssetUsages,
@@ -9,12 +9,16 @@ use bevy::{
 };
 use garden_bevy::{GardenSet, PendingTargets};
 use garden_domain::{Building, MAX_BLOCKS, Roof};
-use garden_generation::mesh::GeometryProfile;
+use garden_generation::{
+    mesh::GeometryProfile,
+    structure::{BuildingRule, RoofInput, RoofRule, RuleCache},
+};
 
 pub struct PreviewPlugin(pub GeometryProfile);
 impl Plugin for PreviewPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PreviewProfile(self.0))
+            .init_resource::<PreviewStructures>()
             .add_systems(Startup, setup)
             .add_systems(Update, show.after(GardenSet::Commit));
     }
@@ -74,7 +78,7 @@ fn setup(
     });
 }
 
-// A gabled prism / hip pyramid, no holes, templates, tangents or per-frame mesh.
+// 双坡棱柱与四坡锥体是预览拓扑；屋顶方向和坡高来自正式生成共用的结构规则。
 fn roof_mesh(hipped: bool) -> Mesh {
     let a = Vec3::new(-0.5, 0., -0.5);
     let b = Vec3::new(0.5, 0., -0.5);
@@ -117,61 +121,74 @@ struct Shape {
     roof: Transform,
     kind: Roof,
 }
-fn shapes(building: &Building, profile: GeometryProfile) -> Vec<Shape> {
+/// 每个预览池只保留一个建筑和最多三个屋顶快照，形状缓冲复用容量。
+#[derive(Resource, Default)]
+struct PreviewStructures {
+    building: RuleCache<BuildingRule>,
+    roofs: [RuleCache<RoofRule>; MAX_BLOCKS],
+    shapes: Vec<Shape>,
+    foundation: garden_generation::context_cache::ContextCache,
+}
+fn shapes<'a>(
+    building: &Building,
+    profile: GeometryProfile,
+    cache: &'a mut PreviewStructures,
+) -> &'a [Shape] {
     let p = building.placement();
     let root = Transform::from_xyz(p.x as f32, p.elevation as f32, p.z as f32)
         .with_rotation(Quat::from_rotation_y(p.yaw as f32));
-    building
-        .blocks()
-        .iter()
-        .map(|block| {
-            let mut base = 0.;
-            let mut parent = block.parent;
-            while let Some(id) = parent {
-                let support = building.block(id).unwrap();
-                base += support.height;
-                parent = support.parent;
-            }
-            let r = block.footprint;
-            let kind = if building.blocks().iter().any(|b| b.parent == Some(block.id)) {
-                Roof::Flat
+    let PreviewStructures {
+        building: structures,
+        roofs,
+        shapes,
+        ..
+    } = cache;
+    shapes.clear();
+    for (slot, block) in structures.resolve(building).blocks.iter().enumerate() {
+        let r = block.footprint;
+        let roof = roofs[slot].resolve(&RoofInput {
+            footprint: r,
+            kind: block.effective_roof,
+            profile,
+        });
+        let x = (r.x + r.width * 0.5) as f32;
+        let z = (r.z + r.depth * 0.5) as f32;
+        let height = block.height as f32;
+        let base = block.base_elevation as f32;
+        let body = root.mul_transform(
+            Transform::from_xyz(x, base + height * 0.5, z).with_scale(Vec3::new(
+                r.width as f32,
+                height,
+                r.depth as f32,
+            )),
+        );
+        let roof_pose = if roof.kind == Roof::Flat {
+            // 薄板是预览约定，不模拟正式屋顶的护沿细节。
+            Transform::from_xyz(x, base + height + 0.04, z).with_scale(Vec3::new(
+                r.width as f32,
+                0.08,
+                r.depth as f32,
+            ))
+        } else {
+            let local = Transform::from_xyz(x, base + height, z);
+            let local = if roof.along_z {
+                local
             } else {
-                block.roof_intent
+                local.with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2))
             };
-            let x = (r.x + r.width * 0.5) as f32;
-            let z = (r.z + r.depth * 0.5) as f32;
-            let height = block.height as f32;
-            let body = root.mul_transform(
-                Transform::from_xyz(x, base as f32 + height * 0.5, z).with_scale(Vec3::new(
-                    r.width as f32,
-                    height,
-                    r.depth as f32,
-                )),
-            );
-            let roof = if kind == Roof::Flat {
-                Transform::from_xyz(x, (base + block.height) as f32 + 0.04, z)
-                    .with_scale(Vec3::new(r.width as f32, 0.08, r.depth as f32))
-            } else {
-                let width = r.width + 2. * profile.eave;
-                let depth = r.depth + 2. * profile.eave;
-                let rise = (width.min(depth) * 0.5 * profile.roof_pitch_degrees.to_radians().tan())
-                    .min(profile.max_roof_rise);
-                let local = Transform::from_xyz(x, (base + block.height) as f32, z);
-                if depth >= width {
-                    local.with_scale(Vec3::new(width as f32, rise as f32, depth as f32))
-                } else {
-                    local
-                        .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2))
-                        .with_scale(Vec3::new(depth as f32, rise as f32, width as f32))
-                }
-            };
-            Shape {
-                body,
-                roof: root.mul_transform(roof),
-                kind,
-            }
-        })
-        .collect()
+            local.with_scale(Vec3::new(
+                roof.width() as f32,
+                roof.rise as f32,
+                roof.depth() as f32,
+            ))
+        };
+        shapes.push(Shape {
+            body,
+            roof: root.mul_transform(roof_pose),
+            kind: roof.kind,
+        });
+    }
+    shapes
 }
 
 type PreviewQuery<'a> = (
@@ -184,9 +201,11 @@ type PreviewQuery<'a> = (
 
 fn show(
     state: Res<DesktopEditor>,
+    editor: Res<garden_bevy::EditorState>,
     pending: Res<PendingTargets>,
     assets: Res<PreviewAssets>,
     profile: Res<PreviewProfile>,
+    mut cache: ResMut<PreviewStructures>,
     mut parts: Query<PreviewQuery<'_>>,
 ) {
     let target = state.tools.selected().and_then(|id| pending.get(id));
@@ -200,7 +219,22 @@ fn show(
     } else {
         target.is_some_and(|t| !t.failed)
     };
-    let shapes = building.map(|b| shapes(b, profile.0)).unwrap_or_default();
+    let shapes = if let Some(building) = building {
+        let elevation = cache
+            .foundation
+            .preview_foundation(building, editor.editor().context());
+        let placement = building.placement();
+        let offset = (elevation - placement.elevation) as f32;
+        shapes(building, profile.0, &mut cache);
+        for shape in &mut cache.shapes {
+            shape.body.translation.y += offset;
+            shape.roof.translation.y += offset;
+        }
+        &cache.shapes
+    } else {
+        cache.shapes.clear();
+        &cache.shapes
+    };
     for (part, mut transform, mut mesh, mut material, mut visibility) in &mut parts {
         let Some(shape) = shapes.get(part.slot) else {
             if *visibility != Visibility::Hidden {
@@ -244,6 +278,40 @@ mod tests {
     use garden_domain::{BuildingId, sample_building};
     #[derive(Resource, Default)]
     struct Changes(usize);
+    #[test]
+    fn preview_uses_shared_roof_rules_and_reuses_its_shape_buffer() {
+        use garden_generation::structure::StructureRule;
+        let mut draft = sample_building(BuildingId::new(1).unwrap(), 6., 3.);
+        draft.blocks[0].footprint.depth = 9.;
+        let mut cache = PreviewStructures::default();
+        for kind in [Roof::Gabled, Roof::Hipped, Roof::Flat] {
+            draft.blocks[0].roof_intent = kind;
+            let building = Building::try_new(draft.clone()).unwrap();
+            let profile = GeometryProfile {
+                max_roof_rise: 0.5,
+                ..default()
+            };
+            let resolved = RoofRule.resolve(&RoofInput {
+                footprint: draft.blocks[0].footprint,
+                kind,
+                profile,
+            });
+            let first = shapes(&building, profile, &mut cache);
+            let buffer = first.as_ptr();
+            assert_eq!(first[0].kind, resolved.kind);
+            if kind != Roof::Flat {
+                assert_eq!(
+                    first[0].roof.scale,
+                    Vec3::new(
+                        resolved.width() as f32,
+                        resolved.rise as f32,
+                        resolved.depth() as f32
+                    )
+                );
+            }
+            assert_eq!(shapes(&building, profile, &mut cache).as_ptr(), buffer);
+        }
+    }
     type TrackedPreview<'a> = (
         Ref<'a, Mesh3d>,
         Ref<'a, MeshMaterial3d<StandardMaterial>>,
@@ -358,7 +426,12 @@ mod tests {
         let mut tools = ToolController::default();
         tools.select(Some(id));
         editor.execute(tools.add_upper(&editor).unwrap()).unwrap();
-        let shapes = shapes(editor.get(id).unwrap(), GeometryProfile::default());
+        let mut cache = PreviewStructures::default();
+        let shapes = shapes(
+            editor.get(id).unwrap(),
+            GeometryProfile::default(),
+            &mut cache,
+        );
         assert_eq!(shapes.len(), 2);
         assert_eq!(shapes[0].kind, Roof::Flat);
         assert_eq!(shapes[1].body.translation.y, 4.5);

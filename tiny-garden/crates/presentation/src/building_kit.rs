@@ -9,6 +9,7 @@ use garden_generation::mesh::{
     BuildingMesh, GeometryProfile, MaterialKey, MeshBatch, MeshData, MeshError,
     compile_mesh_with_frames,
 };
+use garden_generation::structure::{RoofInput, RoofRule, StructureRule};
 use garden_generation::{BlockLayout, BuildingLayout, Face, PartKey};
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -161,7 +162,7 @@ impl BuildingKit {
             .collect::<BTreeMap<_, _>>();
         for block in &layout.blocks {
             for w in &block.windows {
-                let door = entrance == Some(w.key);
+                let door = entrance == Some(w.key) || (0x4000..0x8000).contains(&w.key.slot);
                 let length = if matches!(w.key.face, Face::Front | Face::Back) {
                     block.footprint.width
                 } else {
@@ -181,9 +182,9 @@ impl BuildingKit {
                 };
                 self.append(&mut batches, name, |p, center| {
                     let [mut x, mut y, z] = p;
+                    x = fit_axis(x, -0.45, 0.45, w.width as f32, center);
+                    x += (0.9 - w.width as f32) / 2.;
                     if !door {
-                        x = fit_axis(x, -0.45, 0.45, w.width as f32, center);
-                        x += (0.9 - w.width as f32) / 2.;
                         y = fit_axis(y, 0., 1.2, w.height as f32, center);
                     }
                     wall_position(
@@ -199,10 +200,14 @@ impl BuildingKit {
                 && block.footprint.width.min(block.footprint.depth) >= 2.0
             {
                 let r = block.footprint;
-                let half = (r.width.min(r.depth) / 2. + profile.eave) as f32;
-                let rise = (half * (profile.roof_pitch_degrees as f32).to_radians().tan())
-                    .min(profile.max_roof_rise as f32);
-                // Ridge midpoint; base embedded 0.55m to avoid floating on slopes.
+                let rise = RoofRule
+                    .resolve(&RoofInput {
+                        footprint: r,
+                        kind: block.effective_roof,
+                        profile,
+                    })
+                    .rise as f32;
+                // 烟囱沿统一屋脊高度定位，基座嵌入 0.55 米以免悬浮。
                 let origin = [
                     (r.x + r.width / 2.) as f32,
                     (block.base_elevation + block.height) as f32 + rise - 0.55,
@@ -282,9 +287,13 @@ impl BuildingKit {
         let mut batches = BTreeMap::new();
         if input.id.kind == PartKind::Chimney {
             let r = block.footprint;
-            let half = (r.width.min(r.depth) / 2. + profile.eave) as f32;
-            let rise = (half * (profile.roof_pitch_degrees as f32).to_radians().tan())
-                .min(profile.max_roof_rise as f32);
+            let rise = RoofRule
+                .resolve(&RoofInput {
+                    footprint: r,
+                    kind: block.effective_roof,
+                    profile,
+                })
+                .rise as f32;
             let origin = [(r.width / 2.) as f32, rise - 0.55, (r.depth / 2.) as f32];
             self.append(&mut batches, "chimney-stone", |p, _| {
                 std::array::from_fn(|i| p[i] + origin[i])
@@ -312,9 +321,9 @@ impl BuildingKit {
                 };
                 self.append(&mut batches, name, |p, center| {
                     let [mut x, mut y, z] = p;
+                    x = fit_axis(x, -0.45, 0.45, w.width as f32, center);
+                    x += (0.9 - w.width as f32) / 2.;
                     if !door {
-                        x = fit_axis(x, -0.45, 0.45, w.width as f32, center);
-                        x += (0.9 - w.width as f32) / 2.;
                         y = fit_axis(y, 0., 1.2, w.height as f32, center);
                     }
                     wall_position(

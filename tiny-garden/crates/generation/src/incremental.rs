@@ -203,9 +203,11 @@ pub fn plan(
             emit(PartKind::Wall(face), wall, origin);
             for story in 0..source.stories {
                 let mut windows = local.clone();
-                windows
-                    .windows
-                    .retain(|w| w.key.face == face && w.key.story == story && w.height != 2.);
+                windows.windows.retain(|w| {
+                    w.key.face == face
+                        && w.key.story == story
+                        && !(w.height == 2. && w.key.slot < 0x8000)
+                });
                 if windows.windows.is_empty() {
                     continue;
                 }
@@ -232,7 +234,8 @@ pub fn plan(
             }
         }
         let mut door = local.clone();
-        door.windows.retain(|w| w.height == 2.);
+        door.windows
+            .retain(|w| w.height == 2. && w.key.slot < 0x8000);
         if !door.windows.is_empty() {
             let center = door.windows[0].elevation;
             for w in &mut door.windows {

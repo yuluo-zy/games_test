@@ -6,7 +6,7 @@
 
 当前开发顺序和验收以[桌面版开发计划](docs/桌面版开发计划.md)为准，不再以 Android 真机包作为首个交付关口。
 
-下一阶段的玩法核心与通用化设计见[上下文自动重构系统架构](docs/上下文自动重构系统架构.md)：窗户组合、道路连接及笔画随参数变为路/篱笆/围墙。现有工具和增量管线是基础，这些自动重构玩法尚未实现。
+玩法核心见[上下文自动重构系统架构](docs/上下文自动重构系统架构.md)。桌面已接入自动路/篱笆/围墙、来源可追踪的道路连接图、建筑自动门、手工连窗与休眠恢复、可编辑起伏地形及水平地基；预览、提交和撤销复用同一解析流程。操作、缓存、显示交接及当前限制见[上下文系统实现与验收](docs/上下文系统实现与验收.md)。
 
 ## 模块
 
@@ -20,6 +20,8 @@
 | `garden-presentation` | 主题/资产合同与检查器；desktop 可选启用 3D 展示 |
 
 说明、依赖方向、扩展方案和后续任务见 [模块架构](docs/模块架构.md)，验证结果见 [验证记录](docs/验证记录.md)。
+
+房屋与墙路已共用上传预算、暂存和 GPU 就绪流程，各类型保留安装/过渡策略；体块与屋顶规则统一解析成结构数据，预览、正式网格和附件复用同一规则。接口边界、公共缓存及 CPU 测量见[上传与结构规则重构](docs/上传与结构规则重构.md)。
 
 美术怎样制作、先做什么、由谁交付、如何验收见 [美术资产制作计划](docs/美术资产制作计划.md)；基础窗 Blender 起步模板见 [美术源工作区](art-source/README.md)。
 
@@ -44,6 +46,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 ./scripts/check-boundaries.ps1
 cargo run -p garden-bevy --example headless --locked
 cargo run -p garden-generation --example layout_benchmark --release --locked
+cargo run -p garden-generation --example context_benchmark --release --locked
 cargo run -p garden-presentation --bin art-check --locked
 cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
 ```
@@ -61,6 +64,10 @@ cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
 | 高度 / 旋转房屋 | 绿点或高度工具上下拖动；紫点围绕底层中心旋转整栋；松开提交一次 |
 | 添加上层 / 删除上层 | 在所选体块上创建居中退台；删除上层连同后代；1–3 体块、总支撑链不超过 4 层 |
 | 平移 | 左键拖动地面平移镜头；不修改作品/撤销历史 |
+| 画墙 / 画路 | 左键在草坪拖动绘制，松开提交一笔；墙按弧长排列砖块，道路交叉统一生成路面；横穿墙中段会自动形成拱口 |
+| 自动画笔 / 自动三态 | 保留笔画身份，以高度和样式推断路、篱笆或围墙；可显式锁定类型 |
+| 地形与窗 | 抬高、降低、平滑地形；在可见墙面放置或拖动手工窗，加宽/收窄/删除；冲突窗休眠后自动恢复 |
+| 墙路编辑 | 点击可见墙路选择，拖动整体移动；「墙增高/墙降低」「墙路加宽/墙路收窄」「删除墙路」编辑当前笔画 |
 | 切换屋顶 / 切换立面 / 增高 / 降低 / 删除房屋 | 前四项只改当前体块；立面轮换石/灰泥/木，删除房屋删除整栋 |
 | 撤销 / 重做 | 通过现有命令历史恢复编辑，取消预览不记历史 |
 | 右键拖动 / 滚轮 | 旋转视角 / 缩放；另有左转、右转、抬高/降低视角、放大/缩小、复位视角按钮 |
@@ -68,6 +75,8 @@ cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
 拖动时即时显示半透明的简化墙体/屋顶和线框，使用固定资源池，不重建或拉伸正式门窗；提交后有效目标预览保留到正式版本完成交接。四坡预览为简化四坡体，不是完整贴图建筑。红框/红色预览或错误提示表示不能提交；右键、「取消」、失焦、离开窗口或在 UI 上松开会取消拖动。队列满时保留命令供重试或取消；缩小底层导致失去承托时拒绝，不偷偷移动或删除上层。
 
 有效命令提交后有青色目标轮廓/中文进度，根移动/旋转连续重定向，拓扑变化用短整组淡化。M1 工具的代码与自动回归已接入，真实鼠标/窗口中断与全 DPI 验收仍待做；不做万级场景扩展。UI 均为中文，附带 Noto Sans SC 字体及 OFL 许可。触摸和全量美术未完成；没有存档，关闭会丢失作品。
+
+墙路候选显示轨迹、高度、连接节点和拱口语义，地形及窗户候选采用低细节线框。后台生成按来源及局部地形精确缓存，与房屋共享上传预算、任务槽位和历史；相关组就绪后使用共同交接起点，中点切换拾取。单场景最多32笔，每笔128点/60米，手工窗最多256个；道路边缘仍有0.25米量化，墙体急折角和自交仍需专项几何优化。
 
 离屏截图不打开窗口，需 GPU 渲染支持；输出路径不得已存在：
 
@@ -77,6 +86,8 @@ cargo run -p garden-presentation --features desktop --bin tiny-garden --locked -
 cargo run -p garden-presentation --features desktop --bin tiny-garden --locked -- --review-capture D:\game\tiny-garden\art-source\reference\new-edit-review.png
 # 创建退台上层、调高与旋转，展示控制点（不是 OS 鼠标回放）：
 cargo run -p garden-presentation --features desktop --locked -- --tools-review D:\game\tiny-garden\art-source\reference\new-tools-review.png
+# 砖墙、道路穿墙开拱、删除恢复及撤销后的真实 GPU 截图：
+cargo run -p garden-presentation --features desktop --locked -- --wall-review D:\game\tiny-garden\art-source\reference\new-wall-review.png
 ```
 
 现在六座样例与新建房屋均使用 `house-kit-v4`：基础窗、窗板窗、木门、石烟囱，以及石墙/灰泥/木板/屋瓦的 BC、N、ORM 贴图。门占用真实门洞，窄房不强塞门；平顶不加烟囱、上层独立适配。主体不是固定 GLB，Size / Height / Roof / Undo 后按受影响部件增量更新。

@@ -39,20 +39,25 @@ pub fn prepare(building: &mut PreparedBuilding, cancel: &Cancellation) -> Result
         if !batch.tangents.is_empty() {
             continue;
         }
-        batch.data.validate()?;
-        let mut geometry = Geometry {
-            mesh: &batch.data,
-            tangents: vec![[0.; 4]; batch.data.positions.len()],
-        };
-        bevy_mikktspace::generate_tangents(&mut geometry)
-            .map_err(|_| MeshError("invalid tangent geometry"))?;
-        for t in &mut geometry.tangents {
-            t[3] = -t[3];
-        }
-        if geometry.tangents.iter().flatten().any(|v| !v.is_finite()) {
-            return Err(MeshError("non-finite tangent"));
-        }
-        batch.tangents = Arc::new(geometry.tangents);
+        batch.tangents = Arc::new(prepare_mesh(&batch.data)?);
     }
     cancel.check()
+}
+
+/// 为离线场景与建筑共用的网格准备切线；不创建实体，也不依赖领域身份。
+pub fn prepare_mesh(mesh: &MeshData) -> Result<Vec<[f32; 4]>, MeshError> {
+    mesh.validate()?;
+    let mut geometry = Geometry {
+        mesh,
+        tangents: vec![[0.; 4]; mesh.positions.len()],
+    };
+    bevy_mikktspace::generate_tangents(&mut geometry)
+        .map_err(|_| MeshError("invalid tangent geometry"))?;
+    for tangent in &mut geometry.tangents {
+        tangent[3] = -tangent[3];
+    }
+    if geometry.tangents.iter().flatten().any(|v| !v.is_finite()) {
+        return Err(MeshError("non-finite tangent"));
+    }
+    Ok(geometry.tangents)
 }

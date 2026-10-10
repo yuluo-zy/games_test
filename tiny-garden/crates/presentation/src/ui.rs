@@ -1,4 +1,4 @@
-//! Chinese presentation only: domain errors and identifiers stay language-independent.
+//! 中文工具栏和错误翻译；按对象展开参数，避免全部控件遮挡工作区。
 use crate::{
     camera::{BlocksWorldInput, CameraAction},
     editor::{EditorAction, EditorStatus},
@@ -9,9 +9,106 @@ use garden_application::{
     tools::{Tool, ToolError},
 };
 
+/// 按编辑对象展开参数；所有控件继续调用已有命令入口。
+#[derive(Component, Default, Clone, Copy, PartialEq, Eq)]
+pub enum ToolPanel {
+    #[default]
+    House,
+    Linear,
+    Context,
+}
+#[derive(Resource, Default)]
+struct ToolbarState(ToolPanel);
+#[derive(Component)]
+struct PanelNode(ToolPanel);
+pub struct ToolbarPlugin;
+impl Plugin for ToolbarPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<ToolbarState>()
+            .add_systems(Update, panels);
+    }
+}
+type PanelButtons<'a> = (
+    &'a Interaction,
+    Option<&'a ToolPanel>,
+    Option<&'a EditorAction>,
+    Option<&'a crate::context_tools::ContextAction>,
+);
+fn panels(
+    buttons: Query<PanelButtons<'_>, Changed<Interaction>>,
+    mut state: ResMut<ToolbarState>,
+    mut nodes: Query<(&PanelNode, &mut Node)>,
+) {
+    let selected = &mut state.0;
+    for (interaction, tab, legacy, context) in &buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        if let Some(tab) = tab {
+            *selected = *tab;
+        }
+        if let Some(action) = legacy {
+            *selected = match action {
+                EditorAction::Wall | EditorAction::Path | EditorAction::StrokeSelect => {
+                    ToolPanel::Linear
+                }
+                EditorAction::Build
+                | EditorAction::Move
+                | EditorAction::Resize
+                | EditorAction::Height
+                | EditorAction::Rotate
+                | EditorAction::Select => ToolPanel::House,
+                _ => *selected,
+            };
+        }
+        if let Some(action) = context {
+            *selected = match action {
+                crate::context_tools::ContextAction::AutoDraw
+                | crate::context_tools::ContextAction::AutoType
+                | crate::context_tools::ContextAction::LockPath
+                | crate::context_tools::ContextAction::LockFence
+                | crate::context_tools::ContextAction::LockWall
+                | crate::context_tools::ContextAction::Style => ToolPanel::Linear,
+                _ => ToolPanel::Context,
+            };
+        }
+    }
+    for (panel, mut node) in &mut nodes {
+        let wanted = if panel.0 == *selected {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        if node.display != wanted {
+            node.display = wanted;
+        }
+    }
+}
+fn panel(
+    parent: &mut ChildSpawnerCommands,
+    kind: ToolPanel,
+    spawn: impl FnOnce(&mut ChildSpawnerCommands),
+) {
+    parent
+        .spawn((
+            PanelNode(kind),
+            Node {
+                display: if kind == ToolPanel::House {
+                    Display::Flex
+                } else {
+                    Display::None
+                },
+                flex_direction: FlexDirection::Column,
+                row_gap: px(6),
+                ..default()
+            },
+        ))
+        .with_children(spawn);
+}
+
 pub const FONT_PATH: &str = "fonts/NotoSansSC-Regular.otf";
 pub const TITLE: &str = "暖石庭院 · 自由建造";
-pub const HELP: &str = "点击选择体块；橙点调宽、蓝点调深、绿点调高、紫点转房屋\n左键拖动工具；右键单击取消 / 拖动转视角；滚轮缩放";
+pub const HELP: &str = "画墙 / 画路：左键拖动；路穿墙自动开拱；墙路编辑可移动\n房屋：橙点调宽、蓝点调深、绿点调高；右键转视角；滚轮缩放";
 
 #[derive(Resource, Default)]
 pub struct UiFont(pub Option<Handle<Font>>);
@@ -26,6 +123,9 @@ pub fn tool_name(tool: Tool) -> &'static str {
         Tool::Height => "高度",
         Tool::Rotate => "旋转房屋",
         Tool::Pan => "平移",
+        Tool::Wall => "画墙",
+        Tool::Path => "画路",
+        Tool::StrokeSelect => "墙路编辑",
     }
 }
 
@@ -47,6 +147,14 @@ pub fn edit_error(error: &EditError) -> &'static str {
             "exactly one root required" => "房屋须有且仅有一个底层体块。",
             "support cycle" => "建筑层之间不能循环支撑。",
             "non-finite placement" => "房屋位置无效，请重新选择位置。",
+            "invalid stroke" | "invalid stroke length" => {
+                "轨迹需至少两个有效点，不能超出庭院；长度最多60米，宽0.25–3米，墙高0.8–5米。"
+            }
+            "too many strokes" => "此原型最多保留32条墙路轨迹。",
+            "invalid terrain" | "invalid terrain brush" => "地形或笔刷参数无效，操作未提交。",
+            "invalid opening" => "窗宽须为0.3–2米，窗高须为0.4–2.5米。",
+            "too many openings" => "此庭院最多保留256个手工窗。",
+            "invalid linear intent" => "笔画控制点或离地偏移无效，操作未提交。",
             _ => "房屋结构不符合建造规则，请调整后重试。",
         },
         EditError::Missing => "房屋已不存在，请重新选择。",
@@ -77,7 +185,7 @@ fn text_font(font: &Handle<Font>, size: f32) -> TextFont {
     }
 }
 
-fn button_row<A: Component + Copy>(
+pub(crate) fn button_row<A: Component + Copy>(
     parent: &mut ChildSpawnerCommands,
     font: &Handle<Font>,
     buttons: &[(A, &str)],
@@ -95,8 +203,8 @@ fn button_row<A: Component + Copy>(
                     Button,
                     action,
                     Node {
-                        padding: UiRect::axes(px(12), px(10)),
-                        min_height: px(44),
+                        padding: UiRect::axes(px(8), px(6)),
+                        min_height: px(36),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         ..default()
@@ -106,7 +214,7 @@ fn button_row<A: Component + Copy>(
                 .with_children(|button| {
                     button.spawn((
                         Text::new(label),
-                        text_font(font, 17.0),
+                        text_font(font, 15.0),
                         TextColor(Color::WHITE),
                     ));
                 });
@@ -140,7 +248,19 @@ pub fn spawn_toolbar(commands: &mut Commands, font: &Handle<Font>) {
                 parent,
                 font,
                 &[
+                    (ToolPanel::House, "房屋参数"),
+                    (ToolPanel::Linear, "墙路参数"),
+                    (ToolPanel::Context, "地形与窗"),
+                ],
+            );
+            button_row(
+                parent,
+                font,
+                &[
                     (EditorAction::Select, "选择"),
+                    (EditorAction::Wall, "画墙"),
+                    (EditorAction::Path, "画路"),
+                    (EditorAction::StrokeSelect, "墙路编辑"),
                     (EditorAction::Build, "建造"),
                     (EditorAction::Move, "移动"),
                     (EditorAction::Resize, "尺寸"),
@@ -153,21 +273,23 @@ pub fn spawn_toolbar(commands: &mut Commands, font: &Handle<Font>) {
                     (EditorAction::Redo, "重做"),
                 ],
             );
-            button_row(
-                parent,
-                font,
-                &[
-                    (EditorAction::Roof, "切换屋顶"),
-                    (EditorAction::HeightUp, "增高"),
-                    (EditorAction::HeightDown, "降低"),
-                    (EditorAction::Facade, "切换立面"),
-                    (EditorAction::NextBlock, "切换体块"),
-                    (EditorAction::MoveBlock, "移动体块"),
-                    (EditorAction::AddUpper, "添加上层"),
-                    (EditorAction::RemoveUpper, "删除上层"),
-                    (EditorAction::Delete, "删除房屋"),
-                ],
-            );
+            panel(parent, ToolPanel::House, |section| {
+                button_row(
+                    section,
+                    font,
+                    &[
+                        (EditorAction::Roof, "切换屋顶"),
+                        (EditorAction::HeightUp, "增高"),
+                        (EditorAction::HeightDown, "降低"),
+                        (EditorAction::Facade, "切换立面"),
+                        (EditorAction::NextBlock, "切换体块"),
+                        (EditorAction::MoveBlock, "移动体块"),
+                        (EditorAction::AddUpper, "添加上层"),
+                        (EditorAction::RemoveUpper, "删除上层"),
+                        (EditorAction::Delete, "删除房屋"),
+                    ],
+                );
+            });
             button_row(
                 parent,
                 font,
@@ -181,6 +303,50 @@ pub fn spawn_toolbar(commands: &mut Commands, font: &Handle<Font>) {
                     (CameraAction::Home, "复位视角"),
                 ],
             );
+            panel(parent, ToolPanel::Linear, |section| {
+                button_row(
+                    section,
+                    font,
+                    &[
+                        (crate::strokes::StrokeAction::HeightUp, "墙增高"),
+                        (crate::strokes::StrokeAction::HeightDown, "墙降低"),
+                        (crate::strokes::StrokeAction::Wider, "墙路加宽"),
+                        (crate::strokes::StrokeAction::Narrower, "墙路收窄"),
+                        (crate::strokes::StrokeAction::Delete, "删除墙路"),
+                    ],
+                );
+                button_row(
+                    section,
+                    font,
+                    &[
+                        (crate::context_tools::ContextAction::AutoDraw, "自动画笔"),
+                        (crate::context_tools::ContextAction::AutoType, "自动三态"),
+                        (crate::context_tools::ContextAction::LockPath, "锁定道路"),
+                        (crate::context_tools::ContextAction::LockFence, "锁定篱笆"),
+                        (crate::context_tools::ContextAction::LockWall, "锁定围墙"),
+                        (crate::context_tools::ContextAction::Style, "边界样式"),
+                    ],
+                );
+            });
+            panel(parent, ToolPanel::Context, |section| {
+                button_row(
+                    section,
+                    font,
+                    &[
+                        (crate::context_tools::ContextAction::Raise, "抬高地形"),
+                        (crate::context_tools::ContextAction::Lower, "降低地形"),
+                        (crate::context_tools::ContextAction::Smooth, "平滑地形"),
+                        (crate::context_tools::ContextAction::PlaceWindow, "放置窗"),
+                        (crate::context_tools::ContextAction::EditWindow, "编辑窗"),
+                        (crate::context_tools::ContextAction::WindowWider, "窗加宽"),
+                        (
+                            crate::context_tools::ContextAction::WindowNarrower,
+                            "窗收窄",
+                        ),
+                        (crate::context_tools::ContextAction::DeleteWindow, "删除窗"),
+                    ],
+                );
+            });
             parent.spawn((
                 EditorStatus,
                 Text::new("工具：选择 ｜ 已选房屋：无"),
@@ -224,7 +390,7 @@ mod tests {
         let expected = world.resource::<UiFont>().0.as_ref().unwrap().id();
         let mut query = world.query::<(&Text, &TextFont)>();
         let labels: Vec<_> = query.iter(world).collect();
-        assert_eq!(labels.len(), 30);
+        assert_eq!(labels.len(), 55);
         for (text, font) in labels {
             assert!(
                 text.0
@@ -238,7 +404,7 @@ mod tests {
                 .query_filtered::<Entity, With<Button>>()
                 .iter(world)
                 .count(),
-            27
+            52
         );
     }
     #[test]

@@ -9,12 +9,9 @@ pub(super) fn abort_waiting(
     commands: &mut Commands,
     assets: &mut RenderAssets,
 ) {
-    debug_assert!(!fade.started && !fade.switched);
+    debug_assert!(!fade.handoff.started && !fade.handoff.switched);
     if let Some(stage) = assets.staging.0.remove(&root) {
-        for h in stage.owned {
-            assets.bridge.forget(&h);
-            assets.meshes.remove(h.id());
-        }
+        stage.upload.discard(&mut assets.meshes, &assets.bridge);
     }
     if let Some(next) = assets.residency.0.insert(root, fade.baseline.clone()) {
         for part in next.parts.into_values() {
@@ -24,8 +21,7 @@ pub(super) fn abort_waiting(
                 .values()
                 .any(|p| p.handle == part.handle)
             {
-                assets.bridge.forget(&part.handle);
-                assets.meshes.remove(part.handle.id());
+                release_mesh(&mut assets.meshes, &assets.bridge, &part.handle);
             }
         }
     }
@@ -103,8 +99,7 @@ pub(super) fn dispose_fade(entity: Entity, fade: Fade, assets: &mut RenderAssets
             .get(&entity)
             .is_some_and(|r| r.parts.values().any(|p| p.handle == part.handle))
         {
-            assets.bridge.forget(&part.handle);
-            assets.meshes.remove(part.handle.id());
+            release_mesh(&mut assets.meshes, &assets.bridge, &part.handle);
         }
     }
     for handle in fade
@@ -144,25 +139,35 @@ pub(super) fn advance_transitions(
     let entities = assets.fades.0.keys().copied().collect::<Vec<_>>();
     for entity in entities {
         let mut fade = assets.fades.0.remove(&entity).unwrap();
-        fade.age += dt;
-        let unseen = fade.age > 0.05
-            && fade
-                .restore
-                .iter()
-                .all(|(child, _)| !assets.bridge.draw_visible(*child));
-        if !fade.started {
-            let ready = (!assets.bridge.enabled || fade.age > 0.05)
-                && fade
-                    .restore
+        let ready = fade.handoff.pipeline_ready(
+            dt,
+            assets.bridge.enabled,
+            assets.bridge.draws_ready(
+                fade.restore
                     .iter()
-                    .map(|(child, _)| *child)
-                    .chain(fade.warmups.iter().copied())
-                    .filter(|e| assets.bridge.draw_visible(*e))
-                    .all(|e| assets.bridge.draw_ready(e));
-            if !ready && !unseen {
-                assets.fades.0.insert(entity, fade);
-                continue;
-            }
+                    .map(|(e, _)| *e)
+                    .chain(fade.warmups.iter().copied()),
+            ),
+        );
+        if ready && let Some(groups) = &mut assets.groups {
+            groups.building_ready(fade.next.ticket.object_revision, fade.next.ticket.building);
+        }
+        let group_ready = assets
+            .groups
+            .as_ref()
+            .is_none_or(|g| g.ready(fade.next.ticket.object_revision));
+        let elapsed = assets
+            .groups
+            .as_mut()
+            .and_then(|g| g.elapsed(fade.next.ticket.object_revision, time.elapsed_secs_f64()));
+        let Some(step) = fade
+            .handoff
+            .advance(dt, settings.duration, ready && group_ready, elapsed)
+        else {
+            assets.fades.0.insert(entity, fade);
+            continue;
+        };
+        if step.started_now {
             for part in &fade.retired {
                 commands
                     .entity(part.child)
@@ -172,15 +177,8 @@ pub(super) fn advance_transitions(
                 commands.entity(child).despawn();
                 assets.bridge.forget_draw(child);
             }
-            fade.started = true;
         }
-        fade.elapsed += dt;
-        let t = if unseen && assets.bridge.enabled {
-            1.
-        } else {
-            (fade.elapsed / settings.duration.max(0.001)).clamp(0., 1.)
-        };
-        let alpha = t * t * (3. - 2. * t);
+        let alpha = step.alpha;
         for handle in fade.old_materials.values() {
             if let Some(mut m) = assets.materials.get_mut(handle) {
                 m.base_color = m.base_color.with_alpha(1. - alpha);
@@ -193,11 +191,10 @@ pub(super) fn advance_transitions(
         }
         // During cross-fade pick the dominant coherent pose, never combine old
         // wall triangles with new window triangles into a fictitious collider.
-        if !fade.switched && alpha >= 0.5 {
+        if step.switched_now {
             commands.entity(entity).insert(fade.next.clone());
-            fade.switched = true;
         }
-        if t >= 1. {
+        if step.complete {
             for (child, key) in &fade.restore {
                 commands
                     .entity(*child)

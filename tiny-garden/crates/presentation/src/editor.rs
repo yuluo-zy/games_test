@@ -66,6 +66,9 @@ pub enum EditorAction {
     HeightDown,
     Undo,
     Redo,
+    Wall,
+    Path,
+    StrokeSelect,
 }
 #[derive(Component)]
 pub struct EditorStatus;
@@ -74,8 +77,9 @@ pub struct EditorStatus;
 pub struct DesktopEditor {
     pub tools: ToolController,
     pub status: String,
-    pending: Option<EditCommand>,
+    pub(crate) pending: Option<EditCommand>,
     drag_plane: Option<DragPlane>,
+    observed_session: Option<u64>,
 }
 impl Default for DesktopEditor {
     fn default() -> Self {
@@ -84,6 +88,7 @@ impl Default for DesktopEditor {
             status: "点击房屋进行选择，或使用「建造」在草地上拖出一栋新房屋。".into(),
             pending: None,
             drag_plane: None,
+            observed_session: None,
         }
     }
 }
@@ -155,6 +160,9 @@ fn ui_actions(
             EditorAction::Height => Some(Tool::Height),
             EditorAction::Rotate => Some(Tool::Rotate),
             EditorAction::Pan => Some(Tool::Pan),
+            EditorAction::Wall => Some(Tool::Wall),
+            EditorAction::Path => Some(Tool::Path),
+            EditorAction::StrokeSelect => Some(Tool::StrokeSelect),
             _ => None,
         };
         if let Some(tool) = tool {
@@ -171,6 +179,9 @@ fn ui_actions(
                 Tool::Height => "拖动绿色高度点或房屋上下调整高度，松开提交。",
                 Tool::Rotate => "拖动紫色旋转点围绕底层中心旋转整栋房屋，松开提交。",
                 Tool::Pan => "按住左键拖动地面平移视角，不修改房屋或操作记录。",
+                Tool::Wall => "在草地上拖动画石墙；松开提交，右键或取消放弃。",
+                Tool::Path => "拖动画路，经过石墙会自动生成拱口；路面重叠自动连成一片。",
+                Tool::StrokeSelect => "点击墙砖或道路选择；可拖动整条轨迹，按钮调宽/高度或删除。",
             }
             .into();
             continue;
@@ -271,6 +282,7 @@ fn ground(ray: Ray3d) -> Option<GroundPoint> {
     })
 }
 fn world_tools(
+    context_tools: Option<Res<crate::context_tools::ContextTools>>,
     frame: Res<PointerFrame>,
     editor: Res<EditorState>,
     cameras: Query<(&Camera, &Transform), With<OrbitCamera>>,
@@ -278,6 +290,9 @@ fn world_tools(
     mut state: ResMut<DesktopEditor>,
     mut inbox: ResMut<CommandInbox>,
 ) {
+    if context_tools.as_ref().is_some_and(|c| c.owns_pointer()) {
+        return;
+    }
     if frame.cancel_world {
         state.tools.cancel();
         state.drag_plane = None;
@@ -287,7 +302,10 @@ fn world_tools(
     if state.pending.is_some() {
         return;
     }
-    if state.tools.tool() == Tool::Pan {
+    if matches!(
+        state.tools.tool(),
+        Tool::Pan | Tool::Wall | Tool::Path | Tool::StrokeSelect
+    ) {
         return;
     }
     if !(frame.world_begin || frame.world_held || frame.world_finish) {
@@ -379,7 +397,18 @@ fn world_tools(
             state.status = "当前视角无法拖动，请调整视角。".into();
             return;
         };
-        let point = plane.ground(ray).unwrap();
+        let point = if tool == Tool::Build {
+            let Some(point) = crate::context_tools::ground(ray, &editor.editor().context().terrain)
+            else {
+                return;
+            };
+            GroundPoint {
+                x: point.x,
+                z: point.z,
+            }
+        } else {
+            plane.ground(ray).unwrap()
+        };
         let result = if tool == Tool::Resize {
             state.tools.begin_resize(editor.editor(), point, axes)
         } else {
@@ -398,12 +427,16 @@ fn world_tools(
                 .tools
                 .update_height(plane.and_then(|p| p.height_delta(ray)).unwrap_or(f64::NAN))
         } else {
-            let point = plane
-                .map_or_else(|| ground(ray), |p| p.ground(ray))
-                .unwrap_or(GroundPoint {
-                    x: f64::NAN,
-                    z: f64::NAN,
-                });
+            let point = if state.tools.tool() == Tool::Build {
+                crate::context_tools::ground(ray, &editor.editor().context().terrain)
+                    .map(|p| GroundPoint { x: p.x, z: p.z })
+            } else {
+                plane.map_or_else(|| ground(ray), |p| p.ground(ray))
+            }
+            .unwrap_or(GroundPoint {
+                x: f64::NAN,
+                z: f64::NAN,
+            });
             state.tools.update(point)
         };
         match result {
@@ -429,12 +462,24 @@ fn world_tools(
     }
 }
 fn feedback(
+    context: Res<garden_bevy::context::ContextProjection>,
     mut results: ResMut<EditFeedback>,
     mut failures: ResMut<GenerationFailures>,
     editor: Res<EditorState>,
     mut state: ResMut<DesktopEditor>,
 ) {
+    let session = editor.editor().session();
+    if state.observed_session.is_some_and(|old| old != session) {
+        // 新会话可以复用领域编号，旧拖动和排队重试不能因此指向新场景中的同号对象。
+        state.tools.cancel();
+        state.tools.select(None);
+        state.pending = None;
+        state.drag_plane = None;
+    }
+    state.observed_session = Some(session);
+    let mut accepted = false;
     for outcome in results.drain() {
+        accepted |= outcome.result.is_ok();
         if let Ok(Some(change)) = &outcome.result
             && state.tools.selected() == Some(change.building)
             && let Some(after) = &change.after
@@ -453,12 +498,39 @@ fn feedback(
                 change.building.get(),
                 change.revision
             ),
-            Ok(None) => "场景未发生变化。".into(),
+            Ok(None) => "操作已处理；墙路变化会自动重构相关结构。".into(),
             Err(error) => {
                 warn!("Edit rejected: {error}");
                 format!("修改未通过：{}", ui::edit_error(&error))
             }
         };
+    }
+    if accepted {
+        use garden_generation::context::Diagnostic;
+        let sleeping = context
+            .semantic
+            .diagnostics
+            .iter()
+            .filter(|d| matches!(d, Diagnostic::Sleeping(_)))
+            .count();
+        if sleeping > 0 {
+            state.status =
+                format!("修改已提交，{sleeping}个手工窗暂时休眠；原参数保留，冲突消失后恢复。");
+        } else if context
+            .semantic
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, Diagnostic::Steep(_)))
+        {
+            state.status = "修改已提交；部分道路坡度过大，保留路面并停止生成自动通道。".into();
+        } else if context
+            .semantic
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, Diagnostic::BlockedEntrance(_)))
+        {
+            state.status = "修改已提交；部分道路与墙面高度不匹配，未生成自动门。".into();
+        }
     }
     for (ticket, error) in failures.drain() {
         warn!("Geometry failed for #{}: {error}", ticket.building.get());
@@ -478,9 +550,18 @@ fn status_text(
     state: Res<DesktopEditor>,
     pending: Res<PendingTargets>,
     editor: Res<EditorState>,
+    stroke_tools: Option<Res<crate::strokes::StrokeTools>>,
+    stroke_targets: Option<Res<garden_bevy::strokes::StrokeTargets>>,
+    stroke_display: Option<Res<crate::strokes::StrokeDisplay>>,
     mut labels: Query<&mut Text, With<EditorStatus>>,
 ) {
-    if !state.is_changed() && !pending.is_changed() && !editor.is_changed() {
+    if !state.is_changed()
+        && !pending.is_changed()
+        && !editor.is_changed()
+        && !stroke_tools.as_ref().is_some_and(|r| r.is_changed())
+        && !stroke_targets.as_ref().is_some_and(|r| r.is_changed())
+        && !stroke_display.as_ref().is_some_and(|r| r.is_changed())
+    {
         return;
     }
     let selected = state
@@ -488,6 +569,39 @@ fn status_text(
         .selected()
         .map_or("无".into(), |id| format!("#{}", id.get()));
     for mut text in &mut labels {
+        if matches!(
+            state.tools.tool(),
+            Tool::Wall | Tool::Path | Tool::StrokeSelect
+        ) {
+            let selected = stroke_tools
+                .as_ref()
+                .and_then(|t| t.selected)
+                .and_then(|id| editor.editor().stroke(id))
+                .map_or("无".into(), |s| {
+                    format!("#{}（宽{:.1}米，高{:.1}米）", s.id.0, s.width, s.height)
+                });
+            let progress = if stroke_targets.as_ref().is_some_and(|t| t.error.is_some()) {
+                "\n墙路生成失败，保留原模型。"
+            } else if stroke_display
+                .as_ref()
+                .is_some_and(|d| d.revision != Some(editor.editor().world_revision()))
+            {
+                "\n墙路更新中；青色轨迹为编辑目标。"
+            } else {
+                ""
+            };
+            let next = format!(
+                "工具：{} ｜ 已选墙路：{}\n{}{}",
+                ui::tool_name(state.tools.tool()),
+                selected,
+                state.status,
+                progress
+            );
+            if text.0 != next {
+                text.0 = next;
+            }
+            continue;
+        }
         let block_status = state
             .tools
             .selected()
@@ -513,14 +627,19 @@ fn status_text(
                     "\n模型更新中；青色轮廓为最新目标。"
                 }
             });
-        *text = Text::new(format!(
+        let next = format!(
             "工具：{} ｜ 已选房屋：{}{}\n{}{}",
             ui::tool_name(state.tools.tool()),
             selected,
             block_status,
             state.status,
             progress
-        ));
+        );
+        // Backend polling can mark resources changed without changing this
+        // label. Avoid reshaping Chinese glyphs every frame in that case.
+        if text.0 != next {
+            text.0 = next;
+        }
     }
 }
 fn button_color(
@@ -538,6 +657,9 @@ fn button_color(
                 | (EditorAction::Height, Tool::Height)
                 | (EditorAction::Rotate, Tool::Rotate)
                 | (EditorAction::Pan, Tool::Pan)
+                | (EditorAction::Wall, Tool::Wall)
+                | (EditorAction::Path, Tool::Path)
+                | (EditorAction::StrokeSelect, Tool::StrokeSelect)
         );
         color.0 = if *interaction == Interaction::Pressed {
             Color::srgb_u8(73, 99, 70)
@@ -667,6 +789,21 @@ fn draw_overlay(
             color,
         );
     }
+}
+
+#[cfg(test)]
+pub(crate) fn setup_context_test_input(app: &mut App) {
+    app.init_resource::<DesktopEditor>()
+        .init_resource::<PointerFrame>()
+        .init_resource::<PanMode>()
+        .add_systems(
+            Update,
+            (ui_actions, world_tools)
+                .chain()
+                .in_set(DesktopInputSet::Tools)
+                .before(GardenSet::Commit),
+        )
+        .add_systems(Update, feedback.after(GardenSet::Commit));
 }
 
 #[cfg(test)]

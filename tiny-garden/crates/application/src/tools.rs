@@ -15,6 +15,9 @@ pub enum Tool {
     Height,
     Rotate,
     Pan,
+    Wall,
+    Path,
+    StrokeSelect,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -192,7 +195,7 @@ impl ToolController {
             return Err(ToolError::InvalidDrag);
         }
         self.drag = match self.tool {
-            Tool::Select | Tool::Pan => None,
+            Tool::Select | Tool::Pan | Tool::Wall | Tool::Path | Tool::StrokeSelect => None,
             Tool::Build => Some(Drag::Build {
                 id: editor.next_building_id().map_err(ToolError::Edit)?,
                 anchor,

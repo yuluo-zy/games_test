@@ -1,8 +1,14 @@
-//! Deterministic layout and mesh compilation, independent of engine assets.
+//! 确定性布局与网格编译；结构关系由 structure 模块统一解析，不依赖引擎资产。
+pub mod context;
+pub mod context_cache;
+pub mod context_mesh;
 pub mod incremental;
 pub mod mesh;
+pub mod strokes;
+pub mod structure;
 use garden_domain::{BlockId, Building, BuildingId, Facade, Placement, Roof};
 use garden_geometry::Rect;
+use structure::{BuildingRule, StructureRule};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Face {
@@ -57,43 +63,13 @@ pub struct BuildingLayout {
 pub const RULES_REVISION: u64 = 1;
 
 pub fn compile(building: &Building) -> BuildingLayout {
-    let mut blocks = building.blocks().iter().collect::<Vec<_>>();
-    blocks.sort_by_key(|b| b.id);
-    let blocks = blocks
+    let blocks = BuildingRule
+        .resolve(building)
+        .blocks
         .into_iter()
         .map(|block| {
-            let mut base = 0.0;
-            let mut parent = block.parent;
-            while let Some(id) = parent {
-                let support = building.block(id).expect("validated parent");
-                base += support.height;
-                parent = support.parent;
-            }
-            let mut children = building
-                .blocks()
-                .iter()
-                .filter(|b| b.parent == Some(block.id))
-                .collect::<Vec<_>>();
-            children.sort_by_key(|b| b.id);
-            let effective_roof = if children.is_empty() {
-                block.roof_intent
-            } else {
-                Roof::Flat
-            };
-            let terraces = if children.is_empty() {
-                Vec::new()
-            } else {
-                let mut pieces = vec![block.footprint];
-                for child in &children {
-                    pieces = pieces
-                        .into_iter()
-                        .flat_map(|r| r.subtract(child.footprint))
-                        .collect();
-                }
-                pieces
-            };
             let mut windows = Vec::new();
-            let stories = block.stories.count();
+            let stories = block.stories;
             let story_height = block.height / f64::from(stories);
             for face in [Face::Front, Face::Back, Face::Left, Face::Right] {
                 let length = match face {
@@ -116,13 +92,14 @@ pub fn compile(building: &Building) -> BuildingLayout {
                         windows.push(WindowPlacement {
                             key: PartKey {
                                 building: building.id(),
-                                block: block.id,
+                                block: block.block,
                                 face,
                                 story,
                                 slot: slot as u16,
                             },
                             along_wall,
-                            elevation: base + (f64::from(story) + 0.5) * story_height,
+                            elevation: block.base_elevation
+                                + (f64::from(story) + 0.5) * story_height,
                             width: 0.9f64.min(spacing * 0.7),
                             height: 1.2f64.min(story_height * 0.6),
                         });
@@ -130,14 +107,14 @@ pub fn compile(building: &Building) -> BuildingLayout {
                 }
             }
             BlockLayout {
-                block: block.id,
+                block: block.block,
                 footprint: block.footprint,
-                base_elevation: base,
+                base_elevation: block.base_elevation,
                 height: block.height,
                 stories,
                 facade: block.facade,
-                effective_roof,
-                terraces,
+                effective_roof: block.effective_roof,
+                terraces: block.terraces,
                 windows,
             }
         })

@@ -1,28 +1,20 @@
-//! Budgeted chunk upload, coherent publication/transition and explicit residency.
-//! Children represent material chunks, never one entity per brick/window.
+//! 房屋安装与一致性过渡；公共上传流程位于 upload 模块。
+//! 子实体表示材质批次，避免为每块砖或每个窗创建实体。
 #[cfg(test)]
 mod tests;
 mod transitions;
 use crate::catalog::ArtCatalog;
+pub(crate) use crate::upload::{MeshReadiness, UploadLedger};
+pub use crate::upload::{UploadBudget, to_bevy_mesh};
+use crate::upload::{UploadContext, UploadStage, release_mesh, reset_ledger};
 use bevy::ecs::system::SystemParam;
 use bevy::image::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor};
-use bevy::pbr::SpecializedMaterialPipelineCache;
-use bevy::render::{
-    Render, RenderApp, RenderSystems, camera::ExtractedCamera, mesh::RenderMesh,
-    render_asset::RenderAssets as GpuAssets, render_resource::PipelineCache,
-    sync_world::MainEntity, view::RenderVisibleEntities,
-};
-use bevy::{
-    asset::RenderAssetUsages, mesh::Indices, prelude::*, render::render_resource::PrimitiveTopology,
-};
+use bevy::prelude::*;
 use garden_bevy::{BuildingProjection, EditorState, GardenSet, PendingTargets, ProjectionUpdates};
 use garden_generation::BuildingLayout;
-use garden_generation::incremental::{BatchId, PreparedBatch, PreparedBuilding};
+use garden_generation::incremental::{BatchId, PreparedBuilding};
 use garden_generation::mesh::MaterialKey;
-use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
-    sync::{Arc, Mutex},
-};
+use std::{collections::BTreeMap, sync::Arc};
 use transitions::{
     abort_waiting, advance_transitions, dispose_fade, fading_material, warm_old_part,
 };
@@ -63,7 +55,7 @@ pub struct ArtLoadState {
     pub textures: Vec<Handle<Image>>,
 }
 #[derive(Resource, Default)]
-struct Palette(BTreeMap<MaterialKey, Handle<StandardMaterial>>);
+pub(crate) struct Palette(pub(crate) BTreeMap<MaterialKey, Handle<StandardMaterial>>);
 #[derive(Resource, Default)]
 struct Residency(BTreeMap<Entity, ResidentMesh>);
 #[derive(Clone)]
@@ -82,15 +74,12 @@ struct ResidentBatch {
 #[derive(Resource, Default)]
 struct Fades(BTreeMap<Entity, Fade>);
 struct Fade {
-    elapsed: f32,
-    age: f32,
-    started: bool,
+    handoff: crate::handoff::CoherentHandoff,
     next: DisplayedBuilding,
     retired: Vec<ResidentBatch>,
     old_materials: BTreeMap<MaterialKey, Handle<StandardMaterial>>,
     next_materials: BTreeMap<MaterialKey, Handle<StandardMaterial>>,
     restore: Vec<(Entity, MaterialKey)>,
-    switched: bool,
     warmups: Vec<Entity>,
     baseline: ResidentMesh,
 }
@@ -119,128 +108,10 @@ struct StagedBuilding {
     ticket: garden_application::JobTicket,
     target: Arc<BuildingLayout>,
     mesh: Arc<PreparedBuilding>,
-    pending: VecDeque<usize>,
-    handles: BTreeMap<BatchId, Handle<Mesh>>,
-    owned: Vec<Handle<Mesh>>,
+    upload: UploadStage<usize>,
 }
-/// Shared bridge reports actual RenderMesh preparation, not CPU installation.
-/// It deliberately doesn't block/poll the GPU on the UI thread.
-#[derive(Resource, Clone, Default)]
-struct MeshReadiness {
-    enabled: bool,
-    shared: Arc<Mutex<ReadinessState>>,
-}
-#[derive(Default)]
-struct ReadinessState {
-    waiting: BTreeSet<AssetId<Mesh>>,
-    ready: BTreeSet<AssetId<Mesh>>,
-    waiting_draws: BTreeSet<Entity>,
-    ready_draws: BTreeSet<Entity>,
-    visible_draws: BTreeSet<Entity>,
-}
-fn acknowledge_meshes(
-    bridge: Res<MeshReadiness>,
-    meshes: Res<GpuAssets<RenderMesh>>,
-    pipelines: Res<SpecializedMaterialPipelineCache>,
-    cache: Res<PipelineCache>,
-    views: Query<&RenderVisibleEntities, With<ExtractedCamera>>,
-) {
-    let mut state = bridge.shared.lock().unwrap();
-    let ready = state
-        .waiting
-        .iter()
-        .copied()
-        .filter(|id| meshes.get(*id).is_some())
-        .collect::<Vec<_>>();
-    for id in ready {
-        state.waiting.remove(&id);
-        state.ready.insert(id);
-    }
-    let ready = state
-        .waiting_draws
-        .iter()
-        .copied()
-        .filter(|entity| {
-            pipelines
-                .values()
-                .filter_map(|view| view.get(&MainEntity::from(*entity)))
-                .any(|id| cache.get_render_pipeline(*id).is_some())
-        })
-        .collect::<Vec<_>>();
-    for entity in ready {
-        state.waiting_draws.remove(&entity);
-        state.ready_draws.insert(entity);
-    }
-    // Camera visibility, not ViewVisibility (which also includes shadow
-    // lights). Off-camera buildings cannot wait on unqueued material pipelines.
-    state.visible_draws = state
-        .waiting_draws
-        .iter()
-        .chain(&state.ready_draws)
-        .copied()
-        .filter(|entity| {
-            let main = MainEntity::from(*entity);
-            views.iter().any(|view| {
-                view.classes
-                    .get(&std::any::TypeId::of::<Mesh3d>())
-                    .is_some_and(|class| {
-                        class
-                            .entities_cpu_culling
-                            .binary_search_by_key(&main, |(_, main)| *main)
-                            .is_ok()
-                            || class.entities_gpu_culling.contains_key(&main)
-                    })
-            })
-        })
-        .collect();
-}
-impl MeshReadiness {
-    fn track_draw(&self, entity: Entity) {
-        if self.enabled {
-            self.shared.lock().unwrap().waiting_draws.insert(entity);
-        }
-    }
-    fn draw_ready(&self, entity: Entity) -> bool {
-        !self.enabled || self.shared.lock().unwrap().ready_draws.contains(&entity)
-    }
-    fn draw_visible(&self, entity: Entity) -> bool {
-        !self.enabled || self.shared.lock().unwrap().visible_draws.contains(&entity)
-    }
-    fn forget_draw(&self, entity: Entity) {
-        let mut state = self.shared.lock().unwrap();
-        state.waiting_draws.remove(&entity);
-        state.ready_draws.remove(&entity);
-        state.visible_draws.remove(&entity);
-    }
-    fn track(&self, handle: &Handle<Mesh>) {
-        if self.enabled {
-            self.shared.lock().unwrap().waiting.insert(handle.id());
-        }
-    }
-    fn ready(&self, handle: &Handle<Mesh>) -> bool {
-        !self.enabled || self.shared.lock().unwrap().ready.contains(&handle.id())
-    }
-    fn forget(&self, handle: &Handle<Mesh>) {
-        let mut state = self.shared.lock().unwrap();
-        state.waiting.remove(&handle.id());
-        state.ready.remove(&handle.id());
-    }
-}
-/// Main-world resource installation budget. All production chunks are bounded;
-/// an oversized third-party chunk is allowed alone and explicitly counted.
-#[derive(Resource, Clone, Copy)]
-pub struct UploadBudget {
-    pub bytes_per_frame: usize,
-    pub batches_per_frame: usize,
-}
-impl Default for UploadBudget {
-    fn default() -> Self {
-        Self {
-            bytes_per_frame: 512 * 1024,
-            batches_per_frame: 8,
-        }
-    }
-}
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct BuildingInstall;
 
 #[derive(Resource, Default, Debug)]
 pub struct RenderStats {
@@ -267,24 +138,21 @@ impl Plugin for PresentationPlugin {
             .init_resource::<Fades>()
             .init_resource::<TransitionSettings>()
             .init_resource::<UploadBudget>()
+            .init_resource::<UploadLedger>()
             .init_resource::<RenderStats>()
             .add_systems(Startup, setup_palette)
             .add_systems(
                 Update,
-                (release_removed, upload, advance_transitions)
+                (
+                    reset_ledger,
+                    release_removed,
+                    upload.in_set(BuildingInstall),
+                    advance_transitions,
+                )
                     .chain()
                     .after(GardenSet::Collect),
             );
-        let bridge = MeshReadiness {
-            enabled: app.get_sub_app(RenderApp).is_some(),
-            ..default()
-        };
-        app.insert_resource(bridge.clone());
-        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
-            render_app
-                .insert_resource(bridge)
-                .add_systems(Render, acknowledge_meshes.after(RenderSystems::Cleanup));
-        }
+        MeshReadiness::install(app);
     }
 }
 fn setup_palette(
@@ -341,19 +209,6 @@ fn setup_palette(
         palette.0.insert(key, materials.add(material));
     }
 }
-pub fn to_bevy_mesh(batch: &PreparedBatch) -> Mesh {
-    let data = &batch.data;
-    debug_assert_eq!(batch.tangents.len(), data.positions.len());
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD,
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions.clone())
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, data.normals.clone())
-    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, data.uvs.clone())
-    .with_inserted_attribute(Mesh::ATTRIBUTE_TANGENT, batch.tangents.as_ref().clone())
-    .with_inserted_indices(Indices::U32(data.indices.clone()))
-}
 fn release_removed(mut removed: RemovedComponents<BuildingProjection>, mut assets: RenderAssets) {
     for entity in removed.read() {
         if let Some(fade) = assets.fades.0.remove(&entity) {
@@ -363,15 +218,11 @@ fn release_removed(mut removed: RemovedComponents<BuildingProjection>, mut asset
             assets.stats.batches -= old.parts.len();
             assets.stats.triangles -= old.triangles;
             for part in old.parts.into_values() {
-                assets.bridge.forget(&part.handle);
-                assets.meshes.remove(part.handle.id());
+                release_mesh(&mut assets.meshes, &assets.bridge, &part.handle);
             }
         }
         if let Some(stage) = assets.staging.0.remove(&entity) {
-            for handle in stage.owned {
-                assets.bridge.forget(&handle);
-                assets.meshes.remove(handle.id());
-            }
+            stage.upload.discard(&mut assets.meshes, &assets.bridge);
         }
     }
     assets.stats.buildings = assets.residency.0.len();
@@ -390,6 +241,8 @@ struct RenderAssets<'w> {
     pending: ResMut<'w, PendingTargets>,
     cursor: ResMut<'w, UploadCursor>,
     transitions: Res<'w, TransitionSettings>,
+    ledger: ResMut<'w, UploadLedger>,
+    groups: Option<ResMut<'w, garden_bevy::context::PublicationGroups>>,
 }
 fn upload(
     mut commands: Commands,
@@ -406,7 +259,7 @@ fn upload(
         .fades
         .0
         .iter()
-        .filter(|(_, fade)| !fade.started && !editor.editor().accepts(fade.next.ticket))
+        .filter(|(_, fade)| !fade.handoff.started && !editor.editor().accepts(fade.next.ticket))
         .map(|(entity, _)| *entity)
         .collect::<Vec<_>>();
     for entity in obsolete {
@@ -424,37 +277,26 @@ fn upload(
             continue;
         }
         if let Some(old) = assets.staging.0.remove(&entity) {
-            for handle in old.owned {
-                assets.bridge.forget(&handle);
-                assets.meshes.remove(handle.id());
-            }
+            old.upload.discard(&mut assets.meshes, &assets.bridge);
         }
-        let mut stage = StagedBuilding {
-            ticket: projection.ticket,
-            target: projection.target.clone(),
-            mesh: projection.mesh.clone(),
-            pending: VecDeque::new(),
-            handles: BTreeMap::new(),
-            owned: Vec::new(),
-        };
-        for (i, batch) in projection.mesh.batches.iter().enumerate() {
-            if let Some(old) = assets
+        let upload = UploadStage::new(projection.mesh.as_ref(), |_, batch| {
+            assets
                 .residency
                 .0
                 .get(&entity)
                 .and_then(|r| r.parts.get(&batch.id))
                 .filter(|old| Arc::ptr_eq(&old.data, &batch.data))
-            {
-                stage.handles.insert(batch.id, old.handle.clone());
-                assets.stats.reused_batches += 1;
-            } else {
-                stage.pending.push_back(i);
-            }
-        }
+                .map(|old| old.handle.clone())
+        });
+        assets.stats.reused_batches += upload.reused as u64;
+        let stage = StagedBuilding {
+            ticket: projection.ticket,
+            target: projection.target.clone(),
+            mesh: projection.mesh.clone(),
+            upload,
+        };
         assets.staging.0.insert(entity, stage);
     }
-    let mut bytes = 0;
-    let mut batches = 0;
     let mut entities = assets.staging.0.keys().copied().collect::<Vec<_>>();
     if let Some(cursor) = assets.cursor.0 {
         let first = entities.partition_point(|e| *e <= cursor);
@@ -465,36 +307,34 @@ fn upload(
     for entity in entities {
         let mut stage = assets.staging.0.remove(&entity).unwrap();
         if !editor.editor().accepts(stage.ticket) {
-            for handle in stage.owned {
-                assets.bridge.forget(&handle);
-                assets.meshes.remove(handle.id());
-            }
+            stage.upload.discard(&mut assets.meshes, &assets.bridge);
             continue;
         }
-        while let Some(&i) = stage.pending.front() {
-            let batch = &stage.mesh.batches[i];
-            let size = batch.data.positions.len() * 48 + batch.data.indices.len() * 4;
-            if batches >= assets.budget.batches_per_frame.max(1)
-                || (batches > 0 && bytes + size > assets.budget.bytes_per_frame)
-            {
-                break;
-            }
-            if size > assets.budget.bytes_per_frame {
-                assets.stats.oversized_batches += 1;
-            }
-            let handle = assets.meshes.add(to_bevy_mesh(batch));
-            assets.bridge.track(&handle);
-            stage.handles.insert(batch.id, handle.clone());
-            stage.owned.push(handle);
-            stage.pending.pop_front();
-            bytes += size;
-            batches += 1;
+        let progress = {
+            let RenderAssets {
+                meshes,
+                bridge,
+                budget,
+                ledger,
+                ..
+            } = &mut assets;
+            stage.upload.advance(
+                stage.mesh.as_ref(),
+                &mut UploadContext {
+                    meshes,
+                    bridge,
+                    budget: **budget,
+                    ledger,
+                },
+            )
+        };
+        if progress.batches > 0 {
             assets.cursor.0 = Some(entity);
-            assets.stats.uploaded_bytes += size as u64;
         }
-        // One building is a conservative consistency group. This can later be
-        // split by independent dependency islands without changing chunk IDs.
-        if !stage.pending.is_empty() || stage.handles.values().any(|h| !assets.bridge.ready(h)) {
+        assets.stats.uploaded_bytes += progress.bytes as u64;
+        assets.stats.oversized_batches += progress.oversized as u64;
+        // 单栋是当前的一致性组；公共层只检查资源，不决定发布时机。
+        if !stage.upload.ready(&assets.bridge) {
             assets.staging.0.insert(entity, stage);
             continue;
         }
@@ -510,6 +350,27 @@ fn upload(
             && time.is_some()
             && assets.transitions.duration.is_finite()
             && assets.transitions.duration > 0.;
+        let changes_parts = assets.residency.0.get(&entity).is_some_and(|r| {
+            r.parts.len() != stage.mesh.batches.len()
+                || stage.mesh.batches.iter().enumerate().any(|(i, b)| {
+                    r.parts.get(&b.id).is_none_or(|p| {
+                        p.handle != stage.upload.handles[&i] || p.offset != b.offset
+                    })
+                })
+        });
+        if !fade_enabled || !changes_parts {
+            if let Some(groups) = &mut assets.groups {
+                groups.building_ready(stage.ticket.object_revision, stage.ticket.building);
+            }
+            if assets
+                .groups
+                .as_ref()
+                .is_some_and(|g| !g.ready(stage.ticket.object_revision))
+            {
+                assets.staging.0.insert(entity, stage);
+                continue;
+            }
+        }
         let mut old_materials = BTreeMap::new();
         let mut next_materials = BTreeMap::new();
         let mut retired = Vec::new();
@@ -521,8 +382,8 @@ fn upload(
             parts: BTreeMap::new(),
             triangles: stage.mesh.triangles(),
         };
-        for batch in &stage.mesh.batches {
-            let handle = stage.handles.remove(&batch.id).unwrap();
+        for (i, batch) in stage.mesh.batches.iter().enumerate() {
+            let handle = stage.upload.handles.remove(&i).unwrap();
             let previous = old.as_mut().and_then(|old| old.parts.remove(&batch.id));
             let same = previous.as_ref().is_some_and(|old| old.handle == handle)
                 && previous_display
@@ -558,8 +419,7 @@ fn upload(
                 child
             } else if let Some(previous) = previous {
                 if previous.handle != handle {
-                    assets.bridge.forget(&previous.handle);
-                    assets.meshes.remove(previous.handle.id());
+                    release_mesh(&mut assets.meshes, &assets.bridge, &previous.handle);
                 }
                 commands.entity(previous.child).insert((
                     Mesh3d(handle.clone()),
@@ -603,8 +463,7 @@ fn upload(
                     retired.push(part);
                 } else {
                     commands.entity(part.child).despawn();
-                    assets.bridge.forget(&part.handle);
-                    assets.meshes.remove(part.handle.id());
+                    release_mesh(&mut assets.meshes, &assets.bridge, &part.handle);
                 }
             }
         }
@@ -629,15 +488,12 @@ fn upload(
             assets.fades.0.insert(
                 entity,
                 Fade {
-                    elapsed: 0.,
-                    age: 0.,
-                    started: false,
+                    handoff: crate::handoff::CoherentHandoff::default(),
                     next: next_display,
                     retired,
                     old_materials,
                     next_materials,
                     restore,
-                    switched: false,
                     warmups,
                     baseline: baseline.expect("only existing buildings fade"),
                 },

@@ -1,5 +1,10 @@
 //! Bevy orchestration only. Domain authority stays in Editor, projection is disposable.
+pub mod context;
+pub mod slots;
+use slots::{GenerationSlot, GenerationSlots};
 pub mod prepare;
+pub mod strokes;
+use context::{ContextCommitWork, ContextProjection};
 pub mod transition;
 use bevy_app::{App, Plugin, TaskPoolPlugin, Update};
 use bevy_ecs::prelude::*;
@@ -151,6 +156,9 @@ impl Plugin for GardenPlugin {
                 Update,
                 (GardenSet::Commit, GardenSet::Collect, GardenSet::Dispatch).chain(),
             )
+            .init_resource::<ContextProjection>()
+            .init_resource::<ContextCommitWork>()
+            .insert_resource(GenerationSlots::new(self.settings.max_jobs))
             .add_systems(Update, commit.in_set(GardenSet::Commit))
             .add_systems(Update, collect.in_set(GardenSet::Collect))
             .add_systems(Update, dispatch.in_set(GardenSet::Dispatch));
@@ -220,13 +228,14 @@ struct ArtCompiler(Option<Arc<dyn ProjectionCompiler>>);
 /// build request wait seconds for its turn while the mesh math itself takes
 /// milliseconds, so generation owns its threads instead.
 #[derive(Resource)]
-struct GenerationPool(TaskPool);
+pub struct GenerationPool(pub TaskPool);
 struct Completed {
     ticket: JobTicket,
     layout: BuildingLayout,
     mesh: Result<PreparedBuilding, MeshError>,
 }
 struct Running {
+    _slot: GenerationSlot,
     ticket: JobTicket,
     cancel: Cancellation,
     task: Task<Completed>,
@@ -247,6 +256,9 @@ pub struct PendingTarget {
 impl PendingTargets {
     pub fn get(&self, id: BuildingId) -> Option<&PendingTarget> {
         self.0.get(&id)
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
     pub fn displayed(&mut self, ticket: JobTicket) {
         if self
@@ -344,6 +356,20 @@ impl GenerationFailures {
     }
 }
 
+#[derive(SystemParam)]
+struct ContextRuntime<'w> {
+    context: ResMut<'w, ContextProjection>,
+    semantic_work: ResMut<'w, ContextCommitWork>,
+    slots: Res<'w, GenerationSlots>,
+    publication: Option<ResMut<'w, context::PublicationGroups>>,
+    pool: Res<'w, GenerationPool>,
+}
+#[derive(SystemParam)]
+struct WorkerInputs<'w> {
+    context: Res<'w, ContextProjection>,
+    slots: Res<'w, GenerationSlots>,
+    pool: Res<'w, GenerationPool>,
+}
 fn commit(
     mut projections: ProjectionWriter,
     mut editor: ResMut<EditorState>,
@@ -351,7 +377,24 @@ fn commit(
     mut feedback: ResMut<EditFeedback>,
     budget: Res<WorkBudget>,
     work: GenerationWork,
+    runtime: ContextRuntime,
 ) {
+    let ContextRuntime {
+        mut context,
+        mut semantic_work,
+        slots,
+        mut publication,
+        pool,
+    } = runtime;
+    semantic_work
+        .retired
+        .retain_mut(|(task, _)| check_ready(task).is_none());
+    if matches!(inbox.queue.front(), Some(Operation::ReplaceScene(_))) {
+        if let Some(job) = semantic_work.running.take() {
+            semantic_work.retired.push(job);
+        }
+        context.busy = false;
+    }
     let GenerationWork {
         mut jobs,
         mut cache,
@@ -361,26 +404,100 @@ fn commit(
         if feedback.queue.len() == feedback.capacity {
             break;
         }
-        let Some(operation) = inbox.queue.pop_front() else {
-            break;
+        // 语义工作占用真实池槽位，完成前不越过它执行后续操作。
+        let prepared = if let Some((task, _slot)) = &mut semantic_work.running {
+            let Some((candidate, resolved, parsed_cache)) = check_ready(task) else {
+                break;
+            };
+            semantic_work.running = None;
+            context.busy = false;
+            Some((candidate, resolved, parsed_cache))
+        } else {
+            None
         };
-        let invalidated = match &operation {
-            Operation::Invalidate(id) => Some(*id),
+        let operation = if prepared.is_some() {
+            None
+        } else {
+            inbox.queue.pop_front()
+        };
+        if prepared.is_none() && operation.is_none() {
+            break;
+        }
+        let contextual=operation.as_ref().is_some_and(|op|matches!(op,Operation::Edit(edit)
+            if matches!(edit,EditCommand::Context(_)|EditCommand::Stroke(_)) || editor.0.has_context_history(edit)
+                || editor.0.strokes().next().is_some() || !editor.0.context().linear.is_empty() || !editor.0.context().openings.is_empty() || !editor.0.context().terrain.tiles.is_empty()));
+        if contextual {
+            let operation = operation.unwrap();
+            let Some(slot) = slots.try_acquire() else {
+                inbox.queue.push_front(operation);
+                break;
+            };
+            let Operation::Edit(edit) = operation else {
+                unreachable!()
+            };
+            match editor.0.prepare(edit) {
+                Ok(candidate) => {
+                    let snapshot = context::input(candidate.snapshot.clone());
+                    context.busy = true;
+                    let mut parsed_cache = context.cache.clone();
+                    semantic_work.running = Some((
+                        pool.0.spawn(async move {
+                            let resolved = garden_generation::context::resolve_cached(
+                                &snapshot,
+                                &mut parsed_cache,
+                            );
+                            (candidate, resolved, parsed_cache)
+                        }),
+                        slot,
+                    ));
+                    break;
+                }
+                Err(error) => {
+                    feedback.queue.push_back(Outcome { result: Err(error) });
+                    continue;
+                }
+            }
+        }
+        let invalidated = match operation.as_ref() {
+            Some(Operation::Invalidate(id)) => Some(*id),
             _ => None,
         };
-        let replacing = matches!(&operation, Operation::ReplaceScene(_));
-        let result = match operation {
-            Operation::Edit(edit) => editor.0.execute(edit),
-            Operation::Invalidate(id) => editor.0.invalidate(id).map(|()| None),
-            Operation::ReplaceScene(buildings) => editor.0.replace_scene(buildings).map(|()| {
-                projections.clear();
-                cache.0.clear();
-                pending.0.clear();
-                for job in &jobs.0 {
-                    job.cancel.cancel();
-                }
-                None
-            }),
+        let replacing = matches!(operation.as_ref(), Some(Operation::ReplaceScene(_)));
+        let parsed = prepared.is_some();
+        let result = if let Some((candidate, resolved, parsed_cache)) = prepared {
+            editor
+                .0
+                .commit_prepared(candidate, resolved.decisions.clone())
+                .map(|changes| {
+                    context.cache = parsed_cache;
+                    context.revision = editor.0.world_revision();
+                    Arc::make_mut(&mut context.parts).update(&resolved);
+                    context.semantic = Arc::new(resolved);
+                    for object in &changes.objects {
+                        if let garden_application::context::ObjectRef::Building(id) = object
+                            && editor.0.get(*id).is_none()
+                        {
+                            projections.remove(*id);
+                            cache.0.remove(id);
+                            pending.0.remove(id);
+                        }
+                    }
+                    None
+                })
+        } else {
+            match operation.expect("已确认存在待执行操作") {
+                Operation::Edit(edit) => editor.0.execute(edit),
+                Operation::Invalidate(id) => editor.0.invalidate(id).map(|()| None),
+                Operation::ReplaceScene(buildings) => editor.0.replace_scene(buildings).map(|()| {
+                    projections.clear();
+                    cache.0.clear();
+                    pending.0.clear();
+                    for job in &jobs.0 {
+                        job.cancel.cancel();
+                    }
+                    None
+                }),
+            }
         };
         if let Ok(Some(change)) = &result
             && change.after.is_none()
@@ -390,6 +507,24 @@ fn commit(
             pending.0.remove(&change.building);
         }
         if result.is_ok() {
+            if !parsed {
+                context.refresh(&editor.0);
+            }
+            let changes = editor.0.last_change_set();
+            if changes.revision > 0
+                && let Some(groups) = &mut publication
+            {
+                groups.begin(
+                    changes.revision,
+                    changes.objects.iter().filter_map(|o| {
+                        if let garden_application::context::ObjectRef::Building(id) = o {
+                            editor.0.get(*id).map(|_| *id)
+                        } else {
+                            None
+                        }
+                    }),
+                );
+            }
             let ids = if replacing {
                 editor.0.objects().map(|b| b.id()).collect::<Vec<_>>()
             } else {
@@ -401,7 +536,23 @@ fn commit(
                     .into_iter()
                     .collect()
             };
+            let ids = ids
+                .into_iter()
+                .chain(editor.0.last_change_set().objects.iter().filter_map(|o| {
+                    if let garden_application::context::ObjectRef::Building(id) = o {
+                        Some(*id)
+                    } else {
+                        None
+                    }
+                }))
+                .collect::<BTreeSet<_>>();
             for id in ids {
+                if editor.0.get(id).is_none() {
+                    projections.remove(id);
+                    cache.0.remove(&id);
+                    pending.0.remove(&id);
+                }
+
                 if let (Some(ticket), Some(building)) =
                     (editor.0.latest_ticket(id), editor.0.get(id))
                 {
@@ -491,9 +642,14 @@ fn dispatch(
     mut stats: ResMut<PipelineStats>,
     profile: Res<GenerationProfile>,
     compiler: Res<ArtCompiler>,
-    pool: Res<GenerationPool>,
+    inputs: WorkerInputs,
     work: GenerationWork,
 ) {
+    let WorkerInputs {
+        pool,
+        context,
+        slots,
+    } = inputs;
     let GenerationWork {
         mut jobs, cache, ..
     } = work;
@@ -503,15 +659,20 @@ fn dispatch(
         .iter()
         .map(|job| job.ticket.building)
         .collect::<BTreeSet<_>>();
-    for BuildRequest { ticket, snapshot } in editor
+    let leases = (0..available)
+        .filter_map(|_| slots.try_acquire())
+        .collect::<Vec<_>>();
+    let requests = editor
         .0
-        .take_requests_where(available, |id| !busy.contains(&id))
-    {
+        .take_requests_where(leases.len(), |id| !busy.contains(&id));
+    for (BuildRequest { ticket, snapshot }, slot) in requests.into_iter().zip(leases) {
         let profile = profile.0;
         let compiler = compiler.0.clone();
         let baseline = cache.0.get(&ticket.building).cloned();
         let cancel = Cancellation::default();
         let worker_cancel = cancel.clone();
+        let parts = context.parts.clone();
+        let context = context.semantic.clone();
         let task = pool.0.spawn(async move {
             let mut layout = if worker_cancel.is_cancelled() {
                 BuildingLayout {
@@ -522,6 +683,7 @@ fn dispatch(
             } else {
                 compile(&snapshot)
             };
+            garden_generation::context::apply_layout_with_parts(&mut layout, &context, &parts);
             let mesh = worker_cancel.check().and_then(|()| {
                 let mut mesh = if let Some(compiler) = compiler {
                     compiler.compile_parts(
@@ -548,6 +710,7 @@ fn dispatch(
             }
         });
         jobs.0.push(Running {
+            _slot: slot,
             ticket,
             cancel,
             task,
@@ -909,7 +1072,13 @@ mod tests {
                     mesh: old_mesh,
                 }
             });
+        let slot = app
+            .world()
+            .resource::<GenerationSlots>()
+            .try_acquire()
+            .unwrap();
         app.world_mut().resource_mut::<Jobs>().0.push(Running {
+            _slot: slot,
             ticket: old_ticket,
             cancel: Cancellation::default(),
             task: stale,

@@ -49,7 +49,16 @@ pub fn controls(
     block: BlockId,
     tool: Tool,
 ) -> Vec<Control> {
-    if matches!(tool, Tool::Build | Tool::Move | Tool::MoveBlock | Tool::Pan) {
+    if matches!(
+        tool,
+        Tool::Build
+            | Tool::Move
+            | Tool::MoveBlock
+            | Tool::Pan
+            | Tool::Wall
+            | Tool::Path
+            | Tool::StrokeSelect
+    ) {
         return Vec::new();
     }
     let Some(b) = layout.blocks.iter().find(|b| b.block == block) else {

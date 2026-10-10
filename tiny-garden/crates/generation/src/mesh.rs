@@ -1,4 +1,5 @@
 //! Pure, meter-based mesh compilation. No Bevy types or GPU resources.
+use crate::structure::{RoofInput, RoofRule, StructureRule};
 use crate::{BlockLayout, BuildingLayout, Face};
 use garden_domain::{Facade, Roof};
 use garden_geometry::Rect;
@@ -481,35 +482,23 @@ fn roof(b: &mut Builder, block: &BlockLayout, p: GeometryProfile) {
         }
         return;
     }
-    let along_z = r.depth >= r.width;
-    let (u0, u1, v0, v1) = if along_z {
-        (
-            r.x - p.eave,
-            r.right() + p.eave,
-            r.z - p.eave,
-            r.back() + p.eave,
-        )
-    } else {
-        (
-            r.z - p.eave,
-            r.back() + p.eave,
-            r.x - p.eave,
-            r.right() + p.eave,
-        )
-    };
-    let to_world = |u: f64, h: f64, v: f64| if along_z { [u, h, v] } else { [v, h, u] };
-    let half = (u1 - u0) / 2.0;
-    let center = (u0 + u1) / 2.0;
-    let rise = (half * p.roof_pitch_degrees.to_radians().tan()).min(p.max_roof_rise);
+    let structure = RoofRule.resolve(&RoofInput {
+        footprint: r,
+        kind: block.effective_roof,
+        profile: p,
+    });
+    let along_z = structure.along_z;
+    let [u0, u1] = structure.u;
+    let [v0, v1] = structure.v;
+    let half = structure.width() / 2.;
+    let center = (u0 + u1) / 2.;
+    let rise = structure.rise;
+    let to_world = |u, h, v| structure.point(u, h, v);
     let a = to_world(u0, y, v0);
     let c = to_world(u1, y, v1);
     let d = to_world(u0, y, v1);
     let q = to_world(u1, y, v0);
-    let (start, end) = if block.effective_roof == Roof::Gabled {
-        (v0, v1)
-    } else {
-        (v0 + half, v1 - half)
-    };
+    let [start, end] = structure.ridge;
     let e = to_world(center, y + rise, start);
     let f = to_world(center, y + rise, end);
     if (end - start).abs() < 1e-9 {

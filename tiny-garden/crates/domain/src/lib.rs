@@ -1,4 +1,7 @@
 //! Authoritative architectural intent. No Bevy, rendering handles, or OS services.
+pub mod context;
+pub mod strokes;
+pub mod terrain;
 use garden_geometry::Rect;
 use std::{
     collections::{BTreeMap, BTreeSet},
