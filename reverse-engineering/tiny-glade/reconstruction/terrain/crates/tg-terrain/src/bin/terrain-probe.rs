@@ -32,7 +32,20 @@ fn run(line: &str) -> Result<String, String> {
             let audio = out.audio.iter().map(|a| format!("{}:{:08x}", a.tag, a.magnitude.to_bits())).collect::<Vec<_>>().join(",");
             Ok(format!("{:08x} {:08x} {}", out.state.falloff.to_bits(), out.state.height.to_bits(), audio))
         }
-        _ => Err("expected replay or edit input".into()),
+        Some("points") if fields.len() >= 5 && (fields.len() - 5) % 3 == 0 => {
+            let point = [value(fields[1])?, value(fields[2])?, value(fields[3])?];
+            let mut stroke = tg_terrain::stroke::TerrainStroke {
+                points: fields[5..].chunks_exact(3).map(|p| Ok([value(p[0])?, value(p[1])?, value(p[2])?])).collect::<Result<Vec<_>, String>>()?,
+                falloff: 0.4, index: StrokeId(0), height_ws: 2.5,
+            };
+            stroke.insert_or_morph_last_point(point, value(fields[4])?);
+            let mut output = format!("{}", stroke.points.len());
+            for p in &stroke.points {
+                for coordinate in p { output.push_str(&format!(" {:08x}", coordinate.to_bits())); }
+            }
+            Ok(output)
+        }
+        _ => Err("expected replay, edit or points input".into()),
     }
 }
 fn main() {
