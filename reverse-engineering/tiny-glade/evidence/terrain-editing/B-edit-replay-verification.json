@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "case_count": 512,
+  "failure_count": 0,
+  "failures": [],
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "baseline": "B",
+  "target_execution": false,
+  "original_instructions_emulated": true,
+  "functions": [
+    "0x1408592d0",
+    "0x140858d30"
+  ],
+  "scope": "Only EditTerrainStroke branch, original function entry through return; finite f32 interpolation/changed flags/event payload and preallocated writer len/id/change tick. No engine/container calls.",
+  "excluded": [
+    "New/Move branches",
+    "NaN/Inf",
+    "ECS resource resolution",
+    "queue growth",
+    "GPU",
+    "system schedule",
+    "full undo/redo transaction",
+    "A/C equivalence"
+  ],
+  "candidate_model": "f32 operation-ordered interpolation checked against original instructions, not a delivered Rust implementation"
+}

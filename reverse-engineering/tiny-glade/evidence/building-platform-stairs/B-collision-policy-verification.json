@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "cases": 512,
+  "outcome_counts": {
+    "0": 47,
+    "2": 180,
+    "1": 285
+  },
+  "failures": [],
+  "original_tag7_eq_jump": "0x1408cea79",
+  "scope": "Resolved outer-map presence and original get_collider pose output -> actual original141245ade..141245c94/141246026 ordered pose gate -> full originalMesh::eq1408cea30(tag7). Includes signedzero/nonfinite quaternion/translation, missing oldpose, different wall IDs and fingerprints. Tag7 original jump table compares source+8 WallId despite patched Ghidra C claiming unitlike variant. Original map/physics acquisition, dependency insertion/removal, dirtyAABB cells and ColliderDiff lifecycle are outside this numeric/action proof and require real backend integration. Absent outer-map insert follows static originalbranch; no map implementation is reconstructed.",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "candidate_binary_sha256": "b1fc9ae5aa97642f214f4b6f2fcdf0e064e5d62cb6e987d049d5a931e6b927c1",
+  "candidate_sources": {
+    "reconstruction/building/wall_platform_collision.rs": "e546dd6386e8a904d45bc3e89e3ab4d494ca56fe85d7c57b078221d29bd179bd",
+    "reconstruction/src/bin/wall-platform-collider-probe.rs": "c371490bdb922a126f54897a8bb69d5cb322581e895ec69de6b8ad134a954e26",
+    "reconstruction/building/wall_platform_stairs.rs": "8299cbcdd1a23b4baab47ede95bc43ddd14cbb27ee95b2cc71a8a999e41f8621",
+    "reconstruction/building/wall_state.rs": "3ac4555841032f8347e1d28da60be7260eead44ae7408c8de265169ce269cf4d",
+    "reconstruction/Cargo.toml": "28ddfaa50fe70e4d1e8b905d36be083b555311c19279c35c7c9db01df85fb2c9",
+    "reconstruction/Cargo.lock": "3eab07aab23a5f89668930b00ab36d1b2eaf46c52efd1777dbfd456069577ebc"
+  },
+  "oracle_sources": {
+    "scripts/multi-version/verify_wall_platform_collision_policy.py": "286df9849c21ef3f47d8177d3ae0f31a6a8b62ba1b8c586722a084aceccb9465",
+    "evidence/building-platform-stairs/native_platform_collision_policy.py": "6e6b922573a3df525c2569365f674f429a5a48b677f968b637f9fb9ade721efd",
+    "evidence/building-platform-stairs/native_platform_collision_hash.py": "d984b9c999ff32948b29aed983500bab14f399dce27deda8b1927ffdb11c9812",
+    "evidence/building-constructor/native_fixture.py": "3a1d9654cbb346ed458185543ea30778b147e2b658a0301cd59e5ea9b73eec1e"
+  }
+}

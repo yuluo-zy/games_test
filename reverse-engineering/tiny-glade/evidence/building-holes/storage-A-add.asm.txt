@@ -1,0 +1,31 @@
+140629a00 push rsi
+140629a01 push rdi
+140629a02 push rbx
+140629a03 sub rsp, 0x40
+140629a07 mov ebx, r8d
+140629a0a mov rdi, rdx
+140629a0d mov rsi, rcx
+140629a10 movups xmm0, xmmword ptr [rdx]
+140629a13 movaps xmmword ptr [rsp + 0x20], xmm0
+140629a18 mov byte ptr [rsp + 0x30], r8b
+140629a1d lea rcx, [rsp + 0x20]
+140629a22 call 0x1406c14a0
+140629a27 add qword ptr [rsi + 0x38], rax
+140629a2b xor qword ptr [rsi + 0x40], rax
+140629a2f mov rdx, qword ptr [rsi + 0x10]
+140629a33 cmp rdx, qword ptr [rsi]
+140629a36 jne 0x140629a44
+140629a38 mov rcx, rsi
+140629a3b call 0x140279dc0
+140629a40 mov rdx, qword ptr [rsi + 0x10]
+140629a44 mov rax, qword ptr [rsi + 8]
+140629a48 lea rcx, [rdx + rdx*4]
+140629a4c movups xmm0, xmmword ptr [rdi]
+140629a4f movups xmmword ptr [rax + rcx*4], xmm0
+140629a53 mov byte ptr [rax + rcx*4 + 0x10], bl
+140629a57 inc qword ptr [rsi + 0x10]
+140629a5b add rsp, 0x40
+140629a5f pop rbx
+140629a60 pop rdi
+140629a61 pop rsi
+140629a62 ret 

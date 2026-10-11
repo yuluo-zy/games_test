@@ -1,11 +1,13 @@
 """以原始 RNE 指令验证 Roof 状态函数；不运行游戏，不推测字段名。"""
 from pathlib import Path
-import struct, json, hashlib, random, subprocess
+import struct, json, hashlib, random, subprocess, shutil, platform
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_64
 from unicorn.x86_const import *
 
-root = Path('D:/game/reverse-engineering/tiny-glade')
-raw = Path('D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne').read_bytes()
+root = Path(__file__).resolve().parents[1]
+identity = json.loads((root/'tracking/baselines.json').read_text())['baselines']['B']
+raw = Path(identity['binary']['path']).read_bytes()
+assert hashlib.sha256(raw).hexdigest() == identity['binary']['sha256']
 pe = struct.unpack_from('<I', raw, 0x3c)[0]
 section_count = struct.unpack_from('<H', raw, pe+6)[0]
 optional_size = struct.unpack_from('<H', raw, pe+20)[0]
@@ -81,16 +83,18 @@ for _ in range(new_cases):
     expected.append(bytes(cpu.mem_read(data,0x58)).hex())
 
 binary = root/'workspace/roof-state-reconstructed.exe'
-subprocess.run(['C:/Users/liyu/.cargo/bin/rustc.exe','-O',str(root/'reconstruction/roof/roof_state.rs'),'-o',str(binary)],check=True)
+binary.parent.mkdir(parents=True,exist_ok=True)
+subprocess.run([shutil.which('rustc'),'-O',str(root/'reconstruction/roof/roof_state.rs'),'-o',str(binary)],check=True)
 result = subprocess.run([str(binary)],input='\n'.join(lines)+'\n',capture_output=True,text=True,check=True)
 actual = result.stdout.splitlines()
 failures = [{'case':i,'input':lines[i],'original':a,'candidate':b} for i,(a,b) in enumerate(zip(expected,actual)) if a!=b]
 for name,va,size,count in [('Roof::new',0x1408e31c0,89,new_cases),('Roof::ty',0x1408e3250,16,len(cases)),('Roof::is_gable',0x1408e33b0,44,len(cases))]:
     report['functions'].append({'name':name,'va':hex(va),'size':size,'machine_code_hex':bytes_at(va,size).hex(),'cases':count})
 report.update(ok=len(actual)==len(expected) and not failures and return_pointer_ok, failures=failures,
+              candidate_host=platform.platform(), candidate_source_sha256=hashlib.sha256((root/'reconstruction/roof/roof_state.rs').read_bytes()).hexdigest(),
               constructor_return_pointer_ok=return_pointer_ok,predicate_pair_cases=len(cases),constructor_cases=new_cases,
               nan_behavior={'ty':'unordered sets CF, so NaN returns true','is_gable':'NaN in +0x30 passes CMPNLE; NaN in +0x34 fails equality'})
-(root/'evidence/native/roof-state-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+(root/'evidence/multi-version/B-roof-state-host-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps({'ok':report['ok'],'predicate_pairs':len(cases),'constructor_cases':new_cases,'failures':len(failures),'constants':report['constants']}))
 if not report['ok']:
     raise SystemExit(1)

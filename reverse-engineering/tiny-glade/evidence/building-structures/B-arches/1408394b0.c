@@ -1,0 +1,29 @@
+
+void __cdecl country_core::resources::walls::decorator::DecoratorExtraInfo::as_stair(void)
+
+{
+  longlong in_RCX;
+  undefined1 local_48 [8];
+  undefined1 *local_40;
+  code *local_38;
+  undefined **local_30;
+  undefined8 local_28;
+  undefined1 **local_20;
+  undefined8 local_18;
+  undefined8 local_10;
+  
+  if ((*(byte *)(in_RCX + 0x11) | 0xf8) < 0xfa) {
+    return;
+  }
+  local_40 = local_48;
+  local_38 = core::fmt::impl$74::
+             fmt<enum2_<country_core::resources::walls::decorator::DecoratorExtraInfo>_>;
+  local_30 = &anon_03891170661cff6f447a90196a76d89b_97_llvm_10311377136338234151;
+  local_28 = 1;
+  local_10 = 0;
+  local_20 = &local_40;
+  local_18 = 1;
+                    /* WARNING: Subroutine does not return */
+  core::panicking::panic_fmt();
+}
+

@@ -1,0 +1,477 @@
+{
+  "database": "/Users/yuluo/Desktop/game/tools/ghidra-projects/TinyGlade.gpr",
+  "program": "tiny-glade.exe",
+  "writable": false,
+  "domain_api": "getReadOnlyDomainObject",
+  "auto_analysis": false,
+  "target_execution": false,
+  "results": [
+    {
+      "va": "0x1416fb100",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "country_core::systems::camera_rig::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>_>",
+      "body_bytes": 332,
+      "incoming_refs": [
+        {
+          "from": "143713dfc",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "14158bc64",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "14158bb30",
+          "caller": "serde::ser::SerializeMap::serialize_entry<enum2$<serde_json::ser::Compound<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>,str$,country_core::systems::camera_rig::CameraRigParametersCache>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141583370",
+          "name": "serde::ser::SerializeMap::serialize_entry<enum2$<serde_json::ser::Compound<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>,str$,f32>"
+        },
+        {
+          "va": "140a44bb0",
+          "name": "serde_json::ser::impl$9::end<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>"
+        },
+        {
+          "va": "1415893a0",
+          "name": "serde::ser::SerializeMap::serialize_entry<enum2$<serde_json::ser::Compound<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>,str$,array$<f32,3>_>"
+        },
+        {
+          "va": "1428a9a60",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x1416fb250",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "country_core::systems::camera_rig::_::impl$0::serialize<serde_json::value::ser::Serializer>",
+      "body_bytes": 383,
+      "incoming_refs": [
+        {
+          "from": "143713e08",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "141750e0c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "141750c90",
+          "caller": "country_core::systems::save::save_game::save_game_to_file<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>,core::slice::iter::Iter<country_core::resources::history::MultiEdit>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141595a20",
+          "name": "serde_json::value::ser::impl$8::serialize_field<f32>"
+        },
+        {
+          "va": "141592440",
+          "name": "serde_json::value::ser::impl$8::serialize_field<array$<f32,3>_>"
+        },
+        {
+          "va": "140898f40",
+          "name": "core::ptr::drop_in_place<serde_json::map::Map<alloc::string::String,enum2$<serde_json::value::Value>_>_>"
+        },
+        {
+          "va": "140b864c0",
+          "name": "serde_json::value::ser::impl$6::end"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140072a30",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "serde_json::de::impl$7::deserialize_struct<serde_json::read::StrRead,country_core::systems::camera_rig::_::impl$0::deserialize::__Visitor>",
+      "body_bytes": 1961,
+      "incoming_refs": [
+        {
+          "from": "14363f4f8",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "14005d587",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "14005d480",
+          "caller": "serde_json::de::impl$9::next_element_seed<serde_json::read::StrRead,core::marker::PhantomData<country_core::systems::camera_rig::CameraRigParametersCache>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "1428a0920",
+          "name": "serde_json::de::Deserializer::peek_error<serde_json::read::StrRead>"
+        },
+        {
+          "va": "1403b5ba0",
+          "name": "country_core::systems::camera_rig::_::impl$0::deserialize::impl$0::visit_str<serde_json::error::Error>"
+        },
+        {
+          "va": "1400584f0",
+          "name": "serde_json::de::Deserializer::end_seq<serde_json::read::SliceRead>"
+        },
+        {
+          "va": "1400653d0",
+          "name": "serde_json::de::impl$7::deserialize_tuple<serde_json::read::StrRead,serde::de::impls::ArrayVisitor<array$<f32,3>_>_>"
+        },
+        {
+          "va": "140911e30",
+          "name": "country_core::systems::camera_rig::serde_default_vertical_fov_degrees"
+        },
+        {
+          "va": "14005e120",
+          "name": "serde_json::de::impl$9::next_element_seed<serde_json::read::StrRead,core::marker::PhantomData<f32>_>"
+        },
+        {
+          "va": "1428a2310",
+          "name": "serde::de::Error::missing_field<serde_json::error::Error>"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "140058450",
+          "name": "serde_json::de::Deserializer::end_map<serde_json::read::StrRead>"
+        },
+        {
+          "va": "140b8a910",
+          "name": "serde_json::read::impl$10::parse_str"
+        },
+        {
+          "va": "1428a2380",
+          "name": "serde::de::Error::invalid_length<serde_json::error::Error>"
+        },
+        {
+          "va": "1428a2200",
+          "name": "serde_json::error::Error::fix_position<serde_json::de::impl$5::fix_position::closure_env$0<serde_json::read::SliceRead>_>"
+        },
+        {
+          "va": "1405e7a00",
+          "name": "core::ptr::drop_in_place<std::io::error::Error>"
+        },
+        {
+          "va": "1428a09a0",
+          "name": "serde_json::de::Deserializer::peek_invalid_type<serde_json::read::StrRead>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x1409125e0",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "country_core::systems::main_camera::impl$3::build",
+      "body_bytes": 923,
+      "incoming_refs": [
+        {
+          "from": "14368c004",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "14292b460",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        }
+      ],
+      "callees": [
+        {
+          "va": "1416fe870",
+          "name": "bevy_ecs::schedule::config::IntoScheduleConfigs::run_if<void_(*)(bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::main_camera::CameraSnapshot>,bevy_ecs::change_detection::ResMut<country_core::resources::gui::DebugGui>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::main_camera::CameraSnapshot>,bevy_ecs::change_detection::ResMut<country_core::resources::gui::DebugGui>)>_>,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>)>,bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>)>"
+        },
+        {
+          "va": "142923c00",
+          "name": "memcpy"
+        },
+        {
+          "va": "1416fe600",
+          "name": "bevy_ecs::schedule::config::IntoScheduleConfigs::in_set<void_(*)(bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::main_camera::CameraSnapshot>,bevy_ecs::event::writer::EventWriter<country_core::systems::main_camera::MainCameraMoved>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::main_camera::CameraSnapshot>,bevy_ecs::event::writer::EventWriter<country_core::systems::main_camera::MainCameraMoved>)>_>,country_core::systems::GameSystemSet>"
+        },
+        {
+          "va": "141450ae0",
+          "name": "bevy_ecs::schedule::config::IntoScheduleConfigs::chain_ignore_deferred<tuple$<enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,tuple$<enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>,alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple$<>,tuple$<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple$<>,tuple$<>_>_>_>"
+        },
+        {
+          "va": "141453000",
+          "name": "bevy_ecs::schedule::config::ScheduleConfigs::in_set_inner<bevy_ecs::intern::Interned<dyn$<bevy_ecs::schedule::set::SystemSet>_>_>"
+        },
+        {
+          "va": "141545d70",
+          "name": "bevy_app::app::App::insert_resource<country_core::systems::main_camera::CameraSnapshot>"
+        },
+        {
+          "va": "14144dc80",
+          "name": "bevy_ecs::schedule::config::impl$3::run_if<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::session::NewSessionStartedCmd>)>,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::session::NewSessionStartedCmd>)>"
+        },
+        {
+          "va": "1416fea60",
+          "name": "_ZN8bevy_ecs8schedule6config19IntoScheduleConfigs6run_if17h3960b262e123b10eE"
+        },
+        {
+          "va": "1400dd6f0",
+          "name": "bevy_ecs::component::Components::get_resource_id"
+        },
+        {
+          "va": "140b218a0",
+          "name": "bevy_ecs::intern::Interner::intern<dyn$<bevy_ecs::schedule::set::SystemSet>_>"
+        },
+        {
+          "va": "141564e80",
+          "name": "bevy_ecs::schedule::condition::common_conditions::not<tuple$<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>)>,bool,bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>)>"
+        },
+        {
+          "va": "141452ef0",
+          "name": "bevy_ecs::schedule::config::ScheduleConfigs::before_inner<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>"
+        },
+        {
+          "va": "14151f980",
+          "name": "bevy_ecs::event::registry::EventRegistry::register_event<country_core::systems::main_camera::MainCameraMoved>"
+        },
+        {
+          "va": "140b67280",
+          "name": "bevy_app::sub_app::SubApp::add_systems<tuple$<>,bevy_app::main_schedule::Update,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>"
+        },
+        {
+          "va": "1416fec40",
+          "name": "bevy_ecs::schedule::config::IntoScheduleConfigs::run_if<void_(*)(bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>)>_>,tuple$<>,bevy_ecs::system::adapter_system::AdapterSystem<bevy_ecs::schedule::condition::NotMarker,bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>),bool_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_state::state::resources::State<country_core::app_loading_state::AppLoadingState>_>)>_>_>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140c97390",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "utils::camera::CameraProjectionParams::calc_matrices",
+      "body_bytes": 236,
+      "incoming_refs": [
+        {
+          "from": "1436ab6a8",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "1403b9daa",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1403b7f20",
+          "caller": "tiny_glade::rollercoaster::rollercoaster_update"
+        }
+      ],
+      "callees": [
+        {
+          "va": "142923fd0",
+          "name": "sinf"
+        },
+        {
+          "va": "142923e80",
+          "name": "cosf"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140c8ff70",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "utils::camera::impl$2::into_camera_body_matrices",
+      "body_bytes": 56,
+      "incoming_refs": [
+        {
+          "from": "1436ab360",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "1403b9d97",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1403b7f20",
+          "caller": "tiny_glade::rollercoaster::rollercoaster_update"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140c96fe0",
+          "name": "utils::camera::CameraBodyMatrices::from_position_rotation"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140c904e0",
+      "pdb_name": "selected_by_address",
+      "exact_function": true,
+      "database_name": "utils::time_continuous_lerp",
+      "body_bytes": 81,
+      "incoming_refs": [
+        {
+          "from": "1436ab3a8",
+          "type": "DATA",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "1407b63e6",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1407b5980",
+          "caller": "system_decorator::window_lights::window_lights"
+        },
+        {
+          "from": "14075c157",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "14075b810",
+          "caller": "system_wall_constructor::plaster_systems::maintain_plaster"
+        },
+        {
+          "from": "1403b8690",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1403b7f20",
+          "caller": "tiny_glade::rollercoaster::rollercoaster_update"
+        },
+        {
+          "from": "1403b87c3",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1403b7f20",
+          "caller": "tiny_glade::rollercoaster::rollercoaster_update"
+        },
+        {
+          "from": "140a72b6f",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "140a72810",
+          "caller": "country_core::systems::audio::music::music_system::music_audio_system"
+        },
+        {
+          "from": "14099463b",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "140994320",
+          "caller": "country_core::systems::camera_rig::walk::impl$2::constrain_to_be_above_terrain"
+        },
+        {
+          "from": "140a7c9a3",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "140a7c550",
+          "caller": "country_core::systems::history::replay_mode::replay_mode"
+        },
+        {
+          "from": "140ac82fd",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "140ac80e0",
+          "caller": "country_core::systems::wall::shapes::calc_shape_height::calc_shape_height"
+        },
+        {
+          "from": "141dc2806",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "141dc2740",
+          "caller": "system_critters::boids::Boid::frame_update<system_critters::fish::fish::closure_env$0>"
+        },
+        {
+          "from": "142268cae",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1422689c0",
+          "caller": "system_tree::tree_move_bend::tree_move_bend"
+        },
+        {
+          "from": "142268ccc",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "1422689c0",
+          "caller": "system_tree::tree_move_bend::tree_move_bend"
+        },
+        {
+          "from": "141dc35eb",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": "141dc3510",
+          "caller": "system_critters::boids::Boid::frame_update<system_critters::wren_boids::sim_wren_boids::closure_env$3>"
+        },
+        {
+          "from": "140794431",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "140794bc1",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "1407953b1",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "140795b3a",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "140796351",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "140796683",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "14079696b",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "140796c68",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        },
+        {
+          "from": "1407972e8",
+          "type": "UNCONDITIONAL_CALL",
+          "caller_va": null,
+          "caller": null
+        }
+      ],
+      "callees": [
+        {
+          "va": "142923ec0",
+          "name": "expf"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    }
+  ],
+  "executable_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "changed_before": false,
+  "changed_after": false,
+  "ok": true
+}

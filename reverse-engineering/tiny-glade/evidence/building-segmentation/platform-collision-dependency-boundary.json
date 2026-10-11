@@ -1,0 +1,112 @@
+{
+  "scope": "Next RaycastWorld owner only. Underlying spatial algorithms/storage are reuse boundaries; game WallId/tag7 selection and collider replacement/removal require original private caller/owner evidence.",
+  "packages": [
+    {
+      "name": "bvh",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "version": "0.10.0",
+      "versions": {
+        "C": {
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.10.0",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "obvhs",
+      "source": "git+https://github.com/h3r2tic/obvhs.git?rev=095a626f11b78a0b2bda3f28f4e7e35dac4e4378#095a626f11b78a0b2bda3f28f4e7e35dac4e4378",
+      "version": "0.1.0",
+      "versions": {
+        "C": {
+          "source": "git+https://github.com/h3r2tic/obvhs.git?rev=095a626f11b78a0b2bda3f28f4e7e35dac4e4378#095a626f11b78a0b2bda3f28f4e7e35dac4e4378",
+          "version": "0.1.0",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "obvhs",
+      "source": "git+https://github.com/h3r2tic/obvhs.git?rev=a3f3b3bfad18f3dce0b0505a927200b3575477d0#a3f3b3bfad18f3dce0b0505a927200b3575477d0",
+      "version": "0.1.0",
+      "versions": {
+        "B": {
+          "source": "git+https://github.com/h3r2tic/obvhs.git?rev=a3f3b3bfad18f3dce0b0505a927200b3575477d0#a3f3b3bfad18f3dce0b0505a927200b3575477d0",
+          "version": "0.1.0",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "parry3d",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "version": "0.17.0",
+      "versions": {
+        "B": {
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.17.0",
+          "policy": "dependency_reuse"
+        },
+        "C": {
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "0.17.0",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "rapier3d",
+      "source": "git+https://github.com/PounceLight/rapier.git?rev=7b5ece73c45a4d39bb983c48c283e773d7241050#7b5ece73c45a4d39bb983c48c283e773d7241050",
+      "version": "0.22.0",
+      "versions": {
+        "B": {
+          "source": "git+https://github.com/PounceLight/rapier.git?rev=7b5ece73c45a4d39bb983c48c283e773d7241050#7b5ece73c45a4d39bb983c48c283e773d7241050",
+          "version": "0.22.0",
+          "policy": "dependency_reuse"
+        },
+        "C": {
+          "source": "git+https://github.com/PounceLight/rapier.git?rev=7b5ece73c45a4d39bb983c48c283e773d7241050#7b5ece73c45a4d39bb983c48c283e773d7241050",
+          "version": "0.22.0",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "slotmap",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "version": "1.0.6",
+      "versions": {
+        "B": {
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.0.6",
+          "policy": "dependency_reuse"
+        }
+      }
+    },
+    {
+      "name": "slotmap",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "version": "1.1.1",
+      "versions": {
+        "C": {
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.1.1",
+          "policy": "dependency_reuse"
+        }
+      }
+    }
+  ],
+  "business_callers": {
+    "new_indexed": "0x1407772c3 -> 0x1408cee40",
+    "mesh_key_tag7_wall_id": "0x14077736f..0x140777391 -> 0x1408ceb10",
+    "identity_upsert": "0x140777396..0x1407773e9 -> 0x1412453c0",
+    "remove_on_empty": "0x1407771d2/0x140777429 -> 0x141245220"
+  },
+  "static_source": "evidence/building-segmentation/B-platform-constructor/1407744d0.asm.txt",
+  "not_proved": [
+    "Original BVH insertion/query semantics",
+    "manual stairs80B producer",
+    "C changed stair implementation"
+  ],
+  "source_owner_map": "evidence/building-platform-stairs/three-version-collision-owner-map.json"
+}

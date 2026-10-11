@@ -1,0 +1,33 @@
+{
+  "baseline": "B",
+  "scope": "static authoritative source field to recovered publication extra argument mapping; not height authority write execution",
+  "source_evidence": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/building-holes/B-publisher/140a8b530.asm.txt",
+  "source_base_policy": "HashMap current source end pointer RAX = source+0x70; raw Vec points ptr -0x68/count -0x60, Curve2 length -0x40, kind -0x38 corroborate base",
+  "fields": {
+    "RawWallPublicationSource.extra": {
+      "source_offset": "0x54",
+      "read": "0x140a8ce5f",
+      "consumer": [
+        "0x140a8d8ae",
+        "0x140a8d8b3"
+      ],
+      "meaning": "source elevation/height scalar entering relative terrain low/high clamp; final label pending authority consumer"
+    },
+    "terrain_floor": {
+      "source_offset": "0x58",
+      "read": "resample/remap confirmed previously"
+    }
+  },
+  "instructions": [
+    "140a8cb8e MOV RDI,qword ptr [RAX + -0x60]",
+    "140a8cbcd MOV RSI,qword ptr [RAX + -0x68]",
+    "140a8cc7a MOV RSI,qword ptr [RAX + -0x50]",
+    "140a8cce4 MOVD XMM7,dword ptr [RAX + -0x40]",
+    "140a8cd30 MOV EAX,dword ptr [RAX + -0x38]",
+    "140a8ce5f MOVSS XMM12,dword ptr [RAX + -0x1c]",
+    "140a8d8ae MAXSS XMM3,XMM12",
+    "140a8d8b3 MINSS XMM2,XMM3",
+    "140a8d90c MOVSS dword ptr [RBP + 0x784],XMM2"
+  ],
+  "remaining": "Execute update_wall_state_height 14085ad60 actual resolved branch and confirm source+54 write/tick/dirty policy before World height authority integration"
+}

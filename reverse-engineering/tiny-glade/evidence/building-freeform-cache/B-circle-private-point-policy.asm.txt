@@ -1,0 +1,69 @@
+14217fc65 mov rax, qword ptr [rcx + 8]
+14217fc69 test rax, rax
+14217fc6c js 0x14217fc79
+14217fc6e xorps xmm9, xmm9
+14217fc72 cvtsi2ss xmm9, rax
+14217fc77 jmp 0x14217fc93
+14217fc79 mov r8, rax
+14217fc7c shr r8, 1
+14217fc7f and eax, 1
+14217fc82 or rax, r8
+14217fc85 xorps xmm9, xmm9
+14217fc89 cvtsi2ss xmm9, rax
+14217fc8e addss xmm9, xmm9
+14217fc93 mov rbx, qword ptr [rcx]
+14217fc96 addss xmm9, dword ptr [rip + 0x7da445]
+14217fc9f mov r14, qword ptr [rdx + 0x10]
+14217fca3 xorps xmm10, xmm10
+14217fca7 movss xmm11, dword ptr [rip + 0x7a5c54]
+14217fcb0 movss xmm6, dword ptr [rip + 0x7b49bc]
+14217fcb8 nop dword ptr [rax + rax]
+14217fcc0 test rsi, rsi
+14217fcc3 js 0x14217fcd0
+14217fcc5 xorps xmm0, xmm0
+14217fcc8 cvtsi2ss xmm0, rsi
+14217fccd jmp 0x14217fcea
+14217fccf nop 
+14217fcd0 mov rax, rsi
+14217fcd3 shr rax, 1
+14217fcd6 mov ecx, esi
+14217fcd8 and ecx, 1
+14217fcdb or rcx, rax
+14217fcde xorps xmm0, xmm0
+14217fce1 cvtsi2ss xmm0, rcx
+14217fce6 addss xmm0, xmm0
+14217fcea divss xmm0, xmm9
+14217fcef movss dword ptr [rbp - 0xc], xmm0
+14217fcf4 ucomiss xmm0, xmm10
+14217fcf8 jb 0x14217fdbc
+14217fcfe ucomiss xmm11, xmm0
+14217fd02 jb 0x14217fdbc
+14217fd08 ucomiss xmm0, xmm0
+14217fd0b jp 0x14217fe14
+14217fd11 inc rsi
+14217fd14 movaps xmm8, xmm11
+14217fd18 subss xmm8, xmm0
+14217fd1d mulss xmm8, xmm6
+14217fd22 movss xmm0, dword ptr [rbx + 0xc]
+14217fd27 movaps xmm1, xmm6
+14217fd2a call 0x142923f10
+14217fd2f movaps xmm1, xmm0
+14217fd32 addss xmm1, xmm6
+14217fd36 movaps xmm7, xmm0
+14217fd39 cmpltss xmm7, xmm10
+14217fd3f andps xmm1, xmm7
+14217fd42 andnps xmm7, xmm0
+14217fd45 orps xmm7, xmm1
+14217fd48 addss xmm7, xmm8
+14217fd4d movaps xmm0, xmm7
+14217fd50 call 0x142923e80
+14217fd55 movaps xmm8, xmm0
+14217fd59 movaps xmm0, xmm7
+14217fd5c call 0x142923fd0
+14217fd61 movss xmm1, dword ptr [rbx + 8]
+14217fd66 movsldup xmm1, xmm1
+14217fd6a unpcklps xmm8, xmm0
+14217fd6e mulps xmm8, xmm1
+14217fd72 movsd xmm0, qword ptr [rbx]
+14217fd76 addps xmm0, xmm8
+14217fd7a movlps qword ptr [r14 + r12*8], xmm0

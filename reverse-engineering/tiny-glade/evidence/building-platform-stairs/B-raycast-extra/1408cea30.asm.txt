@@ -1,0 +1,19 @@
+1408cea30 MOV RAX,qword ptr [RCX + 0x18]
+1408cea34 MOV RAX,qword ptr [RAX + 0x80]
+1408cea3b MOV R8,qword ptr [RDX + 0x18]
+1408cea3f CMP RAX,qword ptr [R8 + 0x80]
+1408cea46 JNZ 0x1408ceb04
+1408cea4c MOVZX R8D,byte ptr [RCX]
+1408cea50 CMP R8B,byte ptr [RDX]
+1408cea53 JNZ 0x1408ceb04
+1408cea59 MOV AL,0x1
+1408cea5b CMP R8D,0x10
+1408cea5f JA 0x1408ceae7
+1408cea65 MOV R8D,R8D
+1408cea68 LEA R9,[0x142aa44f4]
+1408cea6f MOVSXD R8,dword ptr [R9 + R8*0x4]
+1408cea73 ADD R8,R9
+1408cea76 JMP R8
+1408ceae7 RET
+1408ceb04 XOR EAX,EAX
+1408ceb06 RET

@@ -95,3 +95,9 @@ cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
 - `art-source/` 保存美术源文件与参考，`assets/` 保存运行时资产；制作与导出遵循各自说明和资产合同。
 - 主体按参数生成，不将整栋 GLB 缩放作为建筑编辑实现；保留门窗适配、米制 UV、共享材质和增量资源更新。
 - 不手工修改 `target/` 构建产物，不提交本机 `.idea/`、`.codex/` 配置；共享运行配置在 `.run/`。保留 `.gitignore` 指定的本地烘焙迭代文件。
+
+## 阅读与检索约定
+
+- 读代码先用检索定位，不整文件通读：符号与结构用 Serena（`get_symbols_overview`、`find_symbol`、`find_referencing_symbols`），语法结构匹配用 `ast-grep`。
+- 用结构化模式替代全量文本输出，例如 `ast-grep run -p 'fn $N($$$)' -l rust crates/`；只有在确实需要纯文本时才用 `rg`。
+- 必须读文件时限定行范围，避免整文件载入。

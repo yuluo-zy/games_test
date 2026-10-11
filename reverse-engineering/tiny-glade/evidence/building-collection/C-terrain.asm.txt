@@ -1,0 +1,229 @@
+140c71040 sub rsp, 0x78
+140c71044 movaps xmmword ptr [rsp + 0x60], xmm10
+140c7104a movaps xmmword ptr [rsp + 0x50], xmm9
+140c71050 movaps xmmword ptr [rsp + 0x40], xmm8
+140c71056 movaps xmmword ptr [rsp + 0x30], xmm7
+140c7105b movaps xmmword ptr [rsp + 0x20], xmm6
+140c71060 mov rax, qword ptr [rcx + 8]
+140c71064 movss xmm4, dword ptr [rcx + 0x50]
+140c71069 movss xmm3, dword ptr [rcx + 0x54]
+140c7106e mov rcx, qword ptr [rip + 0x3019a63]
+140c71075 unpcklps xmm2, xmm1
+140c71078 divps xmm2, xmmword ptr [rip + 0x22939b1]
+140c7107f addps xmm2, xmmword ptr [rip + 0x22939ba]
+140c71086 cmp byte ptr [rcx], 0
+140c71089 je 0x140c710c0
+140c7108b minps xmm2, xmmword ptr [rip + 0x21b3efe]
+140c71092 mulps xmm2, xmmword ptr [rip + 0x22939c7]
+140c71099 addps xmm2, xmmword ptr [rip + 0x22939d0]
+140c710a0 xorps xmm0, xmm0
+140c710a3 cmpltps xmm0, xmm2
+140c710a7 unpcklps xmm0, xmm0
+140c710aa movmskpd ecx, xmm0
+140c710ae xorps xmm0, xmm0
+140c710b1 test cl, 2
+140c710b4 jne 0x140c710fa
+140c710b6 xorps xmm6, xmm6
+140c710b9 test cl, 1
+140c710bc je 0x140c71103
+140c710be jmp 0x140c71106
+140c710c0 xorps xmm0, xmm0
+140c710c3 maxps xmm2, xmm0
+140c710c6 movaps xmm0, xmm2
+140c710c9 cmpltps xmm0, xmmword ptr [rip + 0x21b3ebf]
+140c710d1 unpcklps xmm0, xmm0
+140c710d4 movmskpd ecx, xmm0
+140c710d8 movss xmm7, dword ptr [rip + 0x2293970]
+140c710e0 test cl, 2
+140c710e3 jne 0x140c71276
+140c710e9 movaps xmm6, xmm7
+140c710ec test cl, 1
+140c710ef jne 0x140c71283
+140c710f5 jmp 0x140c71287
+140c710fa movshdup xmm6, xmm2
+140c710fe test cl, 1
+140c71101 jne 0x140c71106
+140c71103 xorps xmm2, xmm2
+140c71106 cvttss2si rcx, xmm6
+140c7110b xor r8d, r8d
+140c7110e ucomiss xmm6, xmm0
+140c71111 cmovb ecx, r8d
+140c71115 movss xmm1, dword ptr [rip + 0x2293937]
+140c7111d ucomiss xmm6, xmm1
+140c71120 mov r9d, 0xffffffff
+140c71126 cmova ecx, r9d
+140c7112a cvttss2si rdx, xmm2
+140c7112f ucomiss xmm2, xmm0
+140c71132 cmovb edx, r8d
+140c71136 ucomiss xmm2, xmm1
+140c71139 cmova edx, r9d
+140c7113d xorps xmm0, xmm0
+140c71140 cvtsi2ss xmm0, rcx
+140c71145 xorps xmm1, xmm1
+140c71148 cvtsi2ss xmm1, rdx
+140c7114d subss xmm6, xmm0
+140c71151 subss xmm2, xmm1
+140c71155 cmp ecx, 0x1ff
+140c7115b mov r10d, 0x1ff
+140c71161 mov r8d, 0x1ff
+140c71167 cmovb r8d, ecx
+140c7116b inc ecx
+140c7116d cmp ecx, 0x1ff
+140c71173 cmovae ecx, r10d
+140c71177 cmp edx, 0x1ff
+140c7117d mov r9d, 0x1ff
+140c71183 cmovb r9d, edx
+140c71187 inc edx
+140c71189 cmp edx, 0x1ff
+140c7118f cmovae edx, r10d
+140c71193 shl r9d, 9
+140c71197 mov r10d, r9d
+140c7119a or r10d, r8d
+140c7119d add r10d, r10d
+140c711a0 movzx r10d, word ptr [rax + r10]
+140c711a5 xorps xmm0, xmm0
+140c711a8 cvtsi2ss xmm0, r10d
+140c711ad movss xmm9, dword ptr [rip + 0x22e1f96]
+140c711b6 divss xmm0, xmm9
+140c711bb movss xmm5, dword ptr [rip + 0x2293861]
+140c711c3 movaps xmm1, xmm5
+140c711c6 subss xmm1, xmm0
+140c711ca mulss xmm1, xmm4
+140c711ce or r9d, ecx
+140c711d1 add r9d, r9d
+140c711d4 movzx r9d, word ptr [rax + r9]
+140c711d9 cvtsi2ss xmm7, r9d
+140c711de mulss xmm0, xmm3
+140c711e2 addss xmm0, xmm1
+140c711e6 divss xmm7, xmm9
+140c711eb movaps xmm1, xmm5
+140c711ee subss xmm1, xmm7
+140c711f2 mulss xmm1, xmm4
+140c711f6 mulss xmm7, xmm3
+140c711fa addss xmm7, xmm1
+140c711fe shl edx, 9
+140c71201 or r8d, edx
+140c71204 add r8d, r8d
+140c71207 movzx r8d, word ptr [rax + r8]
+140c7120c xorps xmm1, xmm1
+140c7120f cvtsi2ss xmm1, r8d
+140c71214 divss xmm1, xmm9
+140c71219 movaps xmm8, xmm5
+140c7121d subss xmm8, xmm1
+140c71222 mulss xmm8, xmm4
+140c71227 mulss xmm1, xmm3
+140c7122b addss xmm1, xmm8
+140c71230 or edx, ecx
+140c71232 add edx, edx
+140c71234 movzx eax, word ptr [rax + rdx]
+140c71238 xorps xmm8, xmm8
+140c7123c cvtsi2ss xmm8, eax
+140c71241 divss xmm8, xmm9
+140c71246 subss xmm5, xmm8
+140c7124b mulss xmm5, xmm4
+140c7124f mulss xmm8, xmm3
+140c71254 addss xmm8, xmm5
+140c71259 movaps xmm9, xmm2
+140c7125d call 0x140de5ba0
+140c71262 movaps xmm10, xmm0
+140c71266 movaps xmm0, xmm7
+140c71269 movaps xmm1, xmm8
+140c7126d movaps xmm2, xmm9
+140c71271 jmp 0x140c713da
+140c71276 movshdup xmm6, xmm2
+140c7127a mulss xmm6, xmm7
+140c7127e test cl, 1
+140c71281 je 0x140c71287
+140c71283 mulss xmm7, xmm2
+140c71287 cvttss2si rcx, xmm6
+140c7128c xor r8d, r8d
+140c7128f xorps xmm0, xmm0
+140c71292 ucomiss xmm6, xmm0
+140c71295 cmovb ecx, r8d
+140c71299 movss xmm1, dword ptr [rip + 0x22937b3]
+140c712a1 ucomiss xmm6, xmm1
+140c712a4 mov r9d, 0xffffffff
+140c712aa cmova ecx, r9d
+140c712ae cvttss2si rdx, xmm7
+140c712b3 ucomiss xmm7, xmm0
+140c712b6 cmovb edx, r8d
+140c712ba ucomiss xmm7, xmm1
+140c712bd cmova edx, r9d
+140c712c1 cmp ecx, 0x1fe
+140c712c7 mov r8d, 0x1fe
+140c712cd cmovae ecx, r8d
+140c712d1 cmp edx, 0x1fe
+140c712d7 cmovae edx, r8d
+140c712db xorps xmm0, xmm0
+140c712de cvtsi2ss xmm0, ecx
+140c712e2 xorps xmm1, xmm1
+140c712e5 cvtsi2ss xmm1, edx
+140c712e9 subss xmm6, xmm0
+140c712ed subss xmm7, xmm1
+140c712f1 shl edx, 9
+140c712f4 mov r8d, edx
+140c712f7 or r8d, ecx
+140c712fa add r8d, r8d
+140c712fd movzx r8d, word ptr [rax + r8]
+140c71302 xorps xmm0, xmm0
+140c71305 cvtsi2ss xmm0, r8d
+140c7130a movss xmm5, dword ptr [rip + 0x22e1e3a]
+140c71312 divss xmm0, xmm5
+140c71316 movss xmm2, dword ptr [rip + 0x2293706]
+140c7131e movaps xmm1, xmm2
+140c71321 subss xmm1, xmm0
+140c71325 mulss xmm1, xmm4
+140c71329 mov r8d, edx
+140c7132c lea r9d, [r8 + rcx]
+140c71330 inc r9d
+140c71333 add r9d, r9d
+140c71336 movzx r9d, word ptr [rax + r9]
+140c7133b cvtsi2ss xmm8, r9d
+140c71340 mulss xmm0, xmm3
+140c71344 addss xmm0, xmm1
+140c71348 divss xmm8, xmm5
+140c7134d movaps xmm1, xmm2
+140c71350 subss xmm1, xmm8
+140c71355 mulss xmm1, xmm4
+140c71359 mulss xmm8, xmm3
+140c7135e addss xmm8, xmm1
+140c71363 add edx, 0x200
+140c71369 or edx, ecx
+140c7136b add edx, edx
+140c7136d movzx edx, word ptr [rax + rdx]
+140c71371 xorps xmm1, xmm1
+140c71374 cvtsi2ss xmm1, edx
+140c71378 divss xmm1, xmm5
+140c7137c movaps xmm9, xmm2
+140c71380 subss xmm9, xmm1
+140c71385 mulss xmm9, xmm4
+140c7138a mulss xmm1, xmm3
+140c7138e addss xmm1, xmm9
+140c71393 add ecx, r8d
+140c71396 add ecx, 0x201
+140c7139c add ecx, ecx
+140c7139e movzx eax, word ptr [rax + rcx]
+140c713a2 xorps xmm9, xmm9
+140c713a6 cvtsi2ss xmm9, eax
+140c713ab divss xmm9, xmm5
+140c713b0 subss xmm2, xmm9
+140c713b5 mulss xmm2, xmm4
+140c713b9 mulss xmm9, xmm3
+140c713be addss xmm9, xmm2
+140c713c3 movaps xmm2, xmm7
+140c713c6 call 0x140de5ba0
+140c713cb movaps xmm10, xmm0
+140c713cf movaps xmm0, xmm8
+140c713d3 movaps xmm1, xmm9
+140c713d7 movaps xmm2, xmm7
+140c713da call 0x140de5ba0
+140c713df movaps xmm1, xmm0
+140c713e2 movaps xmm0, xmm10
+140c713e6 movaps xmm2, xmm6
+140c713e9 movaps xmm6, xmmword ptr [rsp + 0x20]
+140c713ee movaps xmm7, xmmword ptr [rsp + 0x30]
+140c713f3 movaps xmm8, xmmword ptr [rsp + 0x40]
+140c713f9 movaps xmm9, xmmword ptr [rsp + 0x50]
+140c713ff movaps xmm10, xmmword ptr [rsp + 0x60]
+140c71405 add rsp, 0x78
+140c71409 jmp 0x140de5ba0

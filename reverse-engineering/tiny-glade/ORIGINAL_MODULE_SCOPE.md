@@ -62,3 +62,5 @@
 | vk-sync-fork | 0.4.0 | 是 | 待确认用途/分配 | 复用或先查上游/归属；不默认逆向 |
 
 完整图：[original-packages.json](tracking/original-packages.json)。依赖政策：[dependency-policy.json](tracking/dependency-policy.json)。源码任务：[TASK_BACKLOG.md](TASK_BACKLOG.md)。项目进度：[PROJECT_PROGRESS.md](PROJECT_PROGRESS.md)。
+
+三版本筛除指导现采用 [DEPENDENCY_FILTERING.md](DEPENDENCY_FILTERING.md) 与 [dependency-exclusions.json](tracking/dependency-exclusions.json)。本文件仍是B构建条目历史索引，不能将此表列出的所有Cargo包视为核心逆向实现任务。

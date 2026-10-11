@@ -1,0 +1,2506 @@
+{
+  "ok": true,
+  "scope": "Three-version packaged history decode, typed roof payload validation and exact header/count comparison; replay/undo/GPU not verified",
+  "baselines": {
+    "A": {
+      "history_files": 30,
+      "roof_commands": {
+        "CreateRoof": 85,
+        "VisualEdit": 109,
+        "DeleteRoof": 21,
+        "SwitchRoofRidgeDir": 5
+      }
+    },
+    "B": {
+      "history_files": 33,
+      "roof_commands": {
+        "CreateRoof": 92,
+        "VisualEdit": 118,
+        "DeleteRoof": 26,
+        "SwitchRoofRidgeDir": 5
+      }
+    },
+    "C": {
+      "history_files": 35,
+      "roof_commands": {
+        "CreateRoof": 99,
+        "VisualEdit": 139,
+        "DeleteRoof": 27,
+        "SwitchRoofRidgeDir": 7
+      }
+    }
+  },
+  "failures": [],
+  "files": [
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/demo/00-demo2/history.json",
+      "sha256": "a4f0388ed342505a2605d0b4fd51008c512dd59225bfd43820022562f1dae864",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 18,
+        "entries": 20,
+        "command_counts": {
+          "Path": 2,
+          "Terrain": 5,
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/demo/01-demo3/history.json",
+      "sha256": "e2171f778c9df32f979f0de8b4f71f364b220680d44860186e1b13a72b32c9ef",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 10,
+        "entries": 12,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 4,
+          "WallNewSystem": 6
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/demo/02-demo4/history.json",
+      "sha256": "46aaab767d0444a1525cb0a6a45e6649513b96da8b8d8839c82ba8b94c300227",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 51,
+        "entries": 52,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 2,
+          "Garden": 13,
+          "Path": 4,
+          "Roof": 10,
+          "WallNewSystem": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/demo/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/01-cottage/history.json",
+      "sha256": "6cf9a3d2d30cf46ff0b9cee48585bd4a7121d7caee81c7bb4b9c245be0dc9d97",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 77,
+        "entries": 78,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 27,
+          "Path": 5,
+          "Roof": 13,
+          "WallNewSystem": 34
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 2,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/02-gate/history.json",
+      "sha256": "b90a19130c48e5300c8846814e94b56253c84144d68031b4cf4ced289b31adff",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 87,
+        "entries": 88,
+        "command_counts": {
+          "Color": 12,
+          "DecoratorV5": 22,
+          "Path": 12,
+          "Roof": 10,
+          "Terrain": 5,
+          "WallNewSystem": 32
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/03-halftimber-roof/history.json",
+      "sha256": "1c63c1cb91b5e5b89200ae2c72f645dacf59df80947bea9361a15b45d688b148",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 51,
+        "entries": 52,
+        "command_counts": {
+          "Color": 7,
+          "Roof": 20,
+          "WallNewSystem": 30
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "SwitchRoofRidgeDir": 2,
+          "VisualEdit": 13
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/04-water-bridge/history.json",
+      "sha256": "2a11e3705902a09ff2308b053ad3ceb98dc01c539102c1af74793238853fef37",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 74,
+        "entries": 76,
+        "command_counts": {
+          "DecoratorV5": 12,
+          "Path": 9,
+          "Roof": 11,
+          "WallNewSystem": 40,
+          "Water": 8
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 7
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/05-rocky-lake/history.json",
+      "sha256": "f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 70,
+        "entries": 71,
+        "command_counts": {
+          "Color": 10,
+          "DecoratorV5": 3,
+          "Garden": 2,
+          "Roof": 13,
+          "Terrain": 6,
+          "WallNewSystem": 16,
+          "Water": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/06-blue-tower/history.json",
+      "sha256": "3ef28655d5fd8ffc4f3f5b7d9680db229335b524247a155867cfb7b746be2a76",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 43,
+        "entries": 44,
+        "command_counts": {
+          "Color": 6,
+          "DecoratorV5": 10,
+          "Garden": 3,
+          "Path": 7,
+          "Roof": 5,
+          "Tree": 281,
+          "WallNewSystem": 15
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/07-castle-ruin/history.json",
+      "sha256": "70bf6eff6a621bc9dfd237db7156ba44ec42712111d5bb045fa4208f95155692",
+      "ok": true,
+      "summary": {
+        "version": 20,
+        "chain_index": 90,
+        "entries": 91,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 24,
+          "Path": 6,
+          "Roof": 12,
+          "Terrain": 3,
+          "WallNewSystem": 47
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/08-swamp/history.json",
+      "sha256": "8270d5018020fc39081e88c844fc05f67595c5e9a23a759d919b5fcb6d0bb171",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 46,
+        "entries": 47,
+        "command_counts": {
+          "Tree": 16,
+          "Water": 31
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/09-garden/history.json",
+      "sha256": "bebe0957d6bf06528704bba8b4c6152ff4eecb746bff350df1b5f1da3021f842",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 38,
+        "entries": 39,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 15,
+          "Garden": 3,
+          "Path": 4,
+          "Tree": 3,
+          "WallNewSystem": 16
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/10-circle-ruin/history.json",
+      "sha256": "89ff7002b4a7a1f0c27f50ee801970e23ea0ecd96be22cc4c92140ef919d97fe",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 101,
+        "entries": 102,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 8,
+          "Path": 51,
+          "Roof": 8,
+          "Terrain": 10,
+          "WallNewSystem": 28
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/11-multi-level/history.json",
+      "sha256": "e4a398687ec0ebfadc3cac771e6fc73708129917db255baf0a645c609db410f5",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 36,
+        "entries": 37,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Path": 4,
+          "Roof": 13,
+          "WallNewSystem": 22
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/12-water-tree/history.json",
+      "sha256": "d477d20d381db4631a74ec3f27eb4c5ab4cc1f1c3dce1c41b473b656a192c41e",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 18,
+        "entries": 19,
+        "command_counts": {
+          "Garden": 1,
+          "Path": 7,
+          "Roof": 4,
+          "Tree": 2,
+          "WallNewSystem": 6,
+          "Water": 1
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/13-star-roof/history.json",
+      "sha256": "bbb1acbbd0a8946974c0591cca71b1730f79ec63e2034be012be5e51db04dea8",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 16,
+        "entries": 17,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 7,
+          "Tree": 4,
+          "WallNewSystem": 4
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/14-circle-houses/history.json",
+      "sha256": "a496172215ec40de7c130a85cf48c8772df7f6f5676ebfdab2968b51c10371a3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 23,
+        "entries": 24,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 5,
+          "Roof": 18,
+          "WallNewSystem": 7
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "DeleteRoof": 1,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 10
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/15-lake-house/history.json",
+      "sha256": "bc92d1912a815755e2bcce881f5fc4a7a06c6464ffac18a08e930f6432cf7a5f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 14,
+        "entries": 15,
+        "command_counts": {
+          "Color": 6,
+          "Roof": 4,
+          "WallNewSystem": 3,
+          "Water": 3
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/16-overgrown-ruins/history.json",
+      "sha256": "0c12126a741f0aad20526d6faf2b1148e7e3fd71ebdc7fad2b6aa2740e9c7017",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 129,
+        "entries": 130,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 6,
+          "Garden": 12,
+          "Path": 16,
+          "Roof": 9,
+          "Tree": 9,
+          "WallNewSystem": 59,
+          "Water": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/17-two-islands/history.json",
+      "sha256": "2fcbdf75e7626ea089f172f05b355407a9252c91471c7278f4f5b0d49e34aa7f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 44,
+        "entries": 45,
+        "command_counts": {
+          "Terrain": 8,
+          "Tree": 4,
+          "Water": 33
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/18-spooky-church/history.json",
+      "sha256": "ab706c7fa53dcbb86c6c76ac8a99f5c69bfc535853ae8838d4930a77049dbfc3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 156,
+        "entries": 157,
+        "command_counts": {
+          "Color": 4,
+          "DecoratorV5": 18,
+          "Path": 9,
+          "Roof": 13,
+          "WallNewSystem": 117
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 8
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/19-orchard/history.json",
+      "sha256": "e8bf96b837b705c61da50decd2d8b2907e89b46f5fae349baf44a7a4e3a07a41",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 33,
+        "entries": 36,
+        "command_counts": {
+          "Path": 9,
+          "Terrain": 12,
+          "Tree": 9,
+          "WallNewSystem": 9
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/20-green-platform/history.json",
+      "sha256": "e58b9da0858a5c605478174480d0985f936e244e77923d1524a3cdef3ea35cd3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 28,
+        "entries": 30,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 2,
+          "Path": 5,
+          "Roof": 4,
+          "Terrain": 2,
+          "WallNewSystem": 12
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/21-moon-garden/history.json",
+      "sha256": "5cfef5afc23c217d5a66d580a273f8d1b49e6b3ca2e7567eccb7c880d408fc0c",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 93,
+        "entries": 94,
+        "command_counts": {
+          "Garden": 7,
+          "Path": 1,
+          "Roof": 14,
+          "WallNewSystem": 83
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 5,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/22-house-on-stilts/history.json",
+      "sha256": "957d199b22602d634bb84aba7a4843262579d1751e319201410e232617853f1e",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 35,
+        "entries": 36,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 1,
+          "Path": 14,
+          "Roof": 9,
+          "WallNewSystem": 14
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/23-small-bridge/history.json",
+      "sha256": "771b9a25324b5eb7ab5bede6d9665aa395be76659547bdc54363a5f88edd2289",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 66,
+        "entries": 67,
+        "command_counts": {
+          "Path": 22,
+          "Roof": 4,
+          "Terrain": 14,
+          "WallNewSystem": 30
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 1,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/24-mystic-ruins/history.json",
+      "sha256": "dacd976f6161d0bc4ea5fd41f46691f71e00909956ca0fcfb97d7706b7d9822f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 201,
+        "entries": 202,
+        "command_counts": {
+          "Color": 9,
+          "Path": 30,
+          "Roof": 7,
+          "Tree": 11,
+          "WallNewSystem": 154
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "DeleteRoof": 1,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/25-tower-bridge/history.json",
+      "sha256": "a9093ccc0aa035649b7e5b5d22a6f447a849e9ade6d5ab3603421c0f9b18c2c6",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 51,
+        "entries": 52,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 6,
+          "Roof": 8,
+          "Terrain": 24,
+          "WallNewSystem": 14
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "A",
+      "path": "assets/starting-builds/full/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/demo/00-demo2/history.json",
+      "sha256": "a4f0388ed342505a2605d0b4fd51008c512dd59225bfd43820022562f1dae864",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 18,
+        "entries": 20,
+        "command_counts": {
+          "Path": 2,
+          "Terrain": 5,
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/demo/01-demo3/history.json",
+      "sha256": "e2171f778c9df32f979f0de8b4f71f364b220680d44860186e1b13a72b32c9ef",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 10,
+        "entries": 12,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 4,
+          "WallNewSystem": 6
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/demo/02-demo4/history.json",
+      "sha256": "46aaab767d0444a1525cb0a6a45e6649513b96da8b8d8839c82ba8b94c300227",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 51,
+        "entries": 52,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 2,
+          "Garden": 13,
+          "Path": 4,
+          "Roof": 10,
+          "WallNewSystem": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/demo/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/01-cottage/history.json",
+      "sha256": "6cf9a3d2d30cf46ff0b9cee48585bd4a7121d7caee81c7bb4b9c245be0dc9d97",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 77,
+        "entries": 78,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 27,
+          "Path": 5,
+          "Roof": 13,
+          "WallNewSystem": 34
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 2,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/02-gate/history.json",
+      "sha256": "b90a19130c48e5300c8846814e94b56253c84144d68031b4cf4ced289b31adff",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 87,
+        "entries": 88,
+        "command_counts": {
+          "Color": 12,
+          "DecoratorV5": 22,
+          "Path": 12,
+          "Roof": 10,
+          "Terrain": 5,
+          "WallNewSystem": 32
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/03-halftimber-roof/history.json",
+      "sha256": "1ae8c329993ad59e7b3c2a69ac1d85f299c5c3cd0daf2c804beb9a68cba5e9a3",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 63,
+        "entries": 64,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 10,
+          "Roof": 20,
+          "Tree": 270,
+          "Wall": 31
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "SwitchRoofRidgeDir": 2,
+          "VisualEdit": 13
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/04-small-bridge/history.json",
+      "sha256": "d7c517d5aa112a8409d7d0a97d4157082bf0f39c057d0c3c72cd7040e6566f40",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 78,
+        "entries": 79,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 7,
+          "Path": 22,
+          "Roof": 5,
+          "Terrain": 14,
+          "Wall": 33
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 2,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/05-rocky-lake/history.json",
+      "sha256": "f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 70,
+        "entries": 71,
+        "command_counts": {
+          "Color": 10,
+          "DecoratorV5": 3,
+          "Garden": 2,
+          "Roof": 13,
+          "Terrain": 6,
+          "WallNewSystem": 16,
+          "Water": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/06-blue-tower/history.json",
+      "sha256": "1bf34818616c5f3b7c863c8f31aa747bba16b4aa0af979a93885cfc5822bbf20",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 43,
+        "entries": 44,
+        "command_counts": {
+          "Color": 6,
+          "DecoratorV5": 10,
+          "Garden": 3,
+          "Path": 7,
+          "Roof": 5,
+          "Tree": 281,
+          "WallNewSystem": 15
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/07-castle-ruin/history.json",
+      "sha256": "70bf6eff6a621bc9dfd237db7156ba44ec42712111d5bb045fa4208f95155692",
+      "ok": true,
+      "summary": {
+        "version": 20,
+        "chain_index": 90,
+        "entries": 91,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 24,
+          "Path": 6,
+          "Roof": 12,
+          "Terrain": 3,
+          "WallNewSystem": 47
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/08-water-bridge/history.json",
+      "sha256": "9aabf916b527bc1800e4cace7b3a4a65a9488170fd50b2020dbfc55d065a7c6c",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 89,
+        "entries": 91,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 22,
+          "Path": 9,
+          "Roof": 11,
+          "Wall": 41,
+          "Water": 8
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/09-garden/history.json",
+      "sha256": "bebe0957d6bf06528704bba8b4c6152ff4eecb746bff350df1b5f1da3021f842",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 38,
+        "entries": 39,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 15,
+          "Garden": 3,
+          "Path": 4,
+          "Tree": 3,
+          "WallNewSystem": 16
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/10-circle-ruin/history.json",
+      "sha256": "f25d4bc2b9159b88d5d2e7e5a5190c43f01d6d79b59b3fdc01d806d9148853c7",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 166,
+        "entries": 168,
+        "command_counts": {
+          "Color": 4,
+          "DecoratorV5": 57,
+          "Path": 53,
+          "Roof": 8,
+          "Stairs": 4,
+          "Terrain": 10,
+          "Wall": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/11-multi-level/history.json",
+      "sha256": "a525e4fba5281cbdb85e4660cdf10a4eb9d29a14ce108f9ca50351f32d6c11fc",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 73,
+        "entries": 74,
+        "command_counts": {
+          "Cobblestone2": 2,
+          "Color": 2,
+          "DecoratorV5": 14,
+          "Path": 19,
+          "Roof": 16,
+          "Stairs": 2,
+          "Wall": 25
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "DeleteRoof": 2,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 7
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/12-water-tree/history.json",
+      "sha256": "d477d20d381db4631a74ec3f27eb4c5ab4cc1f1c3dce1c41b473b656a192c41e",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 18,
+        "entries": 19,
+        "command_counts": {
+          "Garden": 1,
+          "Path": 7,
+          "Roof": 4,
+          "Tree": 2,
+          "WallNewSystem": 6,
+          "Water": 1
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/13-star-roof/history.json",
+      "sha256": "bbb1acbbd0a8946974c0591cca71b1730f79ec63e2034be012be5e51db04dea8",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 16,
+        "entries": 17,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 7,
+          "Tree": 4,
+          "WallNewSystem": 4
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/14-circle-houses/history.json",
+      "sha256": "a496172215ec40de7c130a85cf48c8772df7f6f5676ebfdab2968b51c10371a3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 23,
+        "entries": 24,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 5,
+          "Roof": 18,
+          "WallNewSystem": 7
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "DeleteRoof": 1,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 10
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/15-lake-house/history.json",
+      "sha256": "c4e052aafbeb2d338105a0ebaff07c9b7f1dc439f6a4c486ac2485bae6848a99",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 25,
+        "entries": 26,
+        "command_counts": {
+          "Cobblestone1": 1,
+          "Color": 7,
+          "DecoratorV5": 6,
+          "Roof": 5,
+          "Wall": 4,
+          "Water": 3
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/16-overgrown-ruins/history.json",
+      "sha256": "0c12126a741f0aad20526d6faf2b1148e7e3fd71ebdc7fad2b6aa2740e9c7017",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 129,
+        "entries": 130,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 6,
+          "Garden": 12,
+          "Path": 16,
+          "Roof": 9,
+          "Tree": 9,
+          "WallNewSystem": 59,
+          "Water": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/17-two-islands/history.json",
+      "sha256": "2fcbdf75e7626ea089f172f05b355407a9252c91471c7278f4f5b0d49e34aa7f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 44,
+        "entries": 45,
+        "command_counts": {
+          "Terrain": 8,
+          "Tree": 4,
+          "Water": 33
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/18-spooky-church/history.json",
+      "sha256": "ab706c7fa53dcbb86c6c76ac8a99f5c69bfc535853ae8838d4930a77049dbfc3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 156,
+        "entries": 157,
+        "command_counts": {
+          "Color": 4,
+          "DecoratorV5": 18,
+          "Path": 9,
+          "Roof": 13,
+          "WallNewSystem": 117
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 8
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/19-orchard/history.json",
+      "sha256": "e8bf96b837b705c61da50decd2d8b2907e89b46f5fae349baf44a7a4e3a07a41",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 33,
+        "entries": 36,
+        "command_counts": {
+          "Path": 9,
+          "Terrain": 12,
+          "Tree": 9,
+          "WallNewSystem": 9
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/20-green-platform/history.json",
+      "sha256": "dcfd50cf0dcdbeec2879e1fffdedf727d88be6469171923ac35379e9bd3b9de3",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 60,
+        "entries": 64,
+        "command_counts": {
+          "Color": 12,
+          "DecoratorV5": 4,
+          "Path": 5,
+          "Roof": 7,
+          "Terrain": 2,
+          "Wall": 38
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/21-moon-garden/history.json",
+      "sha256": "5cfef5afc23c217d5a66d580a273f8d1b49e6b3ca2e7567eccb7c880d408fc0c",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 93,
+        "entries": 94,
+        "command_counts": {
+          "Garden": 7,
+          "Path": 1,
+          "Roof": 14,
+          "WallNewSystem": 83
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 5,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/22-house-on-stilts/history.json",
+      "sha256": "957d199b22602d634bb84aba7a4843262579d1751e319201410e232617853f1e",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 35,
+        "entries": 36,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 1,
+          "Path": 14,
+          "Roof": 9,
+          "WallNewSystem": 14
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/23-tower-bridge/history.json",
+      "sha256": "15171f20b3e483b8d65d857e520608c17a6985c1cdea8f5778faf64c4f4606e8",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 63,
+        "entries": 64,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 17,
+          "Roof": 8,
+          "Terrain": 24,
+          "Wall": 15
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/24-mystic-ruins/history.json",
+      "sha256": "dacd976f6161d0bc4ea5fd41f46691f71e00909956ca0fcfb97d7706b7d9822f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 201,
+        "entries": 202,
+        "command_counts": {
+          "Color": 9,
+          "Path": 30,
+          "Roof": 7,
+          "Tree": 11,
+          "WallNewSystem": 154
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "DeleteRoof": 1,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/25-swamp/history.json",
+      "sha256": "8270d5018020fc39081e88c844fc05f67595c5e9a23a759d919b5fcb6d0bb171",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 46,
+        "entries": 47,
+        "command_counts": {
+          "Tree": 16,
+          "Water": 31
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/26-bath-house/history.json",
+      "sha256": "92044411a8e420a21aa14b9e52d4d3e01c6dbfdfc6a2a492788b10a98a718af9",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 41,
+        "entries": 42,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 13,
+          "Garden": 7,
+          "Roof": 3,
+          "Wall": 9,
+          "Water": 4
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/27-garden-road/history.json",
+      "sha256": "225e2dc696444ebc24d3a0c53ca48e48e6bad752b6469e3c79896178e492db03",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 56,
+        "entries": 57,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 29,
+          "Garden": 5,
+          "Roof": 5,
+          "Wall": 5,
+          "Water": 5
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/28-wizard-tower/history.json",
+      "sha256": "c7dbddf8182f9192638546a5de31cfbda9f4c8af263f3aea19d30e263610d26f",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 62,
+        "entries": 63,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 25,
+          "Roof": 5,
+          "Stairs": 3,
+          "Terrain": 13,
+          "Wall": 12,
+          "Water": 2
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "B",
+      "path": "assets/starting-builds/full/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/demo/00-demo2/history.json",
+      "sha256": "a4f0388ed342505a2605d0b4fd51008c512dd59225bfd43820022562f1dae864",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 18,
+        "entries": 20,
+        "command_counts": {
+          "Path": 2,
+          "Terrain": 5,
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/demo/01-demo3/history.json",
+      "sha256": "e2171f778c9df32f979f0de8b4f71f364b220680d44860186e1b13a72b32c9ef",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 10,
+        "entries": 12,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 4,
+          "WallNewSystem": 6
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/demo/02-demo4/history.json",
+      "sha256": "46aaab767d0444a1525cb0a6a45e6649513b96da8b8d8839c82ba8b94c300227",
+      "ok": true,
+      "summary": {
+        "version": 17,
+        "chain_index": 51,
+        "entries": 52,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 2,
+          "Garden": 13,
+          "Path": 4,
+          "Roof": 10,
+          "WallNewSystem": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/demo/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/01-cottage/history.json",
+      "sha256": "6cf9a3d2d30cf46ff0b9cee48585bd4a7121d7caee81c7bb4b9c245be0dc9d97",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 77,
+        "entries": 78,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 27,
+          "Path": 5,
+          "Roof": 13,
+          "WallNewSystem": 34
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 2,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/02-gate/history.json",
+      "sha256": "b90a19130c48e5300c8846814e94b56253c84144d68031b4cf4ced289b31adff",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 87,
+        "entries": 88,
+        "command_counts": {
+          "Color": 12,
+          "DecoratorV5": 22,
+          "Path": 12,
+          "Roof": 10,
+          "Terrain": 5,
+          "WallNewSystem": 32
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/03-halftimber-roof/history.json",
+      "sha256": "1ae8c329993ad59e7b3c2a69ac1d85f299c5c3cd0daf2c804beb9a68cba5e9a3",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 63,
+        "entries": 64,
+        "command_counts": {
+          "Color": 7,
+          "DecoratorV5": 10,
+          "Roof": 20,
+          "Tree": 270,
+          "Wall": 31
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "SwitchRoofRidgeDir": 2,
+          "VisualEdit": 13
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/04-small-bridge/history.json",
+      "sha256": "d7c517d5aa112a8409d7d0a97d4157082bf0f39c057d0c3c72cd7040e6566f40",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 78,
+        "entries": 79,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 7,
+          "Path": 22,
+          "Roof": 5,
+          "Terrain": 14,
+          "Wall": 33
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 2,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/05-rocky-lake/history.json",
+      "sha256": "f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 70,
+        "entries": 71,
+        "command_counts": {
+          "Color": 10,
+          "DecoratorV5": 3,
+          "Garden": 2,
+          "Roof": 13,
+          "Terrain": 6,
+          "WallNewSystem": 16,
+          "Water": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/06-well/history.json",
+      "sha256": "5a0d176390ef12f07ee863be1e920037d0f6d3ce8b8366e840168758e31f861a",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 63,
+        "entries": 64,
+        "command_counts": {
+          "Color": 2,
+          "Path": 10,
+          "PlantPaint": 15,
+          "Roof": 11,
+          "Wall": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 1,
+          "VisualEdit": 8
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/07-castle-ruin/history.json",
+      "sha256": "70bf6eff6a621bc9dfd237db7156ba44ec42712111d5bb045fa4208f95155692",
+      "ok": true,
+      "summary": {
+        "version": 20,
+        "chain_index": 90,
+        "entries": 91,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 24,
+          "Path": 6,
+          "Roof": 12,
+          "Terrain": 3,
+          "WallNewSystem": 47
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/08-water-bridge/history.json",
+      "sha256": "9aabf916b527bc1800e4cace7b3a4a65a9488170fd50b2020dbfc55d065a7c6c",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 89,
+        "entries": 91,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 22,
+          "Path": 9,
+          "Roof": 11,
+          "Wall": 41,
+          "Water": 8
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 1,
+          "VisualEdit": 6
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/09-garden/history.json",
+      "sha256": "5fae2c04cd7ebe307ee40ff987ea8374d6803fbe1a1b6be719060a5c60899d06",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 61,
+        "entries": 62,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 15,
+          "Garden": 4,
+          "Path": 7,
+          "PlantPaint": 10,
+          "Tree": 6,
+          "Wall": 23
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/10-circle-ruin/history.json",
+      "sha256": "f25d4bc2b9159b88d5d2e7e5a5190c43f01d6d79b59b3fdc01d806d9148853c7",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 166,
+        "entries": 168,
+        "command_counts": {
+          "Color": 4,
+          "DecoratorV5": 57,
+          "Path": 53,
+          "Roof": 8,
+          "Stairs": 4,
+          "Terrain": 10,
+          "Wall": 29
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/11-multi-level/history.json",
+      "sha256": "a525e4fba5281cbdb85e4660cdf10a4eb9d29a14ce108f9ca50351f32d6c11fc",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 73,
+        "entries": 74,
+        "command_counts": {
+          "Cobblestone2": 2,
+          "Color": 2,
+          "DecoratorV5": 14,
+          "Path": 19,
+          "Roof": 16,
+          "Stairs": 2,
+          "Wall": 25
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "DeleteRoof": 2,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 7
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/12-water-tree/history.json",
+      "sha256": "f4b7ffa4c8d819f7b50b484f7acbeb64d43e1fdc765d193a22494e03683faefb",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 18,
+        "entries": 20,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 8,
+          "Garden": 1,
+          "Roof": 2,
+          "Tree": 3,
+          "Wall": 3,
+          "Water": 1
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/13-star-roof/history.json",
+      "sha256": "bbb1acbbd0a8946974c0591cca71b1730f79ec63e2034be012be5e51db04dea8",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 16,
+        "entries": 17,
+        "command_counts": {
+          "DecoratorV5": 4,
+          "Roof": 7,
+          "Tree": 4,
+          "WallNewSystem": 4
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/14-circle-houses/history.json",
+      "sha256": "a496172215ec40de7c130a85cf48c8772df7f6f5676ebfdab2968b51c10371a3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 23,
+        "entries": 24,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 5,
+          "Roof": 18,
+          "WallNewSystem": 7
+        },
+        "roof_command_counts": {
+          "CreateRoof": 6,
+          "DeleteRoof": 1,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 10
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/15-lake-house/history.json",
+      "sha256": "866b1cd1f8741efac36a3bac411a5bb6958ef59bc27b98c3fa453a8a4d6a78f3",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 30,
+        "entries": 31,
+        "command_counts": {
+          "Cobblestone1": 1,
+          "Color": 11,
+          "DecoratorV5": 6,
+          "Roof": 5,
+          "Wall": 6,
+          "Water": 3
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/16-overgrown-ruins/history.json",
+      "sha256": "0c12126a741f0aad20526d6faf2b1148e7e3fd71ebdc7fad2b6aa2740e9c7017",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 129,
+        "entries": 130,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 6,
+          "Garden": 12,
+          "Path": 16,
+          "Roof": 9,
+          "Tree": 9,
+          "WallNewSystem": 59,
+          "Water": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "DeleteRoof": 4,
+          "VisualEdit": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/17-two-islands/history.json",
+      "sha256": "2fcbdf75e7626ea089f172f05b355407a9252c91471c7278f4f5b0d49e34aa7f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 44,
+        "entries": 45,
+        "command_counts": {
+          "Terrain": 8,
+          "Tree": 4,
+          "Water": 33
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/18-spooky-church/history.json",
+      "sha256": "ab706c7fa53dcbb86c6c76ac8a99f5c69bfc535853ae8838d4930a77049dbfc3",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 156,
+        "entries": 157,
+        "command_counts": {
+          "Color": 4,
+          "DecoratorV5": 18,
+          "Path": 9,
+          "Roof": 13,
+          "WallNewSystem": 117
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "SwitchRoofRidgeDir": 1,
+          "VisualEdit": 8
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/19-blue-tower/history.json",
+      "sha256": "169986fb577df7c9d63cb6e25c505520777fd0db9ba3721207cf683fe1b62f26",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 86,
+        "entries": 87,
+        "command_counts": {
+          "Color": 19,
+          "DecoratorV5": 37,
+          "Garden": 3,
+          "Path": 8,
+          "Roof": 6,
+          "Wall": 23
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/20-green-platform/history.json",
+      "sha256": "bcff9fc9ae4e0c8fae0225c92529c98b9c7a87852c0f887580595f8dde30111f",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 77,
+        "entries": 78,
+        "command_counts": {
+          "Color": 19,
+          "DecoratorV5": 8,
+          "Path": 8,
+          "Roof": 7,
+          "Stairs": 1,
+          "Terrain": 2,
+          "Wall": 40
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/21-moon-garden/history.json",
+      "sha256": "c7d6e4dac0c332aaed03586cc0568e67e311078ba1afab3d318d6ee0c850f41e",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 124,
+        "entries": 125,
+        "command_counts": {
+          "Cobblestone3": 2,
+          "Color": 15,
+          "Garden": 10,
+          "Path": 1,
+          "PlantPaint": 11,
+          "Roof": 14,
+          "Wall": 96
+        },
+        "roof_command_counts": {
+          "CreateRoof": 5,
+          "DeleteRoof": 5,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/22-house-on-stilts/history.json",
+      "sha256": "957d199b22602d634bb84aba7a4843262579d1751e319201410e232617853f1e",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 35,
+        "entries": 36,
+        "command_counts": {
+          "Color": 2,
+          "DecoratorV5": 1,
+          "Path": 14,
+          "Roof": 9,
+          "WallNewSystem": 14
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/23-tower-bridge/history.json",
+      "sha256": "15171f20b3e483b8d65d857e520608c17a6985c1cdea8f5778faf64c4f4606e8",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 63,
+        "entries": 64,
+        "command_counts": {
+          "Color": 3,
+          "DecoratorV5": 17,
+          "Roof": 8,
+          "Terrain": 24,
+          "Wall": 15
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "VisualEdit": 5
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/24-mystic-ruins/history.json",
+      "sha256": "dacd976f6161d0bc4ea5fd41f46691f71e00909956ca0fcfb97d7706b7d9822f",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 201,
+        "entries": 202,
+        "command_counts": {
+          "Color": 9,
+          "Path": 30,
+          "Roof": 7,
+          "Tree": 11,
+          "WallNewSystem": 154
+        },
+        "roof_command_counts": {
+          "CreateRoof": 3,
+          "DeleteRoof": 1,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/25-swamp/history.json",
+      "sha256": "8270d5018020fc39081e88c844fc05f67595c5e9a23a759d919b5fcb6d0bb171",
+      "ok": true,
+      "summary": {
+        "version": 18,
+        "chain_index": 46,
+        "entries": 47,
+        "command_counts": {
+          "Tree": 16,
+          "Water": 31
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/26-bath-house/history.json",
+      "sha256": "92044411a8e420a21aa14b9e52d4d3e01c6dbfdfc6a2a492788b10a98a718af9",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 41,
+        "entries": 42,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 13,
+          "Garden": 7,
+          "Roof": 3,
+          "Wall": 9,
+          "Water": 4
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "DeleteRoof": 1
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/27-garden-road/history.json",
+      "sha256": "225e2dc696444ebc24d3a0c53ca48e48e6bad752b6469e3c79896178e492db03",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 56,
+        "entries": 57,
+        "command_counts": {
+          "Color": 1,
+          "DecoratorV5": 29,
+          "Garden": 5,
+          "Roof": 5,
+          "Wall": 5,
+          "Water": 5
+        },
+        "roof_command_counts": {
+          "CreateRoof": 1,
+          "VisualEdit": 4
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/28-wizard-tower/history.json",
+      "sha256": "c7dbddf8182f9192638546a5de31cfbda9f4c8af263f3aea19d30e263610d26f",
+      "ok": true,
+      "summary": {
+        "version": 27,
+        "chain_index": 62,
+        "entries": 63,
+        "command_counts": {
+          "Color": 5,
+          "DecoratorV5": 25,
+          "Roof": 5,
+          "Stairs": 3,
+          "Terrain": 13,
+          "Wall": 12,
+          "Water": 2
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 3
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/29-wooden-fort/history.json",
+      "sha256": "79cd58bc7964e8b95e9242bbc77d80c6471bd089ddebfc937713a50dc8f5cc5c",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 82,
+        "entries": 84,
+        "command_counts": {
+          "Color": 12,
+          "DecoratorV5": 26,
+          "Path": 8,
+          "Roof": 4,
+          "Stairs": 1,
+          "Terrain": 9,
+          "Wall": 24
+        },
+        "roof_command_counts": {
+          "CreateRoof": 2,
+          "VisualEdit": 2
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/30-roof-deco-stairs/history.json",
+      "sha256": "f516a315eec0b41232b2554146b9a44039a23194d7223d1ff5ecdb1e9b81e1f6",
+      "ok": true,
+      "summary": {
+        "version": 30,
+        "chain_index": 115,
+        "entries": 116,
+        "command_counts": {
+          "Color": 13,
+          "DecoratorV5": 31,
+          "Roof": 17,
+          "Wall": 24,
+          "Water": 20
+        },
+        "roof_command_counts": {
+          "CreateRoof": 4,
+          "SwitchRoofRidgeDir": 2,
+          "VisualEdit": 11
+        },
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    },
+    {
+      "baseline": "C",
+      "path": "assets/starting-builds/full/intro/history.json",
+      "sha256": "129430047927dd807b93287eae6982b8c960a18b8d4db58c3637f9d6e079086c",
+      "ok": true,
+      "summary": {
+        "version": 16,
+        "chain_index": 12,
+        "entries": 13,
+        "command_counts": {
+          "WallNewSystem": 13
+        },
+        "roof_command_counts": {},
+        "unknown_roof_commands": [],
+        "replay_verified": false
+      }
+    }
+  ],
+  "cargo_lock_sha256": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc",
+  "candidate_sources": {
+    "reconstruction/Cargo.toml": "ae413599fefa52610542747df65562975afb43e9677adf638fd19318f77005d0",
+    "reconstruction/building/decorator_placement.rs": "9f1b56e53e73f8cf26ec2ef51aa8cbf818dd5fb514874b314a95d9abef93e345",
+    "reconstruction/building/decorator_subtype.rs": "adfd4f8421978cc83683f4e56127a9603570d5cbe40743e05b4fe4242f041bc8",
+    "reconstruction/building/opening_rules.rs": "d8db51ae36fee5c45464014a650eb597b1ebd52bd345961389668e10a8002056",
+    "reconstruction/building/roof_associations.rs": "bfeb3d778ad114d6fe3960af27b6e73b7874c54cd12e881c5490e512d0d3a9fe",
+    "reconstruction/building/roof_components.rs": "18f23980d35689b61cf219e26e0f812f813564edf791d09b7e6ae73d4ddcf6df",
+    "reconstruction/building/roof_creation.rs": "46e7029d434d88044b7d669b21bcc07918cc51ad43f27285bb16fc5772c716bc",
+    "reconstruction/building/roof_customization.rs": "e420282196d213a573825bc2fc4bcfc1deba406f8b27c5b79c81d0407a7a09ef",
+    "reconstruction/building/roof_deletion.rs": "fbe6c26fd35d6103865913ecbc620dc1b13f6880213558ae8f5dec24caf5e933",
+    "reconstruction/building/roof_direction.rs": "08eeae209fc03b99b3a6b856834b5fda604d4046b916b0c2b76d1efceb4a25e7",
+    "reconstruction/building/roof_invalid_notifications.rs": "9f22fa037a0e7d59ad4aa587dbf1b5e1003f45caf6309d958122f16c2771dce2",
+    "reconstruction/building/roof_lifecycle.rs": "337da38a42cca25f9db24f8c7d1b0eeb3baa432af16e4e6d4d386a009d77ced0",
+    "reconstruction/building/roof_spatial.rs": "5a880fca8562ed52ecebbd6d81112da5c131ae2fe1808b222553ccbc1e41d32f",
+    "reconstruction/building/wall_arches.rs": "b85196d19d9878883e72ea1da44f2d5cf99b305884adb617a50d663fdf60e24a",
+    "reconstruction/building/wall_arches_freehand.rs": "816eb303c84790b8573d4aa67a5bb19abadcadf14e0b32ae119073fd5cdce668",
+    "reconstruction/building/wall_authoring.rs": "2043afa2ba091e57d9368a5b2b88acc0803b510fd2d2ea8671e95b9714c7c2bb",
+    "reconstruction/building/wall_bulldoze.rs": "09d218a1a95f753d611ac6964c9f227fc39613740820e7a21180f80875e2f72b",
+    "reconstruction/building/wall_cache.rs": "6bcaec9c4b112cee4ce126f7d30e233aa4b95317a4f5bf0969dcf2adfbe4b86e",
+    "reconstruction/building/wall_collection.rs": "b74c6aa577a9c012d4d34fcfb1851a8d33a84ee154872ece077d66e96ab198b6",
+    "reconstruction/building/wall_construction_sources.rs": "0fcd77cf2f110e2c334da92e11df33e1956a08892c960374cc7ac2f488ff582c",
+    "reconstruction/building/wall_constructor.rs": "22a44d9360049aecebf14b984811495257fdf8674dd9c1a55a164bacb7d8b320",
+    "reconstruction/building/wall_freeform_cache.rs": "7d2a2870be3cfd73e4318ce4fb3d240b17f59ac2f3738d5504d11dc7c6b637a6",
+    "reconstruction/building/wall_gable.rs": "4233b8d22a3055c413085fd0711cb312fee2a793caf84b30d4214d4c53bbd35f",
+    "reconstruction/building/wall_height_authority.rs": "7a6204c8c399872ef8fdfd56df8680e0ae2e6771bb57b38bc4da2b7bff5089fd",
+    "reconstruction/building/wall_height_command.rs": "ca1b270bc785153720152a4a9d9e9ac4098615df0be991eacd7e9bfec2bd3e24",
+    "reconstruction/building/wall_history_edit.rs": "bb22c45529f73e1b4c19af21b2e14a73fe7134e776bdfd313be90ba48577a8b5",
+    "reconstruction/building/wall_history_replay.rs": "66b2aeac5d0b40225530bf69ffc16836f7fbc70e4c0110f493ae6102e5f008f0",
+    "reconstruction/building/wall_history_transition.rs": "03268d77edcc153b8d4f7ddd1b362fde975f3dda6469e2aa6434c392398c62de",
+    "reconstruction/building/wall_hole_invalidation.rs": "891d9f4c0194ad281f03da9334af7063136642b558520b633b5063b668b47531",
+    "reconstruction/building/wall_holes.rs": "2956c98235c406d306bfaf00a494a9b125fa8b4883cc19ad974ad51d7a6007d6",
+    "reconstruction/building/wall_path_preparation.rs": "85793179f54a2a415f6a7b8007026059a685b844a43133f6ae0b00157288e417",
+    "reconstruction/building/wall_platform_segmentation.rs": "2717dfdd1dac12792dbbd1fd37b9660c86595b680f97151002e06bad77f4c07b",
+    "reconstruction/building/wall_platform_stair_rows.rs": "3d1587a9f52b0980ce0028a3517b4a8d552948bba8105a77629c364d6d6e1e25",
+    "reconstruction/building/wall_platform_stairs.rs": "8299cbcdd1a23b4baab47ede95bc43ddd14cbb27ee95b2cc71a8a999e41f8621",
+    "reconstruction/building/wall_production.rs": "66b6d4551631d82329b2add6125cb0270024c4a8089800a35c636103b754996f",
+    "reconstruction/building/wall_publication.rs": "681a44c56dfa67c0ee6380e84e77621ddc88d057909ed51a08f184302db4d3ab",
+    "reconstruction/building/wall_segmentation.rs": "b8d92ab62004878b6bd6663abfcd2bb2ad081314a142b2686463f88818199c97",
+    "reconstruction/building/wall_spatial_index.rs": "91a3a4a6686b358a8e12dc40a642a696ad9ad4e142f55eb4c1efaa3c8a863f1a",
+    "reconstruction/building/wall_state.rs": "3ac4555841032f8347e1d28da60be7260eead44ae7408c8de265169ce269cf4d",
+    "reconstruction/building/wall_structures.rs": "989e5bfdccfeecf072172ac6ea5995e5ddbc03aacc3fceeb20f5894e15f7290e",
+    "reconstruction/crates/tg-building-runtime/Cargo.toml": "6af079df06eb3e2cb775fcfed69597565db73122f36af5981b81539370065e57",
+    "reconstruction/crates/tg-building-runtime/src/bin/building-run.rs": "d9e22be6cf31156e4ede62d42808e7e07ef27112b2f20a4c4518d25b7ed7e079",
+    "reconstruction/crates/tg-building-runtime/src/bin/nani-probe.rs": "5a3470f7ef7c2c561dd1c59ce6939bc1548869cc1e0c262db3c25781db12da4a",
+    "reconstruction/crates/tg-building-runtime/src/decorator_assets.rs": "4c6671718f920e8b977ac7d61c1f33631f7030a08c3b866935867921e40464a3",
+    "reconstruction/crates/tg-building-runtime/src/decorator_placement.rs": "35c22d62c3a025a933f55d0a2b7f7378fdc1bebe1eab366378d2367397f20124",
+    "reconstruction/crates/tg-building-runtime/src/history.rs": "f38d5f77bf68aa2814416c0606cf3e6939cee794a10fa9b3c3cd4caf52b07b9a",
+    "reconstruction/crates/tg-building-runtime/src/lib.rs": "de036ea5150e4ae39ba8202f5137abd52d8e0e0142ce08e5f2f8d92d8c9804d1",
+    "reconstruction/crates/tg-building-runtime/src/nani.rs": "2f7b3953b8e11abf6bbb0f504107b00ea670f5f3029e28b04916bb92c21af4f0",
+    "reconstruction/crates/tg-building-runtime/src/openings.rs": "ed6651b2acad8b5e67461007b08d8090a401e0d83a1b3744c87d0ca6a495920c",
+    "reconstruction/crates/tg-building-runtime/src/roof_edits.rs": "77e7fa9e74979122c056cd8344467815287522f1b0b65c6e91da5aab37fecd0c",
+    "reconstruction/crates/tg-building-runtime/src/roof_invalid.rs": "212f4dd3e2a893761cc15a7d6b7c6547302ff3703d31d9e366053f962f97bc87",
+    "reconstruction/crates/tg-building-runtime/src/wall_arches.rs": "681c4a69257dc4e227d6a93477aee8556e092ed8b5374b45150bddc178cd8fc7",
+    "reconstruction/crates/tg-building-runtime/src/wall_authoring.rs": "c190acd93f2e140e19395063bbe96d623497ccd615d2bf30fc8e1b7ad7a85511",
+    "reconstruction/crates/tg-building-runtime/src/wall_bricks.rs": "dc6617c83305f2e71481b751468738615805f99b5c2e790ecd37d9dc1b9d0846",
+    "reconstruction/crates/tg-building-runtime/src/wall_bulldoze.rs": "9f005a1afe400f39b428250d6c7bd69342ccc2da788704b1fe55922a4e21c9af",
+    "reconstruction/crates/tg-building-runtime/src/wall_height.rs": "1c29dffdb0755c3b3291a03a4a963e48c80b1b604efc75adea28c66758cc127e",
+    "reconstruction/crates/tg-building-runtime/src/wall_paths.rs": "eca85e8234b3544e41fea4044cec47f59da36f38551104e092fa09c7fd495e69",
+    "reconstruction/crates/tg-building-runtime/src/wall_platform_stairs.rs": "5a07b1692774ddb7d9e235b79e27ec4726d8e4c5a6ad8496c74c963b7603179e",
+    "reconstruction/crates/tg-building-runtime/src/wall_segments.rs": "7afeaa0629145c7952fca53f0cd748dc0192280eb1f63470d7060d95fb37275b",
+    "reconstruction/crates/tg-building-runtime/src/wall_structures.rs": "6d80c413e4d5da9e68d995b5e9e934e3b9ab40eae7445481311931c3fa60dc30",
+    "reconstruction/crates/tg-building-runtime/tests/asset_parameter_history_chain.rs": "3911aae309e9ec65823a5780ee1a279082cf13c49c39945912f6b3625c0a4b75",
+    "reconstruction/crates/tg-building-runtime/tests/building_world.rs": "06e7c90bd82892c0650ef7a2588a6ed1b771ed1f6163eae94e9b62f012051a10",
+    "reconstruction/crates/tg-building-runtime/tests/nani_registration.rs": "8edaa232616b63a8555d12a348b7158ee2770b42acb4ef03d62163a12c2c1a80",
+    "reconstruction/crates/tg-building-runtime/tests/openings_history_chain.rs": "badc3c64776d004505f73744800b3adb755209562d726e9ab4488b5b69326507",
+    "reconstruction/crates/tg-building-runtime/tests/raw_building_chain.rs": "c9708682228b87d613444d26f0df3c164c20d56db50892ce5d0b12c5db21e3bc",
+    "reconstruction/crates/tg-building-runtime/tests/raw_wall_production_chain.rs": "7e3b4134dc31e1e457814a309e5a672e214984b9617c89a8c2d7980d2e219f03",
+    "reconstruction/crates/tg-building-runtime/tests/roof_edit_chain.rs": "843ce02329d60246c03759f3d557a09a85735bac2b62d58f830bed447d112f76",
+    "reconstruction/crates/tg-building-runtime/tests/wall_arches_chain.rs": "39e56a0910c2fe32b3368cc0cac446be2725fa78c920ee450719346de1c4dbae",
+    "reconstruction/crates/tg-building-runtime/tests/wall_authoring_chain.rs": "d0ef532d7fa1ccd09b4f702665080ba6d47abe377165e5a014fff56df1a9bcfb",
+    "reconstruction/crates/tg-building-runtime/tests/wall_structures_chain.rs": "a17da1105f463ecd8110977f34943c239cc89b964d28ff88c0d9dfae284a7a90",
+    "reconstruction/crates/tg-history/Cargo.toml": "bc3e588989a6f228c768fd6e9a8606965d357327cf4f5f9920ef635e7ea1fde6",
+    "reconstruction/crates/tg-history/src/lib.rs": "a16555c05df5405f0aab4a45f0163b95f9f42c4501c7a6289a684692565367d8",
+    "reconstruction/history/building_transactions.rs": "f87218f20f0667be8b6066f5b23e4dab9bf1bf4d865c9398ba3d6e2d0c17b7ff",
+    "reconstruction/history/transaction.rs": "9a96369ccfa607593b10675919d8f0c8ff00c8bf7e22b6eb71b99bd69f7bd1bd",
+    "reconstruction/math/window_aspect.rs": "2dea9bca049c0a6dfb8f6df8b786fe8de5306fd5ecd500d17e2ce6889a3c0b6f",
+    "reconstruction/roof/edit_rules.rs": "53865ab5877240dbee44ba526fb7ca3151d621f3e0bd2c585c09691b4b3b2e5e",
+    "reconstruction/roof/parameters.rs": "61bc696ffd9dc30eacdfd2739e5edff574c6db22b8ebb6356017d6d0eb371fcf",
+    "reconstruction/roof/pipeline.rs": "4a02dfb3cce9ac0a1076ff3b6f7d9d7bdf36e7505a50b72ffe4f21a30e409f4b",
+    "reconstruction/roof/rectangular_caps.rs": "1781aba7992c0ad596ba284f91b0a1eb94bdddc480f5a4faa0cd09c685a3e0a3",
+    "reconstruction/roof/rectangular_edges.rs": "e3d89d36f50d352465e7327ce997da908a82fdc90a233b8157bf014db7c6261d",
+    "reconstruction/roof/rectangular_faces.rs": "824405be4f280f157ee4284a1292b903dbd11a4e5935847eeba0da53baba1c26",
+    "reconstruction/roof/replay.rs": "8d3eb0b1d7956a96681d19502cd647c900c4fe35e25b0f260f1066ec38b3f9df",
+    "reconstruction/roof/ridge.rs": "cb3b6deb1396253c539b1ab789e04308c23a9c8933df6d890d9ae99ff08a13ad",
+    "reconstruction/roof/roof_state.rs": "68028044f413515724fd179b00326422c7e13cbbc942aecaef0b3f9ce82783df",
+    "reconstruction/roof/surface.rs": "132b17182082410908cae6a0d897638eeebb0e8095183d124767ec886428bbcd",
+    "reconstruction/roof/tiles.rs": "0b643d6d41ffd1d4c0adf9476ba412c64e999dbe99ec6bc931e64543b249c68b",
+    "reconstruction/src/bin/building-history-probe.rs": "2d431ad7730a721ec078c88cbaea9dda2d170e75a36b13d1ec3f46c716f0e5a5",
+    "reconstruction/src/bin/building-probe.rs": "f538ce0fd9a59ad3cc0c8567c95d2ef8a716de88d056ac561fe1ecd1bd7910fd",
+    "reconstruction/src/bin/decorator-placement-probe.rs": "be38de9140823a5b6b6c52a119db9eaf961de00f290f3a35e8f347ea85aae54e",
+    "reconstruction/src/bin/decorator-subtype-probe.rs": "0d4288219884cf9ad7b7cb6015e118637ef5fc81c7dd0e71f70deb50dbedaa73",
+    "reconstruction/src/bin/history-transaction-probe.rs": "0b251f65e5e8fb7a80a4098f546bbeb9ca3097323292f6d7033cfb23019c017a",
+    "reconstruction/src/bin/hole-invalidation-probe.rs": "c3510820b8566942a2c9243c896d95231c8369be0b2e1b01ba54821f046c3004",
+    "reconstruction/src/bin/lifecycle-probe.rs": "871198058ea22fefca761724f29b0fa5d29574c5751e185579d6b8eb2730f9a6",
+    "reconstruction/src/bin/opening-probe.rs": "3a7d4022d4814cbe5b699327850b06e0d8794a034bc3a5c610672f3d8adda315",
+    "reconstruction/src/bin/parameter-probe.rs": "2a5454c63aa7a35f2769214c146c51e1de3b68816ada60479603148afec4c163",
+    "reconstruction/src/bin/roof-customization-probe.rs": "a238f81a3a64719aae92390f4b2e3764c90be650c5df08782dc2a20e55fd5451",
+    "reconstruction/src/bin/wall-arches-freehand-probe.rs": "824583976ea086045a4ff68dc5a4d2caf072f8cb76f36b76235aeb4ca5d0a03f",
+    "reconstruction/src/bin/wall-arches-probe.rs": "dda31ebb499d5c8b14bae528a498a37c4d544e9ac6790bc2ca1f6d238adbd727",
+    "reconstruction/src/bin/wall-authoring-probe.rs": "5e3b2eb3a2574004ebb1155c35c8b4b3791a4179076b455ad676d66b6211d989",
+    "reconstruction/src/bin/wall-bulldoze-probe.rs": "763e075cd574a22d98b03a50f26e2dbe1634fe3b22d859e3358a166cc812e1ce",
+    "reconstruction/src/bin/wall-collection-probe.rs": "a6e7de11db75469a1ac1013b985f717cc8d1d89c24b5467530cbdd11b366edb9",
+    "reconstruction/src/bin/wall-construction-sources-probe.rs": "0c393ec375e9fed6d707edd83397f6b54ccd738a6dafdc85836a005fd514a2f3",
+    "reconstruction/src/bin/wall-constructor-probe.rs": "364d568de4d8c88039ea8a6a6758920a4b609b04cfc71d2286e3176dab6386ff",
+    "reconstruction/src/bin/wall-freeform-cache-probe.rs": "bfc4111c2a2d0411051e0258a890c7f92cec8e5de844bfd29ff399646579b7f3",
+    "reconstruction/src/bin/wall-height-authority-probe.rs": "1c736c6a493bde16bf30df811cc7227ace7cfc5b97ba6817a3cdc476cebbe9e1",
+    "reconstruction/src/bin/wall-height-command-probe.rs": "ea5e9f5a1e52cbc0110cf293fdd63ff4e726d6ffb8651e409f2208bde71f9a5e",
+    "reconstruction/src/bin/wall-history-authority-probe.rs": "0f9443524b0e138d074bc283c6b6684e914df4563cd7afd079efc8651d965c9f",
+    "reconstruction/src/bin/wall-history-timed-probe.rs": "0ac4d7409c5cb9bf806ff9393e0ac6da5b9701bc78ebea4d4d3b362d4d9966dd",
+    "reconstruction/src/bin/wall-history-transition-probe.rs": "73cfed157b0e4ecc42e3d83c9276802930284be12e4c30a91421b1acbcc390b7",
+    "reconstruction/src/bin/wall-holes-probe.rs": "30740d48c6fe1b6c8159441ac7ee33cb49b51d18c488e03e4edf5fc789f44a34",
+    "reconstruction/src/bin/wall-path-preparation-probe.rs": "78024d9dc3f638751bc9e84dbe599ea8e94da3e0e6de2b6a672952850ea1675a",
+    "reconstruction/src/bin/wall-platform-blockers-probe.rs": "9814a531cf45b6498e9ebc52b0d87546e2d1af462eeb31314f27d5c6862d2965",
+    "reconstruction/src/bin/wall-platform-segmentation-probe.rs": "7de4ebc421d7cb752963fd6d77b74090dc80fd5462b04e1779c8c3f959e4d4a6",
+    "reconstruction/src/bin/wall-platform-stair-chain-probe.rs": "cfdbffc7e5727268daca4a5a7faf84b91db126c64dd8aeebda28b7659a9ddd15",
+    "reconstruction/src/bin/wall-platform-stair-geometry-probe.rs": "9e74d136792dc4b83782b50db07dc134423daf54abac645e5b7cf0cde3715daa",
+    "reconstruction/src/bin/wall-platform-stair-rows-probe.rs": "35c32b2320cc87bb001a1b17838105fc639337e2c5e563d1137e60f9f3ed3352",
+    "reconstruction/src/bin/wall-platform-stair-stats-probe.rs": "f679a9477ba41f7e1b878db938b91abefb71d221b6be57225506f83bda7da94a",
+    "reconstruction/src/bin/wall-platform-stairs-consumer-probe.rs": "829dc685db2c4681cb6a246ff5da65d7339132e24cf31a6c8a6232d71c423f1d",
+    "reconstruction/src/bin/wall-platform-stairs-probe.rs": "5dde3a36ac6292d0259ab3de8a79fef6950c17b32e0cb6c1752a994dc45b994b",
+    "reconstruction/src/bin/wall-production-probe.rs": "87bdb56bd39fe3126fd2fd26b3443c95007f93cb709039ddddc05c97779aadbc",
+    "reconstruction/src/bin/wall-segmentation-probe.rs": "5f2343bdc09503d68bc64303bf76f923ff7f3ca4c529cf809888d4dc4ed80d35",
+    "reconstruction/src/bin/wall-spatial-probe.rs": "0d06be21c70b2e1d856c347303cdf3415902ca6d005229242d528f35b36b7f55",
+    "reconstruction/src/bin/wall-structures-probe.rs": "0a80f46166212fe58b30d287a3873d644a5c8001c4d92117a454181432384cf2",
+    "reconstruction/src/lib.rs": "993a9965453d58e3f80d61f37ed7c54f4c1daaa4884ee75fdaa71e86d1b7d579",
+    "reconstruction/src/main.rs": "21bfc29ca9faaa5eb5e194b1600a85a34384afb3f56e47fb938c0460f1e5717e",
+    "reconstruction/tests/building_lifecycle.rs": "6525621927b9e0c68b73b29aa5c636b252ed733ac0acebd3819321242224519f",
+    "reconstruction/wall/height_rules.rs": "a518c1364af4473f41f528815f3a720e9f0ea647f86b678dbbd9449b128728a7"
+  },
+  "candidate_cargo_lock_sha256": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc"
+}

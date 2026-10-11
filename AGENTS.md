@@ -10,3 +10,14 @@
 - 优先使用 REA/ReVa/RE-MCP 的函数、引用、反编译、类型和持久数据库能力；脚本用于批量编排与差分验证，不能把写脚本本身当作逆向交付。
 
 这些规则只适用于上述逆向任务，不约束本目录中的其他工程。
+
+三版 Tiny Glade 的逆向统一遵守 `reverse-engineering/tiny-glade/DEPENDENCY_FILTERING.md`：先查 Cargo/PDB 来源与定义模块，排除已确认库实现，恢复游戏调用策略。不要把含 Wall/Roof 的通用库泛型实例当作游戏业务，也不要把全部 Cargo/local 包一律当作游戏私有。优先完成建筑系统的权威状态、生命周期、几何、附着及历史联接。
+
+## Token 效率约定
+
+本仓库的逆向任务单次请求固定开销很大，遵守以下约定：
+
+- `rea` MCP 经 `~/.codex/mcp-tools/toolgate` 代理，只暴露 29 个精选工具；需要更多工具时编辑 `~/.codex/mcp-tools/toolgate/rea.json`，不要把配置改回直连原 server。
+- 反编译按需取用：先用 `procedure_info`/`search_procedures` 定位，再对目标函数 `batch_decompile`；不要整段读取大型函数的完整汇编。
+- 大文件与二进制不走普通文件读取；用 REA 的 `open_binary`/`read_bytes` 带范围查询。
+- 需要批量命令行处理时用 `rea` CLI 的 `--token-limit`/`--token-count`/`--filter-output`。

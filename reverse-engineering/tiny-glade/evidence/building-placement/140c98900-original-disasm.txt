@@ -1,0 +1,20 @@
+140c98900: sub rsp, 0x28
+140c98904: movd eax, xmm1
+140c98908: mov r8, qword ptr [rsp + 0x58]
+140c9890d: and eax, 0x7fffffff
+140c98912: cmp eax, 0x7f800000
+140c98917: jge 0x140c98956
+140c98919: movd eax, xmm2
+140c9891d: and eax, 0x7fffffff
+140c98922: cmp eax, 0x7f800000
+140c98927: jge 0x140c98967
+140c98929: movss xmm0, dword ptr [rsp + 0x50]
+140c9892f: movss xmm4, dword ptr [rip + 0x1c8cfcd]
+140c98937: movlps qword ptr [rcx], xmm4
+140c9893a: movd dword ptr [rcx + 0x10], xmm1
+140c9893f: movd dword ptr [rcx + 0x14], xmm2
+140c98944: movss dword ptr [rcx + 8], xmm3
+140c98949: movss dword ptr [rcx + 0xc], xmm0
+140c9894e: mov rax, rcx
+140c98951: add rsp, 0x28
+140c98955: ret 

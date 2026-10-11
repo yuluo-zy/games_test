@@ -1,0 +1,155 @@
+[
+  {
+    "kind": "set_path_rasters",
+    "grids_u8": [
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      }
+    ],
+    "sampling_fix": true
+  },
+  {
+    "kind": "set_terrain_grid",
+    "encoded_u16_constant": 0,
+    "minimum_y": 0,
+    "maximum_y": 0,
+    "sampling_fix": true,
+    "affected_wall_ids": []
+  },
+  {
+    "kind": "upsert_raw_wall",
+    "wall_id": "202",
+    "points_xz": [
+      [
+        -2,
+        -2
+      ],
+      [
+        -2,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        -2
+      ],
+      [
+        -2,
+        -2
+      ]
+    ],
+    "terrain_floor": 0,
+    "shape_hex": "010000000000803f0000000000000000000000000000804000008040",
+    "style": 0,
+    "extra": 2.5,
+    "special": false,
+    "observed_path_scalar": 2.8,
+    "clutter_version": 0,
+    "observed_source_flag_64": 0
+  },
+  {
+    "kind": "create_roof",
+    "record_hex": "0000000000000000ca000000000000000000000000000000000000000000000000000000000000000000003f000000000000803f0000003f0100000000000000"
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "set_path_rasters",
+    "grids_u8": [
+      {
+        "file": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/crates/tg-building-runtime/fixtures/wall-production-path0.u8"
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      }
+    ],
+    "sampling_fix": true
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "set_wall_source_height",
+    "wall_id": "202",
+    "height": 6
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "switch_roof_direction",
+    "wall_id": "202",
+    "direction": "Length"
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "delete_roof",
+    "wall_id": "202"
+  },
+  {
+    "kind": "step",
+    "dt": 0.5,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "set_path_rasters",
+    "grids_u8": [
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      },
+      {
+        "constant": 0
+      }
+    ],
+    "sampling_fix": true
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  },
+  {
+    "kind": "remove_wall",
+    "wall_id": "202"
+  },
+  {
+    "kind": "step",
+    "dt": 0,
+    "include_wall_production_trace": true
+  }
+]

@@ -1,0 +1,64 @@
+141940780: push rbp
+141940781: push rsi
+141940782: sub rsp, 0xa8
+141940789: lea rbp, [rsp + 0x80]
+141940791: mov qword ptr [rbp + 0x20], 0xfffffffffffffffe
+141940799: movd eax, xmm1
+14194079d: and eax, 0x7fffffff
+1419407a2: cmp eax, 0x7f800000
+1419407a7: jge 0x14194087b
+1419407ad: ucomiss xmm1, dword ptr [rip + 0xfe5150]
+1419407b4: jae 0x1419407fe
+1419407b6: xor eax, eax
+1419407b8: xorps xmm0, xmm0
+1419407bb: ucomiss xmm0, xmm1
+1419407be: jae 0x141940871
+1419407c4: mov rdx, qword ptr [rcx + 0x20]
+1419407c8: mov r9, qword ptr [rcx + 0x28]
+1419407cc: cmp r9, 1
+1419407d0: je 0x14194080e
+1419407d2: test r9, r9
+1419407d5: je 0x1419408ba
+1419407db: xor ecx, ecx
+1419407dd: mov rax, r9
+1419407e0: mov r8, rax
+1419407e3: shr r8, 1
+1419407e6: lea r10, [r8 + rcx]
+1419407ea: ucomiss xmm1, dword ptr [rdx + r10*4]
+1419407ef: cmovae rcx, r10
+1419407f3: sub rax, r8
+1419407f6: cmp rax, 1
+1419407fa: ja 0x1419407e0
+1419407fc: jmp 0x141940810
+1419407fe: mov eax, dword ptr [rcx + 0x10]
+141940801: add eax, -2
+141940804: movss xmm0, dword ptr [rip + 0xfe50f8]
+14194080c: jmp 0x141940871
+14194080e: xor ecx, ecx
+141940810: ucomiss xmm1, dword ptr [rdx + rcx*4]
+141940814: sbb rcx, -1
+141940818: cmp rcx, r9
+14194081b: jae 0x1419408ba
+141940821: mov rax, rcx
+141940824: sub rax, 1
+141940828: jb 0x14194092e
+14194082e: cmp rax, r9
+141940831: jae 0x1419409a2
+141940837: movss xmm0, dword ptr [rdx + rax*4]
+14194083c: movss dword ptr [rbp + 0x18], xmm0
+141940841: movss xmm2, dword ptr [rdx + rcx*4]
+141940846: movss dword ptr [rbp + 0x14], xmm2
+14194084b: ucomiss xmm0, xmm2
+14194084e: jne 0x141940852
+141940850: jnp 0x141940893
+141940852: subss xmm1, xmm0
+141940856: subss xmm2, xmm0
+14194085a: divss xmm1, xmm2
+14194085e: xorps xmm2, xmm2
+141940861: maxss xmm2, xmm1
+141940865: movss xmm0, dword ptr [rip + 0xfe5097]
+14194086d: minss xmm0, xmm2
+141940871: add rsp, 0xa8
+141940878: pop rsi
+141940879: pop rbp
+14194087a: ret 

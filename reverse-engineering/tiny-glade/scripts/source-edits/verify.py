@@ -4,18 +4,20 @@ Original stores into preallocated message buffers execute as shipped; no writer,
 is_gable, pivot or core math stub is substituted. CRT ceilf is host API bridge.
 """
 from pathlib import Path
-import struct,json,hashlib,ctypes,random,itertools,sys,subprocess
+import struct,json,hashlib,ctypes,ctypes.util,random,itertools,sys,subprocess,platform
 from unicorn import Uc,UC_ARCH_X86,UC_MODE_64,UC_HOOK_CODE,UC_HOOK_MEM_WRITE
 from unicorn.x86_const import *
-ROOT=Path('D:/game/reverse-engineering/tiny-glade');sys.path.insert(0,str(ROOT/'scripts'))
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
 from dependency_build import build_runner
-raw=Path('D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne').read_bytes();sha=hashlib.sha256(raw).hexdigest();assert sha=='f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03'
+identity=json.loads((ROOT/'tracking/baselines.json').read_text())['baselines']['B']
+raw=Path(identity['binary']['path']).read_bytes();sha=hashlib.sha256(raw).hexdigest();assert sha==identity['binary']['sha256']
 pe=struct.unpack_from('<I',raw,60)[0];opt=pe+24;size=struct.unpack_from('<I',raw,opt+56)[0];base=struct.unpack_from('<Q',raw,opt+24)[0]
 cpu=Uc(UC_ARCH_X86,UC_MODE_64);cpu.mem_map(base,(size+4095)&~4095)
 for i in range(struct.unpack_from('<H',raw,pe+6)[0]):
     vs,va,rs,ro=struct.unpack_from('<IIII',raw,opt+struct.unpack_from('<H',raw,pe+20)[0]+40*i+8);cpu.mem_write(base+va,raw[ro:ro+rs])
 DATA,STACK=0x20000000,0x30000000;cpu.mem_map(DATA,0x20000);cpu.mem_map(STACK,0x20000)
-crt=ctypes.CDLL('ucrtbase.dll');ceilf=crt.ceilf;ceilf.argtypes=[ctypes.c_float];ceilf.restype=ctypes.c_float
+crt_name='ucrtbase.dll' if sys.platform=='win32' else ctypes.util.find_library('m') or ctypes.util.find_library('c')
+crt=ctypes.CDLL(crt_name);ceilf=crt.ceilf;ceilf.argtypes=[ctypes.c_float];ceilf.restype=ctypes.c_float
 def bits(v):return struct.unpack('<I',struct.pack('<f',v))[0]
 def fl(v):return struct.unpack('<f',struct.pack('<I',v))[0]
 def xv(reg):return cpu.reg_read(reg)&0xffffffff
@@ -75,38 +77,44 @@ def execute(roof,event):
         assert tag in [2,3,10,11]
         values+=list(struct.unpack_from('<3I',row,24));result+=' |'+str(tag)+''.join(f' {b:08x}' for b in values)
     return result
-cases=[]
-for modes in itertools.product([0,1,2],repeat=5):cases.append((base_roof(),base_event(modes),'all-valid-modes'))
-edges=[-2.,-0.,0.,.099999994,.1,.10000001,.5,1.,1.5,2.,float('inf'),-float('inf'),float('nan')]
-for field,(eo,ro) in enumerate([(0,0x2c),(8,0x30),(16,0x34),(24,0x38)]):
- for mode in [1,2,3]:
-  for old,new in itertools.product(edges,repeat=2):
-    roof=base_roof();setf(roof,ro,old);event=base_event([0]*5);struct.pack_into('<I',event,eo,mode);setf(event,eo+4,new);cases.append((roof,event,'scalar-boundaries'))
-vectors=[(0.,0.),(.6,.8),(2.,0.),(-2.,3.),(1e-30,-1e-30),(1e30,-1e30),(float('inf'),0.),(float('nan'),0.),(0.,float('nan'))]
-for mode in [1,2,3]:
- for old,new in itertools.product(vectors,repeat=2):
-    roof=base_roof();setf(roof,0x24,old[0]);setf(roof,0x28,old[1]);event=base_event([0]*5);struct.pack_into('<I',event,40,mode);setf(event,44,new[0]);setf(event,48,new[1]);cases.append((roof,event,'tip-boundaries'))
-rng=random.Random(20261012)
-for _ in range(2000):
-    roof=base_roof();event=base_event([rng.randrange(3) for _ in range(5)])
-    for o in [0x24,0x28,0x2c,0x30,0x34,0x38]:setf(roof,o,rng.uniform(-2.,2.))
-    for o in [4,12,20,28,44,48]:setf(event,o,rng.uniform(-2.,2.))
-    cases.append((roof,event,'mixed-random'))
-lines=[];expected=[]
-for roof,event,kind in cases:
-    lines.append(f'{roof.hex()} {event.hex()} 55555555 12345678');expected.append(execute(roof,event))
-binary=ROOT/'workspace/source-edit-rules.exe';build_runner(ROOT/'scripts/source-edits/runner.rs',binary)
-result=subprocess.run([str(binary)],input='\n'.join(lines)+'\n',capture_output=True,text=True,check=True);actual=result.stdout.splitlines()
-fail=[dict(index=i,kind=cases[i][2],input=lines[i],original=a,candidate=b)for i,(a,b)in enumerate(zip(expected,actual))if a!=b]
-report=dict(ok=not fail and len(actual)==len(expected),source_sha256=sha,cases=len(cases),case_groups={k:sum(c[2]==k for c in cases)for k in set(c[2]for c in cases)},failure_count=len(fail),failures=fail[:25],
-    candidate_sources={p.relative_to(ROOT).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()for p in [ROOT/'reconstruction/roof/edit_rules.rs',ROOT/'scripts/source-edits/runner.rs']},
-    candidate_cargo_lock_sha256=hashlib.sha256((ROOT/'reconstruction/Cargo.lock').read_bytes()).hexdigest(),
-    oracle='Unicorn original edit_roof resolved suffix 0x1421abb2c through one event completion; original is_gable/pivot/real message stores; preallocated queues; CRT ceilf bridge only',
-    comparison='exact entire Roof bytes, changed marker, edit deltas, gable predicates, all numerical feedback payloads/pivots, trigger counts and threshold transition; event padding excluded',
-    full_game_executed=False,core_stubs=False,crt_ceil_calls=bridge_calls,
-    dependencies=['glam = 0.29.3 (Cargo locked; Vec2/Vec3 and clamp_length_max(1.0) public API reused)','CRT ucrtbase.dll ceilf for original import'],
-    provenance=['evidence/scope-priorities/mcp-read.json real RE-MCP call','evidence/scope-priorities/mcp_0x1421ab7c0.c','evidence/scope-priorities/0x1421ab7c0-asm.txt'],
-    limitations=['ECS entity resolution, original event reader scheduling and failed query branches excluded','Prepared resolved Roof/Event/change tick and valid preallocated message queues; no allocation failure validation','Not the full Bevy system implementation; no rendering or scene replay','SSE exception flags, uninitialized event padding and source ABI ownership excluded'])
-(ROOT/'evidence/source-edits/verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-print(json.dumps(dict(ok=report['ok'],cases=len(cases),failures=len(fail))))
-if fail:raise SystemExit(1)
+def main():
+    cases=[]
+    for modes in itertools.product([0,1,2],repeat=5):cases.append((base_roof(),base_event(modes),'all-valid-modes'))
+    edges=[-2.,-0.,0.,.099999994,.1,.10000001,.5,1.,1.5,2.,float('inf'),-float('inf'),float('nan')]
+    for field,(eo,ro) in enumerate([(0,0x2c),(8,0x30),(16,0x34),(24,0x38)]):
+     for mode in [1,2,3]:
+      for old,new in itertools.product(edges,repeat=2):
+        roof=base_roof();setf(roof,ro,old);event=base_event([0]*5);struct.pack_into('<I',event,eo,mode);setf(event,eo+4,new);cases.append((roof,event,'scalar-boundaries'))
+    vectors=[(0.,0.),(.6,.8),(2.,0.),(-2.,3.),(1e-30,-1e-30),(1e30,-1e30),(float('inf'),0.),(float('nan'),0.),(0.,float('nan'))]
+    for mode in [1,2,3]:
+     for old,new in itertools.product(vectors,repeat=2):
+        roof=base_roof();setf(roof,0x24,old[0]);setf(roof,0x28,old[1]);event=base_event([0]*5);struct.pack_into('<I',event,40,mode);setf(event,44,new[0]);setf(event,48,new[1]);cases.append((roof,event,'tip-boundaries'))
+    rng=random.Random(20261012)
+    for _ in range(2000):
+        roof=base_roof();event=base_event([rng.randrange(3) for _ in range(5)])
+        for o in [0x24,0x28,0x2c,0x30,0x34,0x38]:setf(roof,o,rng.uniform(-2.,2.))
+        for o in [4,12,20,28,44,48]:setf(event,o,rng.uniform(-2.,2.))
+        cases.append((roof,event,'mixed-random'))
+    lines=[];expected=[]
+    for roof,event,kind in cases:
+        lines.append(f'{roof.hex()} {event.hex()} 55555555 12345678');expected.append(execute(roof,event))
+    binary=ROOT/'workspace/source-edit-rules.exe';build_runner(ROOT/'scripts/source-edits/runner.rs',binary)
+    result=subprocess.run([str(binary)],input='\n'.join(lines)+'\n',capture_output=True,text=True,check=True);actual=result.stdout.splitlines()
+    fail=[dict(index=i,kind=cases[i][2],input=lines[i],original=a,candidate=b)for i,(a,b)in enumerate(zip(expected,actual))if a!=b]
+    report=dict(ok=not fail and len(actual)==len(expected),source_sha256=sha,cases=len(cases),case_groups={k:sum(c[2]==k for c in cases)for k in set(c[2]for c in cases)},failure_count=len(fail),failures=fail[:25],
+        failure_groups={k:sum(f['kind']==k for f in fail)for k in set(c[2]for c in cases)},
+        candidate_sources={p.relative_to(ROOT).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()for p in [ROOT/'reconstruction/roof/edit_rules.rs',ROOT/'scripts/source-edits/runner.rs']},
+        candidate_cargo_lock_sha256=hashlib.sha256((ROOT/'reconstruction/Cargo.lock').read_bytes()).hexdigest(),
+        oracle='Unicorn original edit_roof resolved suffix 0x1421abb2c through one event completion; original is_gable/pivot/real message stores; preallocated queues; CRT ceilf bridge only',
+        comparison='exact entire Roof bytes, changed marker, edit deltas, gable predicates, all numerical feedback payloads/pivots, trigger counts and threshold transition; event padding excluded',
+        full_game_executed=False,core_stubs=False,crt_ceil_calls=bridge_calls,
+        candidate_host=platform.platform(),crt_bridge=crt_name,
+        dependencies=['glam = 0.29.3 (Cargo locked; Vec2/Vec3 and clamp_length_max(1.0) public API reused)','Host ceilf bridge for original CRT import; Windows CRT behavior outside tested outputs remains unverified'],
+        provenance=['evidence/scope-priorities/mcp-read.json real RE-MCP call','evidence/scope-priorities/mcp_0x1421ab7c0.c','evidence/scope-priorities/0x1421ab7c0-asm.txt'],
+        limitations=['ECS entity resolution, original event reader scheduling and failed query branches excluded','Prepared resolved Roof/Event/change tick and valid preallocated message queues; no allocation failure validation','Not the full Bevy system implementation; no rendering or scene replay','SSE exception flags, uninitialized event padding and source ABI ownership excluded'])
+    (ROOT/'evidence/multi-version/B-edit-rules-host-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    print(json.dumps(dict(ok=report['ok'],cases=len(cases),failures=len(fail))))
+    if fail:raise SystemExit(1)
+
+if __name__ == "__main__":
+    main()

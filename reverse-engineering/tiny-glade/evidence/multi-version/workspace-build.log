@@ -1,0 +1,271 @@
+   Compiling tiny-glade-reconstruction v0.1.0 (/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction)
+   Compiling tg-building-runtime v0.1.0 (/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/crates/tg-building-runtime)
+warning: field `encoded` is never read
+ --> src/bin/../../building/wall_path_preparation.rs:8:5
+  |
+7 | pub struct PathRasters512 {
+  |            -------------- field in this struct
+8 |     encoded: [Arc<[u8]>; 4],
+  |     ^^^^^^^
+  |
+  = note: `PathRasters512` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `encoded` is never used
+  --> src/bin/../../building/wall_path_preparation.rs:52:12
+   |
+20 | impl PathRasters512 {
+   | ------------------- method in this implementation
+...
+52 |     pub fn encoded(&self) -> &[Arc<[u8]>; 4] {
+   |            ^^^^^^^
+
+warning: associated function `for_new_wall` is never used
+  --> src/bin/../../building/wall_history_edit.rs:20:12
+   |
+17 | impl WallHistoryMetadata {
+   | ------------------------ associated function in this implementation
+...
+20 |     pub fn for_new_wall(dev_override_is_demo_mode: bool) -> Self {
+   |            ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `Create` is never constructed
+  --> src/bin/../../building/wall_history_edit.rs:32:5
+   |
+31 | pub enum WallHistoryEdit {
+   |          --------------- variant in this enum
+32 |     Create { wall: WallId, source: WallAuthoritySnapshot, color_id: u32,
+   |     ^^^^^^
+   |
+   = note: `WallHistoryEdit` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: enum `WallReplaySourceError` is never used
+  --> src/bin/../../building/wall_history_edit.rs:49:10
+   |
+49 | pub enum WallReplaySourceError { MissingSource, DuplicateSource }
+   |          ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `WallRestoreColorRequest` is never constructed
+  --> src/bin/../../building/wall_history_edit.rs:51:12
+   |
+51 | pub struct WallRestoreColorRequest {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `InstantWallReplayOutcome` is never constructed
+  --> src/bin/../../building/wall_history_edit.rs:64:12
+   |
+64 | pub struct InstantWallReplayOutcome {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `record_deleted_wall` is never used
+  --> src/bin/../../building/wall_history_edit.rs:72:8
+   |
+72 | pub fn record_deleted_wall(wall: WallId, source: &WallAuthoritySnapshot, color_id: u32) -> WallCompoundHistoryEdit {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `apply_instant_wall_edit` is never used
+  --> src/bin/../../building/wall_history_edit.rs:80:8
+   |
+80 | pub fn apply_instant_wall_edit(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `record_new_wall` is never used
+   --> src/bin/../../building/wall_history_edit.rs:141:8
+    |
+141 | pub fn record_new_wall(
+    |        ^^^^^^^^^^^^^^^
+
+warning: `tiny-glade-reconstruction` (bin "wall-path-preparation-probe") generated 2 warnings
+warning: function `edit` is never used
+  --> src/bin/wall-history-timed-probe.rs:23:4
+   |
+23 | fn edit(e:&WallHistoryEdit)->String {
+   |    ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `for_new_wall` is never used
+  --> src/bin/../../building/wall_history_edit.rs:20:12
+   |
+17 | impl WallHistoryMetadata {
+   | ------------------------ associated function in this implementation
+...
+20 |     pub fn for_new_wall(dev_override_is_demo_mode: bool) -> Self {
+   |            ^^^^^^^^^^^^
+
+warning: variant `Delete` is never constructed
+  --> src/bin/../../building/wall_history_edit.rs:34:5
+   |
+31 | pub enum WallHistoryEdit {
+   |          --------------- variant in this enum
+...
+34 |     Delete { wall: WallId, source: WallAuthoritySnapshot, color_id: u32 },
+   |     ^^^^^^
+   |
+   = note: `WallHistoryEdit` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `0` is never read
+  --> src/bin/../../building/wall_history_replay.rs:10:12
+   |
+10 |     Source(WallReplaySourceError),
+   |     ------ ^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `WallReplayError` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+   |
+10 -     Source(WallReplaySourceError),
+10 +     Source(()),
+   |
+
+warning: field `0` is never read
+  --> src/bin/../../building/wall_history_replay.rs:11:14
+   |
+11 |     Snapshot(WallSnapshotError),
+   |     -------- ^^^^^^^^^^^^^^^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `WallReplayError` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+   |
+11 -     Snapshot(WallSnapshotError),
+11 +     Snapshot(()),
+   |
+
+warning: field `0` is never read
+  --> src/bin/../../building/wall_history_replay.rs:12:25
+   |
+12 |     UnrestoredOperation(u32),
+   |     ------------------- ^^^
+   |     |
+   |     field in this variant
+   |
+   = note: `WallReplayError` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+   |
+12 -     UnrestoredOperation(u32),
+12 +     UnrestoredOperation(()),
+   |
+
+warning: `tiny-glade-reconstruction` (bin "wall-history-authority-probe") generated 1 warning
+warning: struct `PreparedConstructionArrays` is never constructed
+  --> src/bin/../../building/wall_construction_sources.rs:96:12
+   |
+96 | pub struct PreparedConstructionArrays {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variants `ArrayCount`, `Curve`, and `NotPlainConstruction` are never constructed
+   --> src/bin/../../building/wall_construction_sources.rs:104:5
+    |
+103 | pub enum ConstructionSourceError {
+    |          ----------------------- variants in this enum
+104 |     ArrayCount,
+    |     ^^^^^^^^^^
+105 |     Curve(CurveError),
+    |     ^^^^^
+106 |     NotPlainConstruction,
+    |     ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `ConstructionSourceError` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `options` is never read
+   --> src/bin/../../building/wall_construction_sources.rs:129:9
+    |
+123 | pub struct WallConstructionPolicy {
+    |            ---------------------- field in this struct
+...
+129 |     pub options: CircleConstructionOptions,
+    |         ^^^^^^^
+    |
+    = note: `WallConstructionPolicy` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `prepared_construction_arrays` is never used
+   --> src/bin/../../building/wall_construction_sources.rs:226:8
+    |
+226 | pub fn prepared_construction_arrays(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `initialize_segment_height_array` is never used
+   --> src/bin/../../building/wall_construction_sources.rs:251:8
+    |
+251 | pub fn initialize_segment_height_array(prepared_segment_count: usize) -> Vec<f32> {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `PlainConstructionPolicy` is never constructed
+   --> src/bin/../../building/wall_construction_sources.rs:256:12
+    |
+256 | pub struct PlainConstructionPolicy {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `plain_construction_policy` is never used
+   --> src/bin/../../building/wall_construction_sources.rs:266:8
+    |
+266 | pub fn plain_construction_policy(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `tiny-glade-reconstruction` (bin "wall-construction-sources-probe") generated 7 warnings
+warning: `tiny-glade-reconstruction` (bin "wall-bulldoze-probe") generated 8 warnings (1 duplicate)
+warning: method `is_empty` is never used
+  --> src/bin/../../building/wall_segmentation.rs:79:12
+   |
+21 | impl WallLoopRange {
+   | ------------------ method in this implementation
+...
+79 |     pub fn is_empty(&self) -> bool {
+   |            ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `WallPathMaterialStatsUpdate` is never constructed
+   --> src/bin/../../building/wall_segmentation.rs:416:12
+    |
+416 | pub struct WallPathMaterialStatsUpdate {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `add_stairs_length` is never used
+   --> src/bin/../../building/wall_segmentation.rs:426:12
+    |
+423 | impl WallPathMaterialStatsUpdate {
+    | -------------------------------- method in this implementation
+...
+426 |     pub fn add_stairs_length(&mut self, length: f32) {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: function `material_stats_for_update` is never used
+   --> src/bin/../../building/wall_segmentation.rs:431:8
+    |
+431 | pub fn material_stats_for_update(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `edit` is never used
+  --> src/bin/wall-history-transition-probe.rs:23:4
+   |
+23 | fn edit(e:&WallHistoryEdit)->String {
+   |    ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tiny-glade-reconstruction` (bin "wall-history-timed-probe") generated 7 warnings (1 duplicate)
+warning: variant `MissingCollisionAsset` is never constructed
+  --> src/bin/../../building/decorator_placement.rs:51:5
+   |
+44 | pub enum PlacementError {
+   |          -------------- variant in this enum
+...
+51 |     MissingCollisionAsset,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `PlacementError` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tiny-glade-reconstruction` (bin "wall-platform-segmentation-probe") generated 4 warnings
+warning: `tiny-glade-reconstruction` (bin "decorator-placement-probe") generated 1 warning
+warning: `tiny-glade-reconstruction` (bin "wall-segmentation-probe") generated 2 warnings (2 duplicates)
+warning: `tiny-glade-reconstruction` (bin "wall-history-transition-probe") generated 7 warnings (6 duplicates)
+    Finished `release` profile [optimized + debuginfo] target(s) in 34.17s

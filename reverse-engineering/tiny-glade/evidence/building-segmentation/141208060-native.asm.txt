@@ -1,0 +1,53 @@
+141208060 push rsi
+141208061 push rdi
+141208062 sub rsp, 0xb8
+141208069 movaps xmmword ptr [rsp + 0xa0], xmm6
+141208071 movaps xmm6, xmm1
+141208074 movups xmm0, xmmword ptr [rcx + 0x50]
+141208078 movaps xmmword ptr [rsp + 0x90], xmm0
+141208080 movups xmm0, xmmword ptr [rcx + 0x40]
+141208084 movaps xmmword ptr [rsp + 0x80], xmm0
+14120808c movups xmm0, xmmword ptr [rcx]
+14120808f movups xmm1, xmmword ptr [rcx + 0x10]
+141208093 movups xmm2, xmmword ptr [rcx + 0x20]
+141208097 movups xmm3, xmmword ptr [rcx + 0x30]
+14120809b movaps xmmword ptr [rsp + 0x70], xmm3
+1412080a0 movaps xmmword ptr [rsp + 0x60], xmm2
+1412080a5 movaps xmmword ptr [rsp + 0x50], xmm1
+1412080aa movaps xmmword ptr [rsp + 0x40], xmm0
+1412080af lea rcx, [rsp + 0x24]
+1412080b4 lea rdx, [rsp + 0x40]
+1412080b9 call 0x141237a70
+1412080be cmp dword ptr [rsp + 0x24], 1
+1412080c3 jne 0x14120812d
+1412080c5 lea rsi, [rsp + 0x24]
+1412080ca lea rdi, [rsp + 0x40]
+1412080cf nop 
+1412080d0 movups xmm0, xmmword ptr [rsp + 0x28]
+1412080d5 movss xmm1, dword ptr [rsp + 0x38]
+1412080db subss xmm1, dword ptr [rsp + 0x2c]
+1412080e1 mulss xmm1, xmm1
+1412080e5 movss xmm2, dword ptr [rsp + 0x3c]
+1412080eb movss xmm3, dword ptr [rsp + 0x34]
+1412080f1 unpcklps xmm3, xmm2
+1412080f4 movss xmm2, dword ptr [rsp + 0x30]
+1412080fa movlhps xmm2, xmm0
+1412080fd shufps xmm2, xmm0, 0xe2
+141208101 subps xmm3, xmm2
+141208104 mulps xmm3, xmm3
+141208107 addss xmm1, xmm3
+14120810b movshdup xmm0, xmm3
+14120810f addss xmm0, xmm1
+141208113 sqrtss xmm0, xmm0
+141208117 addss xmm6, xmm0
+14120811b mov rcx, rsi
+14120811e mov rdx, rdi
+141208121 call 0x141237a70
+141208126 test byte ptr [rsp + 0x24], 1
+14120812b jne 0x1412080d0
+14120812d movaps xmm0, xmm6
+141208130 movaps xmm6, xmmword ptr [rsp + 0xa0]
+141208138 add rsp, 0xb8
+14120813f pop rdi
+141208140 pop rsi
+141208141 ret 

@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "updated_on": "2026-10-11",
+  "status": "in_progress",
+  "plan_document": "THREE_VERSION_RUST_PLAN.md",
+  "objective": "联合 A/B/C 发行证据恢复完整 Rust 游戏项目",
+  "current_implementation_baseline": "B",
+  "planned_delivery_baseline": "C",
+  "delivery_target_policy": "C v1.16.0 is a planning default, not an already migrated implementation",
+  "current_priority": "source_recovery_first",
+  "late_required_work": [
+    "GPU/rendering",
+    "runtime scene/interaction validation",
+    "complete application acceptance"
+  ],
+  "baselines": [
+    {
+      "id": "A",
+      "label": "2024-09-23 首发构建",
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade",
+      "role": "early structure and predecessor evidence"
+    },
+    {
+      "id": "B",
+      "label": "2025-10-08 构建",
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade",
+      "role": "current implementation and differential validation"
+    },
+    {
+      "id": "C",
+      "label": "v1.16.0 2026-09-23 构建",
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0",
+      "role": "final target and newer-system evidence"
+    }
+  ],
+  "existing_progress": "tracking/project.json",
+  "static_comparison": "MULTI_BASELINE.md",
+  "overall_completion_percent": null,
+  "phases": [
+    {
+      "id": "P0",
+      "title": "三版身份与范围",
+      "status": "in_progress",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P0"
+    },
+    {
+      "id": "P1",
+      "title": "模块与权威类型",
+      "status": "in_progress",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P1"
+    },
+    {
+      "id": "P2",
+      "title": "历史与生命周期",
+      "status": "in_progress",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P2"
+    },
+    {
+      "id": "P3",
+      "title": "完整建筑核心",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P3"
+    },
+    {
+      "id": "P4",
+      "title": "世界与环境 CPU",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P4"
+    },
+    {
+      "id": "P5",
+      "title": "输入、调度与产品逻辑",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P5"
+    },
+    {
+      "id": "P6",
+      "title": "C 版迁移与新增功能",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P6"
+    },
+    {
+      "id": "P7",
+      "title": "资源与渲染恢复",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P7"
+    },
+    {
+      "id": "P8",
+      "title": "完整运行集成",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P8"
+    },
+    {
+      "id": "P9",
+      "title": "可复现交付",
+      "status": "planned",
+      "acceptance_reference": "THREE_VERSION_RUST_PLAN.md phase P9"
+    }
+  ],
+  "next_batch": [
+    "原publisher dirty/Curve resample/terrain gathering及freeform cache",
+    "逐arch gable profile、完整Nani和marker required-components/fork注册图",
+    "屋顶方向/FlatStyle消费者、历史事务与墙砖/支撑/开口/门窗附着",
+    "ARM CPU矩形流水线case14单filler Y 1ULP差异定位（当前host exact报告失败）"
+  ],
+  "known_open_questions": [
+    "Bevy fork extent per version",
+    "A dependency identity without supplied lockfile",
+    "rhapsody2/shabriri source availability",
+    "missing snapshot closure",
+    "Windows x64 original runtime and GPU validation environment"
+  ],
+  "verification_policy": "No existing B report proves A/C behavior; dependency and implementation changes require validation scoped to the new target.",
+  "latest_findings": "evidence/building-runtime/findings.md",
+  "verification_reports": [
+    "evidence/multi-version/history-rust-verification.json",
+    "evidence/multi-version/B-parameters-verification.json",
+    "evidence/multi-version/B-replay-verification.json",
+    "evidence/multi-version/B-history-chain-verification.json",
+    "evidence/multi-version/workspace-dependency-verification.json",
+    "evidence/multi-version/B-discrete-replay-verification.json",
+    "evidence/multi-version/B-edit-rules-host-verification.json",
+    "evidence/multi-version/workspace-build-verification.json",
+    "evidence/building-state/B-spatial-verification.json",
+    "evidence/building-state/B-creation-verification.json",
+    "evidence/building-state/B-chain-verification.json",
+    "evidence/building-state/B-cli-verification.json",
+    "evidence/building-lifecycle/B-verification.json",
+    "evidence/building-lifecycle/B-cycle-verification.json",
+    "evidence/building-lifecycle/three-version-component-verification.json",
+    "evidence/building-runtime/three-version-cache-verification.json",
+    "evidence/building-runtime/B-runtime-verification.json"
+  ],
+  "dependency_filtering": "DEPENDENCY_FILTERING.md",
+  "runtime_integrations": {
+    "baseline": "B",
+    "headless": "real Bevy0.16 App/World/events/Commands with 5 World scenarios",
+    "original_scheduler": "unverified",
+    "C_adapter": "pending"
+  },
+  "numeric_diagnostics": "evidence/building-runtime/B-roof-pipeline-host-verification.json"
+}

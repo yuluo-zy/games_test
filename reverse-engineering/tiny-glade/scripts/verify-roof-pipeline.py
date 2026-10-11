@@ -4,7 +4,7 @@ import importlib.util,subprocess,json,hashlib,collections
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_RBP
 import struct
-root=Path('D:/game/reverse-engineering/tiny-glade')
+root=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('original_rect',root/'scripts/roof-ridge/capture_rectangular.py')
 original=importlib.util.module_from_spec(spec);spec.loader.exec_module(original)
 states={}
@@ -50,6 +50,6 @@ report=dict(ok=len(got)==len(expected) and not failures,source_sha256=hashlib.sh
  candidate='Pure Rust entire edges -> caps -> faces/fillers composition from Rectangle/Roof input; no prepared geometry/RNG/ordinal injection',
  full_game_executed=False,scene_replay_performed=False,gpu_executed=False,
  limitations=['Valid pitched rectangular generator inputs; ECS setup/flat roof paths not implemented','Circle has separate whole-function verification','Synthetic shape dimensions/transforms combined with original JSON parameter snapshots','Float exception flags/allocator failure/panic formatting unverified'])
-(root/'evidence/roof-pipeline-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+(root/'evidence/building-runtime/B-roof-pipeline-host-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps({'ok':report['ok'],'cases':len(cases),'records':report['records'],'failures':failures[:2]}))
 if not report['ok']:raise SystemExit(1)

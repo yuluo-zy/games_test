@@ -1,9 +1,10 @@
 """从明确的验收记录生成里程碑/进度；不按符号数推算整游戏百分比。"""
 from pathlib import Path
 import json
+import hashlib
 from datetime import datetime, timezone
 
-root = Path('D:/game/reverse-engineering/tiny-glade')
+root = Path(__file__).resolve().parents[1]
 tracking = root/'tracking'
 tracking.mkdir(exist_ok=True)
 project_file = tracking/'project.json'
@@ -39,6 +40,17 @@ if not project_file.exists():
       'known_gaps':['游戏原始 Rust 源未取得，PDB 部分 void() 为占位','22 个快照引用目标缺失','没有完整游戏交互、场景、画面或性能验收','局部机器码差分不等于完整系统复现']}
     project_file.write_text(json.dumps(project,ensure_ascii=False,indent=2),encoding='utf-8')
 project = json.loads(project_file.read_text(encoding='utf-8'))
+historical_reports = {record['report']: record for record in project.get('historical_build_reports', [])}
+
+def validate_sources(report_name, report):
+    historical = historical_reports.get(report_name, {})
+    archives = historical.get('source_archives', {})
+    if archives:
+        assert historical.get('current_build_validation') == 'requires_revalidation'
+    for path, digest in report.get('candidate_sources', {}).items():
+        source = root / archives.get(path, path)
+        assert hashlib.sha256(source.read_bytes()).hexdigest() == digest, f'源码变化，需要重新校验: {path}'
+
 project['updated_at_utc'] = datetime.now(timezone.utc).isoformat()
 by_id = {m['id']:m for m in project['milestones']}
 statuses = {'complete':'完成验收','in_progress':'进行中','not_started':'未开始','blocked':'有阻塞'}
@@ -51,24 +63,28 @@ for milestone in project['milestones']:
     for evidence in milestone['evidence']:
         assert (root/evidence).exists(),evidence
     if milestone.get('source_gate',{}).get('status') in ('verified','verified_partial'):
-        reports=[json.loads((root/e).read_text(encoding='utf-8')) for e in milestone['evidence'] if e.endswith('verification.json')]
+        gate_reports = milestone['source_gate'].get('verification_reports')
+        if gate_reports is None:
+            gate_reports = [e for e in milestone['evidence'] if e.endswith('verification.json')]
+        assert all(e in milestone['evidence'] for e in gate_reports), milestone['id']
+        reports=[json.loads((root/e).read_text(encoding='utf-8')) for e in gate_reports]
         assert reports and all(r.get('ok') is True for r in reports),milestone['id']
 for item in project['local_algorithms']:
     assert (root/item['source']).exists()
     if item['status']=='verified_local':
         report = json.loads((root/item['report']).read_text(encoding='utf-8'))
         assert report['ok'] is True,item['name']
-        import hashlib
-        for path,digest in report.get('candidate_sources',{}).items():
-            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==digest,f'源码变化，需要重新校验: {path}'
+        validate_sources(item['report'], report)
         if report.get('candidate_cargo_lock_sha256'):
-            assert hashlib.sha256((root/'reconstruction/Cargo.lock').read_bytes()).hexdigest()==report['candidate_cargo_lock_sha256'],'依赖锁文件变化，需要重新校验'
+            if item.get('current_build_validation') == 'requires_revalidation':
+                archived_lock = root / item['validation_lock_archive']
+                assert hashlib.sha256(archived_lock.read_bytes()).hexdigest()==report['candidate_cargo_lock_sha256'],'历史验证锁文件身份不匹配'
+            else:
+                assert hashlib.sha256((root/'reconstruction/Cargo.lock').read_bytes()).hexdigest()==report['candidate_cargo_lock_sha256'],'依赖锁文件变化，需要重新校验'
 pipeline=root/'evidence/roof-pipeline-verification.json'
 if pipeline.exists():
-    import hashlib
     proof=json.loads(pipeline.read_text(encoding='utf-8'))
-    for path,digest in proof.get('candidate_sources',{}).items():
-        assert hashlib.sha256((root/path).read_bytes()).hexdigest()==digest,f'源码变化，需要重新校验: {path}'
+    validate_sources('evidence/roof-pipeline-verification.json', proof)
 lines = ['# Tiny Glade 原作还原：里程碑与进度','',f"更新：{project['updated_at_utc']}。目标：{project['objective']}。",'',
          '**当前不是完整游戏。整体完成百分比暂不报告：完整原作功能清单及验收分母仍在建立。**', '',
          '进度必须区分：定位原作 → 结构/调用链确认 → Rust 实现 → 局部机器码差分 → 系统场景验收。仅反编译不算还原验收。', '',
@@ -80,10 +96,17 @@ for m in project['milestones']:
     source_text={'verified':'源码实现及原码校验通过','verified_partial':'部分源码及原码校验通过','in_progress':'恢复中','not_started':'未开始','metadata_only':'已核查元数据'}.get(source.get('status'),'—')
     if source.get('scope'):
         source_text+='：'+source['scope']
+    if source.get('current_build_validation') == 'requires_revalidation':
+        source_text+='；当前 workspace 待重验，所列通过报告属于历史构建'
     lines.append(f"| {m['id']} | {m['title']} | {statuses[m['status']]} | {source_text} | {', '.join(m['depends_on']) or '—'} | {'；'.join(m['acceptance'])} | {evidence} |")
 lines += ['', '## 已验证局部算法', '', '| 算法 | 状态/范围 | 实现 | 原作参照 |', '|---|---|---|---|']
 for a in project['local_algorithms']:
-    lines.append(f"| {a['name']} | {a['status']}：{a['scope']} | [Rust]({a['source']}) | [差分报告]({a['report']}) |")
+    validation = '；当前 workspace 待重验，原报告保留为历史构建证据' if a.get('current_build_validation') == 'requires_revalidation' else ''
+    lines.append(f"| {a['name']} | {a['status']}：{a['scope']}{validation} | [Rust]({a['source']}) | [差分报告]({a['report']}) |")
+if historical_reports:
+    lines += ['', '## 历史构建报告', '']
+    for name, record in historical_reports.items():
+        lines.append(f"- [{Path(name).name}]({name})：{record['scope']} 构建文件使用登记的原始快照核验，不计为当前 workspace 全链验收。")
 lines += ['', '## 尚未关闭的边界','']+[f'- {gap}' for gap in project['known_gaps']]
 lines += ['', '## 当前后置工作','']+[f'- {work}' for work in project.get('deferred_work',[])]
 lines += ['', '## 下一批可执行任务','']+[f'{i+1}. {action}' for i,action in enumerate(project['next_actions'])]

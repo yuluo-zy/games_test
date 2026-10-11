@@ -1,0 +1,41 @@
+14081425e imul rdi, rax, 0x58
+140814262 add rdi, rcx
+140814265 movzx ecx, byte ptr [rsp + 0x58]
+14081426a call 0x140b256b0
+14081426f test al, al
+140814271 jne 0x140814124
+140814277 lea rcx, [rsp + 0x40]
+14081427c call 0x140b34f20
+140814281 test al, al
+140814283 je 0x140814297
+140814285 xor eax, eax
+140814287 cmp byte ptr [r15 + 0x46], 0x38
+14081428c setne al
+14081428f lea eax, [rax + rax*4]
+140814292 add eax, 4
+140814295 jmp 0x1408142e3
+140814297 movzx ecx, byte ptr [r15 + 0x44]
+14081429c movzx edx, byte ptr [r15 + 0x46]
+1408142a1 mov qword ptr [rsp + 0x28], rbx
+1408142a6 mov qword ptr [rsp + 0x20], rdi
+1408142ab lea r8, [rsp + 0x88]
+1408142b3 mov r9, rsi
+1408142b6 call 0x140814470
+1408142bb movzx ecx, byte ptr [r15 + 0x46]
+1408142c0 test al, al
+1408142c2 je 0x1408142d6
+1408142c4 cmp cl, 0x38
+1408142c7 mov ecx, 1
+1408142cc mov eax, 7
+1408142d1 cmove eax, ecx
+1408142d4 jmp 0x1408142e3
+1408142d6 xor edx, edx
+1408142d8 cmp cl, 0x38
+1408142db mov eax, 6
+1408142e0 cmove eax, edx
+1408142e3 add rsp, 0x90
+1408142ea pop rbx
+1408142eb pop rdi
+1408142ec pop rsi
+1408142ed pop r12
+1408142ef pop r13

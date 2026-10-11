@@ -1,0 +1,36 @@
+1408e06d0 push r14
+1408e06d2 push rsi
+1408e06d3 push rdi
+1408e06d4 push rbx
+1408e06d5 sub rsp, 0x28
+1408e06d9 mov r14, rdx
+1408e06dc mov rsi, qword ptr [rsp + 0x70]
+1408e06e1 mov rcx, qword ptr [rdx]
+1408e06e4 mov rbx, qword ptr [rsi + 8]
+1408e06e8 mov rdi, qword ptr [rsi + 0x10]
+1408e06ec mov rdx, rbx
+1408e06ef mov r8, rdi
+1408e06f2 call 0x140d40d70
+1408e06f7 mov rcx, r14
+1408e06fa call 0x1408db5b0
+1408e06ff mov r14, rax
+1408e0702 cmp rdi, qword ptr [rsi]
+1408e0705 jne 0x1408e0720
+1408e0707 lea rdx, [rip + 0x21c48d2]
+1408e070e mov rcx, rsi
+1408e0711 call 0x140b81df0
+1408e0716 mov rax, qword ptr [rsi + 8]
+1408e071a mov qword ptr [rax + rdi*8], r14
+1408e071e jmp 0x1408e0730
+1408e0720 mov qword ptr [rbx + rdi*8], r14
+1408e0724 mov rax, rdi
+1408e0727 inc rax
+1408e072a mov qword ptr [rsi + 0x10], rax
+1408e072e je 0x1408e0734
+1408e0730 mov qword ptr [rsi + 0x10], rdi
+1408e0734 add rsp, 0x28
+1408e0738 pop rbx
+1408e0739 pop rdi
+1408e073a pop rsi
+1408e073b pop r14
+1408e073d ret 

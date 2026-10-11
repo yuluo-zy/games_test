@@ -9,8 +9,9 @@ import struct,json,hashlib,ctypes,math,random
 from collections import Counter
 from unicorn import Uc,UC_ARCH_X86,UC_MODE_64,UC_HOOK_CODE
 from unicorn.x86_const import *
-ROOT=Path('D:/game/reverse-engineering/tiny-glade')
-raw=Path('D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne').read_bytes()
+ROOT=Path(__file__).resolve().parents[2]
+identity=json.loads((ROOT/'tracking/baselines.json').read_text())['baselines']['B']
+raw=Path(identity['binary']['path']).read_bytes()
 assert hashlib.sha256(raw).hexdigest()=='f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03'
 pe=struct.unpack_from('<I',raw,60)[0];ns=struct.unpack_from('<H',raw,pe+6)[0];os=struct.unpack_from('<H',raw,pe+20)[0]
 base=struct.unpack_from('<Q',raw,pe+48)[0];sz=struct.unpack_from('<I',raw,pe+80)[0]
@@ -19,7 +20,9 @@ for i in range(ns):
  z,a,s,o=struct.unpack_from('<IIII',raw,pe+24+os+40*i+8);cpu.mem_write(base+a,raw[o:o+s])
 DATA=0x20000000;STACK=0x30000000;HEAP=0x50000000;STOP=0x40000000
 cpu.mem_map(DATA,0x10000);cpu.mem_map(STACK,0x20000);cpu.mem_map(HEAP,0x4000000);cpu.mem_map(STOP,0x1000)
-crt=ctypes.CDLL('ucrtbase.dll');funcs={}
+import sys,ctypes.util
+crt_name='ucrtbase.dll' if sys.platform=='win32' else ctypes.util.find_library('m') or ctypes.util.find_library('c')
+crt=ctypes.CDLL(crt_name);funcs={}
 for va,name,n in [(0x142923f70,'powf',2),(0x142923fa0,'roundf',1),(0x142923e60,'ceilf',1),(0x142923e30,'atanf',1),(0x142923fd0,'sinf',1),(0x142923e80,'cosf',1)]:
  f=getattr(crt,name);f.argtypes=[ctypes.c_float]*n;f.restype=ctypes.c_float;funcs[va]=(name,f,n)
 def floatbits(x):return struct.unpack('<I',struct.pack('<f',x))[0]

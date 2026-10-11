@@ -1,0 +1,41 @@
+140ae4c20 push r15
+140ae4c22 push r14
+140ae4c24 push rsi
+140ae4c25 push rdi
+140ae4c26 push rbx
+140ae4c27 mov rax, rcx
+140ae4c2a mov rcx, qword ptr [rdx]
+140ae4c2d mov r9, qword ptr [rdx + 0x20]
+140ae4c31 lea r8, [rcx + 8]
+140ae4c35 lea r10, [rcx + 0x20]
+140ae4c39 lea r11, [rcx + 0x10]
+140ae4c3d cmp byte ptr [rcx + 0x298], 0
+140ae4c44 cmovne r8, r10
+140ae4c48 lea rcx, [rcx + 0x28]
+140ae4c4c cmove rcx, r11
+140ae4c50 mov rcx, qword ptr [rcx]
+140ae4c53 mov r8, qword ptr [r8]
+140ae4c56 lea r10, [r9 + 8]
+140ae4c5a lea r11, [r9 + 0x20]
+140ae4c5e lea rsi, [r9 + 0x10]
+140ae4c62 cmp byte ptr [r9 + 0x298], 0
+140ae4c6a cmovne r10, r11
+140ae4c6e lea r9, [r9 + 0x28]
+140ae4c72 cmove r9, rsi
+140ae4c76 mov r9, qword ptr [r9]
+140ae4c79 mov r10, qword ptr [r10]
+140ae4c7c mov r11, qword ptr [rdx + 0x40]
+140ae4c80 lea rsi, [r11 + 8]
+140ae4c84 lea rdi, [r11 + 0x20]
+140ae4c88 lea rbx, [r11 + 0x10]
+140ae4c8c lea r14, [r11 + 0x28]
+140ae4c90 cmp byte ptr [r11 + 0x298], 0
+140ae4c98 cmovne rsi, rdi
+140ae4c9c cmove r14, rbx
+140ae4ca0 mov r11, qword ptr [r14]
+140ae4ca3 mov rdx, qword ptr [rdx + 0x60]
+140ae4ca7 lea rdi, [rdx + 8]
+140ae4cab lea rbx, [rdx + 0x20]
+140ae4caf lea r14, [rdx + 0x10]
+140ae4cb3 lea r15, [rdx + 0x28]
+140ae4cb7 cmp byte ptr [rdx + 0x298], 0

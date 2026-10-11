@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "target": "D:/game/ljxsj_92385/Tiny Glade",
+  "target": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade",
   "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
   "objective": "完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为",
   "overall_completion_percent": null,
@@ -16,7 +16,7 @@
       ],
       "evidence": [
         "evidence/binary/baseline.json",
-        "workspace/input/identity.json"
+        "tracking/baselines.json"
       ],
       "remaining": []
     },
@@ -34,9 +34,15 @@
         "reconstruction/Cargo.toml",
         "reconstruction/Cargo.lock",
         "evidence/project-build-verification.json",
-        "scripts/update-progress.py"
+        "scripts/update-progress.py",
+        "evidence/multi-version/workspace-dependency-verification.json",
+        "evidence/multi-version/workspace-build-verification.json",
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json"
       ],
-      "remaining": []
+      "remaining": [
+        "当前 workspace 编译通过；继续扩展游戏模块及原指令/系统验收"
+      ]
     },
     {
       "id": "M02",
@@ -72,7 +78,8 @@
       "remaining": [],
       "source_gate": {
         "status": "verified",
-        "scope": "截面/profile/Curve2构造与采样完整CPU链；23810用例"
+        "scope": "截面/profile/Curve2构造与采样完整CPU链；23810用例",
+        "current_build_validation": "requires_revalidation"
       }
     },
     {
@@ -93,7 +100,8 @@
       "remaining": [],
       "source_gate": {
         "status": "verified",
-        "scope": "脊长/脊向/尖顶偏移及世界点/线段；14776用例"
+        "scope": "脊长/脊向/尖顶偏移及世界点/线段；14776用例",
+        "current_build_validation": "requires_revalidation"
       }
     },
     {
@@ -115,7 +123,8 @@
       "remaining": [],
       "source_gate": {
         "status": "verified",
-        "scope": "矩形33输入19024条完整记录；圆形37输入11467条，其中12为完整原函数入口"
+        "scope": "矩形33输入19024条完整记录；圆形37输入11467条，其中12为完整原函数入口",
+        "current_build_validation": "requires_revalidation"
       }
     },
     {
@@ -134,16 +143,72 @@
       "evidence": [
         "reconstruction/roof/edit_rules.rs",
         "evidence/source-edits/verification.json",
-        "evidence/source-edits/findings.md"
+        "evidence/source-edits/findings.md",
+        "evidence/multi-version/B-replay-verification.json",
+        "evidence/multi-version/B-history-chain-verification.json",
+        "evidence/multi-version/B-discrete-replay-verification.json",
+        "evidence/multi-version/B-edit-rules-host-verification.json",
+        "reconstruction/building/roof_creation.rs",
+        "reconstruction/building/roof_spatial.rs",
+        "evidence/building-state/B-spatial-verification.json",
+        "evidence/building-state/B-creation-verification.json",
+        "evidence/building-state/B-chain-verification.json",
+        "evidence/building-state/B-cli-verification.json",
+        "evidence/building-state/findings.md",
+        "reconstruction/building/roof_components.rs",
+        "reconstruction/building/roof_deletion.rs",
+        "reconstruction/building/roof_lifecycle.rs",
+        "reconstruction/building/roof_associations.rs",
+        "evidence/building-lifecycle/B-verification.json",
+        "evidence/building-lifecycle/B-cycle-verification.json",
+        "evidence/building-lifecycle/three-version-component-verification.json",
+        "evidence/building-lifecycle/findings.md",
+        "reconstruction/building/wall_cache.rs",
+        "reconstruction/crates/tg-building-runtime/src/lib.rs",
+        "reconstruction/crates/tg-building-runtime/tests/building_world.rs",
+        "evidence/building-runtime/findings.md",
+        "evidence/building-runtime/three-version-cache-verification.json",
+        "evidence/building-runtime/B-runtime-verification.json",
+        "evidence/building-gather/findings.md",
+        "evidence/building-gather/B-gable-verification.json",
+        "evidence/building-collection/B-verification.json",
+        "evidence/building-collection/three-version-terrain-verification.json",
+        "evidence/building-collection/B-dirty-verification.json",
+        "evidence/building-collection/B-spatial-index-verification.json",
+        "evidence/building-nani/B-cpu-verification.json",
+        "evidence/building-collection/A-spatial-index-verification.json",
+        "evidence/building-collection/C-spatial-index-verification.json",
+        "evidence/building-nani/three-version-registration.json",
+        "evidence/building-nani/B-public-registration.json",
+        "evidence/building-gather/three-version-gable-source-comparison.json",
+        "evidence/building-collection/three-version-spatial-comparison.json",
+        "evidence/building-edits/findings.md",
+        "evidence/building-edits/B-direction-verification.json",
+        "evidence/building-edits/flat-customization-verification.json",
+        "evidence/building-edits/flat-version-comparison.json",
+        "evidence/building-holes/findings.md",
+        "evidence/building-holes/B-invalidation-verification.json",
+        "evidence/building-holes/storage-B-verification.json",
+        "evidence/building-holes/opening-B-verification.json",
+        "evidence/building-holes/B-world-chain-verification.json",
+        "evidence/building-history/B-transaction-verification.json",
+        "evidence/building-history-owners/B-owner-verification.json",
+        "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json",
+        "evidence/building-integrate/findings.md",
+        "BUILDING_SYSTEM_RECOVERY_PLAN.md"
       ],
       "remaining": [
-        "实体解析/失败分支与游戏系统注册、事件读取调度",
-        "create/update/delete/switch生命周期与游戏状态消费者",
-        "最终场景验收后置"
+        "屋顶TriggerVolume/尖顶/支撑/完整模拟与GPU、Drawable/VAO/transient mesh后端",
+        "原fork调度和跨writer消费顺序",
+        "C独立迁移与ARM铺瓦1ULP差异"
       ],
       "source_gate": {
         "status": "verified_partial",
-        "scope": "4514案例：已解析Roof/Event的编辑后段、变化量与数值通知规则；ECS查询/调度未完成；场景后置"
+        "scope": "B EditRoof真实Query/tick/geometry与类型切换CPU、Roof五类owner录制/计时回放已联接；后端和原fork图未验收",
+        "verification_reports": [
+          "evidence/building-history-owners/B-owner-verification.json",
+          "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json"
+        ]
       }
     },
     {
@@ -159,12 +224,34 @@
       ],
       "evidence": [
         "reconstruction/history/findings.md",
-        "reconstruction/history/sample-verification.json"
+        "reconstruction/history/sample-verification.json",
+        "evidence/multi-version/history-rust-verification.json",
+        "evidence/building-holes/findings.md",
+        "evidence/building-holes/B-invalidation-verification.json",
+        "evidence/building-holes/storage-B-verification.json",
+        "evidence/building-holes/opening-B-verification.json",
+        "evidence/building-holes/B-world-chain-verification.json",
+        "evidence/building-history/B-transaction-verification.json",
+        "evidence/building-history-owners/B-owner-verification.json",
+        "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json",
+        "evidence/building-integrate/findings.md",
+        "BUILDING_SYSTEM_RECOVERY_PLAN.md"
       ],
-      "remaining": [],
+      "remaining": [
+        "Wall/Decorator/Color/Stairs全部owner、辅助恢复与复合组",
+        "完整快照/保存装载/startup与C历史迁移",
+        "原跨writer调度与取消"
+      ],
       "source_gate": {
-        "status": "in_progress",
-        "scope": "静态历史结构已解析；Rust消费者/字段映射待恢复"
+        "status": "verified_partial",
+        "scope": "B Roof五类owner、last-only/all录制策略和前桶计时回放已接World；WallHeight请求和实际消费者联接；完整compound/snapshot未关闭",
+        "verification_reports": [
+          "evidence/multi-version/history-rust-verification.json",
+          "evidence/building-history/B-transaction-verification.json",
+          "evidence/building-holes/B-world-chain-verification.json",
+          "evidence/building-history-owners/B-owner-verification.json",
+          "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json"
+        ]
       }
     },
     {
@@ -180,22 +267,61 @@
       ],
       "evidence": [
         "reconstruction/wall/height_rules.rs",
-        "evidence/scope-priorities/wall-rules-verification.json"
+        "evidence/scope-priorities/wall-rules-verification.json",
+        "reconstruction/building/wall_state.rs",
+        "evidence/building-state/B-spatial-verification.json",
+        "reconstruction/building/wall_publication.rs",
+        "evidence/building-lifecycle/B-verification.json",
+        "evidence/building-gather/findings.md",
+        "evidence/building-gather/B-gable-verification.json",
+        "evidence/building-collection/B-verification.json",
+        "evidence/building-collection/three-version-terrain-verification.json",
+        "evidence/building-collection/B-dirty-verification.json",
+        "evidence/building-collection/B-spatial-index-verification.json",
+        "evidence/building-nani/B-cpu-verification.json",
+        "evidence/building-collection/A-spatial-index-verification.json",
+        "evidence/building-collection/C-spatial-index-verification.json",
+        "evidence/building-nani/three-version-registration.json",
+        "evidence/building-nani/B-public-registration.json",
+        "evidence/building-gather/three-version-gable-source-comparison.json",
+        "evidence/building-collection/three-version-spatial-comparison.json",
+        "evidence/building-edits/findings.md",
+        "evidence/building-edits/B-direction-verification.json",
+        "evidence/building-edits/flat-customization-verification.json",
+        "evidence/building-edits/flat-version-comparison.json",
+        "evidence/building-holes/findings.md",
+        "evidence/building-holes/B-invalidation-verification.json",
+        "evidence/building-holes/storage-B-verification.json",
+        "evidence/building-holes/opening-B-verification.json",
+        "evidence/building-holes/B-world-chain-verification.json",
+        "evidence/building-history/B-transaction-verification.json",
+        "evidence/building-constructor/B-wall-constructor-verification.json",
+        "evidence/building-history-owners/B-wall-height-authority-verification.json",
+        "evidence/building-history-owners/B-wall-height-command-verification.json",
+        "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json",
+        "evidence/building-integrate/findings.md",
+        "BUILDING_SYSTEM_RECOVERY_PLAN.md"
       ],
       "remaining": [
-        "clamp对象查询/合法性与特殊flag生产者",
-        "墙轮廓、砖块/支撑/开口源码和原码校验",
-        "最终场景验收后置"
+        "raw authority rows→noise/seed/authority walker→proposal/context中段",
+        "自由墙缓存、完整相交/分段、拱/梁/支撑/楼板/门阶",
+        "特殊/fence/roof构造分支及C木构"
       ],
       "source_gate": {
         "status": "verified_partial",
-        "scope": "6624案例：已解析状态的墙高约束后段及3个标高缓存叶函数；墙轮廓/砖/支撑/开口待恢复"
+        "scope": "B墙高度命令→权威写/dirty→发布与关联已联接；原row候选与resolved proposal→96B实际实体消费者通过；缺raw生产中段/其他结构",
+        "verification_reports": [
+          "evidence/building-constructor/B-wall-constructor-verification.json",
+          "evidence/building-history-owners/B-wall-height-authority-verification.json",
+          "evidence/building-history-owners/B-wall-height-command-verification.json",
+          "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json"
+        ]
       }
     },
     {
       "id": "M09",
       "title": "门窗/装饰/附着关系",
-      "status": "not_started",
+      "status": "in_progress",
       "depends_on": [
         "M06",
         "M07",
@@ -204,8 +330,32 @@
       "acceptance": [
         "放置/尺寸/变形/冲突/宿主变化与恢复实现；原作样本与局部规则验证"
       ],
-      "evidence": [],
-      "remaining": []
+      "evidence": [
+        "evidence/building-holes/findings.md",
+        "evidence/building-holes/B-invalidation-verification.json",
+        "evidence/building-holes/storage-B-verification.json",
+        "evidence/building-holes/opening-B-verification.json",
+        "evidence/building-holes/B-world-chain-verification.json",
+        "evidence/building-history/B-transaction-verification.json",
+        "evidence/building-placement/B-placement-verification.json",
+        "evidence/building-placement/B-subtype-verification.json",
+        "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json",
+        "evidence/building-integrate/findings.md",
+        "BUILDING_SYSTEM_RECOVERY_PLAN.md"
+      ],
+      "remaining": [
+        "原工具/anchor与Decorator视觉Bundle、corner/roof UV/dormer其他分支",
+        "门窗完整历史、其他贡献者/楼梯与C loader/mod-swap策略"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "B真实碰撞资产+raw Curve2+Roof/mappedCurve3/arch heights→普通/半窗/门开口与删除清理已接；18原资源键；完整Decorator系统未关闭",
+        "verification_reports": [
+          "evidence/building-placement/B-placement-verification.json",
+          "evidence/building-placement/B-subtype-verification.json",
+          "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json"
+        ]
+      }
     },
     {
       "id": "M10",
@@ -296,73 +446,386 @@
       "status": "verified_local",
       "source": "reconstruction/math/window_aspect.rs",
       "report": "evidence/native/window-aspect-verification.json",
-      "scope": "仅局部 f32 结果，1280 输入"
+      "scope": "仅局部 f32 结果，1280 输入",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "Roof::new/ty/is_gable",
       "status": "verified_local",
       "source": "reconstruction/roof/roof_state.rs",
-      "report": "evidence/native/roof-state-verification.json",
-      "scope": "仅字节写入/布尔返回；256 构造器 + 两函数各1348输入"
+      "report": "evidence/multi-version/B-roof-state-host-verification.json",
+      "scope": "仅字节写入/布尔返回；256 构造器 + 两函数各1348输入",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock",
+      "current_host_report": "evidence/multi-version/B-roof-state-host-verification.json"
     },
     {
       "name": "Roof surface/Curve2",
       "status": "verified_local",
       "source": "reconstruction/roof/surface.rs",
       "report": "evidence/roof-surface/verification.json",
-      "scope": "23810用例，原指令/CRT/曲线链；异常范围见报告"
+      "scope": "23810用例，原指令/CRT/曲线链；异常范围见报告",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "RoofRidgeDims/tip",
       "status": "verified_local",
       "source": "reconstruction/roof/ridge.rs",
       "report": "evidence/roof-ridge/verification.json",
-      "scope": "14776用例，点/线段脊线核心"
+      "scope": "14776用例，点/线段脊线核心",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "Rectangular CPU full pipeline",
       "status": "verified_local",
       "source": "reconstruction/roof/pipeline.rs",
       "report": "evidence/roof-pipeline-verification.json",
-      "scope": "33完整输入、19024条64字节记录；没有prepared geometry注入"
+      "scope": "33完整输入、19024条64字节记录；没有prepared geometry注入",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "Circular CPU tiles",
       "status": "verified_local",
       "source": "reconstruction/roof/tiles.rs",
       "report": "evidence/roof-tiles/circular-verification.json",
-      "scope": "37输入、11467记录；25prepared/12完整入口"
+      "scope": "37输入、11467记录；25prepared/12完整入口",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "Wall height numeric policy / cached heights",
       "status": "verified_local",
       "source": "reconstruction/wall/height_rules.rs",
       "report": "evidence/scope-priorities/wall-rules-verification.json",
-      "scope": "6624案例；clamp仅数值后段，3个缓存叶函数含缺失panic条件；ECS/哈希实现排除"
+      "scope": "6624案例；clamp仅数值后段，3个缓存叶函数含缺失panic条件；ECS/哈希实现排除",
+      "baseline_id": "B",
+      "current_build_validation": "requires_revalidation",
+      "validation_lock_archive": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
     },
     {
       "name": "Roof resolved edit core / feedback rules",
       "status": "verified_local",
       "source": "reconstruction/roof/edit_rules.rs",
-      "report": "evidence/source-edits/verification.json",
-      "scope": "4514案例；完整88字节状态、changed tick、变化量、gable重建及反馈数值；已解析后段，不是完整ECS系统"
+      "report": "evidence/multi-version/B-edit-rules-host-verification.json",
+      "scope": "当前ARM构建4514案例原指令差分通过；ECS查询及调度排除",
+      "baseline_id": "B",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "RoofShapeParams field mapping/eave_length_ws",
+      "status": "verified_local",
+      "source": "reconstruction/roof/parameters.rs",
+      "report": "evidence/multi-version/B-parameters-verification.json",
+      "scope": "1024序列化字段观察/2097有限输入原码差分；rim默认值/非有限eave未覆盖",
+      "baseline_id": "B",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "Roof VisualEdit replay producer",
+      "status": "verified_local",
+      "source": "reconstruction/roof/replay.rs",
+      "report": "evidence/multi-version/B-replay-verification.json",
+      "scope": "1600例：原完整dispatch的VisualEdit分支；24字节状态及53字节事件一致；含0时长的unordered分支",
+      "baseline_id": "B",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "Roof history JSON to resolved state",
+      "status": "verified_local",
+      "source": "reconstruction/roof/replay.rs",
+      "report": "evidence/multi-version/B-history-chain-verification.json",
+      "scope": "B118条真实VisualEdit×3进度×2方向=708例，Roof88/写标记/回放状态/反馈数量一致；ECS解析排除",
+      "baseline_id": "B",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "Roof discrete replay event production",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/roof/replay.rs",
+      "report": "evidence/multi-version/B-discrete-replay-verification.json",
+      "scope": "tag0/1/3/4；7168案例状态24/事件有效字段/队列选择；presence默认值与ECS消费者排除"
+    },
+    {
+      "name": "PublicWall game-read guard / Roof spatial update",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_spatial.rs",
+      "report": "evidence/building-state/B-spatial-verification.json",
+      "scope": "35墙读取guard+1600状态边界+1024随机；原指令Roof88/related48/ticks/有序通知；map/ECS排除"
+    },
+    {
+      "name": "Roof resolved creation initialization",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_creation.rs",
+      "report": "evidence/building-state/B-creation-verification.json",
+      "scope": "848案例：create事件到Roof88初始化/类型/gable通知；动画/drawable/spawn后段排除"
+    },
+    {
+      "name": "Replay create to wall-driven Roof chain",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_creation.rs",
+      "report": "evidence/building-state/B-chain-verification.json",
+      "scope": "512案例：create/undo-delete回放→初始化→墙驱动空间更新；原指令联接，无实体注册/场景"
+    },
+    {
+      "name": "Building publication / association / components / deletion rules",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_lifecycle.rs",
+      "report": "evidence/building-lifecycle/B-verification.json",
+      "scope": "2316原指令案例：发布数值/字段、关联guard、TileSim/动画、删除匹配/移除意图；库API桥接与ECS排除，完整publisher/association外围未验证"
+    },
+    {
+      "name": "Resolved creation to deletion lifecycle chain",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_lifecycle.rs",
+      "report": "evidence/building-lifecycle/B-cycle-verification.json",
+      "scope": "128例原创建→成长→删除匹配→已提交标记后淡出/移除意图；真正engine flush/注册未验收"
+    },
+    {
+      "name": "A/B/C TileSimulation constructor leaves",
+      "status": "verified_local",
+      "baseline_id": "A/B/C leaf only",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/roof_components.rs",
+      "report": "evidence/building-lifecycle/three-version-component-verification.json",
+      "scope": "每版128 TileSim原码对同一Rust接口共384；另核对Animation new/predicate；不扩大为三版生命周期等价"
+    },
+    {
+      "name": "A/B/C regular wall base cache producer",
+      "status": "verified_local",
+      "source": "reconstruction/building/wall_cache.rs",
+      "report": "evidence/building-runtime/three-version-cache-verification.json",
+      "scope": "三版共3072例base max-y/双cacheflag-value/arch数组；不含gable profile或raw采集",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "B gable scalar and raw Bevy building chain",
+      "status": "verified_local",
+      "source": "reconstruction/crates/tg-building-runtime/src/lib.rs",
+      "report": "evidence/building-runtime/B-runtime-verification.json",
+      "scope": "256原码scalar；runtime20/workspace24；resolved5帧/raw6帧/edit8帧/opening-history12帧；原fork/GPU及完整历史未验收",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "Raw wall collection/terrain remap",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/wall_collection.rs",
+      "report": "evidence/building-collection/B-verification.json",
+      "scope": "B 1024terrain+256完整采集，原Curve3累计U/长度和相对地形指标"
+    },
+    {
+      "name": "A/B/C terrain sampling",
+      "status": "verified_local",
+      "baseline_id": "A/B/C sampler only",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/wall_collection.rs",
+      "report": "evidence/building-collection/three-version-terrain-verification.json",
+      "scope": "三版各512，A固定bounds、B/C动态fix；仅sampler范围"
+    },
+    {
+      "name": "B dirty publication subscriber policy",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/wall_collection.rs",
+      "report": "evidence/building-collection/B-dirty-verification.json",
+      "scope": "1280相对高度/queued判断及逐点地形过滤，std锁/容器排除"
+    },
+    {
+      "name": "B original spatial cell membership",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/wall_spatial_index.rs",
+      "report": "evidence/building-collection/B-spatial-index-verification.json",
+      "scope": "B256coords+256完整段有序格列表；A/C同样各512且通过另列报告；segment metadata不在范围"
+    },
+    {
+      "name": "B per-arch gable consumer",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/building/wall_gable.rs",
+      "report": "evidence/building-gather/B-gable-verification.json",
+      "scope": "320完整已解析consumer原指令，包括方向/檐口/profile/闭合端点；A/C消费者待验"
+    },
+    {
+      "name": "B Nani Roof StoneFloor CPU projection",
+      "status": "verified_local",
+      "baseline_id": "B",
+      "current_build_validation": "verified",
+      "source": "reconstruction/crates/tg-building-runtime/src/nani.rs",
+      "report": "evidence/building-nani/B-cpu-verification.json",
+      "scope": "1024payload64与bounds；B十组件显式注册另见原图记录；GPU/Floor分支未验"
+    },
+    {
+      "name": "B ridge direction event consumer",
+      "source": "reconstruction/building/roof_direction.rs",
+      "report": "evidence/building-edits/B-direction-verification.json",
+      "scope": "1024已解析consumer原码：Roof88/tick/geometry/gable/sound；A/C静态候选单列",
+      "status": "verified_local",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "B/C FlatRoofStyle and rim consumers",
+      "source": "reconstruction/building/roof_customization.rs",
+      "report": "evidence/building-edits/flat-customization-verification.json",
+      "scope": "B/C各1536+各4skip guards；原Mutation入参验证，History commit/ColorID首loop不在范围",
+      "status": "verified_local",
+      "current_build_validation": "verified"
+    },
+    {
+      "name": "B actual hole invalidation consumer",
+      "source": "reconstruction/building/wall_hole_invalidation.rs",
+      "report": "evidence/building-holes/B-invalidation-verification.json",
+      "scope": "512实际reader到OnWallChanged，std lookup桥；后续World链另验",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B WallHoleStorage frame and geometry",
+      "source": "reconstruction/building/wall_holes.rs",
+      "report": "evidence/building-holes/storage-B-verification.json",
+      "scope": "768 hash/finalize/reopen/frame，指纹/缓存参数/排序/wrap/AL；unknown padding排除",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B four resolved window/door opening producers",
+      "source": "reconstruction/building/opening_rules.rs",
+      "report": "evidence/building-holes/opening-B-verification.json",
+      "scope": "3072四类完整raw贡献；collision/position已解析，原asset/UV/morph前段未恢复",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B History recording and Rim cursor replay",
+      "source": "reconstruction/history/transaction.rs",
+      "report": "evidence/building-history/B-transaction-verification.json",
+      "scope": "462序列start/add/finish/截redo/cursor/原Rim展开与重放，另3原token guards；其他owners/startup/timed未恢复",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B continuous openings and committed Rim history",
+      "source": "reconstruction/crates/tg-building-runtime/src/openings.rs",
+      "report": "evidence/building-holes/B-world-chain-verification.json",
+      "scope": "12帧实际World CLI与2个新集成测试；24 workspace/20runtime；原fork/GPU/资产与完整历史未验收",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B resolved plain wall brick construction",
+      "source": "reconstruction/building/wall_constructor.rs",
+      "report": "evidence/building-constructor/B-wall-constructor-verification.json",
+      "scope": "3516原指令9阶段；row/洞候选/partition与resolved proposal→96B消费者，raw rows→noise/context仍缺失",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B original wall decorator asset placement",
+      "source": "reconstruction/building/decorator_placement.rs",
+      "report": "evidence/building-placement/B-placement-verification.json",
+      "scope": "1668原指令，bounds/raw Curve2/world坐标/原12资源选择及组合",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B wall decorator subtype and half-window assets",
+      "source": "reconstruction/building/decorator_subtype.rs",
+      "report": "evidence/building-placement/B-subtype-verification.json",
+      "scope": "1326原指令；真实Roof/outline/heights subtype和半窗资产开口；roof UV/corner visual仍缺",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B building Roof owners and WallHeight request schema",
+      "source": "reconstruction/history/building_transactions.rs",
+      "report": "evidence/building-history-owners/B-owner-verification.json",
+      "scope": "752 Roof录制/expand/cursor/timed bucket与512独立WallHeight constructor/instant dispatch；非完整Wall compound",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B actual wall height authority",
+      "source": "reconstruction/building/wall_height_authority.rs",
+      "report": "evidence/building-history-owners/B-wall-height-authority-verification.json",
+      "scope": "1024原wrapper/dirty/source+54写与publisher读回，同值dirty；A/C仅归属对照",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B actual wall height command consumer",
+      "source": "reconstruction/building/wall_height_command.rs",
+      "report": "evidence/building-history-owners/B-wall-height-command-verification.json",
+      "scope": "1280原完整command/clamp/U0.5或显式anchor/terrain/authority/audio；原special flag生产者为显式输入",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
+    },
+    {
+      "name": "B asset parameter and timed Roof history World chain",
+      "source": "reconstruction/crates/tg-building-runtime/src/history.rs",
+      "report": "evidence/building-integrate/B-asset-parameter-history-runtime-verification.json",
+      "scope": "14帧CLI，33workspace/29runtime含9新增连续World测试；adapter图、resolved wall proposal、B CPU限定，不是完整建筑验收",
+      "status": "verified_local",
+      "current_build_validation": "verified",
+      "baseline_id": "B"
     }
   ],
   "system_acceptances": [],
   "next_actions": [
-    "S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器",
-    "S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则",
-    "S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half",
-    "S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放"
+    "G04：关闭原raw rows→noise/seed/authority walker→proposal/context中段，替换当前显式输入",
+    "G01/G02/G03/G05：完整墙编辑、自由墙缓存、相交与结构输出",
+    "G08/G11/G12：屋顶trigger/尖顶/支撑、其他装饰及楼梯",
+    "G14/G15/G16/G17：其他历史owner/快照、原调度和C迁移，分别验证"
   ],
   "known_gaps": [
     "发行树/PDB没有取回作者原始Rust文本，当前为行为恢复源码",
-    "Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实",
     "屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成",
     "22个快照引用目标缺失",
-    "完整游戏、场景回放与GPU尚未验收，后两项按用户要求后置"
+    "完整游戏、场景回放与GPU尚未验收，后两项按用户要求后置",
+    "B Roof参数字段与方向0/1已确认；完整Wall/ID类型、rim默认值及A/C内存布局仍未知",
+    "C私有渲染依赖匿名HTTPS读取失败；源码可用性未关闭",
+    "raw采集/regular cache/逐arch gable/B创建10组件和Nani CPU已接实际World；freeform/完整建筑几何和原fork排程仍未验收",
+    "Nani GPU ActiveInstance/InstanceHandle与Floor分支未恢复；C kind7和新增wall/color/margin消费者不能套B",
+    "四类门窗resolved开口和Rim-only显式账本instant事务已接World；原asset/UV/roof-aware morph、其他hole与history owners/snapshot/timed仍未恢复",
+    "新门窗组件为重建适配投影，尚非原visual Bundle或实际GPU实例；开口AABB不是已完成三维墙砖mesh"
   ],
-  "updated_at_utc": "2026-10-10T10:38:19.651657+00:00",
+  "updated_at_utc": "2026-10-11T03:58:40.352139+00:00",
   "rust_project": "reconstruction/Cargo.toml",
   "engine_dependency_evidence": "evidence/resources/dependency-evidence.json",
   "current_priority": "source_recovery_first",
@@ -394,5 +857,62 @@
       "half": "2.4.1"
     },
     "counted_as_game_source_recovery": false
+  },
+  "three_version_plan": "tracking/three-version-plan.json",
+  "baselines": "tracking/baselines.json",
+  "current_workspace_validation": "evidence/multi-version/workspace-build-verification.json",
+  "historical_build_reports": [
+    {
+      "report": "evidence/roof-pipeline-verification.json",
+      "source_archives": {
+        "reconstruction/Cargo.toml": "evidence/multi-version/pre-history-reconstruction-Cargo.toml",
+        "reconstruction/Cargo.lock": "evidence/multi-version/pre-history-reconstruction-Cargo.lock"
+      },
+      "current_build_validation": "requires_revalidation",
+      "scope": "原 Windows 构建的屋顶流水线差分；扩展 workspace 后当前构建待重验，原算法源仍逐项核验身份。"
+    }
+  ],
+  "current_execution_target": "B",
+  "final_target": "C",
+  "dependency_filtering": "DEPENDENCY_FILTERING.md",
+  "dependency_exclusions": "tracking/dependency-exclusions.json",
+  "current_building_findings": "evidence/building-holes/findings.md",
+  "runtime_integrations": [
+    {
+      "status": "verified_headless_partial",
+      "baseline": "B",
+      "bevy_version": "0.16.0",
+      "workspace_tests": 24,
+      "world_scenario_tests": 20,
+      "registry_identity_matches": 113,
+      "original_scheduler_verified": false,
+      "source": "reconstruction/crates/tg-building-runtime",
+      "report": "evidence/building-runtime/B-runtime-verification.json",
+      "raw_cli_frames": 6,
+      "resolved_cli_frames": 5,
+      "gpu_backend_verified": false,
+      "edit_cli_frames": 8,
+      "openings_history_cli_frames": 12
+    }
+  ],
+  "numeric_diagnostics": [
+    {
+      "status": "failed_exact_comparison",
+      "report": "evidence/building-runtime/B-roof-pipeline-host-verification.json",
+      "scope": "33矩形case/19024records，case14一个Y相差1ULP，数量/seed/RNG一致；原因待定位，旧Windows证明不升级成当前host通过"
+    }
+  ],
+  "reconstruction_skill": {
+    "name": "native-rust-reconstruction",
+    "path": "/Users/yuluo/.codex/skills/native-rust-reconstruction/SKILL.md",
+    "validated": true,
+    "project_facts_in_skill": false
+  },
+  "building_plan": {
+    "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+    "tracking": "tracking/building-system-plan.json",
+    "status": "implementation_in_progress",
+    "integration_findings": "evidence/building-integrate/findings.md",
+    "full_building_accepted": false
   }
 }

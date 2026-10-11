@@ -1,0 +1,103 @@
+{
+  "A": {
+    "sources": [
+      {
+        "path": "crates/country-core/src/resources/roofs/commands.rs",
+        "sha256": [
+          "7403e17c2af904b787758a58caa91ad2d93a04357b26152d3d56215f6eb83f4e"
+        ]
+      },
+      {
+        "path": "crates/systems/color/src/set_roof_color_id.rs",
+        "sha256": [
+          "3eabe9a7da15ed27eff70eca04b56a4073010a8c9391ed7962b8d4ae76da9ecd"
+        ]
+      }
+    ],
+    "consumer_va": null,
+    "status": "A relevant public/source inventory selects old set_roof_color_id, no FlatStyle/Rim consumer matched; not inferred B-equivalent"
+  },
+  "B": {
+    "sources": [
+      {
+        "path": "crates/country-core/src/resources/roofs/commands.rs",
+        "sha256": [
+          "ba32501912c816d802a5cadeafc1b2933673de1edbf9c7dc1e8b46cc12730e6f"
+        ]
+      },
+      {
+        "path": "crates/systems/color/src/set_roof_customization.rs",
+        "sha256": [
+          "bed5dbdc7aa22000bd71ae633fd68fa73101bf6a9a4647dbe86653175ccc41f1"
+        ]
+      }
+    ],
+    "consumer_va": "0x142299dd0",
+    "package": {
+      "name": "system-color",
+      "version": "0.1.0",
+      "dependencies": [
+        "bevy_app",
+        "bevy_ecs",
+        "bevy_input",
+        "country-core",
+        "egui",
+        "glam 0.29.3",
+        "itertools 0.14.0",
+        "lerp",
+        "log",
+        "puffin",
+        "rhapsody",
+        "utils"
+      ]
+    },
+    "status": "private game set_roof_customization consumer; color loop not restored in this scope"
+  },
+  "C": {
+    "sources": [
+      {
+        "path": "crates/country-core/src/resources/roofs/commands.rs",
+        "sha256": [
+          "310a584a77eaec6968f8685063afc4dab6508a3d1f2143f2fa466013ce71121f"
+        ]
+      },
+      {
+        "path": "crates/systems/color/src/set_roof_customization.rs",
+        "sha256": [
+          "90dc65abf03abd94950cbdcf6f8984cc9e735d7a8021e25953bbf06ff9d7b305"
+        ]
+      }
+    ],
+    "consumer_va": "0x1428ac4f0",
+    "package": {
+      "name": "system-color",
+      "version": "0.1.0",
+      "dependencies": [
+        "bevy_app",
+        "bevy_ecs",
+        "bevy_input",
+        "country-core",
+        "egui",
+        "glam 0.30.10",
+        "itertools 0.14.0",
+        "lerp",
+        "log",
+        "puffin",
+        "rhapsody",
+        "utils"
+      ]
+    },
+    "status": "private game set_roof_customization consumer; color loop not restored in this scope"
+  },
+  "policy": {
+    "game_owned_evidence": "system-color local/path alone was ownership_check_required; private source + direct function + Roof field writes + typed consumers establish ownership",
+    "excluded": [
+      "Bevy Query/Events/scheduler/archetype implementation",
+      "std allocator/Arc headers",
+      "container reallocation and hash probing",
+      "History::add transaction/cursor internals"
+    ],
+    "query_schema": "Query<&mut Roof>; default () filter, no Without<RoofMarkedForDeletion>",
+    "scope": "FlatRoofStyle/Rim resolved branches verified on B/C, not whole customization/color subsystem equivalence"
+  }
+}

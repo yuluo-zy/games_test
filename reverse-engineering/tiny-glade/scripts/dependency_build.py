@@ -4,11 +4,13 @@ This links published dependencies instead of compiling handwritten substitutes.
 The runner remains a disposable executable with no game runtime/scene work.
 """
 from pathlib import Path
-import json, subprocess
+import json, subprocess, shutil
 
-ROOT = Path('D:/game/reverse-engineering/tiny-glade')
-CARGO = 'C:/Users/liyu/.cargo/bin/cargo.exe'
-RUSTC = 'C:/Users/liyu/.cargo/bin/rustc.exe'
+ROOT = Path(__file__).resolve().parents[1]
+CARGO = shutil.which('cargo')
+RUSTC = shutil.which('rustc')
+if not CARGO or not RUSTC:
+    raise RuntimeError('cargo and rustc must be available in PATH')
 _dependencies = None
 
 def runner_command(source, output, edition='2024'):
@@ -35,4 +37,5 @@ def runner_command(source, output, edition='2024'):
     return args
 
 def build_runner(source, output, edition='2024'):
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
     return subprocess.run(runner_command(source, output, edition), capture_output=True, text=True, check=True)

@@ -1,0 +1,239 @@
+
+void __cdecl system_wall_constructor::construct_gates::DoorMeshInProgress::add_quad(void)
+
+{
+  undefined4 uVar1;
+  undefined8 uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  longlong *in_RCX;
+  undefined8 *in_RDX;
+  undefined8 *in_R8;
+  undefined8 *in_R9;
+  undefined8 *in_stack_00000028;
+  
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_RDX + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_RDX;
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = *in_R8;
+  uVar1 = *(undefined4 *)(in_R8 + 1);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = *in_R9;
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)((longlong)in_RDX + 0x14);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *(undefined8 *)((longlong)in_RDX + 0xc);
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = *(undefined8 *)((longlong)in_R8 + 0xc);
+  uVar1 = *(undefined4 *)((longlong)in_R8 + 0x14);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = in_R9[1];
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_RDX + 4);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = in_RDX[3];
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = in_R8[3];
+  uVar1 = *(undefined4 *)(in_R8 + 4);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = in_R9[2];
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_RDX + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_RDX;
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = *in_R8;
+  uVar1 = *(undefined4 *)(in_R8 + 1);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = *in_R9;
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_RDX + 4);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = in_RDX[3];
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = in_R8[3];
+  uVar1 = *(undefined4 *)(in_R8 + 4);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = in_R9[2];
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  lVar3 = in_RCX[2];
+  if (lVar3 == *in_RCX) {
+    alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+  }
+  lVar4 = in_RCX[1];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)((longlong)in_RDX + 0x2c);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *(undefined8 *)((longlong)in_RDX + 0x24);
+  in_RCX[2] = lVar3 + 1;
+  uVar2 = *(undefined8 *)((longlong)in_R8 + 0x24);
+  uVar1 = *(undefined4 *)((longlong)in_R8 + 0x2c);
+  lVar3 = in_RCX[5];
+  if (lVar3 == in_RCX[3]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[4];
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = uVar2;
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = uVar1;
+  in_RCX[5] = lVar3 + 1;
+  uVar2 = in_R9[3];
+  lVar3 = in_RCX[8];
+  if (lVar3 == in_RCX[6]) {
+    alloc::raw_vec::RawVec::grow_one<array_<f32,2>,alloc::alloc::Global>();
+  }
+  *(undefined8 *)(in_RCX[7] + lVar3 * 8) = uVar2;
+  in_RCX[8] = lVar3 + 1;
+  lVar3 = in_RCX[0xb];
+  if (lVar3 == in_RCX[9]) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = in_RCX[10];
+  *(undefined4 *)(lVar4 + 8 + lVar3 * 0xc) = *(undefined4 *)(in_stack_00000028 + 1);
+  *(undefined8 *)(lVar4 + lVar3 * 0xc) = *in_stack_00000028;
+  in_RCX[0xb] = lVar3 + 1;
+  return;
+}
+
