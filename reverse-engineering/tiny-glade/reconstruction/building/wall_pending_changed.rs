@@ -8,7 +8,7 @@ pub enum PendingWallChangedError {InvalidCurve,InvalidProjection}
 /// Original Curve2::approx_coord_at_pos and approx_u_at_pos: strict distance
 /// replacement preserves the first segment on ties. Duplicate endpoints use
 /// the original 1e-8 denominator floor; this is a game projection rule.
-pub fn approximate_curve_u(curve:&Curve2,position:[f32;2])->Result<f32,PendingWallChangedError>{
+pub fn approximate_curve_coordinate(curve:&Curve2,position:[f32;2])->Result<(usize,f32),PendingWallChangedError>{
  if curve.points.len()<2||curve.points_u.len()!=curve.points.len(){return Err(PendingWallChangedError::InvalidCurve);}
  let mut best=f32::MAX;let mut index=0;let mut fraction=0.;
  for (i,segment) in curve.points.windows(2).enumerate(){
@@ -19,6 +19,11 @@ pub fn approximate_curve_u(curve:&Curve2,position:[f32;2])->Result<f32,PendingWa
   let px=(1.-t)*a[0]+t*b[0];let pz=(1.-t)*a[1]+t*b[1];let dx=position[0]-px;let dz=position[1]-pz;
   let distance=(dx*dx+dz*dz).sqrt();if distance<best{best=distance;index=i;fraction=t;}
  }
+ if !fraction.is_finite(){return Err(PendingWallChangedError::InvalidProjection);}
+ Ok((index,fraction))
+}
+pub fn approximate_curve_u(curve:&Curve2,position:[f32;2])->Result<f32,PendingWallChangedError>{
+ let(index,fraction)=approximate_curve_coordinate(curve,position)?;
  let u=curve.points_u[index]*(1.-fraction)+curve.points_u[index+1]*fraction;
  if !u.is_finite(){return Err(PendingWallChangedError::InvalidProjection);}
  Ok(u)

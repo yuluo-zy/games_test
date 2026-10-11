@@ -12,7 +12,7 @@
 
 ### 下一里程碑
 
-G05 regular/freehand arches 已由实际 raw/raster/cache/masks 接入 World，96字节结构输出、final arch/third 和真实120字节 ConstructGateCmd 均按原码比较；依赖EventId交Bevy。G03实际80字节装饰源→台阶cells/碰撞几何/96字节渲染记录/holes/stats→完整墙砖已接入World；扩大consumer研究仍保留输入schema不一致的失败，不据局部证明宣告G03系统全完成。G14统一Wall/Roof外层buckets和墙内组barrier，作者创建/直接删除与完整bulldoze收缩动效、source恢复和撤销/重做已接运行链。阶段4源码冻结全检查正在执行，前阶段冻结证据仍是历史快照。
+G05 regular/freehand arches 已由实际 raw/raster/cache/masks 接入 World，96字节结构输出、final arch/third 和真实120字节 ConstructGateCmd 均按原码比较；依赖EventId交Bevy。G03实际80字节装饰源→台阶cells/碰撞几何/96字节渲染记录/holes/stats→完整墙砖已接入World；扩大consumer研究仍保留输入schema不一致的失败，不据局部证明宣告G03系统全完成。G14统一Wall/Roof外层buckets和墙内组barrier，作者创建/直接删除与完整bulldoze收缩动效、source恢复和撤销/重做已接运行链。阶段4源码冻结全检查已结束：54测试/67限定证明。新并行批修改后的工程暂不验证，冻结证据保持历史快照。
 
 下一最高收益：关闭扩大stairs consumer输入边界，恢复G06真实Gate120→DoorMesh/TransientMesh/Nani和实体增删消费者，继续矩形enclosure finish/cancel、真实UI placement/startup及未知published字段，不用通知或占位mesh代替最终消费者。
 
@@ -30,14 +30,18 @@ G05 regular/freehand arches 已由实际 raw/raster/cache/masks 接入 World，9
 
 ## 当前确实完成到哪里
 
-| 环节 | 当前证据范围 | 尚不能宣称完成的部分 |
-|---|---|---|
-| 基础工程 | 可构建 Cargo workspace，真实 Bevy 0.16 App/World；113 registry 依赖身份对照 B | 原 fork 的 features/补丁及 C 0.17.3 迁移 |
-| 墙发布 | raw Curve2 采集、地形映射、空间格与 dirty、发布、规则缓存和逐拱段山墙已联接 | 原墙创建/变形编辑模型、拱/过梁第三高度写回、完整墙删除与附着级联 |
-| 屋顶 | 曲面/脊线/圆与矩形 CPU 铺瓦；创建、方向、Flat/Rim、标记/淡出/删除与关系更新 | VisualEdit 实际 World 消费、全部参数录制、尖顶/支撑实际几何、瓦片模拟完整更新、原 TriggerVolume/Nani/GPU 执行 |
-| 门窗与开口 | RecalculateWallHoles reader → OnWallChanged → 四类 resolved 门窗 raw 贡献 → WallHoleStorage 指纹/跨帧缓存/finalized 边界 | 真实 Decorator bundle、完整墙 mesh/结构输出、其他贡献者与 dormer |
-| 历史 | 显式 B Rim 账本录制/commit/instant undo/redo/分叉，继续触发开口更新 | 其他 owner、复合组顺序、取消、原 startup、完整快照与保存 |
-| 连续验证 | 既有报告：24 workspace 测试、12 帧门窗/Rim 场景；B 512/768/3072/462 例四个限定原指令证明 | 不构成完整建筑或完整游戏验收；当前 system_acceptances=0 |
+| 环节 | 已接业务范围 | 当前剩余边界 |
+| --- | --- | --- |
+| 基础工程 | 阶段4冻结 workspace 和真实 Bevy World；原依赖身份有历史对照 | 本批新增 Rapier、门、编辑、装饰模块尚未整体验证；原 fork 与 C 迁移 |
+| 墙与砖 | Raw → terrain/raster/prepared → cache/masks → openings → noise/seed/height → 完整96B砖输出；显式proposal输入已删除 | 完整 UI/多墙几何连接、墙角裙边及所有结构族 |
+| 拱与台阶 | 规则/自由拱、过梁、最终第三高度；实际80B装饰源→台阶几何/记录/holes/stats接World | 更广结构/门阶/玩家楼梯；平台碰撞新运行链未验证 |
+| 屋顶 | 创建/关联/方向/Flat/Rim/参数消费者、CPU瓦、山墙、invalid/fade/delete | TriggerVolume生成、尖顶/梁实几何、模拟、所有参数录制、GPU |
+| 门 | Gate120→CPU木门/支撑/地下post fallback；新mesh/entity/Nani增删消费者已登记 | 本批实现未验证；原MeshLib/ShaderLib/SSBO/GPU资源所有权 |
+| 装饰开口 | 四族实际资产/subtype→holes→墙砖；新增Info72原始字段→原坐标consumer | 新字段和storage绑定未验证；非墙宿主/其他装饰、实际anchor更新 |
+| 编辑与历史 | 已验收范围内Wall/Roof buckets、作者创建/删除/bulldoze与undo/redo | 新矩形finish/cancel/Enclosure、free-wall pending、装饰存储恢复未验证；其余owner/存档 |
+| 验证 | 最近完整快照阶段4：54 tests / 67 scoped verifiers | 用户要求当前并行批暂缓验证；system_acceptances仍0 |
+
+当前并行批遵循用户最新指令：三个agent分别推进Gate/栅栏、Rapier/DirtyTiles/查询、矩形/Decorator历史与放置；父管理共享类型、Bevy登记、Nani和CLI。冲突及未解析字段写入 `tracking/parallel-implementation-conflicts`，新代码统一标为 implemented_unverified。不将局部静态恢复、旧原码报告或登记完成计为完整模块验收。
 
 保留未关闭失败：ARM 矩形铺瓦 case14 的一条 filler Y 相差 1ULP。不得降低比较精度、改 oracle 或手写 glam 掩盖失败。旧 Windows 报告与当前构建报告分开。
 

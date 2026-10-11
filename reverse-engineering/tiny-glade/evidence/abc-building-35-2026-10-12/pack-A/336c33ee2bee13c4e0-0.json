@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-building-35",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "336c33ee2bee13c4e0-0",
+  "cache_key": "2e004f7f51ada2a48388df12e9127464afa0d9cb384d410da84cf281f2d36c42",
+  "status": "ok",
+  "range": {
+    "rva": "0xefbd90",
+    "length": 11,
+    "start_va": "0x140efbd90",
+    "stop_va_exclusive": "0x140efbd9b",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140efbd90",
+      "rva": "0xefbd90",
+      "bytes": "f30f10410c",
+      "size": 5,
+      "assembly": "movss\t0xc(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140efbd95",
+      "rva": "0xefbd95",
+      "bytes": "f30f5c4104",
+      "size": 5,
+      "assembly": "subss\t0x4(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140efbd9a",
+      "rva": "0xefbd9a",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xefbd90",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/aabb.rs",
+          "FunctionName": "utils::geometry::aabb::Aabb2::height::h36a8e2653ed68cac",
+          "Line": 178,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140efbd90: f3 0f 10 41 0c              \tmovss\t0xc(%rcx), %xmm0\n140efbd95: f3 0f 5c 41 04              \tsubss\t0x4(%rcx), %xmm0\n140efbd9a: c3                          \tretq\n",
+  "original_target_executed": false
+}

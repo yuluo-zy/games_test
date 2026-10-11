@@ -457,7 +457,7 @@
     "evidence/building-runtime/B-roof-pipeline-host-verification.json"
   ],
   "current_system_acceptances": 0,
-  "plan_document_sha256": "361d946e9c3b7dcedb67685d4925611f93cc0025a705a3d661de37222bd7cfcc",
+  "plan_document_sha256": "d087b0cc492b61e8c533ed083df9a36317056f5a4b8ac36edaaba1eda01dd73c",
   "last_implementation_findings": "evidence/building-integrate/findings.md",
   "validation": {
     "workspace_tests": 54,
@@ -496,7 +496,7 @@
   "parallel_implementation": {
     "date": "2026-10-11",
     "authorization": "User requested multiple agents, implementation first, defer validation, conflicts recorded and reconciled later.",
-    "status": "in_progress_unverified",
+    "status": "saved_unverified_at_user_checkpoint",
     "verification_deferred": true,
     "conflict_directory": "tracking/parallel-implementation-conflicts",
     "workers": {
@@ -505,6 +505,23 @@
       "rectangle_history": "building_stage_review",
       "shared_registration_nani_cli": "parent"
     },
-    "validation_snapshot_scope": "Historical stage4 frozen inputs; not current parallel candidate."
+    "validation_snapshot_scope": "Historical stage4 frozen inputs; not current parallel candidate.",
+    "registered_candidate_modules": [
+      "gates",
+      "wall_platform_collision",
+      "wall_rectangle_edit",
+      "wall_pending_changed",
+      "wall_decorator_archivist",
+      "decorator_info_binding",
+      "nani_solid_vertex_color"
+    ],
+    "current_build_verified": false,
+    "active_next_consumers": {
+      "gates_worker": "construct_fences / emit_fences / floor consumer",
+      "collision_worker": "17 subworld query filters / flush_colliders / DirtyTiles subscriber",
+      "decorator_worker": "apply_decorator_place / DecoMoveToStorage / anchor following"
+    },
+    "latest_checkpoint": "checkpoints/building-parallel-2026-10-11T100110Z",
+    "agents_running": false
   }
 }

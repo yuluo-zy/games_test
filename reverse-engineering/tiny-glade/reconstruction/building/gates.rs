@@ -15,7 +15,7 @@ pub struct GateConstructionInput<'a> {
     pub prepared_positions: &'a [[f32; 3]],
     pub prepared_u: &'a [f32],
     pub observed_public_288: f32,
-    /// Actual native byte, awaiting the raw publisher's authoritative binding.
+    /// Actual Raw metadata69 -> Public29a byte; the publisher owns the binding.
     pub observed_public_29a: u8,
     pub wall_id: WallId,
     pub ordinal: u64,
@@ -65,13 +65,13 @@ pub struct GateShapeProjection {
     pub bottom_length: f32,
 }
 #[derive(Clone)]
-struct GateCurve3 {
-    positions: Vec<[f32; 3]>,
-    points_u: Vec<f32>,
-    length: f32,
+pub(crate) struct GateCurve3 {
+    pub(crate) positions: Vec<[f32; 3]>,
+    pub(crate) points_u: Vec<f32>,
+    pub(crate) length: f32,
 }
 impl GateCurve3 {
-    fn new(points: &[[f32; 3]]) -> Result<Self, GateConstructionError> {
+    pub(crate) fn new(points: &[[f32; 3]]) -> Result<Self, GateConstructionError> {
         let mut positions = Vec::new();
         for &p in points {
             if positions.last().is_none_or(|q| *q != p) {
@@ -105,6 +105,11 @@ impl GateCurve3 {
         let b = self.positions[i + 1];
         let p = std::array::from_fn(|j| (b[j] - a[j]) * t + a[j]);
         (p, (heights[i + 1] - heights[i]) * t + heights[i])
+    }
+    /// Shared private-game Curve3 sampler, preserving the observed arithmetic.
+    pub(crate) fn sample_position(&self, u: f32) -> [f32; 3] {
+        let (i, t) = coordinate(&self.points_u, u);
+        std::array::from_fn(|j| (self.positions[i + 1][j] - self.positions[i][j]) * t + self.positions[i][j])
     }
 }
 fn coordinate(us: &[f32], u: f32) -> (usize, f32) {
@@ -458,6 +463,8 @@ pub struct GateNaniProjection {
     pub rotation: [f32; 4],
     pub position: [f32; 3],
     pub scale: [f32; 3],
+    /// Compatibility evidence name: Nani mesh descriptor discriminator at
+    /// bundle+0x30 (0 = Named). This is neither a Solid attribute nor GPU flags.
     pub observed_word_30: u32,
     pub definition_id: u64,
     pub subset_kind: u8,

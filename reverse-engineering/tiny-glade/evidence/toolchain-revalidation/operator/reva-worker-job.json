@@ -1,0 +1,51 @@
+[
+  {
+    "tool": "set-function-prototype",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "location": "0x140949c20",
+      "signature": "float aspect_ratio(unsigned int *reva_operator_size)",
+      "createIfNotExists": false
+    }
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "timeoutSeconds": 20,
+      "code": "import json\nf=currentProgram.getFunctionManager().getFunctionAt(currentProgram.getAddressFactory().getAddress(\"140949c20\"))\nprint(json.dumps({\"sha\":str(currentProgram.getExecutableSHA256()),\"signature\":str(f.getSignature()),\"program\":str(currentProgram.getName())}))"
+    }
+  },
+  {
+    "tool": "write-script",
+    "args": {
+      "scriptName": "operator_probe.py",
+      "code": "print(\"reva_operator_before\")\n",
+      "overwrite": true
+    }
+  },
+  {
+    "tool": "edit-script",
+    "args": {
+      "scriptName": "operator_probe.py",
+      "old_string": "reva_operator_before",
+      "new_string": "reva_operator_after"
+    }
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "scriptName": "operator_probe.py",
+      "timeoutSeconds": 20
+    }
+  },
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x140949c20",
+      "limit": 20
+    }
+  }
+]

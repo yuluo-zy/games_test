@@ -1,0 +1,961 @@
+{
+  "tools": [
+    {
+      "name": "close_database",
+      "title": "Close Database",
+      "description": "Close a database and terminate its worker process.\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. When other\nsessions still use the DB, detaches this session but keeps the\nworker alive.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "save": {
+            "default": true,
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "type": "boolean"
+          },
+          "database": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Close Database",
+        "readOnlyHint": null,
+        "destructiveHint": null,
+        "idempotentHint": null,
+        "openWorldHint": null
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "save_database",
+      "title": "Save Database",
+      "description": "Save the current database to disk (may take minutes for large DBs).\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. Progress\nnotifications are sent every 5s during long saves.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "outfile": {
+            "default": "",
+            "type": "string"
+          },
+          "flags": {
+            "default": -1,
+            "type": "integer"
+          },
+          "force": {
+            "default": false,
+            "type": "boolean"
+          },
+          "database": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Save Database",
+        "readOnlyHint": null,
+        "destructiveHint": null,
+        "idempotentHint": null,
+        "openWorldHint": null
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "list_databases",
+      "title": "List Databases",
+      "description": "List all open databases with metadata (includes opening/analyzing status).",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "List Databases",
+        "readOnlyHint": null,
+        "destructiveHint": null,
+        "idempotentHint": null,
+        "openWorldHint": null
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "wait_for_analysis",
+      "title": "Wait for Analysis",
+      "description": "Block until database(s) finish opening and optional auto-analysis.\n\n**Single:** pass ``database`` to wait for one DB.\n**Multi:** pass ``databases`` list \u2014 returns when **at least one**\nis ready. Work on the ready one, call again for the rest.\n\nWhile analysis runs, the backend thread is blocked \u2014 tool calls queue.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "database": {
+            "default": "",
+            "type": "string",
+            "description": "Single database ID to wait for."
+          },
+          "databases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "List of database IDs (returns when first is ready)."
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Wait for Analysis",
+        "readOnlyHint": null,
+        "destructiveHint": null,
+        "idempotentHint": null,
+        "openWorldHint": null
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "open_database",
+      "title": "Open Database",
+      "description": "Open a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` \u2014 call\nwait_for_analysis before using other tools on this database.\nRe-opening an already-open database returns the existing worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path to the binary file."
+          },
+          "run_auto_analysis": {
+            "default": false,
+            "type": "boolean",
+            "description": "Run Ghidra auto-analysis after opening."
+          },
+          "keep_open": {
+            "default": true,
+            "type": "boolean",
+            "description": "Keep other open databases (default True)."
+          },
+          "database_id": {
+            "default": "",
+            "type": "string",
+            "description": "Custom ID (must match [a-z][a-z0-9_]{0,31})."
+          },
+          "force_new": {
+            "default": false,
+            "type": "boolean",
+            "description": "Delete existing project and start fresh."
+          },
+          "language": {
+            "default": "",
+            "type": "string",
+            "description": "Ghidra language ID (e.g. ``x86:LE:64:default``,\n      ``ARM:LE:32:v8``). Auto-detected when omitted.\n      Use list_targets to see options."
+          },
+          "compiler_spec": {
+            "default": "",
+            "type": "string",
+            "description": "Ghidra compiler spec (e.g. ``gcc``,\n           ``windows``). Auto-detected when omitted."
+          }
+        },
+        "required": [
+          "file_path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": "Open Database",
+        "readOnlyHint": null,
+        "destructiveHint": null,
+        "idempotentHint": null,
+        "openWorldHint": null
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "set_comment",
+      "title": "Set Comment",
+      "description": "Set a comment at an address.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment text (empty string to clear)."
+          },
+          "comment_type": {
+            "default": "eol",
+            "type": "string",
+            "description": "One of \"eol\", \"pre\", \"post\", \"plate\", \"repeatable\"."
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "comment",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "comment_type": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        },
+        "required": [
+          "address",
+          "comment_type",
+          "comment",
+          "status"
+        ],
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "comments"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "get_database_info",
+      "title": "Get Database Info",
+      "description": "Get metadata about the currently open database.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "database"
+        ]
+      },
+      "outputSchema": {
+        "properties": {
+          "file_path": {
+            "description": "Path to the binary.",
+            "type": "string"
+          },
+          "file_type": {
+            "description": "File format.",
+            "type": "string"
+          },
+          "processor": {
+            "description": "Processor/language.",
+            "type": "string"
+          },
+          "compiler_spec": {
+            "description": "Compiler specification.",
+            "type": "string"
+          },
+          "bitness": {
+            "description": "Address size in bits.",
+            "type": "integer"
+          },
+          "endian": {
+            "description": "Byte order (big/little).",
+            "type": "string"
+          },
+          "min_address": {
+            "description": "Minimum address (hex).",
+            "type": "string"
+          },
+          "max_address": {
+            "description": "Maximum address (hex).",
+            "type": "string"
+          },
+          "image_base": {
+            "description": "Image base address (hex).",
+            "type": "string"
+          },
+          "function_count": {
+            "description": "Number of functions.",
+            "type": "integer"
+          },
+          "segment_count": {
+            "description": "Number of memory blocks.",
+            "type": "integer"
+          },
+          "entry_point_count": {
+            "description": "Number of entry points.",
+            "type": "integer"
+          },
+          "capabilities": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Available capabilities.",
+            "type": "object"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        },
+        "required": [
+          "file_path",
+          "file_type",
+          "processor",
+          "compiler_spec",
+          "bitness",
+          "endian",
+          "min_address",
+          "max_address",
+          "image_base",
+          "function_count",
+          "segment_count",
+          "entry_point_count",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "database"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "decompile_function",
+      "title": "Decompile Function",
+      "description": "Decompile a function to C pseudocode using Ghidra's decompiler.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "function_name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "decompiled_code": {
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        },
+        "required": [
+          "function_name",
+          "address",
+          "decompiled_code"
+        ],
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "decompiler",
+            "functions"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "disassemble_function",
+      "title": "Disassemble Function",
+      "description": "Disassemble a function into individual instructions.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "function_name": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "instruction_count": {
+            "type": "integer"
+          },
+          "instructions": {
+            "items": {
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "string"
+                },
+                "mnemonic": {
+                  "type": "string"
+                },
+                "operands": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "address",
+                "bytes",
+                "mnemonic",
+                "operands"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        },
+        "required": [
+          "function_name",
+          "start",
+          "end",
+          "instruction_count",
+          "instructions"
+        ],
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "functions"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "get_type_info",
+      "title": "Get Type Info",
+      "description": "Get type information at an address.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "type_name": {
+            "default": "",
+            "type": "string"
+          },
+          "type_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "function_signature": {
+            "default": "",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "type": "object"
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "types"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "title": "Get Xrefs To",
+      "description": "Get all cross-references pointing TO an address.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Pagination offset.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of results.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        }
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "xrefs"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "get_xrefs_from",
+      "title": "Get Xrefs From",
+      "description": "Get all cross-references FROM an address.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Pagination offset.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of results.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database identifier."
+          }
+        }
+      },
+      "icons": null,
+      "annotations": {
+        "title": null,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "meta": {
+        "fastmcp": {
+          "tags": [
+            "xrefs"
+          ]
+        }
+      },
+      "execution": {
+        "taskSupport": "optional"
+      }
+    },
+    {
+      "name": "search_tools",
+      "title": null,
+      "description": "Search hidden tools by regex (pinned tools excluded; use ``.*`` for all).\n\nReturns one-line signatures by default. Use ``detail=\"detailed\"``\nfor parameter schemas, or follow up with ``get_schema(tools=[...])``.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n\u2014 direct calls will fail because they are not in the client tool list.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "pattern": {
+            "description": "Regex pattern to match against tool names, descriptions, and tags",
+            "type": "string"
+          },
+          "detail": {
+            "default": "brief",
+            "description": "'brief' (default) for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown, 'full' for complete JSON schemas",
+            "enum": [
+              "brief",
+              "detailed",
+              "full"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "icons": null,
+      "annotations": null,
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "get_schema",
+      "title": null,
+      "description": "Get parameter schemas for specific tools by name (pinned and hidden).\n\nUse after search_tools or before execute/batch to check parameter\ntypes and return shapes. Pass ``detail=\"full\"`` for complete JSON schemas.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n\u2014 direct calls will fail because they are not in the client tool list.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "tools": {
+            "description": "Tool names to get schemas for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "detail": {
+            "default": "detailed",
+            "description": "'brief' for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown (default), 'full' for complete JSON schemas",
+            "enum": [
+              "brief",
+              "detailed",
+              "full"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "icons": null,
+      "annotations": null,
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    },
+    {
+      "name": "call",
+      "title": null,
+      "description": "Call any tool by name, including hidden tools not in the client tool list.\n\nUse for single hidden-tool calls. For multiple calls, prefer **batch**.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "tool": {
+            "description": "Tool name to call.",
+            "type": "string"
+          },
+          "arguments": {
+            "additionalProperties": true,
+            "description": "Arguments to pass to the tool.",
+            "type": "object"
+          },
+          "database": {
+            "default": "",
+            "description": "Database to target (stem ID from open_database). Auto-injected into arguments unless already present.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "icons": null,
+      "annotations": null,
+      "meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "execution": null
+    }
+  ],
+  "tested_direct_or_meta": [
+    "open_database",
+    "wait_for_analysis",
+    "list_databases",
+    "get_database_info",
+    "decompile_function",
+    "get_xrefs_to",
+    "get_type_info",
+    "set_comment",
+    "save_database",
+    "close_database",
+    "get_schema",
+    "call(get_comment)"
+  ],
+  "available_but_not_tested": [
+    "disassemble_function",
+    "get_xrefs_from",
+    "search_tools"
+  ]
+}

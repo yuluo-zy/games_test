@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-building-35",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "4a1fc2d3663bf71d4c-0",
+  "cache_key": "b46bec2b8d8c1095e18b485f1943f8c177e2b58c00e1141f8dd3c374b0d2db3c",
+  "status": "ok",
+  "range": {
+    "rva": "0x8d0c50",
+    "length": 38,
+    "start_va": "0x1408d0c50",
+    "stop_va_exclusive": "0x1408d0c76",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x1408d0c50",
+      "rva": "0x8d0c50",
+      "bytes": "4889c8",
+      "size": 3,
+      "assembly": "movq\t%rcx, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c53",
+      "rva": "0x8d0c53",
+      "bytes": "f30f10421c",
+      "size": 5,
+      "assembly": "movss\t0x1c(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c58",
+      "rva": "0x8d0c58",
+      "bytes": "f30f5c4218",
+      "size": 5,
+      "assembly": "subss\t0x18(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c5d",
+      "rva": "0x8d0c5d",
+      "bytes": "f30f104a10",
+      "size": 5,
+      "assembly": "movss\t0x10(%rdx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c62",
+      "rva": "0x8d0c62",
+      "bytes": "f30f105214",
+      "size": 5,
+      "assembly": "movss\t0x14(%rdx), %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c67",
+      "rva": "0x8d0c67",
+      "bytes": "f30f1109",
+      "size": 4,
+      "assembly": "movss\t%xmm1, (%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c6b",
+      "rva": "0x8d0c6b",
+      "bytes": "f30f114104",
+      "size": 5,
+      "assembly": "movss\t%xmm0, 0x4(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c70",
+      "rva": "0x8d0c70",
+      "bytes": "f30f115108",
+      "size": 5,
+      "assembly": "movss\t%xmm2, 0x8(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d0c75",
+      "rva": "0x8d0c75",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x8d0c50",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle3d::height",
+          "Line": 66,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle3d::extent::hf96d7b3971e874e2",
+          "Line": 86,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n1408d0c50: 48 89 c8                    \tmovq\t%rcx, %rax\n1408d0c53: f3 0f 10 42 1c              \tmovss\t0x1c(%rdx), %xmm0\n1408d0c58: f3 0f 5c 42 18              \tsubss\t0x18(%rdx), %xmm0\n1408d0c5d: f3 0f 10 4a 10              \tmovss\t0x10(%rdx), %xmm1\n1408d0c62: f3 0f 10 52 14              \tmovss\t0x14(%rdx), %xmm2\n1408d0c67: f3 0f 11 09                 \tmovss\t%xmm1, (%rcx)\n1408d0c6b: f3 0f 11 41 04              \tmovss\t%xmm0, 0x4(%rcx)\n1408d0c70: f3 0f 11 51 08              \tmovss\t%xmm2, 0x8(%rcx)\n1408d0c75: c3                          \tretq\n",
+  "original_target_executed": false
+}

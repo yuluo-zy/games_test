@@ -1,0 +1,67 @@
+{
+  "status": "implemented_unverified",
+  "target_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "static_export": "evidence/building-platform-stairs/B-dirty-tiles-owner",
+  "static_database_is_not_execution_oracle": true,
+  "constant_reads": [
+    {
+      "va": "0x142925874",
+      "bytes": "c10ffc3e",
+      "bits": "0x3efc0fc1",
+      "meaning": "fmaf scale"
+    },
+    {
+      "va": "0x14292587c",
+      "bytes": "00000042",
+      "bits": "0x42000000",
+      "meaning": "fmaf bias32"
+    },
+    {
+      "va": "0x142ae19d0",
+      "bytes": "00007c4200007c420000000000000000",
+      "meaning": "packed upper clamp63/63"
+    }
+  ],
+  "business": "fmaf XZ map\u2192floor minima/ceil ends\u2192NaN0 and clamp0..63\u2192strict min<end\u2192exclusive z/x loops OR into64 u64rows; existing rows authoritative and preserved",
+  "dependency_reuse": [
+    "std f32::mul_add/floor/ceil",
+    "existing pinnedRapier/Parry/Slotmap backend",
+    "Bevy Resource/EventReader/EventWriter/Query/scheduling and std Arc/Mutex/HashMap/HashSet"
+  ],
+  "source_provenance": {
+    "A": [
+      {
+        "path": "crates/country-core/src/utils/dirty_tiles.rs",
+        "sha256": [
+          "62698b7817c6f1f8171478ac646cb2ca3abd59bbdd74dd964c19858329ea2113"
+        ]
+      }
+    ],
+    "B": [
+      {
+        "path": "crates/country-core/src/utils/dirty_tiles.rs",
+        "sha256": [
+          "0db57c560c0d21d4cca111eec2e50997a103a99b68fea12932da15bf3eec521f"
+        ]
+      }
+    ],
+    "C": [
+      {
+        "path": "crates/country-core/src/utils/dirty_tiles.rs",
+        "sha256": [
+          "634609128761cbee08cc7bf86da12b69b67f8e9f524391c6a192f23c14e1ce72"
+        ]
+      }
+    ]
+  },
+  "unresolved": [
+    "Original DirtyTiles construction/reset authority, so existingrows remain explicitrequired input",
+    "Originalall17subworld queryfilter policies",
+    "New source has not been compiled or tested per user instruction"
+  ],
+  "new_source_paths": [
+    "reconstruction/building/dirty_tiles.rs",
+    "reconstruction/crates/tg-building-runtime/src/wall_platform_collision.rs"
+  ],
+  "shared_registration_handoff": "tracking/parallel-implementation-conflicts/collision.md"
+}

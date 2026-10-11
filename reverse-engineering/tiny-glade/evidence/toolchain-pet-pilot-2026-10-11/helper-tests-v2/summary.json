@@ -1,0 +1,82 @@
+{
+  "fixture_only": true,
+  "all_pass": true,
+  "cases": [
+    {
+      "case": "success",
+      "expected_exit": 0,
+      "exit": 0,
+      "pass": true,
+      "errors": [],
+      "operator_processes": 1,
+      "mcp_steps": 2,
+      "deduplicated_steps": 1
+    },
+    {
+      "case": "nested-error",
+      "expected_exit": 1,
+      "exit": 1,
+      "pass": true,
+      "errors": [
+        "Step 1: /0/success: False",
+        "Step 1: /0/error: fixture nested rejection",
+        "Step 1: unrecognized function bundle shape"
+      ],
+      "operator_processes": 1,
+      "mcp_steps": 2,
+      "deduplicated_steps": 0
+    },
+    {
+      "case": "identity-mismatch",
+      "expected_exit": 1,
+      "exit": 1,
+      "pass": true,
+      "errors": [
+        "Artifact identity mismatch"
+      ],
+      "operator_processes": 0,
+      "mcp_steps": 0,
+      "deduplicated_steps": null
+    },
+    {
+      "case": "write-rejected",
+      "expected_exit": 1,
+      "exit": 1,
+      "pass": true,
+      "errors": [
+        "Only bounded read queries without allow_error are supported"
+      ],
+      "operator_processes": 0,
+      "mcp_steps": 0,
+      "deduplicated_steps": null
+    },
+    {
+      "case": "oversize-rejected",
+      "expected_exit": 1,
+      "exit": 1,
+      "pass": true,
+      "errors": [
+        "Select 1..20 functions and explicit fields"
+      ],
+      "operator_processes": 0,
+      "mcp_steps": 0,
+      "deduplicated_steps": null
+    },
+    {
+      "case": "ledger-unverified",
+      "expected_exit": 0,
+      "exit": 0,
+      "pass": true,
+      "errors": []
+    },
+    {
+      "case": "ledger-false-verified",
+      "expected_exit": 1,
+      "exit": 1,
+      "pass": true,
+      "errors": [
+        "Unsupported target-version verified label: pet"
+      ]
+    }
+  ]
+}

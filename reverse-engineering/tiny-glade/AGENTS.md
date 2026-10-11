@@ -1,5 +1,7 @@
 # 逆向工作约束
 
+调用本机逆向工具先读 [AI_REVERSE_TOOLS.md](AI_REVERSE_TOOLS.md)，按需读取其 JSON job 与 schema；当前 agent 没有加载 MCP namespace 时，直接使用说明中的统一 SDK 命令。并行 agent 各自使用唯一可写 worker。
+
 先读 [PROJECT_MEMORY.md](PROJECT_MEMORY.md) 与 [TASK_BACKLOG.md](TASK_BACKLOG.md)。以原作锁定依赖与游戏自有源码为边界；直接复用依赖，不恢复其实现。当前源码优先，场景/GPU后置。依赖适配的变更必须标记旧差分报告过期，重新校验后再更新进度。
 
 执行 [DEPENDENCY_FILTERING.md](DEPENDENCY_FILTERING.md)：每个新实现先对照三版 Cargo/PDB/定义模块，查询 `tracking/dependency-exclusions.json`。确认的库、标准库及泛型容器/Serde/ECS实例不得当作核心源码重写；local/path和私有路径不自动等于游戏业务。三版共享代码不能单凭相同就排除，自有墙体/屋顶/建筑规则仍需恢复。
@@ -9,3 +11,5 @@
 本轮明确的纠错必须沿用：PublicWall+0x10为raw Curve2点数，+0x30/+0x28c为raw长度；Nani tag9/7为版本对应subset kind，不是生命周期。组件derive的Self登记不构成required edge；先看原Bundle::component_ids和真实descriptor再决定组件图。新业务必须同时接原始输入、传播和删除清理，不能仅以probe通过结束。最新链证据见 evidence/building-gather/findings.md。
 
 继续 native→Rust 恢复时应用 [native-rust-reconstruction](/Users/yuluo/.codex/skills/native-rust-reconstruction/SKILL.md)，按需读取参考；具体地址/字段仍保存在项目evidence，不复制进通用skill。
+
+领取、取证、还原、独立审查与整合使用项目专用 [tiny-glade-recovery](skeleton/workflow-design/tiny-glade-recovery/SKILL.md)。角色任务包入口复用现有 task_queue/MCP；默认只规划、禁止游戏实现、验证暂停，按用户当前授权调整。技能与模板不自动启动任务或升级验收。

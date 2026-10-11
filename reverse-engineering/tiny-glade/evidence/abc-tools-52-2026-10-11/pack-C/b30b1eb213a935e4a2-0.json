@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+    "sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+    "bytes": 65500056,
+    "id": "abc-tools-52",
+    "version": "C",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny_glade.pdb",
+      "sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "bytes": 310013952,
+      "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "b30b1eb213a935e4a2-0",
+  "cache_key": "e18360f7a9d4a7239913421c7d5db7c9270352ae642a2b9ed6604883960236f4",
+  "status": "ok",
+  "range": {
+    "rva": "0x147fa50",
+    "length": 34,
+    "start_va": "0x14147fa50",
+    "stop_va_exclusive": "0x14147fa72",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x14147fa50",
+      "rva": "0x147fa50",
+      "bytes": "f30f1009",
+      "size": 4,
+      "assembly": "movss\t(%rcx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa54",
+      "rva": "0x147fa54",
+      "bytes": "f30f105104",
+      "size": 5,
+      "assembly": "movss\t0x4(%rcx), %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa59",
+      "rva": "0x147fa59",
+      "bytes": "0f28c1",
+      "size": 3,
+      "assembly": "movaps\t%xmm1, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa5c",
+      "rva": "0x147fa5c",
+      "bytes": "f30fc2c103",
+      "size": 5,
+      "assembly": "cmpunordss\t%xmm1, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa61",
+      "rva": "0x147fa61",
+      "bytes": "0f28d8",
+      "size": 3,
+      "assembly": "movaps\t%xmm0, %xmm3",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa64",
+      "rva": "0x147fa64",
+      "bytes": "0f54da",
+      "size": 3,
+      "assembly": "andps\t%xmm2, %xmm3",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa67",
+      "rva": "0x147fa67",
+      "bytes": "f30f5dd1",
+      "size": 4,
+      "assembly": "minss\t%xmm1, %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa6b",
+      "rva": "0x147fa6b",
+      "bytes": "0f55c2",
+      "size": 3,
+      "assembly": "andnps\t%xmm2, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa6e",
+      "rva": "0x147fa6e",
+      "bytes": "0f56c3",
+      "size": 3,
+      "assembly": "orps\t%xmm3, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14147fa71",
+      "rva": "0x147fa71",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x147fa50",
+      "ModuleName": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/intersect.rs",
+          "FunctionName": "utils::geometry::intersect::SphereIntersection::closest_intersection_distance::ha638ae411e58fe0b",
+          "Line": 183,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n14147fa50: f3 0f 10 09                 \tmovss\t(%rcx), %xmm1\n14147fa54: f3 0f 10 51 04              \tmovss\t0x4(%rcx), %xmm2\n14147fa59: 0f 28 c1                    \tmovaps\t%xmm1, %xmm0\n14147fa5c: f3 0f c2 c1 03              \tcmpunordss\t%xmm1, %xmm0\n14147fa61: 0f 28 d8                    \tmovaps\t%xmm0, %xmm3\n14147fa64: 0f 54 da                    \tandps\t%xmm2, %xmm3\n14147fa67: f3 0f 5d d1                 \tminss\t%xmm1, %xmm2\n14147fa6b: 0f 55 c2                    \tandnps\t%xmm2, %xmm0\n14147fa6e: 0f 56 c3                    \torps\t%xmm3, %xmm0\n14147fa71: c3                          \tretq\n",
+  "original_target_executed": false
+}

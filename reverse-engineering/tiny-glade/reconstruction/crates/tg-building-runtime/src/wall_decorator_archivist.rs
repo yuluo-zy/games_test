@@ -89,6 +89,7 @@ fn live_records(storage:&DecoratorStorage)->Vec<(u32,DecoratorStorageAddress,&Ob
 /// Unknown Info fields remain gaps while CPU storage restoration still commits.
 pub(crate) fn publish_projection(
     mut state:ResMut<WallDecoratorArchiveState>,
+    native_ids:Res<crate::decorator_info_binding::NativeDecoratorOpeningIds>,
     mut placements:EventWriter<PlaceWallOpening>,
     mut removals:EventWriter<RemoveOpening>,
     mut report:ResMut<BuildingReport>,
@@ -97,6 +98,7 @@ pub(crate) fn publish_projection(
     let Some(storage)=state.storage.as_ref()else{return;};
     let mut desired=HashMap::new();let mut gaps=HashMap::new();
     for(id,address,info)in live_records(storage){
+        if native_ids.owns_native(id){continue;}
         let DecoratorStorageAddress::Wall(wall)=address else{
             gaps.insert(id,"Special storage Info72 projection owner is unresolved".to_string());continue;
         };
@@ -108,7 +110,7 @@ pub(crate) fn publish_projection(
     // Openings consume upserts before removals. Preserve IDs also requested
     // by the restored version to avoid removing a same-frame replacement.
     let desired_ids:HashSet<OpeningId>=desired.values().map(|p|p.id).collect();
-    let removed_ids:HashSet<_>=state.published_openings.values().map(|p|p.id).filter(|id|!desired_ids.contains(id)).collect();
+    let removed_ids:HashSet<_>=state.published_openings.values().map(|p|p.id).filter(|id|!desired_ids.contains(id)&&!native_ids.owns(*id)).collect();
     for id in removed_ids{removals.write(RemoveOpening(id));}
     for opening in desired.values(){placements.write(*opening);}
     for(id,gap)in &gaps{report.faults.push(format!("Decorator {id} restoration projection pending: {gap}"));}

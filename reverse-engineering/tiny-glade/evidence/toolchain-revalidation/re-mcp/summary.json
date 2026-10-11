@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "checks": {
+    "prior_save_failure_reproduced": true,
+    "manual_save_two_workers": true,
+    "no_after_tool_errors": true,
+    "close_with_save_succeeded": true,
+    "reopen_persistence_and_isolation": true,
+    "auto_disconnect_save_persistence": true,
+    "cached_b_131517_functions": true,
+    "decompile_game_identity": true,
+    "types_database_identity": true,
+    "parallel_database_calls": true,
+    "original_seed_unchanged": true
+  },
+  "version_identity": {
+    "versions": {
+      "mcp": "1.30.0",
+      "re-mcp-core": "3.0.3",
+      "fastmcp": "3.4.8",
+      "re-mcp-ghidra": "3.0.3",
+      "fastmcp-slim": "3.4.8"
+    },
+    "changed_file": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/.venv/lib/python3.12/site-packages/re_mcp_ghidra/session.py",
+    "before_sha256": "b2d0abc9feab9d4a5c999c0c8b494abe39ebfde9b400f27eeaac4acd2db847e9",
+    "after_sha256": "ae5147995dace7346b4b321fae35b0e4836d7b714fca1819e2779efd53127bab",
+    "backup": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/re-mcp/session.py.upstream-3.0.3",
+    "change": "Use transaction-owner GhidraProject.save; do not forcibly end owner transactions via TransactionInfo IDs."
+  },
+  "launch": {
+    "command": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/.venv/bin/re-mcp-ghidra",
+    "args": [
+      "stdio"
+    ],
+    "env": {
+      "GHIDRA_INSTALL_DIR": "/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC",
+      "JAVA_HOME": "/Users/yuluo/Library/Java/JavaVirtualMachines/corretto-21.0.5/Contents/Home"
+    }
+  },
+  "catalog_size": 33,
+  "targets": "Two independent APFS clones of existing B PE plus original persistent Ghidra database, not small fixtures; analysis=false, force_new=false",
+  "parallel_batches": [
+    {
+      "tool": "get_database_info",
+      "starts_spread_s": 0.00016791699454188347,
+      "both_requests_outstanding_overlap_s": 12.878421666100621
+    },
+    {
+      "tool": "decompile_function",
+      "starts_spread_s": 0.0003921249881386757,
+      "both_requests_outstanding_overlap_s": 0.5952773330500349
+    },
+    {
+      "tool": "get_xrefs_to",
+      "starts_spread_s": 0.00013712502550333738,
+      "both_requests_outstanding_overlap_s": 0.021733416011556983
+    },
+    {
+      "tool": "get_type_info",
+      "starts_spread_s": 0.0002311669522896409,
+      "both_requests_outstanding_overlap_s": 0.026798916049301624
+    },
+    {
+      "tool": "set_comment",
+      "starts_spread_s": 0.00014433299656957388,
+      "both_requests_outstanding_overlap_s": 0.028327208943665028
+    }
+  ],
+  "limits": [
+    "Stock re-mcp-ghidra 3.0.3 has a verified GhidraProject transaction-owner save bug with Ghidra 12.1.4. This local venv is patched; upgrade must preserve or re-evaluate fix.",
+    "Ghidra types are queried correctly, but Rust signatures in these two stored functions remain void() placeholders. MCP cannot reconstruct absent debug types automatically.",
+    "get_database_info enumerates all symbols for entry point count, measured about 15-17 seconds on the 991681-symbol B database; prefer cached list_databases metadata for routing.",
+    "Same-worker backend synchronous tools queue on MainThreadExecutor. Independent database workers can process requests concurrently.",
+    "No claim that every upstream tool or all architectures work; selected true tool calls and persistence scenarios are listed.",
+    "Native shared proxy/daemon tested with two independent SDK stdio clients and two cached B workers. Same worker remains serial; independent workers can run concurrently. One SDK context teardown race was observed and retained."
+  ],
+  "evidence": [
+    "cached-b-before-fix.json",
+    "cached-b-before-fix.log",
+    "cached-b-after-fix.json",
+    "cached-b-after-fix.log",
+    "automatic-close-session.json",
+    "automatic-close.log",
+    "ghidra-project-save.patch",
+    "GhidraProject.javap.txt",
+    "clone-input-identities.json",
+    "selected-tool-schemas.json",
+    "proxy-agents-session.json",
+    "proxy-agents.log",
+    "proxy-sdk-teardown-failure.json",
+    "proxy-sdk-teardown-failure.log",
+    "production-launch.json"
+  ],
+  "shared_proxy_verification": {
+    "ok": true,
+    "checks": {
+      "two_independent_proxy_clients_one_daemon": true,
+      "all_proxy_tools_ok": true,
+      "own_database_selectors": true,
+      "shared_pool_two_databases": true,
+      "reopen_comments_isolated": true,
+      "own_daemon_stopped": true,
+      "own_daemon_pid_gone": true
+    },
+    "calls": 26,
+    "pid": 12050,
+    "endpoint_port": 50226,
+    "observed_teardown_edge_case": "One previous run completed every request but MCP SDK stdout_reader raised anyio.BrokenResourceError on context teardown from late notifications. Preserved in proxy-sdk-teardown-failure.*. Adding final list_databases response after both workers are closed provided a flush barrier; final run passed. Do not suppress tool failures; retain awareness of SDK teardown race.",
+    "state_location": "~/Library/Application Support/re-mcp-ghidra; XDG_STATE_HOME ignored on macOS."
+  }
+}

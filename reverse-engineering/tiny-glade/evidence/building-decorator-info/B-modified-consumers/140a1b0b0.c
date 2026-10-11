@@ -1,0 +1,32 @@
+
+void __cdecl country_core::resources::walls::decorator_storage::Decorators::iter_modified_mut(void)
+
+{
+  undefined1 auVar1 [16];
+  undefined1 (*pauVar2) [16];
+  longlong lVar3;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  
+  pauVar2 = *(undefined1 (**) [16])(in_RDX + 0x60);
+  lVar3 = *(longlong *)(in_RDX + 0x68);
+  auVar1 = *pauVar2;
+  *(ushort *)(in_RCX + 3) =
+       ~((ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+         (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 | (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+         (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 | (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+         (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 | (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+         (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 | (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+         (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+         (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+         (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+         (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+         (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe | (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+  *in_RCX = pauVar2;
+  in_RCX[1] = pauVar2 + 1;
+  in_RCX[2] = *pauVar2 + lVar3 + 1;
+  in_RCX[4] = *(undefined8 *)(in_RDX + 0x78);
+  in_RCX[5] = in_RDX + 0x30;
+  return;
+}
+

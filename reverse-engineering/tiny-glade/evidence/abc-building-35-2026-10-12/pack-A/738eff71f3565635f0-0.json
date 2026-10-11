@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-building-35",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "738eff71f3565635f0-0",
+  "cache_key": "362c1332dabab6c091fbf96509691015443ba3393c67231655fd4c9024536baf",
+  "status": "ok",
+  "range": {
+    "rva": "0xceb430",
+    "length": 43,
+    "start_va": "0x140ceb430",
+    "stop_va_exclusive": "0x140ceb45b",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140ceb430",
+      "rva": "0xceb430",
+      "bytes": "89c8",
+      "size": 2,
+      "assembly": "movl\t%ecx, %eax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb432",
+      "rva": "0xceb432",
+      "bytes": "48b97f21da3998750000",
+      "size": 10,
+      "assembly": "movabsq\t$0x759839da217f, %rcx # imm = 0x759839DA217F",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb43c",
+      "rva": "0xceb43c",
+      "bytes": "480fafc8",
+      "size": 4,
+      "assembly": "imulq\t%rax, %rcx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb440",
+      "rva": "0xceb440",
+      "bytes": "48ba653729a97c3c0100",
+      "size": 10,
+      "assembly": "movabsq\t$0x13c7ca9293765, %rdx # imm = 0x13C7CA9293765",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb44a",
+      "rva": "0xceb44a",
+      "bytes": "4801ca",
+      "size": 3,
+      "assembly": "addq\t%rcx, %rdx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb44d",
+      "rva": "0xceb44d",
+      "bytes": "48b87331f3d0f45d594d",
+      "size": 10,
+      "assembly": "movabsq\t$0x4d595df4d0f33173, %rax # imm = 0x4D595DF4D0F33173",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb457",
+      "rva": "0xceb457",
+      "bytes": "4831d0",
+      "size": 3,
+      "assembly": "xorq\t%rdx, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140ceb45a",
+      "rva": "0xceb45a",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xceb430",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/rng.rs",
+          "FunctionName": "utils::rng::init_rng::hcaaa0808a06bd35d",
+          "Line": 2,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140ceb430: 89 c8                       \tmovl\t%ecx, %eax\n140ceb432: 48 b9 7f 21 da 39 98 75 00 00       \tmovabsq\t$0x759839da217f, %rcx # imm = 0x759839DA217F\n140ceb43c: 48 0f af c8                 \timulq\t%rax, %rcx\n140ceb440: 48 ba 65 37 29 a9 7c 3c 01 00       \tmovabsq\t$0x13c7ca9293765, %rdx # imm = 0x13C7CA9293765\n140ceb44a: 48 01 ca                    \taddq\t%rcx, %rdx\n140ceb44d: 48 b8 73 31 f3 d0 f4 5d 59 4d       \tmovabsq\t$0x4d595df4d0f33173, %rax # imm = 0x4D595DF4D0F33173\n140ceb457: 48 31 d0                    \txorq\t%rdx, %rax\n140ceb45a: c3                          \tretq\n",
+  "original_target_executed": false
+}

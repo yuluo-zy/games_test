@@ -36,24 +36,18 @@ pub struct StoneFloorInstanceDataMarker;
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct SolidVertexColorInstanceDataMarker;
 
-/// Observed gate bundle word. Its GPU upload interpretation remains pending.
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ObservedSolidVertexColorWord30(pub u32);
-
-/// Actual CPU writer's two boolean outputs. Query policy is not inferred from
-/// the unrelated gate bundle word, nor defaulted when its owner is missing.
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ObservedSolidVertexColorFlags {
-    pub flag_30: bool,
-    pub flag_34: bool,
-}
+/// Presence projections of the original optional components. The Solid writer
+/// reads presence only; no unknown component payload is invented.
+#[derive(Component, Clone, Copy, Debug)]
+pub struct SemiTransparent;
+#[derive(Component, Clone, Copy, Debug)]
+pub struct FlatLighting;
 
 #[derive(Bundle)]
 pub struct NaniSolidVertexColorBundle {
     pub descriptor: NaniInstanceDesc,
     pub transform: ObjectTransform,
     pub marker: SolidVertexColorInstanceDataMarker,
-    pub observed_word: ObservedSolidVertexColorWord30,
 }
 
 #[derive(Bundle, Default)]
@@ -68,8 +62,8 @@ pub fn register_nani_components(world: &mut World) {
     world.register_component::<ObjectTransform>();
     world.register_component::<StoneFloorInstanceDataMarker>();
     world.register_component::<SolidVertexColorInstanceDataMarker>();
-    world.register_component::<ObservedSolidVertexColorWord30>();
-    world.register_component::<ObservedSolidVertexColorFlags>();
+    world.register_component::<SemiTransparent>();
+    world.register_component::<FlatLighting>();
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -385,8 +379,7 @@ pub struct SolidNaniCpuSnapshot {
     pub descriptor: NaniInstanceDesc,
     pub resolved_atlas_part: u32,
     pub transform: [u8; 48],
-    pub observed_word_30: u32,
-    pub payload: Option<tiny_glade_reconstruction::building_nani_solid_vertex_color::SolidVertexColorCpuProjection>,
+    pub payload: tiny_glade_reconstruction::building_nani_solid_vertex_color::SolidVertexColorCpuProjection,
 }
 
 #[derive(Clone, Debug)]
@@ -402,7 +395,6 @@ pub struct SolidNaniCpuChanges(pub Vec<SolidNaniCpuChange>);
 #[derive(Resource, Default)]
 pub struct SolidNaniCpuStaging {
     pub snapshots: HashMap<Entity, SolidNaniCpuSnapshot>,
-    pub pending_flag_owner: std::collections::HashSet<Entity>,
 }
 
 #[derive(Resource, Default, Debug)]
@@ -412,8 +404,8 @@ pub struct SolidNaniCpuDiagnostics(pub Vec<(Entity, NaniAtlasError)>);
 /// GPU writer remains a separate unresolved consumer; no activation is made.
 pub fn stage_solid_nani_updates(
     entities: Query<
-        (Entity, &ObjectTransform, &NaniInstanceDesc, &ObservedSolidVertexColorWord30,
-            Option<&ObservedSolidVertexColorFlags>),
+        (Entity, &ObjectTransform, &NaniInstanceDesc,
+            Option<&SemiTransparent>, Option<&FlatLighting>),
         With<SolidVertexColorInstanceDataMarker>,
     >,
     atlas: Res<NaniMeshAtlas>,
@@ -424,11 +416,7 @@ pub fn stage_solid_nani_updates(
 ) {
     let mut current = HashMap::new();
     diagnostics.0.clear();
-    staging.pending_flag_owner.clear();
-    for (entity, transform, descriptor, observed_word, flags) in &entities {
-        if flags.is_none() {
-            staging.pending_flag_owner.insert(entity);
-        }
+    for (entity, transform, descriptor, semi_transparent, flat_lighting) in &entities {
         let entries = match descriptor.mesh {
             NaniInstanceMeshDesc::Named(name) => atlas.0.get(&name).map(Vec::as_slice).unwrap_or(&[]),
             NaniInstanceMeshDesc::AtlasPart(_) => &[],
@@ -449,10 +437,9 @@ pub fn stage_solid_nani_updates(
             descriptor: *descriptor,
             resolved_atlas_part,
             transform: transform.0,
-            observed_word_30: observed_word.0,
-            payload: flags.map(|flags| tiny_glade_reconstruction::building_nani_solid_vertex_color::project_solid_vertex_color(
-                &transform.0, flags.flag_30, flags.flag_34,
-            )),
+            payload: tiny_glade_reconstruction::building_nani_solid_vertex_color::project_solid_vertex_color(
+                &transform.0, semi_transparent.is_some(), flat_lighting.is_some(),
+            ),
         };
         match staging.snapshots.get(&entity) {
             None => changes.0.push(SolidNaniCpuChange::Create { entity, snapshot: snapshot.clone() }),

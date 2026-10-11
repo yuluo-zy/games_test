@@ -280,10 +280,37 @@ fn run() -> Result<(), Box<dyn Error>> {
                 let rows=operation["records_hex"].as_array().ok_or("Missing original 80B decorator rows")?.iter().map(|row|decode(row).map(tiny_glade_reconstruction::building_wall_platform_stairs::WallPlatformDecoratorObserved)).collect::<Result<Vec<_>,_>>()?;
                 emit(&mut app,tg_building_runtime::wall_platform_stairs::SetPlatformDecoratorRows{wall:id(&operation["wall_id"])?,rows});
             }
+            "set_platform_collision_dirty_tiles" => {
+                let rows = operation["rows_hex"].as_array().ok_or("Missing observed 64 DirtyTiles rows")?.iter()
+                    .map(|row| Ok(u64::from_str_radix(row.as_str().ok_or("DirtyTiles row must be hex string")?, 16)?))
+                    .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
+                let rows: [u64; 64] = rows.try_into().map_err(|_| "DirtyTiles requires exactly 64 rows")?;
+                emit(&mut app, wall_platform_collision::SetPlatformCollisionDirtyTiles { rows });
+            }
+            "clear_platform_collision_dirty_tiles" => emit(&mut app, wall_platform_collision::ClearPlatformCollisionDirtyTiles),
+            "query_platform_ray" => emit(&mut app, wall_platform_collision::QueryPlatformRay {
+                request_id: operation["request_id"].as_u64().ok_or("Missing ray request ID")?,
+                origin: [number(&operation["origin"][0])?, number(&operation["origin"][1])?, number(&operation["origin"][2])?],
+                direction: [number(&operation["direction"][0])?, number(&operation["direction"][1])?, number(&operation["direction"][2])?],
+                maximum_time_of_impact: number(&operation["maximum_time_of_impact"])?,
+                solid: operation["solid"].as_bool().ok_or("Missing solid query policy")?,
+            }),
             "create_building"=>emit(&mut app,tg_building_runtime::wall_authoring::CreateBuildingFromPlacement{shape:authoring_shape(&operation["shape_hex"])?,placement:decode(&operation["placement_hex"])?}),
             "edit_authored_rectangle"=>emit(&mut app,tg_building_runtime::wall_authoring::EditAuthoredRectangle(decode(&operation["record_hex"])?)),
             "observe_rectangle_edit_ui" => emit(&mut app, wall_rectangle_edit::ObserveRectangleEditUi(decode(&operation["state_hex"])?)),
             "finish_rectangle_edit" => emit(&mut app, wall_rectangle_edit::FinishRectangleEdit),
+            "observe_native_decorator_opening_id" => emit(&mut app, decorator_info_binding::ObserveNativeDecoratorOpeningId {
+                decorator_id: decorator_id(&operation["decorator_id"])?,
+                opening_id: openings::OpeningId(operation["opening_id"].as_str().ok_or("Missing actual opening ID binding")?.parse()?),
+            }),
+            "forget_native_decorator_opening_id" => emit(&mut app, decorator_info_binding::ForgetNativeDecoratorOpeningId(decorator_id(&operation["decorator_id"])?)),
+            "observe_decorator_storage_readonly" => emit(&mut app, decorator_info_binding::ObserveDecoratorStorageReadonly(
+                operation["readonly"].as_bool().ok_or("Missing actual readonly state")?,
+            )),
+            "apply_observed_decorator_place" => emit(&mut app, decorator_info_binding::ApplyObservedDecoratorPlace {
+                request: tiny_glade_reconstruction::building_decorator_info::DecoratorPlaceRequestObserved(decode(&operation["request_hex"])?),
+                observed_caller_byte: u8::try_from(operation["observed_caller_byte"].as_u64().ok_or("Missing observed placement caller byte")?)?,
+            }),
             "observe_decorator_storage" => emit(&mut app, wall_decorator_archivist::ObserveDecoratorStorage(Arc::new(observed_decorator_storage(&operation["storage"])?))),
             "observe_decorator_archive" => {
                 if operation["collision_handles_observed_empty"].as_bool() != Some(true) {
@@ -651,6 +678,58 @@ fn run() -> Result<(), Box<dyn Error>> {
                     }entry
                 }).collect();platform_stairs.sort_by_key(|e|e["wall_id"].as_str().unwrap().parse::<u64>().unwrap());
                 let gate_commands:Vec<_>=world.resource::<Events<tg_building_runtime::wall_arches::ConstructGateCmd>>().iter_current_update_events().map(|event|json!({"wall_id":event.0.wall_id.0.to_string(),"ordinal":event.0.ordinal,"projection_hex":gate_projection_hex(&event.0)})).collect();
+                let solid_staging = world.resource::<nani::SolidNaniCpuStaging>();
+                let solid_nani = json!({
+                    "staged_entities": solid_staging.snapshots.len(),
+                    "changes": world.resource::<nani::SolidNaniCpuChanges>().0.len(),
+                    "atlas_pending": world.resource::<nani::SolidNaniCpuDiagnostics>().0.len(),
+                    "gpu_backend_accepted": false,
+                });
+                let rectangle_state = world.resource::<wall_rectangle_edit::WallRectangleEditState>();
+                let rectangle_edit = json!({
+                    "observed_ui": rectangle_state.ui.is_some(),
+                    "finish_pending": rectangle_state.finish_pending,
+                    "pending_reason": rectangle_state.pending_reason,
+                    "completed": rectangle_state.completed_this_frame.iter().map(|w|w.0.to_string()).collect::<Vec<_>>(),
+                });
+                let native_openings = world.resource::<decorator_info_binding::NativeDecoratorOpeningState>();
+                let native_decorators = json!({
+                    "resolved": native_openings.resolved_this_frame,
+                    "authoritative_count": native_openings.authoritative_inputs.len(),
+                    "pending": native_openings.pending.iter().map(|(id, reason)|json!({"decorator_id":id,"reason":reason})).collect::<Vec<_>>(),
+                    "uses_observed_info_fields": true,
+                });
+                let decorator_archive = world.resource::<wall_decorator_archivist::WallDecoratorArchiveState>();
+                let decorator_cancel = json!({
+                    "storage_observed": decorator_archive.storage.is_some(),
+                    "archive_observed": decorator_archive.archive.is_some(),
+                    "restored": decorator_archive.restored_this_frame,
+                    "restored_decorators": decorator_archive.restored_decorators_this_frame,
+                    "pending_projection": decorator_archive.pending_projection.iter().map(|(id, reason)|json!({"decorator_id":id,"reason":reason})).collect::<Vec<_>>(),
+                });
+                let gate_state = world.resource::<gates::GateBuildState>();
+                let gate_entities = world.resource::<gates::Gates>();
+                let gate_geometry = json!({
+                    "entity_count": gate_entities.0.values().map(Vec::len).sum::<usize>(),
+                    "cpu_mesh_count": world.resource::<gates::GateCpuMeshAssets>().meshes.len(),
+                    "pending": gate_state.pending.iter().map(|(wall, reason)|json!({"wall_id":wall.0.to_string(),"reason":format!("{reason:?}")})).collect::<Vec<_>>(),
+                    "rebuilt": gate_state.rebuilt.iter().map(|wall|wall.0.to_string()).collect::<Vec<_>>(),
+                    "support_records": gate_state.cpu_outputs.values().flatten().map(|output|output.bricks.len()).sum::<usize>(),
+                });
+                let collision = world.resource::<wall_platform_collision::WallPlatformCollision>();
+                let raster = collision.raster.lock().map_err(|_| "Platform dirty owner poisoned")?;
+                let platform_collision = json!({
+                    "collider_count": collision.world.colliders.len(),
+                    "dirty_authority": raster.tiles.is_some(),
+                    "dirty_revision": raster.revision,
+                    "queued_world_rects": raster.queued_world_rects,
+                    "rasterized_rects": raster.rasterized.len(),
+                    "dirty_rows_hex": raster.tiles.as_ref().map(|tiles|tiles.rows().iter().map(|row|format!("{row:016x}")).collect::<Vec<_>>()),
+                    "pending": collision.pending.iter().map(|(wall, reason)|json!({"wall_id":wall.0.to_string(),"reason":format!("{reason:?}")})).collect::<Vec<_>>(),
+                    "ray_results": world.resource::<Events<wall_platform_collision::PlatformRayResult>>().iter_current_update_events().map(|event|json!({"request_id":event.request_id,"outcome":format!("{:?}",event.outcome)})).collect::<Vec<_>>(),
+                    "query_scope": "platform_subworld7",
+                });
+                drop(raster);
                 let pending_wall_bricks: Vec<_> = world.resource::<tg_building_runtime::wall_bricks::WallBrickBuildState>().pending.iter().map(|(wall,reason)| json!({"wall_id":wall.0.to_string(),"reason":format!("{reason:?}")})).collect();
                 let masks_registry = world.resource::<tg_building_runtime::wall_segments::WallPathMaskRegistry>();
                 let material_stats = world.resource::<tg_building_runtime::wall_segments::WallPathMaterialStats>();
@@ -690,7 +769,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                     .count();
                 println!(
                     "{}",
-                    json!({"tick":world.resource::<BuildingFrame>().tick,"wall_bricks":wall_bricks,"wall_lintels":wall_lintels,"wall_arches":wall_arches,"platform_stairs":platform_stairs,"gate_commands":gate_commands,"pending_wall_bricks":pending_wall_bricks,"wall_path_masks":wall_path_masks,"processed_wall_masks":processed_wall_masks,"authoring":authoring,"invalid_roof_history_pending":world.resource::<tg_building_runtime::roof_invalid::RoofInvalidNotificationState>().history_pending.len(),"pending_wall_path_masks":pending_wall_path_masks,"openings":openings,"hole_geometry":hole_geometry,"hole_geometry_rebuilt":hole_state.geometry_rebuilt.iter().map(|w|w.0.to_string()).collect::<Vec<_>>(),"on_wall_changed":hole_state.forwarded_recalculations.iter().map(|w|w.0.to_string()).collect::<Vec<_>>(),"history":history,"roofs":roofs,"walls":walls,"nani_staged_entities":world.resource::<nani::NaniCpuStagingState>().len(),"nani_requests":{"create":created,"update":updated,"remove":removed},"created":report.created.len(),"marked":report.marked.len(),"despawned":report.despawned.len(),"presence_changes":report.presence_changes.iter().map(|id|id.0.to_string()).collect::<Vec<_>>(),"geometry_changes":report.geometry_changes.len(),"wall_holes_requests":report.wall_holes_requests.iter().map(|id|id.0.to_string()).collect::<Vec<_>>(),"rim_history_requested":report.rim_history_requests.len(),"rim_history_pending":world.resource::<RoofRimHistoryRequests>().0.len(),"sound_kinds":report.sounds.iter().map(|s|s.kind).collect::<Vec<_>>(),"faults":report.faults})
+                    json!({"tick":world.resource::<BuildingFrame>().tick,"wall_bricks":wall_bricks,"wall_lintels":wall_lintels,"wall_arches":wall_arches,"platform_stairs":platform_stairs,"gate_commands":gate_commands,"gate_geometry":gate_geometry,"platform_collision":platform_collision,"solid_nani":solid_nani,"rectangle_edit":rectangle_edit,"decorator_cancel":decorator_cancel,"native_decorators":native_decorators,"pending_wall_bricks":pending_wall_bricks,"wall_path_masks":wall_path_masks,"processed_wall_masks":processed_wall_masks,"authoring":authoring,"invalid_roof_history_pending":world.resource::<tg_building_runtime::roof_invalid::RoofInvalidNotificationState>().history_pending.len(),"pending_wall_path_masks":pending_wall_path_masks,"openings":openings,"hole_geometry":hole_geometry,"hole_geometry_rebuilt":hole_state.geometry_rebuilt.iter().map(|w|w.0.to_string()).collect::<Vec<_>>(),"on_wall_changed":hole_state.forwarded_recalculations.iter().map(|w|w.0.to_string()).collect::<Vec<_>>(),"history":history,"roofs":roofs,"walls":walls,"nani_staged_entities":world.resource::<nani::NaniCpuStagingState>().len(),"nani_requests":{"create":created,"update":updated,"remove":removed},"created":report.created.len(),"marked":report.marked.len(),"despawned":report.despawned.len(),"presence_changes":report.presence_changes.iter().map(|id|id.0.to_string()).collect::<Vec<_>>(),"geometry_changes":report.geometry_changes.len(),"wall_holes_requests":report.wall_holes_requests.iter().map(|id|id.0.to_string()).collect::<Vec<_>>(),"rim_history_requested":report.rim_history_requests.len(),"rim_history_pending":world.resource::<RoofRimHistoryRequests>().0.len(),"sound_kinds":report.sounds.iter().map(|s|s.kind).collect::<Vec<_>>(),"faults":report.faults})
                 );
                 if !report.faults.is_empty() {
                     return Err("Building update reported a fault".into());

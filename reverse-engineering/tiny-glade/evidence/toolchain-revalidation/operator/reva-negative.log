@@ -1,0 +1,49 @@
+{"connected": true, "backend": "reva", "worker": "reva-operator", "tools": 10}
+{"tool": "run-script", "isError": true}
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/yuluo/.codex/mcp-tools/reverse-operator.py", line 121, in <module>
+  |     asyncio.run(run(parser.parse_args()))
+  |     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/yuluo/Library/Application Support/uv/python/cpython-3.14.2-macos-aarch64-none/lib/python3.14/asyncio/runners.py", line 204, in run
+  |     return runner.run(main)
+  |            ~~~~~~~~~~^^^^^^
+  |   File "/Users/yuluo/Library/Application Support/uv/python/cpython-3.14.2-macos-aarch64-none/lib/python3.14/asyncio/runners.py", line 127, in run
+  |     return self._loop.run_until_complete(task)
+  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  |   File "/Users/yuluo/Library/Application Support/uv/python/cpython-3.14.2-macos-aarch64-none/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
+  |     return future.result()
+  |            ~~~~~~~~~~~~~^^
+  |   File "/Users/yuluo/.codex/mcp-tools/reverse-operator.py", line 73, in run
+  |     async with stdio_client(params) as (read,write):
+  |                ~~~~~~~~~~~~^^^^^^^^
+  |   File "/Users/yuluo/Library/Application Support/uv/python/cpython-3.14.2-macos-aarch64-none/lib/python3.14/contextlib.py", line 235, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/lib/python3.14/site-packages/mcp/client/stdio/__init__.py", line 183, in stdio_client
+  |     anyio.create_task_group() as tg,
+  |     ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Exception Group Traceback (most recent call last):
+    |   File "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/lib/python3.14/site-packages/mcp/client/stdio/__init__.py", line 189, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "/Users/yuluo/.codex/mcp-tools/reverse-operator.py", line 74, in run
+    |     async with ClientSession(read,write) as session:
+    |                ~~~~~~~~~~~~~^^^^^^^^^^^^
+    |   File "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/lib/python3.14/site-packages/mcp/shared/session.py", line 238, in __aexit__
+    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+    |     raise BaseExceptionGroup(
+    |         "unhandled errors in a TaskGroup", self._exceptions
+    |     ) from None
+    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+    +-+---------------- 1 ----------------
+      | Traceback (most recent call last):
+      |   File "/Users/yuluo/.codex/mcp-tools/reverse-operator.py", line 97, in run
+      |     raise RuntimeError(name+' failed; inspect '+str(output))
+      | RuntimeError: run-script failed; inspect /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/operator/reva-negative.json
+      +------------------------------------

@@ -42,6 +42,7 @@ pub fn register(app: &mut bevy_app::App) {
         );
 }
 fn resolve(
+    native_ids: Res<crate::decorator_info_binding::NativeDecoratorOpeningIds>,
     mut input: EventReader<PlaceWallOpening>,
     mut removed: EventReader<RemoveOpening>,
     mut intents: ResMut<WallOpeningIntents>,
@@ -55,7 +56,11 @@ fn resolve(
     mut withdraw: EventWriter<WithdrawOpening>,
     mut report: ResMut<BuildingReport>,
 ) {
+    // Native storage owns bound identities. Retire the old adapter intent
+    // without removing the actual replacement opening or its contribution.
+    intents.0.retain(|id, _| !native_ids.owns(*id));
     for event in input.read() {
+        if native_ids.owns(event.id) { continue; }
         intents.0.insert(
             event.id,
             WallOpeningIntent {

@@ -103,3 +103,17 @@
 工程：[Cargo.toml](reconstruction/Cargo.toml)。完整研究计划：[MASTER_PLAN.md](MASTER_PLAN.md)。源码任务与优先级：[TASK_BACKLOG.md](TASK_BACKLOG.md)。依赖排除与持久记忆：[PROJECT_MEMORY.md](PROJECT_MEMORY.md)。机器可读台账：[project.json](tracking/project.json)。
 
 依赖列描述最终验收依赖，源码阶段可以沿已确认的数据接口继续推进。排期以实际源码覆盖和验证吞吐滚动更新，不承诺未经测量的整游戏完工日期。更新台账后执行 `scripts/update-progress.py`，它会核验已完成项的依赖、证据文件与局部差分结果。
+
+
+## 2026-10-12 共享工具候选增量（不增加验收数）
+
+本轮交付52组工具Rust候选，按29个原文件组保存一套实现，标明A/B/C对应并附中文注释：[交付导航](evidence/abc-tools-52-2026-10-11/README.md)。原指令只读取证完成，源码格式化/指纹冻结完成，领取锁已释放；实现状态为implemented_unverified，签名和消费者仍有明确边界。没有构建、测试、原码行为差分、独立review或生产整合，不继承或扩大旧建筑验收。机器记录：[abc-tools-52-candidates.json](tracking/abc-tools-52-candidates.json)。
+
+
+## 2026-10-12 按优先级恢复35组候选
+
+用户授权按优先级开始逆向还原。首批35组（几何14、建筑接口17、历史接口4）基于A原EXE/B原RNE/C原EXE及对应PDB取证，105个版本映射、每版33个不同原范围。已写21个合法文件组原路径的共享Rust候选，中文注释与ABC对应齐全；复用上批类型/函数，不改生产Cargo/lib。见 [交付总览](evidence/abc-building-35-2026-10-12/README.md) 与 [机器台账](tracking/abc-building-35-candidates.json)。
+
+原指令与限定真实消费者补证：动态signed32网格宽高，乘加回绕后符号扩展；holes closed路径record+17==0过滤，未过滤holes别名保留；DecoratorLibKey保留EAX/EDX32位返回槽；Vec/std/glam复用；Rectangle3d32B字段互证、Triangle使用Vec3而非Vec3A。完整作者ABI、容器/枚举全集和真实producer/consumer仍未关闭，不把叶接口完成称为完整建筑链恢复。
+
+独立合同审查和冻结候选源码审查已记录；仅rustfmt与冻结引用完整性检查，状态implemented_unverified，无构建/测试/oracle或生产整合，旧建筑保存断点及验收不改变。21份delivery与依赖闭包保留，21个claim释放。下一优先点为装饰物source/asset/subtype→位置/碰撞/开口→move/delete/历史传播，先补本批key/holes/Archivist真实owner，材料统计和其他history owner随后，GPU/场景后置。

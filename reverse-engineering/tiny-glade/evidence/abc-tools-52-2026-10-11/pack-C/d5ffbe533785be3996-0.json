@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+    "sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+    "bytes": 65500056,
+    "id": "abc-tools-52",
+    "version": "C",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny_glade.pdb",
+      "sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "bytes": 310013952,
+      "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "d5ffbe533785be3996-0",
+  "cache_key": "cd4cd4e34c869eca3a4c33302262e74aa33e7643027fd222a2bb350e3923dff5",
+  "status": "ok",
+  "range": {
+    "rva": "0xdee1d0",
+    "length": 25,
+    "start_va": "0x140dee1d0",
+    "stop_va_exclusive": "0x140dee1e9",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140dee1d0",
+      "rva": "0xdee1d0",
+      "bytes": "4889c8",
+      "size": 3,
+      "assembly": "movq\t%rcx, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1d3",
+      "rva": "0xdee1d3",
+      "bytes": "f20f104210",
+      "size": 5,
+      "assembly": "movsd\t0x10(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1d8",
+      "rva": "0xdee1d8",
+      "bytes": "0f14d3",
+      "size": 3,
+      "assembly": "unpcklps\t%xmm3, %xmm2            # xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1db",
+      "rva": "0xdee1db",
+      "bytes": "0f58d0",
+      "size": 3,
+      "assembly": "addps\t%xmm0, %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1de",
+      "rva": "0xdee1de",
+      "bytes": "0f135110",
+      "size": 4,
+      "assembly": "movlps\t%xmm2, 0x10(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1e2",
+      "rva": "0xdee1e2",
+      "bytes": "0f1002",
+      "size": 3,
+      "assembly": "movups\t(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1e5",
+      "rva": "0xdee1e5",
+      "bytes": "0f1101",
+      "size": 3,
+      "assembly": "movups\t%xmm0, (%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140dee1e8",
+      "rva": "0xdee1e8",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xdee1d0",
+      "ModuleName": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle2d::with_expanded_size::heae12f2830c41db2",
+          "Line": 471,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140dee1d0: 48 89 c8                    \tmovq\t%rcx, %rax\n140dee1d3: f2 0f 10 42 10              \tmovsd\t0x10(%rdx), %xmm0\n140dee1d8: 0f 14 d3                    \tunpcklps\t%xmm3, %xmm2            # xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1]\n140dee1db: 0f 58 d0                    \taddps\t%xmm0, %xmm2\n140dee1de: 0f 13 51 10                 \tmovlps\t%xmm2, 0x10(%rcx)\n140dee1e2: 0f 10 02                    \tmovups\t(%rdx), %xmm0\n140dee1e5: 0f 11 01                    \tmovups\t%xmm0, (%rcx)\n140dee1e8: c3                          \tretq\n",
+  "original_target_executed": false
+}

@@ -33,3 +33,10 @@ After all requests the actual `take_pending_wall_changed` clears the original pe
 ## Shared merge checklist
 
 See `tracking/parallel-implementation-conflicts/rectangle-history.md`. No `history.rs` edits are required. Parent owns final registration, compilation, tests and independent review. These new runtime files and authoring tuple changes must remain labeled unverified until that stage completes.
+
+
+## Native Info field binding extension (unverified)
+
+Parent registers `decorator_info_binding::register` and the `building_decorator_info` core alias. `ObserveNativeDecoratorOpeningId {decorator_id,opening_id}` supplies only identity; geometry/rank/family/attachment sidecar is no longer required for supported native wall records. The consumer reads real tracked Info72 and live storage address, uses actual wall coordinate bits, derives subtype with platform!=0/corner!=0, and sends `UpsertOpening` directly from the actual selected asset. Its system runs after Placement/before Openings. Both the old sidecar publisher and parent legacy placement resolver opt out for IDs owned by this map. `ForgetNativeDecoratorOpeningId` releases the known derived opening, including while storage is temporarily unavailable.
+
+Do not interpret platform as host WallId or is_bottom_door. Native field/producer evidence and remaining unknown fields are in `evidence/building-decorator-info/findings.md`. This extension is not compiled, tested or accepted.

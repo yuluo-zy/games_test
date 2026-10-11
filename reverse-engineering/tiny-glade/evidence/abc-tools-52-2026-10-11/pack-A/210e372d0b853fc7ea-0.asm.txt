@@ -1,0 +1,15 @@
+
+/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140ec4160: 48 89 c8                    	movq	%rcx, %rax
+140ec4163: c7 01 00 00 00 00           	movl	$0x0, (%rcx)
+140ec4169: c7 41 10 00 00 80 3f        	movl	$0x3f800000, 0x10(%rcx) # imm = 0x3F800000
+140ec4170: c6 41 34 00                 	movb	$0x0, 0x34(%rcx)
+140ec4174: 0f 10 02                    	movups	(%rdx), %xmm0
+140ec4177: 0f 10 4a 10                 	movups	0x10(%rdx), %xmm1
+140ec417b: 0f 11 41 14                 	movups	%xmm0, 0x14(%rcx)
+140ec417f: 0f 11 49 24                 	movups	%xmm1, 0x24(%rcx)
+140ec4183: c3                          	retq

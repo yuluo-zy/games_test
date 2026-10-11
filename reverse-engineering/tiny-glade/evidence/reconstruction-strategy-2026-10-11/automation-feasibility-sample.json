@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "task": "read-only automation pipeline feasibility",
+  "date": "2026-10-11",
+  "target_execution": false,
+  "business_build_or_validation": false,
+  "ghidra_database_opened_or_mutated": false,
+  "implementation_status": "plan only; extractor/queue/database not implemented",
+  "structured_cli_sample": {
+    "command": [
+      "/opt/homebrew/opt/llvm/bin/llvm-pdbutil",
+      "pdb2yaml",
+      "--pdb-stream",
+      "--no-file-headers",
+      "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb"
+    ],
+    "exit_code": 0,
+    "stdout_bytes": 182,
+    "stdout_sha256": "bae51f5d3f1b3a34bf547a6ab33425e91d4b98fe8764ed4a206600ffb24de223",
+    "yaml": "---\nPdbStream:\n  Age:             1\n  Guid:            '{09F1A02A-49F2-F8C8-4C4C-44205044422E}'\n  Signature:       166830122\n  Features:        [ VC140 ]\n  Version:         VC70\n...\n",
+    "stderr": ""
+  },
+  "read_api_headers": {
+    "root": "/opt/homebrew/opt/llvm/include",
+    "observed": {
+      "NativeSession": "createFromPdbPath; getPDBFile",
+      "PDBFile": "getPDBDbiStream; getPDBTpiStream; getPDBIpiStream",
+      "DbiModuleList": "getModuleCount; getModuleDescriptor; source_files",
+      "ModuleDebugStreamRef": "symbols; getSymbolArray; getSymbolsSubstream; subsections; readSymbolAtOffset",
+      "TpiStream": "types",
+      "CodeViewYAML": "SymbolRecord::fromCodeViewSymbol"
+    }
+  },
+  "installed_ghidra_api_source": "/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC/Ghidra",
+  "ghidra_observed_methods": {
+    "DecompInterface": [
+      "openProgram",
+      "decompileFunction",
+      "flushCache",
+      "dispose"
+    ],
+    "Function": [
+      "updateFunction",
+      "FunctionUpdateType.CUSTOM_STORAGE"
+    ],
+    "HighFunctionDBUtil": [
+      "commitLocalNamesToDatabase",
+      "updateDBVariable"
+    ]
+  },
+  "baseline_capabilities": {
+    "A": {
+      "source_audit": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/reconstruction-strategy-2026-10-11/A-pdb-capability.json",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "modules": 4709,
+      "rust_modules": 4560,
+      "tpi_records": 6133,
+      "ipi_records": 119594,
+      "rust_local_records": 0,
+      "rust_defrange_records": 0,
+      "rust_inline_sites": 2333877,
+      "rust_local_type_import_allowed": false
+    },
+    "B": {
+      "source_audit": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/reconstruction-strategy-2026-10-11/B-pdb-capability.json",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "modules": 4894,
+      "rust_modules": 4739,
+      "tpi_records": 6125,
+      "ipi_records": 132599,
+      "rust_local_records": 0,
+      "rust_defrange_records": 0,
+      "rust_inline_sites": 3204897,
+      "rust_local_type_import_allowed": false
+    },
+    "C": {
+      "source_audit": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/reconstruction-strategy-2026-10-11/C-pdb-capability.json",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "modules": 5142,
+      "rust_modules": 4986,
+      "tpi_records": 6126,
+      "ipi_records": 144737,
+      "rust_local_records": 0,
+      "rust_defrange_records": 0,
+      "rust_inline_sites": 3966178,
+      "rust_local_type_import_allowed": false
+    }
+  },
+  "decisions": {
+    "mvp": "existing LLVM YAML limited streams + direct read-only metadata inventory + SQLite stdlib; bounded dump only for targeted inspection",
+    "scalable_reader": "small LLVM Native reader emitting record-offset-preserving JSONL, not regex parsing millions of pretty lines",
+    "decompiler_worker": "single process single writer per isolated analysis database; atomic job request files; per-request checkpoint/cache",
+    "rust_types": "native field facts and owner contracts required; placeholder void() never imported as real ABI",
+    "semantic_boundary": "IPI names/inline ownership are not author source or layout recovery"
+  }
+}

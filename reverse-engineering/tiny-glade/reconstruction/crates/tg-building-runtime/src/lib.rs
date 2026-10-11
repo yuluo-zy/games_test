@@ -17,6 +17,10 @@ pub mod wall_platform_stairs;
 pub mod wall_rectangle_edit;
 pub mod wall_pending_changed;
 pub mod wall_decorator_archivist;
+pub mod gates;
+pub mod wall_platform_collision;
+pub mod decorator_info_binding;
+pub mod fences;
 pub mod wall_segments;
 pub mod wall_structures;
 
@@ -202,8 +206,11 @@ pub enum BuildingStage {
     Segmentation,
     PlatformSegmentation,
     PlatformStairs,
+    PlatformCollision,
     WallStructures,
     WallArches,
+    Gates,
+    Fences,
     Cache,
     Replay,
     Create,
@@ -269,14 +276,18 @@ impl Plugin for BuildingPlugin {
         wall_paths::register(app);
         wall_segments::register(app);
         wall_platform_stairs::register(app);
+        wall_platform_collision::register(app);
         wall_rectangle_edit::register(app);
         wall_pending_changed::register(app);
         wall_decorator_archivist::register(app);
+        decorator_info_binding::register(app);
         wall_authoring::register(app);
         wall_bulldoze::register(app);
         roof_invalid::register(app);
         wall_structures::register(app);
         wall_arches::register(app);
+        gates::register(app);
+        fences::register(app);
         let world = app.world_mut();
         world.register_component::<Roof>();
         world.register_component::<TileSimulation>();
@@ -332,8 +343,11 @@ impl Plugin for BuildingPlugin {
             (
                 BuildingStage::PlatformSegmentation,
                 BuildingStage::PlatformStairs,
+                BuildingStage::PlatformCollision,
                 BuildingStage::WallStructures,
                 BuildingStage::WallArches,
+                BuildingStage::Gates,
+                BuildingStage::Fences,
                 BuildingStage::Placement,
                 BuildingStage::Openings,
                 BuildingStage::WallGeometry,

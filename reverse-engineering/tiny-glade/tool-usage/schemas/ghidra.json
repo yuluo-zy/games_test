@@ -1,0 +1,535 @@
+{
+  "backend": "ghidra",
+  "source_report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/ghidra-read-final.json",
+  "snapshot_profile_access": "read",
+  "tools": [
+    {
+      "name": "list_instances",
+      "inputSchema": {
+        "properties": {},
+        "title": "_list_instances_toolArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "connect_instance",
+      "inputSchema": {
+        "properties": {
+          "project": {
+            "description": "Project name (or substring) to connect to",
+            "title": "Project",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "connect_instanceArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "list_tool_groups",
+      "inputSchema": {
+        "properties": {},
+        "title": "list_tool_groupsArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "load_tool_group",
+      "inputSchema": {
+        "properties": {
+          "group": {
+            "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+            "title": "Group",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group"
+        ],
+        "title": "load_tool_groupArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "search_tools",
+      "inputSchema": {
+        "properties": {
+          "query": {
+            "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+            "title": "Query",
+            "type": "string"
+          },
+          "limit": {
+            "default": 15,
+            "description": "Maximum number of results to return (default 15).",
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "search_toolsArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "disassemble_function",
+      "inputSchema": {
+        "properties": {
+          "address": {
+            "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+            "title": "Address",
+            "type": "string"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "title": "disassemble_functionArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "find_data_types",
+      "inputSchema": {
+        "properties": {
+          "pattern": {
+            "default": "",
+            "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+            "title": "Pattern",
+            "type": "string"
+          },
+          "category": {
+            "default": "",
+            "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+            "title": "Category",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "categories": {
+            "default": "false",
+            "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+            "title": "Categories",
+            "type": "boolean"
+          },
+          "offset": {
+            "default": "0",
+            "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": "100",
+            "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "title": "find_data_typesArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "find_functions",
+      "inputSchema": {
+        "properties": {
+          "name_pattern": {
+            "default": "",
+            "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+            "title": "Name Pattern",
+            "type": "string"
+          },
+          "regex": {
+            "default": "false",
+            "description": "Treat name_pattern as a regular expression.",
+            "title": "Regex",
+            "type": "boolean"
+          },
+          "min_xrefs": {
+            "default": "",
+            "description": "Only functions with at least this many references to them.",
+            "title": "Min Xrefs",
+            "type": "integer"
+          },
+          "max_xrefs": {
+            "default": "",
+            "description": "Only functions with at most this many references to them.",
+            "title": "Max Xrefs",
+            "type": "integer"
+          },
+          "calling_convention": {
+            "default": "",
+            "description": "Only functions with this calling convention (e.g. __stdcall).",
+            "title": "Calling Convention",
+            "type": "string"
+          },
+          "has_custom_name": {
+            "default": "",
+            "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+            "title": "Has Custom Name",
+            "type": "boolean"
+          },
+          "is_thunk": {
+            "default": "",
+            "description": "true = only thunks, false = exclude them, omit for both.",
+            "title": "Is Thunk",
+            "type": "boolean"
+          },
+          "is_external": {
+            "default": "",
+            "description": "true = only external functions, false = exclude them.",
+            "title": "Is External",
+            "type": "boolean"
+          },
+          "tag": {
+            "default": "",
+            "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+            "title": "Tag",
+            "type": "string"
+          },
+          "sort_by": {
+            "default": "address",
+            "description": "address | name | xref_count.",
+            "title": "Sort By",
+            "type": "string"
+          },
+          "offset": {
+            "default": "0",
+            "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": "100",
+            "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response — the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pattern"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Query"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "title": "find_functionsArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_functions",
+      "inputSchema": {
+        "properties": {
+          "function": {
+            "default": "",
+            "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+            "title": "Function",
+            "type": "string"
+          },
+          "functions": {
+            "default": "",
+            "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+            "title": "Functions",
+            "type": "string"
+          },
+          "fields": {
+            "default": "",
+            "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+            "title": "Fields",
+            "type": "string"
+          },
+          "include_call_context": {
+            "default": "true",
+            "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+            "title": "Include Call Context",
+            "type": "boolean"
+          },
+          "call_context_limit": {
+            "default": "6",
+            "description": "Maximum number of UNIQUE callers to decompile for call context.",
+            "title": "Call Context Limit",
+            "type": "integer"
+          },
+          "call_context_lines": {
+            "default": "3",
+            "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+            "title": "Call Context Lines",
+            "type": "integer"
+          },
+          "include_disasm": {
+            "default": "false",
+            "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+            "title": "Include Disasm",
+            "type": "boolean"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Address"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "function_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Function Address"
+          },
+          "function_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Function Name"
+          },
+          "call_context_window": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Call Context Window"
+          }
+        },
+        "title": "get_functionsArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_metadata",
+      "inputSchema": {
+        "properties": {
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "title": "get_metadataArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_struct_layout",
+      "inputSchema": {
+        "properties": {
+          "struct_name": {
+            "description": "Structure name",
+            "title": "Struct Name",
+            "type": "string"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "struct_name"
+        ],
+        "title": "get_struct_layoutArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_xrefs_from",
+      "inputSchema": {
+        "properties": {
+          "address": {
+            "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+            "title": "Address",
+            "type": "string"
+          },
+          "offset": {
+            "default": "0",
+            "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": "100",
+            "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "title": "get_xrefs_fromArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "inputSchema": {
+        "properties": {
+          "address": {
+            "default": "",
+            "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+            "title": "Address",
+            "type": "string"
+          },
+          "addresses": {
+            "default": "",
+            "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+            "title": "Addresses",
+            "type": "string"
+          },
+          "offset": {
+            "default": "0",
+            "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": "100",
+            "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "title": "get_xrefs_toArguments",
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_memory",
+      "inputSchema": {
+        "properties": {
+          "address": {
+            "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+            "title": "Address",
+            "type": "string"
+          },
+          "length": {
+            "default": "16",
+            "description": "Number of bytes",
+            "title": "Length",
+            "type": "integer"
+          },
+          "program": {
+            "default": "",
+            "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+            "title": "Program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "title": "read_memoryArguments",
+        "type": "object"
+      }
+    }
+  ]
+}

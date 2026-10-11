@@ -1,0 +1,65 @@
+{
+  "actual_mcp_calls": true,
+  "target_execution": false,
+  "cases": [
+    {
+      "backend": "ghidra",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/ghidra-read-final.json",
+      "ok": true,
+      "calls": 4
+    },
+    {
+      "backend": "reva",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reva-read.json",
+      "ok": true,
+      "calls": 2
+    },
+    {
+      "backend": "reva",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reva-pcode.json",
+      "ok": true,
+      "calls": 1
+    },
+    {
+      "backend": "re-mcp",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/re-mcp-read.json",
+      "ok": true,
+      "calls": 4
+    },
+    {
+      "backend": "rea",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/rea-identity.json",
+      "ok": true,
+      "calls": 3
+    },
+    {
+      "backend": "radare2",
+      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/radare-bytes-final.json",
+      "ok": true,
+      "calls": 6
+    }
+  ],
+  "operator_correction": {
+    "cause": "tools/list first page was treated as the complete catalog; radare2 returned nextCursor=32",
+    "fix": "follow nextCursor until exhausted; reject repeated cursors; remove unneeded run_* flag",
+    "before_copy": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reverse-operator.before-radare-catalog-fix.py",
+    "retained_failure_reports": [
+      "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/radare-bytes.json",
+      "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/radare-bytes-fixed.json"
+    ],
+    "patch": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reverse-operator-pagination.patch"
+  },
+  "limitations": [
+    "Verification covers these bounded jobs, not every upstream tool.",
+    "ReVa seed void() signature can reduce High P-code to RETURN; machine-code ABI recovery remains necessary.",
+    "REA example verifies identity only; provider analysis uses a separate ephemeral project."
+  ],
+  "total_calls": 20,
+  "operator_sha256": "921bd98b9495220c118baab06487106d2e98912cde56383f6666f640bbf2fc05"
+}

@@ -1,0 +1,20 @@
+--- upstream-3.0.3/session.py
++++ local-compatible/session.py
+@@ -215,13 +215,12 @@
+         if self._program is None or self._project is None:
+             raise GhidraError("No database is open.", error_type="NoDatabase")
+ 
+-        from ghidra.util.task import TaskMonitor  # noqa: PLC0415
+-
+-        self._end_open_transactions()
+-
++        # GhidraProject owns the transaction started by openProgram().  Its
++        # save API ends that exact transaction and opens the next one; using
++        # DomainFile.save directly leaves the owner transaction active.
+         df = self._program.getDomainFile()
+         if df is not None and df.canSave():
+-            df.save(TaskMonitor.DUMMY)
++            self._project.save(self._program)
+         else:
+             self._project.saveAs(self._program, "/", self._program.getName(), True)
+ 

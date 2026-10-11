@@ -1,0 +1,21 @@
+{
+  "tool": "run-script",
+  "arguments": {
+    "programPath": "/tiny-glade.exe",
+    "code": "import json\naddr=currentProgram.getAddressFactory().getAddress('140949c20')\nf=currentProgram.getFunctionManager().getFunctionAt(addr)\nrows=[]\nit=currentProgram.getListing().getInstructions(f.getBody(),True)\nwhile it.hasNext():\n i=it.next()\n rows.append({'address':str(i.getAddress()),'instruction':str(i),'pcode':[str(op) for op in i.getPcode()]})\nprint(json.dumps(rows))\n"
+  },
+  "result": {
+    "_meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"[{\\\"address\\\": \\\"140949c20\\\", \\\"instruction\\\": \\\"MOV EAX,dword ptr [RCX]\\\", \\\"pcode\\\": [\\\"(unique, 0x23c00, 4) LOAD (const, 0x1b1, 4) , (register, 0x8, 8)\\\", \\\"(register, 0x0, 4) COPY (unique, 0x23c00, 4)\\\", \\\"(register, 0x0, 8) INT_ZEXT (register, 0x0, 4)\\\"]}, {\\\"address\\\": \\\"140949c22\\\", \\\"instruction\\\": \\\"CVTSI2SS XMM0,RAX\\\", \\\"pcode\\\": [\\\"(register, 0x1200, 4) INT2FLOAT (register, 0x0, 8)\\\"]}, {\\\"address\\\": \\\"140949c27\\\", \\\"instruction\\\": \\\"MOV EAX,dword ptr [RCX + 0x4]\\\", \\\"pcode\\\": [\\\"(unique, 0x8e00, 8) INT_ADD (register, 0x8, 8) , (const, 0x4, 8)\\\", \\\"(unique, 0x23c00, 4) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\", \\\"(register, 0x0, 4) COPY (unique, 0x23c00, 4)\\\", \\\"(register, 0x0, 8) INT_ZEXT (register, 0x0, 4)\\\"]}, {\\\"address\\\": \\\"140949c2a\\\", \\\"instruction\\\": \\\"CVTSI2SS XMM1,RAX\\\", \\\"pcode\\\": [\\\"(register, 0x1240, 4) INT2FLOAT (register, 0x0, 8)\\\"]}, {\\\"address\\\": \\\"140949c2f\\\", \\\"instruction\\\": \\\"DIVSS XMM0,XMM1\\\", \\\"pcode\\\": [\\\"(register, 0x1200, 4) FLOAT_DIV (register, 0x1200, 4) , (register, 0x1240, 4)\\\"]}, {\\\"address\\\": \\\"140949c33\\\", \\\"instruction\\\": \\\"RET\\\", \\\"pcode\\\": [\\\"(register, 0x288, 8) LOAD (const, 0x1b1, 8) , (register, 0x20, 8)\\\", \\\"(register, 0x20, 8) INT_ADD (register, 0x20, 8) , (const, 0x8, 8)\\\", \\\" ---  RETURN (register, 0x288, 8)\\\"]}]\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":153}",
+        "annotations": null,
+        "_meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false,
+    "resultType": "complete"
+  }
+}

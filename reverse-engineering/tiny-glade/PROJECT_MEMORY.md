@@ -1,5 +1,11 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-11 更新工具与 C 小宠物试跑
+
+详见 [工作流结果](evidence/toolchain-pet-pilot-2026-10-11/RESULTS.md)。新增 native-evidence-pack、native-tool-batch、native-module-handoff，更新原重建技能与 Cargo 公共依赖对照脚本；技能安装于本机 ~/.codex/skills，项目快照/哈希已保存。实际 Ghidra SDK shared 连接与有界批量通过；B patched 分析上下文不作为 C 原指令 oracle。
+
+C 羊抚摸选择行切片已恢复五状态、原变化 tick/being_petted 门控，独立 Bevy 0.17.3 消息/Query/派生输出/结束与删除链运行；120 原指令例与4独立检查通过。最终公共依赖锁113/113与原C匹配，首轮漂移和失败交接保留。仍为104B观察源投影；真实UI消息发送、Sheep创建/ID、GameTime、完整walk/renderer与原调度未闭合；完整critters/building未验收，旧firefly NaN失败不改。下一步原UI生产者与权威Sheep源优先，不能停留在门控投影。
+
 ## 2026-10-10 三版本计划入口
 
 当前后续执行计划为 [THREE_VERSION_RUST_PLAN.md](THREE_VERSION_RUST_PLAN.md)：A 首发辅助追溯，B 维持当前实现/验证基线，C v1.16.0 为计划默认最终交付目标。源码恢复优先，场景/GPU后期必做。以下依赖和已验收结论仍限定于 B；各版本独立记录身份和依赖，新增计划未切换当前工程锁文件或扩大已有验证范围。
@@ -51,8 +57,10 @@ B 的依赖基线是原作 `build-info/Cargo.lock`，SHA256 `9e0cb4a0fa173122fa7
 
 ## 工具与推进方式
 
-- 使用 `reverse-engineer-anything` skill 的原作证据流程。
-- REA、ReVa、RE-MCP已安装；会话没有直接暴露其工具时，通过官方MCP SDK连接已配置stdio服务。连接、工具catalog和实际调用结果须落证据，不把doctor成功等同实际连接。
+- 使用 `native-rust-reconstruction` skill；复用已有 Ghidra/PyGhidra、LLVM PDB 和原指令验证证据。
+- 2026-10-11 再复验后保留默认 `ghidra` 与 `reva` MCP；共享读14/6工具，专属worker写19/10工具。ReVa扩展及依赖已补齐，PyGhidra脚本/P-code、签名修正、并发和持久性通过。REA/radare2恢复为按需SDK入口；radare2补pdg后端但PDB TPI兼容仍不足。旧Windows RE-MCP已在Mac恢复3.0.3，并打GhidraProject.save兼容补丁，双数据库/双客户端及持久隔离通过。复验总报告在 evidence/toolchain-revalidation/summary.json。
+- MCP 使用 `tools/ghidra-projects/mcp/TinyGlade.gpr`，为B现有数据库的独立持久克隆；不重导入/全程序分析、不抢占原数据库锁。副本上的注释/签名改进与原数据库分开，原RNE继续作oracle。显式指定 `program="tiny-glade.exe"`。
+- 多agent可直接使用 `/Users/yuluo/.codex/mcp-tools/reverse-operator.py`，每修改agent唯一 `--worker` 并 `--write`；共享读默认，自动独立clone/backend、按PID绑定、独立结果文件。保留native-rust-reconstruction与单份pyghidra-scripting skill；CTF等重复技能不恢复。
 - 复用持久Ghidra数据库；按原作函数/引用/类型检索，不全程序重复分析十万条符号。
 - 从高收益游戏规则和权威状态链推进：Roof编辑消费者/字段映射 → Wall形状/高度/生成 → 历史提交/撤销消费者 → 门窗附着等。
 - 里程碑与源码验收分开记；依赖复用排除在逆向覆盖统计之外。
@@ -176,3 +184,49 @@ G14 unified Wall/Roof outer buckets与inner sameWall group barrier已接。真�
 ## 2026-10-11 用户调整：并行实现优先，验证暂缓
 
 用户明确要求多个 agent 并行推进，先尽量实现、不跑验证，冲突先写文件最后整理。三条线复用已有上下文：Gate实体/墙面、Rapier/DirtyTiles/楼梯、矩形finish/cancel与pending/history；父管理共享lib/Nani/CLI。新增代码状态为 implemented_unverified，不把阶段4冻结54/67报告更新为当前验收。冲突和未恢复接口记录于 tracking/parallel-implementation-conflicts；最终仍需统一构建、原码及World验收。
+
+## 2026-10-11T100110Z 当前实现保存
+
+用户要求先保存，三个agent已中断。当前候选实现/未验证边界/依赖Lock待解析/冲突汇总保存在 checkpoints/building-parallel-2026-10-11T100110Z/CURRENT_IMPLEMENTATION.md；完整源码与证据快照及SHA256清单同目录。本次不构建/不测试/不运行oracle，不升级阶段4验收。业务推进停在保存断点，后续需用户恢复后统一梳理。
+
+## 2026-10-11 PDB驱动效率方案审计
+
+用户要求多agent深入重新设计恢复方案。三个agent仅审计PDB能力/自动化/并行组织，父汇总至 NATIVE_RECONSTRUCTION_ACCELERATION_PLAN.md，机器计划 tracking/reconstruction-strategy-plan.json 状态proposed_not_implemented。三版Rust LOCAL/REGREL/BPREL/DEFRANGE全部0、样本void()占位；C/C++阳性对照可读取真实变量，故不能承诺从这些PDB恢复不存在的Rust locals/types。可用的procedure/IPI/源checksum/line/数百万inline应建立共享模块恢复包和缓存队列，并结合原指令字段/API/已有源码。新功能C-first、已有B作为参考；本轮没有业务源码修改、构建或oracle，原保存候选/失败/最终G00–G19验收保持。
+
+## 2026-10-11 更轻的效率路线比较
+
+三agent继续分析减码/自动提升、证据/运行替代、执行决策；父汇总 NATIVE_RECONSTRUCTION_FAST_ROUTE.md。推荐消费者拉动+需求证据+真实closure/API复用+机械胶水+双循环，基础设施条件升级。本机LLVM两PC内联/源查询与原RNE32B汇编读成功（约0.08s小样本，不推总体倍数），可避开这类Ghidra排队。自动lifting、永久binary backend和全库索引不作当前主线；原scope目标独立完整C Rust不变。本轮不改业务源码/不构建/oracle。
+
+## 2026-10-11 项目恢复 skill 与角色模板
+
+已固化 skeleton/workflow-design/tiny-glade-recovery/SKILL.md，并通过 ~/.codex/skills/tiny-glade-recovery 符号链接发现。八类角色为协调、取证、工具还原、常规业务还原、核心还原、独立审查、验证、整合；scripts/workflow.py 只准备索引任务包及冻结/check显式文件指纹，复用既有 task_queue、MCP operator 和 handoff审计，不自动领取或执行MCP。默认禁止游戏实现、业务验证暂停，未来按最新用户授权调整。
+
+试跑发现旧源指纹失效，已用既有build_task_index刷新，verify_task_index通过3667文件/39169函数/1250任务一致性检查；没有实际claim或业务验收。工作流临时fixture检查和八角色真实索引只读预览见 skeleton/workflow-design/SKILL_VALIDATION.json。本轮未写游戏还原代码、未改分析数据库、未构建/测试游戏或运行oracle，building-parallel保存断点和未验证候选状态保持。
+
+
+## 2026-10-12 三版同码52组工具函数候选
+
+用户明确授权先恢复 ABC 共同项中的52组同码工具。已基于原始 A EXE/B RNE/C EXE 和匹配PDB，使用 native-evidence-pack 读取156个版本映射，检查指令原字节与索引body SHA一致；这仅为取证，不是原码行为差分。候选写入29个合法文件组的 `skeleton/task-index/work/<TASK_ID>/abc-tools-52/crates/...`，保持原路径，每个函数含中文注释、三版VA、逻辑组ID。对应与导航见 [交付总览](evidence/abc-tools-52-2026-10-11/README.md)，机器台账 [abc-tools-52-candidates.json](tracking/abc-tools-52-candidates.json)。
+
+共享函数只写一份，PrefabName同址as_ref委托as_name_ref，timer apply/queue复用空ret。圆内严格比较、闭区间端点、signed LoopRange推进、32位回绕后符号扩展、RNG种子三步、NaN/零符号选择均按原指令写中文说明。未知原类型/签名的word/tag/记录/切片保留观察投影；不补造完整作者结构或producer。CirclePoints2仅构造器，未补未取证next；DebugRectangle默认颜色payload未补零；完整caller接入尚待验收。
+
+52组全部为implemented_unverified：仅rustfmt和冻结引用指纹检查，没有构建/测试/oracle、独立审查或生产整合。旧建筑保存断点及验收状态不改变，system_acceptances不增加。29份delivery已冻结、29个claim已释放。AllocationHandle::is_null原为deferred，用户本轮52组清单明确包含它，因此queue新增显式authorized-deferred-reason参数记录授权，保留索引deferred分类，仅恢复该访问器，没有扩展GPU。
+
+## 2026-10-12 C half-res Pass 实施
+
+用户要求开始实施单 Pass 逆向，并延续直接填入已有 A/B/C 项目的交付要求。已合法领取 TG-b1237e511d78c48e8a，直接在 C 原 half_res.rs 追加 recovered_c；A/B 未套用 C。状态 implemented_unverified，此前验证暂停继续：本轮不构建/测试/oracle/GPU，不增加 system_acceptances，不沿用旧建筑验收。
+
+C 原完整745B包装函数与实际 country_core Shader 已取证：输出尺寸 max(ceil(depth/2),1)，R32f depth 与 RGBA8_SNORM normals，条件debug初始化、同depth资源stencil view0x800000、五纹理绑定及DispatchThreads。Shader按帧选2×2子像素、材质低3位1/2写depth最低位、GBuffer.x低三字节解码法线、行向量变换并normalize、alpha编码子位置。GLSL恢复稿同目录保存，未编译验收；CPU投影复用C锁glam0.30.10，不伪造GPU量化/OOB行为。
+
+完整128-bit TypeId与已命名get_res<T>实例比对，确认FrameCounter读RenderTemporalState+0x108，CurrentView读GameViews首1024B；候选有真实resource payload→所用uniform字段的读取投影。字段原名/帧号递增重置/矩阵更新规则未知。GBuffer由render_world创建，depth来自上层temporal main depth；四直接实参消费者为GTAO、ray_trace_gi、eval_gi_screen_radiance、ReSTIR direct lights，后端同步/consumer shader和生命周期未闭合。
+
+合同、源与缺口见 skeleton/C/crates/country-core/src/systems/render_loop/compute_passes/half_res.recovery.md 及 half_res.rs.recovery.json；19事实/7绑定/4消费者/8缺口。私有rhapsody匹配commit适配器尚缺，当前trait无真实引擎实现，骨架尚未成为可运行渲染工程。原始证据保留现有task work缓存；交付源码没有另建目录。tracking/render-pass-pilot-plan.json已记录实施阶段，旧planning audit只保留为历史静态检查。
+
+
+## 2026-10-12 按优先级恢复35组候选
+
+用户授权按优先级开始逆向还原。首批35组（几何14、建筑接口17、历史接口4）基于A原EXE/B原RNE/C原EXE及对应PDB取证，105个版本映射、每版33个不同原范围。已写21个合法文件组原路径的共享Rust候选，中文注释与ABC对应齐全；复用上批类型/函数，不改生产Cargo/lib。见 [交付总览](evidence/abc-building-35-2026-10-12/README.md) 与 [机器台账](tracking/abc-building-35-candidates.json)。
+
+原指令与限定真实消费者补证：动态signed32网格宽高，乘加回绕后符号扩展；holes closed路径record+17==0过滤，未过滤holes别名保留；DecoratorLibKey保留EAX/EDX32位返回槽；Vec/std/glam复用；Rectangle3d32B字段互证、Triangle使用Vec3而非Vec3A。完整作者ABI、容器/枚举全集和真实producer/consumer仍未关闭，不把叶接口完成称为完整建筑链恢复。
+
+独立合同审查和冻结候选源码审查已记录；仅rustfmt与冻结引用完整性检查，状态implemented_unverified，无构建/测试/oracle或生产整合，旧建筑保存断点及验收不改变。21份delivery与依赖闭包保留，21个claim释放。下一优先点为装饰物source/asset/subtype→位置/碰撞/开口→move/delete/历史传播，先补本批key/holes/Archivist真实owner，材料统计和其他history owner随后，GPU/场景后置。

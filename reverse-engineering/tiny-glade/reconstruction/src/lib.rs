@@ -143,3 +143,12 @@ pub mod building_wall_decorator_archivist;
 
 #[path = "../building/nani_solid_vertex_color.rs"]
 pub mod building_nani_solid_vertex_color;
+
+#[path = "../building/dirty_tiles.rs"]
+pub mod building_dirty_tiles;
+
+#[path = "../building/decorator_info.rs"]
+pub mod building_decorator_info;
+
+#[path = "../building/fences.rs"]
+pub mod building_fences;

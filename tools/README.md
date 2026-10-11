@@ -1,76 +1,45 @@
-# 逆向工具链（Tiny Glade / Windows Rust 游戏）
+# Tiny Glade 逆向工具链
 
-安装位置：`/Users/yuluo/Desktop/game/tools`
+2026-10-11重新实测后，默认MCP为Ghidra和ReVa；REA、radare2、RE-MCP保留为按需SDK工具。
+完整报告：`games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/summary.json`。
 
-## 已安装
+| 工具 | 当前作用和实测 |
+|---|---|
+| Ghidra MCP 7.0.0 | 3客户端45查询通过；共享只读14工具，专属write worker19工具；2worker同函数不同签名隔离 |
+| ReVa 已构建版本 | 既有B clone，4客户端反编译、3并发PyGhidra脚本输出隔离、P-code和签名持久修复通过；共享6、专属10工具 |
+| RE-MCP Ghidra 3.0.3 | 两cached B数据库、两proxy客户端并行及持久隔离通过；本地GhidraProject.save兼容补丁有diff/原文件，stock包保存bug不可忽略 |
+| REA 6.3.0 | 原B身份+真实20字节机器码封装fixture反编译/P-code/双会话隔离通过；临时数据库，冷启动约93秒，不复用既有Ghidra库 |
+| radare2 6.2.4 / r2mcp 1.8.8 | B原字节/局部函数、引用和独立会话有效；已补r2ghidra6.2.4/SLEIGH6.1.4 pdg；PDB TPI尚不兼容，不能算完整类型导入 |
+| LLVM + PyGhidra + 原指令验证 | PDB/内联/行号、持久原库、机器码差分主力；保持已有依赖与基线 |
 
-| 组件 | 版本 | 位置 | 用途 |
-|---|---|---|---|
-| Node.js | 24.11.0 | `tools/node` | REA 运行时 |
-| REA (`rea-agents`) | 6.3.0 | `tools/node/bin/rea` | 逆向编排 MCP + skill |
-| Ghidra | 12.1.4 PUBLIC | `tools/ghidra_12.1.4_PUBLIC` | 反汇编/反编译（PE + PDB） |
-| ghidra-mcp | 7.0.0 | `tools/mcp-servers/ghidra-mcp` | Ghidra MCP 扩展 + bridge |
-| radare2 | 6.2.4 | `/opt/homebrew/bin/r2` | CLI 二进制分析 |
-| radare2-mcp (`r2mcp`) | - | `r2pm -r r2mcp` | radare2 MCP |
-| ReVa skills | 7.3.1 | `~/.codex/skills/*` | 逆向技能集 |
-| Frida | 17.23.3 | `tools/venv/bin/frida` | 动态插桩（**当前用不上**：目标为 Windows PE，本机无 VM/Wine）|
-| rustfilt | 0.2.1 | `~/.cargo/bin/rustfilt` | Rust 符号 demangle CLI |
-| kaitai-struct-compiler | 0.11 | `/opt/homebrew/bin/kaitai-struct-compiler` | 自定义格式解析（支持生成 Rust/Python）|
-| pyghidra | 3.1.0 | `tools/venv` | 无头 Python 驱动 Ghidra |
-| Python 依赖 | - | `tools/venv` | lief / pefile / capstone |
+## Agent直接使用
 
-JDK 21：`/Users/yuluo/Library/Java/JavaVirtualMachines/corretto-21.0.5`
+先读 [AI_REVERSE_TOOLS.md](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/AI_REVERSE_TOOLS.md)。其中有完整绝对路径命令、六份可执行 JSON job、各工具参数快照、并行 worker 与失败处理。
 
-## 环境变量
+机器可读入口：[manifest.json](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/manifest.json)。按需读取对应 backend 的 schema，不要加载整个上游工具目录。
 
-```bash
-export GHIDRA_INSTALL_DIR=/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-export PATH=/Users/yuluo/Desktop/game/tools/node/bin:$PATH
+```sh
+/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python /Users/yuluo/.codex/mcp-tools/reverse-operator.py ghidra /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json --worker shared
 ```
 
-## Codex MCP 注册（~/.codex/config.toml）
+## 目标和持久性
 
-- `rea`    → `tools/node/bin/rea mcp`
-- `ghidra` → `uv run --directory tools/mcp-servers/ghidra-mcp bridge-mcp-ghidra`
-- `radare2`→ `r2pm -r r2mcp`
+原Ghidra seed：`tools/ghidra-projects/TinyGlade.gpr`，B patched EXE SHA256 cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323。
+原指令oracle仍是发行B RNE，SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03。
+共享Ghidra项目为`tools/ghidra-projects/mcp/TinyGlade.gpr`；ReVa共享项目为`tools/ghidra-projects/reva-test/TinyGlade.gpr`。
+专属Ghidra/ReVa worker在`workers/`、`reva-workers/`下；输入与overlay分开，原数据库不自动同步。
+这些默认持久worker只绑定B；A/C不会自动套用B布局，未有缓存时不默认全程序分析。
 
-## 已验证
+RE-MCP创建项目在输入旁，operator先stage到`tools/re-mcp-inputs/<worker>/<digest>/`；只在patched B hash完全匹配时预置B cache。
+独立数据库worker能并行，单个worker的MainThreadExecutor内部串行；需要同函数写入隔离时使用不同worker副本和database ID。
+已验证手动/断开自动保存；保留SDK晚到通知引起一次关闭竞争的证据。operator末尾list_databases作为消息完成屏障，不宣称SDK竞争彻底消除。
 
-目标：`ljxsj_92385/Tiny Glade/tiny-glade.exe`（PE32+ x64, Rust, 56MB）+ `tiny_glade.pdb`(262MB)
-Cargo.lock SHA256 与项目记忆基线一致：`9e0cb4a0...7184bd`
+## 默认注册与按需能力
 
-- radare2：识别 PE64 / windows / `dbg_file=tiny_glade.pdb`
-- Ghidra headless：导入成功，PDB Universal + Rust Demangler 生效
-  结果：**131,517 函数 / 991,680 符号 / 56,861 个 Rust `::` 符号**
-  样例：`country_core::systems::wall::adjust_wall_height::...`、`system_decorator::...`
+`~/.codex/config.toml`仅默认注册Ghidra/ReVa精选面；其余通过operator按需连接，完整schema只存结果文件。
+Ghidra launcher：`~/.codex/mcp-tools/ghidra/launch.py`；ReVa proxy/manager：`~/.codex/mcp-tools/reva/`。
+通过各manager的`--stop`只停止所选worker；共享后端供多个读agent复用。
+ReVa全局`get-functions`在131k函数上实测107.7秒，不放默认面；反编译默认不展开incoming-reference context。
 
-## 常用命令
-
-```bash
-# 重新导入并完整分析（分析较慢，建议 ≥1h 或直接在 GUI 中打开）
-"$GHIDRA_INSTALL_DIR/support/analyzeHeadless" tools/ghidra-projects TinyGlade \
-  -import "ljxsj_92385/Tiny Glade/tiny-glade.exe" -overwrite
-
-# 打开 GUI（GhidraMCP 插件随项目窗口启动，MCP 在 127.0.0.1:8089）
-"$GHIDRA_INSTALL_DIR/ghidraRun"
-
-# radare2 快速检索
-r2 -q -c 'aaa; afl~wall' "ljxsj_92385/Tiny Glade/tiny-glade.exe"
-```
-
-## 未安装 / 已移除
-
-- ImHex：Homebrew cask 因 Gatekeeper 被禁用
-- IDA Pro：付费，未安装
-- ReVa 扩展本体：官方最新版针对 Ghidra 12.1.3，本机为 12.1.4，仅安装了其 skills
-- spirv-cross / spirv-tools：**已卸载**——实测游戏 404 个 `compiled-shaders/*.bin` 魔数为 `02000000`/`01000000`，非 SPIR-V，工具不适用
-- aria2：**已卸载**——原为解决直连慢，现有 7897 代理，多余
-
-## 下载注意
-
-GitHub release 直连为 0 B/s，必须走代理：
-
-```bash
-export https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897
-```
+逆向skill保留`native-rust-reconstruction`与单份`pyghidra-scripting`。不恢复CTF/重复副本。
+其他资产/Blender工具与通用运行时保留；此轮不修改游戏业务Rust，也不计为游戏系统验收。

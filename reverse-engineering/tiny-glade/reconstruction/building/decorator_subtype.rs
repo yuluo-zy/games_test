@@ -74,7 +74,7 @@ fn min(a: f32, b: f32) -> f32 {
 }
 /// Original game-owned thresholded XZ search. Curve3 Y values do not enter
 /// nearest-segment selection. Local fraction is not Curve2 normalized U.
-fn nearest_segment(points: &[[f32; 3]], position: [f32; 3]) -> Result<(usize, f32), SubtypeError> {
+pub fn nearest_segment(points: &[[f32; 3]], position: [f32; 3]) -> Result<(usize, f32), SubtypeError> {
     if points.len() < 2 || points.iter().flatten().any(|v| !v.is_finite()) {
         return Err(SubtypeError::InvalidPublishedOutline);
     }

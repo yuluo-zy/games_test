@@ -1,10 +1,12 @@
 # 游戏自有源码逆向任务与收益排序
 
-> 2026-10-11 墙拱/台阶/统一Wall+Roof事务已接完整限定World业务链，阶段4 review已修队列和metadata生命周期，冻结全检查进行中。下一恢复实际门mesh与实体消费者、矩形enclosure finish/cancel、扩大stairs边界；G00–G19/C/fork/GPU全验收仍进行中。原始noise/seed/height→砖提案显式输入边界已关闭，按[完整计划](BUILDING_SYSTEM_RECOVERY_PLAN.md)持续推进。
+> 2026-10-11 墙拱/台阶/统一Wall+Roof事务已接完整限定World业务链，阶段4 review已修队列和metadata生命周期，阶段4冻结54/67已结束，新并行实现批按用户要求暂不验证。下一恢复实际门mesh与实体消费者、矩形enclosure finish/cancel、扩大stairs边界；G00–G19/C/fork/GPU全验收仍进行中。原始noise/seed/height→砖提案显式输入边界已关闭，按[完整计划](BUILDING_SYSTEM_RECOVERY_PLAN.md)持续推进。
 
 > 后续顺序与跨版本验收采用 [THREE_VERSION_RUST_PLAN.md](THREE_VERSION_RUST_PLAN.md)。本表 S01–S26 保留作为细粒度源码任务；先执行新计划 T01–T05，再接续 Roof/Wall/History 核心。当前已实现项仍按 B 基线验证，C 适配要重新取证和验收。
 
 当前阶段是源码恢复；场景回放、GPU与最终画面验收后置。原作依赖全部保留在[dependency-policy.json](tracking/dependency-policy.json)，不要把901个package当作901个逆向任务。依赖实现不计入游戏源码覆盖。
+
+2026-10-12 用户授权的有界渲染例外：C `extract_half_res_depth_normals` 的包装层/Shader候选已直接填入已有 C 文件，implemented_unverified，验证仍暂停。下一缺口为 RenderTemporalState+0x108 递增/重置、GameViews 首块矩阵更新、锁定 rhapsody API 适配、四直接消费者 Shader 与资源生命周期；未改变整建筑/C/GPU验收结论。具体合同见 skeleton/C/crates/country-core/src/systems/render_loop/compute_passes/half_res.rs.recovery.json。
 
 ## 当前选择
 
@@ -102,3 +104,21 @@ RecalculateWallHoles实际reader在墙publisher，以InnerWalls存在检查转On
 原History start/add/finish/cursor和Rim命令展开恢复，真实World完成显式账本→Rim录制→commit→instant undo/redo→分叉截redo→门窗更新。启动账本不默认猜，未配置保持adapter队列；原token Drop不commit。其他MultiEdit owners、快照装载、保存、VisualEdit实际World和timed调度仍未关闭。C Replay判别值与B不同，A历史布局不同。
 
 当前24项workspace测试、十二帧新CLI链；B invalidation512/storage768/opening3072/history462分别通过限定原码范围。范围与三版出处见evidence/building-holes/findings.md、building-history/findings.md。下一步优先asset collision/Decorator宿主投影、其他开口贡献与墙砖裁切消费者，以及其他历史owners/快照联接。C迁移、GPU/fork排程及ARM瓦片1ULP问题仍单列。
+
+## 当前保存断点：building-parallel-2026-10-11T100110Z
+
+源码与证据已归档；本批未验证。先参阅 [building-parallel-2026-10-11T100110Z](checkpoints/building-parallel-2026-10-11T100110Z/CURRENT_IMPLEMENTATION.md) 与 tracking/parallel-implementation-conflicts，再继续原计划。
+
+
+## 2026-10-12 本轮工具候选交付
+
+用户选定的三版同码52组工具已保存29个原模块路径的共享Rust候选，中文注释和156个版本地址映射齐备，见 [总览](evidence/abc-tools-52-2026-10-11/README.md)。状态implemented_unverified，未接生产工程，按既有暂停要求未运行构建/测试/原码；原签名/投影类型/实际消费者义务见各CONTRACT.md。机器台账 [abc-tools-52-candidates.json](tracking/abc-tools-52-candidates.json)。
+
+
+## 2026-10-12 按优先级恢复35组候选
+
+用户授权按优先级开始逆向还原。首批35组（几何14、建筑接口17、历史接口4）基于A原EXE/B原RNE/C原EXE及对应PDB取证，105个版本映射、每版33个不同原范围。已写21个合法文件组原路径的共享Rust候选，中文注释与ABC对应齐全；复用上批类型/函数，不改生产Cargo/lib。见 [交付总览](evidence/abc-building-35-2026-10-12/README.md) 与 [机器台账](tracking/abc-building-35-candidates.json)。
+
+原指令与限定真实消费者补证：动态signed32网格宽高，乘加回绕后符号扩展；holes closed路径record+17==0过滤，未过滤holes别名保留；DecoratorLibKey保留EAX/EDX32位返回槽；Vec/std/glam复用；Rectangle3d32B字段互证、Triangle使用Vec3而非Vec3A。完整作者ABI、容器/枚举全集和真实producer/consumer仍未关闭，不把叶接口完成称为完整建筑链恢复。
+
+独立合同审查和冻结候选源码审查已记录；仅rustfmt与冻结引用完整性检查，状态implemented_unverified，无构建/测试/oracle或生产整合，旧建筑保存断点及验收不改变。21份delivery与依赖闭包保留，21个claim释放。下一优先点为装饰物source/asset/subtype→位置/碰撞/开口→move/delete/历史传播，先补本批key/holes/Archivist真实owner，材料统计和其他history owner随后，GPU/场景后置。

@@ -1,0 +1,37 @@
+{
+  "stdio": {
+    "command": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/.venv/bin/re-mcp-ghidra",
+    "args": [
+      "stdio"
+    ],
+    "purpose": "Independent short-lived operator supervisor; exiting saves/closes workers. Tested."
+  },
+  "proxy": {
+    "command": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/.venv/bin/re-mcp-ghidra",
+    "args": [
+      "proxy"
+    ],
+    "purpose": "Independent clients share persistent local supervisor/worker pool; auto-spawns daemon with file lock."
+  },
+  "manual_daemon_command": [
+    "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/.venv/bin/re-mcp-ghidra",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "0"
+  ],
+  "env": {
+    "GHIDRA_INSTALL_DIR": "/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC",
+    "JAVA_HOME": "/Users/yuluo/Library/Java/JavaVirtualMachines/corretto-21.0.5/Contents/Home"
+  },
+  "required_routing": "open_database(database_id=<unique-id>, file_path=<isolated-input-clone>, run_auto_analysis=false, force_new=false). Every subsequent tool must receive database=<same-id>. Each agent should own a separate cached project for writes.",
+  "preload_path": "<cloned-input-parent>/ghidra_projects/<cloned-input-basename>.gpr and .rep, containing root program named <cloned-input-basename>. Existing B project cloning verified.",
+  "macOS_state": "~/Library/Application Support/re-mcp-ghidra/daemon.json; XDG_STATE_HOME has no effect on macOS. Do not expose daemon authentication token.",
+  "important_limits": [
+    "Existing upstream package was locally patched; preserve ghidra-project-save.patch when upgrading.",
+    "stdio and shared proxy have same native tool surface (33 pinned/discovery tools), so use on-demand SDK operator to avoid duplicate global schemas.",
+    "Persistent projects can be locked by one worker; separate APFS clones per writer avoid this. Do not open original release directory or master project for writes.",
+    "Raw .gpr as input was not tested; use prepared binary path and matching preloaded project naming."
+  ]
+}

@@ -1,0 +1,307 @@
+[
+  {
+    "name": "open_file",
+    "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "Path to the file to open"
+        },
+        "baddr": {
+          "type": "string",
+          "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+        },
+        "arch": {
+          "type": "string",
+          "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+        },
+        "bits": {
+          "type": "string",
+          "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+        },
+        "cpu": {
+          "type": "string",
+          "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+        }
+      },
+      "required": [
+        "file_path"
+      ]
+    }
+  },
+  {
+    "name": "run_command",
+    "description": "Executes a raw radare2 command directly",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The radare2 command to execute"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Cursor for pagination (line number to start from)"
+        },
+        "page_size": {
+          "type": "integer",
+          "description": "Number of lines per page (default: 1000, max: 10000)"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "close_file",
+    "description": "Close the currently open file",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list_functions",
+    "description": "Lists all functions discovered during analysis",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "only_named": {
+          "type": "boolean",
+          "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+        },
+        "filter": {
+          "type": "string",
+          "description": "Regular expression to filter the results"
+        },
+        "count": {
+          "type": "boolean",
+          "description": "If true, return only the number of matching results instead of the full list"
+        },
+        "start": {
+          "type": "integer",
+          "description": "Starting index for pagination (default: 0)"
+        },
+        "max_length": {
+          "type": "integer",
+          "description": "Maximum number of results to return, -1 for all (default: 50)"
+        }
+      }
+    }
+  },
+  {
+    "name": "show_info",
+    "description": "Displays information about the binary or target process",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list_symbols",
+    "description": "Shows all symbols (functions, variables, imports) with addresses",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "description": "Regular expression to filter the results"
+        },
+        "count": {
+          "type": "boolean",
+          "description": "If true, return only the number of matching results instead of the full list"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Cursor for pagination (line number to start from)"
+        },
+        "page_size": {
+          "type": "integer",
+          "description": "Number of lines per page (default: 1000, max: 10000)"
+        }
+      }
+    }
+  },
+  {
+    "name": "list_decompilers",
+    "description": "Shows all available decompiler backends",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "use_decompiler",
+    "description": "Selects which decompiler backend to use (default: pdc)",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the decompiler"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "analyze",
+    "description": "Runs binary analysis with optional depth level",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number",
+          "description": "Analysis level (0-4, higher is more thorough)"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "xrefs_to",
+    "description": "Finds all code references to the specified address",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address to check for cross-references"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  },
+  {
+    "name": "decompile_function",
+    "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address of the function to decompile"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Cursor for pagination (line number to start from)"
+        },
+        "page_size": {
+          "type": "integer",
+          "description": "Number of lines per page (default: 1000, max: 10000)"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  },
+  {
+    "name": "disassemble_function",
+    "description": "Shows assembly listing of the function at the specified address",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address of the function to disassemble"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Cursor for pagination (line number to start from)"
+        },
+        "page_size": {
+          "type": "integer",
+          "description": "Number of lines per page (default: 1000, max: 10000)"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  },
+  {
+    "name": "disassemble",
+    "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address to start disassembly"
+        },
+        "num_instructions": {
+          "type": "integer",
+          "description": "Number of instructions to disassemble (default: 10)"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  },
+  {
+    "name": "calculate",
+    "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string",
+          "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+        }
+      },
+      "required": [
+        "expression"
+      ]
+    }
+  },
+  {
+    "name": "hexdump",
+    "description": "Print memory contents in hexdump style at the given address",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address to hexdump"
+        },
+        "size": {
+          "type": "string",
+          "description": "Number of bytes to dump (empty string for default size)"
+        }
+      },
+      "required": [
+        "address",
+        "size"
+      ]
+    }
+  },
+  {
+    "name": "lookup_symbol",
+    "description": "Resolve an address to its symbol name",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Address to resolve"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  }
+]

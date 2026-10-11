@@ -1,0 +1,176 @@
+{
+  "status": "pilot_completed_bounded_scope",
+  "full_critters_accepted": false,
+  "full_building_accepted": false,
+  "target": "C v1.16.0",
+  "skills": [
+    {
+      "name": "native-evidence-pack",
+      "action": "created",
+      "installed_path": "/Users/yuluo/.codex/skills/native-evidence-pack",
+      "snapshot_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/skills-snapshot/native-evidence-pack",
+      "file_sha256": {
+        "SKILL.md": "8e0065b6ef8d23142b297a580eec53b2b162d4157505c94aa5e1e6c32e5dcc3a",
+        "references/contract.md": "5320f678bb8c0ad917f81d2af09e834702e8e2f9a946ca5763679164546ed0d6",
+        "agents/openai.yaml": "c59806082b7a8896ed22187c556c584a8cb57ade74009b2feaf47bde4967f7bf",
+        "scripts/collect.py": "4dd0f5fe198b2975111345e8630c9100890ade45dc67ece766f329ae137c2688",
+        "scripts/test_collect.py": "c477e4f69f12817f89bb99caa87abac4681dc1f723a28493f5181d94ad04edd2"
+      }
+    },
+    {
+      "name": "native-tool-batch",
+      "action": "created",
+      "installed_path": "/Users/yuluo/.codex/skills/native-tool-batch",
+      "snapshot_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/skills-snapshot/native-tool-batch",
+      "file_sha256": {
+        "SKILL.md": "2a1e90d0f12341ffb3133992c3f2d7a00c8ab824d1f978ff334fe84dfb42d1b0",
+        "references/plan-format.md": "b6354068c33f74d957ec8d74d61df4c14d1ebcb896479cde7bd8c0b83568ae34",
+        "agents/openai.yaml": "c0ee72c0f18bae718a17ba004dd52a24e5840ceab38305be0fe1d214268eec7f",
+        "scripts/run_batch.py": "1e1ccbd0dfed987a131754d621b737e9cd9e9ee0ee18f32a170da1741183995a"
+      }
+    },
+    {
+      "name": "native-module-handoff",
+      "action": "created",
+      "installed_path": "/Users/yuluo/.codex/skills/native-module-handoff",
+      "snapshot_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/skills-snapshot/native-module-handoff",
+      "file_sha256": {
+        "SKILL.md": "3b38979f9a7f1e20d6474c0cefcba460fe5d7edb631acf9456e48910a124495d",
+        "agents/openai.yaml": "8d4ba99498b2efa826607478302baf6ecf1d135bf58da28de20a80c1f94a3d0e",
+        "scripts/audit_handoff.py": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6"
+      }
+    },
+    {
+      "name": "native-rust-reconstruction",
+      "action": "updated",
+      "installed_path": "/Users/yuluo/.codex/skills/native-rust-reconstruction",
+      "snapshot_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/skills-snapshot/native-rust-reconstruction",
+      "file_sha256": {
+        "SKILL.md": "174ba167cb7deda5f090b2fe36f26bc05e613a1d7c92574866db6cb944a2ce61",
+        "references/tools-and-parallel-workers.md": "ab47351c8d6109955049349cba9a07f950931d58639950f9baa5ee48007688d6",
+        "references/dependency-and-module-mapping.md": "43d4bf349613d248acc2efde12321602768a91c53de41f3b8f95f0415fcba476",
+        "references/bevy-business-chain.md": "1b7f4c9259380f02d2a704a5eb635fa30c473c7aecceca51598357442d91803e",
+        "references/instruction-verification.md": "b34214986e75543012dcb3982e40b7e4946833539a0985810f51e7f5dffb53b8",
+        "agents/openai.yaml": "857434e874eb46ddc51611db0795dc5d34d592b1a02b8041ef77a66292f34c95",
+        "scripts/compare_cargo_locks.py": "a57f496014b82227d3768851f1c2570cb6ab4e50cf4be6fdc9166540df52a620"
+      }
+    }
+  ],
+  "pipeline": {
+    "receipt": "final-workflow/receipt.json",
+    "elapsed_seconds": 4.377161,
+    "scope": "Evidence queries, cold/warm pack, public lock comparison and handoff audit; excludes recovery reasoning/build/tests",
+    "ok": true,
+    "mcp_steps": 2,
+    "operator_processes": 1,
+    "functions": 5,
+    "database_identity_scope": "local file hash + returned metadata field; database import hash unverified"
+  },
+  "pack_cold": {
+    "requests": 2,
+    "unique_requests": 2,
+    "cache_hits": 0,
+    "cache_misses": 2,
+    "symbolization_points": 4,
+    "evidence_output_bytes": 367798,
+    "tool_processes": 5,
+    "version_processes": 2,
+    "analysis_processes": 3,
+    "tool_stdout_bytes": 75279,
+    "tool_stderr_bytes": 0,
+    "elapsed_seconds": 0.5616992079885677
+  },
+  "pack_warm": {
+    "requests": 2,
+    "unique_requests": 2,
+    "cache_hits": 2,
+    "cache_misses": 0,
+    "symbolization_points": 0,
+    "evidence_output_bytes": 367798,
+    "tool_processes": 2,
+    "version_processes": 2,
+    "analysis_processes": 0,
+    "tool_stdout_bytes": 1794,
+    "tool_stderr_bytes": 0,
+    "elapsed_seconds": 0.3470281249610707
+  },
+  "native_diff": {
+    "ok": true,
+    "cases": 120,
+    "failures": 0,
+    "scope": "Original C per-row complete five-phase dispatch14293a6f0 -> actual query-loop join14293a489; full104B preserved output and explicit changedtick; being_petted140935910 complete entry->RET. Resolved event membership; not fullSystem entry, originalUI or scheduler. Unordered-progress ABI arithmetic included; not a claim those states arise from World.",
+    "current_source_bindings": {
+      "reconstruction/critters/sheep_pet.rs": true,
+      "reconstruction/critters/sheep_pet_runtime.rs": true,
+      "reconstruction/critters/sheep_pet_c.rs": true,
+      "reconstruction/critters/c-harness/probe.rs": true,
+      "reconstruction/critters/c-harness/Cargo.toml": true,
+      "reconstruction/critters/c-harness/Cargo.lock": true,
+      "evidence/toolchain-pet-pilot-2026-10-11/critters-verify-pet.py": true
+    },
+    "original_instruction_emulation": true,
+    "full_original_game_launched": false
+  },
+  "public_dependencies": {
+    "matched": 113,
+    "packages": 113,
+    "scope": "Public lock provenance only; source-less local entries require classification and matching packages do not prove native fork behavior equivalence"
+  },
+  "checks": {
+    "isolated_checks_passed": 4,
+    "world_checks": 3,
+    "pure_checks": 1,
+    "evidence": "critters-local-world-results.md"
+  },
+  "handoff": {
+    "ok": true,
+    "semantic_acceptance": false,
+    "unresolved_links": [
+      {
+        "name": "Original source ownership/address candidates",
+        "status": "evidence_ready",
+        "gaps": []
+      },
+      {
+        "name": "OriginalUIpicking/widget->Message sender andSheepstartup/ID producer",
+        "status": "unknown",
+        "gaps": [
+          "UIrange staticavailable; complete input/query/resource sender notimplemented",
+          "104B input remains observed source projection, no guessed constructor/default"
+        ]
+      },
+      {
+        "name": "Source+60 renderer/control semantics andactualanimation/GPU consumer",
+        "status": "unknown",
+        "gaps": [
+          "Original flag storespreserved; adapter carries field without claimingunknownmeaning"
+        ]
+      },
+      {
+        "name": "ActualCfork scheduler/GameTimeowner",
+        "status": "unknown",
+        "gaps": [
+          "PublicBevy0.17.3 adapter chain; deltaexplicit required, original scheduler/startup producer unclosed"
+        ]
+      },
+      {
+        "name": "Resolved113registry identities reused",
+        "status": "evidence_ready",
+        "gaps": [
+          "All113 version/source/checksum match originalC; originalfeatures/forknotaccepted"
+        ]
+      }
+    ]
+  },
+  "overall_speedup_measured": false,
+  "token_savings_measured": false,
+  "stage_review": "tool-audit-pet-stage-review.md",
+  "retained_failures": [
+    "helper-tests*/",
+    "tool-audit-forward-review/",
+    "critters-handoff-first-rejected.json",
+    "dependency-lock-initial-script.json",
+    "pack-smoke/failure-sha/"
+  ],
+  "next_business_boundary": "Original UI picking/widget → PlaySheepPetAnimation sender and authoritative country-core Sheep startup/ID/GameTime owner"
+}

@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "abc-building-35",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "738eff71f3565635f0-0",
+  "cache_key": "b541f1fce1655f44343c0ef515d65c065d88c39253f2d8a299a95f095502ceb1",
+  "status": "ok",
+  "range": {
+    "rva": "0xc96240",
+    "length": 43,
+    "start_va": "0x140c96240",
+    "stop_va_exclusive": "0x140c9626b",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140c96240",
+      "rva": "0xc96240",
+      "bytes": "89c8",
+      "size": 2,
+      "assembly": "movl\t%ecx, %eax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c96242",
+      "rva": "0xc96242",
+      "bytes": "48b97f21da3998750000",
+      "size": 10,
+      "assembly": "movabsq\t$0x759839da217f, %rcx # imm = 0x759839DA217F",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9624c",
+      "rva": "0xc9624c",
+      "bytes": "480fafc8",
+      "size": 4,
+      "assembly": "imulq\t%rax, %rcx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c96250",
+      "rva": "0xc96250",
+      "bytes": "48ba653729a97c3c0100",
+      "size": 10,
+      "assembly": "movabsq\t$0x13c7ca9293765, %rdx # imm = 0x13C7CA9293765",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9625a",
+      "rva": "0xc9625a",
+      "bytes": "4801ca",
+      "size": 3,
+      "assembly": "addq\t%rcx, %rdx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9625d",
+      "rva": "0xc9625d",
+      "bytes": "48b87331f3d0f45d594d",
+      "size": 10,
+      "assembly": "movabsq\t$0x4d595df4d0f33173, %rax # imm = 0x4D595DF4D0F33173",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c96267",
+      "rva": "0xc96267",
+      "bytes": "4831d0",
+      "size": 3,
+      "assembly": "xorq\t%rdx, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9626a",
+      "rva": "0xc9626a",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xc96240",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/rng.rs",
+          "FunctionName": "utils::rng::init_rng::h2380124e07933713",
+          "Line": 2,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140c96240: 89 c8                       \tmovl\t%ecx, %eax\n140c96242: 48 b9 7f 21 da 39 98 75 00 00       \tmovabsq\t$0x759839da217f, %rcx # imm = 0x759839DA217F\n140c9624c: 48 0f af c8                 \timulq\t%rax, %rcx\n140c96250: 48 ba 65 37 29 a9 7c 3c 01 00       \tmovabsq\t$0x13c7ca9293765, %rdx # imm = 0x13C7CA9293765\n140c9625a: 48 01 ca                    \taddq\t%rcx, %rdx\n140c9625d: 48 b8 73 31 f3 d0 f4 5d 59 4d       \tmovabsq\t$0x4d595df4d0f33173, %rax # imm = 0x4D595DF4D0F33173\n140c96267: 48 31 d0                    \txorq\t%rdx, %rax\n140c9626a: c3                          \tretq\n",
+  "original_target_executed": false
+}
