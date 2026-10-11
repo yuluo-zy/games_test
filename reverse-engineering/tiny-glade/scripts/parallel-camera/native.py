@@ -49,6 +49,8 @@ def hook(c,pc,size,user):
   dst,v,n=(c.reg_read(r)for r in [UC_X86_REG_RCX,UC_X86_REG_RDX,UC_X86_REG_R8]);
   if n:c.mem_write(dst,bytes([v&255])*n)
   ret(dst)
+ elif pc==0x142923bf0:
+  a,z,n=(c.reg_read(r)for r in [UC_X86_REG_RCX,UC_X86_REG_RDX,UC_X86_REG_R8]);aa=bytes(c.mem_read(a,n))if n else b'';zz=bytes(c.mem_read(z,n))if n else b'';ret((aa>zz)-(aa<zz))
  elif pc in maths:
   name,fn,count=maths[pc];args=[fl(c.reg_read(r))for r in [UC_X86_REG_XMM0,UC_X86_REG_XMM1][:count]];c.reg_write(UC_X86_REG_XMM0,bits(fn(*args)));ret()
  elif 0x1428d8f00<=pc<=0x1428f1800:raise RuntimeError('panic '+hex(pc))

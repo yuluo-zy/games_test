@@ -1,0 +1,1837 @@
+{
+  "schema_version": 1,
+  "snapshot_utc": "2026-10-11T09:39:52.792963+00:00",
+  "status": "stopped_by_user",
+  "reason": "User requested all agents stopped and current state pushed",
+  "base_commit": "531b7d3213e327fbf0b6ef0988c7787d456f9e34",
+  "agents": {
+    "camera": "stopped",
+    "critters": "stopped"
+  },
+  "module_acceptance": {
+    "camera": "not_system_verified",
+    "critters": "not_system_verified"
+  },
+  "further_reverse_engineering": false,
+  "new_tests_run_by_coordinator_after_stop": false,
+  "camera": {
+    "rust_files": [
+      "schema.rs",
+      "camera_body.rs",
+      "normal.rs",
+      "free.rs",
+      "walk.rs",
+      "butterfly.rs",
+      "mod.rs"
+    ],
+    "native_constructor_report": "evidence/parallel-camera/B-constructor-native.json",
+    "native_constructor_returned": true,
+    "rust_equivalence_or_complete_integration_verified": false,
+    "limits": [
+      "MainCamera orchestration/input/mode transition completeness not accepted",
+      "Terrain/collision interfaces remain adapters; actual producers not integrated",
+      "Jump-table/DB-boundary defects require original control-flow review",
+      "No complete camera differential test report checked",
+      "No C or visual/system acceptance"
+    ]
+  },
+  "critters": {
+    "implemented_scope": "B firefly goal, velocity-target and smoothing semantic kernels only",
+    "verification_report": "evidence/parallel-critters/B-firefly-verification.json",
+    "report_ok": false,
+    "counts": {
+      "goal": 780,
+      "velocity": 786,
+      "smooth": 536
+    },
+    "sample_count": 2102,
+    "failures": [
+      {
+        "case": 1578,
+        "input": "smooth 3f800000 c0000000 3e800000 3f000000 00000000 bf800000 00000000 bc83126f",
+        "original": "ffc00000 ffc00000 7f800000",
+        "rust": "7fc00000 7fc00000 7f800000",
+        "kind": "smooth"
+      }
+    ],
+    "limits": [
+      "No startup/terrain/building/scheduler/delete/full lifecycle acceptance",
+      "No C verification",
+      "Four future RNG values are a state fingerprint; candidate private state not read",
+      "Host libc is not Windows CRT; all mismatches preserved",
+      "Finite/nonfinite edge coverage is sampled; SSE exception flags excluded"
+    ],
+    "source_currentness": [
+      {
+        "path": "reconstruction/critters/firefly.rs",
+        "expected_sha256": "b3b83e622fefd2d61eb8f4fc02f1bc89307f7fce762850d105612f021990dba1",
+        "current_sha256": "b3b83e622fefd2d61eb8f4fc02f1bc89307f7fce762850d105612f021990dba1",
+        "matches": true
+      },
+      {
+        "path": "reconstruction/critters/mod.rs",
+        "expected_sha256": "fb7c1de7db51d26281db54465b9dfbb45276ab677a23a5b7e136678fd2a08ea2",
+        "current_sha256": "fb7c1de7db51d26281db54465b9dfbb45276ab677a23a5b7e136678fd2a08ea2",
+        "matches": true
+      },
+      {
+        "path": "reconstruction/critters/harness/probe.rs",
+        "expected_sha256": "b038773b787234f14a6377587c3e68b7eec1cdfbae24b0249b03886a48ae6b88",
+        "current_sha256": "b038773b787234f14a6377587c3e68b7eec1cdfbae24b0249b03886a48ae6b88",
+        "matches": true
+      },
+      {
+        "path": "reconstruction/critters/harness/Cargo.toml",
+        "expected_sha256": "d987470b88cb2d9cb618ccea41366596b545a1dd9cfe3d270f5fbce8cee55151",
+        "current_sha256": "d987470b88cb2d9cb618ccea41366596b545a1dd9cfe3d270f5fbce8cee55151",
+        "matches": true
+      },
+      {
+        "path": "reconstruction/critters/harness/Cargo.lock",
+        "expected_sha256": "d423a538379c99b7d1db7e0fcb1e252c21d0078a81d1ab77044b02cc93db8c3b",
+        "current_sha256": "d423a538379c99b7d1db7e0fcb1e252c21d0078a81d1ab77044b02cc93db8c3b",
+        "matches": true
+      },
+      {
+        "path": "scripts/parallel-critters/verify_firefly.py",
+        "expected_sha256": "1ac43ba0c3cf6ed169a5bad974ee27ad2f5b384a5c2756b675b9c7145bed6a06",
+        "current_sha256": "1ac43ba0c3cf6ed169a5bad974ee27ad2f5b384a5c2756b675b9c7145bed6a06",
+        "matches": true
+      }
+    ],
+    "all_report_sources_match": true,
+    "unit_tests_agent_reported": {
+      "passed": 2,
+      "total": 2,
+      "independently_rerun_by_coordinator": false,
+      "persisted_log_found": false
+    },
+    "boundary_report": "evidence/parallel-critters/B-boundaries.json",
+    "boundary_rows": 55,
+    "original_patched_equal_rows": 55,
+    "rows_with_external_jumps": 3,
+    "rows_with_indirect_jumps": 7,
+    "indirect_jump_instructions": 11,
+    "missing": [
+      "Other species full business chains",
+      "Actual Bevy App integration and producer-consumer lifecycle",
+      "Terrain/water/building producers",
+      "Deletion/replay interfaces",
+      "C adaptation",
+      "GPU/visual acceptance"
+    ]
+  },
+  "file_manifest": [
+    {
+      "path": "reconstruction/camera/Cargo.lock",
+      "bytes": 27297,
+      "sha256": "43473b581e45cf0ad04b29eb1e7fa374c50c1de3762bded652fcf51a6fc5c924"
+    },
+    {
+      "path": "reconstruction/camera/Cargo.toml",
+      "bytes": 461,
+      "sha256": "f475581c0de28836e75c9f119b09f2db85603e657a265b1e64744d670567265c"
+    },
+    {
+      "path": "reconstruction/camera/butterfly.rs",
+      "bytes": 1600,
+      "sha256": "31b072cfa5641c8a13ae019d00877e44afd94b8f5feb2af9a617a3bef61b5ff8"
+    },
+    {
+      "path": "reconstruction/camera/camera_body.rs",
+      "bytes": 1594,
+      "sha256": "70fa49cb55f1df9881c9f937d753c5c78d8fd7a070f05af4345b9898910d540a"
+    },
+    {
+      "path": "reconstruction/camera/free.rs",
+      "bytes": 1872,
+      "sha256": "7256b96f1ea3dfe67ced67ba99cb177f54e1fa4c6d5b003708544c7e7cf8444b"
+    },
+    {
+      "path": "reconstruction/camera/mod.rs",
+      "bytes": 119,
+      "sha256": "ac37349e64300a858fbacab2d3c9974df7d2bc530083fdd2730f83ef37b02f99"
+    },
+    {
+      "path": "reconstruction/camera/normal.rs",
+      "bytes": 5715,
+      "sha256": "aea038682adf44b0007726ad2336021fc7250cd0b7b44906e644f62975abca91"
+    },
+    {
+      "path": "reconstruction/camera/schema.rs",
+      "bytes": 2880,
+      "sha256": "40b8e35d4d11987361cb44e9b512c4babd48b8d592625b8cd487cc1fdfcc4d11"
+    },
+    {
+      "path": "reconstruction/camera/walk.rs",
+      "bytes": 3587,
+      "sha256": "f7880ca23a3b995c5c5b78c51845e7aea9534f8cde165d0e772b843f4ccdb2ba"
+    },
+    {
+      "path": "reconstruction/critters/firefly.rs",
+      "bytes": 4980,
+      "sha256": "b3b83e622fefd2d61eb8f4fc02f1bc89307f7fce762850d105612f021990dba1"
+    },
+    {
+      "path": "reconstruction/critters/harness/Cargo.lock",
+      "bytes": 2838,
+      "sha256": "d423a538379c99b7d1db7e0fcb1e252c21d0078a81d1ab77044b02cc93db8c3b"
+    },
+    {
+      "path": "reconstruction/critters/harness/Cargo.toml",
+      "bytes": 383,
+      "sha256": "d987470b88cb2d9cb618ccea41366596b545a1dd9cfe3d270f5fbce8cee55151"
+    },
+    {
+      "path": "reconstruction/critters/harness/probe.rs",
+      "bytes": 1992,
+      "sha256": "b038773b787234f14a6377587c3e68b7eec1cdfbae24b0249b03886a48ae6b88"
+    },
+    {
+      "path": "reconstruction/critters/mod.rs",
+      "bytes": 95,
+      "sha256": "fb7c1de7db51d26281db54465b9dfbb45276ab677a23a5b7e136678fd2a08ea2"
+    },
+    {
+      "path": "evidence/parallel-camera/A-inventory.json",
+      "bytes": 207307,
+      "sha256": "f91c1644960255f89fbe02a723defc453eb6cd5e1da31e778034a0f91fa250ee"
+    },
+    {
+      "path": "evidence/parallel-camera/B-business-procedures.txt",
+      "bytes": 13344,
+      "sha256": "c21666511a9df37b9bef957bc14187c4344519f0d4334a92e2e26a4d17165907"
+    },
+    {
+      "path": "evidence/parallel-camera/B-constructed-semantic-state.json",
+      "bytes": 4594,
+      "sha256": "7bf844a4bfac82ff0d8c1b80b0a4b7d5c5130057d769c89463039a2b3a22381c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-constructor-native.json",
+      "bytes": 3051,
+      "sha256": "9570b935dc366653c5a6e1a4c1bcd5199a53ac16586dd48efc636b92896bdb89"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14003bb80.asm.txt",
+      "bytes": 14,
+      "sha256": "fbc67cd89ccb07eaecb329c5fee25d8a1a672e2eb91d64db7d43a7714e787684"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14003bb80.c",
+      "bytes": 123,
+      "sha256": "974849003b06db5c9e03afead2034cec800eb7898d88c8bf6e0d4bc37962634b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090e510.asm.txt",
+      "bytes": 3203,
+      "sha256": "de118df8c38ade7ee7d5d162b5f39209a1e2a8edcf9a3cc4d913151b1a4b36d7"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090e510.c",
+      "bytes": 472,
+      "sha256": "0d1f3b57c09e134e4ae8f2ea32d5b2e567dab1fbca6687870f5c85c37527dde3"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090e6f0.asm.txt",
+      "bytes": 5894,
+      "sha256": "373b368d0ca2c833fda5027c1919974ce02e4bb197789ae59d441e964210ffaf"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090e6f0.c",
+      "bytes": 4456,
+      "sha256": "3dc3fddf40f1eaeb8c4109837dda931d1ee0a75f8cce560d8c56217008757a30"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090ec70.asm.txt",
+      "bytes": 29448,
+      "sha256": "37c66b33b92478233910c4eea33181d6d623c00e709471e2ded099280a3bb4a8"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/14090ec70.c",
+      "bytes": 31020,
+      "sha256": "08de515c71a347a2d8967653eb022e9fb2d7f1ae08be2857c330c3774b196391"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911230.asm.txt",
+      "bytes": 57,
+      "sha256": "c52b0753c4f28ad40c21a4825c86488948222cac3678b3f72cb1ab70136643e1"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911230.c",
+      "bytes": 88,
+      "sha256": "be32b4c372e284aafb7393259ba1408ea6daa40c81c6d61b1b5a6be149866090"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911240.asm.txt",
+      "bytes": 179,
+      "sha256": "1012cbd067f593dea37364f44164d79b9e9976d4b335e949995ce4d27cb52fc1"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911240.c",
+      "bytes": 89,
+      "sha256": "4020298429148aa194bab2b7c89bed7769afe2b61c77cae744281b3427f0e757"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911260.asm.txt",
+      "bytes": 179,
+      "sha256": "e142f96274885f2207eb41c9f813de23a0c10b059fdd0ea13e9a1e4b172637ea"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911260.c",
+      "bytes": 88,
+      "sha256": "ba1296d37916cb0c837d59992be967e8d5a683de08b3a06eb197eb582e218d89"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911280.asm.txt",
+      "bytes": 1620,
+      "sha256": "55882764796fdb833b7dcb3230053f5472eefaa710de48be909ab549d1b44b47"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409114d0.asm.txt",
+      "bytes": 188,
+      "sha256": "d1b57db2e5ed532fbeecb288b8f374793a3ffdfe80b3777910d175117eb2ebe7"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409114d0.c",
+      "bytes": 111,
+      "sha256": "b5384e620b88e2e526ca1ba93a0aadc8f1de4f0929131b598bc26dae5332b9f9"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409114f0.asm.txt",
+      "bytes": 191,
+      "sha256": "b91b65690b33e6c8bd5c35c4198dc542c40d3e0b1168695b626768469831868b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409114f0.c",
+      "bytes": 191,
+      "sha256": "71669db8bce572778b0dd9ca95307867975df1f70d33517cc9f35949c9bb6343"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911520.asm.txt",
+      "bytes": 3420,
+      "sha256": "6d810b45c33f1f3feeaa8876712c8286927d173ff32ecfc7847310f34fdfd23b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911520.c",
+      "bytes": 2729,
+      "sha256": "5589b59440303b59b9defba7e867ed5aa99c330829aff55f2309c685aa8f1ea6"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911710.asm.txt",
+      "bytes": 6176,
+      "sha256": "99566fafa89536cab858ba8700c63618d537ee51ee32f9376574b25b9de9d55c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911710.c",
+      "bytes": 1906,
+      "sha256": "fbb41361d5ccbac6e430ca49d3c1f2c3a7581cf367019879a09905d9c4191394"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911b50.asm.txt",
+      "bytes": 377,
+      "sha256": "9daafbba73a5e7d549a0c2766d6e6187adfef1446a832d82e6b6a66fc0487387"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911b50.c",
+      "bytes": 109722,
+      "sha256": "1d82ce032dc71d2095e297b3ee7dce341905633cde4cea60475ed21befc92081"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911dd0.asm.txt",
+      "bytes": 168,
+      "sha256": "87298756c0be8fa77f15025d5d28b84f9faa9327bf301ede1433471d2b049f1c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911dd0.c",
+      "bytes": 147,
+      "sha256": "77b2682466f0bd443cb768ccc2230949d91dc3693d537014dee1034306d794fd"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911df0.asm.txt",
+      "bytes": 168,
+      "sha256": "6b86b6f419fbc2f76dc3a6241ff92b33fa63b59ebae704824987fce16539d61c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911df0.c",
+      "bytes": 147,
+      "sha256": "a3357c8540d4ef0895005863f93b17ecc761add3c88ffb09984570b9d10707a8"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e10.asm.txt",
+      "bytes": 168,
+      "sha256": "e6219589623f966b846ad46c99f17bc6aae28d84858b0e90355df3c4e797652e"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e10.c",
+      "bytes": 167,
+      "sha256": "6033b7434b2f3a60367b51b8e1f5a61ae5e33d4a7d940a46da585d4b6d14e044"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e30.asm.txt",
+      "bytes": 59,
+      "sha256": "c7e8959734dfb11f14e72bf8bd2a74c3a7af2313bc53b01837daa1e7e0b9e206"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e30.c",
+      "bytes": 106,
+      "sha256": "0743c22523b20d3e9ff083b15034d8f2a6c21d7f97b3e35ded9ada94076aee2b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e40.asm.txt",
+      "bytes": 819,
+      "sha256": "db27f0bea6452af4f43806f53b6ade18ab01e4141cc30409bf4da0f15dd9dd76"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140911e40.c",
+      "bytes": 732,
+      "sha256": "56e69975f570c2d8bfad6f05bca9ac8db57dc0d9fcf84045de07309aaa4fdb76"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140912a40.asm.txt",
+      "bytes": 2999,
+      "sha256": "70f5a3cb3072f02c3ac019340885bc7e0ad50ef583bf0a86cdb5cf9407ee2593"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140912a40.c",
+      "bytes": 2607,
+      "sha256": "7cae76e82aa30536e5609a0c59bd8bd00f92e8698625ff7552857f3713812389"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140912c20.asm.txt",
+      "bytes": 8834,
+      "sha256": "4c4c1f3e0eb8003a0caaec62af833d72e21fc12d2e2c1fedc3bab9ff698de007"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140912c20.c",
+      "bytes": 4715,
+      "sha256": "789e9e5f26198b4a6ce74e1274af2580326771e0c27c5b0e7c631ec4abcaeb6c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409145a0.asm.txt",
+      "bytes": 740,
+      "sha256": "6b9ede226b1c32040f17e4d6ca3bd74d868f0d7e34e5f6e9524f5132e94c9e09"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409145a0.c",
+      "bytes": 6512,
+      "sha256": "f0fc220325f1adfd090186813a0a99991e3cfe182725b4886abb980d4afae76c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409149d0.asm.txt",
+      "bytes": 209,
+      "sha256": "21c86493e94d747caa18113cfcac6800af22797ef7e0312cbdc93eab9c4ef7e9"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409149d0.c",
+      "bytes": 1413,
+      "sha256": "6fbaea9aeeebdb843727dee90c392952556fcdb8a1e2d9a35159bb9f95962722"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949cc0.asm.txt",
+      "bytes": 1930,
+      "sha256": "8350870088ce955519a05723aa2c36112b37f103cd88a4d340d60366054eb717"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949cc0.c",
+      "bytes": 2049,
+      "sha256": "0574202de07e10146a1a357654ceb65851319dd583c06de374b0954bacb0a48f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949dc0.asm.txt",
+      "bytes": 1321,
+      "sha256": "c818e41a43e85a01897382ce461dfc146516829157ea759943cf0989e9abf972"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949dc0.c",
+      "bytes": 1046,
+      "sha256": "bcb986928f7db61d7c89c79126f2e9a105fd660faebf2d03278d56d165509d37"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949e70.asm.txt",
+      "bytes": 2783,
+      "sha256": "39bd6c5248e9a0dd290e0fcbba19a6078a084addc484a608fd3b3a43b02da0c4"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949e70.c",
+      "bytes": 1695,
+      "sha256": "24efbb7040aa1de77749057f990f161d2086c7cff192908de454b6d58f9ccba3"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949fe0.asm.txt",
+      "bytes": 17025,
+      "sha256": "4bcb85a579846e8ca67c71ad03e933e48f3779f4508995e8b72fa16d17797d18"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140949fe0.c",
+      "bytes": 14708,
+      "sha256": "a0175f89ee404883f8de70e85a3729bddcfc57e4103512194a820e31ab2ad15a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140992f10.asm.txt",
+      "bytes": 1780,
+      "sha256": "c96bccd2f1ba627c94fb100462158f06414c2b94006f3ccea5f289e5ed80b088"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140992f10.c",
+      "bytes": 1504,
+      "sha256": "44603cf7fa81b68aebd13b10f20cf05ade7d751947e3a1e5fe306f5cc5484983"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993010.asm.txt",
+      "bytes": 1659,
+      "sha256": "89eca7ec07e5941150b2ee1d8ffc04efd5e227d263aaa45d36e4ea13d4661ace"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993010.c",
+      "bytes": 1343,
+      "sha256": "283529d657c5d453c947092f2a68cb7c7f564d089ef8d42b836307510b58a5e6"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993100.asm.txt",
+      "bytes": 6025,
+      "sha256": "e7baabf4ef3078e731de8d9c43db49dc05de777369bea859f6ea0f1a5a701c2e"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993100.c",
+      "bytes": 4425,
+      "sha256": "500b9854d65768d9fe7c22a992b7eb829c4eb61607476d8f7e56b928001450e0"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993750.asm.txt",
+      "bytes": 2322,
+      "sha256": "d5fc6073bd9d64c4431593ed94c55f53cf0a4b7e3c1ad06719611f86e90ec27f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993750.c",
+      "bytes": 1794,
+      "sha256": "6633643445410844cff7b737b1496e1d30b031d9c44029e5307d97acef3334b2"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409938b0.asm.txt",
+      "bytes": 7560,
+      "sha256": "6ef46f17f7f175a9f700f23adff45d155b41bcfff1f2a2044d19503158755454"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/1409938b0.c",
+      "bytes": 6231,
+      "sha256": "04a89921d41dfeca3f793d3e417076d645524d446dd7726282a09fc009f024d5"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993d30.asm.txt",
+      "bytes": 1955,
+      "sha256": "c172fa9d94ce4e9815ce25dd6ec94b63ccf0a5e1104705eb99a04f2a851cf512"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993d30.c",
+      "bytes": 2305,
+      "sha256": "abfe9003eadd94c44d15caf238edc2edb4396924cd4f9b83b085463e599518e3"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993e20.asm.txt",
+      "bytes": 3874,
+      "sha256": "ef411b68747ec193943518175a298baf8f3b649820ed58c5b3a60061661f5aac"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140993e20.c",
+      "bytes": 3897,
+      "sha256": "eb6140c898449c25cc4a772607bef6516b5731113eaeaed2f80dbe7e326a2cc9"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994130.asm.txt",
+      "bytes": 3210,
+      "sha256": "66d3ea8757f77082f13aac22b12ead744835a4795ff3812fba9318141fb9bbcc"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994130.c",
+      "bytes": 2579,
+      "sha256": "89b2fc3905625c0d83c35aaeb6c12af84bc34d9dfe135d474b883907bed90c49"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994310.asm.txt",
+      "bytes": 123,
+      "sha256": "c337fe4a2a386b2841bb21f4ae139bb742110781e0f0a0bf4a4f132d47439f9f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994310.c",
+      "bytes": 269,
+      "sha256": "07b3bad7c233abfc7e4a0a40a31f3cafd0781d8b058eb453ef5f0629bbd23d96"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994320.asm.txt",
+      "bytes": 6565,
+      "sha256": "59ef614ff211ef85139a512059f2152b0cc3ad6bca9adc0c1129d91bf210dd62"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994320.c",
+      "bytes": 4130,
+      "sha256": "e6c60c2764f42f10cfd45b165c9387a9230cc569dc4917f9d7209bd2cb22f7fc"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994700.asm.txt",
+      "bytes": 14008,
+      "sha256": "e80ae1f8f08f34f3967ccedcda1e84e2ff4cb790b2a6d3fcbe8efb2eaedfc16b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140994700.c",
+      "bytes": 11883,
+      "sha256": "b03de11fcf9e82d5ed141324578ec028cd6cad242812407bb0c8f5491fdf30cf"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140a0d090.asm.txt",
+      "bytes": 2147,
+      "sha256": "dfbfea1e17dce5c445ddd96d17e3a52017fa4a997f13e6d61452d43004e09adc"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/140a0d090.c",
+      "bytes": 2499,
+      "sha256": "c0ff4448d8a93c8510ae4b6c2ea8707fdae79f6f8040e9c1f1128c92b173f0db"
+    },
+    {
+      "path": "evidence/parallel-camera/B-decompile/report.json",
+      "bytes": 577841,
+      "sha256": "464702764262cc27c8b9a23632c84933d4d5d9a72689f098a45f5c291e979cad"
+    },
+    {
+      "path": "evidence/parallel-camera/B-inventory.json",
+      "bytes": 312071,
+      "sha256": "17ab3f67ed1e321d8c8992b3c0512a7ff4573514cf6e4fe02b50ac73384feab1"
+    },
+    {
+      "path": "evidence/parallel-camera/B-main-system-parameters.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/parallel-camera/B-module-locators.txt",
+      "bytes": 77473,
+      "sha256": "6312d043c85b85402edc354828fa51fb7680fd6ecff84b4c31e8dc4429456014"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/14003ac90.asm.txt",
+      "bytes": 2880,
+      "sha256": "97b88f523146bed5b191834977233ecc532b55c2daca41dc27db8c415ba8b16a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1403b4ca0.asm.txt",
+      "bytes": 2304,
+      "sha256": "c6a5ac63ae6b725039bc46989a780bc6b025418b7cd3c1d9b92867e3c7f4573a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1403b4e10.asm.txt",
+      "bytes": 2685,
+      "sha256": "7e00437bb56460b80b0b970587f1ffae36772012518f15856c9a1525e4f649a0"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1403b5000.asm.txt",
+      "bytes": 2222,
+      "sha256": "5b295a366a4d1bcf3ffd0d4d9d673e868d63027e8e2b3c76f29046999c15faf9"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1403b5ba0.asm.txt",
+      "bytes": 2332,
+      "sha256": "3b7e2ddf8b8078d13790f1831c8ab6486ebfac1fbfc4ccf03a49ece9007a3ad6"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/14090e510.asm.txt",
+      "bytes": 3328,
+      "sha256": "2129f5fba129ec9a2b50592ca1a85e816723727c77f76d57e6f18b560f81df49"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/14090e6f0.asm.txt",
+      "bytes": 11702,
+      "sha256": "14b6eec48ab2c80bff493a857482b177ea1400643237a77c03b763c13af4527e"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/14090ec70.asm.txt",
+      "bytes": 64724,
+      "sha256": "4dc100d1efd14b399c9155a80b7c8dcf2dd2700b42e20f32a9c1830f253c7476"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911280.asm.txt",
+      "bytes": 4056,
+      "sha256": "46c9f0b404b753b00365fcda8d04acc9f64c718126be07420787a421886d6b24"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911520.asm.txt",
+      "bytes": 3521,
+      "sha256": "8de848e2168e6c43c601a79bca77f54acdb6a91423ba3f9587ee56e6e3ec163e"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911710.asm.txt",
+      "bytes": 6342,
+      "sha256": "463f0ee381814c926b3a0df5b7e0ecfa55c6a43fc3165ac3c5a7c33cb755153a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911b50.asm.txt",
+      "bytes": 4164,
+      "sha256": "2f2f4290ba9422dca62a054db6a63b0f6b25f72b7fd30e5d0a38af577e7847e8"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911dd0.asm.txt",
+      "bytes": 173,
+      "sha256": "9fdafeebdb2252d5705b90052e4e0ad376d7a059a8972eb32b78e672b93161f7"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911df0.asm.txt",
+      "bytes": 173,
+      "sha256": "780168027400e4196161717383c194ed2d6b5097b0503f27ea08b38491bf691a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911e10.asm.txt",
+      "bytes": 173,
+      "sha256": "6f33269eb62339a690c8e706a0d5b8cf7dfe93a822acf70e866da110aa35d7a0"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140911e40.asm.txt",
+      "bytes": 12489,
+      "sha256": "211fd3e6bd97ab2e1df764acfd1044a487e4e5c25b57c57404d500cdd1df9d67"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140912a40.asm.txt",
+      "bytes": 3476,
+      "sha256": "f9798828b9a171c62fc6a1f32873d3dbc67cf501dd291bf547b10964427c2307"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140912c20.asm.txt",
+      "bytes": 45368,
+      "sha256": "c3d046c51e5f99dd5541bef344e31a9494ead426dce1536140501fc3d7c74ec2"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1409145a0.asm.txt",
+      "bytes": 4346,
+      "sha256": "f010ef68c17b6fc2674f0667941363d9a0d38163eecf8dea37edafb8362977a6"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140949cc0.asm.txt",
+      "bytes": 1982,
+      "sha256": "cdfd27f9eb3dac5e07b2697f1a808951a41062e2ae8a67a44e1a1d3f5aaa23fa"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140949dc0.asm.txt",
+      "bytes": 1357,
+      "sha256": "a369a88b3e62f1cc3969843de6bf187b58b76de486bee9de68066e16fde749f4"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140949e70.asm.txt",
+      "bytes": 2889,
+      "sha256": "763dff26c6044ee25e2bbaa88963db72c07cbbb27ee6a5f1e85855678a5ed6bd"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140949fe0.asm.txt",
+      "bytes": 17701,
+      "sha256": "212fe413dc16f79406b786c0b338646ec8ce8bbb4e407c85a649d08beee30522"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140992f10.asm.txt",
+      "bytes": 1844,
+      "sha256": "87208d8ea3dfdd761ba1445c165344478048e7a74b7c898510562182cb54a950"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140993010.asm.txt",
+      "bytes": 1717,
+      "sha256": "71a9ed048aa36fedddf0d3b6f507f31c6c2a74be618df8f068515172d0ee152d"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140993100.asm.txt",
+      "bytes": 13405,
+      "sha256": "bc31a248512cb9bc98225e19084b28891997a93743506a3bf7d8de6b1f0a3181"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140993750.asm.txt",
+      "bytes": 2410,
+      "sha256": "cc113483b0e780e0ec40c48ade1d2fb36a132e843666ec3781701c020eceb61f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1409938b0.asm.txt",
+      "bytes": 7806,
+      "sha256": "d1355c490faf30af72a2f410cdec24db810d716b807a5e2651fa6c099d2270b2"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140993d30.asm.txt",
+      "bytes": 1998,
+      "sha256": "add2d9fd7298f5090ec3fcf18dc342ea0b9a90a7e43e04a72b6bf4acd7d09bbc"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140993e20.asm.txt",
+      "bytes": 6377,
+      "sha256": "f6632f2f659bcb67254301650094c9c9b36441785da650fb9aecd731136d9f1e"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140994130.asm.txt",
+      "bytes": 3311,
+      "sha256": "f60a6dbbf5f21c7824259ec5f32aab35a3d266ce80f6e3e4f6576da7d290b4cd"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140994320.asm.txt",
+      "bytes": 6795,
+      "sha256": "1a93a9f21155e5939a370433065c3a0f8d1dff0b1b85dfb654685cf97c4b53d7"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140994700.asm.txt",
+      "bytes": 14512,
+      "sha256": "8b791669b0c8dd5f4032ce7f99eb98aea09d131eba29cada1dbc5d4b986fae0b"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/140a0d090.asm.txt",
+      "bytes": 2199,
+      "sha256": "a81c0850beacc8aef81d92ca7fb6dc19c23748009521111f8c9c663325b8ad42"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1416fb100.asm.txt",
+      "bytes": 2222,
+      "sha256": "a505da2efa85fa9ea751fdfc03f3a13d1eb67901cd48ab1a15492c2a95fa5327"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1416fb250.asm.txt",
+      "bytes": 3596,
+      "sha256": "35cadfa02146dcc1d2530e9e00a0b65c3082a453e951747cc69d6cb4d74ed277"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/1416fb440.asm.txt",
+      "bytes": 2332,
+      "sha256": "29d8824bf90074714c35ea7acb11acfd6d0833bcda2cd2ebdd62834f71fa8108"
+    },
+    {
+      "path": "evidence/parallel-camera/B-original/ranges.json",
+      "bytes": 12326,
+      "sha256": "46201e48da16e0a9b95c9703c20be8dc446e866c197c3b46f22b2f2ce63547d2"
+    },
+    {
+      "path": "evidence/parallel-camera/B-pdb-ranges.json",
+      "bytes": 6952,
+      "sha256": "b2c0d2298c1cd08607633a374b1d3058672fffa1bd54a619c89eb9b500123a4f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-procedure-metadata.txt",
+      "bytes": 2668285,
+      "sha256": "15c4bb0744b9b2d6a0b5061a61992516e651c9902c8d1b796a0139bbdb3166fb"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140072a30.asm.txt",
+      "bytes": 14091,
+      "sha256": "a46430bb29fef6ccf229aeb27c3ba0925c9e02d1ad46ba3888da1cd1e8e41381"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140072a30.c",
+      "bytes": 68667,
+      "sha256": "bb4e44ae1afa5829162305042eee4cd08e05345129d57e723d5989a3b201bb33"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1409125e0.asm.txt",
+      "bytes": 5948,
+      "sha256": "a2f9f7a5173783038a9f696125cb9dbbd701dac53fe170d5f0541f4998aa66b8"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1409125e0.c",
+      "bytes": 9434,
+      "sha256": "a18020d66639b895027720f0daeddf2f86e9231914601823486f2811b4739849"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c8ff70.asm.txt",
+      "bytes": 479,
+      "sha256": "60aa16e3a482efa3d05bb4de7d17e6714f468654596f30232812b2fa9168336c"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c8ff70.c",
+      "bytes": 133,
+      "sha256": "bcccb50aa9297ef90efc54cdfd00038e4f70a47e62c566462c849d2a7ddc7afd"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c904e0.asm.txt",
+      "bytes": 605,
+      "sha256": "80c684efeb387957e410f369a1ef5503bc77a6c596e1e028d374cba8afcd8a35"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c904e0.c",
+      "bytes": 276,
+      "sha256": "f84a6b39d762e1a700cfb321f968ae4717a54723d73897ac43b775bfdd8c79f0"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c97390.asm.txt",
+      "bytes": 1908,
+      "sha256": "20d14dd9ff827471a650af2d96ce6fd05e5e22e9be8e4c96e58edb5c44070480"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/140c97390.c",
+      "bytes": 1222,
+      "sha256": "e54ad16111e40d9dedfb3835f205169c368c7fe9c2872f6211bf37673cbe16f4"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1416fb100.asm.txt",
+      "bytes": 2169,
+      "sha256": "b3fae6f9816a7e0d23542cc184939e70668986f73e23406c3a22fcfd680ecd33"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1416fb100.c",
+      "bytes": 2479,
+      "sha256": "5773301fce39dc6e5e3f7f94741ca1d22c89615ee593b3070c8d92f12fbd7e6f"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1416fb250.asm.txt",
+      "bytes": 2651,
+      "sha256": "a846330926ed81987f797805b18fe706fb8bf51b43566f0d78607a7bcdf99944"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/1416fb250.c",
+      "bytes": 1425,
+      "sha256": "c3ca9d753db279076fb9ffc3601962e7462476c6d39c3481e04e79efbfe49423"
+    },
+    {
+      "path": "evidence/parallel-camera/B-query/report.json",
+      "bytes": 21243,
+      "sha256": "0a165d47b214d60c9d7cd5a7b052ad3554b7979ad924271213b5e47ea726ae2a"
+    },
+    {
+      "path": "evidence/parallel-camera/B-type-fields.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/parallel-camera/B-types-candidates.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/parallel-camera/C-inventory.json",
+      "bytes": 238357,
+      "sha256": "93e39a60c66d2e74ab76fa6d851f375585a0fc18a25aacbde497f60174e488e0"
+    },
+    {
+      "path": "evidence/parallel-camera/initial-resolve-Cargo.lock",
+      "bytes": 25534,
+      "sha256": "8baacba77f916626b1c26412700c7449eea6923891d9166fc642104f75c734c1"
+    },
+    {
+      "path": "evidence/parallel-camera/integration.md",
+      "bytes": 933,
+      "sha256": "5260647ccc188982421546f1c00873c87acbc32e6ac4ef297dcdb61735c67721"
+    },
+    {
+      "path": "evidence/parallel-camera/readonly-constructor.txt",
+      "bytes": 7095,
+      "sha256": "ccf2238d9f5b0ad471ddb044ef8d554e9490001de05ee7fec45a30f40883902c"
+    },
+    {
+      "path": "evidence/parallel-critters/A-inventory.json",
+      "bytes": 170742,
+      "sha256": "37c88feefc49a2003d985fcf39edd2a381f9044e7d4375858e8d46a3efb03f91"
+    },
+    {
+      "path": "evidence/parallel-critters/B-boundaries.json",
+      "bytes": 45757,
+      "sha256": "13d13e9154f74e11e1ac6a6d0b57e09c46227ecb8349bfbb02990cf5f9af0b95"
+    },
+    {
+      "path": "evidence/parallel-critters/B-critter-type-candidates.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8ee90.asm.txt",
+      "bytes": 5810,
+      "sha256": "4c314bb4eba42516f6dc9fbddf3901acdbb9443c5f5bed6b67f493449046084b"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8ee90.c",
+      "bytes": 4260,
+      "sha256": "d6ed17261321b1744d3a8895b4439f0ae45d34d3416cbe188fe134a373aac3a4"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8f210.asm.txt",
+      "bytes": 9349,
+      "sha256": "4a14d3d7f29f312c119bd98f55b36a8d2ed50b9b264a84911328150615c6d0d7"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8f210.c",
+      "bytes": 6087,
+      "sha256": "ef9b91d242b30d7a0f2ffd52827bf70310b1cd0f7a6363548f01a163ff860cd2"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8f8b0.asm.txt",
+      "bytes": 20932,
+      "sha256": "fe7b1d6e6c3bb2289ab98917421e6367d83f106ce75e0fbf3661cd167c5bc712"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f8f8b0.c",
+      "bytes": 14802,
+      "sha256": "80d96bb5aa172ac8e4e71910aad6a6da8d5112211261c30647f487dfc4396842"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f909f0.asm.txt",
+      "bytes": 2622,
+      "sha256": "936c48a9aa251c6142d4632cc81bf454e50447118c0a41323488562a93b6e60a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f909f0.c",
+      "bytes": 1145,
+      "sha256": "ba2794d6fbadd15bcf0d98e6800dbe0a1a69d1981dbcc8fb5f249d89ce9ab6c1"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f90c10.asm.txt",
+      "bytes": 1579,
+      "sha256": "f332810f091dc7de9df3d905c161470b9c8294b7526e890ad52c28c4b00fbba3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f90c10.c",
+      "bytes": 881,
+      "sha256": "050e821bab8db6b223a2b0995096926aa0fdbb8d28ab3515a126b055a53889c0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f90cd0.asm.txt",
+      "bytes": 45516,
+      "sha256": "9b569308a749308c28ea81535a6f807190ea8a85963e6b146f67be4cd4f7ee8f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/140f90cd0.c",
+      "bytes": 34420,
+      "sha256": "f48ab27ff97feabf6801021e88afeb3cca861a280268e54baf8738f858847b82"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d84d40.asm.txt",
+      "bytes": 23396,
+      "sha256": "7fb51083617ac34e877f9282283164de98ef01bde4d9d7a33cef94edc654902c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d84d40.c",
+      "bytes": 15779,
+      "sha256": "a311efe58f4f202dea31c7417cd6cb87395f389e13630068b272bd0413958839"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d86060.asm.txt",
+      "bytes": 13005,
+      "sha256": "f40ab8e5c589b8dfffed3e6c592adadfab64885ac4c6db3f8c67b0fad1479b09"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d86060.c",
+      "bytes": 7758,
+      "sha256": "1f76bf4f9c8d5a4230fc76439550b3ca3705ffed5130faa6c4f68851264ab42f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d867b0.asm.txt",
+      "bytes": 11556,
+      "sha256": "f07473edcc4f47ec4b9e25ad6dd7cb8967cde48e1ead4afd95c3dbf77c051f52"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d867b0.c",
+      "bytes": 9033,
+      "sha256": "4f6afba33ecab4078b5cc2d13d30415485df1cbe1d5d48b4aa688c49d235356d"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d86eb0.asm.txt",
+      "bytes": 5025,
+      "sha256": "11e5f185e5bd051c23195a0e6bc080d642bea9c17bb04d3d709c92ad80970e33"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d86eb0.c",
+      "bytes": 1291,
+      "sha256": "9ff3fadf1c2db09d7e206a3b60118c8600d5eab5546e1f1d8a461ded7d04d60a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d87140.asm.txt",
+      "bytes": 2791,
+      "sha256": "9faf58b39b9a33693ceea02aec9a73296f4c25f2809bee8cac31efa75da4c894"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141d87140.c",
+      "bytes": 1893,
+      "sha256": "d4a5fff8469f361bff57a2fffcdcbf57c3db989901d92210bb342f1448e4dc68"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2170.asm.txt",
+      "bytes": 3620,
+      "sha256": "38a023237de6e2ee54d5c21ddf729ee8fba07fccd4f8135fe42d9289b0d5900a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2170.c",
+      "bytes": 2044,
+      "sha256": "42bdff2cd2a56886da3a49c68a5bf7eef85546fbf51ec1d80c785b54baa89c60"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2340.asm.txt",
+      "bytes": 3425,
+      "sha256": "5928e7c5a8c2b3c76a6e7455dc6154bd87301c44d9e88f83b6a4d51066b13033"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2340.c",
+      "bytes": 2699,
+      "sha256": "f9a196f1d5921d8b6f974f82aeb22d7cdc0959b04bb99ee0ce161f43f3b92b2a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2540.asm.txt",
+      "bytes": 3425,
+      "sha256": "904227357bd4811f52c556abb12ca465da715f8ee5778d530ed8f28e10632558"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2540.c",
+      "bytes": 2716,
+      "sha256": "eedde1181637240665e0dfefb0ea531a130e3398e6bac191046894bbdc95dc18"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2740.asm.txt",
+      "bytes": 23396,
+      "sha256": "2f17cd5f34d6f3ff9fabc8bc2a120da9916634f8233916ce4d9437b3e4b90fad"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc2740.c",
+      "bytes": 16015,
+      "sha256": "5b1b42e283e75258ec5fe263c52518cd6171cc59c372eecfc6e0c70a92ab553a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc3510.asm.txt",
+      "bytes": 23589,
+      "sha256": "811efab44b733959fa24ab2bdb297829c20ae84cb6e582fe72fd699944c373ab"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/141dc3510.c",
+      "bytes": 15520,
+      "sha256": "2b94cfec101ca6ca9b1125125b324e88abf49fe4e475c7c4252e89a808282816"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14230ff00.asm.txt",
+      "bytes": 37727,
+      "sha256": "7308644cfe54abf2ba30923987028a38016d724bab299d5a62b8b0e09e375fdf"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14230ff00.c",
+      "bytes": 36488,
+      "sha256": "aed451061a05f36a601de960c9aae677f9c42dd9dd7a11e83e8addd1f873f3eb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142312200.asm.txt",
+      "bytes": 39121,
+      "sha256": "8b8952d226b8512feccb90e4fd0c676ac6ac3afe9d0f062049c28716f1a6b9fb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142312200.c",
+      "bytes": 26174,
+      "sha256": "005ce4ec88f97dd23e8a8aa2e773ec64fb6899b193ea45771a933a79e015cb11"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142313b30.asm.txt",
+      "bytes": 16468,
+      "sha256": "3afd8d64578ed2fb45df96027755ee0a34fe59a804fefffcfd293c517640ebb0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142313b30.c",
+      "bytes": 9731,
+      "sha256": "aa1ed8f9216b70bc43be74499c8dcd3649d1318826b7a84364f6ec51b666c6d7"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142314470.asm.txt",
+      "bytes": 12922,
+      "sha256": "9b61b442aba394991ce05b446d054682e524f306e50f73785c1a4d1af3aed3b8"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142314470.c",
+      "bytes": 10112,
+      "sha256": "dd60d564cb469b7d37aaf2d0d8e26a3018f40f963fd5105416aee8aae5468b17"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142314b70.asm.txt",
+      "bytes": 6971,
+      "sha256": "aab5f9c0c57e1d64ebb160a149103cfe6e8aa67da517de59e270ad0d590aa472"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142314b70.c",
+      "bytes": 6632,
+      "sha256": "1ceffa3e5b093133d0d50501438aac08a058c034b5ae49a528295461ceafc266"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142315050.asm.txt",
+      "bytes": 24281,
+      "sha256": "2259fc476ed6c296ac97c1e5093a082cb33a2cf7001979165bae35eb07a072b2"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142315050.c",
+      "bytes": 15449,
+      "sha256": "934db78d0833ffc3cb3d400573d8a6f73a44f45084e319ffd8bdd81067b83db5"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142315e40.asm.txt",
+      "bytes": 11503,
+      "sha256": "d281d9166aeea63e3bfe33fe8b54e3fc8ec13df2ffe6bd47ac03245c45c05fce"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142315e40.c",
+      "bytes": 8554,
+      "sha256": "87afa1ada482ab4c086abdb62a53f9024ebd1c89f00f209d636e68c17975c628"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316490.asm.txt",
+      "bytes": 5812,
+      "sha256": "49b2bf108b01668da0fc0884db097d63be6f7b53cb2e8fee1c13338ed5093628"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316490.c",
+      "bytes": 3603,
+      "sha256": "d3be07aa767c753970183e0b44251cbf1f9837b07505a7b6d23c7b8b5f14f455"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316760.asm.txt",
+      "bytes": 2791,
+      "sha256": "079c962a2cea00354029b28c95d45ddc2887711cef72c8d2a1ff0ad897f54869"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316760.c",
+      "bytes": 1879,
+      "sha256": "ceae0830cf6cf4e98a3b1b7cea460af5ac29134af81776d48f08ea50f1e4de08"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316940.asm.txt",
+      "bytes": 12494,
+      "sha256": "0d09c9b5e13d6673b2625ed783ae32404578b892b1c5c8c9c2f3dcfd09144536"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142316940.c",
+      "bytes": 7265,
+      "sha256": "81909d04d184eec0cbfe056f0b25ed5c9c1922b76993e724bab2af0cfe2cf7c3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142317040.asm.txt",
+      "bytes": 9603,
+      "sha256": "2b49b3d5b666182ecbb85a922d20d1b27784ea69a113be4a4d7343012740a946"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142317040.c",
+      "bytes": 7296,
+      "sha256": "50743eb51a4bd14c5df0ba6825205eaa8d22dfa8306193c1bc588d253c904564"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/1423179a0.asm.txt",
+      "bytes": 26506,
+      "sha256": "64372978d3b300c7965040f812fbd3bbc41cd6a041a97ac679ddb10309108218"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/1423179a0.c",
+      "bytes": 21096,
+      "sha256": "0c585994baea021c8a850bdbe80d8e63e3f971b8df63a5a9653a913e32c8561c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142318c10.asm.txt",
+      "bytes": 6883,
+      "sha256": "5781d23f269a68d1222d7c3aa7fe037c49c1f676dae5e42281d4c50f538c9f3b"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142318c10.c",
+      "bytes": 5165,
+      "sha256": "dd45b76e26299f1e47ee9eaedb32d01feb0e13c7f0c8d89034b48585abb9bfb0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142318fa0.asm.txt",
+      "bytes": 33454,
+      "sha256": "9587d444eccf60f15ae14f5b78b364bfa792afab9d164029dc13c6b9685ae3c8"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142318fa0.c",
+      "bytes": 28064,
+      "sha256": "20f6a567697bbfcccd8dd0163d26fe93d3c9fe2acb09877ca219dcb310e8b3fb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231a630.asm.txt",
+      "bytes": 8150,
+      "sha256": "7e0df38b4bb2dacd22b78e42d4cacce0dd1c9887b04aa5a18a4a41879ea64b2d"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231a630.c",
+      "bytes": 5690,
+      "sha256": "bb2e665ce1f2447c38070a087bad75db992e8560c24689b9b37dcb4ca8415d28"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231ac20.asm.txt",
+      "bytes": 7622,
+      "sha256": "01063f15a9aaad0455d66b14df4a8a94b2d816cf8545e4030e03c494c1442037"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231ac20.c",
+      "bytes": 4962,
+      "sha256": "820762ada4560ff1519884e5dc82231e55ae9a4fa4dfd58f1a17ae4ae8b2dbe5"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231b140.asm.txt",
+      "bytes": 10387,
+      "sha256": "fd6efeda17c7225e43b1169ac334620e9b912d8a278c41a893c34a81ba101eb3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231b140.c",
+      "bytes": 6418,
+      "sha256": "d180f4fc96e9c9b3f8f9eb3e90b69f4c7237fdda30d044aac05a5626d5122637"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231b720.asm.txt",
+      "bytes": 9967,
+      "sha256": "f75db7c0fdf7c48650e989a8989841e7d784869c99b97d211a3d5bb2ec2e30f7"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231b720.c",
+      "bytes": 7249,
+      "sha256": "7b910400a5f5ed2eb20ff1250620847278a1233f407100ed34f860d278033c97"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231bd80.asm.txt",
+      "bytes": 7884,
+      "sha256": "89b356b0f3e546011a38c0c126c2c8c5d3f1a95eef474f34f3540c09b6178f4c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231bd80.c",
+      "bytes": 6776,
+      "sha256": "f78ee575101f140ce569eb2977f06f4fbf40f057a83323d17f99bb9091ac0585"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231c7d0.asm.txt",
+      "bytes": 20639,
+      "sha256": "a9518956c0a8153486c30df6b06dd1879a3092fe3c7a7e28063008e55760cb50"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231c7d0.c",
+      "bytes": 21284,
+      "sha256": "02c1e648362b9d2fc8a6a7659256d80bc62aeed3aeba228ea0bfdaca081eee73"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231d6c0.asm.txt",
+      "bytes": 18591,
+      "sha256": "a9ac2e9e1f7385c0ef26a99b7bc03750261e71a1cd89c25a42755659a776dc1f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231d6c0.c",
+      "bytes": 9492,
+      "sha256": "690c4e3253f3f0f0677e111c140bdc88df3fb5a9ba7c0853b9a9a54f1b94df92"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231e390.asm.txt",
+      "bytes": 22358,
+      "sha256": "a4a67de8dc57608e82f72a13099045d5aee2ae2066740dcc101ad181fb72259a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231e390.c",
+      "bytes": 13066,
+      "sha256": "84f005ccee4a02b89d9de63a1d485923919ea39d48e5ab28289d3ccf47a65cec"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231f610.asm.txt",
+      "bytes": 16190,
+      "sha256": "164f4fd3c7418b386bab1d601881996ea7c2d1884557941814ff76adde480c6e"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231f610.c",
+      "bytes": 10447,
+      "sha256": "3e929dca0e8cdca599c57e836d9a177f40759aa524d239363c21b170fd4aaca0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231ff70.asm.txt",
+      "bytes": 8992,
+      "sha256": "396fc63070b8cffa3bd3845ada173301c6c3c5fc3e501ad6a807e7e421d19cee"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/14231ff70.c",
+      "bytes": 5739,
+      "sha256": "32286e284f347e659c14ac54765d708eecc662a9f623b95cc00692e95568e8cc"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142320cf0.asm.txt",
+      "bytes": 17800,
+      "sha256": "0a1a5f1595bc613d32bedefd900c82995c773abbfc111005465f83ae0aa84061"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142320cf0.c",
+      "bytes": 14181,
+      "sha256": "8f21f92d94a85bdc373053f0cf6bc3c45234974afbea6d78568061a53ebc96a8"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142321980.asm.txt",
+      "bytes": 17901,
+      "sha256": "d80411cdfdc097f814721eac4d834cce33cb478a96217da4bfafcdd153e5ba3f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142321980.c",
+      "bytes": 14076,
+      "sha256": "3d2d5ac2302086b494debc40801a5863cbb5cbf0c4f121b8de399ab78afcf81a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142322650.asm.txt",
+      "bytes": 14251,
+      "sha256": "5db33d7496cf069f51b3eff2564c0357c468c3a877966106198cf6724eeeb31b"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142322650.c",
+      "bytes": 13862,
+      "sha256": "6b583100710078640e53ddef1399a66c50dc83a283281f6dd3695729d15a7b3c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142322e30.asm.txt",
+      "bytes": 27637,
+      "sha256": "a5268052f7e5e3afc761157a7ac81c85f0a0569da5e381d1a2663c4e7df72aac"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142322e30.c",
+      "bytes": 21733,
+      "sha256": "d6c121f2ab704296756c4eddad4a5b67b2027cd0d7f2e7edc64a7e1d2f9faa59"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/1423246b0.asm.txt",
+      "bytes": 14795,
+      "sha256": "a6001207aabafc7e3a4d28428aff8aa95c9abe6116e70890763a740f3a3c6dd6"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/1423246b0.c",
+      "bytes": 12040,
+      "sha256": "824bc9db526e276901552169b65e228e966fe46634c75de3ddc60532337c1e4f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142324f80.asm.txt",
+      "bytes": 25460,
+      "sha256": "e6b236f502b8e8f51460c0f4b2f6f0ab9ab4b9cf441979f9750c609772278787"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142324f80.c",
+      "bytes": 19600,
+      "sha256": "900da1734d7b0870e35542dd733e73696e428e5a0814fb8d133812d10875aa4c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142326a80.asm.txt",
+      "bytes": 90278,
+      "sha256": "9be5115097fd05d92330cc30044f80cf8c456d075580d933517e96941927b8d8"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/142326a80.c",
+      "bytes": 76861,
+      "sha256": "35b7a3e22d8cc4184c5f998ba57999b51f7d024c23f4cc26565570f482ab26bc"
+    },
+    {
+      "path": "evidence/parallel-critters/B-decompile/report.json",
+      "bytes": 183594,
+      "sha256": "90d15d69ccda57334033f969300f52706aa854a6c4acf6b73c94ae496b8ddf03"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-create/1409d49a0.asm.txt",
+      "bytes": 25236,
+      "sha256": "98f891ddb9193e4248ecf8f268e644e418ce8a702ea1a0b79ede5a23923fa799"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-create/1409d49a0.c",
+      "bytes": 12849,
+      "sha256": "fc87de72e2f748e79451a16b41d2b939e150106664a29b76c3b19c3ad34eb354"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-create/report.json",
+      "bytes": 6898,
+      "sha256": "d37c408db27d07b23833749386f16352b4a0301f8e7e9ffa6a801e364213826c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f7d430.asm.txt",
+      "bytes": 6897,
+      "sha256": "ead9a33f7d62d1d51105ab024263a21eedcf6273db9b81bcac9c37a98d26a0dc"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f7d430.c",
+      "bytes": 6275,
+      "sha256": "c7ff05be50f4987704cbaf87682ef0c3f93ffa4848eae565a95b71c18f7d04d1"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f7e4e0.asm.txt",
+      "bytes": 17015,
+      "sha256": "02c6078f446b8f44bb463c31253afdc3e0a6c19303c9025b531275dcab7972bb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f7e4e0.c",
+      "bytes": 31792,
+      "sha256": "a8bbe107ca04a6f95d75eb9250b66f9fbc781cd512594eaeabba73ac8d61ddff"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f84330.asm.txt",
+      "bytes": 7853,
+      "sha256": "95d8c4375955ecb9cef8a2e45431adb123911717b9056d89fd8deb0bb9f51641"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f84330.c",
+      "bytes": 17208,
+      "sha256": "9f16eff16652d6dc71ea5caf9ec9f54f11c14bcad5cb526dd8b97062f4f01577"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f85b90.asm.txt",
+      "bytes": 46,
+      "sha256": "187aa1861d63ac1043bb7bde5550fd653cb4aab219e30cc62a7708606386b6bd"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/140f85b90.c",
+      "bytes": 87,
+      "sha256": "d240496714b7a0f32f88c2bc576d57cc5fdbeea5b15c353d7991335b4ea003da"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/1412d7e60.asm.txt",
+      "bytes": 3123,
+      "sha256": "7bd1087f6ad10bec87a6a6d278bbb2a6857ac5f24c4f1fcd0c95907e0c2510d6"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/1412d7e60.c",
+      "bytes": 4013,
+      "sha256": "8d1f7a35d4a2db7321691e28e3e1925dd17e7f573a1f57dca000ae57d9c6eba2"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/141dbed60.asm.txt",
+      "bytes": 6412,
+      "sha256": "109246f97cb2ebe9a69743a8b3dbb7240a0ad2799039914c6536bef7ba80d055"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/141dbed60.c",
+      "bytes": 5000,
+      "sha256": "d92847759d8cdd4ab66cc6d75e4bd48b7054391a8298ec5db58ed016741eef64"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-lifecycle/report.json",
+      "bytes": 1217077,
+      "sha256": "665477c7b35e6a7f49c3b4c33dfe1860ad4ebee5658df48115f87ff3b8e5c32d"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/14067d440.asm.txt",
+      "bytes": 5801,
+      "sha256": "d6f98585aa7642b70b3f41fd0d70acf6a2c51ab457a52911eb5669ad7dc504ee"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/14067d440.c",
+      "bytes": 6717,
+      "sha256": "aff8709a9622172e227c80af52b848f1281369d89da149e780e1de7d5b7a179e"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/14067d810.asm.txt",
+      "bytes": 2399,
+      "sha256": "2be2aca0e945855725313bc468447ccfda339e6e2b7529c855e069be9bb233be"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/14067d810.c",
+      "bytes": 2809,
+      "sha256": "b9f9fd87d375964e2da35c9c73f3257baf78442312f6a4c37f82941c175f1b58"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/140c90030.asm.txt",
+      "bytes": 236,
+      "sha256": "f1c80bfd3d9660a72eaa9b7bd7386e73e0afcbb035134208cc64273fea11b8df"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/140c90030.c",
+      "bytes": 213,
+      "sha256": "30a20183775442f7e97c386b7feca5ca0897c5fc49384e0a91565e139f5a2fb3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/140c907d0.asm.txt",
+      "bytes": 1241,
+      "sha256": "df5b265b239be86345d42d701e1441f410b86fde938b774ddf3a3197414bc5b2"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/140c907d0.c",
+      "bytes": 525,
+      "sha256": "b05fe0000fa08a0bd10a5f574fed5ca7174d20870a9646ac428bd94e02ce769a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/141625ae0.asm.txt",
+      "bytes": 539,
+      "sha256": "a49cc1f5ee37eaf510216cb9426b1357a7ede6da6a2567d615ab1b4db556e1b3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/141625ae0.c",
+      "bytes": 373,
+      "sha256": "23e90219e3f7d896525ca02d02b5d0227513fec2ad5cbd238bd2a5ed8f6023f5"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-producers/report.json",
+      "bytes": 214064,
+      "sha256": "b6f046badfc018ee6f31981538565acf16db24285d85b808aa307129c9623e37"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-public-related.json",
+      "bytes": 21648,
+      "sha256": "cc98f45b4c6c071c355569c98568ceefa83480b5250554502602f5d0ccc7ab80"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-startup/141dbd070.asm.txt",
+      "bytes": 4887,
+      "sha256": "7b9427b4072df3fdcdfefd23b717065cab5c7e77e95be49f2a640cc3174ee428"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-startup/141dbd070.c",
+      "bytes": 4628,
+      "sha256": "05dc93587570263cacfbac668366a47f1f32bbd3533b29cd2496760f1ea55ea6"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-startup/142bac15d.bin",
+      "bytes": 51,
+      "sha256": "0788b852cc5fe24c8254906b1f267e35c91ec94902426b0a765d8e054ab978d3"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-startup/142bac190.bin",
+      "bytes": 50,
+      "sha256": "d3ce0a59f2575ff5b12c868952aab3d820fa009fee0de720f79144212b83e06a"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-startup/report.json",
+      "bytes": 2105,
+      "sha256": "eed98fa9abafb42847f42373e28945adeeae7ea5bee56697f1d0bd9d92cbdadb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-firefly-verification.json",
+      "bytes": 214854,
+      "sha256": "9bbfec21b9e52768701a3ee48bd4e360c5cb3d82c727314b1fb2343492387ef2"
+    },
+    {
+      "path": "evidence/parallel-critters/B-inventory.json",
+      "bytes": 211578,
+      "sha256": "03ffe186764c09bc073649dad6fc7a4ea046e454df9b2c8fc1c264cb411632fb"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-330.txt",
+      "bytes": 57425,
+      "sha256": "55ee98483ecaffddf49770195a2bbe66698311cdb0b483f01c722b6e769ad98e"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-331.txt",
+      "bytes": 54449,
+      "sha256": "e4a8714381caa49dacea206be5b3e900db060e35f0a77eb4e62257bdcbd2ffd0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-332.txt",
+      "bytes": 33901,
+      "sha256": "b27a91c8e2fc991cb825df3739e5bf73d418f400cd08a19dc432d011dbe45284"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-4809.txt",
+      "bytes": 38135,
+      "sha256": "6f8f0b6c702c12b3a8566f4f0a9f4c0c4649f50bfa107b4e0daa8f6cab1288ed"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-4810.txt",
+      "bytes": 3855,
+      "sha256": "4e3db689f3da75dc46c69071650a8eac283996343b214dcb9770432915ec26ee"
+    },
+    {
+      "path": "evidence/parallel-critters/B-module-4825.txt",
+      "bytes": 1807,
+      "sha256": "1d3e4cb355a6dbc0e223c84b3d37ef0e0f929805c6670320cc795094676dc146"
+    },
+    {
+      "path": "evidence/parallel-critters/B-modules.txt",
+      "bytes": 1515659,
+      "sha256": "b052b2b894c91bda6735dd66a8b71d12b3228647a839d474c54b7b30d0f6fe01"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-1176.txt",
+      "bytes": 172199,
+      "sha256": "17b0e77388fc408b945629fbd07829c3835ba09e59cacfdda92707e19f74f7f8"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-1177.txt",
+      "bytes": 205889,
+      "sha256": "bfaf0fffbd5f8e7df4b1978db3bc6ae005c27b37034ca756e1827bb608b1516d"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-2707.txt",
+      "bytes": 367215,
+      "sha256": "ee8a0fb8847a256ddefbd7bb47f3a7ca78a9ab24c9a206d9ba08e47e76ca870c"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-2746.txt",
+      "bytes": 10006,
+      "sha256": "b4064590d08471e65082526eb232314febbd267ba2f0624e0a268f19a673230e"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-2747.txt",
+      "bytes": 196439,
+      "sha256": "ae679a0efae75693b95bb7e33b0c32244e3463183d52664f1f2e9ae6342db9ae"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-331.txt",
+      "bytes": 34188,
+      "sha256": "76ab1c9f048a62e0f024be00b795a390026fe9662274f22c5477195063ee26c0"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-332.txt",
+      "bytes": 23339,
+      "sha256": "cdd181f2b79efc8beda1d7254e4b91a5d677900cdc2c87b68f163934a3ec9b25"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3877.txt",
+      "bytes": 631898,
+      "sha256": "70d4a49831a6cb7a8ea661f84034db06d61dda183e0d7469cebf7a8741e04d16"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3878.txt",
+      "bytes": 226411,
+      "sha256": "2ea66506a0a21c78a64c24a2e116d3827715185379644ddfb70dab7a820b77c9"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3879.txt",
+      "bytes": 170049,
+      "sha256": "b99d10a50d307b47d4db26af8d76360f9afe82f394d9ceb4a160bbae979b1bf5"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3880.txt",
+      "bytes": 381517,
+      "sha256": "d51506f5c9b3170b694c615d418fcb61f941e95805711b449159111a6a8b5e93"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3881.txt",
+      "bytes": 50372,
+      "sha256": "238048b6d1fda1b75f2e394a32613feebf7586a1e310c9fe8ffe854527bcc195"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3882.txt",
+      "bytes": 50310,
+      "sha256": "aec37d69b50db88aed0bf4be23ebcc22be4d4a3037ecfd7cb08099baa9f4faaa"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3883.txt",
+      "bytes": 73150,
+      "sha256": "673ca619307d2ce4a91c8fcee3973c09fc9849d5f2579954ebb30d40400ee4f4"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3884.txt",
+      "bytes": 69150,
+      "sha256": "8e0ac8d20652d70cd224d68eb4911c1d3b9a03e5a3e4f59c0cfbfc3e8f5ab001"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3885.txt",
+      "bytes": 62731,
+      "sha256": "3b9a8c6389a281cd6e65f7b16c212351c9726bf7f127458fe89635f4733fd987"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3886.txt",
+      "bytes": 418879,
+      "sha256": "940903ff19a21b0ae8efa6de8fe4df574645e730c8a95c3f3b621cafc2e8c691"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3887.txt",
+      "bytes": 219085,
+      "sha256": "2f2fc414fedaca36cb1bd1fdf984889b40b499b2dd6a6adb509f4ec80594cf85"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3888.txt",
+      "bytes": 103315,
+      "sha256": "67bf632e7f48751a4963961e337a96e8013c0c1624073a2b8f6659ba9412dbc9"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3889.txt",
+      "bytes": 100904,
+      "sha256": "3ddffab20c1264e0dc799b615035cff482866ee95797628a52c6d340aeece9e1"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3890.txt",
+      "bytes": 98741,
+      "sha256": "b8092f4bad24b47ec94d8206067cc04195b3c4089802d02c037f4e58c953a93d"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3891.txt",
+      "bytes": 154511,
+      "sha256": "58148aae83574533e2c84a68abea6581b1e7e9b0a8a88fc84ced8a05b3048b15"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3892.txt",
+      "bytes": 85800,
+      "sha256": "9fb953415d04b3f6640337a47ce9d1e96fc04708def8a08951f58c8b876de448"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3893.txt",
+      "bytes": 133802,
+      "sha256": "bd6d0a17d95958480d6cb06952845eb849ac21b2fdafe06cb37c7f3d6ed7130f"
+    },
+    {
+      "path": "evidence/parallel-critters/B-owned-module-3894.txt",
+      "bytes": 402326,
+      "sha256": "ab7cc964275ce751e5b914cc57b5f979f97e5e9fe8294838aea27374c9088c91"
+    },
+    {
+      "path": "evidence/parallel-critters/B-procedures.json",
+      "bytes": 20235,
+      "sha256": "e881b27e5763af988d6b2f909ec5109f87569a06da1238b2b8d0e28a19de128b"
+    },
+    {
+      "path": "evidence/parallel-critters/C-inventory.json",
+      "bytes": 201261,
+      "sha256": "f17994d678520b016bfcac630f6f2861434febd72757bcda4f5a2605b483b4f6"
+    },
+    {
+      "path": "evidence/parallel-critters/integration.md",
+      "bytes": 1389,
+      "sha256": "51cf9b8a413b63f39f8d1127ecd52e065ed624b359ab3c08db688812c7f42a9c"
+    },
+    {
+      "path": "scripts/parallel-camera/decompile.py",
+      "bytes": 3941,
+      "sha256": "2637ef033acff8ce33fdb01262c395ab9663901b9b27f9d4eda0e15f528e6237"
+    },
+    {
+      "path": "scripts/parallel-camera/inventory.py",
+      "bytes": 3075,
+      "sha256": "dd29bd4d65003ad2560a204e0072f06ce06d3f3527355a32bbbccd5665fd97ca"
+    },
+    {
+      "path": "scripts/parallel-camera/native.py",
+      "bytes": 5283,
+      "sha256": "7171b692fa78f5683c97ee7609b8a7593aca93456543149f2dd1c60fbb44d3c1"
+    },
+    {
+      "path": "scripts/parallel-camera/original_windows.py",
+      "bytes": 1845,
+      "sha256": "f179e546cabad559b3946411a462f5b4abca22804a046864df32a3814b4b41f5"
+    },
+    {
+      "path": "scripts/parallel-camera/query.py",
+      "bytes": 3412,
+      "sha256": "a0613e231d4ccdd32732b61bb3a9468abd8d3f7a75a744f1c961194a8dde14c3"
+    },
+    {
+      "path": "scripts/parallel-camera/types.py",
+      "bytes": 1203,
+      "sha256": "7965b9b2b72de557b5d716d1854ca3d3b7ddd0f3dad96880039b5991151ff919"
+    },
+    {
+      "path": "scripts/parallel-critters/check_boundaries.py",
+      "bytes": 3685,
+      "sha256": "7db3a7cad5d35e22fb1c2e4acf8110fe39fa9732c9dd6112d10be20be201716c"
+    },
+    {
+      "path": "scripts/parallel-critters/decompile.py",
+      "bytes": 3672,
+      "sha256": "2bef88ba16ee8544c4edc67d71ac1f1b09e3b8ef7e740758635a2b1b3a379598"
+    },
+    {
+      "path": "scripts/parallel-critters/firefly-create.json",
+      "bytes": 140,
+      "sha256": "59f0c3ba487ce66a29d45b4b89d1faa344361d46366f17409d90a0c66ab7dccb"
+    },
+    {
+      "path": "scripts/parallel-critters/firefly-lifecycle.json",
+      "bytes": 261,
+      "sha256": "6fd8f6aebb88c8d4d900997259f67920612a1778e2961938d662ec5f56d4c2ea"
+    },
+    {
+      "path": "scripts/parallel-critters/firefly-producers.json",
+      "bytes": 235,
+      "sha256": "d9668ccde4a0566549f95dbc6907793a32414075e684fd75ad7c84aef940afb9"
+    },
+    {
+      "path": "scripts/parallel-critters/firefly-startup.json",
+      "bytes": 133,
+      "sha256": "982e12b9efc5b36f5b0a42e64701753644abd398de4c3b306461b3725088c24a"
+    },
+    {
+      "path": "scripts/parallel-critters/focus.py",
+      "bytes": 3902,
+      "sha256": "b3712a5fb96a667bf0d5f8906ef491bd28086465144544167bd091a680111ee3"
+    },
+    {
+      "path": "scripts/parallel-critters/inventory.py",
+      "bytes": 3234,
+      "sha256": "2679271bd70c226211f9cc525c57a7fc177540d5f0149759d6f8a71a3fabe3bf"
+    },
+    {
+      "path": "scripts/parallel-critters/module_inventory.py",
+      "bytes": 2557,
+      "sha256": "9ab609262c5ae68e78c3320cd0ab409216f0067e8ed301aa9590d9196603d975"
+    },
+    {
+      "path": "scripts/parallel-critters/verify_firefly.py",
+      "bytes": 11259,
+      "sha256": "1ac43ba0c3cf6ed169a5bad974ee27ad2f5b384a5c2756b675b9c7145bed6a06"
+    }
+  ],
+  "push_scope": "This session investigation and six owned directories plus stop snapshot; unrelated building/terrain/shared edits excluded"
+}
