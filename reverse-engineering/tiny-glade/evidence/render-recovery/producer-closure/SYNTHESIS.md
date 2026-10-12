@@ -275,3 +275,24 @@ Ghidra 报 `Bad instruction` 的根因是**int32 相对跳表落在 `.text` 段�
 8. **实例的 `ppEnabledExtensionNames`/`ppEnabledLayerNames` 实际数组内容**、`applicationName`/`engineName` 未恢复。
 9. **调用关系普遍未闭合**：`get_xrefs_*` 无 CALL 边；A2/A3/A4 的"caller"多为伪代码直读推断。
 10. **零动态证据** —— 所有结论均为静态机器码推断。
+
+## 12. 依据汇总实施时的再核对（2026-10-12）
+
+本节不把候选GPU运行扩大为原游戏动态证据。最新实施在 `reconstruction/rhapsody-rebuild`，当前状态以其统一功能验收报告为准；上面候选偏差表是取证时的源码快照，不代表后续代码一直未修复。
+
+### 12.1 两处需要更正的取证总结
+
+- 第11.7节“queue+0x80写者未定位”已被既有原码证据补上：`0x140bf0b90` 函数内 `0x140bf0c0f` 的PE原字节为 `48 89 be 80 00 00 00`，即写入 `[rsi+0x80]`；入口把queue参数置rsi。见 `consumer-chain-review-2026-10-12/dependencies/managed-repair.json`。这只定位该函数的写点，不证明完整caller/帧调度；禁止据此把queue完成值与command sequence混为一域。
+- 第11.5节将 `device+0xa00..a4f` 称为wait/signal模板不充分。`get_setup_cb_submit_info 0x140bf84e0` 先take `device+0x9f8` 的state（写4），复制+8至+0x50的命令字段，`+0xa40`正对应88B Command的handle@+0x48。随后构造5个空同步向量及1条命令向量。该片段支持“活动setup command的take/end/flush”，不能直接支持“这80字节就是wait/signal数据”。同步来源应继续按完整submit caller与批次字段核实；外部timeline扩展不能记为原producer已恢复。
+
+### 12.2 已落实的源码改动
+
+- 构图账本已接入真实PassBuilder：按index/group/code合并、同组去重、错误保留；读→写升级保留原两条0x37/group0记录。ResourceSyncGroup从2开始。
+- barrier并发判断改回访问码区间；实际后端以SynchronizationScope汇总数组和阶段掩码，在initial/pre/export对应的callback/end边界提交。
+- 主图callback获得本次counter产生的CommandState、compiled registry和managed资源，descriptor保活跟随实际CB；GPU例移除第二counter/第二提交，直接读回25+17=42。
+- descriptor改为pool LIFO与容量错误重试；相同内容不返回相同set。运行时计数P由真实 `maxDescriptorSetUpdateAfterBindSampledImages` 查询，布局规则再减32/cap8192。
+- managed实际句柄改为单atomic高水位、共享退役来源与命令桶；generation在CPU dispose内递增，GPU排桶由已验证的sequence prefix驱动。R8生命周期资源投影仍是适配边界，不宣称全部graph资源只剩一个原ABI控制块。
+- 帧pending改为deque；trim不弹出，begin节流保留最近一帧。WSI改为3秒acquire、正确SUBOPTIMAL/present错误策略、按槽同步复用及validate重建。
+- 硬件RT包装保留为额外适配，排除在本构建原作功能验收之外；原软件BVH依赖/游戏consumer仍待接线。
+
+原country_core TypeId/构图生产者、setup命令完整生产者、九类销毁桶固定次序、跨族所有权、完整原帧/画面及本地分叉依赖等仍有缺口。上述实现与原完整等价性分别记录。
