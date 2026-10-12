@@ -6,6 +6,30 @@ use super::{
 };
 use ash::vk;
 use std::sync::Arc;
+
+/// 帧缓冲创建描述符；`Framebuffer::new` 的输入集合。
+#[derive(Clone)]
+pub struct FramebufferDesc {
+    pub render_pass: Arc<RenderPass>,
+    pub attachments: Vec<Arc<TextureView>>,
+    pub extent: vk::Extent2D,
+    pub layers: u32,
+}
+impl FramebufferDesc {
+    pub fn new(
+        render_pass: Arc<RenderPass>,
+        attachments: Vec<Arc<TextureView>>,
+        extent: vk::Extent2D,
+        layers: u32,
+    ) -> Self {
+        Self {
+            render_pass,
+            attachments,
+            extent,
+            layers,
+        }
+    }
+}
 pub struct Framebuffer {
     pub render_pass: Arc<RenderPass>,
     pub attachments: Vec<Arc<TextureView>>,
@@ -20,29 +44,33 @@ impl Framebuffer {
         extent: vk::Extent2D,
         layers: u32,
     ) -> Result<Self> {
-        if extent.width == 0 || extent.height == 0 || layers == 0 {
+        Self::from_desc(FramebufferDesc::new(render_pass, attachments, extent, layers))
+    }
+    pub fn from_desc(desc: FramebufferDesc) -> Result<Self> {
+        if desc.extent.width == 0 || desc.extent.height == 0 || desc.layers == 0 {
             return Err(Error::Invalid("帧缓冲区范围必须非零"));
         }
-        if attachments
+        if desc
+            .attachments
             .iter()
-            .any(|v| !Arc::ptr_eq(&v.texture.device, &render_pass.device))
+            .any(|v| !Arc::ptr_eq(&v.texture.device, &desc.render_pass.device))
         {
             return Err(Error::Invalid("附件和渲染通道不属于同一设备"));
         }
-        let handles: Vec<_> = attachments.iter().map(|v| v.handle).collect();
+        let handles: Vec<_> = desc.attachments.iter().map(|v| v.handle).collect();
         let info = vk::FramebufferCreateInfo::default()
-            .render_pass(render_pass.handle)
+            .render_pass(desc.render_pass.handle)
             .attachments(&handles)
-            .width(extent.width)
-            .height(extent.height)
-            .layers(layers);
-        let handle = unsafe { render_pass.device.device.create_framebuffer(&info, None) }?;
+            .width(desc.extent.width)
+            .height(desc.extent.height)
+            .layers(desc.layers);
+        let handle = unsafe { desc.render_pass.device.device.create_framebuffer(&info, None) }?;
         Ok(Self {
-            render_pass,
-            attachments,
+            render_pass: desc.render_pass,
+            attachments: desc.attachments,
             handle,
-            extent,
-            layers,
+            extent: desc.extent,
+            layers: desc.layers,
         })
     }
 }

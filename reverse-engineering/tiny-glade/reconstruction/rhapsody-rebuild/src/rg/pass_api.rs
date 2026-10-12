@@ -40,6 +40,56 @@ pub enum Command<'a> {
         image: vk::Image,
         range: vk::ImageSubresourceRange,
     },
+    Draw {
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    },
+    DrawIndexed {
+        index_count: u32,
+        instance_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+        first_instance: u32,
+    },
+    DrawIndirect {
+        buffer: vk::Buffer,
+        offset: u64,
+        draw_count: u32,
+        stride: u32,
+    },
+    DrawIndirectCount {
+        buffer: vk::Buffer,
+        offset: u64,
+        count_buffer: vk::Buffer,
+        count_buffer_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    },
+    DrawIndexedIndirect {
+        buffer: vk::Buffer,
+        offset: u64,
+        draw_count: u32,
+        stride: u32,
+    },
+    DrawIndexedIndirectCount {
+        buffer: vk::Buffer,
+        offset: u64,
+        count_buffer: vk::Buffer,
+        count_buffer_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    },
+    DispatchGroups {
+        x: u32,
+        y: u32,
+        z: u32,
+    },
+    DispatchIndirect {
+        buffer: vk::Buffer,
+        offset: u64,
+    },
 }
 
 /// 实际 Vulkan 后端或候选测试后端实现同一调用边界。
@@ -110,6 +160,84 @@ impl CommandBackend for AshCommandBackend<'_> {
                     &vk::ClearColorValue { float32: [0.0; 4] },
                     &[range],
                 ),
+                Command::Draw {
+                    vertex_count,
+                    instance_count,
+                    first_vertex,
+                    first_instance,
+                } => self.device.cmd_draw(
+                    cb,
+                    vertex_count,
+                    instance_count,
+                    first_vertex,
+                    first_instance,
+                ),
+                Command::DrawIndexed {
+                    index_count,
+                    instance_count,
+                    first_index,
+                    vertex_offset,
+                    first_instance,
+                } => self.device.cmd_draw_indexed(
+                    cb,
+                    index_count,
+                    instance_count,
+                    first_index,
+                    vertex_offset,
+                    first_instance,
+                ),
+                Command::DrawIndirect {
+                    buffer,
+                    offset,
+                    draw_count,
+                    stride,
+                } => self
+                    .device
+                    .cmd_draw_indirect(cb, buffer, offset, draw_count, stride),
+                Command::DrawIndirectCount {
+                    buffer,
+                    offset,
+                    count_buffer,
+                    count_buffer_offset,
+                    max_draw_count,
+                    stride,
+                } => self.device.cmd_draw_indirect_count(
+                    cb,
+                    buffer,
+                    offset,
+                    count_buffer,
+                    count_buffer_offset,
+                    max_draw_count,
+                    stride,
+                ),
+                Command::DrawIndexedIndirect {
+                    buffer,
+                    offset,
+                    draw_count,
+                    stride,
+                } => self
+                    .device
+                    .cmd_draw_indexed_indirect(cb, buffer, offset, draw_count, stride),
+                Command::DrawIndexedIndirectCount {
+                    buffer,
+                    offset,
+                    count_buffer,
+                    count_buffer_offset,
+                    max_draw_count,
+                    stride,
+                } => self.device.cmd_draw_indexed_indirect_count(
+                    cb,
+                    buffer,
+                    offset,
+                    count_buffer,
+                    count_buffer_offset,
+                    max_draw_count,
+                    stride,
+                ),
+                Command::DispatchGroups { x, y, z } => self.device.cmd_dispatch(cb, x, y, z),
+                Command::DispatchIndirect { buffer, offset } => {
+                    self.device.cmd_dispatch_indirect(cb, buffer, offset)
+                }
             }
         }
     }
@@ -135,6 +263,9 @@ pub struct RenderPassApi<'a, B> {
     command_buffer: vk::CommandBuffer,
     stencil_ref: u8,
     wide_lines: bool,
+    /// 原入口在每次 draw/dispatch 调用上做 `AtomicUsize::fetch_add`；
+    /// 候选用线程局部计数复刻可观察的调用计数行为。
+    draw_count: usize,
 }
 
 impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
@@ -161,7 +292,13 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
             command_buffer,
             stencil_ref: initial_stencil_ref,
             wide_lines,
+            draw_count: 0,
         }
+    }
+
+    /// 原入口暴露的累计调用计数；仅用于诊断/统计，不影响命令语义。
+    pub fn draw_call_count(&self) -> usize {
+        self.draw_count
     }
 
     fn emit(&mut self, command: Command<'_>) {
@@ -286,5 +423,136 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
                 layer_count: array_layers,
             },
         });
+    }
+
+    pub fn draw(
+        &mut self,
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    ) {
+        self.draw_count += 1;
+        self.emit(Command::Draw {
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance,
+        });
+    }
+
+    pub fn draw_indexed(
+        &mut self,
+        index_count: u32,
+        instance_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+        first_instance: u32,
+    ) {
+        self.draw_count += 1;
+        self.emit(Command::DrawIndexed {
+            index_count,
+            instance_count,
+            first_index,
+            vertex_offset,
+            first_instance,
+        });
+    }
+
+    pub fn draw_indirect(&mut self, buffer: vk::Buffer, offset: u64, draw_count: u32, stride: u32) {
+        self.draw_count += 1;
+        self.emit(Command::DrawIndirect {
+            buffer,
+            offset,
+            draw_count,
+            stride,
+        });
+    }
+
+    /// 需要设备启用 `drawIndirectCount`；候选不校验特性是否已启用，调用者负责。
+    pub fn draw_indirect_count(
+        &mut self,
+        buffer: vk::Buffer,
+        offset: u64,
+        count_buffer: vk::Buffer,
+        count_buffer_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.draw_count += 1;
+        self.emit(Command::DrawIndirectCount {
+            buffer,
+            offset,
+            count_buffer,
+            count_buffer_offset,
+            max_draw_count,
+            stride,
+        });
+    }
+
+    pub fn draw_indexed_indirect(
+        &mut self,
+        buffer: vk::Buffer,
+        offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        self.draw_count += 1;
+        self.emit(Command::DrawIndexedIndirect {
+            buffer,
+            offset,
+            draw_count,
+            stride,
+        });
+    }
+
+    /// 需要设备启用 `drawIndirectCount`；候选不校验特性是否已启用，调用者负责。
+    pub fn draw_indexed_indirect_count(
+        &mut self,
+        buffer: vk::Buffer,
+        offset: u64,
+        count_buffer: vk::Buffer,
+        count_buffer_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.draw_count += 1;
+        self.emit(Command::DrawIndexedIndirectCount {
+            buffer,
+            offset,
+            count_buffer,
+            count_buffer_offset,
+            max_draw_count,
+            stride,
+        });
+    }
+
+    pub fn dispatch_groups_3d(&mut self, x: u32, y: u32, z: u32) {
+        self.draw_count += 1;
+        self.emit(Command::DispatchGroups { x, y, z });
+    }
+
+    /// 原入口按线程总数 `div_ceil` group 大小换算 group 数，再内联调用
+    /// `dispatch_groups_3d`；这里保留同样两段式顺序，不重复计数两次的语义差异
+    /// 由调用方感知（原机器码内联后仍只触发一次 `cmd_dispatch`）。
+    pub fn dispatch_threads_3d(
+        &mut self,
+        threads_x: u32,
+        threads_y: u32,
+        threads_z: u32,
+        group_size_x: u32,
+        group_size_y: u32,
+        group_size_z: u32,
+    ) {
+        self.dispatch_groups_3d(
+            threads_x.div_ceil(group_size_x.max(1)),
+            threads_y.div_ceil(group_size_y.max(1)),
+            threads_z.div_ceil(group_size_z.max(1)),
+        );
+    }
+
+    pub fn dispatch_indirect(&mut self, buffer: vk::Buffer, offset: u64) {
+        self.draw_count += 1;
+        self.emit(Command::DispatchIndirect { buffer, offset });
     }
 }

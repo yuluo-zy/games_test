@@ -34,6 +34,62 @@ impl RenderPassKey {
             .collect()
     }
 }
+/// 附件声明构建器；`to_attachment_key` 转成精确创建键。
+/// `clear_input` 表示 load 操作为清除，否则为加载保留内容。
+#[derive(Clone, Copy, Debug)]
+pub struct RenderPassAttachmentDesc {
+    pub format: vk::Format,
+    pub samples: vk::SampleCountFlags,
+    pub clear_input: bool,
+    pub depth_stencil: bool,
+}
+impl RenderPassAttachmentDesc {
+    pub fn new(format: vk::Format) -> Self {
+        Self {
+            format,
+            samples: vk::SampleCountFlags::TYPE_1,
+            clear_input: true,
+            depth_stencil: false,
+        }
+    }
+    pub fn clear_input(mut self, clear: bool) -> Self {
+        self.clear_input = clear;
+        self
+    }
+    pub fn sample_count(mut self, samples: vk::SampleCountFlags) -> Self {
+        self.samples = samples;
+        self
+    }
+    pub fn depth_stencil_attachment(mut self) -> Self {
+        self.depth_stencil = true;
+        self
+    }
+    pub fn to_attachment_key(&self) -> AttachmentKey {
+        let load = if self.clear_input {
+            vk::AttachmentLoadOp::CLEAR
+        } else {
+            vk::AttachmentLoadOp::LOAD
+        };
+        let layout = if self.depth_stencil {
+            vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        } else {
+            vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL
+        };
+        AttachmentKey {
+            format: self.format.as_raw(),
+            samples: self.samples.as_raw(),
+            load: load.as_raw(),
+            store: vk::AttachmentStoreOp::STORE.as_raw(),
+            stencil_load: if self.depth_stencil { load.as_raw() } else { vk::AttachmentLoadOp::DONT_CARE.as_raw() },
+            stencil_store: if self.depth_stencil { vk::AttachmentStoreOp::STORE.as_raw() } else { vk::AttachmentStoreOp::DONT_CARE.as_raw() },
+            initial_layout: if self.clear_input { vk::ImageLayout::UNDEFINED.as_raw() } else { layout.as_raw() },
+            final_layout: layout.as_raw(),
+            subpass_layout: layout.as_raw(),
+            depth_stencil: self.depth_stencil,
+        }
+    }
+}
+
 pub struct RenderPass {
     pub device: Arc<VulkanDevice>,
     pub handle: vk::RenderPass,

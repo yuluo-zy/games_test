@@ -552,6 +552,31 @@ pub struct RetiredDescriptorPool {
     _lease: Arc<DescriptorPoolLease<Arc<VulkanDescriptorPool>>>,
 }
 
+/// 过期描述符池的回收堆；`reclaim_descriptor_pools` 一次性取回全部，由上层决定
+/// 归还空闲池还是销毁。原 `DescriptorPoolDiscardPile` 的候选表示。
+#[derive(Default)]
+pub struct DescriptorPoolDiscardPile {
+    retired: Vec<RetiredDescriptorPool>,
+}
+impl DescriptorPoolDiscardPile {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn push(&mut self, pool: RetiredDescriptorPool) {
+        self.retired.push(pool);
+    }
+    pub fn is_empty(&self) -> bool {
+        self.retired.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.retired.len()
+    }
+    /// 原入口：把当前堆里的回收池转交给 `into`，本堆清空。
+    pub fn reclaim_descriptor_pools(&mut self, into: &mut Vec<RetiredDescriptorPool>) {
+        into.append(&mut self.retired);
+    }
+}
+
 struct DescriptorPoolQueue<P> {
     pools: Vec<Arc<DescriptorPoolLease<P>>>,
     source: Arc<DescriptorPoolSource<P>>,

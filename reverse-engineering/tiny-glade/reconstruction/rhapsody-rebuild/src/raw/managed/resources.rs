@@ -22,6 +22,27 @@ struct Slot<T: Send + Sync + 'static> {
     control: Arc<Mutex<ControlBlock>>,
     handle: Weak<ManagedInner<T>>,
 }
+
+/// 资源元数据投影；`checksum` 以 generation 为校验语义。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ManagedResourceMeta {
+    pub key: ResourceKey,
+    pub checksum: u32,
+}
+impl ManagedResourceMeta {
+    pub fn new(key: ResourceKey, checksum: u32) -> Self {
+        Self { key, checksum }
+    }
+    pub fn checksum(&self) -> u32 {
+        self.checksum
+    }
+}
+
+/// 按访问声明解析托管资源的接口；`get_maybe_tracked` 只返回已被命令跟踪的句柄。
+pub trait AccessManagedResource {
+    type Resource: Send + Sync + 'static;
+    fn get_maybe_tracked(&self, key: ResourceKey) -> Option<Managed<Self::Resource>>;
+}
 type DisposeTask = Box<dyn FnOnce(&SharedResources) -> Result<(), Failure> + Send>;
 struct Dropped {
     key: ResourceKey,
@@ -438,6 +459,15 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         resource.track_on(domain, command)?;
         Ok(resource)
     }
+    /// 只返回已被命令跟踪（last_sequence>0）的句柄。
+    pub fn get_maybe_tracked(&self, key: ResourceKey) -> Option<Managed<T>> {
+        let resource = self.get(key)?;
+        if resource.tracked_sequence() == 0 {
+            None
+        } else {
+            Some(resource)
+        }
+    }
     pub fn begin_command_bucket(&self, sequence: u64) -> Result<(), Failure> {
         self.shared().begin_command_bucket(sequence)
     }
@@ -533,6 +563,7 @@ pub struct ManagedResources {
     pub render_passes: ResourceManager<crate::raw::render_pass::RenderPass>,
     pub swapchains: ResourceManager<crate::raw::swapchain::Swapchain>,
     shared: Arc<SharedResources>,
+    device: Option<Arc<crate::raw::device::VulkanDevice>>,
 }
 impl Default for ManagedResources {
     fn default() -> Self {
@@ -546,12 +577,35 @@ impl Default for ManagedResources {
             descriptor_sets: ResourceManager::with_shared(shared.clone(), 6),
             framebuffers: ResourceManager::with_shared(shared.clone(), 7),
             shared,
+            device: None,
         }
     }
 }
 impl ManagedResources {
     pub fn new() -> Self {
         Self::default()
+    }
+    /// 关联宿主设备；不强制要求在任一资源创建前设置。
+    pub fn set_device(&mut self, device: Arc<crate::raw::device::VulkanDevice>) {
+        self.device = Some(device);
+    }
+    /// 原 owning_device：返回宿主设备。
+    pub fn owning_device(&self) -> Option<Arc<crate::raw::device::VulkanDevice>> {
+        self.device.clone()
+    }
+    /// 按资源键退役并移交给延迟销毁桶；`get` 后 drop 触发 shared 退役登记。
+    pub fn throw_out_managed_resource(&self, key: ResourceKey) -> bool {
+        let dropped = match key.resource_tag {
+            0 => self.textures.get(key).map(drop),
+            1 => self.buffers.get(key).map(drop),
+            2 => self.swapchains.get(key).map(drop),
+            4 => self.render_passes.get(key).map(drop),
+            5 => self.samplers.get(key).map(drop),
+            6 => self.descriptor_sets.get(key).map(drop),
+            7 => self.framebuffers.get(key).map(drop),
+            _ => None,
+        };
+        dropped.is_some()
     }
     pub fn begin_command_bucket(&self, sequence: u64) -> Result<(), Failure> {
         self.shared.begin_command_bucket(sequence)
@@ -593,6 +647,13 @@ impl ManagedResources {
     }
 }
 
+impl<T: Send + Sync + 'static> AccessManagedResource for ResourceManager<T> {
+    type Resource = T;
+    fn get_maybe_tracked(&self, key: ResourceKey) -> Option<Managed<Self::Resource>> {
+        self.get_maybe_tracked(key)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -619,3 +680,4 @@ mod tests {
         assert_eq!(buffers.pending_disposals(), 0);
     }
 }
+

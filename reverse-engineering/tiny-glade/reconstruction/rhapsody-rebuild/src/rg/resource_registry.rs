@@ -136,6 +136,18 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
         }
     }
 
+    /// 原入口名；与 `image_from_raw_handle` 同一实现，保留原名供消费者按 PDB 名字调用。
+    pub fn image(&self, logical: u32) -> &Texture<TextureHandle> {
+        self.image_from_raw_handle(logical)
+    }
+
+    /// 原入口按 managed 视图解析；本通用 registry 只持有 `Texture { handle, desc }`，
+    /// 不拥有独立的 image-view 载体。返回纹理 handle 作为可解析的物理对象，
+    /// 视图创建仍由 raw 层 `TextureViewDesc`/后端完成。
+    pub fn image_view(&self, logical: u32) -> &Texture<TextureHandle> {
+        self.image_from_raw_handle(logical)
+    }
+
     pub fn buffer(&self, logical: u32) -> &Buffer<BufferHandle> {
         match self.backing(logical) {
             RegistryResource::OwnedBuffer(buffer) | RegistryResource::UnownedBuffer(buffer) => {

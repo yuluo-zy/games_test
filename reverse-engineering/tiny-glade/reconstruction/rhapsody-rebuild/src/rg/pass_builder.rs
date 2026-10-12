@@ -45,6 +45,20 @@ impl PassBuilder<'_> {
 }
 
 impl<'graph> PassBuilder<'graph> {
+    /// 消费 builder 返回所属图的可变引用；用于在 pass 声明之间继续构图。
+    /// 原 rg_mut 用于内部访问；候选接口避免在此保留 &mut 借用与被 self 借用的冲突。
+    pub fn rg_mut(self) -> &'graph mut RenderGraph {
+        self.graph
+    }
+    /// 写访问声明；读→写升级、同组去重由共享账本保留原两条 0x37/group0 记录规则。
+    pub fn write_impl(
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+    ) -> Result<&mut Self, BuildError> {
+        self.add_resource_access(resource, access_code, synchronization_group)
+    }
     pub fn buffer_ref<'borrow>(
         &'borrow mut self,
         resource: ResourceHandle,

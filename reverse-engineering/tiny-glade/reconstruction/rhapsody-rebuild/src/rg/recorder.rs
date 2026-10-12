@@ -240,8 +240,7 @@ impl Recorder {
     }
 
     /// 原 submit_pending_cbs 的接管、结束、委托投影；完整队列构造在 raw/submit.rs。
-    pub fn submit_pending(&mut self, out: &mut Outcome, end_error: bool, receipt: (u32, u64)) {
-        let mut commands = std::mem::take(&mut self.commands);
+    pub fn submit_pending(&mut self, out: &mut Outcome, end_error: bool, receipt: (u32, u64)) {        let mut commands = std::mem::take(&mut self.commands);
         let Some(last) = commands.last_mut() else {
             return;
         };
@@ -259,5 +258,73 @@ impl Recorder {
             out.receipt = Some(receipt);
         }
         out.taken_command_states = Some(commands.iter().map(|c| c.state).collect());
+    }
+
+    /// 原 ensure_active_cb：确保最后一条命令处于录制态（state==1）。
+    /// 没有活动命令时经 begin 回调创建一条新的并追加；返回活动命令句柄。
+    pub fn ensure_active_cb(&mut self, mut begin: impl FnMut() -> Command) -> u64 {
+        if let Some(active) = self.commands.last() {
+            if active.state == 1 {
+                return active.handle;
+            }
+        }
+        let command = begin();
+        let handle = command.handle;
+        self.commands.push(command);
+        handle
+    }
+}
+
+/// pass 内单个资源的访问引用；`resource_index` 返回图内逻辑索引。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PassResourceRef {
+    resource_index: u32,
+    access: Access,
+}
+impl PassResourceRef {
+    pub fn new(resource_index: u32, access: Access) -> Self {
+        Self {
+            resource_index,
+            access,
+        }
+    }
+    pub fn resource_index(&self) -> u32 {
+        self.resource_index
+    }
+    pub fn access(&self) -> &Access {
+        &self.access
+    }
+}
+
+/// 原 1.x 风格录制器；`record_pass` 把单个 pass 按批录制进 Recorder。
+/// 当前图主链走 `Recorder::record_batch`，本类型保留原名入口供 PDB 名消费者。
+pub struct RenderGraphRecorder {
+    recorder: Recorder,
+}
+impl RenderGraphRecorder {
+    pub fn create(resources: Vec<LogicalResource>, pending_initial: Vec<usize>) -> Self {
+        Self {
+            recorder: Recorder {
+                resources,
+                pending_initial,
+                commands: Vec::new(),
+            },
+        }
+    }
+    pub fn new(resources: Vec<LogicalResource>, pending_initial: Vec<usize>) -> Self {
+        Self::create(resources, pending_initial)
+    }
+    pub fn recorder(&mut self) -> &mut Recorder {
+        &mut self.recorder
+    }
+    /// 录制单个 pass；返回命令句柄的接受/拒绝结果与事件输出。
+    pub fn record_pass(
+        &mut self,
+        pass: &mut Pass,
+        final_batch: bool,
+        command: Command,
+        boundary: impl FnMut(RecordAction) -> bool,
+    ) -> Outcome {
+        self.recorder.record_batch(std::slice::from_mut(pass), final_batch, command, boundary)
     }
 }

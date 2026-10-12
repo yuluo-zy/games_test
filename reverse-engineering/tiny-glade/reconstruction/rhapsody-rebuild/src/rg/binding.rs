@@ -23,6 +23,29 @@ pub enum PassResourceSlot {
         layout: vk::ImageLayout,
     },
 }
+impl PassResourceSlot {
+    /// 构造 uniform 缓冲槽；uniform=1 语义由 `rg_binding_to_descriptor_binding` 判定。
+    pub fn uniform_buffer(resource: ResourceHandle, offset: u64, size: u64) -> Self {
+        Self::UniformBuffer {
+            resource,
+            offset,
+            size,
+        }
+    }
+    pub fn storage_buffer(resource: ResourceHandle, offset: u64, size: u64) -> Self {
+        Self::StorageBuffer {
+            resource,
+            offset,
+            size,
+        }
+    }
+    pub fn sampled_image(resource: ResourceHandle, layout: vk::ImageLayout) -> Self {
+        Self::SampledImage { resource, layout }
+    }
+    pub fn storage_image(resource: ResourceHandle, layout: vk::ImageLayout) -> Self {
+        Self::StorageImage { resource, layout }
+    }
+}
 pub enum ResolvedBinding {
     Buffer {
         buffer: vk::Buffer,

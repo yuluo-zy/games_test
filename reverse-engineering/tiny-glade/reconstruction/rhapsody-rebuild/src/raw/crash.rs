@@ -165,6 +165,58 @@ pub struct GpuCrashSnapshot {
     pub debug: GpuDebugLog,
 }
 
+/// GPU 调试源码名映射；`insert_name` 分配稳定 id，`get_name` 回查。
+/// 与 `GpuCrashDiagnostics` 内部的 MarkerHistory 独立；只保留名称↔id 表。
+#[derive(Clone, Debug, Default)]
+pub struct CrashMarkerNames {
+    next: u32,
+    names: BTreeMap<u32, String>,
+    reverse: std::collections::HashMap<String, u32>,
+}
+impl CrashMarkerNames {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn insert_name(&mut self, name: impl Into<String>) -> u32 {
+        let name = name.into();
+        if let Some(id) = self.reverse.get(&name) {
+            return *id;
+        }
+        let id = self.next;
+        self.next += 1;
+        self.names.insert(id, name.clone());
+        self.reverse.insert(name, id);
+        id
+    }
+    pub fn get_name(&self, id: u32) -> Option<&str> {
+        self.names.get(&id).map(String::as_str)
+    }
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+}
+
+/// 原入口名；解析并输出本帧 GPU 调试日志（与 `log_gpu_crash_info` 的 debug 段相同来源）。
+impl GpuCrashDiagnostics {
+    pub fn log_gpu_debug_info(
+        &self,
+        source_names: &BTreeMap<u32, String>,
+    ) -> Result<serde_json::Value> {
+        self.device.wait_idle()?;
+        let mut bytes = vec![0; self.debug_words * 4];
+        self.debug_buffer.read_bytes(0, &mut bytes)?;
+        let words: Vec<_> = bytes
+            .chunks_exact(4)
+            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
+            .collect();
+        let debug = parse_gpu_debug_info(&words, source_names)?;
+        Ok(serde_json::to_value(debug).unwrap_or(serde_json::Value::Null))
+    }
+}
+
 /// GPU 诊断生产链；core fill marker 与 storage debug buffer，不假装支持厂商崩溃转储。
 pub struct GpuCrashDiagnostics {
     pub marker_buffer: Arc<Buffer>,

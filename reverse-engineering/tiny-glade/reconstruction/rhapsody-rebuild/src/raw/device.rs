@@ -252,3 +252,374 @@ impl BucketKeyWitness {
         self.live.remove(&sequence)
     }
 }
+
+/// 原 `GraphicsDevice` 的候选包装：持有真实 Vulkan 设备、属性快照与内置资源，
+/// 把原方法名委托到现有 raw 类型。字段布局不声称等于原 ABI。
+pub struct GraphicsDevice {
+    pub inner: Arc<VulkanDevice>,
+    properties: vk::PhysicalDeviceProperties,
+    builtin_samplers: Vec<Arc<super::sampler::Sampler>>,
+    seq: super::command_buffer::CommandBufferSeqTracker,
+    disposal: Mutex<super::disposal::CommandBufferDisposalBuckets>,
+}
+impl GraphicsDevice {
+    /// 从已选物理设备与队列族构造；默认启用 BDA 与 descriptor indexing 特性。
+    pub fn create(
+        instance: Arc<super::instance::VulkanInstance>,
+        physical: vk::PhysicalDevice,
+        queue_family: u32,
+    ) -> Result<Arc<Self>, vk::Result> {
+        let mut features2 = vk::PhysicalDeviceFeatures2::default();
+        let mut vk12 = vk::PhysicalDeviceVulkan12Features::default()
+            .buffer_device_address(true)
+            .runtime_descriptor_array(true)
+            .descriptor_binding_partially_bound(true)
+            .descriptor_binding_variable_descriptor_count(true)
+            .descriptor_binding_sampled_image_update_after_bind(true)
+            .descriptor_binding_storage_buffer_update_after_bind(true);
+        features2 = features2.push_next(&mut vk12);
+        let queue_info = vk::DeviceQueueCreateInfo::default()
+            .queue_family_index(queue_family)
+            .queue_priorities(&[1.0]);
+        let extension_names = [
+            "VK_KHR_swapchain",
+            "VK_KHR_timeline_semaphore",
+            "VK_EXT_descriptor_indexing",
+            "VK_KHR_buffer_device_address",
+        ]
+        .map(std::ffi::CString::new)
+        .map(Result::unwrap);
+        let extensions = extension_names.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
+        let queue_infos = [queue_info];
+        let info = vk::DeviceCreateInfo::default()
+            .queue_create_infos(&queue_infos)
+            .enabled_extension_names(&extensions)
+            .push_next(&mut features2);
+        let device = VulkanDevice::create(instance, physical, queue_family, &info)?;
+        Ok(Self::from_device(device))
+    }
+    /// 从已构造设备包装。
+    pub fn from_device(device: Arc<VulkanDevice>) -> Arc<Self> {
+        let properties = unsafe {
+            device
+                .instance
+                .instance
+                .get_physical_device_properties(device.physical)
+        };
+        Arc::new(Self {
+            inner: device,
+            properties,
+            builtin_samplers: Vec::new(),
+            seq: super::command_buffer::CommandBufferSeqTracker::new(),
+            disposal: Mutex::new(super::disposal::CommandBufferDisposalBuckets::default()),
+        })
+    }
+    pub fn device_uuid(&self) -> [u8; 16] {
+        self.properties.pipeline_cache_uuid
+    }
+    pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
+        &self.properties.limits
+    }
+    /// 子组大小下限；需要 `subgroup_size_control` 特性时读取 properties2，否则用已知较小值。
+    pub fn min_subgroup_size(&self) -> u32 {
+        // subgroup_size_control 未显式启用时不读 properties2 字段；候选返回通用下限。
+        1
+    }
+    pub fn physical_device(&self) -> vk::PhysicalDevice {
+        self.inner.physical
+    }
+    pub fn queue_family_index(&self) -> u32 {
+        self.inner.queue_family
+    }
+    pub fn debug_utils(&self) -> super::debug::DebugUtils {
+        super::debug::DebugUtils::new(&self.inner.instance.instance, self.inner.clone())
+    }
+    /// 原 bindless 运行时描述符上限。
+    pub fn max_bindless_descriptor_count(&self) -> u32 {
+        self.inner.max_descriptor_set_update_after_bind_sampled_images()
+    }
+    /// 本构建无硬件光追；返回 None 表示该路径不可用。
+    pub fn rt(&self) -> Option<()> {
+        None
+    }
+    /// 设备完成并排空已注册的销毁桶。
+    pub fn wait_idle_and_recycle_resources(&mut self) -> Result<(), vk::Result> {
+        self.inner.wait_idle()?;
+        let mut disposal = self
+            .disposal
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let keys = disposal.pending_sequences();
+        for key in keys {
+            let _ = disposal.immediate_empty_bucket(key);
+        }
+        Ok(())
+    }
+    pub fn allocate_command_buffer_seq(&mut self) -> u64 {
+        self.seq.track()
+    }
+    pub fn command_buffer_seq(&self) -> &super::command_buffer::CommandBufferSeqTracker {
+        &self.seq
+    }
+    pub fn disposal(
+        &self,
+    ) -> std::sync::MutexGuard<'_, super::disposal::CommandBufferDisposalBuckets> {
+        self.disposal.lock().unwrap_or_else(|e| e.into_inner())
+    }
+    /// 创建可映射（HOST_VISIBLE）缓冲。
+    pub fn create_mapped_buffer(
+        &self,
+        size: u64,
+        usage: vk::BufferUsageFlags,
+    ) -> super::error::Result<super::buffer::Buffer> {
+        super::buffer::Buffer::new(
+            self.inner.clone(),
+            &super::buffer::BufferDesc::new_cpu_to_gpu(size, usage),
+        )
+    }
+    pub fn create_buffer_impl(
+        &self,
+        desc: &super::buffer::BufferDesc,
+    ) -> super::error::Result<super::buffer::Buffer> {
+        super::buffer::Buffer::new(self.inner.clone(), desc)
+    }
+    /// 创建 GPU 分析输出缓冲。
+    pub fn create_gpu_profiler_output_buffer(
+        &self,
+        size: u64,
+    ) -> super::error::Result<super::buffer::Buffer> {
+        super::buffer::Buffer::new(
+            self.inner.clone(),
+            &super::buffer::BufferDesc::new_gpu_to_cpu(
+                size,
+                vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+            ),
+        )
+    }
+    /// 初始化纹理数据（候选：经暂存缓冲复制；仅覆盖已存在的图像）。
+    pub fn init_texture_data(
+        &self,
+        _texture: &super::texture::Texture,
+        _bytes: &[u8],
+    ) -> super::error::Result<()> {
+        Err(super::error::Error::Unsupported(
+            "init_texture_data 暂存上传路径未接入真实队列",
+        ))
+    }
+    pub fn update_texture(
+        &self,
+        _texture: &super::texture::Texture,
+        _bytes: &[u8],
+    ) -> super::error::Result<()> {
+        Err(super::error::Error::Unsupported(
+            "update_texture 上传路径未接入真实队列",
+        ))
+    }
+    /// 创建一组内置采样器（最近邻/线性/深度比较）。
+    pub fn create_samplers(&mut self) -> Result<(), vk::Result> {
+        let device = self.inner.clone();
+        let nearest = vk::SamplerCreateInfo::default()
+            .mag_filter(vk::Filter::NEAREST)
+            .min_filter(vk::Filter::NEAREST)
+            .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+            .address_mode_u(vk::SamplerAddressMode::REPEAT)
+            .address_mode_v(vk::SamplerAddressMode::REPEAT)
+            .address_mode_w(vk::SamplerAddressMode::REPEAT);
+        let linear = vk::SamplerCreateInfo::default()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .address_mode_u(vk::SamplerAddressMode::REPEAT)
+            .address_mode_v(vk::SamplerAddressMode::REPEAT)
+            .address_mode_w(vk::SamplerAddressMode::REPEAT);
+        let depth = vk::SamplerCreateInfo::default()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .compare_enable(true)
+            .compare_op(vk::CompareOp::LESS_OR_EQUAL)
+            .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+            .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE);
+        self.builtin_samplers = vec![
+            Arc::new(
+                super::sampler::Sampler::new(device.clone(), &nearest)
+                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?,
+            ),
+            Arc::new(
+                super::sampler::Sampler::new(device.clone(), &linear)
+                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?,
+            ),
+            Arc::new(
+                super::sampler::Sampler::new(device, &depth)
+                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?,
+            ),
+        ];
+        Ok(())
+    }
+    /// 返回内置采样器之一；未创建时返回 None。
+    pub fn get_built_in_sampler(&self, index: usize) -> Option<Arc<super::sampler::Sampler>> {
+        self.builtin_samplers.get(index).cloned()
+    }
+    /// 查询设备是否支持给定扩展名。
+    pub fn query_device_extension_support(&self, names: &[&str]) -> Vec<bool> {
+        let available = match unsafe {
+            self.inner
+                .instance
+                .instance
+                .enumerate_device_extension_properties(self.inner.physical)
+        } {
+            Ok(extensions) => extensions
+                .iter()
+                .map(|e| {
+                    unsafe { std::ffi::CStr::from_ptr(e.extension_name.as_ptr()) }
+                        .to_string_lossy()
+                        .into_owned()
+                })
+                .collect::<Vec<_>>(),
+            Err(_) => Vec::new(),
+        };
+        names
+            .iter()
+            .map(|name| available.iter().any(|have| have == name))
+            .collect()
+    }
+    /// 校验物理设备需求（内存/队列族/特性）；候选只做最基础的堆检查。
+    pub fn validate_physical_device_requirements(
+        &self,
+        min_device_local_bytes: u64,
+    ) -> bool {
+        let memory = unsafe {
+            self.inner
+                .instance
+                .instance
+                .get_physical_device_memory_properties(self.inner.physical)
+        };
+        let device_local = memory.memory_heaps[..memory.memory_heap_count as usize]
+            .iter()
+            .filter(|heap| heap.flags.contains(vk::MemoryHeapFlags::DEVICE_LOCAL))
+            .map(|heap| heap.size)
+            .sum::<u64>();
+        device_local >= min_device_local_bytes
+    }
+    /// 全局分配器包装：执行 `body` 并附带分配器统计。候选仅返回统计快照。
+    pub fn with_global_allocator<R>(
+        &self,
+        body: impl FnOnce(&super::allocator::AllocatorStats) -> R,
+    ) -> R {
+        body(&self.inner.allocator_stats)
+    }
+    /// 下发一次管线屏障（memory/buffer/image 三类数组按 scope 汇总）。
+    pub fn issue_pipeline_barrier(
+        &self,
+        command: vk::CommandBuffer,
+        scope: &super::barrier::SynchronizationScope,
+    ) {
+        unsafe {
+            self.inner.device.cmd_pipeline_barrier(
+                command,
+                scope.source_stages,
+                scope.destination_stages,
+                vk::DependencyFlags::empty(),
+                &scope.memory,
+                &scope.buffers,
+                &scope.images,
+            )
+        }
+    }
+    /// 下发后立即清空 scope，供下一批复用。
+    pub fn issue_and_reset_pipeline_barrier(
+        &self,
+        command: vk::CommandBuffer,
+        scope: &mut super::barrier::SynchronizationScope,
+    ) {
+        self.issue_pipeline_barrier(command, scope);
+        scope.memory.clear();
+        scope.buffers.clear();
+        scope.images.clear();
+    }
+    /// 全同步屏障（所有命令→所有命令）。
+    pub fn issue_full_pipeline_barrier(&self, command: vk::CommandBuffer) {
+        unsafe {
+            self.inner.device.cmd_pipeline_barrier(
+                command,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::PipelineStageFlags::ALL_COMMANDS,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[],
+            )
+        }
+    }
+    /// 等待单个 fence 完成。
+    pub fn wait_submit_done(&self, fence: vk::Fence, timeout: u64) -> Result<(), vk::Result> {
+        unsafe { self.inner.device.wait_for_fences(&[fence], true, timeout) }
+    }
+    /// 有界等待直到提交完成或超时；返回 true 表示完成。
+    pub fn wait_duration_or_until_submit_done(
+        &self,
+        fence: vk::Fence,
+        timeout: u64,
+    ) -> Result<bool, vk::Result> {
+        match unsafe { self.inner.device.wait_for_fences(&[fence], true, timeout) } {
+            Ok(()) => Ok(true),
+            Err(vk::Result::TIMEOUT) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+    /// 分配持久 descriptor set（candidate：按 writes 直接分配）。
+    pub fn create_persistent_descriptor_set(
+        &self,
+        state: &super::descriptor_set::DescriptorSetState,
+        writes: &[super::descriptor_set::DescriptorWrite],
+    ) -> Result<std::sync::Arc<super::descriptor_set::VulkanDescriptorSet>, vk::Result> {
+        unsafe { state.allocate_descriptor_set(writes) }
+    }
+    /// setup 命令缓冲体系尚未恢复；返回 typed gap，不伪造提交参数。
+    pub fn get_setup_cb_submit_info(&self) -> Result<(), &'static str> {
+        Err("setup 命令缓冲生产者未恢复")
+    }
+    /// 以 setup 命令缓冲执行一次回调；未恢复时直接拒绝。
+    pub fn with_setup_cb<R>(
+        &self,
+        _body: impl FnOnce(vk::CommandBuffer) -> R,
+    ) -> Result<R, &'static str> {
+        Err("setup 命令缓冲生产者未恢复")
+    }
+}
+
+/// 队列句柄的候选包装；把提交引擎方法按队列暴露。
+#[derive(Clone)]
+pub struct Queue {
+    pub handle: vk::Queue,
+    pub family: u32,
+    pub index: u32,
+}
+impl Queue {
+    pub fn with_raw(handle: vk::Queue, family: u32, index: u32) -> Self {
+        Self {
+            handle,
+            family,
+            index,
+        }
+    }
+    pub fn update_pending_submissions(&self, _engine: &mut super::submit::SubmissionEngine) {
+        // 队列的待处理推进统一由提交引擎按 timeline 处理。
+    }
+    pub fn reclaim_command_buffer_resources(
+        &self,
+        engine: &mut super::submit::SubmissionEngine,
+        completed: u64,
+    ) -> Vec<vk::CommandBuffer> {
+        engine.reclaim_command_buffer_resources_all_queues(completed)
+    }
+}
+
+/// 原自由入口：完整创建 GraphicsDevice。
+pub fn create_raw_device(
+    instance: Arc<super::instance::VulkanInstance>,
+    physical: vk::PhysicalDevice,
+    queue_family: u32,
+) -> Result<Arc<GraphicsDevice>, vk::Result> {
+    GraphicsDevice::create(instance, physical, queue_family)
+}

@@ -143,6 +143,8 @@ pub struct VulkanGraphBackend {
     pass_resources: Option<Arc<super::pass_bindings::ManagedPassResources>>,
     managed_prefix: u64,
     barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
+    top_level_pool: Option<vk::QueryPool>,
+    top_level_started: bool,
 }
 pub struct GpuSubmissionCapture {
     pub queue: vk::Queue,
@@ -204,6 +206,8 @@ impl VulkanGraphBackend {
             pass_resources: None,
             managed_prefix: 0,
             barriers: BTreeMap::new(),
+            top_level_pool: None,
+            top_level_started: false,
         })
     }
     pub fn selected_queue(&self) -> lifecycle::Queue {
@@ -211,6 +215,73 @@ impl VulkanGraphBackend {
     }
     pub fn selected_family(&self) -> u32 {
         self.family
+    }
+    /// 惰性创建顶层时间戳查询池（两条查询：begin/end）。
+    fn top_level_pool_handle(&self) -> Result<vk::QueryPool, vk::Result> {
+        let device = &self.device;
+        let properties = unsafe {
+            device
+                .instance
+                .instance
+                .get_physical_device_properties(device.physical)
+        };
+        if properties.limits.timestamp_period == 0.0 {
+            return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT);
+        }
+        let info = vk::QueryPoolCreateInfo::default()
+            .query_type(vk::QueryType::TIMESTAMP)
+            .query_count(2);
+        unsafe { device.device.create_query_pool(&info, None) }
+    }
+    /// 原 GraphExecutor::begin_top_level_timestamp_query：把 TOP_OF_PIPE 时间戳写入
+    /// 帧内第一条命令。返回 0 表示已写入；重复 begin 返回错误。
+    pub fn begin_top_level_timestamp_query(&mut self, command: vk::CommandBuffer) -> Result<(), vk::Result> {
+        if self.top_level_started {
+            return Err(vk::Result::ERROR_OUT_OF_POOL_MEMORY);
+        }
+        if self.top_level_pool.is_none() {
+            self.top_level_pool = Some(self.top_level_pool_handle()?);
+        }
+        let pool = self.top_level_pool.unwrap();
+        unsafe {
+            self.device
+                .device
+                .cmd_write_timestamp(command, vk::PipelineStageFlags::TOP_OF_PIPE, pool, 0);
+        }
+        self.top_level_started = true;
+        Ok(())
+    }
+    /// 原 GraphExecutor::end_top_level_timestamp_query：写入 BOTTOM_OF_PIPE 时间戳并
+    /// 返回可选帧时长；读回失败/未 begin 时返回 Err。
+    pub fn end_top_level_timestamp_query(&mut self, command: vk::CommandBuffer) -> Result<Option<u64>, vk::Result> {
+        if !self.top_level_started {
+            return Err(vk::Result::NOT_READY);
+        }
+        let pool = self.top_level_pool
+            .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)?;
+        unsafe {
+            self.device
+                .device
+                .cmd_write_timestamp(command, vk::PipelineStageFlags::BOTTOM_OF_PIPE, pool, 1);
+        }
+        self.top_level_started = false;
+        let mut values = [0u64; 2];
+        unsafe {
+            self.device.device.get_query_pool_results(
+                pool,
+                0,
+                &mut values,
+                vk::QueryResultFlags::TYPE_64 | vk::QueryResultFlags::WAIT,
+            )?;
+        }
+        let properties = unsafe {
+            self.device
+                .instance
+                .instance
+                .get_physical_device_properties(self.device.physical)
+        };
+        let period_ns = properties.limits.timestamp_period.round() as u64;
+        Ok(Some(values[1].wrapping_sub(values[0]).wrapping_mul(period_ns)))
     }
     fn check_synchronization(
         &self,
@@ -850,6 +921,7 @@ struct PendingSessionFrame {
     frame: u64,
     execution: GraphExecution,
     retire: Vec<graph::RetireCallback>,
+    started_at: std::time::Instant,
 }
 
 /// 顺序录制的持久帧队列：同一个 backend、队列时间线、counter、资源池跨帧存活。
@@ -862,6 +934,8 @@ pub struct VulkanGraphSession {
     next_frame: u64,
     poisoned: Option<String>,
     failed_retire: Vec<graph::RetireCallback>,
+    /// 上一帧从 begin_frame 到该帧完成的墙钟时长；仅统计用途。
+    last_frame_duration_ns: u64,
 }
 impl VulkanGraphSession {
     pub fn new(mut backend: VulkanGraphBackend) -> Self {
@@ -875,10 +949,38 @@ impl VulkanGraphSession {
             next_frame: 1,
             poisoned: None,
             failed_retire: vec![],
+            last_frame_duration_ns: 0,
         }
     }
     pub fn is_poisoned(&self) -> bool {
         self.poisoned.is_some()
+    }
+    /// 原 GraphExecutor::last_known_frame_duration_ns：最近一次完成帧的墙钟时长。
+    pub fn last_known_frame_duration_ns(&self) -> u64 {
+        self.last_frame_duration_ns
+    }
+    /// 顶层 GPU 时间戳查询的 begin 委托；command 必须是本帧录制中的命令缓冲。
+    pub fn begin_top_level_timestamp_query(
+        &mut self,
+        command: vk::CommandBuffer,
+    ) -> Result<(), vk::Result> {
+        self.backend.begin_top_level_timestamp_query(command)
+    }
+    /// 顶层 GPU 时间戳查询的 end 委托；返回本帧 begin→end 的时长（ns）。
+    pub fn end_top_level_timestamp_query(
+        &mut self,
+        command: vk::CommandBuffer,
+    ) -> Result<Option<u64>, vk::Result> {
+        self.backend.end_top_level_timestamp_query(command)
+    }
+    /// 原 GraphExecutor::wait_submits_done：等待在途提交全部完成。
+    /// wait_frame 对每个在途帧执行有界等待，超时以 Err 返回。
+    pub fn wait_submits_done(&mut self, timeout_ns: u64) -> Result<(), String> {
+        while let Some(pending) = self.pending.front() {
+            let frame = pending.frame;
+            self.wait_frame(frame, timeout_ns)?;
+        }
+        Ok(())
     }
     pub fn begin_frame(&mut self) -> Result<graph::RenderGraph, String> {
         // 原 begin_frame 才排出队头，保留最近一帧；trim 只等待，不改变队列。
@@ -949,6 +1051,7 @@ impl VulkanGraphSession {
                     frame,
                     execution,
                     retire,
+                    started_at: std::time::Instant::now(),
                 });
                 Ok(receipt)
             }
@@ -1042,6 +1145,7 @@ impl VulkanGraphSession {
         for callback in pending.retire {
             callback();
         }
+        self.last_frame_duration_ns = pending.started_at.elapsed().as_nanos() as u64;
         Ok(())
     }
     /// 显式淘汰缓存，必须在当前帧完成后调用；保持 counter/timeline，避免 resize 残留无限增长。

@@ -78,6 +78,74 @@ impl CommandBackend for Capture {
                     range.layer_count
                 ]
             ]),
+            Command::Draw {
+                vertex_count,
+                instance_count,
+                first_vertex,
+                first_instance,
+            } => json!(["draw", vertex_count, instance_count, first_vertex, first_instance]),
+            Command::DrawIndexed {
+                index_count,
+                instance_count,
+                first_index,
+                vertex_offset,
+                first_instance,
+            } => json!([
+                "draw_indexed",
+                index_count,
+                instance_count,
+                first_index,
+                vertex_offset,
+                first_instance
+            ]),
+            Command::DrawIndirect {
+                buffer,
+                offset,
+                draw_count,
+                stride,
+            } => json!(["draw_indirect", buffer.as_raw(), offset, draw_count, stride]),
+            Command::DrawIndirectCount {
+                buffer,
+                offset,
+                count_buffer,
+                count_buffer_offset,
+                max_draw_count,
+                stride,
+            } => json!([
+                "draw_indirect_count",
+                buffer.as_raw(),
+                offset,
+                count_buffer.as_raw(),
+                count_buffer_offset,
+                max_draw_count,
+                stride
+            ]),
+            Command::DrawIndexedIndirect {
+                buffer,
+                offset,
+                draw_count,
+                stride,
+            } => json!(["draw_indexed_indirect", buffer.as_raw(), offset, draw_count, stride]),
+            Command::DrawIndexedIndirectCount {
+                buffer,
+                offset,
+                count_buffer,
+                count_buffer_offset,
+                max_draw_count,
+                stride,
+            } => json!([
+                "draw_indexed_indirect_count",
+                buffer.as_raw(),
+                offset,
+                count_buffer.as_raw(),
+                count_buffer_offset,
+                max_draw_count,
+                stride
+            ]),
+            Command::DispatchGroups { x, y, z } => json!(["dispatch", x, y, z]),
+            Command::DispatchIndirect { buffer, offset } => {
+                json!(["dispatch_indirect", buffer.as_raw(), offset])
+            }
         };
         self.0.push(json!({"cb": cb.as_raw(), "call": call}));
     }
@@ -132,8 +200,25 @@ fn command_sequence_binary_fixture() {
         api.fill_buffer(vk::Buffer::from_raw(21), Some((4, 16)), 42)
             .unwrap();
         api.clear_color_image(vk::Image::from_raw(40), 4, 6);
+        api.draw(3, 1, 0, 0);
+        api.draw_indexed(6, 1, 0, 0, 0);
+        api.draw_indirect(vk::Buffer::from_raw(50), 0, 1, 20);
+        api.draw_indirect_count(vk::Buffer::from_raw(50), 0, vk::Buffer::from_raw(51), 0, 4, 20);
+        api.draw_indexed_indirect(vk::Buffer::from_raw(52), 0, 1, 20);
+        api.draw_indexed_indirect_count(
+            vk::Buffer::from_raw(52),
+            0,
+            vk::Buffer::from_raw(51),
+            0,
+            4,
+            20,
+        );
+        api.dispatch_groups_3d(8, 8, 1);
+        api.dispatch_threads_3d(64, 64, 1, 8, 8, 1);
+        api.dispatch_indirect(vk::Buffer::from_raw(53), 0);
+        assert_eq!(api.draw_call_count(), 9);
     }
-    assert_eq!(backend.0.len(), 14);
+    assert_eq!(backend.0.len(), 23);
     assert_eq!(
         backend.0[1]["call"],
         json!(["viewport", 0.0, 1080.0, 1920.0, -1080.0, 0.0, 1.0])

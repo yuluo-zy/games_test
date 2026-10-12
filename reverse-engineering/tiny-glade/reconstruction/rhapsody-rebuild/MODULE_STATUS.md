@@ -23,3 +23,15 @@
 整体复验状态：passed_current_candidate_functional_scope。见[统一验收记录](evidence/functional-project-validation.json)。
 
 原55个PDB路径只作为结构清单，见evidence/original-structure.json；新增候选接口、字段编码和性能策略需独立对照。
+
+## 2026-10-13 缺失函数补全
+
+对照 `skeleton-enriched/B/crates/rhapsody` 骨架函数清单（rg/raw/managed），按用户授权按清单顺序补全缺失函数约 200 个；新增候选接口已接入真实类型，不另开 candidate crate。交付证据见 [missing-functions-completion-2026-10-13.json](evidence/missing-functions-completion-2026-10-13.json)。
+
+- **rg**：RenderPassApi draw/dispatch 9 命令 + 调用计数（此前判定最大功能缺口）；PGO 全套（PassPgoNameId/Duration/Stats）；ExportedRenderGraphResources/ExecutedRenderGraph；Handle/ExportableResource/create_resource_handle；ResourceInfo extract_* 拆出；Parity/Temporal；RenderGraphRecorder/PassResourceRef/ensure_active_cb；VulkanGraphSession wait_submits_done/帧时长/顶层时间戳。
+- **raw**：GraphicsDevice 候选包装（资源创建/屏障下发/扩展支持/内置采样器）+ create_raw_device/Queue；RasterPipelineOpts 29 setter/getter+checked；Buffer 持久映射 mapped_slice_mut；SubmitInfo/SubmissionEngine；instance 黑名单系列；descriptor/barrier/binding/command_buffer 若干。
+- **managed**：GpuOwned 全族、ManagedHandle/ManagedRef/ManagedResourceChecksum；ManagedResourceMeta/owning_device/throw_out_managed_resource/get_maybe_tracked；SwapchainInner 包装；纹理视图辅助。
+
+验证：`cargo test --locked` 69 通过 0 失败（含此前因资产路径不可编译的 device_policy 5 个）；`cargo clippy --locked --all-targets -- -D warnings` 通过。本轮未重跑 GPU 探针（需 GPU 与 D:/ 原始资产）。
+
+**剩余 typed gap（需按原码取证才能实现）**：setup 命令缓冲体系（get_setup_cb_submit_info/with_setup_cb）、full_screen_exclusive（SwapchainInner::set_fullscreen_exclusive）、纹理暂存上传（init_texture_data/update_texture）。上述新增候选接口与原完整 ABI/行为等价性仍独立验收。

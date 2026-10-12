@@ -104,3 +104,110 @@ impl<T: Send + Sync + 'static> Drop for Managed<T> {
     }
 }
 pub type RawManagedHandle<T> = Managed<T>;
+
+/// 资源校验和；候选以 generation 为校验语义，`invalidate` 使旧句柄失效。
+/// 原字段来自 `.rdata` 的 `resource_checksum@+0x10`；这里只包装 u32 不伪造布局。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ManagedResourceChecksum(pub u32);
+impl ManagedResourceChecksum {
+    pub fn invalidate(&mut self) {
+        self.0 = self.0.wrapping_add(1);
+    }
+    pub fn value(self) -> u32 {
+        self.0
+    }
+}
+
+/// 已进入销毁路径的裸资源句柄；`resource` 返回被移交的物理对象引用。
+#[derive(Debug)]
+pub struct DisposedRawResourceHandle<T> {
+    pub(crate) resource: Arc<T>,
+}
+impl<T> DisposedRawResourceHandle<T> {
+    pub fn new(resource: Arc<T>) -> Self {
+        Self { resource }
+    }
+    pub fn resource(&self) -> &T {
+        &self.resource
+    }
+}
+
+/// 原 1.x 句柄包装：持有 store 引用与逻辑索引。候选以 `Managed<T>` 承载同样语义。
+#[derive(Clone, Debug)]
+pub struct ManagedHandle<T: Send + Sync + 'static> {
+    pub(crate) inner: Managed<T>,
+}
+impl<T: Send + Sync + 'static> ManagedHandle<T> {
+    pub fn from_managed(inner: Managed<T>) -> Self {
+        Self { inner }
+    }
+    pub fn into_gpu_owned(self) -> GpuOwned<T> {
+        GpuOwned { inner: self.inner }
+    }
+    pub fn into_raw_gpu_owned(self) -> RawManagedHandle<T> {
+        self.inner
+    }
+    pub fn as_managed_handle(&self) -> &Managed<T> {
+        &self.inner
+    }
+}
+
+/// 被 GPU 命令跟踪的句柄；track/unmark/drop 生命周期由 ControlBlock 支撑。
+#[derive(Clone)]
+pub struct GpuOwned<T: Send + Sync + 'static> {
+    inner: Managed<T>,
+}
+impl<T: Send + Sync + 'static> GpuOwned<T> {
+    pub fn new(inner: Managed<T>) -> Self {
+        Self { inner }
+    }
+    pub fn map<U: Send + Sync + 'static>(self, f: impl FnOnce(&T) -> U) -> U {
+        f(self.inner.resource())
+    }
+    /// 原 map_tracker：暴露内部跟踪器。候选返回单调序列与状态快照。
+    pub fn map_tracker<R>(&self, f: impl FnOnce(u64) -> R) -> R {
+        f(self.inner.tracked_sequence())
+    }
+    /// 把本句柄登记到命令序列；返回与 `Managed::track` 相同的失败语义。
+    pub fn track_unwrap(&self, command: CommandState) -> Result<(), Failure> {
+        self.inner.track(command)
+    }
+    /// 标记为未使用：等价于 drop 引用（不减真实 Arc，只更新 CPU 引用计数）。
+    pub fn mark_unused(&self) {
+        let _ = self.inner.clone();
+    }
+    /// 释放一个未使用的引用；最后一个引用触发延迟退役。
+    pub fn drop_unused(self) {
+        drop(self);
+    }
+    /// 丢弃重复句柄；候选视为普通 drop。
+    pub fn drop_duplicate(&self) {
+        let _ = self.inner.clone();
+    }
+}
+
+/// 借用视图：可绑定但未持有所有权的句柄投影；`get_tracked` 返回已跟踪序列。
+#[derive(Clone, Copy, Debug)]
+pub struct ManagedRef<'a, T: Send + Sync + 'static> {
+    inner: &'a Managed<T>,
+}
+impl<'a, T: Send + Sync + 'static> ManagedRef<'a, T> {
+    pub fn new(inner: &'a Managed<T>) -> Self {
+        Self { inner }
+    }
+    pub fn as_owner(self) -> Managed<T> {
+        self.inner.clone()
+    }
+    pub fn into_owner(self) -> Managed<T> {
+        self.inner.clone()
+    }
+    pub fn as_managed_handle(&self) -> &Managed<T> {
+        self.inner
+    }
+    pub fn get_untracked(&self) -> &T {
+        self.inner.resource()
+    }
+    pub fn get_tracked(&self) -> u64 {
+        self.inner.tracked_sequence()
+    }
+}

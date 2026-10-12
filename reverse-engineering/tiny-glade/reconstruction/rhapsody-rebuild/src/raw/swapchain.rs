@@ -105,8 +105,13 @@ pub struct Swapchain {
     requested: Mutex<SwapchainDesc>,
     slots: Mutex<FrameSlots>,
     stale: AtomicBool,
+    any_presented: AtomicBool,
 }
 impl Swapchain {
+    /// 至少成功 present 过一次（含 SUBOPTIMAL）。
+    pub fn any_present_successful(&self) -> bool {
+        self.any_presented.load(Ordering::Acquire)
+    }
     /// # Safety
     /// 设备必须启用 VK_KHR_swapchain，surface 必须属于设备实例。
     pub unsafe fn new(
@@ -169,6 +174,7 @@ impl Swapchain {
                 slots: Vec::new(),
             }),
             stale: AtomicBool::new(true),
+            any_presented: AtomicBool::new(false),
         };
         result.recreate(extent, old)?;
         Ok(result)
@@ -460,6 +466,7 @@ impl Swapchain {
             .map_err(|_| Error::Invalid("队列锁失效"))?;
         let (suboptimal, stale) =
             present_result(unsafe { self.loader.queue_present(self.device.queue, &info) })?;
+        self.any_presented.store(true, Ordering::Release);
         if stale {
             self.mark_stale();
         }
@@ -718,6 +725,52 @@ impl Drop for AcquiredSwapchainFrame {
             lease.swapchain.mark_stale();
             self.sync.release();
         }
+    }
+}
+
+/// 获取帧与逐槽同步的租约；`into_sync_data` 暴露等待/信号/栅栏三元组。
+pub struct SwapchainLeaseSync {
+    frame: AcquiredSwapchainFrame,
+}
+impl SwapchainLeaseSync {
+    pub fn new(frame: AcquiredSwapchainFrame) -> Self {
+        Self { frame }
+    }
+    pub fn into_sync_data(&self) -> (vk::Semaphore, vk::Semaphore, vk::Fence) {
+        (
+            self.frame.acquire_semaphore(),
+            self.frame.render_semaphore(),
+            self.frame.submission_fence(),
+        )
+    }
+    pub fn frame(&self) -> &AcquiredSwapchainFrame {
+        &self.frame
+    }
+    pub fn into_frame(self) -> AcquiredSwapchainFrame {
+        self.frame
+    }
+}
+
+/// 已跟踪的交换链纹理租约；`into_present_source` 分离呈现租约与等待信号量。
+pub struct TrackedSwapchainTextureLease {
+    lease: SwapchainImageLease,
+    waits: Vec<vk::Semaphore>,
+}
+impl TrackedSwapchainTextureLease {
+    pub fn new(lease: SwapchainImageLease, waits: Vec<vk::Semaphore>) -> Self {
+        Self { lease, waits }
+    }
+    pub fn image(&self) -> vk::Image {
+        self.lease.image()
+    }
+    pub fn image_view(&self) -> vk::ImageView {
+        self.lease.image_view()
+    }
+    pub fn index(&self) -> u32 {
+        self.lease.index
+    }
+    pub fn into_present_source(self) -> (SwapchainImageLease, Vec<vk::Semaphore>) {
+        (self.lease, self.waits)
     }
 }
 

@@ -7,6 +7,81 @@ use super::{
 };
 use ash::vk;
 use std::sync::Arc;
+
+/// 1D 尺寸的全 mip 数量：32 - leading_zeros(size)。
+pub fn mip_count_1d(size: u32) -> u32 {
+    32 - size.leading_zeros()
+}
+
+/// 纹理采样数候选枚举；`to_vk` 映射到 Vulkan `SampleCountFlags`。
+/// 枚举名来自 PDB，具体排序与语义未逐证明，保留显式映射。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextureSampleCount {
+    One,
+    Two,
+    Four,
+    Eight,
+    Sixteen,
+    ThirtyTwo,
+    SixtyFour,
+}
+impl TextureSampleCount {
+    pub fn to_vk(self) -> vk::SampleCountFlags {
+        match self {
+            Self::One => vk::SampleCountFlags::TYPE_1,
+            Self::Two => vk::SampleCountFlags::TYPE_2,
+            Self::Four => vk::SampleCountFlags::TYPE_4,
+            Self::Eight => vk::SampleCountFlags::TYPE_8,
+            Self::Sixteen => vk::SampleCountFlags::TYPE_16,
+            Self::ThirtyTwo => vk::SampleCountFlags::TYPE_32,
+            Self::SixtyFour => vk::SampleCountFlags::TYPE_64,
+        }
+    }
+}
+
+/// 线性初始数据的逐层迭代器；每次 `next` 返回一层的数据切片。
+/// 原 `LinearInitialDataIter` 从连续内存按 mip 偏移切分；候选按分配步进。
+pub struct LinearInitialDataIter<'a> {
+    data: &'a [u8],
+    step: usize,
+}
+impl<'a> LinearInitialDataIter<'a> {
+    pub fn new(data: &'a [u8], step: usize) -> Self {
+        Self {
+            data,
+            step: step.max(1),
+        }
+    }
+}
+impl<'a> Iterator for LinearInitialDataIter<'a> {
+    type Item = &'a [u8];
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.data.is_empty() {
+            return None;
+        }
+        let take = self.step.min(self.data.len());
+        let (head, rest) = self.data.split_at(take);
+        self.data = rest;
+        Some(head)
+    }
+}
+
+/// 构建 `ImageCreateInfo`；`Texture::new` 内联的同构造被提取为可复用入口。
+pub fn get_image_create_info(desc: &TextureDesc) -> vk::ImageCreateInfo<'_> {
+    vk::ImageCreateInfo::default()
+        .flags(desc.flags)
+        .image_type(desc.image_type)
+        .format(desc.format)
+        .extent(desc.extent)
+        .mip_levels(desc.mip_levels)
+        .array_layers(desc.array_layers)
+        .samples(desc.samples)
+        .tiling(vk::ImageTiling::OPTIMAL)
+        .usage(desc.usage)
+        .sharing_mode(vk::SharingMode::EXCLUSIVE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TextureDesc {
     pub extent: vk::Extent3D,
@@ -34,6 +109,84 @@ impl TextureDesc {
             array_layers: 1,
             samples: vk::SampleCountFlags::TYPE_1,
         }
+    }
+    /// 全字段构造；默认 2D 单 mip 单层采样纹理，再由调用方链式设置用途。
+    pub fn new(extent: vk::Extent3D, format: vk::Format) -> Self {
+        Self {
+            extent,
+            format,
+            usage: vk::ImageUsageFlags::SAMPLED,
+            image_type: if extent.depth > 1 {
+                vk::ImageType::TYPE_3D
+            } else {
+                vk::ImageType::TYPE_2D
+            },
+            flags: vk::ImageCreateFlags::empty(),
+            mip_levels: 1,
+            array_layers: 1,
+            samples: vk::SampleCountFlags::TYPE_1,
+        }
+    }
+    /// 原 `array_elements`：数组层数（候选字段名 `array_layers`）。
+    pub fn array_elements(&self) -> u32 {
+        self.array_layers
+    }
+    pub fn sample_count(&self) -> vk::SampleCountFlags {
+        self.samples
+    }
+    /// 整除 extent 的三分量；除数 0 保留原值（防御）。
+    pub fn div_up_extent(&self, divisor: u32) -> vk::Extent3D {
+        vk::Extent3D {
+            width: if divisor == 0 {
+                self.extent.width
+            } else {
+                self.extent.width.div_ceil(divisor)
+            },
+            height: if divisor == 0 {
+                self.extent.height
+            } else {
+                self.extent.height.div_ceil(divisor)
+            },
+            depth: if divisor == 0 {
+                self.extent.depth
+            } else {
+                self.extent.depth.div_ceil(divisor)
+            },
+        }
+    }
+    pub fn div_extent(&self, divisor: u32) -> vk::Extent3D {
+        vk::Extent3D {
+            width: self
+                .extent
+                .width
+                .checked_div(divisor)
+                .unwrap_or(self.extent.width),
+            height: self
+                .extent
+                .height
+                .checked_div(divisor)
+                .unwrap_or(self.extent.height),
+            depth: self
+                .extent
+                .depth
+                .checked_div(divisor)
+                .unwrap_or(self.extent.depth),
+        }
+    }
+    /// 全 mip 链长度；`all_mip_levels` 的只读投影。
+    pub fn full_mip_chain_length(&self) -> u32 {
+        32 - self
+            .extent
+            .width
+            .max(self.extent.height)
+            .max(self.extent.depth)
+            .leading_zeros()
+    }
+    /// 是否需要 `MUTABLE_FORMAT` 才能以不同格式采样：仅纯色格式（aspect 为 COLOR）
+    /// 且已有用途含 `SAMPLED` 时才允许，且必须显式声明可变格式标志。
+    pub fn sampled_with_different_format(&self) -> bool {
+        self.usage.contains(vk::ImageUsageFlags::SAMPLED)
+            && vk_format_valid_aspect_flags(self.format) == vk::ImageAspectFlags::COLOR
     }
     pub fn new_2d_array(width: u32, height: u32, layers: u32, format: vk::Format) -> Self {
         Self {
@@ -107,6 +260,7 @@ pub struct TextureViewDesc {
     pub level_count: u32,
     pub base_layer: u32,
     pub layer_count: u32,
+    pub usage: vk::ImageUsageFlags,
 }
 impl TextureViewDesc {
     pub fn new(texture: &TextureDesc) -> Self {
@@ -124,7 +278,15 @@ impl TextureViewDesc {
             level_count: texture.mip_levels,
             base_layer: 0,
             layer_count: texture.array_layers,
+            usage: texture.usage,
         }
+    }
+    /// 是否逐 mip 单独绑定：视图只覆盖单个 mip 层。
+    pub fn bind_individual_mips(&self) -> bool {
+        self.level_count == 1
+    }
+    pub fn usage(&self) -> vk::ImageUsageFlags {
+        self.usage
     }
 }
 pub struct Texture {
@@ -143,18 +305,7 @@ impl Texture {
         {
             return Err(Error::Invalid("纹理范围和层数必须非零"));
         }
-        let info = vk::ImageCreateInfo::default()
-            .flags(desc.flags)
-            .image_type(desc.image_type)
-            .format(desc.format)
-            .extent(desc.extent)
-            .mip_levels(desc.mip_levels)
-            .array_layers(desc.array_layers)
-            .samples(desc.samples)
-            .tiling(vk::ImageTiling::OPTIMAL)
-            .usage(desc.usage)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .initial_layout(vk::ImageLayout::UNDEFINED);
+        let info = get_image_create_info(desc);
         let handle = unsafe { device.device.create_image(&info, None) }?;
         let requirements = unsafe { device.device.get_image_memory_requirements(handle) };
         let allocation = match MemoryBlock::allocate(

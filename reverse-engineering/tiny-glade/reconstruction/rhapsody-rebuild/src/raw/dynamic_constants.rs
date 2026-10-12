@@ -21,6 +21,25 @@ impl DynamicConstantsChunk {
         }
         self.buffer.write_bytes(self.offset, bytes)
     }
+    /// 原入口名；与 `write_bytes` 同一实现。
+    pub fn write(&self, bytes: &[u8]) -> Result<()> {
+        self.write_bytes(bytes)
+    }
+    /// 用既有 buffer 与偏移构造带数据区段。
+    pub fn with_data(
+        buffer: Arc<Buffer>,
+        offset: u64,
+        size: u64,
+        bytes: &[u8],
+    ) -> Result<Self> {
+        let chunk = Self {
+            buffer,
+            offset,
+            size,
+        };
+        chunk.write_bytes(bytes)?;
+        Ok(chunk)
+    }
     pub fn device_address(&self) -> Result<vk::DeviceAddress> {
         self.buffer
             .device_address()?
@@ -135,6 +154,14 @@ impl DynamicConstants {
             offset: 0,
             size,
         })
+    }
+    /// 原入口名；与 `allocate` 同一 bump 分配语义。
+    pub fn push(&mut self, size: u64) -> Result<DynamicConstantsChunk> {
+        self.allocate(size)
+    }
+    /// 原入口名；与 `allocate_with_data` 同一实现。
+    pub fn push_slice(&mut self, bytes: &[u8]) -> Result<DynamicConstantsChunk> {
+        self.allocate_with_data(bytes)
     }
     /// 先等待 GPU，且只复用没有任何外部 chunk/descriptor 持有的页。
     pub fn reset(&mut self) -> Result<()> {

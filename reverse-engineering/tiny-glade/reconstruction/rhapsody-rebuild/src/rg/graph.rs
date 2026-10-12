@@ -58,6 +58,23 @@ pub struct ResourceDeclaration {
     pub descriptor: Descriptor,
     pub source: OriginSource,
 }
+
+/// 可导出资源载体；`raw()` 返回图内逻辑句柄，`index()` 返回逻辑索引。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExportableResource {
+    handle: super::resource::ResourceHandle,
+}
+impl ExportableResource {
+    pub fn new(handle: super::resource::ResourceHandle) -> Self {
+        Self { handle }
+    }
+    pub fn raw(&self) -> super::resource::ResourceHandle {
+        self.handle
+    }
+    pub fn index(&self) -> u32 {
+        self.handle.raw()
+    }
+}
 impl ResourceDeclaration {
     fn info_origin(&self) -> OriginKind {
         match self.source {
@@ -159,6 +176,15 @@ impl RenderGraph {
             source: origin.source,
         });
         Ok(handle)
+    }
+
+    /// 原入口名；与 `create_raw_resource` 同一实现，保留原名供 PDB 名消费者调用。
+    pub fn create_resource_handle(
+        &mut self,
+        name: impl Into<String>,
+        origin: super::resource::ResourceOrigin,
+    ) -> Result<super::resource::ResourceHandle, BuildError> {
+        self.create_raw_resource(name, origin)
     }
 
     pub(crate) fn check_handle(

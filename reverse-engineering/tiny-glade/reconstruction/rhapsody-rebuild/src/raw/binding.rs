@@ -106,3 +106,27 @@ pub unsafe fn bind_persistent_descriptor_set(
         )
     }
 }
+
+/// # Safety
+/// 与 `bind_persistent_descriptor_set` 同一底层绑定；保留原名供非持久路径调用。
+pub unsafe fn bind_descriptor_set(
+    device: &VulkanDevice,
+    command_buffer: vk::CommandBuffer,
+    point: vk::PipelineBindPoint,
+    layout: vk::PipelineLayout,
+    first_set: u32,
+    set: vk::DescriptorSet,
+    dynamic_offsets: &[u32],
+) {
+    unsafe {
+        bind_persistent_descriptor_set(
+            device,
+            command_buffer,
+            point,
+            layout,
+            first_set,
+            &[set],
+            dynamic_offsets,
+        )
+    }
+}

@@ -46,6 +46,12 @@ pub struct PassResourceAccessType<A> {
 }
 
 impl<A: PartialEq> PassResourceAccessType<A> {
+    pub fn new(synchronization_group: u32, access: A) -> Self {
+        Self {
+            synchronization_group,
+            access,
+        }
+    }
     /// 原私有函数 0x140bece70；保持分类器调用顺序和短路逻辑。
     pub fn can_be_concurrent_with(
         &self,

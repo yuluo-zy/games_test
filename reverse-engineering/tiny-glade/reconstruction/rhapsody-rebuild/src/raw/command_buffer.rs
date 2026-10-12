@@ -99,6 +99,50 @@ impl VulkanCommandPool {
             owners: vec![],
         })
     }
+    /// 回收一条命令缓冲：等待设备完成、reset 并清空其拥有者，供下一帧复用。
+    pub fn recycle(&self, command: &mut VulkanCommandBuffer) -> Result<(), vk::Result> {
+        command.reset()
+    }
+}
+
+/// 命令缓冲序号跟踪器：CPU 侧单调递增，供 managed 退役按"当前序号"入桶。
+#[derive(Debug, Default)]
+pub struct CommandBufferSeqTracker {
+    sequence: std::sync::atomic::AtomicU64,
+}
+impl CommandBufferSeqTracker {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// 原入口：当前（即将分配的）序号。
+    pub fn current(&self) -> u64 {
+        self.sequence.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    /// 原入口：分配新序号（返回分配到的值）。
+    pub fn track(&mut self) -> u64 {
+        self.sequence.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    }
+    pub fn set(&mut self, value: u64) {
+        self.sequence.store(value, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// 命令缓冲录制时的图形状态缓存；`record_default` 提供初始默认值。
+/// 候选只保留最少的深度/剔除/混合默认，具体默认策略由管线声明决定。
+#[derive(Clone, Copy, Debug)]
+pub struct CbGraphicsState {
+    pub depth_test: bool,
+    pub depth_write: bool,
+    pub cull_mode: vk::CullModeFlags,
+}
+impl CbGraphicsState {
+    pub fn record_default() -> Self {
+        Self {
+            depth_test: true,
+            depth_write: true,
+            cull_mode: vk::CullModeFlags::BACK,
+        }
+    }
 }
 impl Drop for VulkanCommandPool {
     fn drop(&mut self) {
@@ -164,6 +208,17 @@ impl VulkanCommandBuffer {
         self.recording = false;
         self.executable = true;
         Ok(())
+    }
+    /// # Safety
+    /// command 必须在合法录制状态（GRAPHICS 绑定点）。
+    pub unsafe fn set_stencil_reference(&self, value: u8) {
+        unsafe {
+            self.pool.device.device.cmd_set_stencil_reference(
+                self.handle,
+                vk::StencilFaceFlags::FRONT_AND_BACK,
+                u32::from(value),
+            )
+        }
     }
     pub fn keep_alive<T: Send + Sync + 'static>(&mut self, owner: Arc<T>) {
         self.owners.push(Box::new(owner))

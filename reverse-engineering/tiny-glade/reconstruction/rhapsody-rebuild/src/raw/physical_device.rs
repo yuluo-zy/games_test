@@ -296,7 +296,58 @@ impl PhysicalDevice {
         }
         Ok(output)
     }
+    /// 总宿主内存（非 DEVICE_LOCAL 堆之和）。
+    pub fn host_memory_bytes(&self) -> u64 {
+        self.memory.memory_heaps[..self.memory.memory_heap_count as usize]
+            .iter()
+            .filter(|h| !h.flags.contains(vk::MemoryHeapFlags::DEVICE_LOCAL))
+            .map(|h| h.size)
+            .sum()
+    }
+    /// 按供应商字符串查找首个匹配物理设备。
+    pub fn find_vendor_specific_device_handle(
+        &self,
+        vendors: &[&str],
+    ) -> Option<vk::PhysicalDevice> {
+        let name = self.name();
+        vendors
+            .iter()
+            .any(|vendor| name.to_lowercase().contains(&vendor.to_lowercase()))
+            .then_some(self.handle)
+    }
 }
+
+/// 通用 Vulkan 枚举助手：先查 count，再取数组。
+pub fn enumerate_vk_data<T: Clone>(
+    mut fill: impl FnMut(&mut u32, &mut Vec<T>) -> vk::Result,
+) -> Result<Vec<T>> {
+    let mut count = 0;
+    if fill(&mut count, &mut vec![]) != vk::Result::SUCCESS {
+        return Err(super::error::Error::Invalid("枚举数量查询失败"));
+    }
+    let mut output = Vec::with_capacity(count as usize);
+    if fill(&mut count, &mut output) != vk::Result::SUCCESS {
+        return Err(super::error::Error::Invalid("枚举数据查询失败"));
+    }
+    output.truncate(count as usize);
+    Ok(output)
+}
+
+/// 以空字符结尾的 C 字符数组 → String。
+pub fn string_from_c_array(bytes: &[std::ffi::c_char]) -> String {
+    let length = bytes
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(bytes.len());
+    unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(bytes.as_ptr().cast(), length)) }
+        .to_owned()
+}
+
+/// Vulkan 驱动版本编码：`major<<22 | minor<<12 | patch`。
+pub fn parse_driver_version(raw: u32) -> [u32; 3] {
+    [raw >> 22, (raw >> 12) & 0x3ff, raw & 0xfff]
+}
+
 pub fn enumerate_physical_devices(instance: Arc<VulkanInstance>) -> Result<Vec<PhysicalDevice>> {
     let handles = unsafe { instance.instance.enumerate_physical_devices() }?;
     Ok(handles

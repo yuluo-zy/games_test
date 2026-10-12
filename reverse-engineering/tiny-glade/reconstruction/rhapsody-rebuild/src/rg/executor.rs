@@ -668,3 +668,118 @@ impl ExecutionChain {
             .map_err(Error::Lifecycle)
     }
 }
+
+/// PGO 名称→编号映射。原作按 pass 名收集每 pass 统计；候选用 FNV-1a 生成稳定编号，
+/// 不声称等价于原内部字符串表的具体编号。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PassPgoNameId(pub u32);
+impl PassPgoNameId {
+    pub fn from_name(name: &str) -> Self {
+        let mut hash = 0x811c9dc5u32;
+        for byte in name.bytes() {
+            hash ^= u32::from(byte);
+            hash = hash.wrapping_mul(0x0100_0193);
+        }
+        Self(hash)
+    }
+}
+
+/// 单个 pass 的一次 PGO 时长观测。
+#[derive(Clone, Copy, Debug)]
+pub struct PassPgoDuration {
+    pub name: PassPgoNameId,
+    pub duration_ns: u64,
+}
+impl PassPgoDuration {
+    pub fn new(name: PassPgoNameId, duration_ns: u64) -> Self {
+        Self { name, duration_ns }
+    }
+}
+
+/// 跨帧聚合的 pass PGO 统计；reset 清空、extend 合并另一份统计。
+#[derive(Debug, Default)]
+pub struct PassPgoStats {
+    counts: std::collections::HashMap<PassPgoNameId, u64>,
+    total_ns: std::collections::HashMap<PassPgoNameId, u64>,
+}
+impl PassPgoStats {
+    pub fn reset(&mut self) {
+        self.counts.clear();
+        self.total_ns.clear();
+    }
+    pub fn extend(&mut self, other: &Self) {
+        for (id, count) in &other.counts {
+            *self.counts.entry(*id).or_default() += count;
+        }
+        for (id, ns) in &other.total_ns {
+            *self.total_ns.entry(*id).or_default() += ns;
+        }
+    }
+    pub fn duration_ns(&self, id: PassPgoNameId) -> u64 {
+        self.total_ns.get(&id).copied().unwrap_or(0)
+    }
+    pub fn call_count(&self, id: PassPgoNameId) -> u64 {
+        self.counts.get(&id).copied().unwrap_or(0)
+    }
+    pub fn record(&mut self, duration: PassPgoDuration) {
+        *self.counts.entry(duration.name).or_default() += 1;
+        *self.total_ns.entry(duration.name).or_default() += duration.duration_ns;
+    }
+}
+
+/// 执行后按逻辑索引提取的导出资源；物理 token 由后端资源表持有。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExportedResource {
+    pub logical: u32,
+    pub token: u64,
+}
+impl ExportedResource {
+    pub fn new(logical: u32, token: u64) -> Self {
+        Self { logical, token }
+    }
+}
+
+/// 一次执行导出的资源容器；`take_exported` 一次取全部，`take_resource` 按逻辑索引取单个。
+#[derive(Clone, Debug, Default)]
+pub struct ExportedRenderGraphResources {
+    resources: Vec<ExportedResource>,
+}
+impl ExportedRenderGraphResources {
+    pub fn with_resources(resources: impl IntoIterator<Item = ExportedResource>) -> Self {
+        Self {
+            resources: resources.into_iter().collect(),
+        }
+    }
+    pub fn take_exported(&mut self) -> Vec<ExportedResource> {
+        std::mem::take(&mut self.resources)
+    }
+    pub fn take_resource(&mut self, logical: u32) -> Option<ExportedResource> {
+        let index = self.resources.iter().position(|r| r.logical == logical)?;
+        Some(self.resources.swap_remove(index))
+    }
+    pub fn len(&self) -> usize {
+        self.resources.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.resources.is_empty()
+    }
+}
+
+/// 已编译并可退役的执行结果；retire 触发退役回调（资源池回收等）。
+pub struct ExecutedRenderGraph {
+    pub execution: GraphExecution,
+    pub retire: Vec<crate::rg::graph::RetireCallback>,
+}
+impl ExecutedRenderGraph {
+    pub fn new(execution: GraphExecution, retire: Vec<crate::rg::graph::RetireCallback>) -> Self {
+        Self { execution, retire }
+    }
+    pub fn retire(&mut self) {
+        for callback in std::mem::take(&mut self.retire) {
+            callback();
+        }
+    }
+    pub fn take_retire(&mut self) -> Vec<crate::rg::graph::RetireCallback> {
+        std::mem::take(&mut self.retire)
+    }
+}

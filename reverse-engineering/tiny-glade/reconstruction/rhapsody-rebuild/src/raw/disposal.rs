@@ -68,11 +68,30 @@ impl CommandBufferDisposalBuckets {
     pub fn pending(&self) -> usize {
         self.buckets.values().map(Vec::len).sum()
     }
+    /// 当前已注册的序号集合（用于遍历排空）。
+    pub fn pending_sequences(&self) -> Vec<u64> {
+        self.buckets.keys().copied().collect()
+    }
     pub fn drain_after_idle(&mut self) -> Vec<DestroyAction> {
         std::mem::take(&mut self.buckets)
             .into_values()
             .flatten()
             .collect()
+    }
+    /// 原 GraphicsDevice::immediate_empty_bucket：立即排空给定序号的桶（不论是否为空）。
+    pub fn immediate_empty_bucket(&mut self, sequence: u64) -> Result<usize, Failure> {
+        self.drain_completed_sequence(sequence)
+    }
+}
+
+/// 单桶销毁句柄；`dispose` 立即执行该桶的延迟销毁动作。
+pub struct DisposalBucket<'a>(&'a mut CommandBufferDisposalBuckets);
+impl<'a> DisposalBucket<'a> {
+    pub fn new(buckets: &'a mut CommandBufferDisposalBuckets) -> Self {
+        Self(buckets)
+    }
+    pub fn dispose(&mut self, sequence: u64) -> Result<usize, Failure> {
+        self.0.drain_completed_sequence(sequence)
     }
 }
 impl Drop for CommandBufferDisposalBuckets {

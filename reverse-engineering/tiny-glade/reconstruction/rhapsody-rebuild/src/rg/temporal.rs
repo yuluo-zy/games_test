@@ -7,6 +7,63 @@ use super::{
 use std::collections::{HashMap, HashSet};
 use ustr::Ustr;
 pub const TEMPORAL_EXPORT_ACCESS: u8 = 0x37;
+
+/// 跨帧双缓冲的奇偶标记；0/1 两态，`flip` 翻转。`get_and_flip_parity` 内联等价逻辑，
+/// 本类型只是把该位域包成具名薄包装，供需要独立持有 parity 的调用者使用。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Parity(pub u32);
+impl Parity {
+    pub fn flip(self) -> Self {
+        Self(1u32.wrapping_sub(self.0))
+    }
+    pub fn value(self) -> u32 {
+        self.0
+    }
+}
+
+/// 一对跨帧值按当前 parity 排序；`split_pair` 还原成 `(当前帧值, 上一帧值)`。
+/// 原入口的 pair 交换发生在 `get_or_create_temporal_pair`；本类型把结果結构化，
+/// 不改变已有调用点的奇偶选择顺序。
+#[derive(Clone, Copy, Debug)]
+pub struct Temporal<T> {
+    current: T,
+    previous: T,
+    parity: Parity,
+}
+impl<T> Temporal<T> {
+    pub fn new(current: T, previous: T, parity: Parity) -> Self {
+        Self {
+            current,
+            previous,
+            parity,
+        }
+    }
+    pub fn into_inner(self) -> (T, T) {
+        (self.current, self.previous)
+    }
+    pub fn as_ref(&self) -> Temporal<&T> {
+        Temporal {
+            current: &self.current,
+            previous: &self.previous,
+            parity: self.parity,
+        }
+    }
+    pub fn split_pair(self) -> (T, T, Parity) {
+        (self.current, self.previous, self.parity)
+    }
+    pub fn parity(&self) -> Parity {
+        self.parity
+    }
+    /// parity==0 保持 (current, previous) 原序；parity==1 交换，对应
+    /// `get_or_create_temporal_pair`/`_owned_pair` 里原有的手动 if/else 排序。
+    pub fn into_pair_ordering(self) -> (T, T, Parity) {
+        if self.parity.value() == 0 {
+            (self.current, self.previous, self.parity)
+        } else {
+            (self.previous, self.current, self.parity)
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TemporalResource {
     pub descriptor: Descriptor,
@@ -229,15 +286,12 @@ impl TemporalRenderGraphState {
         // 第二个失败时第一个 mutation 保留，两者成功后才改变 parity。
         let parity = self.get_and_flip_parity(name);
         let both_reused = first.reused && second.reused;
-        let (first, second) = if parity == 0 {
-            (first, second)
-        } else {
-            (second, first)
-        };
+        let (first, second, parity) =
+            Temporal::new(first, second, Parity(parity)).into_pair_ordering();
         Ok(TemporalPair {
             first,
             second,
-            parity,
+            parity: parity.value(),
             both_reused,
         })
     }
@@ -255,15 +309,12 @@ impl TemporalRenderGraphState {
         let second = self.get_or_create_owned(graph, &format!("{name}:1"), descriptor, owner)?;
         let parity = self.get_and_flip_parity(name);
         let both_reused = first.reused && second.reused;
-        let (first, second) = if parity == 0 {
-            (first, second)
-        } else {
-            (second, first)
-        };
+        let (first, second, parity) =
+            Temporal::new(first, second, Parity(parity)).into_pair_ordering();
         Ok(TemporalPair {
             first,
             second,
-            parity,
+            parity: parity.value(),
             both_reused,
         })
     }

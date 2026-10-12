@@ -14,6 +14,34 @@ impl ResourceHandle {
     }
 }
 
+/// 携带描述符的资源句柄；`desc()` 返回声明期描述符，`clone_unchecked()` 不做
+/// 引用计数/有效性检查地复制（原 197 处内联实例的廉价克隆语义）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Handle {
+    pub resource: ResourceHandle,
+    pub descriptor: Descriptor,
+}
+impl Handle {
+    pub fn new(resource: ResourceHandle, descriptor: Descriptor) -> Self {
+        Self {
+            resource,
+            descriptor,
+        }
+    }
+    pub fn desc(&self) -> &Descriptor {
+        &self.descriptor
+    }
+    pub fn raw(&self) -> ResourceHandle {
+        self.resource
+    }
+    pub fn clone_unchecked(&self) -> Self {
+        Self {
+            resource: self.resource,
+            descriptor: self.descriptor,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResourceType {
     Image,

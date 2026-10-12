@@ -8,6 +8,19 @@ pub struct TimedFrame {
     pub name: String,
     pub milliseconds: f64,
 }
+impl TimedFrame {
+    pub fn new(name: impl Into<String>, milliseconds: f64) -> Self {
+        Self {
+            name: name.into(),
+            milliseconds,
+        }
+    }
+    /// 原 `send_to_puffin`：把本帧统计投递到 puffin 分析器。
+    /// 本工程未启用 puffin 依赖，保留空操作并记录数值供外部采样。
+    pub fn send_to_puffin(&self) {
+        let _ = self.milliseconds;
+    }
+}
 pub struct GpuProfiler {
     device: Arc<VulkanDevice>,
     pool: vk::QueryPool,

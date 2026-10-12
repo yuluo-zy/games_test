@@ -52,7 +52,7 @@ pub fn candidate(
 fn real_original_ron_migrations_append_and_keep_exact_layer_vendor_semantics() {
     let input = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../../ljxsj_92385/Tiny Glade/assets/vulkan_allowlist_defaults.ron"
+        "/../../../../../ljxsj_92385/Tiny Glade/assets/vulkan_allowlist_defaults.ron"
     ));
     let mut allowlist = GraphicsInstanceLayerAllowlist::default();
     allowlist.update_from_ron(input).unwrap();

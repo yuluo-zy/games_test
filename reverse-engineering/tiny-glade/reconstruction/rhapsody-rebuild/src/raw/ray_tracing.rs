@@ -54,3 +54,34 @@ impl Drop for AccelerationStructure {
         }
     }
 }
+
+/// 加速结构中的几何体实例；候选实现仅作额外适配，不属于已证实原作机制
+/// （四重证据确认本构建无硬件光追，GI 走 obvhs 软件 CW-BVH）。
+#[derive(Clone, Debug)]
+pub struct GeometryInstance {
+    pub transform: [f32; 12],
+    pub instance_custom_index: u32,
+    pub mask: u8,
+    pub instance_shader_binding_table_record_offset: u32,
+    pub flags: vk::GeometryInstanceFlagsKHR,
+    pub acceleration_structure: vk::AccelerationStructureKHR,
+}
+impl GeometryInstance {
+    pub fn new(
+        transform: [f32; 12],
+        mask: u8,
+        acceleration_structure: vk::AccelerationStructureKHR,
+    ) -> Self {
+        Self {
+            transform,
+            instance_custom_index: 0,
+            mask,
+            instance_shader_binding_table_record_offset: 0,
+            flags: vk::GeometryInstanceFlagsKHR::empty(),
+            acceleration_structure,
+        }
+    }
+    pub fn set_mask(&mut self, mask: u8) {
+        self.mask = mask;
+    }
+}

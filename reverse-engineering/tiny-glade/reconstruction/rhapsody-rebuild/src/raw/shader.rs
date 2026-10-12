@@ -190,6 +190,211 @@ pub struct RasterPipelineDesc {
     pub depth_compare: vk::CompareOp,
     pub blend_attachments: Vec<vk::PipelineColorBlendAttachmentState>,
 }
+impl RasterPipelineDesc {
+    /// 构造带必需 vertex/layout 的默认图形管线描述；其余固定状态由调用方填写。
+    pub fn new(vertex: Arc<ShaderModule>, layout: Arc<PipelineLayout>) -> Self {
+        Self {
+            vertex,
+            fragment: None,
+            entry: CString::new("vs_main").unwrap_or_default(),
+            fragment_entry: None,
+            layout,
+            render_pass: vk::RenderPass::null(),
+            render_pass_owner: Arc::from(Box::new(()) as Box<dyn Send + Sync>),
+            subpass: 0,
+            vertex_bindings: Vec::new(),
+            vertex_attributes: Vec::new(),
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
+            polygon_mode: vk::PolygonMode::FILL,
+            cull_mode: vk::CullModeFlags::BACK,
+            front_face: vk::FrontFace::COUNTER_CLOCKWISE,
+            samples: vk::SampleCountFlags::TYPE_1,
+            depth_test: false,
+            depth_write: false,
+            depth_compare: vk::CompareOp::LESS_OR_EQUAL,
+            blend_attachments: Vec::new(),
+        }
+    }
+}
+
+/// 固定状态选项构建器。getter 返回 `Option`（未设置），`or_err` 在缺失时报错，
+/// `set_*` 直接覆盖，`set_*_checked` 先验证取值再写入。
+#[derive(Clone, Debug, Default)]
+pub struct RasterPipelineOpts {
+    pub topology: Option<vk::PrimitiveTopology>,
+    pub polygon_mode: Option<vk::PolygonMode>,
+    pub cull_mode: Option<vk::CullModeFlags>,
+    pub front_face: Option<vk::FrontFace>,
+    pub samples: Option<vk::SampleCountFlags>,
+    pub depth_test: Option<bool>,
+    pub depth_write: Option<bool>,
+    pub depth_compare: Option<vk::CompareOp>,
+    pub stencil_test: Option<bool>,
+    pub stencil_pass_op: Option<vk::StencilOp>,
+    pub stencil_compare_op: Option<vk::CompareOp>,
+    pub stencil_compare_mask: Option<u32>,
+    pub blend_mode: Option<u8>,
+    pub line_width: Option<f32>,
+}
+impl RasterPipelineOpts {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn topology(&self) -> Option<vk::PrimitiveTopology> {
+        self.topology
+    }
+    pub fn topology_or_err(&self) -> Result<vk::PrimitiveTopology, vk::Result> {
+        self.topology.ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
+    }
+    pub fn set_topology(&mut self, value: vk::PrimitiveTopology) {
+        self.topology = Some(value);
+    }
+    pub fn set_topology_checked(&mut self, value: vk::PrimitiveTopology) -> Result<(), vk::Result> {
+        match value {
+            vk::PrimitiveTopology::POINT_LIST
+            | vk::PrimitiveTopology::LINE_LIST
+            | vk::PrimitiveTopology::TRIANGLE_LIST
+            | vk::PrimitiveTopology::TRIANGLE_STRIP => {
+                self.set_topology(value);
+                Ok(())
+            }
+            _ => Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
+        }
+    }
+    pub fn polygon_mode(&self) -> Option<vk::PolygonMode> {
+        self.polygon_mode
+    }
+    pub fn set_polygon_mode(&mut self, value: vk::PolygonMode) {
+        self.polygon_mode = Some(value);
+    }
+    pub fn set_polygon_mode_checked(&mut self, value: vk::PolygonMode) -> Result<(), vk::Result> {
+        match value {
+            vk::PolygonMode::FILL | vk::PolygonMode::LINE => self.set_polygon_mode(value),
+            _ => return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
+        }
+        Ok(())
+    }
+    pub fn cull_mode(&self) -> Option<vk::CullModeFlags> {
+        self.cull_mode
+    }
+    pub fn cull_mode_or_err(&self) -> Result<vk::CullModeFlags, vk::Result> {
+        self.cull_mode.ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
+    }
+    pub fn set_cull_mode(&mut self, value: vk::CullModeFlags) {
+        self.cull_mode = Some(value);
+    }
+    pub fn set_cull_mode_checked(&mut self, value: vk::CullModeFlags) -> Result<(), vk::Result> {
+        if value.contains(vk::CullModeFlags::NONE)
+            || value.contains(vk::CullModeFlags::FRONT)
+            || value.contains(vk::CullModeFlags::BACK)
+            || value.contains(vk::CullModeFlags::FRONT_AND_BACK)
+        {
+            self.set_cull_mode(value);
+            Ok(())
+        } else {
+            Err(vk::Result::ERROR_INITIALIZATION_FAILED)
+        }
+    }
+    pub fn depth_compare_mode(&self) -> Option<vk::CompareOp> {
+        self.depth_compare
+    }
+    pub fn depth_compare_mode_or_err(&self) -> Result<vk::CompareOp, vk::Result> {
+        self.depth_compare.ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
+    }
+    pub fn set_depth_compare_mode(&mut self, value: vk::CompareOp) {
+        self.depth_compare = Some(value);
+    }
+    pub fn set_depth_compare_mode_checked(&mut self, value: vk::CompareOp) -> Result<(), vk::Result> {
+        self.set_depth_compare_mode(value);
+        Ok(())
+    }
+    pub fn set_depth_write(&mut self, value: bool) {
+        self.depth_write = Some(value);
+    }
+    pub fn set_depth_write_checked(&mut self, value: bool) -> Result<(), vk::Result> {
+        self.set_depth_write(value);
+        Ok(())
+    }
+    pub fn set_depth_test_enable(&mut self, value: bool) {
+        self.depth_test = Some(value);
+    }
+    pub fn set_depth_test_enable_checked(&mut self, value: bool) -> Result<(), vk::Result> {
+        self.set_depth_test_enable(value);
+        Ok(())
+    }
+    pub fn set_stencil_test_enable(&mut self, value: bool) {
+        self.stencil_test = Some(value);
+    }
+    pub fn set_stencil_test_enable_checked(&mut self, value: bool) -> Result<(), vk::Result> {
+        self.set_stencil_test_enable(value);
+        Ok(())
+    }
+    pub fn set_stencil_pass_op(&mut self, value: vk::StencilOp) {
+        self.stencil_pass_op = Some(value);
+    }
+    pub fn set_stencil_pass_op_checked(&mut self, value: vk::StencilOp) -> Result<(), vk::Result> {
+        match value {
+            vk::StencilOp::KEEP
+            | vk::StencilOp::REPLACE
+            | vk::StencilOp::INCREMENT_AND_CLAMP
+            | vk::StencilOp::DECREMENT_AND_CLAMP => self.set_stencil_pass_op(value),
+            _ => return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
+        }
+        Ok(())
+    }
+    pub fn set_stencil_compare_op(&mut self, value: vk::CompareOp) {
+        self.stencil_compare_op = Some(value);
+    }
+    pub fn set_stencil_compare_op_checked(&mut self, value: vk::CompareOp) -> Result<(), vk::Result> {
+        self.set_stencil_compare_op(value);
+        Ok(())
+    }
+    pub fn set_stencil_compare_mask(&mut self, value: u32) {
+        self.stencil_compare_mask = Some(value);
+    }
+    pub fn set_stencil_compare_mask_checked(&mut self, value: u32) -> Result<(), vk::Result> {
+        self.set_stencil_compare_mask(value);
+        Ok(())
+    }
+    /// blend_mode 编码与原 raster 状态 +0x1b 高两位一致；`get_vk_blend_mode` 展开成完整附件。
+    pub fn set_blend_mode(&mut self, value: u8) {
+        self.blend_mode = Some(value);
+    }
+    pub fn set_blend_mode_checked(&mut self, value: u8) -> Result<(), vk::Result> {
+        self.set_blend_mode(value);
+        Ok(())
+    }
+    /// 合并到 `RasterPipelineDesc`；缺失字段保持 desc 原值。
+    pub fn apply_to(&self, desc: &mut RasterPipelineDesc) {
+        if let Some(v) = self.topology {
+            desc.topology = v;
+        }
+        if let Some(v) = self.polygon_mode {
+            desc.polygon_mode = v;
+        }
+        if let Some(v) = self.cull_mode {
+            desc.cull_mode = v;
+        }
+        if let Some(v) = self.front_face {
+            desc.front_face = v;
+        }
+        if let Some(v) = self.samples {
+            desc.samples = v;
+        }
+        if let Some(v) = self.depth_test {
+            desc.depth_test = v;
+        }
+        if let Some(v) = self.depth_write {
+            desc.depth_write = v;
+        }
+        if let Some(v) = self.depth_compare {
+            desc.depth_compare = v;
+        }
+        if let Some(blend) = self.blend_mode {
+            desc.blend_attachments = vec![get_vk_blend_mode(blend)];
+        }
+    }
+}
 pub struct VulkanPipeline {
     pub device: Arc<VulkanDevice>,
     pub handle: vk::Pipeline,
