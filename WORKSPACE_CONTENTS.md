@@ -36,6 +36,12 @@
 
 ## 大型分析数据快照（2026-10-12）
 
-新增全部还原候选、骨架、证据、文档和工具脚本。骨架中的原始PDB副本沿用“原始游戏文件仅本地保存”规则。超过GitHub普通单文件上限的`metadata-stage.pickle`与`index.sqlite3`以同目录`.gz`无损快照提交，原文件仍在本地；路径、大小与SHA256见`reverse-engineering/tiny-glade/tracking/git-large-file-snapshots.json`。
+新增全部还原候选、骨架、证据、文档和工具脚本。骨架中的原始PDB副本沿用“原始游戏文件仅本地保存”规则。超过GitHub普通单文件上限的`metadata-stage.pickle`与`index.sqlite3`以同目录`.gz`保留无损快照，原文件和快照均留在本地、不随本次交付推送；路径、大小与SHA256见`reverse-engineering/tiny-glade/tracking/git-large-file-snapshots.json`。
 
-新检出时，可用`gzip -dk 文件.gz`恢复原文件，再按清单核对SHA256。索引恢复后可用于已有task_queue；元数据快照用于既有分析脚本。源码候选仍为implemented_unverified，本次提交不构成编译、原码或业务验收。
+本地需要时，可用`gzip -dk 文件.gz`恢复原文件，再按清单核对SHA256。索引恢复后可用于已有task_queue；元数据快照用于既有分析脚本。源码候选仍为implemented_unverified，本次提交不构成编译、原码或业务验收。
+
+## 本次最终推送范围
+
+按用户最终选择，提交全部已还原源码、工作流/工具脚本、文档和有界交付证据。保留`abc-tools-52`与`abc-building-35`的共享Rust候选、A/B/C映射、中文注释、冻结清单、合同及独立审查报告。
+
+全量生成骨架`skeleton/A/B/C`与`skeleton-enriched`、全量PDB/符号/汇编/依赖dump、数据库、全量函数/文件/任务索引、自动队列快照与大数据压缩快照留在本地。原依赖Cargo锁及必要源码工作目录随交付保留。文档中的原始游戏、全量生成输入和绝对路径用于本地溯源，不表示这些输入文件随本次推送发布。完整全量提交另有本地Git备份`refs/codex-backups/full-generated-20261012`，未推送远端。
