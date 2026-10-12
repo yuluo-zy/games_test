@@ -1,0 +1,319 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bea680: 55                          	push	rbp
+140bea681: 41 57                       	push	r15
+140bea683: 41 56                       	push	r14
+140bea685: 41 55                       	push	r13
+140bea687: 41 54                       	push	r12
+140bea689: 56                          	push	rsi
+140bea68a: 57                          	push	rdi
+140bea68b: 53                          	push	rbx
+140bea68c: 48 81 ec 88 00 00 00        	sub	rsp, 0x88
+140bea693: 48 8d ac 24 80 00 00 00     	lea	rbp, [rsp + 0x80]
+140bea69b: 48 c7 45 00 fe ff ff ff     	mov	qword ptr [rbp], -0x2
+140bea6a3: 44 89 ce                    	mov	esi, r9d
+140bea6a6: 4c 89 c7                    	mov	rdi, r8
+140bea6a9: 49 89 d5                    	mov	r13, rdx
+140bea6ac: 49 89 ce                    	mov	r14, rcx
+140bea6af: e8 4c c3 02 00              	call	0x140c16a00 <.text+0xc15a00>
+140bea6b4: 84 c0                       	test	al, al
+140bea6b6: 88 45 f8                    	mov	byte ptr [rbp - 0x8], al
+140bea6b9: 74 60                       	je	0x140bea71b <.text+0xbe971b>
+140bea6bb: 4c 8d 25 f9 9c f2 01        	lea	r12, [rip + 0x1f29cf9]  # 0x142b143bb
+140bea6c2: 41 bf 3a 00 00 00           	mov	r15d, 0x3a
+140bea6c8: ba 3a 00 00 00              	mov	edx, 0x3a
+140bea6cd: 4c 89 e1                    	mov	rcx, r12
+140bea6d0: e8 4b f0 ff ff              	call	0x140be9720 <.text+0xbe8720>
+140bea6d5: 48 83 f8 01                 	cmp	rax, 0x1
+140bea6d9: 0f 85 b2 00 00 00           	jne	0x140bea791 <.text+0xbe9791>
+140bea6df: 49 89 d1                    	mov	r9, rdx
+140bea6e2: 48 85 d2                    	test	rdx, rdx
+140bea6e5: 74 3d                       	je	0x140bea724 <.text+0xbe9724>
+140bea6e7: 49 83 f9 3a                 	cmp	r9, 0x3a
+140bea6eb: 73 35                       	jae	0x140bea722 <.text+0xbe9722>
+140bea6ed: 48 8d 05 c7 9c f2 01        	lea	rax, [rip + 0x1f29cc7]  # 0x142b143bb
+140bea6f4: 41 80 3c 01 bf              	cmp	byte ptr [r9 + rax], -0x41
+140bea6f9: 7f 29                       	jg	0x140bea724 <.text+0xbe9724>
+140bea6fb: 48 8d 05 76 9d f2 01        	lea	rax, [rip + 0x1f29d76]  # 0x142b14478
+140bea702: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+140bea707: 48 8d 0d ad 9c f2 01        	lea	rcx, [rip + 0x1f29cad]  # 0x142b143bb
+140bea70e: ba 3a 00 00 00              	mov	edx, 0x3a
+140bea713: 45 31 c0                    	xor	r8d, r8d
+140bea716: e8 25 f2 ce 01              	call	0x1428d9940 <.text+0x28d8940>
+140bea71b: 31 c0                       	xor	eax, eax
+140bea71d: e9 d0 01 00 00              	jmp	0x140bea8f2 <.text+0xbe98f2>
+140bea722: 75 d7                       	jne	0x140bea6fb <.text+0xbe96fb>
+140bea724: 4c 8d 25 90 9c f2 01        	lea	r12, [rip + 0x1f29c90]  # 0x142b143bb
+140bea72b: 4c 89 e1                    	mov	rcx, r12
+140bea72e: 4c 89 ca                    	mov	rdx, r9
+140bea731: e8 ea ef ff ff              	call	0x140be9720 <.text+0xbe8720>
+140bea736: 48 83 f8 01                 	cmp	rax, 0x1
+140bea73a: 75 55                       	jne	0x140bea791 <.text+0xbe9791>
+140bea73c: 49 89 d0                    	mov	r8, rdx
+140bea73f: 49 83 c0 02                 	add	r8, 0x2
+140bea743: 74 39                       	je	0x140bea77e <.text+0xbe977e>
+140bea745: 49 83 f8 3a                 	cmp	r8, 0x3a
+140bea749: 73 31                       	jae	0x140bea77c <.text+0xbe977c>
+140bea74b: 48 8d 05 69 9c f2 01        	lea	rax, [rip + 0x1f29c69]  # 0x142b143bb
+140bea752: 41 80 3c 00 bf              	cmp	byte ptr [r8 + rax], -0x41
+140bea757: 7f 25                       	jg	0x140bea77e <.text+0xbe977e>
+140bea759: 48 8d 05 30 9d f2 01        	lea	rax, [rip + 0x1f29d30]  # 0x142b14490
+140bea760: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+140bea765: 48 8d 0d 4f 9c f2 01        	lea	rcx, [rip + 0x1f29c4f]  # 0x142b143bb
+140bea76c: ba 3a 00 00 00              	mov	edx, 0x3a
+140bea771: 41 b9 3a 00 00 00           	mov	r9d, 0x3a
+140bea777: e8 c4 f1 ce 01              	call	0x1428d9940 <.text+0x28d8940>
+140bea77c: 75 db                       	jne	0x140bea759 <.text+0xbe9759>
+140bea77e: 41 bf 38 00 00 00           	mov	r15d, 0x38
+140bea784: 49 29 d7                    	sub	r15, rdx
+140bea787: 4c 8d 25 2d 9c f2 01        	lea	r12, [rip + 0x1f29c2d]  # 0x142b143bb
+140bea78e: 4d 01 c4                    	add	r12, r8
+140bea791: 4c 89 6d d8                 	mov	qword ptr [rbp - 0x28], r13
+140bea795: 4c 8d 05 76 9e f2 01        	lea	r8, [rip + 0x1f29e76]   # 0x142b14612
+140bea79c: 4c 8d 2d 4d 9e f2 01        	lea	r13, [rip + 0x1f29e4d]  # 0x142b145f0
+140bea7a3: 66 66 66 66 2e 0f 1f 84 00 00 00 00 00      	nop	word ptr cs:[rax + rax]
+140bea7b0: 41 0f be 40 ff              	movsx	eax, byte ptr [r8 - 0x1]
+140bea7b5: 85 c0                       	test	eax, eax
+140bea7b7: 78 17                       	js	0x140bea7d0 <.text+0xbe97d0>
+140bea7b9: 49 ff c8                    	dec	r8
+140bea7bc: 83 f8 5c                    	cmp	eax, 0x5c
+140bea7bf: 75 63                       	jne	0x140bea824 <.text+0xbe9824>
+140bea7c1: eb 72                       	jmp	0x140bea835 <.text+0xbe9835>
+140bea7c3: 66 66 66 66 2e 0f 1f 84 00 00 00 00 00      	nop	word ptr cs:[rax + rax]
+140bea7d0: 41 0f b6 48 fe              	movzx	ecx, byte ptr [r8 - 0x2]
+140bea7d5: 80 f9 c0                    	cmp	cl, -0x40
+140bea7d8: 7d 23                       	jge	0x140bea7fd <.text+0xbe97fd>
+140bea7da: 41 0f b6 50 fd              	movzx	edx, byte ptr [r8 - 0x3]
+140bea7df: 80 fa c0                    	cmp	dl, -0x40
+140bea7e2: 7d 22                       	jge	0x140bea806 <.text+0xbe9806>
+140bea7e4: 45 0f b6 48 fc              	movzx	r9d, byte ptr [r8 - 0x4]
+140bea7e9: 49 83 c0 fc                 	add	r8, -0x4
+140bea7ed: 41 83 e1 07                 	and	r9d, 0x7
+140bea7f1: 41 c1 e1 06                 	shl	r9d, 0x6
+140bea7f5: 83 e2 3f                    	and	edx, 0x3f
+140bea7f8: 44 09 ca                    	or	edx, r9d
+140bea7fb: eb 10                       	jmp	0x140bea80d <.text+0xbe980d>
+140bea7fd: 49 83 c0 fe                 	add	r8, -0x2
+140bea801: 83 e1 1f                    	and	ecx, 0x1f
+140bea804: eb 0f                       	jmp	0x140bea815 <.text+0xbe9815>
+140bea806: 49 83 c0 fd                 	add	r8, -0x3
+140bea80a: 83 e2 0f                    	and	edx, 0xf
+140bea80d: c1 e2 06                    	shl	edx, 0x6
+140bea810: 83 e1 3f                    	and	ecx, 0x3f
+140bea813: 09 d1                       	or	ecx, edx
+140bea815: c1 e1 06                    	shl	ecx, 0x6
+140bea818: 24 3f                       	and	al, 0x3f
+140bea81a: 0f b6 c0                    	movzx	eax, al
+140bea81d: 09 c8                       	or	eax, ecx
+140bea81f: 83 f8 5c                    	cmp	eax, 0x5c
+140bea822: 74 11                       	je	0x140bea835 <.text+0xbe9835>
+140bea824: 83 f8 2f                    	cmp	eax, 0x2f
+140bea827: 74 0c                       	je	0x140bea835 <.text+0xbe9835>
+140bea829: 4d 39 e8                    	cmp	r8, r13
+140bea82c: 75 82                       	jne	0x140bea7b0 <.text+0xbe97b0>
+140bea82e: bb 22 00 00 00              	mov	ebx, 0x22
+140bea833: eb 4c                       	jmp	0x140bea881 <.text+0xbe9881>
+140bea835: 4c 8d 2d b4 9d f2 01        	lea	r13, [rip + 0x1f29db4]  # 0x142b145f0
+140bea83c: 4d 29 e8                    	sub	r8, r13
+140bea83f: 49 ff c0                    	inc	r8
+140bea842: 74 32                       	je	0x140bea876 <.text+0xbe9876>
+140bea844: 49 83 f8 22                 	cmp	r8, 0x22
+140bea848: 73 2a                       	jae	0x140bea874 <.text+0xbe9874>
+140bea84a: 43 80 3c 28 bf              	cmp	byte ptr [r8 + r13], -0x41
+140bea84f: 7f 25                       	jg	0x140bea876 <.text+0xbe9876>
+140bea851: 48 8d 05 00 9c f2 01        	lea	rax, [rip + 0x1f29c00]  # 0x142b14458
+140bea858: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+140bea85d: 48 8d 0d 8c 9d f2 01        	lea	rcx, [rip + 0x1f29d8c]  # 0x142b145f0
+140bea864: ba 22 00 00 00              	mov	edx, 0x22
+140bea869: 41 b9 22 00 00 00           	mov	r9d, 0x22
+140bea86f: e8 cc f0 ce 01              	call	0x1428d9940 <.text+0x28d8940>
+140bea874: 75 db                       	jne	0x140bea851 <.text+0xbe9851>
+140bea876: bb 22 00 00 00              	mov	ebx, 0x22
+140bea87b: 4c 29 c3                    	sub	rbx, r8
+140bea87e: 4d 01 c5                    	add	r13, r8
+140bea881: e8 aa d8 02 00              	call	0x140c18130 <.text+0xc17130>
+140bea886: 48 89 c1                    	mov	rcx, rax
+140bea889: 48 8b 00                    	mov	rax, qword ptr [rax]
+140bea88c: 48 83 f8 01                 	cmp	rax, 0x1
+140bea890: 0f 85 21 01 00 00           	jne	0x140bea9b7 <.text+0xbe99b7>
+140bea896: 48 83 c1 08                 	add	rcx, 0x8
+140bea89a: 48 83 39 00                 	cmp	qword ptr [rcx], 0x0
+140bea89e: 0f 85 4d 01 00 00           	jne	0x140bea9f1 <.text+0xbe99f1>
+140bea8a4: 48 c7 01 ff ff ff ff        	mov	qword ptr [rcx], -0x1
+140bea8ab: 48 89 4d f0                 	mov	qword ptr [rbp - 0x10], rcx
+140bea8af: 48 83 c1 08                 	add	rcx, 0x8
+140bea8b3: 48 8d 05 f6 9d f2 01        	lea	rax, [rip + 0x1f29df6]  # 0x142b146b0
+140bea8ba: 48 89 44 24 28              	mov	qword ptr [rsp + 0x28], rax
+140bea8bf: 48 89 5c 24 20              	mov	qword ptr [rsp + 0x20], rbx
+140bea8c4: 48 c7 44 24 30 17 00 00 00  	mov	qword ptr [rsp + 0x30], 0x17
+140bea8cd: 4c 89 e2                    	mov	rdx, r12
+140bea8d0: 4d 89 f8                    	mov	r8, r15
+140bea8d3: 4d 89 e9                    	mov	r9, r13
+140bea8d6: e8 65 c4 02 00              	call	0x140c16d40 <.text+0xc15d40>
+140bea8db: 49 89 c7                    	mov	r15, rax
+140bea8de: 48 8b 45 f0                 	mov	rax, qword ptr [rbp - 0x10]
+140bea8e2: 48 ff 00                    	inc	qword ptr [rax]
+140bea8e5: 4c 89 7d c0                 	mov	qword ptr [rbp - 0x40], r15
+140bea8e9: b8 01 00 00 00              	mov	eax, 0x1
+140bea8ee: 4c 8b 6d d8                 	mov	r13, qword ptr [rbp - 0x28]
+140bea8f2: 48 89 45 b8                 	mov	qword ptr [rbp - 0x48], rax
+140bea8f6: c6 45 e0 1d                 	mov	byte ptr [rbp - 0x20], 0x1d
+140bea8fa: 48 8d 0d 3f a5 a4 02        	lea	rcx, [rip + 0x2a4a53f]  # 0x143634e40
+140bea901: 48 8d 55 e0                 	lea	rdx, [rbp - 0x20]
+140bea905: 41 b8 01 00 00 00           	mov	r8d, 0x1
+140bea90b: e8 70 6a cd 00              	call	0x1418c1380 <.text+0x18c0380>
+140bea910: 48 85 ff                    	test	rdi, rdi
+140bea913: 0f 94 c0                    	sete	al
+140bea916: 85 f6                       	test	esi, esi
+140bea918: 0f 94 c1                    	sete	cl
+140bea91b: 84 c8                       	test	al, cl
+140bea91d: 75 45                       	jne	0x140bea964 <.text+0xbe9964>
+140bea91f: 49 83 7e 18 01              	cmp	qword ptr [r14 + 0x18], 0x1
+140bea924: 76 3e                       	jbe	0x140bea964 <.text+0xbe9964>
+140bea926: 49 8b 46 10                 	mov	rax, qword ptr [r14 + 0x10]
+140bea92a: 49 8b 0e                    	mov	rcx, qword ptr [r14]
+140bea92d: 49 8b 56 08                 	mov	rdx, qword ptr [r14 + 0x8]
+140bea931: 45 31 c0                    	xor	r8d, r8d
+140bea934: 48 39 c8                    	cmp	rax, rcx
+140bea937: 4c 0f 43 c1                 	cmovae	r8, rcx
+140bea93b: 4c 29 c0                    	sub	rax, r8
+140bea93e: 48 8d 04 c0                 	lea	rax, [rax + 8*rax]
+140bea942: 48 c1 e0 04                 	shl	rax, 0x4
+140bea946: 0f 10 84 02 80 00 00 00     	movups	xmm0, xmmword ptr [rdx + rax + 0x80]
+140bea94e: 0f 29 45 e0                 	movaps	xmmword ptr [rbp - 0x20], xmm0
+140bea952: 48 8d 55 e0                 	lea	rdx, [rbp - 0x20]
+140bea956: 4c 89 e9                    	mov	rcx, r13
+140bea959: 49 89 f8                    	mov	r8, rdi
+140bea95c: 41 89 f1                    	mov	r9d, esi
+140bea95f: e8 1c 26 01 00              	call	0x140bfcf80 <.text+0xbfbf80>
+140bea964: 80 7d f8 00                 	cmp	byte ptr [rbp - 0x8], 0x0
+140bea968: 74 39                       	je	0x140bea9a3 <.text+0xbe99a3>
+140bea96a: e8 c1 d7 02 00              	call	0x140c18130 <.text+0xc17130>
+140bea96f: 48 89 c1                    	mov	rcx, rax
+140bea972: 48 8b 00                    	mov	rax, qword ptr [rax]
+140bea975: 48 83 f8 01                 	cmp	rax, 0x1
+140bea979: 75 56                       	jne	0x140bea9d1 <.text+0xbe99d1>
+140bea97b: 48 83 c1 08                 	add	rcx, 0x8
+140bea97f: 48 83 39 00                 	cmp	qword ptr [rcx], 0x0
+140bea983: 75 6c                       	jne	0x140bea9f1 <.text+0xbe99f1>
+140bea985: 48 c7 01 ff ff ff ff        	mov	qword ptr [rcx], -0x1
+140bea98c: 48 89 4d f8                 	mov	qword ptr [rbp - 0x8], rcx
+140bea990: 48 83 c1 08                 	add	rcx, 0x8
+140bea994: 4c 89 fa                    	mov	rdx, r15
+140bea997: e8 54 c7 02 00              	call	0x140c170f0 <.text+0xc160f0>
+140bea99c: 48 8b 45 f8                 	mov	rax, qword ptr [rbp - 0x8]
+140bea9a0: 48 ff 00                    	inc	qword ptr [rax]
+140bea9a3: 48 81 c4 88 00 00 00        	add	rsp, 0x88
+140bea9aa: 5b                          	pop	rbx
+140bea9ab: 5f                          	pop	rdi
+140bea9ac: 5e                          	pop	rsi
+140bea9ad: 41 5c                       	pop	r12
+140bea9af: 41 5d                       	pop	r13
+140bea9b1: 41 5e                       	pop	r14
+140bea9b3: 41 5f                       	pop	r15
+140bea9b5: 5d                          	pop	rbp
+140bea9b6: c3                          	ret
+140bea9b7: 48 85 c0                    	test	rax, rax
+140bea9ba: 75 29                       	jne	0x140bea9e5 <.text+0xbe99e5>
+140bea9bc: 31 d2                       	xor	edx, edx
+140bea9be: e8 0d e7 d1 01              	call	0x1429090d0 <.text+0x29080d0>
+140bea9c3: 48 89 c1                    	mov	rcx, rax
+140bea9c6: 48 85 c0                    	test	rax, rax
+140bea9c9: 0f 85 cb fe ff ff           	jne	0x140bea89a <.text+0xbe989a>
+140bea9cf: eb 14                       	jmp	0x140bea9e5 <.text+0xbe99e5>
+140bea9d1: 48 85 c0                    	test	rax, rax
+140bea9d4: 75 0f                       	jne	0x140bea9e5 <.text+0xbe99e5>
+140bea9d6: 31 d2                       	xor	edx, edx
+140bea9d8: e8 f3 e6 d1 01              	call	0x1429090d0 <.text+0x29080d0>
+140bea9dd: 48 89 c1                    	mov	rcx, rax
+140bea9e0: 48 85 c0                    	test	rax, rax
+140bea9e3: 75 9a                       	jne	0x140bea97f <.text+0xbe997f>
+140bea9e5: 48 8d 0d ac ba 11 02        	lea	rcx, [rip + 0x211baac]  # 0x142d06498
+140bea9ec: e8 df d6 ce 01              	call	0x1428d80d0 <.text+0x28d70d0>
+140bea9f1: 48 8d 0d 10 bb 11 02        	lea	rcx, [rip + 0x211bb10]  # 0x142d06508
+140bea9f8: e8 53 e8 ce 01              	call	0x1428d9250 <.text+0x28d8250>
+140bea9fd: cc                          	int3
+140bea9fe: 66 90                       	nop
+140beaa00: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140beaa05: 55                          	push	rbp
+140beaa06: 41 57                       	push	r15
+140beaa08: 41 56                       	push	r14
+140beaa0a: 41 55                       	push	r13
+140beaa0c: 41 54                       	push	r12
+140beaa0e: 56                          	push	rsi
+140beaa0f: 57                          	push	rdi
+140beaa10: 53                          	push	rbx
+140beaa11: 48 83 ec 38                 	sub	rsp, 0x38
+140beaa15: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140beaa1c: 48 8b 45 f0                 	mov	rax, qword ptr [rbp - 0x10]
+140beaa20: 48 ff 00                    	inc	qword ptr [rax]
+140beaa23: 48 83 c4 38                 	add	rsp, 0x38
+140beaa27: 5b                          	pop	rbx
+140beaa28: 5f                          	pop	rdi
+140beaa29: 5e                          	pop	rsi
+140beaa2a: 41 5c                       	pop	r12
+140beaa2c: 41 5d                       	pop	r13
+140beaa2e: 41 5e                       	pop	r14
+140beaa30: 41 5f                       	pop	r15
+140beaa32: 5d                          	pop	rbp
+140beaa33: c3                          	ret
+140beaa34: 66 66 66 2e 0f 1f 84 00 00 00 00 00 	nop	word ptr cs:[rax + rax]
+140beaa40: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140beaa45: 55                          	push	rbp
+140beaa46: 41 57                       	push	r15
+140beaa48: 41 56                       	push	r14
+140beaa4a: 41 55                       	push	r13
+140beaa4c: 41 54                       	push	r12
+140beaa4e: 56                          	push	rsi
+140beaa4f: 57                          	push	rdi
+140beaa50: 53                          	push	rbx
+140beaa51: 48 83 ec 38                 	sub	rsp, 0x38
+140beaa55: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140beaa5c: 80 7d f8 00                 	cmp	byte ptr [rbp - 0x8], 0x0
+140beaa60: 74 20                       	je	0x140beaa82 <.text+0xbe9a82>
+140beaa62: 48 8d 45 c0                 	lea	rax, [rbp - 0x40]
+140beaa66: 48 89 45 d0                 	mov	qword ptr [rbp - 0x30], rax
+140beaa6a: 48 8d 45 d0                 	lea	rax, [rbp - 0x30]
+140beaa6e: 48 89 45 c8                 	mov	qword ptr [rbp - 0x38], rax
+140beaa72: 48 8d 0d 7f 99 f2 01        	lea	rcx, [rip + 0x1f2997f]  # 0x142b143f8
+140beaa79: 48 8d 55 c8                 	lea	rdx, [rbp - 0x38]
+140beaa7d: e8 7e 83 cd 00              	call	0x1418c2e00 <.text+0x18c1e00>
+140beaa82: 90                          	nop
+140beaa83: 48 83 c4 38                 	add	rsp, 0x38
+140beaa87: 5b                          	pop	rbx
+140beaa88: 5f                          	pop	rdi
+140beaa89: 5e                          	pop	rsi
+140beaa8a: 41 5c                       	pop	r12
+140beaa8c: 41 5d                       	pop	r13
+140beaa8e: 41 5e                       	pop	r14
+140beaa90: 41 5f                       	pop	r15
+140beaa92: 5d                          	pop	rbp
+140beaa93: c3                          	ret
+140beaa94: 66 66 66 2e 0f 1f 84 00 00 00 00 00 	nop	word ptr cs:[rax + rax]
+140beaaa0: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140beaaa5: 55                          	push	rbp
+140beaaa6: 41 57                       	push	r15
+140beaaa8: 41 56                       	push	r14
+140beaaaa: 41 55                       	push	r13
+140beaaac: 41 54                       	push	r12
+140beaaae: 56                          	push	rsi
+140beaaaf: 57                          	push	rdi
+140beaab0: 53                          	push	rbx
+140beaab1: 48 83 ec 38                 	sub	rsp, 0x38
+140beaab5: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140beaabc: 48 8b 45 f8                 	mov	rax, qword ptr [rbp - 0x8]
+140beaac0: 48 ff 00                    	inc	qword ptr [rax]
+140beaac3: 48 83 c4 38                 	add	rsp, 0x38
+140beaac7: 5b                          	pop	rbx
+140beaac8: 5f                          	pop	rdi
+140beaac9: 5e                          	pop	rsi
+140beaaca: 41 5c                       	pop	r12
+140beaacc: 41 5d                       	pop	r13
+140beaace: 41 5e                       	pop	r14
+140beaad0: 41 5f                       	pop	r15
+140beaad2: 5d                          	pop	rbp
+140beaad3: c3                          	ret

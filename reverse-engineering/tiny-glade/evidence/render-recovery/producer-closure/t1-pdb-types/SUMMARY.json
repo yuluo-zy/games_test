@@ -1,0 +1,53 @@
+{
+  "question": "Can the 274 MB tiny_glade.pdb recover real parameter/return types for rhapsody (Rust) functions?",
+  "verdict": "NO. Rust game code was built with -C debuginfo=line-tables-only. The PDB has no parameter, local, or type records for Rust functions.",
+  "evidence_basis": [
+    "llvm-pdbutil 20.1.0 (Program Files/LLVM) dumps of TPI/IPI/modules/sym-stats",
+    "independent MSF+CodeView parser (parse_pdb_types.py) reading the original PDB read-only"
+  ],
+  "build_flags_seen_in_IPI_LF_STRING_ID": "-C debuginfo=line-tables-only ... --crate-type bin -C opt-level=3 ... target x86_64-pc-windows-msvc",
+  "record_counts": {
+    "TPI_stream2_total": 6125,
+    "TPI_LF_PROCEDURE": 1710,
+    "TPI_LF_MFUNCTION": 86,
+    "TPI_LF_ARGLIST": 1466,
+    "TPI_LF_STRUCTURE": 753,
+    "TPI_LF_POINTER": 828,
+    "TPI_LF_FIELDLIST": 486,
+    "TPI_content": "entirely C/C++ third-party (LittleCMS _cmsContext_struct, VC CRT _KNONVOLATILE_CONTEXT_POINTERS, ISA_AVAILABILITY). ZERO Rust types.",
+    "IPI_stream4_total": 132599,
+    "IPI_LF_FUNC_ID": 83429,
+    "IPI_LF_STRING_ID": 43625,
+    "IPI_LF_MFUNC_ID": 35,
+    "IPI_LF_BUILDINFO": 4838,
+    "IPI_LF_UDT_SRC_LINE": 670,
+    "modules": 4893,
+    "module_symbols_total": 13962613,
+    "S_GPROC32": 124966,
+    "S_LPROC32": 45665,
+    "S_INLINESITE": 6449972,
+    "S_LOCAL": 202093,
+    "S_REGREL32": 75,
+    "S_UDT": 4,
+    "S_CONSTANT": 6250
+  },
+  "function_type_placeholder": {
+    "TPI_index_0x1001": "LF_PROCEDURE { return=void(0x0003), args=0, callconv=cdecl }  == Rust void() placeholder",
+    "LF_FUNC_ID_pointing_to_0x1001": 80103,
+    "LF_FUNC_ID_total": 83429,
+    "ratio": "96.0% of all IPI FUNC_IDs are the void() placeholder",
+    "rhapsody_LF_FUNC_ID_total": 943,
+    "rhapsody_LF_FUNC_ID_pointing_to_0x1001": 943,
+    "rhapsody_non_placeholder": 0
+  },
+  "S_LOCAL_provenance": "All 76 modules with S_LOCAL are NON-Rust: * Linker * (101047), zstd-sys, lcms2-sys, ring (C), intel_tex_2 ISPC kernels, MSVC CRT .obj. ZERO pure Rust *.rcgu.o modules contain S_LOCAL.",
+  "demo_addresses": [
+    {"addr":"0x140530430","pub":"rhapsody::rg::resource_info::ResourceInfo::calculate","ipi_scope":"rhapsody::rg::resource_info::ResourceInfo","func_type":"0x1001 void()"},
+    {"addr":"0x140beabd0","pub":"rhapsody::rg::executor::GraphExecutor::begin_frame","ipi_scope":"rhapsody::rg::executor::GraphExecutor","func_type":"0x1001 void()"},
+    {"addr":"0x140c04e20","pub":"rhapsody::raw::device::GraphicsDevice::queue_submit","ipi_scope":"rhapsody::raw::device::GraphicsDevice","func_type":"0x1001 void()"},
+    {"addr":"0x1409dca90","pub":"rhapsody::rg::pass_builder::PassBuilder<UserData>::add_resource_access","ipi_scope":"rhapsody::rg::pass_builder::PassBuilder","func_type":"0x1001 void()"}
+  ],
+  "full_generic_name_mystery": "The IPI holds scope fragments (e.g. rhapsody::rg::executor::impl$7::submit_pending_cbs) but NO STRING_ID contains '<'. The IPI is the source of the container/impl path, not of function generic args. The '<Vec<SubmitInfo>,...closure_env$0>' form is NOT present in mangled names, TPI, or IPI strings; it is external (demangler/project reconstruction).",
+  "natvis": "3 natvis files describe windows_strings::HSTRING/PSTR/etc. Only type-shape hints for Windows string wrappers; no rhapsody/Rust entries.",
+  "still_unavailable": ["parameter types","parameter names","return types","local variable types/names","Rust struct/enum layouts (TPI has none)","trait/generic instantiations","calling convention for Rust fns"]
+}

@@ -1,0 +1,117 @@
+{
+ "question": "Does the shipped PDB carry per-function parameter evidence (S_LOCAL/S_REGREL32/S_FRAMEPROC)?",
+ "answer": "Record TYPES exist and are populated ONLY for bundled C dependency objects (lcms2-sys, zstd-sys, ring) and MSVC runtime objects; the Rust game code has none.",
+ "record_type_totals_whole_pdb": {
+  "S_FRAMEPROC": 85308,
+  "S_LOCAL": 101046,
+  "S_REGREL32": 37,
+  "S_REGISTER": 0,
+  "S_BPREL32": 0,
+  "S_GPROC32": 62480,
+  "S_LPROC32": 22832,
+  "S_OBJNAME": 5054,
+  "S_PUB32": 0
+ },
+ "module_symbol_streams": 4875,
+ "game_modules": 4328,
+ "game_modules_with_S_LOCAL": 56,
+ "pure_rust_modules_with_S_LOCAL": "0 (max S_LOCAL count across sampled rustc rcgu.o modules = 0)",
+ "modules_with_S_LOCAL": 75,
+ "S_LOCAL_examples": [
+  {
+   "stream": 1657,
+   "func": "",
+   "kind": "S_LOCAL",
+   "name": "hTransform",
+   "typeidx": 1539,
+   "flags": 1
+  },
+  {
+   "stream": 1657,
+   "func": "",
+   "kind": "S_LOCAL",
+   "name": "p",
+   "typeidx": 4154,
+   "flags": 0
+  },
+  {
+   "stream": 1657,
+   "func": "",
+   "kind": "S_LOCAL",
+   "name": "Transform",
+   "typeidx": 1539,
+   "flags": 1
+  },
+  {
+   "stream": 1657,
+   "func": "",
+   "kind": "S_LOCAL",
+   "name": "InputBuffer",
+   "typeidx": 4125,
+   "flags": 1
+  },
+  {
+   "stream": 1657,
+   "func": "",
+   "kind": "S_LOCAL",
+   "name": "OutputBuffer",
+   "typeidx": 1539,
+   "flags": 1
+  }
+ ],
+ "S_REGREL32_examples": [
+  {
+   "stream": 4113,
+   "func": "",
+   "kind": "S_REGREL32",
+   "name": "this",
+   "typeidx": 7014,
+   "reg": 335,
+   "regname": "RSP",
+   "off": 48
+  },
+  {
+   "stream": 4602,
+   "func": "",
+   "kind": "S_REGREL32",
+   "name": "block",
+   "typeidx": 5842,
+   "reg": 335,
+   "regname": "RSP",
+   "off": 8
+  },
+  {
+   "stream": 4602,
+   "func": "",
+   "kind": "S_REGREL32",
+   "name": "__formal",
+   "typeidx": 4679,
+   "reg": 335,
+   "regname": "RSP",
+   "off": 16
+  },
+  {
+   "stream": 4603,
+   "func": "",
+   "kind": "S_REGREL32",
+   "name": "exception_pointers",
+   "typeidx": 9034,
+   "reg": 335,
+   "regname": "RSP",
+   "off": 48
+  },
+  {
+   "stream": 4603,
+   "func": "",
+   "kind": "S_REGREL32",
+   "name": "stack_cookie",
+   "typeidx": 35,
+   "reg": 335,
+   "regname": "RSP",
+   "off": 64
+  }
+ ],
+ "gproc32_name_field": "readable Rust path WITH generic args and C-style fn-pointer types, e.g. bevy_ecs::system::...::FunctionSystem<void (*)(Res<..>,..)>",
+ "function_type_index": "S_GPROC32.FunctionType for game fns resolves in TPI to LF_PROCEDURE 0x1001 = void() with ParameterCount 0 and empty LF_ARGLIST 0x1000 -> placeholder, no signature",
+ "conclusion": "PDB does NOT yield parameter count/register for rhapsody functions. Falling back to call-site ABI reconstruction."
+}

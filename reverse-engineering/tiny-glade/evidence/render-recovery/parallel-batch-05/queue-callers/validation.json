@@ -1,0 +1,23 @@
+{
+  "status": "verified_partial",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "entry": "0x140bebc90",
+  "original_entry_cases": 180,
+  "mismatches": 0,
+  "failures": [],
+  "direct_begin_sites": 8,
+  "direct_submit_sites": 1,
+  "primary_tag_sites": 9,
+  "source_sha256": {
+    "lib.rs": "303cc12fd7b3472d7abe30a5c3a83a3f366371f698218b9f1814ae5be3659c88",
+    "main.rs": "935d7a20f062904a808a9aa24075bd322060d7c5c6d47ca215e7a6a4164d6cdc"
+  },
+  "harness_sha256": "6e26db8bc99c48843423f8377257b70378ea4c32bdd1a6755899ac0f83d4df3d",
+  "limits": [
+    "create_command_buffer and CommandBuffer::begin are captured fixture boundaries; their full entry implementation is not validated here",
+    "Vec reserve is delegated; capacity ABI, OOM, unwinding and GPU execution are excluded",
+    "callsite inventory is bounded to rhapsody workgraph; inlined callers and indirect targets remain unknown",
+    "Ghidra saved xrefs are incomplete and are not used as negative caller evidence",
+    "no source-level atomic ordering or actual multiqueue reachability conclusion"
+  ]
+}

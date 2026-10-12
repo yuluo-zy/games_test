@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "consistent_partial",
+  "scope": "R1 parallel ResourceInfo -> ResourceRegistry/Pool -> CompiledRenderGraph contracts",
+  "inputs": {
+    "resource_info": {
+      "path": "evidence/render-recovery/parallel/resource-info/type-ledger.json",
+      "sha256": "83f300d6e83556e01f186176a0e84185e2ed094dcb690868aafd7443ed123dd4"
+    },
+    "resource_info_validation": {
+      "path": "evidence/render-recovery/parallel/resource-info/validation.json",
+      "sha256": "dc4544459f7321069cadef632dbd1bacb76557cb831b5ed80a8ecdb228c64721"
+    },
+    "registry": {
+      "path": "evidence/render-recovery/parallel/registry-pool/type-ledger.json",
+      "sha256": "ddf3392a48c964b7f52c22760a6cad44e69a588b5a52fa653e239fc9265b590b"
+    },
+    "registry_ownership": {
+      "path": "evidence/render-recovery/parallel/registry-pool/ownership-state-machine.json",
+      "sha256": "7c787664fa8266eeef13fc5aac087174838180dd0398bb74c5afb26194ed5cdf"
+    },
+    "registry_validation": {
+      "path": "evidence/render-recovery/parallel/registry-pool/validation.json",
+      "sha256": "c68d20df44f21f3669029347fc1f8760c94b23db153a980cb275d8cfa6d3a300"
+    },
+    "compiled": {
+      "path": "evidence/render-recovery/parallel/compiled-state/type-ledger.json",
+      "sha256": "64d6023878fe8fb1bcb2b2e819c9a945b6ae2b8af118638065bcdf883af9c1dc"
+    },
+    "compiled_snapshot": {
+      "path": "evidence/render-recovery/parallel/compiled-state/snapshot-schema.json",
+      "sha256": "d66327f64d6840f9a73ac05da89e4f4fabe7f5a04643bea4aa30ece395eeba9a"
+    },
+    "compiled_validation": {
+      "path": "evidence/render-recovery/parallel/compiled-state/verification.json",
+      "sha256": "867d0672b8ccf14fb264a78d86a25a4e1483f47ee87ca8aedb621e88a9dff39e"
+    }
+  },
+  "checks": [
+    {
+      "name": "compiled_registry_size",
+      "ok": true,
+      "detail": "registry=0x108, compiled field=0x108"
+    },
+    {
+      "name": "resource_info_embedding",
+      "ok": true,
+      "detail": "compiled delta=0x48, registry field=0x48"
+    },
+    {
+      "name": "resource_info_vector_prefix",
+      "ok": true,
+      "detail": "six observed Vec headers remain contiguous at 0x18-byte intervals"
+    },
+    {
+      "name": "resource_access_stride",
+      "ok": true,
+      "detail": "resource-info=20, compiled=0x14"
+    },
+    {
+      "name": "resource_access_field_offsets",
+      "ok": true,
+      "detail": "calculate producer offsets match pre-barrier consumer offsets"
+    },
+    {
+      "name": "lifetime_event_encoding",
+      "ok": true,
+      "detail": "pass_index<<17 | resource_index; end event additionally ORs 0x10000"
+    },
+    {
+      "name": "release_event_consumer",
+      "ok": true,
+      "detail": "registry population skips bit16 release events; graph-local alias return is not claimed"
+    },
+    {
+      "name": "compiled_total_size",
+      "ok": true,
+      "detail": "0x218"
+    },
+    {
+      "name": "resource_info_native_snapshot",
+      "ok": true,
+      "detail": "{\"cases\": 512, \"mismatches\": 0, \"ok\": 507, \"panic\": 5}"
+    },
+    {
+      "name": "batch_native_snapshot",
+      "ok": true,
+      "detail": "cases=1600, failures=0"
+    },
+    {
+      "name": "registry_candidate_tests",
+      "ok": true,
+      "detail": "candidate ownership/pool tests passed; no native differential is claimed"
+    }
+  ],
+  "failed_checks": [],
+  "accepted_boundaries": [
+    "ResourceInfo::calculate semantic snapshot",
+    "ResourcePool exact-key moved LIFO candidate",
+    "ResourceRegistry ownership/export candidate",
+    "BatchCompiler new/flush CPU state",
+    "cross-package layout and event-consumer consistency"
+  ],
+  "not_accepted": [
+    "complete populate_resources GPU creation behavior",
+    "graph-local alias reuse",
+    "full barrier and record_batch native equivalence",
+    "queue submission and retirement",
+    "temporal state schema",
+    "original Rust ABI or source text"
+  ]
+}

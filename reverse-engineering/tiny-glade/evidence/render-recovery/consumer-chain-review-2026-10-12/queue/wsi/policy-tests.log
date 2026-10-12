@@ -1,0 +1,21 @@
+
+running 2 tests
+test raw::swapchain::tests::acquire_suboptimal_keeps_image_usable_and_only_out_of_date_rebuilds ... ok
+test raw::swapchain::tests::wsi_result_policy_preserves_original_nonfatal_codes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+warning: field `managed_prefix` is never read
+   --> src\rg\vulkan.rs:144:5
+    |
+120 | pub struct VulkanGraphBackend {
+    |            ------------------ field in this struct
+...
+144 |     managed_prefix: u64,
+    |     ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `rhapsody` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running unittests src\lib.rs (target\debug\deps\rhapsody-0d231441bb5da086.exe)

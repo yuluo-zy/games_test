@@ -1,0 +1,43 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140be9c80: 56                          	push	rsi
+140be9c81: 57                          	push	rdi
+140be9c82: 53                          	push	rbx
+140be9c83: 48 83 ec 70                 	sub	rsp, 0x70
+140be9c87: 48 89 d7                    	mov	rdi, rdx
+140be9c8a: 48 89 ce                    	mov	rsi, rcx
+140be9c8d: 44 89 44 24 24              	mov	dword ptr [rsp + 0x24], r8d
+140be9c92: 48 8d 4a 20                 	lea	rcx, [rdx + 0x20]
+140be9c96: 48 8d 5c 24 24              	lea	rbx, [rsp + 0x24]
+140be9c9b: 48 89 da                    	mov	rdx, rbx
+140be9c9e: e8 2d 72 9c ff              	call	0x1405b0ed0 <.text+0x5afed0>
+140be9ca3: 48 8d 4c 24 28              	lea	rcx, [rsp + 0x28]
+140be9ca8: 48 89 fa                    	mov	rdx, rdi
+140be9cab: 49 89 c0                    	mov	r8, rax
+140be9cae: 49 89 d9                    	mov	r9, rbx
+140be9cb1: e8 fa e0 bf 00              	call	0x1417e7db0 <.text+0x17e6db0>
+140be9cb6: 48 8b 44 24 30              	mov	rax, qword ptr [rsp + 0x30]
+140be9cbb: 48 83 f8 06                 	cmp	rax, 0x6
+140be9cbf: 74 32                       	je	0x140be9cf3 <.text+0xbe8cf3>
+140be9cc1: 48 8b 4c 24 68              	mov	rcx, qword ptr [rsp + 0x68]
+140be9cc6: 48 89 4e 38                 	mov	qword ptr [rsi + 0x38], rcx
+140be9cca: 0f 10 44 24 38              	movups	xmm0, xmmword ptr [rsp + 0x38]
+140be9ccf: 0f 10 4c 24 48              	movups	xmm1, xmmword ptr [rsp + 0x48]
+140be9cd4: 0f 10 54 24 58              	movups	xmm2, xmmword ptr [rsp + 0x58]
+140be9cd9: 0f 11 56 28                 	movups	xmmword ptr [rsi + 0x28], xmm2
+140be9cdd: 0f 11 4e 18                 	movups	xmmword ptr [rsi + 0x18], xmm1
+140be9ce1: 0f 11 46 08                 	movups	xmmword ptr [rsi + 0x8], xmm0
+140be9ce5: 48 89 06                    	mov	qword ptr [rsi], rax
+140be9ce8: 48 89 f0                    	mov	rax, rsi
+140be9ceb: 48 83 c4 70                 	add	rsp, 0x70
+140be9cef: 5b                          	pop	rbx
+140be9cf0: 5f                          	pop	rdi
+140be9cf1: 5e                          	pop	rsi
+140be9cf2: c3                          	ret
+140be9cf3: 48 8d 0d 1e a9 f2 01        	lea	rcx, [rip + 0x1f2a91e]  # 0x142b14618
+140be9cfa: e8 11 f6 ce 01              	call	0x1428d9310 <.text+0x28d8310>
+140be9cff: cc                          	int3

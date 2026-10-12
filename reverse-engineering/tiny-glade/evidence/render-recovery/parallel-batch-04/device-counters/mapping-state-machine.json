@@ -1,0 +1,7 @@
+{
+  "constructor":{"primary_family":"first(flags & 1 != 0)","auxiliary_family":"first(flags & 3 == 2)","auxiliary_count":"chosen family queue_count or 0","counter_count":"auxiliary_count+1","counter_initial_value":1,"all_queue_prefix_initial_value":0,"all_queue_completed_initial_value":0,"global_submission_timeline_initial_value":1},
+  "begin":{"selector":"queue_tag & 1 == 0 ? 0 : zero_extend_u32(auxiliary_index+1)","step":"old=atomic_fetch_add(counter[selector],1)","effects":["CB.tag=1","CB.sequence=old","CB.queue_tag=queue_tag","CB.aux_index=auxiliary_index","bucket.insert(old)"]},
+  "mapping":{"cb_sequence_domain":"per queue counter slot","gpu_completion_domain":"queue timeline semaphore with global numeric submission values","bucket_key_domain":"device-global plain u64 numeric CB sequence","globally_unique_cb_sequence":false},
+  "collision_trace":[{"event":"primary begin","sequence":1,"slot":0},{"event":"auxiliary0 begin","sequence":1,"slot":1},{"event":"second bucket insert","effect":"replaces existing bucket then asserts prior absent"}],
+  "reachability":"This trace follows recovered counter arithmetic; actual private callers reaching simultaneous cross-queue recording remain unknown."
+}

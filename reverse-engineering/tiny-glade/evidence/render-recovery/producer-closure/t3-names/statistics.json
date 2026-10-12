@@ -1,0 +1,70 @@
+{
+  "question": "origin of generic-bearing symbol names in functions.json 'names'",
+  "verdict": "ORIGINAL PDB DATA (not project-side reconstruction)",
+  "evidence": [
+    "workgraph names for each function = union of native-procedures.json[name] (from `llvm-pdbutil dump --symbols`) and public-symbols.json[demangled].",
+    "native-procedures.json generator scripts/render-skeleton/inventory.py parses `llvm-pdbutil dump --symbols --modi=N` output; llvm-pdbutil does NOT demangle (its --publics output keeps raw _ZN).",
+    "The exact string 'rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>' exists verbatim as a null-terminated byte string in tiny_glade.pdb at file offset 31700481.",
+    "Same for 'rhapsody::rg::recorder::impl$1::render<...>' (offset 20854096) and 'rhapsody::rg::temporal::impl$11::get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,...>' (offset 25840428).",
+    "The raw legacy-mangled symbol for queue_submit is _ZN8rhapsody3raw6submit55_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$12queue_submit17h8a0ca96aebdf4411E -- it carries NO generic arguments. The stored pretty name DOES carry generics, so the name was emitted by the toolchain from typed debug info, not by demangling the mangled name.",
+    "llvm-cxxfilt on that mangled symbol yields the poorer 'rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411' (no generics). Thus cxxfilt != stored name."
+  ],
+  "pdb_symbol_stream_counts": {
+    "S_PUB32": 101405,
+    "S_GPROC32": 62480,
+    "S_LPROC32": 22832,
+    "S_GPROC32+S_LPROC32": 85312,
+    "S_INLINESITE": 3224901,
+    "S_INLINESITE_END": 3224901,
+    "S_LOCAL": 101046,
+    "S_FRAMEPROC": 85308,
+    "S_INLINEES": 66944,
+    "LF_FUNC_ID": 83429,
+    "LF_MFUNC_ID": 35,
+    "LF_STRING_ID": 43625,
+    "LF_BUILDINFO": 4838
+  },
+  "signature_encoding": {
+    "S_PUB32/S_GPROC32/S_LPROC32 names": "legacy _ZN mangling is the underlying symbol; legacy encodes the def-path AND generic arguments of the item, but NOT the plain parameter/return signature. The stored S_GPROC32 name is a compiler-pretty form = path + concrete generic args + {impl#N}/{closure#N} disambiguators.",
+    "LF_FUNC_ID/LF_MFUNC_ID": "store demangled function names referenced by S_*_ID records; do NOT encode signatures.",
+    "S_INLINESITE": "references LF_FUNC_ID index of the inlined callee; no signature."
+  },
+  "v0_subset": {
+    "_R prefixed publics": 0,
+    "note": "only _RTC_Initialize/_RTC_Terminate (MSVC runtime checks); NO Rust v0 (_R<base62>) symbols anywhere. v0 would encode full signature, but none present."
+  },
+  "natvis": {
+    "files": 3,
+    "covers": "only windows-rs crate types",
+    "types": [
+      "windows_core::array::Array<*>",
+      "windows_core::imp::ref_count::RefCount",
+      "windows_strings::hstring::HSTRING",
+      "windows_strings::pstr::PSTR / pcstr::PCSTR",
+      "windows_strings::pwstr::PWSTR / pcwstr::PCWSTR",
+      "windows_strings::ref_count::RefCount",
+      "windows_result::error::Error",
+      "windows_result::hresult::HRESULT",
+      "windows_result::error::error_info::ErrorInfo"
+    ],
+    "fields": true,
+    "game_types": false,
+    "value": "confirms field names/offsets for windows-rs wrapper types only; NOTHING about rhapsody/country-core types."
+  },
+  "legacy_hash_cross_build": {
+    "17h<hash>": "stable deterministic hash of legacy def-path+types for a fixed rustc; usable for cross-build matching ONLY if same rustc+same crate structure.",
+    "skeleton_A_B_C": "skeleton/A|B|C contain only Cargo.toml/Cargo.lock (no src, no compiled symbols, zero 17h hashes); no cross-build matching possible now."
+  },
+  "credits_crates": {
+    "credits": 563,
+    "cargo_lock_packages": 802,
+    "credits_subset_of_lock": true,
+    "lock_only": 239,
+    "value": "credits-crates.txt lists only shipped/attributed crates; symbols from crates in Cargo.lock but not credits (e.g. bindgen, clang-sys, platform shims) are build/platform deps. Symbol ownership by crate is readable directly from the module name (rhapsody-*, country_core-*) rather than credits."
+  },
+  "caveats": [
+    "public-symbols.json['demangled'] is a PROJECT-SIDE llvm-cxxfilt of the raw _ZN name; it is lossy (keeps $LT$/$u20$ escapes, drops generics) and must NOT be used for type claims. 0 of its 101405 entries contain a real generic <...> (all use $LT$).",
+    "The stored pretty names encode generic INSTANTIATION (true monomorphizations of THIS binary), not a full Rust signature; parameter/return types absent.",
+    "{impl#N}/{closure#N} disambiguators (impl$7, impl$11, closure_env$0) are build/source-specific and meaningless without source."
+  ]
+}

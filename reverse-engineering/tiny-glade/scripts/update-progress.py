@@ -40,6 +40,20 @@ if not project_file.exists():
     project_file.write_text(json.dumps(project,ensure_ascii=False,indent=2),encoding='utf-8')
 project = json.loads(project_file.read_text(encoding='utf-8'))
 project['updated_at_utc'] = datetime.now(timezone.utc).isoformat()
+render_progress = project.get('render_recovery_progress', {})
+for batch in render_progress.get('integrated_batches', []):
+    if batch not in (4, 5):
+        continue
+    import hashlib
+    integration_path = root / f'evidence/render-recovery/parallel-batch-{batch:02d}/integration.json'
+    integration = json.loads(integration_path.read_text(encoding='utf-8'))
+    assert integration['status'] == 'consistent_partial', integration_path
+    assert not integration['failed_checks'], integration_path
+    for recorded in integration['inputs'].values():
+        recorded_path = Path(recorded['path'])
+        if not recorded_path.is_absolute():
+            recorded_path = root / recorded_path
+        assert hashlib.sha256(recorded_path.read_bytes()).hexdigest() == recorded['sha256'], f'渲染门禁输入变化，需要重新验收: {recorded_path}'
 by_id = {m['id']:m for m in project['milestones']}
 statuses = {'complete':'完成验收','in_progress':'进行中','not_started':'未开始','blocked':'有阻塞'}
 for milestone in project['milestones']:
@@ -51,7 +65,9 @@ for milestone in project['milestones']:
     for evidence in milestone['evidence']:
         assert (root/evidence).exists(),evidence
     if milestone.get('source_gate',{}).get('status') in ('verified','verified_partial'):
-        reports=[json.loads((root/e).read_text(encoding='utf-8')) for e in milestone['evidence'] if e.endswith('verification.json')]
+        verification_paths = milestone['source_gate'].get('verification_reports', [e for e in milestone['evidence'] if e.endswith('verification.json')])
+        assert all(e in milestone['evidence'] for e in verification_paths), milestone['id']
+        reports=[json.loads((root/e).read_text(encoding='utf-8')) for e in verification_paths]
         assert reports and all(r.get('ok') is True for r in reports),milestone['id']
 for item in project['local_algorithms']:
     assert (root/item['source']).exists()
@@ -63,6 +79,26 @@ for item in project['local_algorithms']:
             assert hashlib.sha256((root/path).read_bytes()).hexdigest()==digest,f'源码变化，需要重新校验: {path}'
         if report.get('candidate_cargo_lock_sha256'):
             assert hashlib.sha256((root/'reconstruction/Cargo.lock').read_bytes()).hexdigest()==report['candidate_cargo_lock_sha256'],'依赖锁文件变化，需要重新校验'
+        if report.get('renderer_cargo_lock_sha256'):
+            current_lock = hashlib.sha256((root/'reconstruction/render/Cargo.lock').read_bytes()).hexdigest()
+            if current_lock != report['renderer_cargo_lock_sha256']:
+                # This exception only retains the unchanged five leaf rules after
+                # adding local consumer packages. It is not a new chain oracle.
+                import tomllib
+                assert item['report'] == 'evidence/render-recovery/verification.json', '渲染依赖锁文件变化，需要重新校验'
+                renewal = json.loads((root/render_progress['dependency_revalidation_report']).read_text(encoding='utf-8'))
+                baseline = json.loads((root/'evidence/render-recovery/dependency-verification.json').read_text(encoding='utf-8'))
+                assert renewal['historic_renderer_lock_sha256'] == report['renderer_cargo_lock_sha256'] == baseline['renderer_lock_sha256']
+                assert renewal['current_renderer_lock_sha256'] == current_lock
+                assert hashlib.sha256((root/'tracking/original-Cargo.lock').read_bytes()).hexdigest() == baseline['original_lock_sha256']
+                for path, digest in renewal['source_sha256'].items():
+                    assert hashlib.sha256((root/path).read_bytes()).hexdigest() == digest, f'共享入口输入变化，需要重新验收: {path}'
+                registry = [p for p in tomllib.loads((root/'reconstruction/render/Cargo.lock').read_text())['package'] if p.get('source')]
+                assert registry == renewal['registry_dependencies']
+                assert {(p['name'], p['version']) for p in registry} == {(p['name'], p['version']) for p in baseline['packages']}
+                assert all(p['source_match'] and p['checksum_match'] for p in baseline['packages'])
+                original = {(p['name'], p['version']): p for p in tomllib.loads((root/'tracking/original-Cargo.lock').read_text())['package']}
+                assert all((p['source'], p['checksum']) == (original[p['name'], p['version']]['source'], original[p['name'], p['version']]['checksum']) for p in registry)
 pipeline=root/'evidence/roof-pipeline-verification.json'
 if pipeline.exists():
     import hashlib
@@ -72,7 +108,7 @@ if pipeline.exists():
 lines = ['# Tiny Glade 原作还原：里程碑与进度','',f"更新：{project['updated_at_utc']}。目标：{project['objective']}。",'',
          '**当前不是完整游戏。整体完成百分比暂不报告：完整原作功能清单及验收分母仍在建立。**', '',
          '进度必须区分：定位原作 → 结构/调用链确认 → Rust 实现 → 局部机器码差分 → 系统场景验收。仅反编译不算还原验收。', '',
-         '当前用户指定**源码恢复优先**；场景回放和 GPU 研究后置。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。', '',
+         ('当前用户指定**源码恢复优先**；最新指示已开始渲染框架的Rust恢复与原码验证，场景和完整GPU画面验收尚未开展。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。' if project.get('render_recovery_authorization') else '当前用户指定**源码恢复优先**；场景回放和 GPU 研究后置。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。'), '',
          '| ID | 里程碑 | 最终状态 | 源码关口 | 前置验收 | 验收条件 | 证据 |','|---|---|---|---|---|---|---|']
 for m in project['milestones']:
     evidence = '<br>'.join(f'[{Path(e).name}]({e})' for e in m['evidence']) or '尚无验收证据'
@@ -81,6 +117,13 @@ for m in project['milestones']:
     if source.get('scope'):
         source_text+='：'+source['scope']
     lines.append(f"| {m['id']} | {m['title']} | {statuses[m['status']]} | {source_text} | {', '.join(m['depends_on']) or '—'} | {'；'.join(m['acceptance'])} | {evidence} |")
+if render_progress:
+    integrated = '、'.join(map(str, render_progress.get('integrated_batches', [])))
+    lines += ['', '## rhapsody 当前进度', '', render_progress.get('summary', 'CPU渲染框架部分恢复；完整GPU/画面尚未验收。'), '',
+              f"已完成统一门禁的批次：{integrated}。当前工作 agent 数：{render_progress.get('active_agents', 0)}。M12保持 `verified_partial`。", '',
+              '[模块进度与下一步](evidence/render-recovery/RHAPSODY_PROGRESS.md) · [工具审计](evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md)']
+    if 5 in render_progress.get('integrated_batches', []):
+        lines += ['', '[第五批统一门禁](evidence/render-recovery/parallel-batch-05/integration.json)记录原入口、注入边界、候选验证与各自剩余范围；跨包合同一致不代表生产GPU后端已经接线。']
 lines += ['', '## 已验证局部算法', '', '| 算法 | 状态/范围 | 实现 | 原作参照 |', '|---|---|---|---|']
 for a in project['local_algorithms']:
     lines.append(f"| {a['name']} | {a['status']}：{a['scope']} | [Rust]({a['source']}) | [差分报告]({a['report']}) |")

@@ -1,0 +1,87 @@
+{
+  "status": "verified_partial",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "types": [
+    {
+      "name": "ResourceInfo",
+      "status": "inferred",
+      "evidence": ["0x140bd4410", "0x140530430"],
+      "fields": [
+        {"offset": "0x00", "type": "Vec<ResourceAccessRecord>", "status": "observed"},
+        {"offset": "0x18", "type": "Vec<(ResourceAccessIndex,ResourceAccessIndex)>", "status": "observed"},
+        {"offset": "0x30", "type": "Vec<ResourceLifetimeRecord>", "status": "observed"},
+        {"offset": "0x48", "type": "Vec<u32>", "status": "observed"},
+        {"offset": "0x60", "type": "Vec<u32>", "status": "observed"},
+        {"offset": "0x78", "type": "Vec<u32>", "status": "observed"},
+        {"offset": "0x90", "type": "export-index hash container", "status": "observed"}
+      ]
+    },
+    {
+      "name": "PassResourceAccess",
+      "status": "inferred",
+      "evidence": ["0x140530430"],
+      "fields": [
+        {"offset": "0x00", "type": "u32 resource_index", "status": "observed"},
+        {"offset": "0x04", "type": "u32 synchronization_group", "status": "observed"},
+        {"offset": "0x08", "type": "u8 dependency_access_code", "status": "observed"},
+        {"offset": "0x09", "type": "[u8;3]", "status": "unknown"}
+      ]
+    },
+    {
+      "name": "ResourceAccessRecord",
+      "status": "inferred",
+      "evidence": ["0x140530430", "0x140bd47d0"],
+      "size": 20,
+      "fields": [
+        {"offset": "0x00", "type": "u32 resource_index", "status": "observed"},
+        {"offset": "0x04", "type": "u32 previous_access", "status": "observed"},
+        {"offset": "0x08", "type": "u32 next_access", "status": "observed"},
+        {"offset": "0x0c", "type": "u32 synchronization_group", "status": "observed"},
+        {"offset": "0x10", "type": "u8 dependency_access_code", "status": "observed"},
+        {"offset": "0x11", "type": "[u8;3]", "status": "unknown"}
+      ]
+    },
+    {
+      "name": "ResourceLifetimeRecord",
+      "status": "inferred",
+      "evidence": ["0x14048da00", "0x140bd4860"],
+      "size": 24,
+      "fields": [
+        {"offset": "0x00", "type": "u32 first_tag", "status": "observed"},
+        {"offset": "0x04", "type": "u32 first_pass", "status": "observed"},
+        {"offset": "0x08", "type": "u32 last_tag", "status": "observed"},
+        {"offset": "0x0c", "type": "u32 last_pass", "status": "observed"},
+        {"offset": "0x10", "type": "u32 first_access", "status": "observed"},
+        {"offset": "0x14", "type": "u32 last_access", "status": "observed"}
+      ]
+    },
+    {
+      "name": "PassIndex",
+      "status": "observed numeric newtype",
+      "evidence": ["0x140bd4b40"],
+      "representation": "u32 checked conversion from usize"
+    },
+    {
+      "name": "ResourceAccessIndex",
+      "status": "observed numeric newtype",
+      "evidence": ["0x140bd4b80"],
+      "representation": "u32 checked conversion from usize"
+    },
+    {
+      "name": "OriginKind",
+      "status": "partial",
+      "evidence": ["0x14048da00", "0x140bd6d10"],
+      "variants": [
+        {"tag": 0, "name": "Tag0", "semantic": "descriptor/new allocation (registry cross-check; inferred)"},
+        {"tag": 1, "name": "Tag1", "semantic": "Imported (registry cross-check; observed consumer name)"},
+        {"tag": 2, "name": "Tag2", "semantic": "owned resource (ownership wording inferred)"}
+      ]
+    },
+    {
+      "name": "LifetimeEventWord",
+      "status": "observed encoding",
+      "evidence": ["0x140bd4860"],
+      "encoding": "pass_index<<17 | resource_index; end event additionally ORs 0x10000"
+    }
+  ]
+}

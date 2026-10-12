@@ -1,0 +1,358 @@
+{
+ "note": "call-site byte evidence for the 5 hook functions plus queue_submit. site bytes are the raw E8 call (5 bytes).",
+ "instances": [
+  {
+   "hook_va": "0x140530430",
+   "name": "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e",
+   "n_incoming_direct_callsites": 3,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx",
+     "r8",
+     "r9"
+    ],
+    "prefix_count": 4,
+    "sources": {
+     "rcx": "mem:[rbp+5672]",
+     "rdx": "mem:[rbp+4920]",
+     "r8": "mem:[rbp+6744]",
+     "r9": "mem:[rbp+6752]"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x140163ac9"
+   },
+   "sites": [
+    {
+     "site": "0x140163ac9",
+     "bytes": "e862c93c00",
+     "caller": "0x140161cd0",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5",
+     "arg_regs": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+4920]",
+       "addr": "0x140163ac2"
+      },
+      "r9": {
+       "source": "mem:[rbp+6752]",
+       "addr": "0x140163aad"
+      },
+      "r8": {
+       "source": "mem:[rbp+6744]",
+       "addr": "0x140163aa6"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5672]",
+       "addr": "0x140163a24"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    },
+    {
+     "site": "0x1401657f8",
+     "bytes": "e833ac3c00",
+     "caller": "0x1401647b0",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210",
+     "arg_regs": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+4944]",
+       "addr": "0x1401657f1"
+      },
+      "r9": {
+       "source": "mem:[rbp+6400]",
+       "addr": "0x1401657dc"
+      },
+      "r8": {
+       "source": "mem:[rbp+6392]",
+       "addr": "0x1401657d5"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5256]",
+       "addr": "0x140165753"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    },
+    {
+     "site": "0x140166f9f",
+     "bytes": "e88c943c00",
+     "caller": "0x140166510",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef",
+     "arg_regs": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+5568]",
+       "addr": "0x140166f98"
+      },
+      "r9": {
+       "source": "mem:[rbp+6368]",
+       "addr": "0x140166f83"
+      },
+      "r8": {
+       "source": "mem:[rbp+6360]",
+       "addr": "0x140166f7c"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5880]",
+       "addr": "0x140166efa"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    }
+   ]
+  },
+  {
+   "hook_va": "0x1409dca90",
+   "name": "rhapsody::rg::pass_builder::PassBuilder$LT$UserData$GT$::add_resource_access::hee5de4e8c6a2fb95 (.llvm.5603919287574932884)",
+   "n_incoming_direct_callsites": 0,
+   "consensus": null,
+   "sites": []
+  },
+  {
+   "hook_va": "0x140bebdf0",
+   "name": "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs",
+   "n_incoming_direct_callsites": 3,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "reg:rdi",
+     "rdx": "mem:[rbp+528]"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x1400fa684"
+   },
+   "sites": [
+    {
+     "site": "0x1400fa684",
+     "bytes": "e86717af00",
+     "caller": "0x1400fa190",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::execute_compiled::he77827c1ebb95e22",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+528]",
+       "addr": "0x1400fa67d"
+      },
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x1400fa67a"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    },
+    {
+     "site": "0x1400fab27",
+     "bytes": "e8c412af00",
+     "caller": "0x1400fa190",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::execute_compiled::he77827c1ebb95e22",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+528]",
+       "addr": "0x1400fab20"
+      },
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x1400fab1d"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    },
+    {
+     "site": "0x140bec7f2",
+     "bytes": "e8f9f5ffff",
+     "caller": "0x140bec400",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::end_frame",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x140bec7ef"
+      },
+      "rdx": {
+       "source": "mem:[rdi+376]",
+       "addr": "0x140bec7e1"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    }
+   ]
+  },
+  {
+   "hook_va": "0x140bf0b90",
+   "name": "rhapsody::raw::device::Queue::update_pending_submissions",
+   "n_incoming_direct_callsites": 2,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "mem:[rdi+16]",
+     "rdx": "reg:rsi"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x1418c3558"
+   },
+   "sites": [
+    {
+     "site": "0x1418c3558",
+     "bytes": "e833d632ff",
+     "caller": "0x1418c3300",
+     "caller_name": "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x1418c3555"
+      },
+      "rcx": {
+       "source": "mem:[rdi+16]",
+       "addr": "0x1418c3551"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    },
+    {
+     "site": "0x1418c358f",
+     "bytes": "e8fcd532ff",
+     "caller": "0x1418c3300",
+     "caller_name": "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x1418c358c"
+      },
+      "rcx": {
+       "source": "mem:[rdi+200]",
+       "addr": "0x1418c355d"
+      }
+     },
+     "stack_arg_stores": [],
+     "confidence": "high",
+     "error": null
+    }
+   ]
+  },
+  {
+   "hook_va": "0x1409dd4d0",
+   "name": "rhapsody::rg::pass_builder::PassBuilder$LT$UserData$GT$::render::hc316b716c5256a6b",
+   "n_incoming_direct_callsites": 0,
+   "consensus": null,
+   "sites": []
+  },
+  {
+   "hook_va": "0x140c04e20",
+   "name": "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+   "n_incoming_direct_callsites": 1,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "mem:[rbp+352]",
+     "rdx": "reg:rsi"
+    },
+    "stack_arg_stores": [
+     {
+      "base": "rsp",
+      "disp": 32,
+      "src": "reg:rbx",
+      "addr": "0x140bebfc4"
+     }
+    ],
+    "confidence": "high",
+    "from_site": "0x140bebfd6"
+   },
+   "sites": [
+    {
+     "site": "0x140bebfd6",
+     "bytes": "e8458e0100",
+     "caller": "0x140bebdf0",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs",
+     "arg_regs": [
+      "rcx",
+      "rdx"
+     ],
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x140bebfd0"
+      },
+      "rcx": {
+       "source": "mem:[rbp+352]",
+       "addr": "0x140bebfc9"
+      }
+     },
+     "stack_arg_stores": [
+      {
+       "base": "rsp",
+       "disp": 32,
+       "src": "reg:rbx",
+       "addr": "0x140bebfc4"
+      }
+     ],
+     "confidence": "high",
+     "error": null
+    }
+   ]
+  }
+ ]
+}

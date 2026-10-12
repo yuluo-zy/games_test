@@ -1,0 +1,40 @@
+{
+  "status": "open",
+  "unknowns": [
+    {
+      "id": "RI-U01",
+      "question": "What is the complete ResourceInfo source layout and field naming?",
+      "reason": "PDB signatures are void placeholders; only machine-code offsets are bounded.",
+      "next_evidence": "retained type database or matching source archive"
+    },
+    {
+      "id": "RI-U02",
+      "question": "What are the exact origin enum names/payload ownership semantics?",
+      "reason": "Numeric tags and one registry consumer establish only partial semantics.",
+      "next_evidence": "registry population and pass builder cross-consumers"
+    },
+    {
+      "id": "RI-U03",
+      "question": "What is the dependency access enum and fork patch?",
+      "reason": "get_access_info and is_write are external vk-sync-fork boundaries.",
+      "next_evidence": "original local fork source/commit"
+    },
+    {
+      "id": "RI-U04",
+      "question": "What is the exported-index hash key/value and ownership model?",
+      "reason": "Only index insertion and clear are observed.",
+      "next_evidence": "ResourceRegistry and ResourcePool consumers"
+    },
+    {
+      "id": "RI-U05",
+      "question": "How do derived vectors feed physical allocation, barriers and executor?",
+      "reason": "Those consumers are outside calculate's bounded call graph.",
+      "next_evidence": "registry/pool and compiled graph work packages"
+    }
+  ],
+  "evidence_limitations": [
+    "static analysis does not establish runtime scheduling",
+    "native disassembly is not original source",
+    "panic paths are checked for state ordering but unwind ABI is not recreated"
+  ]
+}

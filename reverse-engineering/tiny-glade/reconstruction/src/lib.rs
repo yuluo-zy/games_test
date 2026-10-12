@@ -23,3 +23,5 @@ pub mod roof_pipeline;
 pub mod wall_height_rules;
 #[path = "../roof/edit_rules.rs"]
 pub mod roof_edit_rules;
+#[path = "../render/resource_info.rs"]
+pub mod render_resource_info;

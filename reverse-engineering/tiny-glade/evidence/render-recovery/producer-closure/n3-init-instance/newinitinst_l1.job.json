@@ -1,0 +1,167 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "ghidra",
+    "version": "12.1.4"
+  },
+  "database": "newinitinst_l1",
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newinitinst_l1"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newinitinst_l1"
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "newinitinst_l1",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a9fa70"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bdbcc0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c001c0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bffae0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c001e0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c001f0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1418cd5d0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1428cab30"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c01620"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c00a80"
+            }
+          }
+        ]
+      },
+      "expands": [
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a9fa70"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140bdbcc0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c001c0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140bffae0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c001e0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c001f0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1418cd5d0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1428cab30"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c01620"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c00a80"
+          }
+        }
+      ],
+      "timeout_ms": 600000
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newinitinst_l1",
+        "save": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+[package]
+name = "tiny-glade-graph-compiler-r2"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tg-resource-info-candidate = { path = "../resource-info" }
+tiny-glade-registry-pool-candidate = { path = "../registry-pool" }
+tg-rhapsody-reconstruction = { path = "../.." }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "graph-snapshot-oracle"
+path = "src/bin/graph-snapshot-oracle.rs"
+
+[workspace]

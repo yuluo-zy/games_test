@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "provenance": "candidate event oracle; Vulkan external, not runtime observation",
+  "scenarios": [
+    {
+      "name": "multi_queue_out_of_order_cpu_drop_contiguous_gpu_reclaim",
+      "events": [
+        {
+          "event": "create",
+          "identity": 0,
+          "generation": 10
+        },
+        {
+          "event": "create",
+          "identity": 1,
+          "generation": 11
+        },
+        {
+          "event": "track",
+          "identity": 0,
+          "domain": 0,
+          "sequence": 2
+        },
+        {
+          "event": "track",
+          "identity": 1,
+          "domain": 0,
+          "sequence": 1
+        },
+        {
+          "event": "cpu_pool_return",
+          "identity": 0
+        },
+        {
+          "event": "cpu_drop",
+          "identity": 0,
+          "references": 0
+        },
+        {
+          "event": "waste_queued",
+          "identity": 0,
+          "sequence": 2
+        },
+        {
+          "event": "cpu_drop",
+          "identity": 1,
+          "references": 0
+        },
+        {
+          "event": "waste_queued",
+          "identity": 1,
+          "sequence": 1
+        },
+        {
+          "event": "waste_attached",
+          "identity": 0,
+          "domain": 0,
+          "sequence": 2
+        },
+        {
+          "event": "waste_attached",
+          "identity": 1,
+          "domain": 0,
+          "sequence": 1
+        },
+        {
+          "event": "submit",
+          "queue": 0,
+          "timeline": 5,
+          "commands": [
+            {
+              "domain": 0,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "event": "submit",
+          "queue": 1,
+          "timeline": 9,
+          "commands": [
+            {
+              "domain": 0,
+              "sequence": 2
+            }
+          ]
+        },
+        {
+          "event": "complete",
+          "queue": 1,
+          "timeline": 9
+        },
+        {
+          "event": "complete",
+          "queue": 0,
+          "timeline": 5
+        },
+        {
+          "event": "reclaim_command",
+          "domain": 0,
+          "sequence": 1
+        },
+        {
+          "event": "external_dispose",
+          "identity": 1
+        },
+        {
+          "event": "reclaim_command",
+          "domain": 0,
+          "sequence": 2
+        },
+        {
+          "event": "external_dispose",
+          "identity": 0
+        }
+      ]
+    },
+    {
+      "name": "empty_submit",
+      "events": [
+        {
+          "event": "submit",
+          "queue": 0,
+          "timeline": 1,
+          "commands": []
+        },
+        {
+          "event": "complete",
+          "queue": 0,
+          "timeline": 1
+        }
+      ]
+    },
+    {
+      "name": "generation_skip_and_moved_drop_failure",
+      "events": [
+        {
+          "event": "create",
+          "identity": 0,
+          "generation": 4
+        },
+        {
+          "event": "generation_skipped",
+          "identity": 0,
+          "generation": 3
+        },
+        {
+          "event": "cpu_drop",
+          "identity": 0,
+          "references": 0
+        },
+        {
+          "event": "waste_queued",
+          "identity": 0,
+          "sequence": null
+        },
+        {
+          "event": "external_dispose",
+          "identity": 0
+        }
+      ]
+    }
+  ]
+}

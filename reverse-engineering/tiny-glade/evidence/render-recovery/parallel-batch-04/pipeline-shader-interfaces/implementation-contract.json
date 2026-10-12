@@ -1,0 +1,10 @@
+{
+  "schema_version":1,
+  "status":"shipped_interface_catalog_and_candidate_validation",
+  "library":{"name":"spirq","version":"0.6.2","source":"git+https://github.com/h3r2tic/spirq-rs.git","commit":"4f22e6f149750401705d47ae15a60e77cd5a6905","reimplemented":false},
+  "inputs":["404 original compiled-shaders containers","original PDB native/public symbols","existing rhapsody workgraph/direct-call evidence"],
+  "outputs":["catalog.json","interface-families.json","cross-index.json","inventory.json","summary.json","unknowns.json","validation.json","interface-validation.json"],
+  "candidate_interfaces":["DescriptorBinding(set,binding,class,count,stages)","PushConstantRange(offset,size,stages)","StageLocation(location,component,type_signature)"],
+  "candidate_rules":["descriptor merge checks class/count and unions stages","count0 stays dynamic","push alignment and u32 overflow checked","stage link requires matching location/component/type"],
+  "limits":["Not recovered rhapsody Rust ABI","Family groups exclude algorithm/semantic equivalence","BuiltIn block linking/device limits/image layout/runtime usage excluded","Shader-to-country-core name candidates remain inferred"]
+}

@@ -1,0 +1,30 @@
+{
+  "status": "batch_native_verified_candidate_barriers_static",
+  "target_execution": false,
+  "checks": {
+    "rustc_edition_2021_library": "passed",
+    "rustfmt_check_library_and_runner": "passed",
+    "json_parse_all_evidence": "passed",
+    "node_check_query": "passed",
+    "objdump_capture": "passed",
+    "mcp_actual_connection": true,
+    "mcp_database_identity": "tg_render_arch, original target SHA-256 matched before opening; get_database_info queried",
+    "mcp_database_mutation_requested": false,
+    "mcp_close_save_false": "passed"
+  },
+  "native_batch_oracle": {
+    "status": "passed",
+    "harness": "evidence/render-recovery/parallel/compiled-state/verify-batch.py",
+    "runner": "reconstruction/render/work-packages/compiled-state/runner.rs",
+    "intended_cases": 1600,
+    "executed_cases": 1600,
+    "failure_count": 0,
+    "runtime": "workspace/python/Scripts/python.exe",
+    "runtime_discovery": "evidence/render-recovery/findings.md lines 38-39",
+    "report": "evidence/render-recovery/parallel/compiled-state/native-batch-verification.json",
+    "limits": ["preallocated sufficient Vec capacity; std growth excluded","bool/padding projection only","other candidates remain static"],
+    "installation_attempted": false
+  },
+  "acceptance": "BatchCompiler new/flush CPU state accepted for scoped cases; full graph compiler and barriers remain candidate",
+  "limitations": ["full Vulkan record_batch and RenderGraphState::compile not implemented", "pre-pass projection not native differential validated", "padding/allocator/exception ABI not recovered"]
+}

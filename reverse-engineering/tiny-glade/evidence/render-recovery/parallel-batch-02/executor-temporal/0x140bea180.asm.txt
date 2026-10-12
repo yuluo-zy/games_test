@@ -1,0 +1,28 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bea180: 56                          	push	rsi
+140bea181: 57                          	push	rdi
+140bea182: 48 83 ec 28                 	sub	rsp, 0x28
+140bea186: 4c 89 c6                    	mov	rsi, r8
+140bea189: 48 89 cf                    	mov	rdi, rcx
+140bea18c: 41 b8 90 00 00 00           	mov	r8d, 0x90
+140bea192: e8 69 9a d3 01              	call	0x142923c00 <.text+0x2922c00>
+140bea197: 0f 10 06                    	movups	xmm0, xmmword ptr [rsi]
+140bea19a: 0f 10 4e 10                 	movups	xmm1, xmmword ptr [rsi + 0x10]
+140bea19e: 0f 10 56 20                 	movups	xmm2, xmmword ptr [rsi + 0x20]
+140bea1a2: 0f 10 5e 30                 	movups	xmm3, xmmword ptr [rsi + 0x30]
+140bea1a6: 0f 11 87 90 00 00 00        	movups	xmmword ptr [rdi + 0x90], xmm0
+140bea1ad: 0f 11 8f a0 00 00 00        	movups	xmmword ptr [rdi + 0xa0], xmm1
+140bea1b4: 0f 11 97 b0 00 00 00        	movups	xmmword ptr [rdi + 0xb0], xmm2
+140bea1bb: 0f 11 9f c0 00 00 00        	movups	xmmword ptr [rdi + 0xc0], xmm3
+140bea1c2: 48 8b 46 40                 	mov	rax, qword ptr [rsi + 0x40]
+140bea1c6: 48 89 87 d0 00 00 00        	mov	qword ptr [rdi + 0xd0], rax
+140bea1cd: 48 89 f8                    	mov	rax, rdi
+140bea1d0: 48 83 c4 28                 	add	rsp, 0x28
+140bea1d4: 5f                          	pop	rdi
+140bea1d5: 5e                          	pop	rsi
+140bea1d6: c3                          	ret

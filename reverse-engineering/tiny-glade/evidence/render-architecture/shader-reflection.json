@@ -1,0 +1,5847 @@
+{
+  "files": [
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_calculate_reprojection_map.cs.hlsl_cs_main_0.bin",
+      "sha256": "a3d324137aa9635ad63d6e752ae958cc5ffce89297ef143be64bb373a654b6c4",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "11486fe55c9db966a3bea31db51bd5b3ea554e57b426ecf2f07b8d717eb3f6d2",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "prev_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "velocity_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 13,
+            "OpSource": 13,
+            "OpName": 15,
+            "OpMemberName": 48,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 18,
+            "OpMemberDecorate": 72,
+            "OpTypeInt": 2,
+            "OpConstant": 29,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 8,
+            "OpConstantComposite": 14,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 10,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypeArray": 1,
+            "OpTypeImage": 2,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 8,
+            "OpConstantNull": 1,
+            "OpLine": 168,
+            "OpNoLine": 4,
+            "OpFunction": 1,
+            "OpLabel": 19,
+            "OpLoad": 18,
+            "OpVectorShuffle": 10,
+            "OpSelectionMerge": 9,
+            "OpSwitch": 1,
+            "OpBitcast": 6,
+            "OpAccessChain": 11,
+            "OpConvertUToF": 2,
+            "OpConvertSToF": 1,
+            "OpFAdd": 9,
+            "OpFDiv": 13,
+            "OpImageFetch": 3,
+            "OpCompositeExtract": 27,
+            "OpFOrdEqual": 2,
+            "OpBranchConditional": 8,
+            "OpFSub": 9,
+            "OpFMul": 17,
+            "OpCompositeConstruct": 15,
+            "OpVectorTimesMatrix": 8,
+            "OpExtInst": 10,
+            "OpAll": 9,
+            "OpSelect": 8,
+            "OpImageWrite": 2,
+            "OpBranch": 9,
+            "OpVectorTimesScalar": 6,
+            "OpINotEqual": 1,
+            "OpIEqual": 1,
+            "OpLogicalNot": 1,
+            "OpPhi": 8,
+            "OpSampledImage": 1,
+            "OpImageGather": 1,
+            "OpFNegate": 3,
+            "OpConvertFToS": 1,
+            "OpSGreaterThanEqual": 4,
+            "OpULessThan": 4,
+            "OpIAdd": 3,
+            "OpDot": 1,
+            "OpFOrdNotEqual": 2,
+            "OpAny": 2,
+            "OpSGreaterThan": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "depth_tex",
+            "prev_depth_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_extract_half_res_depth_normals.cs.hlsl_cs_main_0.bin",
+      "sha256": "b2a1716576c26d769573a5a09533edb61291e48e2325cf500e8365a1d5fca264",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "f2a451afb8c3e7ce2df50ee1b4c49cd709086c3007012b3a4d103227750b41be",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "stencil_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_input_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "gbuffer_input_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "normals_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 13,
+            "OpSource": 13,
+            "OpName": 14,
+            "OpMemberName": 43,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 15,
+            "OpMemberDecorate": 67,
+            "OpTypeInt": 2,
+            "OpConstant": 20,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 7,
+            "OpConstantComposite": 7,
+            "OpTypeBool": 1,
+            "OpConstantTrue": 1,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 2,
+            "OpTypeArray": 2,
+            "OpTypePointer": 10,
+            "OpTypeImage": 4,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 8,
+            "OpUndef": 1,
+            "OpLine": 55,
+            "OpNoLine": 4,
+            "OpFunction": 1,
+            "OpLabel": 6,
+            "OpStore": 1,
+            "OpLoad": 10,
+            "OpVectorShuffle": 3,
+            "OpIMul": 1,
+            "OpBitcast": 8,
+            "OpAccessChain": 3,
+            "OpBitwiseAnd": 6,
+            "OpIAdd": 1,
+            "OpImageFetch": 3,
+            "OpCompositeExtract": 11,
+            "OpIEqual": 4,
+            "OpLogicalNot": 1,
+            "OpSelectionMerge": 2,
+            "OpBranchConditional": 2,
+            "OpBranch": 3,
+            "OpPhi": 2,
+            "OpBitwiseOr": 1,
+            "OpImageWrite": 2,
+            "OpConvertUToF": 3,
+            "OpFMul": 4,
+            "OpShiftRightLogical": 2,
+            "OpCompositeConstruct": 3,
+            "OpVectorTimesScalar": 1,
+            "OpFSub": 1,
+            "OpVectorTimesMatrix": 1,
+            "OpExtInst": 1,
+            "OpSelect": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "depth_input_tex",
+            "gbuffer_input_tex",
+            "depth_output_tex",
+            "normals_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_gi_blur_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "sha256": "1ab4c5120fa042b8eeeaf7f3452d3504eeb88299fe46b88cc47ee74592256b4e",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "ca62a8b68aeae1cc7e6f9784f634c2b050f001c9085e9a01a5df8f4d56ef0290",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "ssgi_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "input_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "temporal_stats_out_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 19,
+            "OpSource": 19,
+            "OpSourceContinued": 1,
+            "OpName": 16,
+            "OpMemberName": 49,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 20,
+            "OpMemberDecorate": 73,
+            "OpTypeInt": 2,
+            "OpConstant": 22,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpTypeArray": 3,
+            "OpConstantNull": 1,
+            "OpConstantComposite": 7,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypePointer": 11,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeBool": 1,
+            "OpVariable": 11,
+            "OpLine": 98,
+            "OpNoLine": 2,
+            "OpFunction": 1,
+            "OpLabel": 18,
+            "OpStore": 4,
+            "OpLoad": 15,
+            "OpVectorShuffle": 3,
+            "OpImageFetch": 8,
+            "OpCompositeExtract": 6,
+            "OpExtInst": 7,
+            "OpIMul": 4,
+            "OpAccessChain": 7,
+            "OpBitwiseAnd": 1,
+            "OpIAdd": 10,
+            "OpImageRead": 1,
+            "OpFMul": 9,
+            "OpFOrdGreaterThan": 1,
+            "OpSelect": 1,
+            "OpBranch": 12,
+            "OpPhi": 7,
+            "OpSLessThanEqual": 2,
+            "OpLoopMerge": 5,
+            "OpBranchConditional": 5,
+            "OpCompositeConstruct": 4,
+            "OpConvertSToF": 1,
+            "OpVectorTimesScalar": 2,
+            "OpConvertFToS": 1,
+            "OpBitcast": 1,
+            "OpFDiv": 3,
+            "OpFSub": 2,
+            "OpFNegate": 1,
+            "OpDot": 1,
+            "OpFAdd": 3,
+            "OpULessThan": 3,
+            "OpImageWrite": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "half_depth_tex",
+            "half_view_normal_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_gi_eval_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "sha256": "f53d364512a09c88245abd06854e994dac069937b09408b5859d852a91b4d41c",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "6d86a9b21a84c19b5737a058b46334692f74f5e681050d851eed167271007626",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blue_noise_texture",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "ssgi_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_radiance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_ray_dir_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_reservoir_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 22,
+            "OpSource": 22,
+            "OpSourceContinued": 1,
+            "OpName": 18,
+            "OpMemberName": 51,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 24,
+            "OpMemberDecorate": 75,
+            "OpTypeInt": 2,
+            "OpConstant": 38,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpConstantComposite": 15,
+            "OpTypeArray": 3,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypePointer": 12,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeBool": 1,
+            "OpVariable": 13,
+            "OpConstantNull": 1,
+            "OpUndef": 1,
+            "OpLine": 135,
+            "OpNoLine": 2,
+            "OpFunction": 1,
+            "OpLabel": 7,
+            "OpStore": 8,
+            "OpLoad": 21,
+            "OpVectorShuffle": 5,
+            "OpIAdd": 8,
+            "OpAccessChain": 11,
+            "OpConvertUToF": 3,
+            "OpVectorTimesScalar": 16,
+            "OpFAdd": 10,
+            "OpExtInst": 13,
+            "OpFMul": 9,
+            "OpConvertFToU": 2,
+            "OpUMod": 2,
+            "OpImageFetch": 11,
+            "OpCompositeExtract": 19,
+            "OpIMul": 3,
+            "OpBitwiseAnd": 2,
+            "OpCompositeConstruct": 5,
+            "OpVectorTimesMatrix": 1,
+            "OpBranch": 4,
+            "OpPhi": 3,
+            "OpULessThan": 2,
+            "OpLoopMerge": 2,
+            "OpBranchConditional": 2,
+            "OpISub": 1,
+            "OpShiftRightLogical": 1,
+            "OpFDiv": 2,
+            "OpFSub": 2,
+            "OpFNegate": 1,
+            "OpDot": 1,
+            "OpFOrdGreaterThan": 1,
+            "OpSelect": 1,
+            "OpConvertSToF": 1,
+            "OpImageWrite": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "half_depth_tex",
+            "half_view_normal_tex",
+            "restir_radiance_tex",
+            "restir_ray_dir_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_gi_reproject_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "sha256": "ba4f117f62426f66b00a2be1ca79f5d44259ad7f4895328f11710f033391e113",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "8bedd322f9df10fbd11bc43cdbfa096e91d73451b93c8b7219833b551bf14a19",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "temporal_stats_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "temporal_stats_out_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 15,
+            "OpSource": 15,
+            "OpSourceContinued": 1,
+            "OpName": 20,
+            "OpMemberName": 52,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 26,
+            "OpMemberDecorate": 76,
+            "OpTypeInt": 2,
+            "OpConstant": 33,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 9,
+            "OpConstantComposite": 18,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpConstantTrue": 1,
+            "OpTypeArray": 2,
+            "OpConstantNull": 2,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 11,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 15,
+            "OpLine": 283,
+            "OpNoLine": 2,
+            "OpFunction": 1,
+            "OpLabel": 48,
+            "OpLoad": 27,
+            "OpVectorShuffle": 19,
+            "OpSelectionMerge": 12,
+            "OpSwitch": 1,
+            "OpImageFetch": 5,
+            "OpCompositeExtract": 25,
+            "OpExtInst": 31,
+            "OpFOrdGreaterThan": 2,
+            "OpSelect": 4,
+            "OpFOrdGreaterThanEqual": 1,
+            "OpCompositeConstruct": 12,
+            "OpIMul": 6,
+            "OpIAdd": 13,
+            "OpFAdd": 19,
+            "OpFDiv": 9,
+            "OpFOrdLessThan": 2,
+            "OpBranchConditional": 18,
+            "OpFSub": 8,
+            "OpVectorTimesScalar": 13,
+            "OpFMul": 15,
+            "OpBranch": 28,
+            "OpPhi": 25,
+            "OpAccessChain": 13,
+            "OpINotEqual": 3,
+            "OpIEqual": 1,
+            "OpLogicalNot": 2,
+            "OpImageWrite": 5,
+            "OpBitcast": 2,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 1,
+            "OpFOrdNotEqual": 1,
+            "OpConvertFToU": 1,
+            "OpBitwiseAnd": 1,
+            "OpStore": 5,
+            "OpULessThan": 5,
+            "OpLoopMerge": 7,
+            "OpSampledImage": 4,
+            "OpImageSampleExplicitLod": 2,
+            "OpImageGather": 2,
+            "OpCompositeInsert": 5,
+            "OpImageRead": 3,
+            "OpSLessThanEqual": 2,
+            "OpUGreaterThanEqual": 1,
+            "OpAny": 1,
+            "OpFNegate": 1,
+            "OpDot": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "half_depth_tex",
+            "half_view_normal_tex",
+            "history_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_gi_trace_gi_candidates.cs.hlsl_cs_main_0.bin",
+      "sha256": "9ce80d1042477c7b4f14cb07feebfcd27cb7087cc8a143dddab64d256a78c59f",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "e2c17699489bd91245101f4af9ab94546c58121d9fc0129c44d89d4e5bbf5f48",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_llc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_default",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    9
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_shadow_nearest",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    11
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_shadow_linear",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    12
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "terrain_heightmap",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "visual_terrain_heightmap",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blue_noise_texture",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "terrain_lighting_texture",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_library",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "shadow_map",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "wall_color_ids",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "rt_triangle_meta",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "rt_bl_bvh",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "rt_triangles",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "taa_history_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    26
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    27
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    29
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    30
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "candidate_radiance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "candidate_hit_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    37
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 41,
+            "OpSource": 41,
+            "OpSourceContinued": 2,
+            "OpName": 42,
+            "OpMemberName": 104,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 63,
+            "OpMemberDecorate": 134,
+            "OpTypeInt": 2,
+            "OpConstant": 158,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 9,
+            "OpConstantComposite": 55,
+            "OpTypeBool": 1,
+            "OpConstantTrue": 1,
+            "OpConstantFalse": 1,
+            "OpTypeImage": 4,
+            "OpTypeArray": 7,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 26,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 9,
+            "OpTypeRuntimeArray": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 2,
+            "OpVariable": 29,
+            "OpUndef": 4,
+            "OpConstantNull": 7,
+            "OpLine": 2049,
+            "OpNoLine": 52,
+            "OpFunction": 1,
+            "OpLabel": 291,
+            "OpLoad": 82,
+            "OpVectorShuffle": 65,
+            "OpSelectionMerge": 103,
+            "OpSwitch": 17,
+            "OpIMul": 17,
+            "OpImageFetch": 3,
+            "OpCompositeExtract": 260,
+            "OpBitcast": 30,
+            "OpAccessChain": 45,
+            "OpConvertUToF": 73,
+            "OpConvertSToF": 12,
+            "OpFAdd": 139,
+            "OpFDiv": 72,
+            "OpFSub": 76,
+            "OpFMul": 213,
+            "OpCompositeConstruct": 92,
+            "OpVectorTimesMatrix": 18,
+            "OpFNegate": 11,
+            "OpFOrdGreaterThan": 15,
+            "OpBranchConditional": 104,
+            "OpBranch": 163,
+            "OpPhi": 212,
+            "OpULessThan": 13,
+            "OpLoopMerge": 18,
+            "OpIAdd": 38,
+            "OpImageWrite": 4,
+            "OpUGreaterThan": 5,
+            "OpBitwiseAnd": 122,
+            "OpSelect": 68,
+            "OpBitwiseXor": 4,
+            "OpIEqual": 15,
+            "OpISub": 7,
+            "OpUDiv": 1,
+            "OpUMod": 5,
+            "OpVectorTimesScalar": 71,
+            "OpExtInst": 226,
+            "OpFOrdLessThan": 25,
+            "OpConvertFToS": 5,
+            "OpFOrdGreaterThanEqual": 7,
+            "OpSampledImage": 23,
+            "OpImageSampleExplicitLod": 21,
+            "OpINotEqual": 16,
+            "OpUnreachable": 6,
+            "OpLogicalNot": 6,
+            "OpConvertFToU": 3,
+            "OpStore": 4,
+            "OpBitwiseOr": 11,
+            "OpShiftLeftLogical": 16,
+            "OpNot": 3,
+            "OpCompositeInsert": 7,
+            "OpSGreaterThanEqual": 2,
+            "OpBitCount": 1,
+            "OpShiftRightLogical": 77,
+            "OpFOrdLessThanEqual": 13,
+            "OpDot": 25,
+            "OpAll": 1,
+            "OpAny": 4,
+            "OpSLessThan": 4,
+            "OpImageSampleDrefExplicitLod": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "type.2d.image.array",
+            "type.StructuredBuffer.PackedBlBvhNode",
+            "PackedBlBvhNode",
+            "rt_bl_bvh",
+            "taa_history_tex",
+            "half_depth_tex",
+            "half_view_normal_tex",
+            "candidate_radiance_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_gi_update_gi_radiance.cs.hlsl_cs_main_0.bin",
+      "sha256": "603ceb869c8fda906d8091c57e490f49f070704c0c72b89512e585dbcf54399b",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "c505bd1dbb6aeaffb7f0a2c229cf4fbd9453bf0e20713d6f7653fb011c6ca2d7",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats"
+          ],
+          "bindings": [
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    26
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "candidate_radiance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    33
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "candidate_hit_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    34
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_radiance_out_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    35
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_ray_dir_out_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "restir_reservoir_out_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    37
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 39,
+            "OpSource": 39,
+            "OpSourceContinued": 2,
+            "OpName": 14,
+            "OpMemberName": 43,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 17,
+            "OpMemberDecorate": 67,
+            "OpTypeInt": 2,
+            "OpTypeFloat": 1,
+            "OpConstant": 10,
+            "OpTypeVector": 5,
+            "OpConstantComposite": 7,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 2,
+            "OpTypeArray": 2,
+            "OpTypePointer": 8,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 9,
+            "OpLine": 24,
+            "OpNoLine": 1,
+            "OpFunction": 1,
+            "OpLabel": 1,
+            "OpStore": 1,
+            "OpLoad": 9,
+            "OpVectorShuffle": 1,
+            "OpIMul": 1,
+            "OpAccessChain": 2,
+            "OpBitwiseAnd": 1,
+            "OpIAdd": 1,
+            "OpCompositeExtract": 6,
+            "OpShiftLeftLogical": 2,
+            "OpBitwiseOr": 2,
+            "OpImageFetch": 3,
+            "OpImageWrite": 3,
+            "OpCompositeConstruct": 2,
+            "OpExtInst": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "depth_tex",
+            "candidate_radiance_tex",
+            "restir_radiance_out_tex",
+            "restir_ray_dir_out_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_nani_cull_and_bucket.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "sha256": "b4ed6cde427ec8b87beb30e4c0514b81f230dd6ecdb8f18dc78736c2e1c1b054",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "966167016973bdb86e680de59aad2a18f69d4a5897128cc9196bf515ad5f74ca",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                64,
+                1,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "PhysicalStorageBufferAddresses"
+          ],
+          "bindings": [
+            {
+              "name": "push_constants",
+              "storage": "PushConstant",
+              "decorations": []
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "atlas_part_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_allocator_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_meta_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_output_histogram",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "prev_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_next_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "draw_list_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "hzb_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 2,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 19,
+            "OpSource": 19,
+            "OpSourceContinued": 1,
+            "OpName": 26,
+            "OpMemberName": 54,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 37,
+            "OpMemberDecorate": 86,
+            "OpTypeInt": 2,
+            "OpConstant": 26,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpTypeBool": 1,
+            "OpConstantTrue": 1,
+            "OpConstantFalse": 1,
+            "OpConstantComposite": 6,
+            "OpTypeStruct": 12,
+            "OpTypePointer": 27,
+            "OpTypeMatrix": 1,
+            "OpTypeArray": 3,
+            "OpTypeImage": 1,
+            "OpTypeRuntimeArray": 4,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 33,
+            "OpLine": 282,
+            "OpNoLine": 7,
+            "OpFunction": 1,
+            "OpLabel": 22,
+            "OpLoad": 83,
+            "OpCompositeExtract": 13,
+            "OpSelectionMerge": 7,
+            "OpSwitch": 1,
+            "OpAccessChain": 63,
+            "OpUGreaterThanEqual": 1,
+            "OpBranchConditional": 8,
+            "OpBranch": 12,
+            "OpStore": 28,
+            "OpBitcast": 5,
+            "OpIMul": 3,
+            "OpIAdd": 7,
+            "OpULessThan": 1,
+            "OpSelect": 2,
+            "OpVectorShuffle": 6,
+            "OpShiftRightLogical": 3,
+            "OpBitwiseAnd": 5,
+            "OpExtInst": 15,
+            "OpCompositeConstruct": 15,
+            "OpFMul": 25,
+            "OpVectorTimesMatrix": 1,
+            "OpFSub": 12,
+            "OpConvertFToU": 4,
+            "OpFNegate": 8,
+            "OpFAdd": 11,
+            "OpPhi": 6,
+            "OpSLessThan": 2,
+            "OpLoopMerge": 2,
+            "OpFDiv": 6,
+            "OpFOrdGreaterThan": 3,
+            "OpFOrdLessThan": 1,
+            "OpDot": 1,
+            "OpVectorTimesScalar": 1,
+            "OpConvertUToF": 1,
+            "OpImageFetch": 4,
+            "OpUDiv": 1,
+            "OpUMod": 1,
+            "OpShiftLeftLogical": 1,
+            "OpAtomicOr": 1,
+            "OpINotEqual": 1,
+            "OpLogicalNot": 1,
+            "OpAtomicIAdd": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "__alias_filtered_instance_buffer",
+            "__alias_filtered_instance_allocator_buffer",
+            "type.RWStructuredBuffer.GpuFilteredInstanceMeta",
+            "GpuFilteredInstanceMeta",
+            "__alias_filtered_instance_meta_buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_nani_cull_and_bucket.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "sha256": "105901277e8fd4ea8f67848683b90b2a3b347000d53c78c1c18e573dfd0d0687",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "c484f04262d5ae8a5dd025753959d2ae1fb5e57d060d85606c802fd1dc55541c",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                64,
+                1,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "PhysicalStorageBufferAddresses"
+          ],
+          "bindings": [
+            {
+              "name": "push_constants",
+              "storage": "PushConstant",
+              "decorations": []
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "atlas_part_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_allocator_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_meta_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_output_histogram",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "prev_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_next_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "draw_list_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 2,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 19,
+            "OpSource": 19,
+            "OpSourceContinued": 1,
+            "OpName": 22,
+            "OpMemberName": 53,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 32,
+            "OpMemberDecorate": 85,
+            "OpTypeInt": 2,
+            "OpConstant": 35,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 7,
+            "OpTypeBool": 1,
+            "OpConstantTrue": 1,
+            "OpConstantFalse": 1,
+            "OpConstantComposite": 2,
+            "OpTypeStruct": 11,
+            "OpTypePointer": 24,
+            "OpTypeMatrix": 1,
+            "OpTypeArray": 3,
+            "OpTypeRuntimeArray": 4,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 23,
+            "OpLine": 233,
+            "OpNoLine": 12,
+            "OpFunction": 1,
+            "OpLabel": 29,
+            "OpLoad": 45,
+            "OpCompositeExtract": 11,
+            "OpSelectionMerge": 9,
+            "OpSwitch": 1,
+            "OpAccessChain": 52,
+            "OpUGreaterThanEqual": 1,
+            "OpBranchConditional": 11,
+            "OpBranch": 16,
+            "OpStore": 21,
+            "OpBitcast": 5,
+            "OpIMul": 4,
+            "OpIAdd": 12,
+            "OpULessThan": 1,
+            "OpSelect": 7,
+            "OpVectorShuffle": 5,
+            "OpShiftRightLogical": 1,
+            "OpBitwiseAnd": 5,
+            "OpExtInst": 12,
+            "OpCompositeConstruct": 16,
+            "OpFMul": 11,
+            "OpVectorTimesMatrix": 4,
+            "OpFNegate": 6,
+            "OpFDiv": 3,
+            "OpConvertUToF": 1,
+            "OpFOrdLessThan": 2,
+            "OpFSub": 6,
+            "OpConvertFToU": 2,
+            "OpFAdd": 6,
+            "OpPhi": 10,
+            "OpSLessThan": 2,
+            "OpLoopMerge": 3,
+            "OpFOrdGreaterThan": 2,
+            "OpDot": 1,
+            "OpUDiv": 2,
+            "OpUMod": 2,
+            "OpShiftLeftLogical": 2,
+            "OpINotEqual": 1,
+            "OpAtomicOr": 1,
+            "OpAtomicIAdd": 4,
+            "OpFOrdGreaterThanEqual": 3,
+            "OpAny": 3,
+            "OpFOrdLessThanEqual": 3,
+            "OpAll": 3,
+            "OpULessThanEqual": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "__alias_filtered_instance_buffer",
+            "__alias_filtered_instance_allocator_buffer",
+            "type.RWStructuredBuffer.GpuFilteredInstanceMeta",
+            "GpuFilteredInstanceMeta",
+            "__alias_filtered_instance_meta_buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_nani_cull_and_bucket_roof_tile.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "sha256": "b592a7811aac109ae5781789cec3bb12c9d32fa8dfce738cfacc787b5d5208c2",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "9169fc77fad15450ebc574cbe2e41c17a4d0365e32685ffee65d1f8dacff367d",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                64,
+                1,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "push_constants",
+              "storage": "PushConstant",
+              "decorations": []
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_allocator_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_meta_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_output_histogram",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "prev_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_next_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "draw_list_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "hzb_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 26,
+            "OpMemberName": 61,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 36,
+            "OpMemberDecorate": 93,
+            "OpTypeInt": 2,
+            "OpConstant": 30,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpTypeBool": 1,
+            "OpConstantTrue": 1,
+            "OpConstantComposite": 4,
+            "OpConstantFalse": 1,
+            "OpTypeStruct": 12,
+            "OpTypePointer": 20,
+            "OpTypeMatrix": 1,
+            "OpTypeArray": 2,
+            "OpTypeImage": 1,
+            "OpTypeRuntimeArray": 4,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 15,
+            "OpLine": 211,
+            "OpNoLine": 10,
+            "OpFunction": 1,
+            "OpLabel": 22,
+            "OpLoad": 19,
+            "OpCompositeExtract": 40,
+            "OpSelectionMerge": 7,
+            "OpSwitch": 1,
+            "OpAccessChain": 24,
+            "OpUGreaterThanEqual": 1,
+            "OpBranchConditional": 8,
+            "OpBranch": 12,
+            "OpIAdd": 6,
+            "OpCompositeConstruct": 13,
+            "OpFAdd": 12,
+            "OpBitwiseAnd": 6,
+            "OpExtInst": 17,
+            "OpShiftRightLogical": 3,
+            "OpFMul": 20,
+            "OpVectorTimesMatrix": 1,
+            "OpFNegate": 5,
+            "OpFOrdGreaterThan": 4,
+            "OpSelect": 4,
+            "OpIEqual": 2,
+            "OpFSub": 12,
+            "OpConvertFToU": 4,
+            "OpIMul": 2,
+            "OpStore": 8,
+            "OpPhi": 6,
+            "OpSLessThan": 2,
+            "OpLoopMerge": 2,
+            "OpVectorShuffle": 5,
+            "OpFDiv": 6,
+            "OpFOrdLessThan": 1,
+            "OpDot": 1,
+            "OpCompositeInsert": 1,
+            "OpVectorTimesScalar": 1,
+            "OpConvertUToF": 1,
+            "OpImageFetch": 4,
+            "OpUDiv": 1,
+            "OpUMod": 1,
+            "OpShiftLeftLogical": 1,
+            "OpAtomicOr": 1,
+            "OpINotEqual": 1,
+            "OpLogicalNot": 1,
+            "OpAtomicIAdd": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "__alias_filtered_instance_buffer",
+            "__alias_filtered_instance_allocator_buffer",
+            "type.RWStructuredBuffer.GpuFilteredInstanceMeta",
+            "GpuFilteredInstanceMeta",
+            "__alias_filtered_instance_meta_buffer",
+            "instance_buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_nani_cull_and_bucket_roof_tile.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "sha256": "f90d92804dbe6947c10235294d38764a332516f464adbba192e21a4dee1470da",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "a0b487a65721a0c8d12a46afd6380984daee67763f2ba33d34da1239b31bef1b",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                64,
+                1,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray"
+          ],
+          "bindings": [
+            {
+              "name": "push_constants",
+              "storage": "PushConstant",
+              "decorations": []
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_allocator_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_filtered_instance_meta_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_output_histogram",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "prev_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "__alias_next_visibility_bitmask",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "draw_list_info",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "instance_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 2,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 22,
+            "OpMemberName": 60,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 31,
+            "OpMemberDecorate": 92,
+            "OpTypeInt": 2,
+            "OpConstant": 32,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeStruct": 11,
+            "OpTypePointer": 18,
+            "OpTypeMatrix": 1,
+            "OpTypeArray": 2,
+            "OpTypeRuntimeArray": 4,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 13,
+            "OpConstantComposite": 1,
+            "OpLine": 191,
+            "OpNoLine": 14,
+            "OpFunction": 1,
+            "OpLabel": 27,
+            "OpLoad": 20,
+            "OpCompositeExtract": 25,
+            "OpSelectionMerge": 8,
+            "OpSwitch": 1,
+            "OpAccessChain": 30,
+            "OpUGreaterThanEqual": 1,
+            "OpBranchConditional": 10,
+            "OpBranch": 15,
+            "OpIAdd": 11,
+            "OpCompositeConstruct": 16,
+            "OpFAdd": 7,
+            "OpBitwiseAnd": 6,
+            "OpExtInst": 12,
+            "OpShiftRightLogical": 1,
+            "OpFMul": 7,
+            "OpVectorTimesMatrix": 4,
+            "OpFNegate": 3,
+            "OpFOrdGreaterThan": 3,
+            "OpSelect": 8,
+            "OpIEqual": 2,
+            "OpFSub": 6,
+            "OpConvertFToU": 2,
+            "OpIMul": 3,
+            "OpStore": 10,
+            "OpPhi": 10,
+            "OpSLessThan": 2,
+            "OpLoopMerge": 3,
+            "OpVectorShuffle": 3,
+            "OpFDiv": 2,
+            "OpFOrdLessThan": 1,
+            "OpDot": 1,
+            "OpUDiv": 2,
+            "OpUMod": 2,
+            "OpShiftLeftLogical": 2,
+            "OpINotEqual": 1,
+            "OpAtomicOr": 1,
+            "OpAtomicIAdd": 4,
+            "OpFOrdGreaterThanEqual": 3,
+            "OpAny": 3,
+            "OpFOrdLessThanEqual": 3,
+            "OpAll": 3,
+            "OpULessThanEqual": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "__alias_filtered_instance_buffer",
+            "__alias_filtered_instance_allocator_buffer",
+            "type.RWStructuredBuffer.GpuFilteredInstanceMeta",
+            "GpuFilteredInstanceMeta",
+            "__alias_filtered_instance_meta_buffer",
+            "instance_buffer"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_nani_draw_indexed_indirect_to_dispatch.cs.hlsl_cs_main_0.bin",
+      "sha256": "156ff6ce7020eb82f53468ba41c22bd2a78d9d292d9739165af4ed874230fca8",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "4a632d5aedf6d25da1f28ad89f609afdf971e3d9a31e9cf0dbafc1c820e750aa",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader"
+          ],
+          "bindings": [
+            {
+              "name": "draw_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "args_buffer",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "push_constants",
+              "storage": "PushConstant",
+              "decorations": []
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 7,
+            "OpSource": 7,
+            "OpName": 8,
+            "OpMemberName": 7,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 9,
+            "OpMemberDecorate": 10,
+            "OpTypeInt": 2,
+            "OpConstant": 4,
+            "OpTypeStruct": 4,
+            "OpTypeRuntimeArray": 2,
+            "OpTypePointer": 6,
+            "OpTypeVector": 1,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 3,
+            "OpLine": 13,
+            "OpNoLine": 1,
+            "OpFunction": 1,
+            "OpLabel": 1,
+            "OpAccessChain": 4,
+            "OpLoad": 3,
+            "OpIAdd": 1,
+            "OpISub": 1,
+            "OpUDiv": 1,
+            "OpCompositeConstruct": 1,
+            "OpStore": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "type.StructuredBuffer.DrawIndexedIndirectCommand",
+            "DrawIndexedIndirectCommand"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_ssgi_ssgi.cs.hlsl_cs_main_0.bin",
+      "sha256": "66e61114e7e782b18c01a857168ac52b587b1a063635a084e2af6b5caebef57d",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "94979fdbb10788055d549ac9700caf3fd477acf4e2700aad27c2b81bf2ac0299",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 15,
+            "OpSource": 15,
+            "OpSourceContinued": 1,
+            "OpName": 14,
+            "OpMemberName": 46,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 16,
+            "OpMemberDecorate": 70,
+            "OpTypeInt": 2,
+            "OpConstant": 44,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 6,
+            "OpConstantComposite": 6,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 11,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypeArray": 1,
+            "OpTypeImage": 2,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeBool": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 8,
+            "OpUndef": 2,
+            "OpLine": 266,
+            "OpNoLine": 7,
+            "OpFunction": 1,
+            "OpLabel": 25,
+            "OpLoad": 14,
+            "OpVectorShuffle": 6,
+            "OpBitcast": 7,
+            "OpAccessChain": 9,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 2,
+            "OpFAdd": 25,
+            "OpFDiv": 18,
+            "OpCompositeExtract": 17,
+            "OpBranch": 16,
+            "OpPhi": 16,
+            "OpUGreaterThan": 3,
+            "OpLoopMerge": 4,
+            "OpBranchConditional": 8,
+            "OpBitwiseAnd": 2,
+            "OpSelect": 2,
+            "OpIMul": 4,
+            "OpBitwiseXor": 1,
+            "OpIAdd": 6,
+            "OpIEqual": 2,
+            "OpSelectionMerge": 4,
+            "OpISub": 2,
+            "OpUDiv": 1,
+            "OpUMod": 1,
+            "OpVectorTimesScalar": 8,
+            "OpExtInst": 36,
+            "OpImageFetch": 1,
+            "OpFSub": 17,
+            "OpFMul": 39,
+            "OpCompositeConstruct": 8,
+            "OpVectorTimesMatrix": 1,
+            "OpSampledImage": 4,
+            "OpImageSampleExplicitLod": 3,
+            "OpImageGather": 1,
+            "OpStore": 2,
+            "OpULessThan": 1,
+            "OpFNegate": 4,
+            "OpCompositeInsert": 3,
+            "OpFOrdLessThan": 2,
+            "OpDot": 6,
+            "OpConvertFToS": 1,
+            "OpShiftRightArithmetic": 3,
+            "OpFOrdGreaterThanEqual": 2,
+            "OpImageWrite": 1,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "depth_tex",
+            "half_view_normal_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_ssgi_temporal_filter.cs.hlsl_cs_main_0.bin",
+      "sha256": "d31c87e724cf473fea5cc9cf65e66699177e57997eb8b8aaf9651482313920b1",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "243e9f543962788aa5130959ef59e6e2c8aefd990bb9da3ff8f0af184b0aa7f3",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "input_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "final_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 11,
+            "OpSource": 11,
+            "OpName": 16,
+            "OpMemberName": 49,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 20,
+            "OpMemberDecorate": 73,
+            "OpTypeInt": 2,
+            "OpConstant": 16,
+            "OpTypeFloat": 1,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeVector": 6,
+            "OpConstantComposite": 13,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 8,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 3,
+            "OpTypeArray": 1,
+            "OpTypeImage": 2,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 9,
+            "OpLine": 104,
+            "OpNoLine": 1,
+            "OpFunction": 1,
+            "OpLabel": 11,
+            "OpLoad": 12,
+            "OpVectorShuffle": 2,
+            "OpAccessChain": 4,
+            "OpINotEqual": 1,
+            "OpSelectionMerge": 4,
+            "OpBranchConditional": 4,
+            "OpIEqual": 2,
+            "OpLogicalNot": 2,
+            "OpBranch": 6,
+            "OpPhi": 4,
+            "OpBitcast": 1,
+            "OpConvertUToF": 1,
+            "OpConvertSToF": 1,
+            "OpFAdd": 19,
+            "OpFDiv": 1,
+            "OpImageFetch": 12,
+            "OpSampledImage": 1,
+            "OpImageSampleExplicitLod": 1,
+            "OpIAdd": 8,
+            "OpVectorTimesScalar": 20,
+            "OpFMul": 12,
+            "OpFSub": 2,
+            "OpExtInst": 5,
+            "OpCompositeExtract": 1,
+            "OpCompositeConstruct": 1,
+            "OpImageWrite": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "history_tex",
+            "history_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_ssgi_upsample.cs.hlsl_cs_main_0.bin",
+      "sha256": "2a466f7f8b21c2cedf861db078351469a1dc11eebc14e29de06359d8ecc077d6",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "f0d67d0a68bb408e3c42e6180502d7858203ccdc718b8cb49e5de9b2fa775e6f",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats"
+          ],
+          "bindings": [
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "ssgi_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_depth_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "half_view_normal_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "gbuffer_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 3,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 11,
+            "OpSource": 11,
+            "OpName": 14,
+            "OpMemberName": 43,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 17,
+            "OpMemberDecorate": 67,
+            "OpTypeInt": 2,
+            "OpConstant": 18,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 7,
+            "OpConstantComposite": 9,
+            "OpTypeBool": 1,
+            "OpTypeMatrix": 1,
+            "OpTypeStruct": 2,
+            "OpTypeArray": 2,
+            "OpTypePointer": 8,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpVariable": 9,
+            "OpUndef": 1,
+            "OpLine": 76,
+            "OpNoLine": 3,
+            "OpFunction": 1,
+            "OpLabel": 16,
+            "OpLoad": 11,
+            "OpVectorShuffle": 4,
+            "OpImageFetch": 6,
+            "OpCompositeExtract": 7,
+            "OpFOrdNotEqual": 2,
+            "OpSelectionMerge": 4,
+            "OpBranchConditional": 4,
+            "OpBranch": 9,
+            "OpAccessChain": 2,
+            "OpBitwiseAnd": 3,
+            "OpConvertUToF": 3,
+            "OpFMul": 9,
+            "OpShiftRightLogical": 2,
+            "OpCompositeConstruct": 4,
+            "OpVectorTimesScalar": 2,
+            "OpFSub": 2,
+            "OpVectorTimesMatrix": 1,
+            "OpStore": 1,
+            "OpPhi": 7,
+            "OpULessThan": 1,
+            "OpLoopMerge": 1,
+            "OpUDiv": 2,
+            "OpBitcast": 3,
+            "OpIAdd": 2,
+            "OpConvertSToF": 1,
+            "OpSwitch": 1,
+            "OpFDiv": 2,
+            "OpExtInst": 4,
+            "OpDot": 2,
+            "OpFNegate": 1,
+            "OpFAdd": 2,
+            "OpUnreachable": 1,
+            "OpFOrdGreaterThan": 1,
+            "OpImageWrite": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "depth_tex",
+            "half_depth_tex",
+            "half_view_normal_tex",
+            "gbuffer_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_taa.cs.hlsl_cs_main_0.bin",
+      "sha256": "16435ae25686fde954f267127dc50c62a2506d17b99561e8bd6601bc210c0927",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "e7e7a179a246d2dd4d68287f59345a82f9191cfdce6a44c2f07cb8f7a7c28c4e",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats",
+            "StorageImageWriteWithoutFormat"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_default",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    9
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    18
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 4,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 17,
+            "OpSource": 17,
+            "OpSourceContinued": 1,
+            "OpName": 18,
+            "OpMemberName": 54,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 21,
+            "OpMemberDecorate": 76,
+            "OpTypeInt": 2,
+            "OpConstant": 46,
+            "OpTypeFloat": 1,
+            "OpTypeVector": 9,
+            "OpConstantComposite": 21,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 12,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 4,
+            "OpTypeArray": 3,
+            "OpTypeImage": 2,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 11,
+            "OpLine": 282,
+            "OpNoLine": 3,
+            "OpFunction": 1,
+            "OpLabel": 21,
+            "OpLoad": 19,
+            "OpVectorShuffle": 7,
+            "OpBitcast": 3,
+            "OpAccessChain": 12,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 6,
+            "OpFAdd": 39,
+            "OpFDiv": 15,
+            "OpUDiv": 1,
+            "OpFMul": 38,
+            "OpConvertFToU": 1,
+            "OpImageFetch": 2,
+            "OpFSub": 17,
+            "OpExtInst": 33,
+            "OpVectorTimesScalar": 18,
+            "OpCompositeExtract": 47,
+            "OpCompositeConstruct": 18,
+            "OpSampledImage": 5,
+            "OpImageSampleExplicitLod": 5,
+            "OpVectorTimesMatrix": 4,
+            "OpConvertFToS": 1,
+            "OpBranch": 12,
+            "OpPhi": 21,
+            "OpSLessThanEqual": 2,
+            "OpLoopMerge": 2,
+            "OpBranchConditional": 8,
+            "OpIAdd": 5,
+            "OpDot": 2,
+            "OpINotEqual": 2,
+            "OpLogicalNot": 3,
+            "OpSelectionMerge": 6,
+            "OpIEqual": 1,
+            "OpImageWrite": 2,
+            "OpFOrdGreaterThan": 1,
+            "OpStore": 1,
+            "OpControlBarrier": 1,
+            "OpISub": 2,
+            "OpULessThan": 2,
+            "OpAll": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "history_tex",
+            "history_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_tgsr.cs.hlsl_cs_main_3ee6a953408e4c4c.bin",
+      "sha256": "d9d1c08470bd31ec35fd3c31678ba317534453a9e3e3b37962756d47f01f7892",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "2c31739599f0cebc880088821afc12c62233564cf08295ddddb23f2123096548",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "GroupNonUniform",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats",
+            "GroupNonUniformArithmetic",
+            "GroupNonUniformShuffle",
+            "StorageImageWriteWithoutFormat"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_lum",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_chroma",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blurred_luminance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 7,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 24,
+            "OpMemberName": 58,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 32,
+            "OpMemberDecorate": 80,
+            "OpTypeInt": 2,
+            "OpConstant": 56,
+            "OpTypeFloat": 1,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeVector": 10,
+            "OpConstantComposite": 20,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 14,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 4,
+            "OpTypeArray": 3,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 17,
+            "OpUndef": 2,
+            "OpLine": 430,
+            "OpNoLine": 4,
+            "OpFunction": 1,
+            "OpLabel": 51,
+            "OpLoad": 30,
+            "OpVectorShuffle": 9,
+            "OpBitcast": 4,
+            "OpAccessChain": 15,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 13,
+            "OpFAdd": 44,
+            "OpFDiv": 25,
+            "OpINotEqual": 2,
+            "OpSelect": 5,
+            "OpSampledImage": 7,
+            "OpImageSampleExplicitLod": 5,
+            "OpSelectionMerge": 10,
+            "OpBranchConditional": 18,
+            "OpIEqual": 2,
+            "OpLogicalNot": 4,
+            "OpBranch": 32,
+            "OpPhi": 51,
+            "OpCompositeExtract": 44,
+            "OpFMul": 53,
+            "OpImageFetch": 5,
+            "OpCompositeConstruct": 16,
+            "OpConvertFToS": 1,
+            "OpExtInst": 70,
+            "OpSLessThanEqual": 8,
+            "OpLoopMerge": 8,
+            "OpIAdd": 13,
+            "OpVectorTimesMatrix": 3,
+            "OpFSub": 26,
+            "OpDot": 1,
+            "OpVectorTimesScalar": 10,
+            "OpIMul": 2,
+            "OpGroupNonUniformUMax": 1,
+            "OpUGreaterThanEqual": 1,
+            "OpBitwiseXor": 2,
+            "OpGroupNonUniformShuffle": 4,
+            "OpFOrdGreaterThan": 1,
+            "OpFOrdLessThan": 2,
+            "OpImageGather": 2,
+            "OpFOrdEqual": 2,
+            "OpImageWrite": 3,
+            "OpStore": 1,
+            "OpControlBarrier": 1,
+            "OpISub": 2,
+            "OpULessThan": 2,
+            "OpAll": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "reprojected_history_tex_lum",
+            "reprojected_history_tex_chroma",
+            "history_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_tgsr.cs.hlsl_cs_main_7a0af18450cdbcd1.bin",
+      "sha256": "a960c691fb2c4bb3d0d8f19848f8ac2ce159a49ae9a817acf6c413c42b324d1d",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "379867c5a6d964c6cd47b22c99f4f3342db137093bf881b9a26a01518ea72391",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                8,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "GroupNonUniform",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats",
+            "GroupNonUniformArithmetic",
+            "GroupNonUniformShuffle",
+            "StorageImageWriteWithoutFormat"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_lum",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_chroma",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blurred_luminance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 7,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 23,
+            "OpMemberName": 58,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 31,
+            "OpMemberDecorate": 80,
+            "OpTypeInt": 2,
+            "OpConstant": 51,
+            "OpTypeFloat": 1,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeVector": 8,
+            "OpConstantComposite": 17,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 11,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 4,
+            "OpTypeArray": 1,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 15,
+            "OpUndef": 2,
+            "OpLine": 363,
+            "OpNoLine": 3,
+            "OpFunction": 1,
+            "OpLabel": 47,
+            "OpLoad": 23,
+            "OpVectorShuffle": 8,
+            "OpBitcast": 4,
+            "OpAccessChain": 8,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 12,
+            "OpFAdd": 36,
+            "OpFDiv": 24,
+            "OpINotEqual": 2,
+            "OpSelect": 5,
+            "OpSampledImage": 7,
+            "OpImageSampleExplicitLod": 5,
+            "OpSelectionMerge": 8,
+            "OpBranchConditional": 16,
+            "OpIEqual": 2,
+            "OpLogicalNot": 4,
+            "OpBranch": 30,
+            "OpPhi": 47,
+            "OpCompositeExtract": 32,
+            "OpFMul": 41,
+            "OpImageFetch": 5,
+            "OpCompositeConstruct": 14,
+            "OpConvertFToS": 1,
+            "OpExtInst": 57,
+            "OpSLessThanEqual": 8,
+            "OpLoopMerge": 8,
+            "OpIAdd": 11,
+            "OpVectorTimesMatrix": 3,
+            "OpFSub": 18,
+            "OpDot": 1,
+            "OpVectorTimesScalar": 9,
+            "OpIMul": 2,
+            "OpGroupNonUniformUMax": 1,
+            "OpUGreaterThanEqual": 1,
+            "OpBitwiseXor": 2,
+            "OpGroupNonUniformShuffle": 4,
+            "OpFOrdGreaterThan": 1,
+            "OpFOrdLessThan": 2,
+            "OpImageGather": 2,
+            "OpFOrdEqual": 2,
+            "OpImageWrite": 3,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "reprojected_history_tex_lum",
+            "reprojected_history_tex_chroma",
+            "history_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_tgsr.cs.hlsl_cs_main_b303f36f0dbdd5f6.bin",
+      "sha256": "e952e78767d3d65d2e9feb61c37bf638d66dabbb28d226a486b5b24edf5410d1",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "e52f689e127c13aa1c3d50c6c1cb910d83e4550ffc0731c0b3552685747fccb6",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                4,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "GroupNonUniform",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats",
+            "GroupNonUniformArithmetic",
+            "GroupNonUniformShuffle",
+            "StorageImageWriteWithoutFormat"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_lum",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_chroma",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blurred_luminance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 7,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 23,
+            "OpMemberName": 58,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 31,
+            "OpMemberDecorate": 80,
+            "OpTypeInt": 2,
+            "OpConstant": 51,
+            "OpTypeFloat": 1,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeVector": 8,
+            "OpConstantComposite": 17,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 11,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 4,
+            "OpTypeArray": 1,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 15,
+            "OpUndef": 2,
+            "OpLine": 363,
+            "OpNoLine": 3,
+            "OpFunction": 1,
+            "OpLabel": 47,
+            "OpLoad": 23,
+            "OpVectorShuffle": 8,
+            "OpBitcast": 4,
+            "OpAccessChain": 8,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 12,
+            "OpFAdd": 36,
+            "OpFDiv": 24,
+            "OpINotEqual": 2,
+            "OpSelect": 5,
+            "OpSampledImage": 7,
+            "OpImageSampleExplicitLod": 5,
+            "OpSelectionMerge": 8,
+            "OpBranchConditional": 16,
+            "OpIEqual": 2,
+            "OpLogicalNot": 4,
+            "OpBranch": 30,
+            "OpPhi": 47,
+            "OpCompositeExtract": 32,
+            "OpFMul": 41,
+            "OpImageFetch": 5,
+            "OpCompositeConstruct": 14,
+            "OpConvertFToS": 1,
+            "OpExtInst": 57,
+            "OpSLessThanEqual": 8,
+            "OpLoopMerge": 8,
+            "OpIAdd": 11,
+            "OpVectorTimesMatrix": 3,
+            "OpFSub": 18,
+            "OpDot": 1,
+            "OpVectorTimesScalar": 9,
+            "OpIMul": 2,
+            "OpGroupNonUniformUMax": 1,
+            "OpUGreaterThanEqual": 1,
+            "OpBitwiseXor": 2,
+            "OpGroupNonUniformShuffle": 4,
+            "OpFOrdGreaterThan": 1,
+            "OpFOrdLessThan": 2,
+            "OpImageGather": 2,
+            "OpFOrdEqual": 2,
+            "OpImageWrite": 3,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "reprojected_history_tex_lum",
+            "reprojected_history_tex_chroma",
+            "history_output_tex"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders\\_tgsr.cs.hlsl_cs_main_f7efabb81dfe256b.bin",
+      "sha256": "5a0a31b13010b6670df2a19d5300ae58bb99fa66aadea83ad75baa21b843605e",
+      "modules": [
+        {
+          "offset": 23,
+          "sha256": "a0bfe712f25559a521095f7967e12982fe3e8a772dfef961500b3b5cca8d5c58",
+          "entries": [
+            {
+              "stage": "GLCompute",
+              "entry": "cs_main"
+            }
+          ],
+          "execution_modes": [
+            {
+              "mode": "LocalSize",
+              "args": [
+                8,
+                4,
+                1
+              ]
+            }
+          ],
+          "capabilities": [
+            "Shader",
+            "GroupNonUniform",
+            "RuntimeDescriptorArray",
+            "StorageImageExtendedFormats",
+            "GroupNonUniformArithmetic",
+            "GroupNonUniformShuffle",
+            "StorageImageWriteWithoutFormat"
+          ],
+          "bindings": [
+            {
+              "name": "sampler_lnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "sampler_nnc",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "frame_constants",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    1
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "$Globals",
+              "storage": "Uniform",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    13
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_lum",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    14
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojected_history_tex_chroma",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    15
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "color_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "blurred_luminance_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    17
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "reprojection_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    19
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    20
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "history_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    21
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    22
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "aux_output_tex",
+              "storage": "UniformConstant",
+              "decorations": [
+                {
+                  "kind": "DescriptorSet",
+                  "args": [
+                    0
+                  ]
+                },
+                {
+                  "kind": "Binding",
+                  "args": [
+                    23
+                  ]
+                }
+              ]
+            }
+          ],
+          "opcode_histogram": {
+            "OpCapability": 7,
+            "OpExtension": 1,
+            "OpExtInstImport": 1,
+            "OpMemoryModel": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpString": 20,
+            "OpSource": 20,
+            "OpSourceContinued": 1,
+            "OpName": 24,
+            "OpMemberName": 58,
+            "OpModuleProcessed": 2,
+            "OpDecorate": 32,
+            "OpMemberDecorate": 80,
+            "OpTypeInt": 2,
+            "OpConstant": 57,
+            "OpTypeFloat": 1,
+            "OpTypeBool": 1,
+            "OpConstantFalse": 1,
+            "OpTypeVector": 10,
+            "OpConstantComposite": 20,
+            "OpTypeSampler": 1,
+            "OpTypePointer": 14,
+            "OpTypeMatrix": 2,
+            "OpTypeStruct": 4,
+            "OpTypeArray": 3,
+            "OpTypeImage": 3,
+            "OpTypeVoid": 1,
+            "OpTypeFunction": 1,
+            "OpTypeSampledImage": 1,
+            "OpVariable": 17,
+            "OpUndef": 2,
+            "OpLine": 430,
+            "OpNoLine": 4,
+            "OpFunction": 1,
+            "OpLabel": 51,
+            "OpLoad": 30,
+            "OpVectorShuffle": 9,
+            "OpBitcast": 4,
+            "OpAccessChain": 15,
+            "OpConvertUToF": 3,
+            "OpConvertSToF": 13,
+            "OpFAdd": 44,
+            "OpFDiv": 25,
+            "OpINotEqual": 2,
+            "OpSelect": 5,
+            "OpSampledImage": 7,
+            "OpImageSampleExplicitLod": 5,
+            "OpSelectionMerge": 10,
+            "OpBranchConditional": 18,
+            "OpIEqual": 2,
+            "OpLogicalNot": 4,
+            "OpBranch": 32,
+            "OpPhi": 51,
+            "OpCompositeExtract": 44,
+            "OpFMul": 53,
+            "OpImageFetch": 5,
+            "OpCompositeConstruct": 16,
+            "OpConvertFToS": 1,
+            "OpExtInst": 70,
+            "OpSLessThanEqual": 8,
+            "OpLoopMerge": 8,
+            "OpIAdd": 13,
+            "OpVectorTimesMatrix": 3,
+            "OpFSub": 26,
+            "OpDot": 1,
+            "OpVectorTimesScalar": 10,
+            "OpIMul": 2,
+            "OpGroupNonUniformUMax": 1,
+            "OpUGreaterThanEqual": 1,
+            "OpBitwiseXor": 2,
+            "OpGroupNonUniformShuffle": 4,
+            "OpFOrdGreaterThan": 1,
+            "OpFOrdLessThan": 2,
+            "OpImageGather": 2,
+            "OpFOrdEqual": 2,
+            "OpImageWrite": 3,
+            "OpStore": 1,
+            "OpControlBarrier": 1,
+            "OpISub": 2,
+            "OpULessThan": 2,
+            "OpAll": 2,
+            "OpReturn": 1,
+            "OpFunctionEnd": 1
+          },
+          "debug_names": [
+            "reprojected_history_tex_lum",
+            "reprojected_history_tex_chroma",
+            "history_output_tex"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "SPIR-V declarations and opcode presence only; no runtime bindings or complete algorithm recovery"
+  ]
+}

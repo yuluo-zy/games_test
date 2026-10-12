@@ -1,0 +1,12 @@
+{
+  "static_checks":[
+    "queue_submit C decompile shows global device+0x7f8 allocation and PendingCommand threshold assignment",
+    "reclaim C decompile gates on queue+0x80 and reads PendingCommand+0x58",
+    "bucket insert/remove signatures accept only u64",
+    "sequential disposal uses CB sequence as bucket key"
+  ],
+  "native_differential":"not run in this batch; Vulkan-dependent paths intentionally excluded",
+  "rust_validation":{"test_command":"cargo test --locked --offline","tests_passed":2,"clippy":"cargo clippy --locked --offline --all-targets -- -D warnings passed"},
+  "mcp_followup":{"entries":["0x140bef4a0","0x140bdb940","0x140bed4c0","0x1418c3b80"],"database":"tg_render_arch","database_write":false,"close_save":false,"close_is_error":false,"retained_report":"mcp-report.json"},
+  "residual":"actual device constructor 0x140bf2560 and cross-queue aliasing remain unexpanded by follow-up scope"
+}

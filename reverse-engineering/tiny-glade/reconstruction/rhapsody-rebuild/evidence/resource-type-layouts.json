@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "scope": "Original Tiny Glade rhapsody ResourcePool and ResourceRegistry",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "status": "static-evidence-backed; source field names unresolved unless stated",
+  "types": [
+    {
+      "name": "ResourcePool",
+      "size": 96,
+      "fields": [
+        {"offset": 0, "size": 48, "type": "std::collections::HashMap<TextureDesc, Vec<Texture>>"},
+        {"offset": 48, "size": 48, "type": "std::collections::HashMap<BufferDesc, Vec<Buffer>>"}
+      ],
+      "evidence": ["0x140be6b90", "0x140be6d70", "0x140be71e0", "0x140be7320", "0x140be76f0"]
+    },
+    {
+      "name": "TextureDesc",
+      "size": 32,
+      "equality_fields": [
+        {"offset": 0, "type": "u32"}, {"offset": 4, "type": "u32"},
+        {"offset": 8, "type": "u32"}, {"offset": 12, "type": "u32"},
+        {"offset": 16, "type": "u32"}, {"offset": 20, "type": "u32"},
+        {"offset": 24, "type": "u32"}, {"offset": 28, "type": "u8"},
+        {"offset": 29, "type": "u8"}, {"offset": 30, "type": "u8"}
+      ],
+      "padding_offsets": [31],
+      "notes": "Exact pool key equality includes usage. No size-or-usage superset lookup.",
+      "evidence": ["0x140be6b90", "0x140be6d70"]
+    },
+    {
+      "name": "BufferDesc",
+      "size": 16,
+      "equality_fields": [
+        {"offset": 0, "type": "u64"}, {"offset": 8, "type": "u32"},
+        {"offset": 12, "type": "u8"}, {"offset": 13, "type": "u8"},
+        {"offset": 14, "type": "u8"}
+      ],
+      "padding_offsets": [15],
+      "evidence": ["0x140be71e0", "0x140be7320"]
+    },
+    {
+      "name": "Texture",
+      "size": 56,
+      "fields": [{"offset": 0, "size": 24, "type": "RawManagedHandle"}, {"offset": 24, "size": 32, "type": "TextureDesc"}],
+      "evidence": ["0x140be6b90", "0x140be6d70"]
+    },
+    {
+      "name": "Buffer",
+      "size": 40,
+      "fields": [{"offset": 0, "size": 24, "type": "RawManagedHandle"}, {"offset": 24, "size": 16, "type": "BufferDesc"}],
+      "evidence": ["0x140be71e0", "0x140be7320"]
+    },
+    {
+      "name": "ResourceRegistry",
+      "size": 264,
+      "fields": [
+        {"offset": 0, "size": 24, "type": "Vec<ResourceReuseInfo>", "name": "resources", "name_evidence": "assertion string 0x142b13e30"},
+        {"offset": 24, "size": 24, "type": "Vec<initial-access byte>", "name": "resource_initial_access"},
+        {"offset": 48, "size": 24, "type": "Vec<RegistryResource>", "name": "backing_resources"},
+        {"offset": 72, "size": 192, "type": "ResourceInfo"}
+      ],
+      "evidence": ["0x140be78b0", "0x140be7ba0", "0x140be9040", "compiler memcpy 0x140161cd0"]
+    },
+    {
+      "name": "ResourceReuseInfo",
+      "size": 4,
+      "fields": [{"offset": 0, "type": "u16", "meaning": "physical backing index"}, {"offset": 2, "type": "bool", "meaning": "reuse-hit marker"}],
+      "padding_offsets": [3],
+      "initial_value": {"backing_index": 65535, "reused": false},
+      "evidence": ["0x140be78b0", "0x140be7ba0"]
+    },
+    {
+      "name": "RegistryResource",
+      "size": 64,
+      "discriminant": {"offset": 0, "type": "u64"},
+      "payload_offset": 8,
+      "variants": [
+        {"tag": 0, "meaning": "owned Texture", "payload_size": 56},
+        {"tag": 1, "meaning": "unowned/imported Texture", "payload_size": 56},
+        {"tag": 2, "meaning": "owned Buffer", "payload_size": 40},
+        {"tag": 3, "meaning": "unowned/imported Buffer", "payload_size": 40},
+        {"tag": 4, "meaning": "Arc-backed other resource; acceleration-structure candidate", "exact_type": "unresolved"},
+        {"tag": 5, "meaning": "Empty"}
+      ],
+      "notes": "Variant labels are semantic recovery names, not proven original source identifiers.",
+      "evidence": ["0x140be7940", "0x140be79d0", "0x140be7ba0", "0x1417e78e0", "0x140bd60a0", "0x140bd6220", "0x140bd4fc0"]
+    },
+    {
+      "name": "ResourceOrigin",
+      "size": 72,
+      "discriminant": {"offset": 0, "type": "u64"},
+      "variants": [
+        {"tag": 0, "meaning": "Create", "fields": [{"offset": 8, "meaning": "name pointer"}, {"offset": 16, "meaning": "name length"}, {"offset": 24, "meaning": "descriptor union"}]},
+        {"tag": 1, "meaning": "ImportUnowned", "fields": [{"offset": 8, "meaning": "resource kind byte"}, {"offset": 9, "meaning": "initial access byte"}, {"offset": 16, "meaning": "resource payload"}]},
+        {"tag": 2, "meaning": "ImportOwned", "fields": [{"offset": 8, "meaning": "resource kind byte"}, {"offset": 9, "meaning": "initial access byte"}, {"offset": 16, "meaning": "resource payload"}]},
+        {"tag": 3, "meaning": "consumed Empty sentinel"}
+      ],
+      "resource_kind": {"0": "Texture", "1": "Buffer", "other": "Arc-backed resource"},
+      "evidence": ["0x140be7ba0", "0x140bd60a0", "0x140bd6220", "0x140bd4fc0"]
+    },
+    {
+      "name": "resource return aggregate",
+      "fields": [{"offset": 0, "type": "&RegistryResource"}, {"offset": 8, "type": "initial-access byte"}, {"offset": 9, "type": "reuse marker byte"}],
+      "notes": "resource() does not test resource variant.",
+      "evidence": ["0x140be78b0"]
+    },
+    {
+      "name": "ResourceExports",
+      "size": 72,
+      "fields": [{"offset": 0, "size": 24, "type": "Vec<RegistryResource>", "meaning": "remaining nonexported backing resources"}, {"offset": 24, "size": 48, "type": "HashMap<u16, RegistryResource>", "meaning": "exported logical handle to moved backing resource"}],
+      "evidence": ["0x140be9040", "0x1417e78e0", "0x1418c2b60"]
+    }
+  ],
+  "accessor_contracts": {
+    "resource": "logical bounds, physical bounds, initial-access bounds; returns reference and metadata without variant check",
+    "image_from_raw_handle": "logical/physical bounds then accept RegistryResource tags 0 or 1; returns Texture payload reference, not VkImage",
+    "buffer": "logical/physical bounds then accept tags 2 or 3; returns Buffer payload reference",
+    "image_view": "accept tags 0 or 1, validate device ID, kind and generation; calls private Texture::image_view at 0x140bdc5d0"
+  }
+}

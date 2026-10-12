@@ -1,0 +1,1267 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:29:10.908Z",
+  "completed_at": "2026-10-12T10:29:51.700Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 2,
+  "lanes": [
+    {
+      "database": "newtexbuf_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n2-texture-buffer\\newtexbuf_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: disassemble_function, disassemble_function",
+      "steps": 23
+    },
+    {
+      "database": "newtexbuf_l2",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n2-texture-buffer\\newtexbuf_l2.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: disassemble_function, disassemble_function",
+      "steps": 23
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newtexbuf_l1"
+      },
+      "cache_key": "88014b8ca297a28c489b52b09e046c47ee33dcfc036f9fb897f1bafd0a7844b4",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:11.216Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newtexbuf_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newtexbuf_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:29:33.131Z",
+      "ok": true,
+      "result_sha256": "d5847ef9e92ec2255e6e99b90dc18dc2fa0fc740b8192ee590678c06f7f378cb",
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newtexbuf_l1"
+      },
+      "cache_key": "125e6f6c36c948290416149f3e8673a0e93a79bbee236ea50cd60da09752dab4",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:33.132Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newtexbuf_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newtexbuf_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:29:45.808Z",
+      "ok": true,
+      "result_sha256": "7c9d0da4424383191683a65ba8f0e580f5e8cb55a676036f1458986858ca88c7",
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4c00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4c00",
+        "address": "0x140BD4C00",
+        "decompiled_code": "\r\nvoid FUN_140bd4c00(longlong param_1,longlong param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uStack_30;\r\n  undefined8 uStack_28;\r\n  undefined8 uStack_20;\r\n  \r\n  if (*(short *)(param_1 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_1 + 0x16) == '\\x01') {\r\n      if (*(int *)(*(longlong *)(param_1 + 8) + 0xc) == *(int *)(param_1 + 0x10)) {\r\n        uStack_20 = *(undefined8 *)(*(longlong *)(param_1 + 8) + 0x30);\r\n        uStack_30 = CONCAT44(uStack_30._4_4_,0x3b9e8321);\r\n        uStack_28 = 0;\r\n        (**(code **)(param_2 + 0x508))(*(undefined8 *)(param_2 + 0x640),&uStack_30);\r\n        return;\r\n      }\r\n      goto code_r0x000140bd4cc1;\r\n    }\r\n  }\r\n  else {\r\n    uStack_30 = 0;\r\n    param_1 = param_1 + 0x14;\r\n    FUN_1428ca816(0,param_1,*(longlong *)(param_2 + 0x648) + 0xa50,&uStack_30,&UNK_142d022a0);\r\n  }\r\n  uStack_30 = 0;\r\n  FUN_1428ca902(0,param_1 + 0x16,&UNK_142d022d9,&uStack_30,&UNK_142d022c0);\r\ncode_r0x000140bd4cc1:\r\n  FUN_1428d9310(&UNK_142b0f7d8);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "74107a41a0c76ff887ccbec338806ee95fbfd18a0306764390482553ee0ff78e",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4cd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4cd0",
+        "address": "0x140BD4CD0",
+        "decompiled_code": "\r\nlonglong FUN_140bd4cd0(longlong param_1,longlong param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  longlong lVar2;\r\n  ulonglong uVar3;\r\n  longlong lVar4;\r\n  ulonglong uVar5;\r\n  undefined8 auStack_48 [6];\r\n  \r\n  if (*(short *)(param_1 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_1 + 0x16) != '\\x01') goto code_r0x000140bd4d70;\r\n    lVar4 = *(longlong *)(param_1 + 8);\r\n    if (*(int *)(lVar4 + 0xc) == *(int *)(param_1 + 0x10)) {\r\n      if (*(char *)(lVar4 + 0x7c) == '\\x02') goto code_r0x000140bd4dc9;\r\n      lVar2 = func_0x000140c113b0(lVar4 + 0x38);\r\n      if (lVar2 == 0) {\r\n        return 0;\r\n      }\r\n      uVar3 = func_0x000140c02280(lVar4 + 0x38);\r\n      uVar5 = *(ulonglong *)(param_1 + 0x18);\r\n      if (uVar5 <= uVar3) {\r\n        return lVar2;\r\n      }\r\n      goto code_r0x000140bd4d9f;\r\n    }\r\n  }\r\n  else {\r\n    auStack_48[0] = 0;\r\n    param_1 = param_1 + 0x14;\r\n    FUN_1428ca816(0,param_1,*(longlong *)(param_2 + 0x648) + 0xa50,auStack_48,&UNK_142d022a0);\r\ncode_r0x000140bd4d70:\r\n    auStack_48[0] = 0;\r\n    uVar5 = param_1 + 0x16;\r\n    uVar3 = FUN_1428ca902(0,uVar5,&UNK_142d022d9,auStack_48,&UNK_142d022c0);\r\ncode_r0x000140bd4d9f:\r\n    FUN_1428d9840(uVar5,uVar3,&UNK_142b0f818);\r\n  }\r\n  FUN_1428d9330(&UNK_142b0f7f0,0xe,&UNK_142b0f800);\r\ncode_r0x000140bd4dc9:\r\n  FUN_1428d9310(&UNK_142d02388);\r\n  pcVar1 = (code *)swi(3);\r\n  lVar4 = (*pcVar1)();\r\n  return lVar4;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "dd87af28b2e265e2b3c9151fb3f75f1018c7fd6599dde7a7c6f318b1002d3a5e",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4f20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4f20",
+        "address": "0x140BD4F20",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd4f20(undefined8 *param_1,undefined8 *param_2,ulonglong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 *puVar2;\r\n  undefined1 uStack_1;\r\n  \r\n  if (param_3 < 0x10000) {\r\n    *(short *)((longlong)param_2 + 0xc) = (short)param_3;\r\n    *param_1 = *param_2;\r\n    *(undefined4 *)(param_1 + 1) = *(undefined4 *)(param_2 + 1);\r\n    *(undefined2 *)((longlong)param_1 + 0xc) = *(undefined2 *)((longlong)param_2 + 0xc);\r\n    *(undefined2 *)((longlong)param_1 + 0xe) = *(undefined2 *)((longlong)param_2 + 0xe);\r\n    return param_1;\r\n  }\r\n  FUN_1428d9760(&UNK_142b0f8c8,5,&uStack_1,&UNK_142b0f768,&UNK_142b0f8d0);\r\n  pcVar1 = (code *)swi(3);\r\n  puVar2 = (undefined8 *)(*pcVar1)();\r\n  return puVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "b711684b09aa64e5b813a63f283b610127d577f5a4d4529cdd2d517fef631395",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4f80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4f80",
+        "address": "0x140BD4F80",
+        "decompiled_code": "\r\nvoid FUN_140bd4f80(undefined8 *param_1,undefined8 param_2,longlong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  \r\n  if (param_1[1] == param_3) {\r\n                    /* WARNING: Could not recover jumptable at 0x000142923c00. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    memcpy(param_2,*param_1);\r\n    return;\r\n  }\r\n  FUN_1428d98e0(param_3,param_1[1],&UNK_142b0f8e8);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "24531afd315a4c6f3a2ed161164ab85c12fca280fd144f5726926289eec6aef9",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd51b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd51b0",
+        "address": "0x140BD51B0",
+        "decompiled_code": "\r\nvoid FUN_140bd51b0(longlong *param_1,undefined8 param_2,longlong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  \r\n  if (*param_1 == 0) {\r\n    return;\r\n  }\r\n  if (param_1[1] == param_3) {\r\n                    /* WARNING: Could not recover jumptable at 0x000142923c00. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    memcpy(param_2,*param_1);\r\n    return;\r\n  }\r\n  FUN_1428d98e0(param_3,param_1[1],&UNK_142b0f968);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "790f6619027a1cfaa35682737cda5e72f6802f81087bba6e27370f1e95d26ce8",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bee200"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bee200",
+        "address": "0x140BEE200",
+        "decompiled_code": "\r\nundefined8 *\r\nFUN_140bee200(undefined8 *param_1,undefined8 *param_2,undefined8 *param_3,undefined8 *param_4,\r\n             char *param_5,undefined8 *param_6,undefined8 *param_7,undefined8 *param_8)\r\n\r\n{\r\n  char cVar1;\r\n  undefined2 uVar2;\r\n  uint uVar3;\r\n  undefined4 uVar4;\r\n  undefined8 *puVar5;\r\n  code *pcVar6;\r\n  int iVar7;\r\n  ulonglong uVar8;\r\n  undefined8 *puVar9;\r\n  undefined8 uVar10;\r\n  longlong lVar11;\r\n  longlong lVar12;\r\n  undefined8 *puVar13;\r\n  undefined8 uVar14;\r\n  undefined8 *puVar15;\r\n  undefined8 auStack_210 [2];\r\n  undefined8 uStack_200;\r\n  undefined8 uStack_1f8;\r\n  undefined4 uStack_1f0;\r\n  undefined4 uStack_1ec;\r\n  undefined4 uStack_1e8;\r\n  undefined4 uStack_1e4;\r\n  undefined8 uStack_1e0;\r\n  undefined1 uStack_1d8;\r\n  undefined1 uStack_1d7;\r\n  undefined4 auStack_1d0 [2];\r\n  undefined8 uStack_1c8;\r\n  undefined4 uStack_1c0;\r\n  undefined8 *puStack_1b8;\r\n  uint uStack_1b0;\r\n  undefined8 uStack_1ac;\r\n  undefined8 uStack_1a0;\r\n  undefined4 uStack_198;\r\n  undefined4 uStack_194;\r\n  undefined4 uStack_190;\r\n  undefined4 uStack_18c;\r\n  undefined8 uStack_188;\r\n  undefined8 *puStack_180;\r\n  undefined8 uStack_178;\r\n  undefined8 uStack_170;\r\n  undefined8 uStack_168;\r\n  undefined4 uStack_160;\r\n  undefined4 uStack_15c;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined8 uStack_148;\r\n  undefined8 uStack_140;\r\n  undefined8 uStack_138;\r\n  undefined8 *puStack_130;\r\n  undefined8 *puStack_128;\r\n  undefined8 uStack_120;\r\n  undefined8 uStack_118;\r\n  undefined8 uStack_110;\r\n  undefined8 uStack_108;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined8 uStack_f0;\r\n  undefined8 *puStack_e8;\r\n  undefined8 *puStack_e0;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined8 *puStack_d0;\r\n  undefined8 *puStack_c8;\r\n  undefined8 *puStack_c0;\r\n  undefined8 *puStack_b8;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  undefined4 uStack_a8;\r\n  undefined4 uStack_a4;\r\n  undefined4 uStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined8 uStack_80;\r\n  undefined8 *puStack_78;\r\n  undefined8 *puStack_70;\r\n  undefined8 *puStack_68;\r\n  undefined8 *puStack_60;\r\n  undefined8 *puStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  puVar5 = (undefined8 *)*param_6;\r\n  uVar3 = *(uint *)(param_6 + 1);\r\n  auStack_1d0[0] = 0xc;\r\n  uStack_1c8 = 0;\r\n  uStack_1c0 = 0;\r\n  uStack_1ac = 0;\r\n  uStack_1a0 = 0;\r\n  puStack_60 = (undefined8 *)param_2[0xb9];\r\n  puStack_1b8 = puVar5;\r\n  uStack_1b0 = uVar3;\r\n  puStack_70 = param_4;\r\n  iVar7 = (*(code *)param_2[0x21])(puStack_60,auStack_1d0,0,&puStack_e8);\r\n  puVar15 = puStack_e8;\r\n  if (iVar7 == 0) {\r\n    if (param_3 != (undefined8 *)0x0) {\r\n      puStack_58 = param_2;\r\n      FUN_140d797d0(&puStack_130,param_7,param_8);\r\n      puVar9 = uStack_120;\r\n      puVar13 = puStack_128;\r\n      if (!SBORROW8(0,(longlong)puStack_130)) {\r\n        uStack_d8 = (undefined4)uStack_120;\r\n        uStack_d4 = uStack_120._4_4_;\r\n        puStack_d0 = uStack_118;\r\n        puStack_e8 = puStack_130;\r\n        puStack_e0 = puStack_128;\r\n        FUN_1428d9760(&UNK_142b15188,0x2b,&puStack_e8,&UNK_142b151d8,&UNK_142b15838);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,0x3b9cbe00);\r\n      puStack_e0 = (undefined8 *)0x0;\r\n      uStack_d8 = 9;\r\n      puStack_d0 = puVar15;\r\n      puStack_c8 = puStack_128;\r\n      iVar7 = (*(code *)*param_3)(param_3[8],&puStack_e8);\r\n      param_2 = puStack_58;\r\n      if (iVar7 != 0) {\r\n        puStack_70 = puVar13;\r\n        puStack_60 = puVar9;\r\n        puStack_130 = (undefined8 *)CONCAT44(puStack_130._4_4_,iVar7);\r\n        FUN_1428d9760(&UNK_142b15850,0x1b,&puStack_130,&UNK_142b15128,&UNK_142b15870);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      *(undefined1 *)puVar13 = 0;\r\n      if (puVar9 != (undefined8 *)0x0) {\r\n        func_0x000140613c20(puVar13,puVar9,1);\r\n      }\r\n    }\r\n    (*(code *)param_2[0xe])(puStack_60,puVar15,&uStack_160);\r\n    uVar8 = uStack_158;\r\n    if (uStack_158 < *(ushort *)((longlong)param_6 + 0xc)) {\r\n      uVar8 = (ulonglong)*(ushort *)((longlong)param_6 + 0xc);\r\n    }\r\n    uStack_158 = 0x40;\r\n    if ((uVar3 & 0x400) == 0) {\r\n      uStack_158 = 0x10;\r\n    }\r\n    if (uStack_158 <= uVar8) {\r\n      uStack_158 = uVar8;\r\n    }\r\n    LOCK();\r\n    cVar1 = *param_5;\r\n    if (cVar1 == '\\0') {\r\n      *param_5 = '\\x01';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\0') {\r\n      FUN_1428cd210(param_5,uStack_158,1000000000);\r\n    }\r\n    FUN_140c81c70(param_5);\r\n    uStack_1e0 = uStack_150;\r\n    uStack_1f0 = uStack_160;\r\n    uStack_1ec = uStack_15c;\r\n    uStack_1e8 = (undefined4)uStack_158;\r\n    uStack_1e4 = uStack_158._4_4_;\r\n    uStack_1d7 = *(undefined1 *)((longlong)param_6 + 0xe);\r\n    uStack_200 = 1;\r\n    uStack_1f8 = 0;\r\n    uStack_1d8 = 1;\r\n    auStack_210[0] = 2;\r\n    FUN_140c0da40(&puStack_e8,param_5 + 8,auStack_210);\r\n    puVar13 = puStack_d0;\r\n    uStack_188 = uStack_150;\r\n    uStack_198 = uStack_160;\r\n    uStack_194 = uStack_15c;\r\n    uStack_190 = (undefined4)uStack_158;\r\n    uStack_18c = uStack_158._4_4_;\r\n    if ((char)uStack_a4 == '\\x02') {\r\n      puStack_68 = puStack_e0;\r\n      puStack_78 = (undefined8 *)CONCAT44(uStack_d4,uStack_d8);\r\n      puStack_58 = puStack_e8;\r\n      if ((longlong)param_8 < 0) {\r\n        uVar14 = 0;\r\ncode_r0x000140bee8ad:\r\n        FUN_1428d8fe3(uVar14,param_8,&UNK_142b15288);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      puStack_180 = puVar15;\r\n      if (param_8 == (undefined8 *)0x0) {\r\n        puVar9 = (undefined8 *)0x1;\r\n      }\r\n      else {\r\n        uVar14 = 1;\r\n        puVar9 = (undefined8 *)func_0x000140613c10(param_8,1);\r\n        if (puVar9 == (undefined8 *)0x0) goto code_r0x000140bee8ad;\r\n      }\r\n      func_0x000142923c00(puVar9,param_7,param_8);\r\n      uStack_178 = CONCAT44(uStack_194,uStack_198);\r\n      uStack_170 = CONCAT44(uStack_18c,uStack_190);\r\n      uStack_138 = uStack_188;\r\n      puStack_c0 = param_8;\r\n      uStack_118 = param_8;\r\n      puStack_128 = puStack_78;\r\n      puStack_130 = puStack_68;\r\n      puVar15 = puStack_180;\r\n      uStack_148 = uStack_178;\r\n      uStack_140 = uStack_170;\r\n      if (puStack_58 != (undefined8 *)0xb) {\r\n        uStack_168 = uStack_188;\r\n        param_1[1] = puStack_68;\r\n        param_1[2] = puStack_78;\r\n        param_1[3] = puVar13;\r\n        *(undefined4 *)(param_1 + 7) = uStack_198;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_194;\r\n        *(undefined4 *)(param_1 + 8) = uStack_190;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_18c;\r\n        param_1[9] = uStack_188;\r\n        *param_1 = puStack_58;\r\n        param_1[4] = param_8;\r\n        param_1[5] = puVar9;\r\n        param_1[6] = param_8;\r\n        FUN_140c81e10();\r\n        LOCK();\r\n        cVar1 = *param_5;\r\n        if (cVar1 == '\\x01') {\r\n          *param_5 = '\\0';\r\n        }\r\n        UNLOCK();\r\n        if (cVar1 == '\\x01') {\r\n          return param_1;\r\n        }\r\n        FUN_1428cdb90(param_5,0);\r\n        return param_1;\r\n      }\r\n    }\r\n    else {\r\n      puVar13 = (undefined8 *)CONCAT44(uStack_d4,uStack_d8);\r\n      uStack_140 = CONCAT44(uStack_ac,uStack_b0);\r\n      uStack_148 = puStack_b8;\r\n      uStack_138 = CONCAT44(uStack_a4,uStack_a8);\r\n      uStack_118 = puStack_d0;\r\n      puStack_128 = puStack_e0;\r\n      puStack_130 = puStack_e8;\r\n      puVar9 = puStack_c8;\r\n    }\r\n    uStack_168 = uStack_138;\r\n    uStack_178 = uStack_148;\r\n    uStack_170 = uStack_140;\r\n    uStack_100 = (undefined4)uStack_148;\r\n    uStack_fc = uStack_148._4_4_;\r\n    uStack_f8 = (undefined4)uStack_140;\r\n    uStack_f4 = uStack_140._4_4_;\r\n    uStack_f0 = uStack_138;\r\n    uStack_49 = 1;\r\n    uStack_120 = puVar13;\r\n    uStack_110 = puVar9;\r\n    uStack_108 = puStack_c0;\r\n    FUN_140c81e10();\r\n    puVar13 = puStack_70;\r\n    LOCK();\r\n    cVar1 = *param_5;\r\n    if (cVar1 == '\\x01') {\r\n      *param_5 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\x01') {\r\n      uStack_49 = 1;\r\n      FUN_1428cdb90(param_5,0);\r\n    }\r\n    uStack_49 = 1;\r\n    uVar14 = func_0x0001406d0cb0(&puStack_130);\r\n    uStack_49 = 1;\r\n    uVar10 = func_0x0001406868b0(&puStack_130);\r\n    puVar9 = puVar15;\r\n    iVar7 = (*(code *)param_2[0xc])(puStack_60,puVar15,uVar14,uVar10);\r\n    if (iVar7 == 0) {\r\n      uStack_49 = 1;\r\n      lVar11 = func_0x000140c113d0(&puStack_130);\r\n      if (puVar5 <= puVar9 || lVar11 == 0) {\r\n        uStack_80 = uStack_f0;\r\n        uStack_90 = uStack_100;\r\n        uStack_8c = uStack_fc;\r\n        uStack_88 = uStack_f8;\r\n        uStack_84 = uStack_f4;\r\n        uStack_a0 = (undefined4)uStack_110;\r\n        uStack_9c = uStack_110._4_4_;\r\n        uStack_98 = (undefined4)uStack_108;\r\n        uStack_94 = uStack_108._4_4_;\r\n        uStack_b0 = (undefined4)uStack_120;\r\n        uStack_ac = uStack_120._4_4_;\r\n        uStack_a8 = (undefined4)uStack_118;\r\n        uStack_a4 = uStack_118._4_4_;\r\n        puStack_c0 = puStack_130;\r\n        puStack_b8 = puStack_128;\r\n        uStack_d8 = *(undefined4 *)param_6;\r\n        uStack_d4 = *(undefined4 *)((longlong)param_6 + 4);\r\n        puStack_d0 = (undefined8 *)param_6[1];\r\n        puStack_e8 = param_7;\r\n        puStack_e0 = param_8;\r\n        uStack_49 = 0;\r\n        puStack_c8 = puVar15;\r\n        lVar12 = FUN_1418ae8a0(puVar13 + 0x30,&puStack_e8);\r\n        uVar4 = *(undefined4 *)(lVar12 + 0xc);\r\n        uVar2 = *(undefined2 *)(puVar13 + 0x14a);\r\n        uVar14 = *puVar13;\r\n        param_1[1] = lVar12 + 0x10;\r\n        param_1[2] = uVar14;\r\n        param_1[3] = lVar12;\r\n        *(undefined4 *)(param_1 + 4) = uVar4;\r\n        *(undefined2 *)((longlong)param_1 + 0x24) = uVar2;\r\n        *(undefined1 *)((longlong)param_1 + 0x26) = 1;\r\n        uVar14 = param_6[1];\r\n        param_1[5] = *param_6;\r\n        param_1[6] = uVar14;\r\n        param_1[7] = lVar11;\r\n        param_1[8] = puVar5;\r\n        *param_1 = 0xb;\r\n        return param_1;\r\n      }\r\n      uStack_49 = 1;\r\n      FUN_1428d9840(puVar5);\r\n      goto code_r0x000140bee8c3;\r\n    }\r\n  }\r\n  else {\r\n    puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,iVar7);\r\n    iVar7 = FUN_1428d9760(&UNK_142b157f0,0xd,&puStack_e8,&UNK_142b15128,&UNK_142b15820);\r\n  }\r\n  puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,iVar7);\r\n  uStack_49 = 1;\r\n  FUN_1428d9760(&UNK_142b15888,0x12,&puStack_e8,&UNK_142b15128,&UNK_142b158a0);\r\ncode_r0x000140bee8c3:\r\n                    /* WARNING: Does not return */\r\n  pcVar6 = (code *)invalidInstructionException();\r\n  (*pcVar6)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "825c422b51f0cc846b836f8eacc0e836f0cf1d7500ad3d068c3081894b017f06",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beea80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beea80",
+        "address": "0x140BEEA80",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140beea80(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             longlong param_5)\r\n\r\n{\r\n  code *pcVar1;\r\n  longlong lVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  longlong lStack_88;\r\n  longlong lStack_80;\r\n  longlong lStack_78;\r\n  longlong lStack_70;\r\n  longlong lStack_68;\r\n  longlong lStack_60;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  longlong lStack_40;\r\n  longlong lStack_38;\r\n  longlong lStack_30;\r\n  longlong lStack_28;\r\n  longlong lStack_20;\r\n  undefined8 uStack_18;\r\n  \r\n  uStack_18 = 0xfffffffffffffffe;\r\n  if ((*(char *)(param_5 + 0xe) != '\\x02') && (*(char *)(param_5 + 0xe) != '\\x04')) {\r\n    FUN_1428d9430(&UNK_142b158f8,0x69,&UNK_142b15968);\r\ncode_r0x000140beebe1:\r\n    FUN_1428d9330(&UNK_142b158d0,0xd,&UNK_142b158e0);\r\n                    /* WARNING: Does not return */\r\n    pcVar1 = (code *)invalidInstructionException();\r\n    (*pcVar1)();\r\n  }\r\n  lVar4 = param_2 + 0x870;\r\n  if (*(longlong *)(param_2 + 0x870) == 0) {\r\n    lVar4 = 0;\r\n  }\r\n  FUN_140bee200(&uStack_98,param_2 + 0x78,lVar4,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,param_5,param_3,param_4);\r\n  lVar3 = lStack_78;\r\n  lVar2 = lStack_80;\r\n  lVar4 = lStack_88;\r\n  lStack_40 = lStack_88;\r\n  lStack_38 = lStack_80;\r\n  lStack_30 = lStack_78;\r\n  lStack_28 = lStack_70;\r\n  lStack_20 = lStack_68;\r\n  if (CONCAT44(uStack_94,uStack_98) == 0xb) {\r\n    lStack_78 = lStack_68;\r\n    lStack_88 = lVar3;\r\n    lStack_80 = lStack_70;\r\n    uStack_c0 = (undefined4)lVar4;\r\n    uStack_bc = (undefined4)((ulonglong)lVar4 >> 0x20);\r\n    uStack_b8 = (undefined4)lVar2;\r\n    uStack_b4 = (undefined4)((ulonglong)lVar2 >> 0x20);\r\n    uStack_98 = uStack_c0;\r\n    uStack_94 = uStack_bc;\r\n    uStack_90 = uStack_b8;\r\n    uStack_8c = uStack_b4;\r\n    if (lStack_60 == 0) goto code_r0x000140beebe1;\r\n    param_1[5] = lStack_68;\r\n    param_1[3] = lVar3;\r\n    param_1[4] = lStack_70;\r\n    param_1[1] = lVar4;\r\n    param_1[2] = lVar2;\r\n    param_1[6] = lStack_60;\r\n    param_1[7] = lStack_58;\r\n    *param_1 = 0xb;\r\n  }\r\n  else {\r\n    param_1[5] = lStack_70;\r\n    param_1[6] = lStack_68;\r\n    param_1[3] = lStack_80;\r\n    param_1[4] = lStack_78;\r\n    param_1[1] = CONCAT44(uStack_8c,uStack_90);\r\n    param_1[2] = lStack_88;\r\n    *param_1 = CONCAT44(uStack_94,uStack_98);\r\n    param_1[7] = lStack_60;\r\n    param_1[8] = lStack_58;\r\n    param_1[9] = lStack_50;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "2b8b7f06cc3150f52067a1d7df0e2168d8203ea3c95d5a89b824449c1d3395fd",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beec30"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beec30",
+        "address": "0x140BEEC30",
+        "decompiled_code": "\r\nvoid FUN_140beec30(longlong param_1,longlong param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  code *pcVar2;\r\n  char *pcVar3;\r\n  undefined8 unaff_RDI;\r\n  char *unaff_R12;\r\n  longlong unaff_R14;\r\n  longlong unaff_R15;\r\n  bool bVar4;\r\n  int iStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  undefined4 uStack_68;\r\n  undefined4 uStack_64;\r\n  undefined8 uStack_60;\r\n  char *pcStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  if (*(longlong *)(param_1 + 0x870) == 0) {\r\n    return;\r\n  }\r\n  if (*(short *)(param_2 + 0x14) == *(short *)(*(longlong *)(param_1 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_2 + 0x16) != '\\x01') goto code_r0x000140beede6;\r\n    unaff_R15 = *(longlong *)(param_2 + 8);\r\n    if (*(int *)(unaff_R15 + 0xc) == *(int *)(param_2 + 0x10)) {\r\n      unaff_R14 = *(longlong *)(param_1 + 0x678);\r\n      unaff_R12 = (char *)(unaff_R14 + 0x10);\r\n      LOCK();\r\n      bVar4 = *(char *)(unaff_R14 + 0x10) == '\\0';\r\n      if (bVar4) {\r\n        *(char *)(unaff_R14 + 0x10) = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      unaff_RDI = param_4;\r\n      if (!bVar4) goto code_r0x000140beee10;\r\n      goto code_r0x000140beecb7;\r\n    }\r\n    FUN_1428d9310(&UNK_142b15980);\r\n  }\r\n  else {\r\n    uStack_78 = 0;\r\n    param_2 = param_2 + 0x14;\r\n    FUN_1428ca816(0,param_2,*(longlong *)(param_1 + 0x648) + 0xa50,&uStack_78,&UNK_142d022a0);\r\ncode_r0x000140beede6:\r\n    uStack_78 = 0;\r\n    FUN_1428ca902(0,param_2 + 0x16,&UNK_142d022d9,&uStack_78,&UNK_142d022c0);\r\ncode_r0x000140beee10:\r\n    FUN_1428cd210(unaff_R12);\r\ncode_r0x000140beecb7:\r\n    pcStack_48 = unaff_R12;\r\n    FUN_140c81c70(unaff_R12);\r\n    if (*(char *)(unaff_R15 + 0x7c) != '\\x02') {\r\n      FUN_140c14e00(&uStack_78,unaff_R14 + 0x18,unaff_R15 + 0x38,param_3,unaff_RDI);\r\n      if (((uStack_78 < 6) && ((0x32UL >> (uStack_78 & 0x3f) & 1) != 0)) && (uStack_70 != 0)) {\r\n        func_0x000140613c20(CONCAT44(uStack_64,uStack_68),uStack_70,1);\r\n      }\r\n      pcVar3 = pcStack_48;\r\n      FUN_140c81e10();\r\n      LOCK();\r\n      cVar1 = *pcVar3;\r\n      if (cVar1 == '\\x01') {\r\n        *pcVar3 = '\\0';\r\n      }\r\n      UNLOCK();\r\n      if (cVar1 != '\\x01') {\r\n        FUN_1428cdb90(pcVar3,0);\r\n      }\r\n      FUN_140d797d0(&iStack_a0,param_3,unaff_RDI);\r\n      if (SBORROW8(0,CONCAT44(uStack_9c,iStack_a0))) {\r\n        pcVar3 = (char *)CONCAT44(uStack_8c,uStack_90);\r\n        uStack_60 = *(undefined8 *)(unaff_R15 + 0x30);\r\n        uStack_78 = CONCAT44(uStack_78._4_4_,0x3b9cbe00);\r\n        uStack_70 = 0;\r\n        uStack_68 = 9;\r\n        iStack_a0 = (**(code **)(param_1 + 0x870))(*(undefined8 *)(param_1 + 0x8b0),&uStack_78);\r\n        if (iStack_a0 == 0) {\r\n          *(undefined1 *)CONCAT44(uStack_94,uStack_98) = 0;\r\n          if (pcVar3 != (char *)0x0) {\r\n            func_0x000140613c20((undefined1 *)CONCAT44(uStack_94,uStack_98),pcVar3,1);\r\n          }\r\n          return;\r\n        }\r\n        pcStack_48 = pcVar3;\r\n        FUN_1428d9760(&UNK_142b15850,0x1b,&iStack_a0,&UNK_142b15128,&UNK_142b159b0);\r\n      }\r\n      else {\r\n        uStack_68 = uStack_90;\r\n        uStack_64 = uStack_8c;\r\n        uStack_60 = CONCAT44(uStack_84,uStack_88);\r\n        uStack_78 = CONCAT44(uStack_9c,iStack_a0);\r\n        uStack_70 = CONCAT44(uStack_94,uStack_98);\r\n        FUN_1428d9760(&UNK_142b15188,0x2b,&uStack_78,&UNK_142b151d8,&UNK_142b15998);\r\n      }\r\n      goto code_r0x000140beeeb9;\r\n    }\r\n  }\r\n  FUN_1428d9310(&UNK_142d02388);\r\ncode_r0x000140beeeb9:\r\n                    /* WARNING: Does not return */\r\n  pcVar2 = (code *)invalidInstructionException();\r\n  (*pcVar2)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "35273f34312b4b7707018f002f804a639b59f55323eaa8a0c6c726a4c894368c",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beefa0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beefa0",
+        "address": "0x140BEEFA0",
+        "decompiled_code": "\r\nundefined8 *\r\nFUN_140beefa0(undefined8 *param_1,longlong param_2,longlong param_3,longlong param_4,\r\n             ulonglong param_5,ulonglong *param_6,longlong param_7,longlong param_8)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 *puVar2;\r\n  ulonglong uVar3;\r\n  ulonglong uVar4;\r\n  ulonglong *puVar5;\r\n  undefined *puVar6;\r\n  longlong lVar7;\r\n  ulonglong uVar8;\r\n  longlong lVar9;\r\n  ulonglong uVar10;\r\n  undefined **ppuVar11;\r\n  undefined *puVar12;\r\n  undefined8 uVar13;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined8 uStack_128;\r\n  undefined8 uStack_120;\r\n  undefined8 uStack_118;\r\n  undefined8 uStack_110;\r\n  longlong lStack_108;\r\n  undefined8 *puStack_100;\r\n  undefined *puStack_f8;\r\n  undefined8 uStack_f0;\r\n  undefined8 uStack_e8;\r\n  undefined8 uStack_e0;\r\n  undefined8 uStack_d8;\r\n  undefined8 uStack_d0;\r\n  undefined8 uStack_c8;\r\n  longlong lStack_c0;\r\n  ulonglong uStack_b8;\r\n  undefined8 uStack_b0;\r\n  undefined *puStack_a8;\r\n  undefined4 uStack_a0;\r\n  undefined2 uStack_9c;\r\n  undefined1 uStack_9a;\r\n  undefined8 uStack_98;\r\n  undefined8 uStack_90;\r\n  longlong lStack_88;\r\n  ulonglong *puStack_80;\r\n  longlong lStack_78;\r\n  undefined8 *puStack_70;\r\n  longlong lStack_68;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  uVar8 = *(ulonglong *)(param_2 + 0x648);\r\n  lStack_58 = param_2;\r\n  if (*(short *)(param_3 + 0x14) == *(short *)(uVar8 + 0xa50)) {\r\n    if (*(char *)(param_3 + 0x16) != '\\x01') goto code_r0x000140bef372;\r\n    lVar7 = *(longlong *)(param_3 + 8);\r\n    lStack_50 = lVar7 + 0x10;\r\n    lVar9 = 0;\r\n    if (*(int *)(lVar7 + 0xc) != *(int *)(param_3 + 0x10)) goto code_r0x000140bef406;\r\n    lVar9 = param_7 * 0x10;\r\n    puVar6 = (undefined *)0x0;\r\n    puVar5 = param_6;\r\n    do {\r\n      if (lVar9 == 0) goto code_r0x000140bef09e;\r\n      uVar3 = *puVar5;\r\n      uVar4 = puVar5[1];\r\n      if (uVar4 < uVar3) {\r\n        FUN_1428d9850(uVar3,uVar4,&UNK_142b15ae8);\r\ncode_r0x000140bef2ec:\r\n        uVar3 = FUN_1428d9840(uVar4,param_5,&UNK_142b15ae8);\r\n        goto code_r0x000140bef2fe;\r\n      }\r\n      if (param_5 < uVar4) goto code_r0x000140bef2ec;\r\n      puVar5 = puVar5 + 2;\r\n      puVar6 = puVar6 + (uVar4 - uVar3);\r\n      lVar9 = lVar9 + -0x10;\r\n    } while (puVar6 + param_8 <= *(undefined **)(lVar7 + 0x20));\r\n    puVar6 = &UNK_142b15b60;\r\n    FUN_1428d9430(&UNK_142b15b00,0x5c);\r\ncode_r0x000140bef09e:\r\n    if ((*(byte *)(lStack_50 + 0x18) & 2) == 0) goto code_r0x000140bef39e;\r\n    if (puVar6 == (undefined *)0x0) goto code_r0x000140bef3ee;\r\n    uStack_a0 = 1;\r\n    uStack_9a = 3;\r\n    uStack_9c = 0;\r\n    lVar7 = lStack_58 + 0x870;\r\n    if (*(longlong *)(lStack_58 + 0x870) == 0) {\r\n      lVar7 = 0;\r\n    }\r\n    lVar9 = *(longlong *)(lStack_58 + 0x678) + 0x10;\r\n    puVar12 = &UNK_142b15a78;\r\n    ppuVar11 = &puStack_a8;\r\n    uVar13 = 0x12;\r\n    lStack_108 = param_3;\r\n    puStack_a8 = puVar6;\r\n    FUN_140bee200(&puStack_f8,lStack_58 + 0x78,lVar7);\r\n    uStack_98 = uStack_f0;\r\n    lVar7 = uStack_98;\r\n    uStack_90 = uStack_e8;\r\n    puVar2 = uStack_90;\r\n    lStack_88 = uStack_e0;\r\n    puStack_80 = (ulonglong *)uStack_d8;\r\n    lStack_78 = uStack_d0;\r\n    puStack_70 = (undefined8 *)uStack_c8;\r\n    if (puStack_f8 != (undefined *)0xb) {\r\n      param_1[5] = uStack_d0;\r\n      param_1[6] = uStack_c8;\r\n      param_1[3] = uStack_e0;\r\n      param_1[4] = uStack_d8;\r\n      param_1[1] = uStack_f0;\r\n      param_1[2] = uStack_e8;\r\n      *param_1 = puStack_f8;\r\n      param_1[7] = lStack_c0;\r\n      param_1[8] = uStack_b8;\r\n      param_1[9] = uStack_b0;\r\n      return param_1;\r\n    }\r\n    uStack_98._0_4_ = (undefined4)uStack_f0;\r\n    uStack_98._4_4_ = (undefined4)((ulonglong)uStack_f0 >> 0x20);\r\n    uStack_90._0_4_ = SUB84(uStack_e8,0);\r\n    uStack_90._4_4_ = (undefined4)((ulonglong)uStack_e8 >> 0x20);\r\n    uStack_118 = uStack_d0;\r\n    uStack_110 = uStack_c8;\r\n    uStack_128 = uStack_e0;\r\n    uStack_120 = uStack_d8;\r\n    uStack_138 = (undefined4)uStack_98;\r\n    uStack_134 = uStack_98._4_4_;\r\n    uStack_130 = (undefined4)uStack_90;\r\n    uStack_12c = uStack_90._4_4_;\r\n    puStack_100 = param_1;\r\n    uStack_98 = lVar7;\r\n    uStack_90 = puVar2;\r\n    if (lStack_c0 != 0) {\r\n      uVar4 = uStack_b8;\r\n      puVar5 = param_6;\r\n      lVar7 = lStack_c0;\r\n      if (param_7 != 0) {\r\n        do {\r\n          uVar3 = *puVar5;\r\n          uVar8 = puVar5[1];\r\n          uVar10 = uVar8 - uVar3;\r\n          if (uVar8 < uVar3) goto code_r0x000140bef2fe;\r\n          if (param_5 < uVar8) {\r\n            FUN_1428d9840(uVar8,param_5,&UNK_142b15ab8,uVar8,lVar9,ppuVar11,puVar12,uVar13);\r\n            goto code_r0x000140bef42a;\r\n          }\r\n          if (uVar4 < uVar10) {\r\n            FUN_1428d9840(uVar10,uVar4,&UNK_142b15ad0,uVar8,lVar9,ppuVar11,puVar12,uVar13);\r\n            goto code_r0x000140bef42a;\r\n          }\r\n          func_0x000142923c00(lVar7,uVar3 + param_4,uVar10);\r\n          puVar5 = puVar5 + 2;\r\n          uVar4 = uVar4 - uVar10;\r\n          lVar7 = lVar7 + uVar10;\r\n        } while (puVar5 != param_6 + param_7 * 2);\r\n      }\r\n      uStack_98 = lStack_108;\r\n      uStack_90 = (undefined8 *)&uStack_138;\r\n      lStack_88 = lStack_58;\r\n      puStack_80 = param_6;\r\n      lStack_78 = param_7;\r\n      puStack_70 = &param_8;\r\n      lStack_68 = lStack_50;\r\n      FUN_140c04280(&puStack_f8,lStack_58,&uStack_98);\r\n      puVar2 = puStack_100;\r\n      if (puStack_f8 == (undefined *)0xb) {\r\n        *puStack_100 = 0xb;\r\n      }\r\n      else {\r\n        puStack_100[9] = uStack_b0;\r\n        puStack_100[7] = lStack_c0;\r\n        puStack_100[8] = uStack_b8;\r\n        puStack_100[5] = uStack_d0;\r\n        puStack_100[6] = uStack_c8;\r\n        puStack_100[3] = uStack_e0;\r\n        puStack_100[4] = uStack_d8;\r\n        *(undefined4 *)(puStack_100 + 1) = (undefined4)uStack_f0;\r\n        *(undefined4 *)((longlong)puStack_100 + 0xc) = uStack_f0._4_4_;\r\n        *(undefined4 *)(puStack_100 + 2) = (undefined4)uStack_e8;\r\n        *(undefined4 *)((longlong)puStack_100 + 0x14) = uStack_e8._4_4_;\r\n        *puStack_100 = puStack_f8;\r\n      }\r\n      FUN_140be24b0(&uStack_130);\r\n      return puVar2;\r\n    }\r\n  }\r\n  else {\r\n    puStack_f8 = (undefined *)0x0;\r\n    param_3 = param_3 + 0x14;\r\n    FUN_1428ca816(0,param_3,uVar8 + 0xa50,&puStack_f8,&UNK_142d022a0);\r\ncode_r0x000140bef372:\r\n    puStack_f8 = (undefined *)0x0;\r\n    FUN_1428ca902(0,param_3 + 0x16,&UNK_142d022d9,&puStack_f8,&UNK_142d022c0);\r\ncode_r0x000140bef39e:\r\n    uStack_98 = lStack_50;\r\n    uStack_90 = (undefined8 *)&UNK_1405338a0;\r\n    puStack_f8 = &UNK_142b15a40;\r\n    uStack_f0 = 2;\r\n    uStack_d8 = 0;\r\n    uStack_e8 = &uStack_98;\r\n    uStack_e0 = 1;\r\n    FUN_1428d9390(&puStack_f8,&UNK_142b15a60);\r\ncode_r0x000140bef3ee:\r\n    FUN_1428d9430(&UNK_142b0f830,0x1a,&UNK_142b0f898);\r\n    lVar9 = lStack_50;\r\ncode_r0x000140bef406:\r\n    lStack_50 = lVar9;\r\n    FUN_1428d9310(&UNK_142b159c8);\r\n  }\r\n  FUN_1428d9330(&UNK_142b15a8a,0x14,&UNK_142b15aa0);\r\ncode_r0x000140bef42a:\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\ncode_r0x000140bef2fe:\r\n  FUN_1428d9850(uVar3,uVar8,&UNK_142b15ab8);\r\n  goto code_r0x000140bef42a;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "5a510e2fc97d587eb5c50e33b5dc770d578c501745e7ce2090ce44a5afc42102",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c03460"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c03460",
+        "address": "0x140C03460",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140c03460(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             ulonglong *param_5,longlong param_6,ulonglong param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  longlong lVar6;\r\n  longlong lVar7;\r\n  longlong lStack_168;\r\n  undefined4 uStack_160;\r\n  undefined4 uStack_15c;\r\n  undefined4 uStack_158;\r\n  undefined4 uStack_154;\r\n  undefined4 uStack_150;\r\n  undefined4 uStack_14c;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  longlong lStack_120;\r\n  longlong lStack_118;\r\n  ulonglong uStack_110;\r\n  undefined4 uStack_108;\r\n  undefined4 uStack_104;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined4 uStack_f0;\r\n  undefined4 uStack_ec;\r\n  undefined4 uStack_e8;\r\n  undefined4 uStack_e4;\r\n  undefined4 uStack_e0;\r\n  undefined4 uStack_dc;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined4 uStack_d0;\r\n  undefined4 uStack_cc;\r\n  undefined4 uStack_c8;\r\n  undefined4 uStack_c4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  longlong lStack_a8;\r\n  longlong lStack_a0;\r\n  ulonglong uStack_98;\r\n  longlong lStack_90;\r\n  ulonglong uStack_88;\r\n  undefined4 uStack_80;\r\n  undefined2 uStack_7c;\r\n  undefined1 uStack_7a;\r\n  undefined4 *puStack_78;\r\n  longlong lStack_70;\r\n  undefined4 *puStack_68;\r\n  longlong *plStack_60;\r\n  undefined8 uStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  lStack_118 = param_6;\r\n  uStack_110 = param_7;\r\n  if (param_7 != 0 && param_6 != 0) {\r\n    *(byte *)(param_5 + 1) = (byte)param_5[1] | 2;\r\n  }\r\n  lVar7 = param_2 + 0x870;\r\n  lVar6 = 0;\r\n  if (*(longlong *)(param_2 + 0x870) != 0) {\r\n    lVar6 = lVar7;\r\n  }\r\n  uStack_108 = (undefined4)*param_5;\r\n  uStack_104 = *(undefined4 *)((longlong)param_5 + 4);\r\n  uStack_100 = (undefined4)param_5[1];\r\n  uStack_fc = *(undefined4 *)((longlong)param_5 + 0xc);\r\n  FUN_140bee200(&uStack_d8,param_2 + 0x78,lVar6,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_108,param_3,param_4);\r\n  uStack_50 = lStack_a8;\r\n  lVar6 = uStack_50;\r\n  if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n    param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n    param_1[6] = lStack_a8;\r\n    param_1[3] = CONCAT44(uStack_bc,uStack_c0);\r\n    param_1[4] = CONCAT44(uStack_b4,uStack_b8);\r\n    param_1[1] = CONCAT44(uStack_cc,uStack_d0);\r\n    param_1[2] = CONCAT44(uStack_c4,uStack_c8);\r\n    *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n    param_1[7] = lStack_a0;\r\n    param_1[8] = uStack_98;\r\n    param_1[9] = lStack_90;\r\n    return param_1;\r\n  }\r\n  uStack_50._0_4_ = (undefined4)lStack_a8;\r\n  uStack_50._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n  uStack_e8 = uStack_b0;\r\n  uStack_e4 = uStack_ac;\r\n  uStack_e0 = (undefined4)uStack_50;\r\n  uStack_dc = uStack_50._4_4_;\r\n  uStack_f8 = uStack_c0;\r\n  uStack_f4 = uStack_bc;\r\n  uStack_f0 = uStack_b8;\r\n  uStack_ec = uStack_b4;\r\n  uStack_108 = uStack_d0;\r\n  uStack_104 = uStack_cc;\r\n  uStack_100 = uStack_c8;\r\n  uStack_fc = uStack_c4;\r\n  if (param_7 == 0 || param_6 == 0) {\r\ncode_r0x000140c035ab:\r\n    param_1[5] = CONCAT44(uStack_dc,uStack_e0);\r\n    param_1[3] = CONCAT44(uStack_ec,uStack_f0);\r\n    param_1[4] = CONCAT44(uStack_e4,uStack_e8);\r\n    param_1[1] = CONCAT44(uStack_fc,uStack_100);\r\n    param_1[2] = CONCAT44(uStack_f4,uStack_f8);\r\n    *param_1 = 0xb;\r\n    return param_1;\r\n  }\r\n  uStack_50 = lVar6;\r\n  if (*param_5 < param_7) {\r\n    FUN_1428d9430(&UNK_142b186a0,0x38,&UNK_142b18700);\r\n  }\r\n  else if (lStack_a0 == 0) {\r\n    uStack_80 = 1;\r\n    uStack_7a = 3;\r\n    uStack_7c = 0;\r\n    if (*(longlong *)(param_2 + 0x870) == 0) {\r\n      lVar7 = 0;\r\n    }\r\n    uStack_88 = *param_5;\r\n    FUN_140bee200(&uStack_d8,param_2 + 0x78,lVar7,*(undefined8 *)(param_2 + 0x648),\r\n                  *(longlong *)(param_2 + 0x678) + 0x10,&uStack_88,&UNK_142b18730,0x13);\r\n    uVar5 = uStack_b4;\r\n    uVar4 = uStack_b8;\r\n    uVar3 = uStack_c4;\r\n    uVar2 = uStack_c8;\r\n    puStack_78 = (undefined4 *)CONCAT44(uStack_cc,uStack_d0);\r\n    lStack_70 = CONCAT44(uStack_c4,uStack_c8);\r\n    puStack_68 = (undefined4 *)CONCAT44(uStack_bc,uStack_c0);\r\n    plStack_60 = (longlong *)CONCAT44(uStack_b4,uStack_b8);\r\n    uStack_50 = lStack_a8;\r\n    lVar7 = uStack_50;\r\n    if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n      param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n      param_1[6] = lStack_a8;\r\n      param_1[3] = (longlong)puStack_68;\r\n      param_1[4] = (longlong)plStack_60;\r\n      *(undefined4 *)(param_1 + 1) = uStack_d0;\r\n      *(undefined4 *)((longlong)param_1 + 0xc) = uStack_cc;\r\n      *(undefined4 *)(param_1 + 2) = uStack_c8;\r\n      *(undefined4 *)((longlong)param_1 + 0x14) = uStack_c4;\r\n      *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n      param_1[7] = lStack_a0;\r\n      param_1[8] = uStack_98;\r\n      param_1[9] = lStack_90;\r\ncode_r0x000140c037ce:\r\n      FUN_140be24b0(&uStack_100);\r\n      return param_1;\r\n    }\r\n    uStack_50._0_4_ = (undefined4)lStack_a8;\r\n    uStack_50._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n    uStack_b8 = uStack_b0;\r\n    uStack_b4 = uStack_ac;\r\n    uStack_b0 = (undefined4)uStack_50;\r\n    uStack_ac = uStack_50._4_4_;\r\n    uStack_c8 = uStack_c0;\r\n    uStack_c4 = uStack_bc;\r\n    uStack_c0 = uVar4;\r\n    uStack_bc = uVar5;\r\n    uStack_d8 = uStack_d0;\r\n    uStack_d4 = uStack_cc;\r\n    uStack_d0 = uVar2;\r\n    uStack_cc = uVar3;\r\n    uStack_50 = lVar7;\r\n    if (lStack_a0 == 0) {\r\n      FUN_1428d9330(&UNK_142b18743,0x14,&UNK_142b18758);\r\n    }\r\n    else {\r\n      if (param_7 <= uStack_98) {\r\n        func_0x000142923c00(lStack_a0,param_6,param_7);\r\n        puStack_68 = &uStack_108;\r\n        plStack_60 = &lStack_118;\r\n        puStack_78 = &uStack_d8;\r\n        lStack_70 = param_2;\r\n        FUN_140c04840(&lStack_168,param_2,&puStack_78);\r\n        if (lStack_168 == 0xb) {\r\n          FUN_140be24b0(&uStack_d0);\r\n          goto code_r0x000140c035ab;\r\n        }\r\n        param_1[9] = lStack_120;\r\n        *(undefined4 *)(param_1 + 7) = uStack_130;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_12c;\r\n        *(undefined4 *)(param_1 + 8) = uStack_128;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_124;\r\n        *(undefined4 *)(param_1 + 5) = uStack_140;\r\n        *(undefined4 *)((longlong)param_1 + 0x2c) = uStack_13c;\r\n        *(undefined4 *)(param_1 + 6) = uStack_138;\r\n        *(undefined4 *)((longlong)param_1 + 0x34) = uStack_134;\r\n        *(undefined4 *)(param_1 + 3) = uStack_150;\r\n        *(undefined4 *)((longlong)param_1 + 0x1c) = uStack_14c;\r\n        *(undefined4 *)(param_1 + 4) = uStack_148;\r\n        *(undefined4 *)((longlong)param_1 + 0x24) = uStack_144;\r\n        *(undefined4 *)(param_1 + 1) = uStack_160;\r\n        *(undefined4 *)((longlong)param_1 + 0xc) = uStack_15c;\r\n        *(undefined4 *)(param_1 + 2) = uStack_158;\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = uStack_154;\r\n        *param_1 = lStack_168;\r\n        FUN_140be24b0(&uStack_d0);\r\n        goto code_r0x000140c037ce;\r\n      }\r\n      FUN_1428d9840(param_7,uStack_98,&UNK_142b18770);\r\n    }\r\n  }\r\n  else {\r\n    if (param_7 <= uStack_98) {\r\n      func_0x000142923c00(lStack_a0,param_6,param_7);\r\n      goto code_r0x000140c035ab;\r\n    }\r\n    FUN_1428d9840(param_7,uStack_98,&UNK_142b18718);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "53ed1b8a497b9755103c697aa20f24d29040eaa6b1eaedb352ea35e29f33e527",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c038c0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c038c0",
+        "address": "0x140C038C0",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140c038c0(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             undefined4 *param_5)\r\n\r\n{\r\n  longlong lVar1;\r\n  longlong lStack_68;\r\n  longlong lStack_60;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  longlong lStack_48;\r\n  longlong lStack_40;\r\n  longlong lStack_38;\r\n  longlong lStack_30;\r\n  longlong lStack_28;\r\n  longlong lStack_20;\r\n  undefined4 uStack_18;\r\n  undefined4 uStack_14;\r\n  undefined4 uStack_10;\r\n  undefined4 uStack_c;\r\n  \r\n  lVar1 = param_2 + 0x870;\r\n  if (*(longlong *)(param_2 + 0x870) == 0) {\r\n    lVar1 = 0;\r\n  }\r\n  uStack_18 = *param_5;\r\n  uStack_14 = param_5[1];\r\n  uStack_10 = param_5[2];\r\n  uStack_c = param_5[3];\r\n  FUN_140bee200(&lStack_68,param_2 + 0x78,lVar1,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_18,param_3,param_4);\r\n  if (lStack_68 == 0xb) {\r\n    param_1[5] = lStack_38;\r\n    param_1[3] = lStack_48;\r\n    param_1[4] = lStack_40;\r\n    param_1[1] = lStack_58;\r\n    param_1[2] = lStack_50;\r\n  }\r\n  else {\r\n    param_1[5] = lStack_40;\r\n    param_1[6] = lStack_38;\r\n    param_1[3] = lStack_50;\r\n    param_1[4] = lStack_48;\r\n    param_1[1] = lStack_60;\r\n    param_1[2] = lStack_58;\r\n    param_1[7] = lStack_30;\r\n    param_1[8] = lStack_28;\r\n    param_1[9] = lStack_20;\r\n  }\r\n  *param_1 = lStack_68;\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "61feab2141dcb625957706355da309205b8802e831ce07e14368e48ae49d6e33",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c03a00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c03a00",
+        "address": "0x140C03A00",
+        "decompiled_code": "\r\nvoid FUN_140c03a00(longlong *param_1,int *param_2)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  longlong *plVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  longlong lVar5;\r\n  undefined8 uVar6;\r\n  ulonglong *puVar7;\r\n  code *pcVar8;\r\n  ulonglong uVar9;\r\n  longlong *plVar10;\r\n  longlong lVar11;\r\n  ulonglong uVar12;\r\n  longlong lVar13;\r\n  longlong lVar14;\r\n  ulonglong *puVar15;\r\n  ulonglong uVar16;\r\n  bool bVar17;\r\n  undefined8 in_stack_ffffffffffffff38;\r\n  undefined4 uVar18;\r\n  undefined *puStack_90;\r\n  undefined8 uStack_88;\r\n  int **ppiStack_80;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  int *piStack_60;\r\n  code *pcStack_58;\r\n  ulonglong *puStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uVar18 = (undefined4)((ulonglong)in_stack_ffffffffffffff38 >> 0x20);\r\n  uStack_48 = 0xfffffffffffffffe;\r\n  puVar15 = *(ulonglong **)(*param_1 + 8);\r\n  if (*(int *)((longlong)puVar15 + 0xc) == *(int *)(*param_1 + 0x10)) {\r\n    if (*param_2 == 1) {\r\n      uVar1 = *(ulonglong *)(param_2 + 2);\r\n      uVar16 = *puVar15;\r\n      do {\r\n        uVar12 = uVar1;\r\n        if (uVar1 < uVar16) {\r\n          uVar12 = uVar16;\r\n        }\r\n        LOCK();\r\n        uVar9 = *puVar15;\r\n        bVar17 = uVar16 == uVar9;\r\n        if (bVar17) {\r\n          *puVar15 = uVar12;\r\n          uVar9 = uVar16;\r\n        }\r\n        UNLOCK();\r\n        uVar16 = uVar9;\r\n      } while (!bVar17);\r\n      goto code_r0x000140c03a61;\r\n    }\r\ncode_r0x000140c03cb0:\r\n    pcStack_58 = FUN_140bed620;\r\n    puStack_90 = &UNK_142b14bb0;\r\n    uStack_88 = 1;\r\n    uStack_70 = 0;\r\n    ppiStack_80 = &piStack_60;\r\n    uStack_78 = 1;\r\n    piStack_60 = param_2;\r\n    FUN_1428d9390(&puStack_90,&UNK_142b14bf0);\r\ncode_r0x000140c03cfa:\r\n    FUN_1428d9330(&UNK_142b185f2,0x22,&UNK_142b18670);\r\n  }\r\n  else {\r\ncode_r0x000140c03a61:\r\n    plVar2 = (longlong *)param_1[1];\r\n    puVar15 = (ulonglong *)plVar2[2];\r\n    if (*(int *)((longlong)puVar15 + 0xc) == (int)plVar2[3]) {\r\n      if (*param_2 != 1) goto code_r0x000140c03cb0;\r\n      uVar1 = *(ulonglong *)(param_2 + 2);\r\n      uVar16 = *puVar15;\r\n      do {\r\n        uVar12 = uVar1;\r\n        if (uVar1 < uVar16) {\r\n          uVar12 = uVar16;\r\n        }\r\n        LOCK();\r\n        uVar9 = *puVar15;\r\n        bVar17 = uVar16 == uVar9;\r\n        if (bVar17) {\r\n          *puVar15 = uVar12;\r\n          uVar9 = uVar16;\r\n        }\r\n        UNLOCK();\r\n        uVar16 = uVar9;\r\n      } while (!bVar17);\r\n    }\r\n    lVar3 = *plVar2;\r\n    lVar4 = param_1[2];\r\n    func_0x000140d4a3b0(&piStack_60);\r\n    uVar1 = param_1[4];\r\n    if (0x555555555555555 < uVar1) {\r\n      FUN_1428d79d0();\r\n      goto code_r0x000140c03d20;\r\n    }\r\n    puVar15 = (ulonglong *)param_1[3];\r\n    plVar2 = (longlong *)param_1[5];\r\n    uVar16 = puStack_50[4] & 0xfffffffffffffff8;\r\n    if (uVar1 * 0x18 <= uVar16 - *puStack_50 && *puStack_50 <= uVar16) {\r\n      uVar16 = uVar16 + uVar1 * -0x18;\r\n      puStack_50[4] = uVar16;\r\n      if (uVar16 != 0) goto code_r0x000140c03b22;\r\n    }\r\n    uVar16 = FUN_1428d7780(&piStack_60,8);\r\n    if (uVar16 != 0) {\r\ncode_r0x000140c03b22:\r\n      if (uVar1 != 0) {\r\n        plVar10 = (longlong *)(uVar16 + 0x10);\r\n        lVar11 = uVar1 << 4;\r\n        lVar13 = 0;\r\n        uVar12 = uVar1;\r\n        do {\r\n          if (lVar11 == 0) goto code_r0x000140c03cfa;\r\n          uVar9 = *puVar15;\r\n          lVar14 = 0;\r\n          if (uVar9 <= puVar15[1]) {\r\n            lVar14 = puVar15[1] - uVar9;\r\n          }\r\n          puVar15 = puVar15 + 2;\r\n          lVar5 = *plVar2;\r\n          plVar10[-2] = lVar13;\r\n          lVar13 = lVar13 + lVar14;\r\n          plVar10[-1] = uVar9 + lVar5;\r\n          *plVar10 = lVar14;\r\n          plVar10 = plVar10 + 3;\r\n          lVar11 = lVar11 + -0x10;\r\n          uVar12 = uVar12 - 1;\r\n        } while (uVar12 != 0);\r\n      }\r\n      uVar6 = *(undefined8 *)(param_2 + 0x12);\r\n      puStack_90._0_4_ = 0x2e;\r\n      uStack_88 = 0;\r\n      ppiStack_80 = (int **)0x1800000018000;\r\n      (**(code **)(lVar4 + 0x3e0))(uVar6,0x10000,0x10000,0,CONCAT44(uVar18,1),&puStack_90,0,8,0,8);\r\n      (**(code **)(lVar4 + 0x370))\r\n                (uVar6,*(undefined8 *)(lVar3 + 0x20),*(undefined8 *)(param_1[6] + 0x20),\r\n                 uVar1 & 0xffffffff,uVar16);\r\n      puStack_90 = (undefined *)CONCAT44(puStack_90._4_4_,0x2e);\r\n      uStack_88 = 0;\r\n      ppiStack_80 = (int **)0x1800000018000;\r\n      (**(code **)(lVar4 + 0x3e0))(uVar6,0x10000,0x10000,0,1,&puStack_90,0,8,0,8);\r\n      puVar15 = puRam000000014362c3e0;\r\n      while (puStack_50 != puVar15) {\r\n        puVar7 = (ulonglong *)puStack_50[3];\r\n        func_0x000140613c20(*puStack_50,puStack_50[2],puStack_50[1]);\r\n        puStack_50 = puVar7;\r\n      }\r\n      return;\r\n    }\r\n    FUN_1428d79d0();\r\n  }\r\ncode_r0x000140c03d20:\r\n                    /* WARNING: Does not return */\r\n  pcVar8 = (code *)invalidInstructionException();\r\n  (*pcVar8)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "54ada50db1c88c70e6589e69898730eceabc9e5818a8eff3a58dfa033ab46856",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1405b93b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1405b93b0",
+        "address": "0x1405B93B0",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_1405b93b0(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             ulonglong *param_5,undefined4 param_6,undefined4 param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  longlong lVar6;\r\n  undefined8 uVar7;\r\n  longlong lVar8;\r\n  ulonglong uVar9;\r\n  ulonglong uVar10;\r\n  undefined1 auStack_168 [16];\r\n  longlong lStack_158;\r\n  undefined4 uStack_150;\r\n  undefined4 uStack_14c;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  undefined4 uStack_120;\r\n  undefined4 uStack_11c;\r\n  undefined4 uStack_118;\r\n  undefined4 uStack_114;\r\n  longlong lStack_110;\r\n  undefined4 uStack_108;\r\n  undefined4 uStack_104;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined4 uStack_f0;\r\n  undefined4 uStack_ec;\r\n  undefined4 uStack_e8;\r\n  undefined4 uStack_e4;\r\n  undefined4 uStack_e0;\r\n  undefined4 uStack_dc;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined4 uStack_d0;\r\n  undefined4 uStack_cc;\r\n  undefined4 uStack_c8;\r\n  undefined4 uStack_c4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  longlong lStack_a8;\r\n  longlong lStack_a0;\r\n  ulonglong uStack_98;\r\n  longlong lStack_90;\r\n  undefined4 *puStack_88;\r\n  longlong lStack_80;\r\n  undefined4 *puStack_78;\r\n  undefined4 *puStack_70;\r\n  undefined8 uStack_60;\r\n  undefined4 auStack_58 [2];\r\n  undefined4 uStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  auStack_58[0] = param_6;\r\n  uStack_50 = param_7;\r\n  lVar6 = func_0x000140bd51a0(auStack_58);\r\n  if (lVar6 != 0) {\r\n    *(byte *)(param_5 + 1) = (byte)param_5[1] | 2;\r\n  }\r\n  uVar7 = func_0x000140bf8960(param_2);\r\n  uStack_108 = (undefined4)*param_5;\r\n  uStack_104 = *(undefined4 *)((longlong)param_5 + 4);\r\n  uStack_100 = (undefined4)param_5[1];\r\n  uStack_fc = *(undefined4 *)((longlong)param_5 + 0xc);\r\n  FUN_140bee200(&uStack_d8,param_2 + 0x78,uVar7,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_108,param_3,param_4);\r\n  uVar10 = uStack_98;\r\n  lVar6 = lStack_a0;\r\n  uStack_60 = lStack_a8;\r\n  lVar8 = uStack_60;\r\n  if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n    param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n    param_1[6] = lStack_a8;\r\n    param_1[3] = CONCAT44(uStack_bc,uStack_c0);\r\n    param_1[4] = CONCAT44(uStack_b4,uStack_b8);\r\n    param_1[1] = CONCAT44(uStack_cc,uStack_d0);\r\n    param_1[2] = CONCAT44(uStack_c4,uStack_c8);\r\n    *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n    param_1[7] = lStack_a0;\r\n    param_1[8] = uStack_98;\r\n    param_1[9] = lStack_90;\r\n    return param_1;\r\n  }\r\n  uStack_60._0_4_ = (undefined4)lStack_a8;\r\n  uStack_60._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n  uStack_e8 = uStack_b0;\r\n  uStack_e4 = uStack_ac;\r\n  uStack_e0 = (undefined4)uStack_60;\r\n  uStack_dc = uStack_60._4_4_;\r\n  uStack_f8 = uStack_c0;\r\n  uStack_f4 = uStack_bc;\r\n  uStack_f0 = uStack_b8;\r\n  uStack_ec = uStack_b4;\r\n  uStack_108 = uStack_d0;\r\n  uStack_104 = uStack_cc;\r\n  uStack_100 = uStack_c8;\r\n  uStack_fc = uStack_c4;\r\n  uStack_60 = lVar8;\r\n  lVar8 = func_0x000140bd51a0(auStack_58);\r\n  if (lVar8 == 0) {\r\ncode_r0x0001405b9513:\r\n    param_1[5] = CONCAT44(uStack_dc,uStack_e0);\r\n    param_1[3] = CONCAT44(uStack_ec,uStack_f0);\r\n    param_1[4] = CONCAT44(uStack_e4,uStack_e8);\r\n    param_1[1] = CONCAT44(uStack_fc,uStack_100);\r\n    param_1[2] = CONCAT44(uStack_f4,uStack_f8);\r\n    *param_1 = 0xb;\r\n    return param_1;\r\n  }\r\n  uVar9 = func_0x000140bd51a0(auStack_58);\r\n  if (*param_5 < uVar9) {\r\n    FUN_1428d9430(&UNK_142a0475a,0x38,&UNK_142a047e8);\r\n  }\r\n  else if (lVar6 == 0) {\r\n    FUN_140bd4ea0(auStack_168,*param_5,1);\r\n    uVar7 = func_0x000140bf8960(param_2);\r\n    FUN_140bee200(&uStack_d8,param_2 + 0x78,uVar7,*(undefined8 *)(param_2 + 0x648),\r\n                  *(longlong *)(param_2 + 0x678) + 0x10,auStack_168,&UNK_142a04818,0x13);\r\n    uVar5 = uStack_b4;\r\n    uVar4 = uStack_b8;\r\n    uVar3 = uStack_c4;\r\n    uVar2 = uStack_c8;\r\n    puStack_88 = (undefined4 *)CONCAT44(uStack_cc,uStack_d0);\r\n    lStack_80 = CONCAT44(uStack_c4,uStack_c8);\r\n    puStack_78 = (undefined4 *)CONCAT44(uStack_bc,uStack_c0);\r\n    puStack_70 = (undefined4 *)CONCAT44(uStack_b4,uStack_b8);\r\n    uStack_60 = lStack_a8;\r\n    lVar6 = uStack_60;\r\n    if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n      param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n      param_1[6] = lStack_a8;\r\n      param_1[3] = (longlong)puStack_78;\r\n      param_1[4] = (longlong)puStack_70;\r\n      *(undefined4 *)(param_1 + 1) = uStack_d0;\r\n      *(undefined4 *)((longlong)param_1 + 0xc) = uStack_cc;\r\n      *(undefined4 *)(param_1 + 2) = uStack_c8;\r\n      *(undefined4 *)((longlong)param_1 + 0x14) = uStack_c4;\r\n      *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n      param_1[7] = lStack_a0;\r\n      param_1[8] = uStack_98;\r\n      param_1[9] = lStack_90;\r\ncode_r0x0001405b9724:\r\n      FUN_140be24b0(&uStack_100);\r\n      return param_1;\r\n    }\r\n    uStack_60._0_4_ = (undefined4)lStack_a8;\r\n    uStack_60._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n    uStack_b8 = uStack_b0;\r\n    uStack_b4 = uStack_ac;\r\n    uStack_b0 = (undefined4)uStack_60;\r\n    uStack_ac = uStack_60._4_4_;\r\n    uStack_c8 = uStack_c0;\r\n    uStack_c4 = uStack_bc;\r\n    uStack_c0 = uVar4;\r\n    uStack_bc = uVar5;\r\n    uStack_d8 = uStack_d0;\r\n    uStack_d4 = uStack_cc;\r\n    uStack_d0 = uVar2;\r\n    uStack_cc = uVar3;\r\n    uStack_60 = lVar6;\r\n    if (lStack_a0 == 0) {\r\n      FUN_1428d9330(&UNK_142a0482b,0x14,&UNK_142a04840);\r\n    }\r\n    else {\r\n      uVar10 = func_0x000140bd51a0(auStack_58);\r\n      if (uVar10 <= uStack_98) {\r\n        FUN_140bd51b0(auStack_58,lStack_a0,uVar10);\r\n        puStack_88 = &uStack_d8;\r\n        lStack_80 = param_2;\r\n        puStack_78 = &uStack_108;\r\n        puStack_70 = auStack_58;\r\n        FUN_140c04840(&lStack_158,param_2,&puStack_88);\r\n        if (lStack_158 == 0xb) {\r\n          FUN_140be24b0(&uStack_d0);\r\n          goto code_r0x0001405b9513;\r\n        }\r\n        param_1[9] = lStack_110;\r\n        *(undefined4 *)(param_1 + 7) = uStack_120;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_11c;\r\n        *(undefined4 *)(param_1 + 8) = uStack_118;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_114;\r\n        *(undefined4 *)(param_1 + 5) = uStack_130;\r\n        *(undefined4 *)((longlong)param_1 + 0x2c) = uStack_12c;\r\n        *(undefined4 *)(param_1 + 6) = uStack_128;\r\n        *(undefined4 *)((longlong)param_1 + 0x34) = uStack_124;\r\n        *(undefined4 *)(param_1 + 3) = uStack_140;\r\n        *(undefined4 *)((longlong)param_1 + 0x1c) = uStack_13c;\r\n        *(undefined4 *)(param_1 + 4) = uStack_138;\r\n        *(undefined4 *)((longlong)param_1 + 0x24) = uStack_134;\r\n        *(undefined4 *)(param_1 + 1) = uStack_150;\r\n        *(undefined4 *)((longlong)param_1 + 0xc) = uStack_14c;\r\n        *(undefined4 *)(param_1 + 2) = uStack_148;\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = uStack_144;\r\n        *param_1 = lStack_158;\r\n        FUN_140be24b0(&uStack_d0);\r\n        goto code_r0x0001405b9724;\r\n      }\r\n      FUN_1428d9840(uVar10,uStack_98,&UNK_142a04858);\r\n    }\r\n  }\r\n  else {\r\n    uVar9 = func_0x000140bd51a0(auStack_58);\r\n    if (uVar9 <= uVar10) {\r\n      FUN_140bd51b0(auStack_58,lVar6,uVar9);\r\n      goto code_r0x0001405b9513;\r\n    }\r\n    FUN_1428d9840(uVar9,uVar10,&UNK_142a04800);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "2abc59620b47f6dc48f670932710aa4312b53e1dbb42fda1a4fb08e875dd507b",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4de0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4de0",
+        "start": "0x140BD4DE0",
+        "end": "0x140BD4DE1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "f4cabbbd5865ab1ebcd74dc9e97ae00b5b80a869d5fccc56eb46272706ce3bf7",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4e20",
+        "start": "0x140BD4E20",
+        "end": "0x140BD4E21",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "433f6803bf48c203f38cffd966695e0a9f5d32ed99cb84e7c04353102b2e3ce5",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4e60"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4e60",
+        "start": "0x140BD4E60",
+        "end": "0x140BD4E61",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "782a09c32433c5690dbfcda5b7961af183e65e98428252b398db8e4f3e7721fd",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4ea0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4ea0",
+        "start": "0x140BD4EA0",
+        "end": "0x140BD4EA1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "73b2dd55e079ab2bd837d8e6aeff9244b513ffa9cb292773b8918608c56de314",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4ee0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4ee0",
+        "start": "0x140BD4EE0",
+        "end": "0x140BD4EE1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "6e6d4fe183243177543aaaddc22988fbfa07740f198396726fc2e155721ef12d",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd51a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD51A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x1406868b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1406868B0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 20,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bef470"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:45.809Z",
+      "completed_at": "2026-10-12T10:29:50.756Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c7b47ee47596df4ae97ef8de373fe5c56c37b6c09cc6678e1d07c803e463b7ac",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bef470",
+        "start": "0x140BEF470",
+        "end": "0x140BEF471",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "d30d5ad4fcec13089bc2126f57ed6bf685d7133609d7bf696cc2f6fa9ea29179",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newtexbuf_l2"
+      },
+      "cache_key": "d3061ba43fb6ec21dcd0bf6b4f326ca53bd0c42a1ce456dd36fb07e37606fa43",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:11.717Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:29:31.516Z",
+      "ok": true,
+      "result_sha256": "5b39e3dcfb7440caadc90bcecb6cb18e1d8606ca54fecc806409cf473e0fbe87",
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newtexbuf_l2"
+      },
+      "cache_key": "2ec60bbe274c32144c1e3ab780e1b82621ffd6ceb9016b0abf76177dda66704f",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:31.518Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:29:43.752Z",
+      "ok": true,
+      "result_sha256": "69bd453a833c8948e7604b686b0634083ed8d4facf5ab258dd0bfef364f89923",
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4c00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4c00",
+        "address": "0x140BD4C00",
+        "decompiled_code": "\r\nvoid FUN_140bd4c00(longlong param_1,longlong param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uStack_30;\r\n  undefined8 uStack_28;\r\n  undefined8 uStack_20;\r\n  \r\n  if (*(short *)(param_1 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_1 + 0x16) == '\\x01') {\r\n      if (*(int *)(*(longlong *)(param_1 + 8) + 0xc) == *(int *)(param_1 + 0x10)) {\r\n        uStack_20 = *(undefined8 *)(*(longlong *)(param_1 + 8) + 0x30);\r\n        uStack_30 = CONCAT44(uStack_30._4_4_,0x3b9e8321);\r\n        uStack_28 = 0;\r\n        (**(code **)(param_2 + 0x508))(*(undefined8 *)(param_2 + 0x640),&uStack_30);\r\n        return;\r\n      }\r\n      goto code_r0x000140bd4cc1;\r\n    }\r\n  }\r\n  else {\r\n    uStack_30 = 0;\r\n    param_1 = param_1 + 0x14;\r\n    FUN_1428ca816(0,param_1,*(longlong *)(param_2 + 0x648) + 0xa50,&uStack_30,&UNK_142d022a0);\r\n  }\r\n  uStack_30 = 0;\r\n  FUN_1428ca902(0,param_1 + 0x16,&UNK_142d022d9,&uStack_30,&UNK_142d022c0);\r\ncode_r0x000140bd4cc1:\r\n  FUN_1428d9310(&UNK_142b0f7d8);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "60dc7fd0d1be5ada20033b53acb3e8b1f7b39ffa3caaace1bd619b2c470f980c",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4cd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4cd0",
+        "address": "0x140BD4CD0",
+        "decompiled_code": "\r\nlonglong FUN_140bd4cd0(longlong param_1,longlong param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  longlong lVar2;\r\n  ulonglong uVar3;\r\n  longlong lVar4;\r\n  ulonglong uVar5;\r\n  undefined8 auStack_48 [6];\r\n  \r\n  if (*(short *)(param_1 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_1 + 0x16) != '\\x01') goto code_r0x000140bd4d70;\r\n    lVar4 = *(longlong *)(param_1 + 8);\r\n    if (*(int *)(lVar4 + 0xc) == *(int *)(param_1 + 0x10)) {\r\n      if (*(char *)(lVar4 + 0x7c) == '\\x02') goto code_r0x000140bd4dc9;\r\n      lVar2 = func_0x000140c113b0(lVar4 + 0x38);\r\n      if (lVar2 == 0) {\r\n        return 0;\r\n      }\r\n      uVar3 = func_0x000140c02280(lVar4 + 0x38);\r\n      uVar5 = *(ulonglong *)(param_1 + 0x18);\r\n      if (uVar5 <= uVar3) {\r\n        return lVar2;\r\n      }\r\n      goto code_r0x000140bd4d9f;\r\n    }\r\n  }\r\n  else {\r\n    auStack_48[0] = 0;\r\n    param_1 = param_1 + 0x14;\r\n    FUN_1428ca816(0,param_1,*(longlong *)(param_2 + 0x648) + 0xa50,auStack_48,&UNK_142d022a0);\r\ncode_r0x000140bd4d70:\r\n    auStack_48[0] = 0;\r\n    uVar5 = param_1 + 0x16;\r\n    uVar3 = FUN_1428ca902(0,uVar5,&UNK_142d022d9,auStack_48,&UNK_142d022c0);\r\ncode_r0x000140bd4d9f:\r\n    FUN_1428d9840(uVar5,uVar3,&UNK_142b0f818);\r\n  }\r\n  FUN_1428d9330(&UNK_142b0f7f0,0xe,&UNK_142b0f800);\r\ncode_r0x000140bd4dc9:\r\n  FUN_1428d9310(&UNK_142d02388);\r\n  pcVar1 = (code *)swi(3);\r\n  lVar4 = (*pcVar1)();\r\n  return lVar4;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "4330ccbf69e82a83771180fbd64cbff337bfc6b38574f83a80ed6068b1a1ced1",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4f20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4f20",
+        "address": "0x140BD4F20",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd4f20(undefined8 *param_1,undefined8 *param_2,ulonglong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 *puVar2;\r\n  undefined1 uStack_1;\r\n  \r\n  if (param_3 < 0x10000) {\r\n    *(short *)((longlong)param_2 + 0xc) = (short)param_3;\r\n    *param_1 = *param_2;\r\n    *(undefined4 *)(param_1 + 1) = *(undefined4 *)(param_2 + 1);\r\n    *(undefined2 *)((longlong)param_1 + 0xc) = *(undefined2 *)((longlong)param_2 + 0xc);\r\n    *(undefined2 *)((longlong)param_1 + 0xe) = *(undefined2 *)((longlong)param_2 + 0xe);\r\n    return param_1;\r\n  }\r\n  FUN_1428d9760(&UNK_142b0f8c8,5,&uStack_1,&UNK_142b0f768,&UNK_142b0f8d0);\r\n  pcVar1 = (code *)swi(3);\r\n  puVar2 = (undefined8 *)(*pcVar1)();\r\n  return puVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "24a9169f25815b0ae910d98ffad06657bff3c164037c91c8738bc393420cf5ed",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd4f80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4f80",
+        "address": "0x140BD4F80",
+        "decompiled_code": "\r\nvoid FUN_140bd4f80(undefined8 *param_1,undefined8 param_2,longlong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  \r\n  if (param_1[1] == param_3) {\r\n                    /* WARNING: Could not recover jumptable at 0x000142923c00. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    memcpy(param_2,*param_1);\r\n    return;\r\n  }\r\n  FUN_1428d98e0(param_3,param_1[1],&UNK_142b0f8e8);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "6d48d630ab35f88a672b38cd6ffd776478ab84d4b1fee288b4ba0c68d2155584",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd51b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd51b0",
+        "address": "0x140BD51B0",
+        "decompiled_code": "\r\nvoid FUN_140bd51b0(longlong *param_1,undefined8 param_2,longlong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  \r\n  if (*param_1 == 0) {\r\n    return;\r\n  }\r\n  if (param_1[1] == param_3) {\r\n                    /* WARNING: Could not recover jumptable at 0x000142923c00. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    memcpy(param_2,*param_1);\r\n    return;\r\n  }\r\n  FUN_1428d98e0(param_3,param_1[1],&UNK_142b0f968);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "94e29789df98df8baa84c8f0d2b8c023acb3db0401bab21810d0a2d7b20e465e",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bee200"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bee200",
+        "address": "0x140BEE200",
+        "decompiled_code": "\r\nundefined8 *\r\nFUN_140bee200(undefined8 *param_1,undefined8 *param_2,undefined8 *param_3,undefined8 *param_4,\r\n             char *param_5,undefined8 *param_6,undefined8 *param_7,undefined8 *param_8)\r\n\r\n{\r\n  char cVar1;\r\n  undefined2 uVar2;\r\n  uint uVar3;\r\n  undefined4 uVar4;\r\n  undefined8 *puVar5;\r\n  code *pcVar6;\r\n  int iVar7;\r\n  ulonglong uVar8;\r\n  undefined8 *puVar9;\r\n  undefined8 uVar10;\r\n  longlong lVar11;\r\n  longlong lVar12;\r\n  undefined8 *puVar13;\r\n  undefined8 uVar14;\r\n  undefined8 *puVar15;\r\n  undefined8 auStack_210 [2];\r\n  undefined8 uStack_200;\r\n  undefined8 uStack_1f8;\r\n  undefined4 uStack_1f0;\r\n  undefined4 uStack_1ec;\r\n  undefined4 uStack_1e8;\r\n  undefined4 uStack_1e4;\r\n  undefined8 uStack_1e0;\r\n  undefined1 uStack_1d8;\r\n  undefined1 uStack_1d7;\r\n  undefined4 auStack_1d0 [2];\r\n  undefined8 uStack_1c8;\r\n  undefined4 uStack_1c0;\r\n  undefined8 *puStack_1b8;\r\n  uint uStack_1b0;\r\n  undefined8 uStack_1ac;\r\n  undefined8 uStack_1a0;\r\n  undefined4 uStack_198;\r\n  undefined4 uStack_194;\r\n  undefined4 uStack_190;\r\n  undefined4 uStack_18c;\r\n  undefined8 uStack_188;\r\n  undefined8 *puStack_180;\r\n  undefined8 uStack_178;\r\n  undefined8 uStack_170;\r\n  undefined8 uStack_168;\r\n  undefined4 uStack_160;\r\n  undefined4 uStack_15c;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined8 uStack_148;\r\n  undefined8 uStack_140;\r\n  undefined8 uStack_138;\r\n  undefined8 *puStack_130;\r\n  undefined8 *puStack_128;\r\n  undefined8 uStack_120;\r\n  undefined8 uStack_118;\r\n  undefined8 uStack_110;\r\n  undefined8 uStack_108;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined8 uStack_f0;\r\n  undefined8 *puStack_e8;\r\n  undefined8 *puStack_e0;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined8 *puStack_d0;\r\n  undefined8 *puStack_c8;\r\n  undefined8 *puStack_c0;\r\n  undefined8 *puStack_b8;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  undefined4 uStack_a8;\r\n  undefined4 uStack_a4;\r\n  undefined4 uStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined8 uStack_80;\r\n  undefined8 *puStack_78;\r\n  undefined8 *puStack_70;\r\n  undefined8 *puStack_68;\r\n  undefined8 *puStack_60;\r\n  undefined8 *puStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  puVar5 = (undefined8 *)*param_6;\r\n  uVar3 = *(uint *)(param_6 + 1);\r\n  auStack_1d0[0] = 0xc;\r\n  uStack_1c8 = 0;\r\n  uStack_1c0 = 0;\r\n  uStack_1ac = 0;\r\n  uStack_1a0 = 0;\r\n  puStack_60 = (undefined8 *)param_2[0xb9];\r\n  puStack_1b8 = puVar5;\r\n  uStack_1b0 = uVar3;\r\n  puStack_70 = param_4;\r\n  iVar7 = (*(code *)param_2[0x21])(puStack_60,auStack_1d0,0,&puStack_e8);\r\n  puVar15 = puStack_e8;\r\n  if (iVar7 == 0) {\r\n    if (param_3 != (undefined8 *)0x0) {\r\n      puStack_58 = param_2;\r\n      FUN_140d797d0(&puStack_130,param_7,param_8);\r\n      puVar9 = uStack_120;\r\n      puVar13 = puStack_128;\r\n      if (!SBORROW8(0,(longlong)puStack_130)) {\r\n        uStack_d8 = (undefined4)uStack_120;\r\n        uStack_d4 = uStack_120._4_4_;\r\n        puStack_d0 = uStack_118;\r\n        puStack_e8 = puStack_130;\r\n        puStack_e0 = puStack_128;\r\n        FUN_1428d9760(&UNK_142b15188,0x2b,&puStack_e8,&UNK_142b151d8,&UNK_142b15838);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,0x3b9cbe00);\r\n      puStack_e0 = (undefined8 *)0x0;\r\n      uStack_d8 = 9;\r\n      puStack_d0 = puVar15;\r\n      puStack_c8 = puStack_128;\r\n      iVar7 = (*(code *)*param_3)(param_3[8],&puStack_e8);\r\n      param_2 = puStack_58;\r\n      if (iVar7 != 0) {\r\n        puStack_70 = puVar13;\r\n        puStack_60 = puVar9;\r\n        puStack_130 = (undefined8 *)CONCAT44(puStack_130._4_4_,iVar7);\r\n        FUN_1428d9760(&UNK_142b15850,0x1b,&puStack_130,&UNK_142b15128,&UNK_142b15870);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      *(undefined1 *)puVar13 = 0;\r\n      if (puVar9 != (undefined8 *)0x0) {\r\n        func_0x000140613c20(puVar13,puVar9,1);\r\n      }\r\n    }\r\n    (*(code *)param_2[0xe])(puStack_60,puVar15,&uStack_160);\r\n    uVar8 = uStack_158;\r\n    if (uStack_158 < *(ushort *)((longlong)param_6 + 0xc)) {\r\n      uVar8 = (ulonglong)*(ushort *)((longlong)param_6 + 0xc);\r\n    }\r\n    uStack_158 = 0x40;\r\n    if ((uVar3 & 0x400) == 0) {\r\n      uStack_158 = 0x10;\r\n    }\r\n    if (uStack_158 <= uVar8) {\r\n      uStack_158 = uVar8;\r\n    }\r\n    LOCK();\r\n    cVar1 = *param_5;\r\n    if (cVar1 == '\\0') {\r\n      *param_5 = '\\x01';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\0') {\r\n      FUN_1428cd210(param_5,uStack_158,1000000000);\r\n    }\r\n    FUN_140c81c70(param_5);\r\n    uStack_1e0 = uStack_150;\r\n    uStack_1f0 = uStack_160;\r\n    uStack_1ec = uStack_15c;\r\n    uStack_1e8 = (undefined4)uStack_158;\r\n    uStack_1e4 = uStack_158._4_4_;\r\n    uStack_1d7 = *(undefined1 *)((longlong)param_6 + 0xe);\r\n    uStack_200 = 1;\r\n    uStack_1f8 = 0;\r\n    uStack_1d8 = 1;\r\n    auStack_210[0] = 2;\r\n    FUN_140c0da40(&puStack_e8,param_5 + 8,auStack_210);\r\n    puVar13 = puStack_d0;\r\n    uStack_188 = uStack_150;\r\n    uStack_198 = uStack_160;\r\n    uStack_194 = uStack_15c;\r\n    uStack_190 = (undefined4)uStack_158;\r\n    uStack_18c = uStack_158._4_4_;\r\n    if ((char)uStack_a4 == '\\x02') {\r\n      puStack_68 = puStack_e0;\r\n      puStack_78 = (undefined8 *)CONCAT44(uStack_d4,uStack_d8);\r\n      puStack_58 = puStack_e8;\r\n      if ((longlong)param_8 < 0) {\r\n        uVar14 = 0;\r\ncode_r0x000140bee8ad:\r\n        FUN_1428d8fe3(uVar14,param_8,&UNK_142b15288);\r\n        goto code_r0x000140bee8c3;\r\n      }\r\n      puStack_180 = puVar15;\r\n      if (param_8 == (undefined8 *)0x0) {\r\n        puVar9 = (undefined8 *)0x1;\r\n      }\r\n      else {\r\n        uVar14 = 1;\r\n        puVar9 = (undefined8 *)func_0x000140613c10(param_8,1);\r\n        if (puVar9 == (undefined8 *)0x0) goto code_r0x000140bee8ad;\r\n      }\r\n      func_0x000142923c00(puVar9,param_7,param_8);\r\n      uStack_178 = CONCAT44(uStack_194,uStack_198);\r\n      uStack_170 = CONCAT44(uStack_18c,uStack_190);\r\n      uStack_138 = uStack_188;\r\n      puStack_c0 = param_8;\r\n      uStack_118 = param_8;\r\n      puStack_128 = puStack_78;\r\n      puStack_130 = puStack_68;\r\n      puVar15 = puStack_180;\r\n      uStack_148 = uStack_178;\r\n      uStack_140 = uStack_170;\r\n      if (puStack_58 != (undefined8 *)0xb) {\r\n        uStack_168 = uStack_188;\r\n        param_1[1] = puStack_68;\r\n        param_1[2] = puStack_78;\r\n        param_1[3] = puVar13;\r\n        *(undefined4 *)(param_1 + 7) = uStack_198;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_194;\r\n        *(undefined4 *)(param_1 + 8) = uStack_190;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_18c;\r\n        param_1[9] = uStack_188;\r\n        *param_1 = puStack_58;\r\n        param_1[4] = param_8;\r\n        param_1[5] = puVar9;\r\n        param_1[6] = param_8;\r\n        FUN_140c81e10();\r\n        LOCK();\r\n        cVar1 = *param_5;\r\n        if (cVar1 == '\\x01') {\r\n          *param_5 = '\\0';\r\n        }\r\n        UNLOCK();\r\n        if (cVar1 == '\\x01') {\r\n          return param_1;\r\n        }\r\n        FUN_1428cdb90(param_5,0);\r\n        return param_1;\r\n      }\r\n    }\r\n    else {\r\n      puVar13 = (undefined8 *)CONCAT44(uStack_d4,uStack_d8);\r\n      uStack_140 = CONCAT44(uStack_ac,uStack_b0);\r\n      uStack_148 = puStack_b8;\r\n      uStack_138 = CONCAT44(uStack_a4,uStack_a8);\r\n      uStack_118 = puStack_d0;\r\n      puStack_128 = puStack_e0;\r\n      puStack_130 = puStack_e8;\r\n      puVar9 = puStack_c8;\r\n    }\r\n    uStack_168 = uStack_138;\r\n    uStack_178 = uStack_148;\r\n    uStack_170 = uStack_140;\r\n    uStack_100 = (undefined4)uStack_148;\r\n    uStack_fc = uStack_148._4_4_;\r\n    uStack_f8 = (undefined4)uStack_140;\r\n    uStack_f4 = uStack_140._4_4_;\r\n    uStack_f0 = uStack_138;\r\n    uStack_49 = 1;\r\n    uStack_120 = puVar13;\r\n    uStack_110 = puVar9;\r\n    uStack_108 = puStack_c0;\r\n    FUN_140c81e10();\r\n    puVar13 = puStack_70;\r\n    LOCK();\r\n    cVar1 = *param_5;\r\n    if (cVar1 == '\\x01') {\r\n      *param_5 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\x01') {\r\n      uStack_49 = 1;\r\n      FUN_1428cdb90(param_5,0);\r\n    }\r\n    uStack_49 = 1;\r\n    uVar14 = func_0x0001406d0cb0(&puStack_130);\r\n    uStack_49 = 1;\r\n    uVar10 = func_0x0001406868b0(&puStack_130);\r\n    puVar9 = puVar15;\r\n    iVar7 = (*(code *)param_2[0xc])(puStack_60,puVar15,uVar14,uVar10);\r\n    if (iVar7 == 0) {\r\n      uStack_49 = 1;\r\n      lVar11 = func_0x000140c113d0(&puStack_130);\r\n      if (puVar5 <= puVar9 || lVar11 == 0) {\r\n        uStack_80 = uStack_f0;\r\n        uStack_90 = uStack_100;\r\n        uStack_8c = uStack_fc;\r\n        uStack_88 = uStack_f8;\r\n        uStack_84 = uStack_f4;\r\n        uStack_a0 = (undefined4)uStack_110;\r\n        uStack_9c = uStack_110._4_4_;\r\n        uStack_98 = (undefined4)uStack_108;\r\n        uStack_94 = uStack_108._4_4_;\r\n        uStack_b0 = (undefined4)uStack_120;\r\n        uStack_ac = uStack_120._4_4_;\r\n        uStack_a8 = (undefined4)uStack_118;\r\n        uStack_a4 = uStack_118._4_4_;\r\n        puStack_c0 = puStack_130;\r\n        puStack_b8 = puStack_128;\r\n        uStack_d8 = *(undefined4 *)param_6;\r\n        uStack_d4 = *(undefined4 *)((longlong)param_6 + 4);\r\n        puStack_d0 = (undefined8 *)param_6[1];\r\n        puStack_e8 = param_7;\r\n        puStack_e0 = param_8;\r\n        uStack_49 = 0;\r\n        puStack_c8 = puVar15;\r\n        lVar12 = FUN_1418ae8a0(puVar13 + 0x30,&puStack_e8);\r\n        uVar4 = *(undefined4 *)(lVar12 + 0xc);\r\n        uVar2 = *(undefined2 *)(puVar13 + 0x14a);\r\n        uVar14 = *puVar13;\r\n        param_1[1] = lVar12 + 0x10;\r\n        param_1[2] = uVar14;\r\n        param_1[3] = lVar12;\r\n        *(undefined4 *)(param_1 + 4) = uVar4;\r\n        *(undefined2 *)((longlong)param_1 + 0x24) = uVar2;\r\n        *(undefined1 *)((longlong)param_1 + 0x26) = 1;\r\n        uVar14 = param_6[1];\r\n        param_1[5] = *param_6;\r\n        param_1[6] = uVar14;\r\n        param_1[7] = lVar11;\r\n        param_1[8] = puVar5;\r\n        *param_1 = 0xb;\r\n        return param_1;\r\n      }\r\n      uStack_49 = 1;\r\n      FUN_1428d9840(puVar5);\r\n      goto code_r0x000140bee8c3;\r\n    }\r\n  }\r\n  else {\r\n    puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,iVar7);\r\n    iVar7 = FUN_1428d9760(&UNK_142b157f0,0xd,&puStack_e8,&UNK_142b15128,&UNK_142b15820);\r\n  }\r\n  puStack_e8 = (undefined8 *)CONCAT44(puStack_e8._4_4_,iVar7);\r\n  uStack_49 = 1;\r\n  FUN_1428d9760(&UNK_142b15888,0x12,&puStack_e8,&UNK_142b15128,&UNK_142b158a0);\r\ncode_r0x000140bee8c3:\r\n                    /* WARNING: Does not return */\r\n  pcVar6 = (code *)invalidInstructionException();\r\n  (*pcVar6)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "d89bb540a58786950ce55acfc4e524ff6b4e01edb260d4b6cb0b9dfd61bd4b0d",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beea80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beea80",
+        "address": "0x140BEEA80",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140beea80(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             longlong param_5)\r\n\r\n{\r\n  code *pcVar1;\r\n  longlong lVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  longlong lStack_88;\r\n  longlong lStack_80;\r\n  longlong lStack_78;\r\n  longlong lStack_70;\r\n  longlong lStack_68;\r\n  longlong lStack_60;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  longlong lStack_40;\r\n  longlong lStack_38;\r\n  longlong lStack_30;\r\n  longlong lStack_28;\r\n  longlong lStack_20;\r\n  undefined8 uStack_18;\r\n  \r\n  uStack_18 = 0xfffffffffffffffe;\r\n  if ((*(char *)(param_5 + 0xe) != '\\x02') && (*(char *)(param_5 + 0xe) != '\\x04')) {\r\n    FUN_1428d9430(&UNK_142b158f8,0x69,&UNK_142b15968);\r\ncode_r0x000140beebe1:\r\n    FUN_1428d9330(&UNK_142b158d0,0xd,&UNK_142b158e0);\r\n                    /* WARNING: Does not return */\r\n    pcVar1 = (code *)invalidInstructionException();\r\n    (*pcVar1)();\r\n  }\r\n  lVar4 = param_2 + 0x870;\r\n  if (*(longlong *)(param_2 + 0x870) == 0) {\r\n    lVar4 = 0;\r\n  }\r\n  FUN_140bee200(&uStack_98,param_2 + 0x78,lVar4,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,param_5,param_3,param_4);\r\n  lVar3 = lStack_78;\r\n  lVar2 = lStack_80;\r\n  lVar4 = lStack_88;\r\n  lStack_40 = lStack_88;\r\n  lStack_38 = lStack_80;\r\n  lStack_30 = lStack_78;\r\n  lStack_28 = lStack_70;\r\n  lStack_20 = lStack_68;\r\n  if (CONCAT44(uStack_94,uStack_98) == 0xb) {\r\n    lStack_78 = lStack_68;\r\n    lStack_88 = lVar3;\r\n    lStack_80 = lStack_70;\r\n    uStack_c0 = (undefined4)lVar4;\r\n    uStack_bc = (undefined4)((ulonglong)lVar4 >> 0x20);\r\n    uStack_b8 = (undefined4)lVar2;\r\n    uStack_b4 = (undefined4)((ulonglong)lVar2 >> 0x20);\r\n    uStack_98 = uStack_c0;\r\n    uStack_94 = uStack_bc;\r\n    uStack_90 = uStack_b8;\r\n    uStack_8c = uStack_b4;\r\n    if (lStack_60 == 0) goto code_r0x000140beebe1;\r\n    param_1[5] = lStack_68;\r\n    param_1[3] = lVar3;\r\n    param_1[4] = lStack_70;\r\n    param_1[1] = lVar4;\r\n    param_1[2] = lVar2;\r\n    param_1[6] = lStack_60;\r\n    param_1[7] = lStack_58;\r\n    *param_1 = 0xb;\r\n  }\r\n  else {\r\n    param_1[5] = lStack_70;\r\n    param_1[6] = lStack_68;\r\n    param_1[3] = lStack_80;\r\n    param_1[4] = lStack_78;\r\n    param_1[1] = CONCAT44(uStack_8c,uStack_90);\r\n    param_1[2] = lStack_88;\r\n    *param_1 = CONCAT44(uStack_94,uStack_98);\r\n    param_1[7] = lStack_60;\r\n    param_1[8] = lStack_58;\r\n    param_1[9] = lStack_50;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "ccbbed559309feb0ed5389881bf8b71ec6f8c4b4567141add58d7aad115e7e1b",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beec30"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beec30",
+        "address": "0x140BEEC30",
+        "decompiled_code": "\r\nvoid FUN_140beec30(longlong param_1,longlong param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  code *pcVar2;\r\n  char *pcVar3;\r\n  undefined8 unaff_RDI;\r\n  char *unaff_R12;\r\n  longlong unaff_R14;\r\n  longlong unaff_R15;\r\n  bool bVar4;\r\n  int iStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined4 uStack_90;\r\n  undefined4 uStack_8c;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  undefined4 uStack_68;\r\n  undefined4 uStack_64;\r\n  undefined8 uStack_60;\r\n  char *pcStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  if (*(longlong *)(param_1 + 0x870) == 0) {\r\n    return;\r\n  }\r\n  if (*(short *)(param_2 + 0x14) == *(short *)(*(longlong *)(param_1 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_2 + 0x16) != '\\x01') goto code_r0x000140beede6;\r\n    unaff_R15 = *(longlong *)(param_2 + 8);\r\n    if (*(int *)(unaff_R15 + 0xc) == *(int *)(param_2 + 0x10)) {\r\n      unaff_R14 = *(longlong *)(param_1 + 0x678);\r\n      unaff_R12 = (char *)(unaff_R14 + 0x10);\r\n      LOCK();\r\n      bVar4 = *(char *)(unaff_R14 + 0x10) == '\\0';\r\n      if (bVar4) {\r\n        *(char *)(unaff_R14 + 0x10) = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      unaff_RDI = param_4;\r\n      if (!bVar4) goto code_r0x000140beee10;\r\n      goto code_r0x000140beecb7;\r\n    }\r\n    FUN_1428d9310(&UNK_142b15980);\r\n  }\r\n  else {\r\n    uStack_78 = 0;\r\n    param_2 = param_2 + 0x14;\r\n    FUN_1428ca816(0,param_2,*(longlong *)(param_1 + 0x648) + 0xa50,&uStack_78,&UNK_142d022a0);\r\ncode_r0x000140beede6:\r\n    uStack_78 = 0;\r\n    FUN_1428ca902(0,param_2 + 0x16,&UNK_142d022d9,&uStack_78,&UNK_142d022c0);\r\ncode_r0x000140beee10:\r\n    FUN_1428cd210(unaff_R12);\r\ncode_r0x000140beecb7:\r\n    pcStack_48 = unaff_R12;\r\n    FUN_140c81c70(unaff_R12);\r\n    if (*(char *)(unaff_R15 + 0x7c) != '\\x02') {\r\n      FUN_140c14e00(&uStack_78,unaff_R14 + 0x18,unaff_R15 + 0x38,param_3,unaff_RDI);\r\n      if (((uStack_78 < 6) && ((0x32UL >> (uStack_78 & 0x3f) & 1) != 0)) && (uStack_70 != 0)) {\r\n        func_0x000140613c20(CONCAT44(uStack_64,uStack_68),uStack_70,1);\r\n      }\r\n      pcVar3 = pcStack_48;\r\n      FUN_140c81e10();\r\n      LOCK();\r\n      cVar1 = *pcVar3;\r\n      if (cVar1 == '\\x01') {\r\n        *pcVar3 = '\\0';\r\n      }\r\n      UNLOCK();\r\n      if (cVar1 != '\\x01') {\r\n        FUN_1428cdb90(pcVar3,0);\r\n      }\r\n      FUN_140d797d0(&iStack_a0,param_3,unaff_RDI);\r\n      if (SBORROW8(0,CONCAT44(uStack_9c,iStack_a0))) {\r\n        pcVar3 = (char *)CONCAT44(uStack_8c,uStack_90);\r\n        uStack_60 = *(undefined8 *)(unaff_R15 + 0x30);\r\n        uStack_78 = CONCAT44(uStack_78._4_4_,0x3b9cbe00);\r\n        uStack_70 = 0;\r\n        uStack_68 = 9;\r\n        iStack_a0 = (**(code **)(param_1 + 0x870))(*(undefined8 *)(param_1 + 0x8b0),&uStack_78);\r\n        if (iStack_a0 == 0) {\r\n          *(undefined1 *)CONCAT44(uStack_94,uStack_98) = 0;\r\n          if (pcVar3 != (char *)0x0) {\r\n            func_0x000140613c20((undefined1 *)CONCAT44(uStack_94,uStack_98),pcVar3,1);\r\n          }\r\n          return;\r\n        }\r\n        pcStack_48 = pcVar3;\r\n        FUN_1428d9760(&UNK_142b15850,0x1b,&iStack_a0,&UNK_142b15128,&UNK_142b159b0);\r\n      }\r\n      else {\r\n        uStack_68 = uStack_90;\r\n        uStack_64 = uStack_8c;\r\n        uStack_60 = CONCAT44(uStack_84,uStack_88);\r\n        uStack_78 = CONCAT44(uStack_9c,iStack_a0);\r\n        uStack_70 = CONCAT44(uStack_94,uStack_98);\r\n        FUN_1428d9760(&UNK_142b15188,0x2b,&uStack_78,&UNK_142b151d8,&UNK_142b15998);\r\n      }\r\n      goto code_r0x000140beeeb9;\r\n    }\r\n  }\r\n  FUN_1428d9310(&UNK_142d02388);\r\ncode_r0x000140beeeb9:\r\n                    /* WARNING: Does not return */\r\n  pcVar2 = (code *)invalidInstructionException();\r\n  (*pcVar2)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "a16e758f75afbd8f891772f39a5cd07d36381c55c90a47cf42119f8ed0d00066",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140beefa0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.661Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140beefa0",
+        "address": "0x140BEEFA0",
+        "decompiled_code": "\r\nundefined8 *\r\nFUN_140beefa0(undefined8 *param_1,longlong param_2,longlong param_3,longlong param_4,\r\n             ulonglong param_5,ulonglong *param_6,longlong param_7,longlong param_8)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 *puVar2;\r\n  ulonglong uVar3;\r\n  ulonglong uVar4;\r\n  ulonglong *puVar5;\r\n  undefined *puVar6;\r\n  longlong lVar7;\r\n  ulonglong uVar8;\r\n  longlong lVar9;\r\n  ulonglong uVar10;\r\n  undefined **ppuVar11;\r\n  undefined *puVar12;\r\n  undefined8 uVar13;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined8 uStack_128;\r\n  undefined8 uStack_120;\r\n  undefined8 uStack_118;\r\n  undefined8 uStack_110;\r\n  longlong lStack_108;\r\n  undefined8 *puStack_100;\r\n  undefined *puStack_f8;\r\n  undefined8 uStack_f0;\r\n  undefined8 uStack_e8;\r\n  undefined8 uStack_e0;\r\n  undefined8 uStack_d8;\r\n  undefined8 uStack_d0;\r\n  undefined8 uStack_c8;\r\n  longlong lStack_c0;\r\n  ulonglong uStack_b8;\r\n  undefined8 uStack_b0;\r\n  undefined *puStack_a8;\r\n  undefined4 uStack_a0;\r\n  undefined2 uStack_9c;\r\n  undefined1 uStack_9a;\r\n  undefined8 uStack_98;\r\n  undefined8 uStack_90;\r\n  longlong lStack_88;\r\n  ulonglong *puStack_80;\r\n  longlong lStack_78;\r\n  undefined8 *puStack_70;\r\n  longlong lStack_68;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  uVar8 = *(ulonglong *)(param_2 + 0x648);\r\n  lStack_58 = param_2;\r\n  if (*(short *)(param_3 + 0x14) == *(short *)(uVar8 + 0xa50)) {\r\n    if (*(char *)(param_3 + 0x16) != '\\x01') goto code_r0x000140bef372;\r\n    lVar7 = *(longlong *)(param_3 + 8);\r\n    lStack_50 = lVar7 + 0x10;\r\n    lVar9 = 0;\r\n    if (*(int *)(lVar7 + 0xc) != *(int *)(param_3 + 0x10)) goto code_r0x000140bef406;\r\n    lVar9 = param_7 * 0x10;\r\n    puVar6 = (undefined *)0x0;\r\n    puVar5 = param_6;\r\n    do {\r\n      if (lVar9 == 0) goto code_r0x000140bef09e;\r\n      uVar3 = *puVar5;\r\n      uVar4 = puVar5[1];\r\n      if (uVar4 < uVar3) {\r\n        FUN_1428d9850(uVar3,uVar4,&UNK_142b15ae8);\r\ncode_r0x000140bef2ec:\r\n        uVar3 = FUN_1428d9840(uVar4,param_5,&UNK_142b15ae8);\r\n        goto code_r0x000140bef2fe;\r\n      }\r\n      if (param_5 < uVar4) goto code_r0x000140bef2ec;\r\n      puVar5 = puVar5 + 2;\r\n      puVar6 = puVar6 + (uVar4 - uVar3);\r\n      lVar9 = lVar9 + -0x10;\r\n    } while (puVar6 + param_8 <= *(undefined **)(lVar7 + 0x20));\r\n    puVar6 = &UNK_142b15b60;\r\n    FUN_1428d9430(&UNK_142b15b00,0x5c);\r\ncode_r0x000140bef09e:\r\n    if ((*(byte *)(lStack_50 + 0x18) & 2) == 0) goto code_r0x000140bef39e;\r\n    if (puVar6 == (undefined *)0x0) goto code_r0x000140bef3ee;\r\n    uStack_a0 = 1;\r\n    uStack_9a = 3;\r\n    uStack_9c = 0;\r\n    lVar7 = lStack_58 + 0x870;\r\n    if (*(longlong *)(lStack_58 + 0x870) == 0) {\r\n      lVar7 = 0;\r\n    }\r\n    lVar9 = *(longlong *)(lStack_58 + 0x678) + 0x10;\r\n    puVar12 = &UNK_142b15a78;\r\n    ppuVar11 = &puStack_a8;\r\n    uVar13 = 0x12;\r\n    lStack_108 = param_3;\r\n    puStack_a8 = puVar6;\r\n    FUN_140bee200(&puStack_f8,lStack_58 + 0x78,lVar7);\r\n    uStack_98 = uStack_f0;\r\n    lVar7 = uStack_98;\r\n    uStack_90 = uStack_e8;\r\n    puVar2 = uStack_90;\r\n    lStack_88 = uStack_e0;\r\n    puStack_80 = (ulonglong *)uStack_d8;\r\n    lStack_78 = uStack_d0;\r\n    puStack_70 = (undefined8 *)uStack_c8;\r\n    if (puStack_f8 != (undefined *)0xb) {\r\n      param_1[5] = uStack_d0;\r\n      param_1[6] = uStack_c8;\r\n      param_1[3] = uStack_e0;\r\n      param_1[4] = uStack_d8;\r\n      param_1[1] = uStack_f0;\r\n      param_1[2] = uStack_e8;\r\n      *param_1 = puStack_f8;\r\n      param_1[7] = lStack_c0;\r\n      param_1[8] = uStack_b8;\r\n      param_1[9] = uStack_b0;\r\n      return param_1;\r\n    }\r\n    uStack_98._0_4_ = (undefined4)uStack_f0;\r\n    uStack_98._4_4_ = (undefined4)((ulonglong)uStack_f0 >> 0x20);\r\n    uStack_90._0_4_ = SUB84(uStack_e8,0);\r\n    uStack_90._4_4_ = (undefined4)((ulonglong)uStack_e8 >> 0x20);\r\n    uStack_118 = uStack_d0;\r\n    uStack_110 = uStack_c8;\r\n    uStack_128 = uStack_e0;\r\n    uStack_120 = uStack_d8;\r\n    uStack_138 = (undefined4)uStack_98;\r\n    uStack_134 = uStack_98._4_4_;\r\n    uStack_130 = (undefined4)uStack_90;\r\n    uStack_12c = uStack_90._4_4_;\r\n    puStack_100 = param_1;\r\n    uStack_98 = lVar7;\r\n    uStack_90 = puVar2;\r\n    if (lStack_c0 != 0) {\r\n      uVar4 = uStack_b8;\r\n      puVar5 = param_6;\r\n      lVar7 = lStack_c0;\r\n      if (param_7 != 0) {\r\n        do {\r\n          uVar3 = *puVar5;\r\n          uVar8 = puVar5[1];\r\n          uVar10 = uVar8 - uVar3;\r\n          if (uVar8 < uVar3) goto code_r0x000140bef2fe;\r\n          if (param_5 < uVar8) {\r\n            FUN_1428d9840(uVar8,param_5,&UNK_142b15ab8,uVar8,lVar9,ppuVar11,puVar12,uVar13);\r\n            goto code_r0x000140bef42a;\r\n          }\r\n          if (uVar4 < uVar10) {\r\n            FUN_1428d9840(uVar10,uVar4,&UNK_142b15ad0,uVar8,lVar9,ppuVar11,puVar12,uVar13);\r\n            goto code_r0x000140bef42a;\r\n          }\r\n          func_0x000142923c00(lVar7,uVar3 + param_4,uVar10);\r\n          puVar5 = puVar5 + 2;\r\n          uVar4 = uVar4 - uVar10;\r\n          lVar7 = lVar7 + uVar10;\r\n        } while (puVar5 != param_6 + param_7 * 2);\r\n      }\r\n      uStack_98 = lStack_108;\r\n      uStack_90 = (undefined8 *)&uStack_138;\r\n      lStack_88 = lStack_58;\r\n      puStack_80 = param_6;\r\n      lStack_78 = param_7;\r\n      puStack_70 = &param_8;\r\n      lStack_68 = lStack_50;\r\n      FUN_140c04280(&puStack_f8,lStack_58,&uStack_98);\r\n      puVar2 = puStack_100;\r\n      if (puStack_f8 == (undefined *)0xb) {\r\n        *puStack_100 = 0xb;\r\n      }\r\n      else {\r\n        puStack_100[9] = uStack_b0;\r\n        puStack_100[7] = lStack_c0;\r\n        puStack_100[8] = uStack_b8;\r\n        puStack_100[5] = uStack_d0;\r\n        puStack_100[6] = uStack_c8;\r\n        puStack_100[3] = uStack_e0;\r\n        puStack_100[4] = uStack_d8;\r\n        *(undefined4 *)(puStack_100 + 1) = (undefined4)uStack_f0;\r\n        *(undefined4 *)((longlong)puStack_100 + 0xc) = uStack_f0._4_4_;\r\n        *(undefined4 *)(puStack_100 + 2) = (undefined4)uStack_e8;\r\n        *(undefined4 *)((longlong)puStack_100 + 0x14) = uStack_e8._4_4_;\r\n        *puStack_100 = puStack_f8;\r\n      }\r\n      FUN_140be24b0(&uStack_130);\r\n      return puVar2;\r\n    }\r\n  }\r\n  else {\r\n    puStack_f8 = (undefined *)0x0;\r\n    param_3 = param_3 + 0x14;\r\n    FUN_1428ca816(0,param_3,uVar8 + 0xa50,&puStack_f8,&UNK_142d022a0);\r\ncode_r0x000140bef372:\r\n    puStack_f8 = (undefined *)0x0;\r\n    FUN_1428ca902(0,param_3 + 0x16,&UNK_142d022d9,&puStack_f8,&UNK_142d022c0);\r\ncode_r0x000140bef39e:\r\n    uStack_98 = lStack_50;\r\n    uStack_90 = (undefined8 *)&UNK_1405338a0;\r\n    puStack_f8 = &UNK_142b15a40;\r\n    uStack_f0 = 2;\r\n    uStack_d8 = 0;\r\n    uStack_e8 = &uStack_98;\r\n    uStack_e0 = 1;\r\n    FUN_1428d9390(&puStack_f8,&UNK_142b15a60);\r\ncode_r0x000140bef3ee:\r\n    FUN_1428d9430(&UNK_142b0f830,0x1a,&UNK_142b0f898);\r\n    lVar9 = lStack_50;\r\ncode_r0x000140bef406:\r\n    lStack_50 = lVar9;\r\n    FUN_1428d9310(&UNK_142b159c8);\r\n  }\r\n  FUN_1428d9330(&UNK_142b15a8a,0x14,&UNK_142b15aa0);\r\ncode_r0x000140bef42a:\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\ncode_r0x000140bef2fe:\r\n  FUN_1428d9850(uVar3,uVar8,&UNK_142b15ab8);\r\n  goto code_r0x000140bef42a;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "f26ff7c6b3615aba7d3681992724199a6d753040b4e0966b709751d2ebda76e7",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c03460"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c03460",
+        "address": "0x140C03460",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140c03460(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             ulonglong *param_5,longlong param_6,ulonglong param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  longlong lVar6;\r\n  longlong lVar7;\r\n  longlong lStack_168;\r\n  undefined4 uStack_160;\r\n  undefined4 uStack_15c;\r\n  undefined4 uStack_158;\r\n  undefined4 uStack_154;\r\n  undefined4 uStack_150;\r\n  undefined4 uStack_14c;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  longlong lStack_120;\r\n  longlong lStack_118;\r\n  ulonglong uStack_110;\r\n  undefined4 uStack_108;\r\n  undefined4 uStack_104;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined4 uStack_f0;\r\n  undefined4 uStack_ec;\r\n  undefined4 uStack_e8;\r\n  undefined4 uStack_e4;\r\n  undefined4 uStack_e0;\r\n  undefined4 uStack_dc;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined4 uStack_d0;\r\n  undefined4 uStack_cc;\r\n  undefined4 uStack_c8;\r\n  undefined4 uStack_c4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  longlong lStack_a8;\r\n  longlong lStack_a0;\r\n  ulonglong uStack_98;\r\n  longlong lStack_90;\r\n  ulonglong uStack_88;\r\n  undefined4 uStack_80;\r\n  undefined2 uStack_7c;\r\n  undefined1 uStack_7a;\r\n  undefined4 *puStack_78;\r\n  longlong lStack_70;\r\n  undefined4 *puStack_68;\r\n  longlong *plStack_60;\r\n  undefined8 uStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  lStack_118 = param_6;\r\n  uStack_110 = param_7;\r\n  if (param_7 != 0 && param_6 != 0) {\r\n    *(byte *)(param_5 + 1) = (byte)param_5[1] | 2;\r\n  }\r\n  lVar7 = param_2 + 0x870;\r\n  lVar6 = 0;\r\n  if (*(longlong *)(param_2 + 0x870) != 0) {\r\n    lVar6 = lVar7;\r\n  }\r\n  uStack_108 = (undefined4)*param_5;\r\n  uStack_104 = *(undefined4 *)((longlong)param_5 + 4);\r\n  uStack_100 = (undefined4)param_5[1];\r\n  uStack_fc = *(undefined4 *)((longlong)param_5 + 0xc);\r\n  FUN_140bee200(&uStack_d8,param_2 + 0x78,lVar6,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_108,param_3,param_4);\r\n  uStack_50 = lStack_a8;\r\n  lVar6 = uStack_50;\r\n  if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n    param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n    param_1[6] = lStack_a8;\r\n    param_1[3] = CONCAT44(uStack_bc,uStack_c0);\r\n    param_1[4] = CONCAT44(uStack_b4,uStack_b8);\r\n    param_1[1] = CONCAT44(uStack_cc,uStack_d0);\r\n    param_1[2] = CONCAT44(uStack_c4,uStack_c8);\r\n    *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n    param_1[7] = lStack_a0;\r\n    param_1[8] = uStack_98;\r\n    param_1[9] = lStack_90;\r\n    return param_1;\r\n  }\r\n  uStack_50._0_4_ = (undefined4)lStack_a8;\r\n  uStack_50._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n  uStack_e8 = uStack_b0;\r\n  uStack_e4 = uStack_ac;\r\n  uStack_e0 = (undefined4)uStack_50;\r\n  uStack_dc = uStack_50._4_4_;\r\n  uStack_f8 = uStack_c0;\r\n  uStack_f4 = uStack_bc;\r\n  uStack_f0 = uStack_b8;\r\n  uStack_ec = uStack_b4;\r\n  uStack_108 = uStack_d0;\r\n  uStack_104 = uStack_cc;\r\n  uStack_100 = uStack_c8;\r\n  uStack_fc = uStack_c4;\r\n  if (param_7 == 0 || param_6 == 0) {\r\ncode_r0x000140c035ab:\r\n    param_1[5] = CONCAT44(uStack_dc,uStack_e0);\r\n    param_1[3] = CONCAT44(uStack_ec,uStack_f0);\r\n    param_1[4] = CONCAT44(uStack_e4,uStack_e8);\r\n    param_1[1] = CONCAT44(uStack_fc,uStack_100);\r\n    param_1[2] = CONCAT44(uStack_f4,uStack_f8);\r\n    *param_1 = 0xb;\r\n    return param_1;\r\n  }\r\n  uStack_50 = lVar6;\r\n  if (*param_5 < param_7) {\r\n    FUN_1428d9430(&UNK_142b186a0,0x38,&UNK_142b18700);\r\n  }\r\n  else if (lStack_a0 == 0) {\r\n    uStack_80 = 1;\r\n    uStack_7a = 3;\r\n    uStack_7c = 0;\r\n    if (*(longlong *)(param_2 + 0x870) == 0) {\r\n      lVar7 = 0;\r\n    }\r\n    uStack_88 = *param_5;\r\n    FUN_140bee200(&uStack_d8,param_2 + 0x78,lVar7,*(undefined8 *)(param_2 + 0x648),\r\n                  *(longlong *)(param_2 + 0x678) + 0x10,&uStack_88,&UNK_142b18730,0x13);\r\n    uVar5 = uStack_b4;\r\n    uVar4 = uStack_b8;\r\n    uVar3 = uStack_c4;\r\n    uVar2 = uStack_c8;\r\n    puStack_78 = (undefined4 *)CONCAT44(uStack_cc,uStack_d0);\r\n    lStack_70 = CONCAT44(uStack_c4,uStack_c8);\r\n    puStack_68 = (undefined4 *)CONCAT44(uStack_bc,uStack_c0);\r\n    plStack_60 = (longlong *)CONCAT44(uStack_b4,uStack_b8);\r\n    uStack_50 = lStack_a8;\r\n    lVar7 = uStack_50;\r\n    if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n      param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n      param_1[6] = lStack_a8;\r\n      param_1[3] = (longlong)puStack_68;\r\n      param_1[4] = (longlong)plStack_60;\r\n      *(undefined4 *)(param_1 + 1) = uStack_d0;\r\n      *(undefined4 *)((longlong)param_1 + 0xc) = uStack_cc;\r\n      *(undefined4 *)(param_1 + 2) = uStack_c8;\r\n      *(undefined4 *)((longlong)param_1 + 0x14) = uStack_c4;\r\n      *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n      param_1[7] = lStack_a0;\r\n      param_1[8] = uStack_98;\r\n      param_1[9] = lStack_90;\r\ncode_r0x000140c037ce:\r\n      FUN_140be24b0(&uStack_100);\r\n      return param_1;\r\n    }\r\n    uStack_50._0_4_ = (undefined4)lStack_a8;\r\n    uStack_50._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n    uStack_b8 = uStack_b0;\r\n    uStack_b4 = uStack_ac;\r\n    uStack_b0 = (undefined4)uStack_50;\r\n    uStack_ac = uStack_50._4_4_;\r\n    uStack_c8 = uStack_c0;\r\n    uStack_c4 = uStack_bc;\r\n    uStack_c0 = uVar4;\r\n    uStack_bc = uVar5;\r\n    uStack_d8 = uStack_d0;\r\n    uStack_d4 = uStack_cc;\r\n    uStack_d0 = uVar2;\r\n    uStack_cc = uVar3;\r\n    uStack_50 = lVar7;\r\n    if (lStack_a0 == 0) {\r\n      FUN_1428d9330(&UNK_142b18743,0x14,&UNK_142b18758);\r\n    }\r\n    else {\r\n      if (param_7 <= uStack_98) {\r\n        func_0x000142923c00(lStack_a0,param_6,param_7);\r\n        puStack_68 = &uStack_108;\r\n        plStack_60 = &lStack_118;\r\n        puStack_78 = &uStack_d8;\r\n        lStack_70 = param_2;\r\n        FUN_140c04840(&lStack_168,param_2,&puStack_78);\r\n        if (lStack_168 == 0xb) {\r\n          FUN_140be24b0(&uStack_d0);\r\n          goto code_r0x000140c035ab;\r\n        }\r\n        param_1[9] = lStack_120;\r\n        *(undefined4 *)(param_1 + 7) = uStack_130;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_12c;\r\n        *(undefined4 *)(param_1 + 8) = uStack_128;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_124;\r\n        *(undefined4 *)(param_1 + 5) = uStack_140;\r\n        *(undefined4 *)((longlong)param_1 + 0x2c) = uStack_13c;\r\n        *(undefined4 *)(param_1 + 6) = uStack_138;\r\n        *(undefined4 *)((longlong)param_1 + 0x34) = uStack_134;\r\n        *(undefined4 *)(param_1 + 3) = uStack_150;\r\n        *(undefined4 *)((longlong)param_1 + 0x1c) = uStack_14c;\r\n        *(undefined4 *)(param_1 + 4) = uStack_148;\r\n        *(undefined4 *)((longlong)param_1 + 0x24) = uStack_144;\r\n        *(undefined4 *)(param_1 + 1) = uStack_160;\r\n        *(undefined4 *)((longlong)param_1 + 0xc) = uStack_15c;\r\n        *(undefined4 *)(param_1 + 2) = uStack_158;\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = uStack_154;\r\n        *param_1 = lStack_168;\r\n        FUN_140be24b0(&uStack_d0);\r\n        goto code_r0x000140c037ce;\r\n      }\r\n      FUN_1428d9840(param_7,uStack_98,&UNK_142b18770);\r\n    }\r\n  }\r\n  else {\r\n    if (param_7 <= uStack_98) {\r\n      func_0x000142923c00(lStack_a0,param_6,param_7);\r\n      goto code_r0x000140c035ab;\r\n    }\r\n    FUN_1428d9840(param_7,uStack_98,&UNK_142b18718);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "c83e9134de3382f07c4a38249712b0b8c7a3a0d908652cf290873f1bea2120dc",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c038c0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c038c0",
+        "address": "0x140C038C0",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_140c038c0(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             undefined4 *param_5)\r\n\r\n{\r\n  longlong lVar1;\r\n  longlong lStack_68;\r\n  longlong lStack_60;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  longlong lStack_48;\r\n  longlong lStack_40;\r\n  longlong lStack_38;\r\n  longlong lStack_30;\r\n  longlong lStack_28;\r\n  longlong lStack_20;\r\n  undefined4 uStack_18;\r\n  undefined4 uStack_14;\r\n  undefined4 uStack_10;\r\n  undefined4 uStack_c;\r\n  \r\n  lVar1 = param_2 + 0x870;\r\n  if (*(longlong *)(param_2 + 0x870) == 0) {\r\n    lVar1 = 0;\r\n  }\r\n  uStack_18 = *param_5;\r\n  uStack_14 = param_5[1];\r\n  uStack_10 = param_5[2];\r\n  uStack_c = param_5[3];\r\n  FUN_140bee200(&lStack_68,param_2 + 0x78,lVar1,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_18,param_3,param_4);\r\n  if (lStack_68 == 0xb) {\r\n    param_1[5] = lStack_38;\r\n    param_1[3] = lStack_48;\r\n    param_1[4] = lStack_40;\r\n    param_1[1] = lStack_58;\r\n    param_1[2] = lStack_50;\r\n  }\r\n  else {\r\n    param_1[5] = lStack_40;\r\n    param_1[6] = lStack_38;\r\n    param_1[3] = lStack_50;\r\n    param_1[4] = lStack_48;\r\n    param_1[1] = lStack_60;\r\n    param_1[2] = lStack_58;\r\n    param_1[7] = lStack_30;\r\n    param_1[8] = lStack_28;\r\n    param_1[9] = lStack_20;\r\n  }\r\n  *param_1 = lStack_68;\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "029c2cd4f4ff57daa62cdca14c54f3608ce41faf2735c941fcb78076e380be8b",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c03a00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c03a00",
+        "address": "0x140C03A00",
+        "decompiled_code": "\r\nvoid FUN_140c03a00(longlong *param_1,int *param_2)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  longlong *plVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  longlong lVar5;\r\n  undefined8 uVar6;\r\n  ulonglong *puVar7;\r\n  code *pcVar8;\r\n  ulonglong uVar9;\r\n  longlong *plVar10;\r\n  longlong lVar11;\r\n  ulonglong uVar12;\r\n  longlong lVar13;\r\n  longlong lVar14;\r\n  ulonglong *puVar15;\r\n  ulonglong uVar16;\r\n  bool bVar17;\r\n  undefined8 in_stack_ffffffffffffff38;\r\n  undefined4 uVar18;\r\n  undefined *puStack_90;\r\n  undefined8 uStack_88;\r\n  int **ppiStack_80;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  int *piStack_60;\r\n  code *pcStack_58;\r\n  ulonglong *puStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uVar18 = (undefined4)((ulonglong)in_stack_ffffffffffffff38 >> 0x20);\r\n  uStack_48 = 0xfffffffffffffffe;\r\n  puVar15 = *(ulonglong **)(*param_1 + 8);\r\n  if (*(int *)((longlong)puVar15 + 0xc) == *(int *)(*param_1 + 0x10)) {\r\n    if (*param_2 == 1) {\r\n      uVar1 = *(ulonglong *)(param_2 + 2);\r\n      uVar16 = *puVar15;\r\n      do {\r\n        uVar12 = uVar1;\r\n        if (uVar1 < uVar16) {\r\n          uVar12 = uVar16;\r\n        }\r\n        LOCK();\r\n        uVar9 = *puVar15;\r\n        bVar17 = uVar16 == uVar9;\r\n        if (bVar17) {\r\n          *puVar15 = uVar12;\r\n          uVar9 = uVar16;\r\n        }\r\n        UNLOCK();\r\n        uVar16 = uVar9;\r\n      } while (!bVar17);\r\n      goto code_r0x000140c03a61;\r\n    }\r\ncode_r0x000140c03cb0:\r\n    pcStack_58 = FUN_140bed620;\r\n    puStack_90 = &UNK_142b14bb0;\r\n    uStack_88 = 1;\r\n    uStack_70 = 0;\r\n    ppiStack_80 = &piStack_60;\r\n    uStack_78 = 1;\r\n    piStack_60 = param_2;\r\n    FUN_1428d9390(&puStack_90,&UNK_142b14bf0);\r\ncode_r0x000140c03cfa:\r\n    FUN_1428d9330(&UNK_142b185f2,0x22,&UNK_142b18670);\r\n  }\r\n  else {\r\ncode_r0x000140c03a61:\r\n    plVar2 = (longlong *)param_1[1];\r\n    puVar15 = (ulonglong *)plVar2[2];\r\n    if (*(int *)((longlong)puVar15 + 0xc) == (int)plVar2[3]) {\r\n      if (*param_2 != 1) goto code_r0x000140c03cb0;\r\n      uVar1 = *(ulonglong *)(param_2 + 2);\r\n      uVar16 = *puVar15;\r\n      do {\r\n        uVar12 = uVar1;\r\n        if (uVar1 < uVar16) {\r\n          uVar12 = uVar16;\r\n        }\r\n        LOCK();\r\n        uVar9 = *puVar15;\r\n        bVar17 = uVar16 == uVar9;\r\n        if (bVar17) {\r\n          *puVar15 = uVar12;\r\n          uVar9 = uVar16;\r\n        }\r\n        UNLOCK();\r\n        uVar16 = uVar9;\r\n      } while (!bVar17);\r\n    }\r\n    lVar3 = *plVar2;\r\n    lVar4 = param_1[2];\r\n    func_0x000140d4a3b0(&piStack_60);\r\n    uVar1 = param_1[4];\r\n    if (0x555555555555555 < uVar1) {\r\n      FUN_1428d79d0();\r\n      goto code_r0x000140c03d20;\r\n    }\r\n    puVar15 = (ulonglong *)param_1[3];\r\n    plVar2 = (longlong *)param_1[5];\r\n    uVar16 = puStack_50[4] & 0xfffffffffffffff8;\r\n    if (uVar1 * 0x18 <= uVar16 - *puStack_50 && *puStack_50 <= uVar16) {\r\n      uVar16 = uVar16 + uVar1 * -0x18;\r\n      puStack_50[4] = uVar16;\r\n      if (uVar16 != 0) goto code_r0x000140c03b22;\r\n    }\r\n    uVar16 = FUN_1428d7780(&piStack_60,8);\r\n    if (uVar16 != 0) {\r\ncode_r0x000140c03b22:\r\n      if (uVar1 != 0) {\r\n        plVar10 = (longlong *)(uVar16 + 0x10);\r\n        lVar11 = uVar1 << 4;\r\n        lVar13 = 0;\r\n        uVar12 = uVar1;\r\n        do {\r\n          if (lVar11 == 0) goto code_r0x000140c03cfa;\r\n          uVar9 = *puVar15;\r\n          lVar14 = 0;\r\n          if (uVar9 <= puVar15[1]) {\r\n            lVar14 = puVar15[1] - uVar9;\r\n          }\r\n          puVar15 = puVar15 + 2;\r\n          lVar5 = *plVar2;\r\n          plVar10[-2] = lVar13;\r\n          lVar13 = lVar13 + lVar14;\r\n          plVar10[-1] = uVar9 + lVar5;\r\n          *plVar10 = lVar14;\r\n          plVar10 = plVar10 + 3;\r\n          lVar11 = lVar11 + -0x10;\r\n          uVar12 = uVar12 - 1;\r\n        } while (uVar12 != 0);\r\n      }\r\n      uVar6 = *(undefined8 *)(param_2 + 0x12);\r\n      puStack_90._0_4_ = 0x2e;\r\n      uStack_88 = 0;\r\n      ppiStack_80 = (int **)0x1800000018000;\r\n      (**(code **)(lVar4 + 0x3e0))(uVar6,0x10000,0x10000,0,CONCAT44(uVar18,1),&puStack_90,0,8,0,8);\r\n      (**(code **)(lVar4 + 0x370))\r\n                (uVar6,*(undefined8 *)(lVar3 + 0x20),*(undefined8 *)(param_1[6] + 0x20),\r\n                 uVar1 & 0xffffffff,uVar16);\r\n      puStack_90 = (undefined *)CONCAT44(puStack_90._4_4_,0x2e);\r\n      uStack_88 = 0;\r\n      ppiStack_80 = (int **)0x1800000018000;\r\n      (**(code **)(lVar4 + 0x3e0))(uVar6,0x10000,0x10000,0,1,&puStack_90,0,8,0,8);\r\n      puVar15 = puRam000000014362c3e0;\r\n      while (puStack_50 != puVar15) {\r\n        puVar7 = (ulonglong *)puStack_50[3];\r\n        func_0x000140613c20(*puStack_50,puStack_50[2],puStack_50[1]);\r\n        puStack_50 = puVar7;\r\n      }\r\n      return;\r\n    }\r\n    FUN_1428d79d0();\r\n  }\r\ncode_r0x000140c03d20:\r\n                    /* WARNING: Does not return */\r\n  pcVar8 = (code *)invalidInstructionException();\r\n  (*pcVar8)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "0185755ba98d8ae456c0533b6782c73d5225cfa6b47a6346eb727ce3aa00d353",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1405b93b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1405b93b0",
+        "address": "0x1405B93B0",
+        "decompiled_code": "\r\nlonglong *\r\nFUN_1405b93b0(longlong *param_1,longlong param_2,undefined8 param_3,undefined8 param_4,\r\n             ulonglong *param_5,undefined4 param_6,undefined4 param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  longlong lVar6;\r\n  undefined8 uVar7;\r\n  longlong lVar8;\r\n  ulonglong uVar9;\r\n  ulonglong uVar10;\r\n  undefined1 auStack_168 [16];\r\n  longlong lStack_158;\r\n  undefined4 uStack_150;\r\n  undefined4 uStack_14c;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  undefined4 uStack_120;\r\n  undefined4 uStack_11c;\r\n  undefined4 uStack_118;\r\n  undefined4 uStack_114;\r\n  longlong lStack_110;\r\n  undefined4 uStack_108;\r\n  undefined4 uStack_104;\r\n  undefined4 uStack_100;\r\n  undefined4 uStack_fc;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined4 uStack_f0;\r\n  undefined4 uStack_ec;\r\n  undefined4 uStack_e8;\r\n  undefined4 uStack_e4;\r\n  undefined4 uStack_e0;\r\n  undefined4 uStack_dc;\r\n  undefined4 uStack_d8;\r\n  undefined4 uStack_d4;\r\n  undefined4 uStack_d0;\r\n  undefined4 uStack_cc;\r\n  undefined4 uStack_c8;\r\n  undefined4 uStack_c4;\r\n  undefined4 uStack_c0;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_b0;\r\n  undefined4 uStack_ac;\r\n  longlong lStack_a8;\r\n  longlong lStack_a0;\r\n  ulonglong uStack_98;\r\n  longlong lStack_90;\r\n  undefined4 *puStack_88;\r\n  longlong lStack_80;\r\n  undefined4 *puStack_78;\r\n  undefined4 *puStack_70;\r\n  undefined8 uStack_60;\r\n  undefined4 auStack_58 [2];\r\n  undefined4 uStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  auStack_58[0] = param_6;\r\n  uStack_50 = param_7;\r\n  lVar6 = func_0x000140bd51a0(auStack_58);\r\n  if (lVar6 != 0) {\r\n    *(byte *)(param_5 + 1) = (byte)param_5[1] | 2;\r\n  }\r\n  uVar7 = func_0x000140bf8960(param_2);\r\n  uStack_108 = (undefined4)*param_5;\r\n  uStack_104 = *(undefined4 *)((longlong)param_5 + 4);\r\n  uStack_100 = (undefined4)param_5[1];\r\n  uStack_fc = *(undefined4 *)((longlong)param_5 + 0xc);\r\n  FUN_140bee200(&uStack_d8,param_2 + 0x78,uVar7,*(undefined8 *)(param_2 + 0x648),\r\n                *(longlong *)(param_2 + 0x678) + 0x10,&uStack_108,param_3,param_4);\r\n  uVar10 = uStack_98;\r\n  lVar6 = lStack_a0;\r\n  uStack_60 = lStack_a8;\r\n  lVar8 = uStack_60;\r\n  if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n    param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n    param_1[6] = lStack_a8;\r\n    param_1[3] = CONCAT44(uStack_bc,uStack_c0);\r\n    param_1[4] = CONCAT44(uStack_b4,uStack_b8);\r\n    param_1[1] = CONCAT44(uStack_cc,uStack_d0);\r\n    param_1[2] = CONCAT44(uStack_c4,uStack_c8);\r\n    *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n    param_1[7] = lStack_a0;\r\n    param_1[8] = uStack_98;\r\n    param_1[9] = lStack_90;\r\n    return param_1;\r\n  }\r\n  uStack_60._0_4_ = (undefined4)lStack_a8;\r\n  uStack_60._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n  uStack_e8 = uStack_b0;\r\n  uStack_e4 = uStack_ac;\r\n  uStack_e0 = (undefined4)uStack_60;\r\n  uStack_dc = uStack_60._4_4_;\r\n  uStack_f8 = uStack_c0;\r\n  uStack_f4 = uStack_bc;\r\n  uStack_f0 = uStack_b8;\r\n  uStack_ec = uStack_b4;\r\n  uStack_108 = uStack_d0;\r\n  uStack_104 = uStack_cc;\r\n  uStack_100 = uStack_c8;\r\n  uStack_fc = uStack_c4;\r\n  uStack_60 = lVar8;\r\n  lVar8 = func_0x000140bd51a0(auStack_58);\r\n  if (lVar8 == 0) {\r\ncode_r0x0001405b9513:\r\n    param_1[5] = CONCAT44(uStack_dc,uStack_e0);\r\n    param_1[3] = CONCAT44(uStack_ec,uStack_f0);\r\n    param_1[4] = CONCAT44(uStack_e4,uStack_e8);\r\n    param_1[1] = CONCAT44(uStack_fc,uStack_100);\r\n    param_1[2] = CONCAT44(uStack_f4,uStack_f8);\r\n    *param_1 = 0xb;\r\n    return param_1;\r\n  }\r\n  uVar9 = func_0x000140bd51a0(auStack_58);\r\n  if (*param_5 < uVar9) {\r\n    FUN_1428d9430(&UNK_142a0475a,0x38,&UNK_142a047e8);\r\n  }\r\n  else if (lVar6 == 0) {\r\n    FUN_140bd4ea0(auStack_168,*param_5,1);\r\n    uVar7 = func_0x000140bf8960(param_2);\r\n    FUN_140bee200(&uStack_d8,param_2 + 0x78,uVar7,*(undefined8 *)(param_2 + 0x648),\r\n                  *(longlong *)(param_2 + 0x678) + 0x10,auStack_168,&UNK_142a04818,0x13);\r\n    uVar5 = uStack_b4;\r\n    uVar4 = uStack_b8;\r\n    uVar3 = uStack_c4;\r\n    uVar2 = uStack_c8;\r\n    puStack_88 = (undefined4 *)CONCAT44(uStack_cc,uStack_d0);\r\n    lStack_80 = CONCAT44(uStack_c4,uStack_c8);\r\n    puStack_78 = (undefined4 *)CONCAT44(uStack_bc,uStack_c0);\r\n    puStack_70 = (undefined4 *)CONCAT44(uStack_b4,uStack_b8);\r\n    uStack_60 = lStack_a8;\r\n    lVar6 = uStack_60;\r\n    if (CONCAT44(uStack_d4,uStack_d8) != 0xb) {\r\n      param_1[5] = CONCAT44(uStack_ac,uStack_b0);\r\n      param_1[6] = lStack_a8;\r\n      param_1[3] = (longlong)puStack_78;\r\n      param_1[4] = (longlong)puStack_70;\r\n      *(undefined4 *)(param_1 + 1) = uStack_d0;\r\n      *(undefined4 *)((longlong)param_1 + 0xc) = uStack_cc;\r\n      *(undefined4 *)(param_1 + 2) = uStack_c8;\r\n      *(undefined4 *)((longlong)param_1 + 0x14) = uStack_c4;\r\n      *param_1 = CONCAT44(uStack_d4,uStack_d8);\r\n      param_1[7] = lStack_a0;\r\n      param_1[8] = uStack_98;\r\n      param_1[9] = lStack_90;\r\ncode_r0x0001405b9724:\r\n      FUN_140be24b0(&uStack_100);\r\n      return param_1;\r\n    }\r\n    uStack_60._0_4_ = (undefined4)lStack_a8;\r\n    uStack_60._4_4_ = (undefined4)((ulonglong)lStack_a8 >> 0x20);\r\n    uStack_b8 = uStack_b0;\r\n    uStack_b4 = uStack_ac;\r\n    uStack_b0 = (undefined4)uStack_60;\r\n    uStack_ac = uStack_60._4_4_;\r\n    uStack_c8 = uStack_c0;\r\n    uStack_c4 = uStack_bc;\r\n    uStack_c0 = uVar4;\r\n    uStack_bc = uVar5;\r\n    uStack_d8 = uStack_d0;\r\n    uStack_d4 = uStack_cc;\r\n    uStack_d0 = uVar2;\r\n    uStack_cc = uVar3;\r\n    uStack_60 = lVar6;\r\n    if (lStack_a0 == 0) {\r\n      FUN_1428d9330(&UNK_142a0482b,0x14,&UNK_142a04840);\r\n    }\r\n    else {\r\n      uVar10 = func_0x000140bd51a0(auStack_58);\r\n      if (uVar10 <= uStack_98) {\r\n        FUN_140bd51b0(auStack_58,lStack_a0,uVar10);\r\n        puStack_88 = &uStack_d8;\r\n        lStack_80 = param_2;\r\n        puStack_78 = &uStack_108;\r\n        puStack_70 = auStack_58;\r\n        FUN_140c04840(&lStack_158,param_2,&puStack_88);\r\n        if (lStack_158 == 0xb) {\r\n          FUN_140be24b0(&uStack_d0);\r\n          goto code_r0x0001405b9513;\r\n        }\r\n        param_1[9] = lStack_110;\r\n        *(undefined4 *)(param_1 + 7) = uStack_120;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_11c;\r\n        *(undefined4 *)(param_1 + 8) = uStack_118;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_114;\r\n        *(undefined4 *)(param_1 + 5) = uStack_130;\r\n        *(undefined4 *)((longlong)param_1 + 0x2c) = uStack_12c;\r\n        *(undefined4 *)(param_1 + 6) = uStack_128;\r\n        *(undefined4 *)((longlong)param_1 + 0x34) = uStack_124;\r\n        *(undefined4 *)(param_1 + 3) = uStack_140;\r\n        *(undefined4 *)((longlong)param_1 + 0x1c) = uStack_13c;\r\n        *(undefined4 *)(param_1 + 4) = uStack_138;\r\n        *(undefined4 *)((longlong)param_1 + 0x24) = uStack_134;\r\n        *(undefined4 *)(param_1 + 1) = uStack_150;\r\n        *(undefined4 *)((longlong)param_1 + 0xc) = uStack_14c;\r\n        *(undefined4 *)(param_1 + 2) = uStack_148;\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = uStack_144;\r\n        *param_1 = lStack_158;\r\n        FUN_140be24b0(&uStack_d0);\r\n        goto code_r0x0001405b9724;\r\n      }\r\n      FUN_1428d9840(uVar10,uStack_98,&UNK_142a04858);\r\n    }\r\n  }\r\n  else {\r\n    uVar9 = func_0x000140bd51a0(auStack_58);\r\n    if (uVar9 <= uVar10) {\r\n      FUN_140bd51b0(auStack_58,lVar6,uVar9);\r\n      goto code_r0x0001405b9513;\r\n    }\r\n    FUN_1428d9840(uVar9,uVar10,&UNK_142a04800);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "1f6738a02a5f2bd8743b06bdde37525e8f3638b455aaca3bee49e1f60a4c302a",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4de0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4de0",
+        "start": "0x140BD4DE0",
+        "end": "0x140BD4DE1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "25f82dd4637afe6d711dab147053044d290de918f07e8fcd88437a236addf83b",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4e20",
+        "start": "0x140BD4E20",
+        "end": "0x140BD4E21",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "337081f355bd371150fcbfbf0810d55a2964bfc2ead156086faaf0bb189e4954",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4e60"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4e60",
+        "start": "0x140BD4E60",
+        "end": "0x140BD4E61",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "f1a791395de10a568a066c430fbffe3a087a30b7b961a6ca8e7c3dce9b95438b",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4ea0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4ea0",
+        "start": "0x140BD4EA0",
+        "end": "0x140BD4EA1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "d013f620ae3b9b4689a4578841af63243e86b6623b1f61931a7e950c3ab0901d",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd4ee0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd4ee0",
+        "start": "0x140BD4EE0",
+        "end": "0x140BD4EE1",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "eb4f565f8845f00187967fdea96fe9e083fde43e9ad7c9fff27144752c65e2b0",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd51a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD51A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x1406868b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1406868B0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 20,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bef470"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:29:43.754Z",
+      "completed_at": "2026-10-12T10:29:48.662Z",
+      "source": "actual_mcp_call",
+      "cache_key": "5e64b16cbb0c97eb439d570ce410e11a8053ca8dbd337105c4b1344a82075ef0",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bef470",
+        "start": "0x140BEF470",
+        "end": "0x140BEF471",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "15ff7f9d28ca3f31969befb2f9d08286971bff1e377c4afb783f69cd66083b17",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newtexbuf_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newtexbuf_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newtexbuf_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newtexbuf_l1"
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newtexbuf_l2",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newtexbuf_l2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newtexbuf_l2"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newtexbuf_l2"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newtexbuf_l1"
+    },
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newtexbuf_l2"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

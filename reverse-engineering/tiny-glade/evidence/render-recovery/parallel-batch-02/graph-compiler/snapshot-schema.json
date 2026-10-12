@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "status": "candidate_static",
+  "fields": {
+    "pass_order":"ordered names",
+    "pass_ranges":"ordered [start,end) global access ranges, including empty passes",
+    "accesses":"resource,previous,next,synchronization_group,code; NO_ACCESS=4294967295",
+    "lifetimes":"first_pass,last_pass or null; first_access,last_access",
+    "image_usage":"u32 Vulkan usage flags from reused private conversion",
+    "buffer_usage":"u32 Vulkan usage flags from reused private conversion",
+    "lifetime_events":"sorted packed words",
+    "physical_mapping":"logical,physical u16,reused,initial_access,payload_tag,external token or null; unset physical=65535 and payload_tag=255",
+    "pending_initial":"resources with first_access != NO_ACCESS",
+    "initial_transitions":"only reused=false; drain pending once; initial -> first",
+    "pre_transitions":"one list per pass; predecessor concurrency uses external write classifier; no predecessor only reused=true and initial=0",
+    "export_transitions":"only when final batch exists; last access or initial -> export access",
+    "batches":"half-open pass start/end plus export_barriers; only last emitted batch=true",
+    "imports":"logical IDs with imported source, ownership in payload tag",
+    "exports":"sorted exported u16 IDs",
+    "pool_hits":"persistent exact-key LIFO hits; reused marker remains false"
+  },
+  "not_observed_runtime":"canonical JSON emitted by candidate oracle; no full original-entry parity",
+  "excluded":["Vulkan stage/access/layout/aspect scopes", "GPU allocation", "queue submit", "temporal mappings", "std hash set iteration order"]
+}

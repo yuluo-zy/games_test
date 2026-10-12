@@ -1,0 +1,42 @@
+
+D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bd47d0: 48 83 ec 38                 	subq	$0x38, %rsp
+140bd47d4: 48 8b 51 10                 	movq	0x10(%rcx), %rdx
+140bd47d8: 48 85 d2                    	testq	%rdx, %rdx
+140bd47db: 74 40                       	je	0x140bd481d <.text+0xbd381d>
+140bd47dd: 48 8b 41 08                 	movq	0x8(%rcx), %rax
+140bd47e1: 4c 8d 40 04                 	leaq	0x4(%rax), %r8
+140bd47e5: 45 31 c9                    	xorl	%r9d, %r9d
+140bd47e8: 41 ba ff ff ff ff           	movl	$0xffffffff, %r10d      # imm = 0xFFFFFFFF
+140bd47ee: eb 0c                       	jmp	0x140bd47fc <.text+0xbd37fc>
+140bd47f0: 49 ff c1                    	incq	%r9
+140bd47f3: 49 83 c0 14                 	addq	$0x14, %r8
+140bd47f7: 4c 39 ca                    	cmpq	%r9, %rdx
+140bd47fa: 74 21                       	je	0x140bd481d <.text+0xbd381d>
+140bd47fc: 41 8b 08                    	movl	(%r8), %ecx
+140bd47ff: 4c 39 d1                    	cmpq	%r10, %rcx
+140bd4802: 74 ec                       	je	0x140bd47f0 <.text+0xbd37f0>
+140bd4804: 4d 89 cb                    	movq	%r9, %r11
+140bd4807: 49 c1 eb 20                 	shrq	$0x20, %r11
+140bd480b: 75 21                       	jne	0x140bd482e <.text+0xbd382e>
+140bd480d: 48 39 ca                    	cmpq	%rcx, %rdx
+140bd4810: 76 10                       	jbe	0x140bd4822 <.text+0xbd3822>
+140bd4812: 48 8d 0c 89                 	leaq	(%rcx,%rcx,4), %rcx
+140bd4816: 44 89 4c 88 08              	movl	%r9d, 0x8(%rax,%rcx,4)
+140bd481b: eb d3                       	jmp	0x140bd47f0 <.text+0xbd37f0>
+140bd481d: 48 83 c4 38                 	addq	$0x38, %rsp
+140bd4821: c3                          	retq
+140bd4822: 4c 8d 05 7f ae f3 01        	leaq	0x1f3ae7f(%rip), %r8    # 0x142b0f6a8
+140bd4829: e8 ea 4c d0 01              	callq	0x1428d9518 <.text+0x28d8518>
+140bd482e: 48 8d 05 1b af f3 01        	leaq	0x1f3af1b(%rip), %rax   # 0x142b0f750
+140bd4835: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+140bd483a: 48 8d 0d 67 ad f3 01        	leaq	0x1f3ad67(%rip), %rcx   # 0x142b0f5a8
+140bd4841: 4c 8d 0d 40 ad f3 01        	leaq	0x1f3ad40(%rip), %r9    # 0x142b0f588
+140bd4848: 4c 8d 44 24 37              	leaq	0x37(%rsp), %r8
+140bd484d: ba 2b 00 00 00              	movl	$0x2b, %edx
+140bd4852: e8 09 4f d0 01              	callq	0x1428d9760 <.text+0x28d8760>
+140bd4857: cc                          	int3

@@ -240,7 +240,7 @@
     {
       "id": "M12",
       "title": "资源/着色器/渲染",
-      "status": "not_started",
+      "status": "in_progress",
       "depends_on": [
         "M01",
         "M06",
@@ -251,8 +251,72 @@
       "acceptance": [
         "原作实际 pass、实例、材质与资源格式恢复；固定相机画面及性能对照"
       ],
-      "evidence": [],
-      "remaining": []
+      "evidence": [
+        "reconstruction/render/Cargo.toml",
+        "reconstruction/render/original-skeleton/crates/rhapsody/Cargo.toml",
+        "reconstruction/render/original-skeleton/crates/rhapsody/structure.json",
+        "reconstruction/render/original-skeleton/crates/rhapsody/verification.json",
+        "reconstruction/render/resource_info.rs",
+        "reconstruction/render/resource_usage.rs",
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/findings.md",
+        "evidence/render-skeleton/report.json",
+        "evidence/render-architecture/rendering-framework-map.md",
+        "evidence/render-architecture/rendering-framework-map.json",
+        "evidence/render-recovery/BATCHED_RHAPSODY_RECOVERY_PLAN.md",
+        "evidence/render-recovery/workgraph/summary.json",
+        "evidence/render-recovery/workgraph/functions.json",
+        "evidence/render-recovery/workgraph/calls.json",
+        "evidence/render-recovery/workgraph/work-packages.json",
+        "evidence/render-recovery/graph-compiler/contract.json",
+        "evidence/render-recovery/graph-compiler/query-queue.json",
+        "evidence/render-recovery/parallel/integration.json",
+        "evidence/render-recovery/parallel-batch-02/contract.json",
+        "evidence/render-recovery/parallel-batch-02/integration.json",
+        "evidence/render-recovery/parallel-batch-03/contract.json",
+        "evidence/render-recovery/parallel-batch-03/integration.json",
+        "evidence/render-recovery/RHAPSODY_PROGRESS.md",
+        "evidence/render-recovery/parallel-batch-04/contract.json",
+        "evidence/render-recovery/parallel-batch-04/device-counters/validation.json",
+        "evidence/render-recovery/parallel-batch-04/record-submit/validation.json",
+        "evidence/render-recovery/parallel-batch-04/pipeline-shader-interfaces/validation.json",
+        "reconstruction/render/work-packages/graph-compiler-r2/Cargo.toml",
+        "reconstruction/render/work-packages/gpu-lifecycle-r3/Cargo.toml",
+        "reconstruction/render/work-packages/executor-temporal-r4/Cargo.toml",
+        "reconstruction/render/work-packages/barrier-record-r5/Cargo.toml",
+        "reconstruction/render/work-packages/sequence-domain-r5/Cargo.toml",
+        "reconstruction/render/work-packages/temporal-r5/Cargo.toml",
+        "evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md",
+        "evidence/render-recovery/tooling/README.md",
+        "evidence/render-recovery/tooling/runner-validation.json",
+        "evidence/render-recovery/parallel-batch-04/integration.json",
+        "evidence/render-recovery/parallel-batch-05/README.md",
+        "evidence/render-recovery/parallel-batch-05/integration.json",
+        "evidence/render-recovery/parallel-batch-05/queue-callers/validation.json",
+        "evidence/render-recovery/parallel-batch-05/record-resources/validation.json",
+        "evidence/render-recovery/parallel-batch-05/pipeline-descriptors/validation.json",
+        "reconstruction/render/work-packages/queue-callers-r7/Cargo.toml",
+        "reconstruction/render/work-packages/record-resources-r7/Cargo.toml",
+        "reconstruction/render/work-packages/pipeline-descriptors-r7/Cargo.toml",
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+        "evidence/render-recovery/consumer-chain-review-2026-10-12/README.md"
+      ],
+      "remaining": [
+        "完整compile、并行录制与queue_submit前段及真实Vulkan/GPU执行",
+        "真实sequence生产API适配；多队列内联/间接caller与bucket冲突可达性",
+        "temporal reset/drop、compile take/restore unwind及图内alias生产者",
+        "原vk-sync-fork 0.4.0精确来源/必要补丁核实；不重写公开库",
+        "sparse layout producer、descriptor writes、shader module/完整pipeline及游戏pass绑定",
+        "shader算法、GPU/场景/性能对照"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "五批CPU/API合同统一门禁通过；第四批50/50、第五批27/27；新增Primary caller180、非空record774、descriptor创建5184原指令案例；生产sequence适配/并行queue/sparse layout/writes/完整pipeline/真实pass/GPU仍未验收",
+        "verification_reports": [
+          "evidence/render-recovery/verification.json"
+        ]
+      }
     },
     {
       "id": "M13",
@@ -346,10 +410,25 @@
       "source": "reconstruction/roof/edit_rules.rs",
       "report": "evidence/source-edits/verification.json",
       "scope": "4514案例；完整88字节状态、changed tick、变化量、gable重建及反馈数值；已解析后段，不是完整ECS系统"
+    },
+    {
+      "name": "Renderer resource graph rules",
+      "status": "verified_local",
+      "source": "reconstruction/render/resource_info.rs",
+      "report": "evidence/render-recovery/verification.json",
+      "scope": "访问链、生命周期事件、并发判断；依赖classifier外供；78867案例"
+    },
+    {
+      "name": "Renderer Vulkan usage conversions",
+      "status": "verified_local",
+      "source": "reconstruction/render/resource_usage.rs",
+      "report": "evidence/render-recovery/verification.json",
+      "scope": "2个完整private用途转换叶函数；ash原版本复用；142149案例"
     }
   ],
   "system_acceptances": [],
   "next_actions": [
+    "rhapsody：按新目录MODULE_STATUS/统一功能验收记进度；将主图registry与正在录制的Command注入首个shader callback，闭合managed descriptor→同一submit/completion；随后核对原并行/跨族、资产关联/缓存与分叉依赖，禁止按路径/函数数计完成",
     "S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器",
     "S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则",
     "S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half",
@@ -360,15 +439,133 @@
     "Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实",
     "屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成",
     "22个快照引用目标缺失",
-    "完整游戏、场景回放与GPU尚未验收，后两项按用户要求后置"
+    "完整游戏、场景回放与GPU尚未验收；GPU源码按最新用户要求开始恢复"
   ],
-  "updated_at_utc": "2026-10-10T10:38:19.651657+00:00",
+  "updated_at_utc": "2026-10-12T10:08:01.154567+00:00",
+  "render_recovery_progress": {
+    "report": "evidence/render-recovery/RHAPSODY_PROGRESS.md",
+    "phase": "candidate_functional_project_original_equivalence_pending",
+    "overall_completion_percent": null,
+    "integrated_batches": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "batch_04_status": "consistent_partial",
+    "active_agents": 0,
+    "batch_05_status": "historical_tool_input_changed",
+    "tooling_audit": "evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md",
+    "batch_04_reports": {
+      "device_counters": {
+        "native_cases": 2840,
+        "mismatches": 0,
+        "rust_tests": 6,
+        "scope": "original CPU sequence-selection slice plus static constructor evidence"
+      },
+      "record_submit": {
+        "native_cases": 108,
+        "mismatches": 0,
+        "rust_tests": 3,
+        "scope": "empty-resource sequential record, submit entry, injected queue tail and twelve chain cases"
+      },
+      "shader_interfaces": {
+        "files": 404,
+        "modules": 638,
+        "reflected_modules": 638,
+        "reflection_failures": 0,
+        "layout_families": 240,
+        "interface_families": 402,
+        "rust_tests": 4,
+        "scope": "shipped SPIR-V interfaces; shader algorithms and concrete pass binding remain pending"
+      }
+    },
+    "gpu_runtime_acceptance": "candidate_functional_partial",
+    "summary": "新rhapsody-rebuild候选功能统一验收通过：64测试、严格Clippy、13真实GPU探针，25命令无失败；112输入/53外部依赖经只读复核。旧共享入口新增当前Command/compiled callback上下文，4链级场景通过。新目录自动首个shader callback仍为两阶段桥，原并行/跨族/资产关联/分叉与原整帧等价性未验收。",
+    "tooling_validation": "evidence/render-recovery/tooling/runner-validation.json",
+    "batch_05_reports": {
+      "queue_callers": {
+        "report": "evidence/render-recovery/parallel-batch-05/queue-callers/validation.json",
+        "native_entry_cases": 180,
+        "mismatches": 0,
+        "bounded_primary_direct_sites": 9,
+        "scope": "ensure_active_cb private caller entry; create/begin injected boundaries"
+      },
+      "record_resources": {
+        "report": "evidence/render-recovery/parallel-batch-05/record-resources/validation.json",
+        "native_cases": 774,
+        "mismatches": 0,
+        "nonempty_pass_access_cases": 726,
+        "export_no_last_access_cases": 48,
+        "record_to_submit_transfers": 330,
+        "rust_tests": 5,
+        "scope": "nonempty sequential record/helper/pre/tracking/submit; command/queue backend boundaries injected"
+      },
+      "pipeline_descriptors": {
+        "report": "evidence/render-recovery/parallel-batch-05/pipeline-descriptors/validation.json",
+        "native_cases": 5184,
+        "layout_entry_cases": 4438,
+        "pool_injected_layout_entry_cases": 486,
+        "compute_injected_slice_cases": 256,
+        "vulkan_error_stops": 4,
+        "mismatches": 0,
+        "rust_tests": 2,
+        "original_registry_dependencies": 21,
+        "scope": "persistent layout/pool and compute pipeline-layout API contract; declaration adapters do not prove game pass binding"
+      }
+    },
+    "batch_06_status": "shared_candidate_partial",
+    "batch_06_report": "evidence/render-recovery/parallel-batch-06/README.md",
+    "workflow": "evidence/render-recovery/WORKFLOW_RESET.md",
+    "workflow_migration_status": "first_shared_entry_connected",
+    "dependency_revalidation_report": "evidence/render-recovery/consumer-chain-review-2026-10-12/context-entry-validation.json",
+    "shared_consumer_chain": {
+      "entry": "ExecutionChain::execute_graph_with_context",
+      "source": "reconstruction/render/execution.rs",
+      "report": "evidence/render-recovery/consumer-chain-review-2026-10-12/context-entry-validation.json",
+      "candidate_entry_tests": 4,
+      "candidate_entry_status": "passed",
+      "whole_original_chain_validated": false,
+      "live_gpu": false,
+      "module_complete": false,
+      "removed_fixed_inputs": [
+        "manual first/last access",
+        "manual compiled snapshot",
+        "constant sequence7",
+        "prebuilt VkSubmitInfo arrays"
+      ]
+    },
+    "original_gpu_frame_acceptance": "pending",
+    "functional_project": {
+      "path": "reconstruction/rhapsody-rebuild",
+      "module_status": "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+      "report": "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+      "review": "evidence/render-recovery/consumer-chain-review-2026-10-12/functional-evidence-review.json",
+      "status": "passed_current_candidate_functional_scope",
+      "candidate_tests": 64,
+      "live_gpu_probes": 13,
+      "validation_commands": 25,
+      "original_complete_equivalence": false,
+      "ownership": "separate user-authorized chat; read-only by this review"
+    },
+    "historical_integrated_batches": [
+      5
+    ],
+    "batch_05_current_stale_inputs": [
+      {
+        "path": "scripts\\render-recovery\\mcp-evidence-job.mjs",
+        "recorded_sha256": "b0e3d57218acdb7e8ce5e2c0392fecb471e04eefc8b5a8daabf542227692ccf9",
+        "current_sha256": "3e34436212d14660243da21a3c5982067d7243f9f3955975df83ee3278f922c7"
+      }
+    ],
+    "batch_05_validity_note": "旧原码/Rust结果保留其原范围；工具runner内容已变，旧统一门禁不再列为当前输入一致，未覆盖改写旧报告。当前功能进度以新目录统一验收和本轮共享context入口验收为准。"
+  },
   "rust_project": "reconstruction/Cargo.toml",
   "engine_dependency_evidence": "evidence/resources/dependency-evidence.json",
   "current_priority": "source_recovery_first",
   "deferred_work": [
-    "场景回放与运行交互验收：用户要求当前不做",
-    "GPU/渲染/着色器动态算法：用户要求当前不做"
+    "完整场景回放与运行交互验收仍后置",
+    "GPU/渲染按用户最新指示开始源码恢复；完整shader动态/画面验收尚未开展"
   ],
   "source_discovery": "evidence/source-discovery/report.json",
   "source_recovery_status": "SOURCE_RECOVERY.md",
@@ -394,5 +591,15 @@
       "half": "2.4.1"
     },
     "counted_as_game_source_recovery": false
+  },
+  "render_recovery_authorization": {
+    "date": "2026-10-12",
+    "scope": "用户提出按PDB骨架和原反汇编恢复Rust并编译测试；本轮开始渲染CPU框架恢复",
+    "report": "evidence/render-recovery/findings.md"
+  },
+  "schedule_estimate": {
+    "status": "withdrawn_unmeasured",
+    "previous_ranges": "2–4 weeks minimal GPU / 6–12 weeks complete rhapsody",
+    "reason": "No measured chain-integration throughput; recalibrate after shared entry and original-side chain validation."
   }
 }

@@ -1,0 +1,2540 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:29:55.191Z",
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newtexbuf_l2"
+      },
+      "cache_key": "d3061ba43fb6ec21dcd0bf6b4f326ca53bd0c42a1ce456dd36fb07e37606fa43",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:55.338Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:30:14.359Z",
+      "ok": true,
+      "result_sha256": "5b39e3dcfb7440caadc90bcecb6cb18e1d8606ca54fecc806409cf473e0fbe87"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newtexbuf_l2"
+      },
+      "cache_key": "2ec60bbe274c32144c1e3ab780e1b82621ffd6ceb9016b0abf76177dda66704f",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:30:14.361Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:30:35.092Z",
+      "ok": true,
+      "result_sha256": "69bd453a833c8948e7604b686b0634083ed8d4facf5ab258dd0bfef364f89923"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5a80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5a80",
+        "address": "0x140BD5A80",
+        "decompiled_code": "\r\nundefined2 *\r\nFUN_140bd5a80(undefined2 *param_1,uint *param_2,undefined1 param_3,char param_4,ushort param_5)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  code *pcVar4;\r\n  undefined *puVar5;\r\n  undefined2 *puVar6;\r\n  undefined1 uStack_1;\r\n  \r\n  if (param_4 == '\\0') {\r\n    FUN_1428d9430(&UNK_142b0fb20,0x25,&UNK_142b0fb48);\r\ncode_r0x000140bd5b34:\r\n    FUN_1428d9430(&UNK_142b0fb60,0x1e,&UNK_142b0fb80);\r\ncode_r0x000140bd5b4c:\r\n    FUN_1428d9430(&UNK_142b0fb98,0x1e,&UNK_142b0fbb8);\r\ncode_r0x000140bd5b64:\r\n    FUN_1428d9430(&UNK_142b0fbd0,0x1f,&UNK_142b0fbf0);\r\ncode_r0x000140bd5b7c:\r\n    FUN_1428d9430(&UNK_142b0fc08,0x1f,&UNK_142b0fc28);\r\ncode_r0x000140bd5b94:\r\n    FUN_1428d9430(&UNK_142b0fc40,0x1f,&UNK_142b0fc60);\r\n  }\r\n  else {\r\n    if ((char)param_5 == '\\0') goto code_r0x000140bd5b34;\r\n    if (param_5 < 0x100) goto code_r0x000140bd5b4c;\r\n    uVar1 = *param_2;\r\n    if (uVar1 == 0) goto code_r0x000140bd5b64;\r\n    uVar2 = param_2[1];\r\n    if (uVar2 == 0) goto code_r0x000140bd5b7c;\r\n    uVar3 = param_2[2];\r\n    if (uVar3 == 0) goto code_r0x000140bd5b94;\r\n    if (uVar1 < 0x10000) {\r\n      if (uVar2 < 0x10000) {\r\n        if (uVar3 < 0x10000) {\r\n          *param_1 = (short)uVar1;\r\n          param_1[1] = (short)uVar2;\r\n          param_1[2] = (short)uVar3;\r\n          *(undefined1 *)(param_1 + 4) = 0;\r\n          *(undefined1 *)((longlong)param_1 + 9) = param_3;\r\n          *(char *)(param_1 + 5) = param_4;\r\n          *(char *)(param_1 + 3) = (char)param_5;\r\n          *(char *)((longlong)param_1 + 7) = (char)(param_5 >> 8);\r\n          return param_1;\r\n        }\r\n        puVar5 = &UNK_142b0fca8;\r\n      }\r\n      else {\r\n        puVar5 = &UNK_142b0fc90;\r\n      }\r\n      goto code_r0x000140bd5bc5;\r\n    }\r\n  }\r\n  puVar5 = &UNK_142b0fc78;\r\ncode_r0x000140bd5bc5:\r\n  FUN_1428d9760(&UNK_142b0f9a0,0x2b,&uStack_1,&UNK_142b0f980,puVar5);\r\n  pcVar4 = (code *)swi(3);\r\n  puVar6 = (undefined2 *)(*pcVar4)();\r\n  return puVar6;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "099a922ac9db06652758e3ff440c0f4be574e6c7260f61a8e4b1858888d8a33a",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5bf0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5bf0",
+        "address": "0x140BD5BF0",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd5bf0(undefined8 *param_1,ushort *param_2)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  byte bVar3;\r\n  ushort uVar4;\r\n  ushort uVar5;\r\n  ushort uVar6;\r\n  code *pcVar7;\r\n  ushort uVar8;\r\n  undefined8 uVar9;\r\n  undefined8 *puVar10;\r\n  char cVar11;\r\n  ushort uVar12;\r\n  ushort uVar13;\r\n  ushort uVar14;\r\n  \r\n  bVar1 = (byte)param_2[4];\r\n  if (*(byte *)((longlong)param_2 + 9) <= bVar1) {\r\n    uVar9 = 0;\r\ncode_r0x000140bd5cff:\r\n    *param_1 = uVar9;\r\n    return param_1;\r\n  }\r\n  bVar2 = (byte)param_2[3];\r\n  if (bVar2 == 0) {\r\n    FUN_1428d99e0(&UNK_142b0fcc0);\r\n  }\r\n  else {\r\n    bVar3 = *(byte *)((longlong)param_2 + 7);\r\n    if (bVar3 != 0) {\r\n      uVar4 = param_2[1];\r\n      uVar5 = *param_2;\r\n      uVar6 = param_2[2];\r\n      uVar8 = uVar5 >> 1;\r\n      *param_2 = uVar8;\r\n      uVar12 = uVar4 >> 1;\r\n      param_2[1] = uVar12;\r\n      uVar13 = uVar6 >> 1;\r\n      param_2[2] = uVar13;\r\n      if (CONCAT24(uVar13,*(undefined4 *)param_2) == 0) {\r\n        cVar11 = -1;\r\n      }\r\n      else {\r\n        uVar14 = 1;\r\n        if (1 < uVar8) {\r\n          uVar14 = uVar8;\r\n        }\r\n        *param_2 = uVar14;\r\n        if (uVar12 < 2) {\r\n          uVar12 = 1;\r\n        }\r\n        param_2[1] = uVar12;\r\n        if (uVar13 < 2) {\r\n          uVar13 = 1;\r\n        }\r\n        param_2[2] = uVar13;\r\n        cVar11 = bVar1 + 1;\r\n      }\r\n      *(char *)(param_2 + 4) = cVar11;\r\n      param_1[1] = (ulonglong)(byte)param_2[5] * (ulonglong)uVar6 *\r\n                   (ulonglong)\r\n                   (ushort)((uVar4 / bVar3 + 1) - (ushort)((ushort)(uVar4 % (ushort)bVar3) == 0)) *\r\n                   (ulonglong)\r\n                   (ushort)((uVar5 / bVar2 + 1) - (ushort)((ushort)(uVar5 % (ushort)bVar2) == 0));\r\n      *(uint *)(param_1 + 2) = (uint)uVar5;\r\n      *(uint *)((longlong)param_1 + 0x14) = (uint)uVar4;\r\n      *(uint *)(param_1 + 3) = (uint)uVar6;\r\n      *(uint *)((longlong)param_1 + 0x1c) = (uint)bVar1;\r\n      uVar9 = 1;\r\n      goto code_r0x000140bd5cff;\r\n    }\r\n  }\r\n  FUN_1428d99e0(&UNK_142b0fcd8);\r\n  pcVar7 = (code *)swi(3);\r\n  puVar10 = (undefined8 *)(*pcVar7)();\r\n  return puVar10;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "0a107679579a57845ef0063b67ab30bed368f6d9ec22bb88189bc1c66b7f55b5",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5d30"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5d30",
+        "address": "0x140BD5D30",
+        "decompiled_code": "\r\nlonglong * FUN_140bd5d30(longlong *param_1,longlong *param_2)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  longlong lVar2;\r\n  code *pcVar3;\r\n  ushort uVar4;\r\n  longlong *plVar5;\r\n  ulonglong uStack_78;\r\n  ulonglong uStack_70;\r\n  undefined8 uStack_68;\r\n  undefined4 uStack_60;\r\n  undefined4 uStack_5c;\r\n  undefined *puStack_58;\r\n  undefined8 uStack_50;\r\n  undefined8 uStack_48;\r\n  undefined8 uStack_40;\r\n  undefined8 uStack_38;\r\n  \r\n  plVar5 = (longlong *)((longlong)param_2 + 0x1c);\r\n  FUN_140bd5bf0(&uStack_78,plVar5);\r\n  if ((uStack_78 & 1) == 0) {\r\n    do {\r\n      uVar4 = (short)(int)param_2[5] + 1;\r\n      if (*(ushort *)((longlong)param_2 + 0x2a) <= uVar4) {\r\n        uStack_78 = param_2[1];\r\n        if (uStack_78 == 0) {\r\n          *param_1 = 0;\r\n          return param_1;\r\n        }\r\n        goto code_r0x000140bd5e76;\r\n      }\r\n      *(ushort *)(param_2 + 5) = uVar4;\r\n      *(int *)((longlong)param_2 + 0x24) = (int)param_2[3];\r\n      *plVar5 = param_2[2];\r\n      FUN_140bd5bf0(&uStack_78,plVar5);\r\n    } while ((uStack_78 & 1) == 0);\r\n  }\r\n  uVar1 = param_2[1];\r\n  if (uVar1 == 0) {\r\n    puStack_58 = &UNK_142b0fd40;\r\n    uStack_50 = 1;\r\n    uStack_48 = 8;\r\n    uStack_40 = 0;\r\n    uStack_38 = 0;\r\n    FUN_1428d9390(&puStack_58,&UNK_142b0fd50);\r\n  }\r\n  else if (uStack_70 <= uVar1) {\r\n    lVar2 = *param_2;\r\n    *(undefined4 *)(param_1 + 3) = 0;\r\n    param_1[2] = 0;\r\n    uVar4 = *(ushort *)(param_2 + 5);\r\n    *(undefined4 *)((longlong)param_1 + 0x24) = uStack_60;\r\n    *(undefined8 *)((longlong)param_1 + 0x1c) = uStack_68;\r\n    *param_2 = lVar2 + uStack_70;\r\n    param_2[1] = uVar1 - uStack_70;\r\n    *param_1 = lVar2;\r\n    param_1[1] = uStack_70;\r\n    *(undefined4 *)(param_1 + 5) = uStack_5c;\r\n    *(uint *)((longlong)param_1 + 0x2c) = (uint)uVar4;\r\n    return param_1;\r\n  }\r\n  FUN_1428d9840();\r\ncode_r0x000140bd5e76:\r\n  puStack_58 = &UNK_142b0fdc0;\r\n  uStack_50 = 1;\r\n  uStack_48 = 8;\r\n  uStack_40 = 0;\r\n  uStack_38 = 0;\r\n  FUN_1428d9596(0,&uStack_78,&UNK_142b0fd68,&puStack_58,&UNK_142b0fdd0);\r\n  pcVar3 = (code *)swi(3);\r\n  plVar5 = (longlong *)(*pcVar3)();\r\n  return plVar5;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "868a42349dfe99bd9bd315a2129a874613d2e3379b126d0463d2706520f49481",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5ed0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5ed0",
+        "address": "0x140BD5ED0",
+        "decompiled_code": "\r\n/* WARNING: Control flow encountered bad instruction data */\r\n/* WARNING: Instruction at (ram,0x000142b0ff1b) overlaps instruction at (ram,0x000142b0ff1a)\r\n    */\r\n/* WARNING: Removing unreachable block (ram,0x000142b0feb7) */\r\n/* WARNING: Removing unreachable block (ram,0x000142b0feb9) */\r\n\r\nchar * FUN_140bd5ed0(char *param_1,char *param_2,char *param_3)\r\n\r\n{\r\n  byte bVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  code *pcVar4;\r\n  char cVar5;\r\n  undefined4 uVar6;\r\n  ulonglong uVar7;\r\n  char *pcVar8;\r\n  byte bVar9;\r\n  char *unaff_RBX;\r\n  undefined1 *puVar10;\r\n  char *unaff_RSI;\r\n  char *unaff_RDI;\r\n  int iVar11;\r\n  undefined4 uVar12;\r\n  undefined4 uVar13;\r\n  bool bVar14;\r\n  undefined1 auStack_78 [32];\r\n  undefined *puStack_58;\r\n  undefined *puStack_50;\r\n  undefined8 uStack_48;\r\n  undefined8 uStack_40;\r\n  undefined8 uStack_38;\r\n  undefined8 uStack_30;\r\n  \r\n  puVar10 = auStack_78;\r\n  uVar7 = (ulonglong)*(int *)(&UNK_142b0ff1c + (ulonglong)(byte)param_2[0x1e] * 4);\r\n  bVar14 = 0xfffffffebd4f00e3 < uVar7;\r\n  pcVar8 = &UNK_142b0ff1c + uVar7;\r\n                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */\r\n                    /* WARNING: Could not find normalized switch variable to match jumptable */\r\n  switch(param_2[0x1e]) {\r\n  case '\\0':\r\n    if (*(int *)(param_2 + 0x18) != 1) {\r\n      puStack_50 = &UNK_142b0fe08;\r\n      puStack_58 = &UNK_142b0fe18;\r\ncode_r0x000140bd6080:\r\n      uStack_30 = 0;\r\n      uStack_38 = 0;\r\n      uStack_40 = 8;\r\n      uStack_48 = 1;\r\n      FUN_1428ca7db(0,&UNK_142b0fde8,param_2 + 0x18,&puStack_50);\r\n      pcVar4 = (code *)swi(3);\r\n      pcVar8 = (char *)(*pcVar4)();\r\n      return pcVar8;\r\n    }\r\n    uVar6 = 1;\r\n    uVar12 = 0;\r\n    goto code_r0x000140bd5f28;\r\n  case '\\x01':\r\n    iVar11 = *(int *)(param_2 + 0x18);\r\n    uVar6 = 1;\r\n    uVar12 = 0;\r\n    goto code_r0x000140bd5f76;\r\n  case '\\x02':\r\n    if (*(int *)(param_2 + 0x18) != 1) {\r\n      puStack_50 = &UNK_142b0fe48;\r\n      puStack_58 = &UNK_142b0fe58;\r\n      goto code_r0x000140bd6080;\r\n    }\r\n    uVar6 = *(undefined4 *)(param_2 + 0x10);\r\n    uVar12 = 1;\r\ncode_r0x000140bd5f28:\r\n    uVar13 = 1;\r\n    iVar11 = 1;\r\n    goto code_r0x000140bd5f7c;\r\n  case '\\x03':\r\n    uVar6 = *(undefined4 *)(param_2 + 0x10);\r\n    iVar11 = *(int *)(param_2 + 0x18);\r\n    break;\r\n  case '\\x04':\r\n    uVar6 = *(undefined4 *)(param_2 + 0x10);\r\n    uVar13 = *(undefined4 *)(param_2 + 0x14);\r\n    iVar11 = 1;\r\n    uVar12 = 2;\r\n    goto code_r0x000140bd5f7c;\r\n  case '\\x05':\r\n    if (*(int *)(param_2 + 0x18) != 1) {\r\n      puStack_50 = &UNK_142b0fe88;\r\n      puStack_58 = &UNK_142b0fe98;\r\n      goto code_r0x000140bd6080;\r\n    }\r\n    uVar6 = *(undefined4 *)(param_2 + 0x10);\r\n    iVar11 = 6;\r\n    break;\r\n  case '\\x06':\r\n    uVar6 = *(undefined4 *)(param_2 + 0x10);\r\n    iVar11 = *(int *)(param_2 + 0x18) * 6;\r\n    break;\r\n  default:\r\n    goto code_r0x000142b0ff1c;\r\n  case '\\n':\r\n  case '\\f':\r\n                    /* WARNING: Bad instruction - Truncating control flow here */\r\n    halt_baddata();\r\n  case '\\r':\r\n  case '\\x0e':\r\n  case '\\x0f':\r\n  case '\\x10':\r\n    bVar9 = (byte)param_1;\r\n    bVar14 = CARRY1(bRam00000001a5b0feb1,bVar9);\r\n    bRam00000001a5b0feb1 = bRam00000001a5b0feb1 + bVar9;\r\n    if (bVar14) {\r\ncode_r0x000142b0ff14:\r\n      *(int *)(unaff_RBX + 0xc) = *(int *)(unaff_RBX + 0xc) + (int)param_2;\r\n      *param_2 = *param_2 + -1;\r\n      *(char **)(puVar10 + -8) = unaff_RBX;\r\n    }\r\n    else if (bRam00000001a5b0feb1 != 0) {\r\n      cVar5 = (char)pcVar8;\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *param_3 = *param_3 + (char)param_3;\r\n      *unaff_RSI = *unaff_RSI + bVar9;\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *(char *)(uVar7 + 0x143f3b01a) =\r\n           *(char *)(uVar7 + 0x143f3b01a) + (char)((ulonglong)param_2 >> 8);\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *unaff_RDI = *unaff_RDI + (char)((ulonglong)pcVar8 >> 8);\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *pcVar8 = *pcVar8 + cVar5;\r\n      *(char *)((longlong)pcVar8 * 2) = *(char *)((longlong)pcVar8 * 2) + (char)param_2;\r\n      cRam0000000143b0ff09 = cRam0000000143b0ff09 + bVar9;\r\n      *(int *)(unaff_RBX + 0xc) = *(int *)(unaff_RBX + 0xc) + (int)param_2;\r\n      *param_1 = *param_1 + '\\x01';\r\n      puVar10 = &stack0xffffffffffffff78;\r\n      goto code_r0x000142b0ff14;\r\n    }\r\n    bVar14 = false;\r\ncode_r0x000142b0ff1c:\r\n    unaff_RDI[0xc] = (char)(CONCAT11(bVar14,unaff_RDI[0xc]) >> 1);\r\n    *unaff_RBX = *unaff_RBX + '\\x01';\r\n                    /* WARNING: Bad instruction - Truncating control flow here */\r\n    halt_baddata();\r\n  }\r\n  uVar12 = 1;\r\ncode_r0x000140bd5f76:\r\n  uVar13 = 1;\r\ncode_r0x000140bd5f7c:\r\n  uVar2 = *(undefined4 *)param_2;\r\n  uVar3 = *(undefined4 *)(param_2 + 4);\r\n  bVar9 = param_2[0x1c];\r\n  bVar1 = param_2[0x1d];\r\n  param_1[0] = '\\x0e';\r\n  param_1[1] = '\\0';\r\n  param_1[2] = '\\0';\r\n  param_1[3] = '\\0';\r\n  param_1[8] = '\\0';\r\n  param_1[9] = '\\0';\r\n  param_1[10] = '\\0';\r\n  param_1[0xb] = '\\0';\r\n  param_1[0xc] = '\\0';\r\n  param_1[0xd] = '\\0';\r\n  param_1[0xe] = '\\0';\r\n  param_1[0xf] = '\\0';\r\n  *(undefined4 *)(param_1 + 0x10) = uVar3;\r\n  *(undefined4 *)(param_1 + 0x14) = uVar12;\r\n  *(undefined8 *)(param_1 + 0x18) = *(undefined8 *)(param_2 + 8);\r\n  *(undefined4 *)(param_1 + 0x20) = uVar6;\r\n  *(undefined4 *)(param_1 + 0x24) = uVar13;\r\n  *(uint *)(param_1 + 0x28) = (uint)bVar9;\r\n  *(int *)(param_1 + 0x2c) = iVar11;\r\n  *(uint *)(param_1 + 0x30) = (uint)bVar1;\r\n  param_1[0x34] = '\\0';\r\n  param_1[0x35] = '\\0';\r\n  param_1[0x36] = '\\0';\r\n  param_1[0x37] = '\\0';\r\n  *(undefined4 *)(param_1 + 0x38) = uVar2;\r\n  param_1[0x3c] = '\\0';\r\n  param_1[0x3d] = '\\0';\r\n  param_1[0x3e] = '\\0';\r\n  param_1[0x3f] = '\\0';\r\n  param_1[0x40] = '\\0';\r\n  param_1[0x41] = '\\0';\r\n  param_1[0x42] = '\\0';\r\n  param_1[0x43] = '\\0';\r\n  param_1[0x48] = '\\0';\r\n  param_1[0x49] = '\\0';\r\n  param_1[0x4a] = '\\0';\r\n  param_1[0x4b] = '\\0';\r\n  param_1[0x4c] = '\\0';\r\n  param_1[0x4d] = '\\0';\r\n  param_1[0x4e] = '\\0';\r\n  param_1[0x4f] = '\\0';\r\n  *(uint *)(param_1 + 0x50) = ((uint)param_3 & 0xff) << 3;\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "ddbb1e3b7f8873a586a1143fa053be4210ea678e00b429afcf1c6a9396a6e033",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bfe270"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bfe270",
+        "address": "0x140BFE270",
+        "decompiled_code": "\r\nvoid FUN_140bfe270(undefined8 param_1,undefined8 param_2,byte *param_3,longlong *param_4)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined1 auStack_e0 [48];\r\n  undefined *puStack_b0;\r\n  undefined8 uStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 uStack_98;\r\n  undefined8 uStack_90;\r\n  undefined1 auStack_58 [16];\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  if ((*param_3 & 4) != 0) {\r\n                    /* WARNING: Could not recover jumptable at 0x000140bfe2be. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    (*(code *)(&UNK_142b174fc + *(int *)(&UNK_142b174fc + *param_4 * 4)))();\r\n    return;\r\n  }\r\n  FUN_1428d9430(&UNK_142b16ff8,0x43,&UNK_142b17060);\r\n  puStack_b0 = &UNK_142b17098;\r\n  uStack_a8 = 1;\r\n  uStack_a0 = 8;\r\n  uStack_98 = 0;\r\n  uStack_90 = 0;\r\n  FUN_1428d9596(0,&UNK_142b15760,auStack_58,&puStack_b0,&UNK_142b170a8);\r\n  FUN_1428d9430(&UNK_142b0fae0,0x22,&UNK_142b0fcf0);\r\n  puStack_b0 = (undefined *)0x0;\r\n  FUN_1428d9596(0,auStack_e0,auStack_58,&puStack_b0,&UNK_142b170c0);\r\n  FUN_1428d9430(&UNK_142b15fb0,0x28,&UNK_142b17078);\r\n  FUN_1428d9760(&UNK_142b15188,0x2b,&puStack_b0,&UNK_142b151b8,&UNK_142b170d8);\r\n  pcVar1 = (code *)swi(3);\r\n  (*pcVar1)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "6dd95ce5b983dca99418dd2c4dccf3cb137fa81a72c1b441ad6f563a1ff4f6ce",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bfe650"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bfe650",
+        "address": "0x140BFE650",
+        "decompiled_code": "\r\nvoid FUN_140bfe650(longlong param_1,longlong param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  code *pcVar2;\r\n  char *pcVar3;\r\n  undefined8 unaff_RDI;\r\n  longlong unaff_R12;\r\n  char *unaff_R13;\r\n  longlong unaff_R14;\r\n  longlong unaff_R15;\r\n  bool bVar4;\r\n  int iStack_b0;\r\n  undefined4 uStack_ac;\r\n  undefined4 uStack_a8;\r\n  undefined4 uStack_a4;\r\n  undefined4 uStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined8 uStack_88;\r\n  undefined8 uStack_80;\r\n  undefined4 uStack_78;\r\n  undefined4 uStack_74;\r\n  undefined8 uStack_70;\r\n  char *pcStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  if (*(longlong *)(param_1 + 0x870) == 0) {\r\n    return;\r\n  }\r\n  if (*(short *)(param_2 + 0x14) == *(short *)(*(longlong *)(param_1 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_2 + 0x16) != '\\0') goto code_r0x000140bfe817;\r\n    unaff_R12 = *(longlong *)(param_2 + 8);\r\n    if (*(int *)(unaff_R12 + 0xc) == *(int *)(param_2 + 0x10)) {\r\n      if (*(char *)(unaff_R12 + 0xcc) != '\\x02') {\r\n        unaff_R14 = unaff_R12 + 0x88;\r\n        unaff_R15 = *(longlong *)(param_1 + 0x678);\r\n        unaff_R13 = (char *)(unaff_R15 + 0x10);\r\n        LOCK();\r\n        bVar4 = *(char *)(unaff_R15 + 0x10) == '\\0';\r\n        if (bVar4) {\r\n          *(char *)(unaff_R15 + 0x10) = '\\x01';\r\n        }\r\n        UNLOCK();\r\n        unaff_RDI = param_4;\r\n        if (!bVar4) goto code_r0x000140bfe841;\r\n        goto code_r0x000140bfe6f1;\r\n      }\r\n      goto code_r0x000140bfe760;\r\n    }\r\n    FUN_1428d9310(&UNK_142b17108);\r\n  }\r\n  else {\r\n    uStack_88 = 0;\r\n    param_2 = param_2 + 0x14;\r\n    FUN_1428ca816(0,param_2,*(longlong *)(param_1 + 0x648) + 0xa50,&uStack_88,&UNK_142d022a0);\r\ncode_r0x000140bfe817:\r\n    uStack_88 = 0;\r\n    FUN_1428ca902(0,param_2 + 0x16,&UNK_142d022b8,&uStack_88,&UNK_142d022c0);\r\ncode_r0x000140bfe841:\r\n    FUN_1428cd210(unaff_R13);\r\n    param_4 = unaff_RDI;\r\ncode_r0x000140bfe6f1:\r\n    pcStack_50 = unaff_R13;\r\n    FUN_140c81c70(unaff_R13);\r\n    FUN_140c14e00(&uStack_88,unaff_R15 + 0x18,unaff_R14,param_3,param_4);\r\n    if (((uStack_88 < 6) && ((0x32UL >> (uStack_88 & 0x3f) & 1) != 0)) && (uStack_80 != 0)) {\r\n      func_0x000140613c20(CONCAT44(uStack_74,uStack_78),uStack_80,1);\r\n    }\r\n    pcVar3 = pcStack_50;\r\n    FUN_140c81e10();\r\n    LOCK();\r\n    cVar1 = *pcVar3;\r\n    if (cVar1 == '\\x01') {\r\n      *pcVar3 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\x01') {\r\n      FUN_1428cdb90(pcVar3,0);\r\n    }\r\ncode_r0x000140bfe760:\r\n    FUN_140d797d0(&iStack_b0,param_3,param_4);\r\n    if (SBORROW8(0,CONCAT44(uStack_ac,iStack_b0))) {\r\n      pcVar3 = (char *)CONCAT44(uStack_9c,uStack_a0);\r\n      uStack_70 = *(undefined8 *)(unaff_R12 + 0x40);\r\n      uStack_88 = CONCAT44(uStack_88._4_4_,0x3b9cbe00);\r\n      uStack_80 = 0;\r\n      uStack_78 = 10;\r\n      iStack_b0 = (**(code **)(param_1 + 0x870))(*(undefined8 *)(param_1 + 0x8b0),&uStack_88);\r\n      if (iStack_b0 == 0) {\r\n        *(undefined1 *)CONCAT44(uStack_a4,uStack_a8) = 0;\r\n        if (pcVar3 != (char *)0x0) {\r\n          func_0x000140613c20((undefined1 *)CONCAT44(uStack_a4,uStack_a8),pcVar3,1);\r\n        }\r\n        return;\r\n      }\r\n      pcStack_50 = pcVar3;\r\n      FUN_1428d9760(&UNK_142b15850,0x1b,&iStack_b0,&UNK_142b15128,&UNK_142b17138);\r\n      goto code_r0x000140bfe8dc;\r\n    }\r\n  }\r\n  uStack_78 = uStack_a0;\r\n  uStack_74 = uStack_9c;\r\n  uStack_70 = CONCAT44(uStack_94,uStack_98);\r\n  uStack_88 = CONCAT44(uStack_ac,iStack_b0);\r\n  uStack_80 = CONCAT44(uStack_a4,uStack_a8);\r\n  FUN_1428d9760(&UNK_142b15188,0x2b,&uStack_88,&UNK_142b151d8,&UNK_142b17120);\r\ncode_r0x000140bfe8dc:\r\n                    /* WARNING: Does not return */\r\n  pcVar2 = (code *)invalidInstructionException();\r\n  (*pcVar2)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "8c1058acc60137b8c45e07dfca9e87621abf4ec60f87c64ad20c6ca8a89fb4e2",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bfe9c0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bfe9c0",
+        "address": "0x140BFE9C0",
+        "decompiled_code": "\r\nundefined8\r\nFUN_140bfe9c0(undefined8 param_1,longlong param_2,longlong param_3,undefined8 param_4,\r\n             undefined8 param_5,undefined1 param_6)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  longlong lVar3;\r\n  undefined8 auStack_38 [6];\r\n  \r\n  if (*(short *)(param_3 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_3 + 0x16) == '\\0') {\r\n      lVar3 = *(longlong *)(param_3 + 8);\r\n      if (*(int *)(lVar3 + 0xc) == *(int *)(param_3 + 0x10)) {\r\n        FUN_140bfeac0(param_1,param_2,param_3,lVar3 + 0x10,*(undefined4 *)(lVar3 + 0x18),param_4,\r\n                      param_5,param_6,param_6);\r\n        return param_1;\r\n      }\r\n      goto code_r0x000140bfeaa5;\r\n    }\r\n  }\r\n  else {\r\n    auStack_38[0] = 0;\r\n    lVar3 = param_3 + 0x14;\r\n    param_3 = *(longlong *)(param_2 + 0x648) + 0xa50;\r\n    FUN_1428ca816(0,lVar3,param_3,auStack_38,&UNK_142d022a0);\r\n  }\r\n  auStack_38[0] = 0;\r\n  FUN_1428ca902(0,param_3 + 0x16,&UNK_142d022b8,auStack_38,&UNK_142d022c0);\r\ncode_r0x000140bfeaa5:\r\n  FUN_1428d9310(&UNK_142b17150);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "76c22db58c33f11d36cb26163e547c86b1f0bb04b14bd41f00515a8dc6971bc2",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bfeea0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bfeea0",
+        "address": "0x140BFEEA0",
+        "decompiled_code": "\r\nundefined8 FUN_140bfeea0(undefined8 param_1,longlong param_2,longlong param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  longlong lVar3;\r\n  undefined8 auStack_38 [6];\r\n  \r\n  if (*(short *)(param_3 + 0x14) == *(short *)(*(longlong *)(param_2 + 0x648) + 0xa50)) {\r\n    if (*(char *)(param_3 + 0x16) == '\\0') {\r\n      if (*(int *)(*(longlong *)(param_3 + 8) + 0xc) == *(int *)(param_3 + 0x10)) {\r\n        FUN_140bdc5d0(param_1,*(longlong *)(param_3 + 8) + 0x10,param_2 + 0x78);\r\n        return param_1;\r\n      }\r\n      goto code_r0x000140bfef59;\r\n    }\r\n  }\r\n  else {\r\n    auStack_38[0] = 0;\r\n    lVar3 = param_3 + 0x14;\r\n    param_3 = *(longlong *)(param_2 + 0x648) + 0xa50;\r\n    FUN_1428ca816(0,lVar3,param_3,auStack_38,&UNK_142d022a0);\r\n  }\r\n  auStack_38[0] = 0;\r\n  FUN_1428ca902(0,param_3 + 0x16,&UNK_142d022b8,auStack_38,&UNK_142d022c0);\r\ncode_r0x000140bfef59:\r\n  FUN_1428d9310(&UNK_142b171b8);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "00e70a7dca80f24d0559a5329bd9239b14dcca8e0012b3741e8d81d14188ff42",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c07950"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.142Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c07950",
+        "address": "0x140C07950",
+        "decompiled_code": "\r\nundefined8 *\r\nFUN_140c07950(undefined8 *param_1,longlong param_2,char *param_3,char *param_4,uint *param_5,\r\n             longlong *param_6)\r\n\r\n{\r\n  char cVar1;\r\n  undefined8 *puVar2;\r\n  code *pcVar3;\r\n  undefined8 uVar4;\r\n  undefined8 uVar5;\r\n  longlong lVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  int iVar10;\r\n  uint uVar11;\r\n  char *pcVar12;\r\n  undefined8 uVar13;\r\n  undefined8 uVar14;\r\n  undefined8 *puVar15;\r\n  ulonglong uVar16;\r\n  char **ppcVar17;\r\n  longlong unaff_RDI;\r\n  char *unaff_R12;\r\n  longlong unaff_R13;\r\n  char *unaff_R14;\r\n  char *unaff_R15;\r\n  undefined8 *puVar18;\r\n  bool bVar19;\r\n  undefined1 auStack_430 [192];\r\n  undefined1 auStack_370 [28];\r\n  int iStack_354;\r\n  int iStack_350;\r\n  int iStack_34c;\r\n  char *pcStack_318;\r\n  char *pcStack_310;\r\n  char *pcStack_308;\r\n  char *pcStack_300;\r\n  char *pcStack_2e8;\r\n  undefined2 uStack_2e0;\r\n  undefined6 uStack_2de;\r\n  undefined8 uStack_258;\r\n  undefined8 uStack_250;\r\n  char *pcStack_248;\r\n  char *pcStack_240;\r\n  undefined4 uStack_238;\r\n  undefined4 uStack_234;\r\n  undefined4 uStack_230;\r\n  undefined4 uStack_22c;\r\n  undefined4 uStack_228;\r\n  undefined4 uStack_224;\r\n  undefined4 uStack_220;\r\n  undefined4 uStack_21c;\r\n  char *pcStack_218;\r\n  undefined4 uStack_208;\r\n  undefined4 uStack_204;\r\n  undefined4 uStack_200;\r\n  undefined4 uStack_1fc;\r\n  longlong lStack_1f8;\r\n  char *pcStack_1e8;\r\n  char *pcStack_1e0;\r\n  char *pcStack_1d8;\r\n  uint uStack_1d0;\r\n  uint uStack_1cc;\r\n  char *pcStack_1c8;\r\n  char *pcStack_1c0;\r\n  char *pcStack_1b8;\r\n  char *pcStack_1b0;\r\n  undefined8 uStack_1a8;\r\n  undefined8 uStack_1a0;\r\n  undefined4 uStack_198;\r\n  undefined4 uStack_194;\r\n  undefined4 uStack_190;\r\n  undefined4 uStack_18c;\r\n  char *pcStack_188;\r\n  longlong lStack_180;\r\n  char *pcStack_178;\r\n  undefined8 uStack_170;\r\n  undefined8 uStack_168;\r\n  undefined8 uStack_160;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined8 uStack_148;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined8 uStack_130;\r\n  char cStack_bc;\r\n  undefined2 uStack_bb;\r\n  undefined1 uStack_b9;\r\n  char cStack_ac;\r\n  undefined2 uStack_ab;\r\n  undefined1 uStack_a9;\r\n  undefined8 *puStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 *puStack_98;\r\n  undefined4 uStack_90;\r\n  undefined2 uStack_8c;\r\n  undefined1 uStack_8a;\r\n  undefined1 uStack_89;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined4 uStack_80;\r\n  undefined4 uStack_7c;\r\n  char *pcStack_78;\r\n  char *pcStack_70;\r\n  char *pcStack_68;\r\n  char *pcStack_60;\r\n  char *pcStack_58;\r\n  undefined2 uStack_4c;\r\n  undefined1 uStack_4a;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  lStack_1f8 = param_6[2];\r\n  uStack_208 = (undefined4)*param_6;\r\n  uStack_204 = *(undefined4 *)((longlong)param_6 + 4);\r\n  lVar6 = *param_6;\r\n  uStack_200 = (undefined4)param_6[1];\r\n  uStack_1fc = *(undefined4 *)((longlong)param_6 + 0xc);\r\n  pcStack_60 = param_3;\r\n  if (*param_5 == 0) {\r\n    FUN_1428d9430(&UNK_142b189c7,0x3c,&UNK_142b18a08);\r\ncode_r0x000140c081a2:\r\n    FUN_1428d9430(&UNK_142b18a20,0x2e,&UNK_142b18a50);\r\ncode_r0x000140c081ba:\r\n    FUN_1428d9430(&UNK_142b18a68,0x2f,&UNK_142b18a98);\r\ncode_r0x000140c081d2:\r\n    FUN_1428d9430(&UNK_142b18ab0,0x2e,&UNK_142b18ae0);\r\ncode_r0x000140c081ea:\r\n    FUN_1428cd210(unaff_R14);\r\ncode_r0x000140c07aff:\r\n    pcStack_70 = unaff_R14;\r\n    FUN_140c81c70(unaff_R14);\r\n    pcStack_308 = pcStack_60;\r\n    pcStack_2e8 = pcStack_78;\r\n    _uStack_2e0 = CONCAT62(uStack_2de,0x100);\r\n    pcStack_318 = (char *)0x2;\r\n    pcStack_300 = unaff_R15;\r\n    FUN_140c0da40(&pcStack_178,unaff_R13 + 0x18,&pcStack_318);\r\n    pcVar8 = uStack_160;\r\n    pcVar7 = uStack_168;\r\n    pcStack_58 = pcStack_178;\r\n    lStack_180 = unaff_RDI;\r\n    if ((char)uStack_134 == '\\x02') {\r\n      pcStack_68 = uStack_170;\r\n      pcVar12 = (char *)func_0x000140613c10(0xf,1);\r\n      pcVar9 = pcStack_70;\r\n      if (pcVar12 == (char *)0x0) {\r\n        pcStack_60 = pcVar7;\r\n        FUN_1428d8fe3(1,0xf,&UNK_142b18390);\r\n        goto code_r0x000140c08366;\r\n      }\r\n      builtin_strncpy(pcVar12,\"GpuOnly texture\",0xf);\r\n      pcStack_248 = pcStack_78;\r\n      uStack_258 = (char *)CONCAT44(uStack_84,uStack_88);\r\n      uStack_250 = (char *)CONCAT44(uStack_7c,uStack_80);\r\n      if (pcStack_58 != (char *)0xb) {\r\n        pcStack_1d8 = pcStack_78;\r\n        param_1[1] = pcStack_68;\r\n        param_1[2] = pcVar7;\r\n        param_1[3] = pcVar8;\r\n        *(undefined4 *)(param_1 + 7) = uStack_88;\r\n        *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_84;\r\n        *(undefined4 *)(param_1 + 8) = uStack_80;\r\n        *(undefined4 *)((longlong)param_1 + 0x44) = uStack_7c;\r\n        param_1[9] = pcStack_78;\r\n        *param_1 = pcStack_58;\r\n        param_1[4] = 0xf;\r\n        param_1[5] = pcVar12;\r\n        param_1[6] = 0xf;\r\n        FUN_140c81e10();\r\n        LOCK();\r\n        cVar1 = *pcVar9;\r\n        if (cVar1 == '\\x01') {\r\n          *pcVar9 = '\\0';\r\n        }\r\n        UNLOCK();\r\n        if (cVar1 == '\\x01') {\r\n          return param_1;\r\n        }\r\n        FUN_1428cdb90(pcVar9,0);\r\n        return param_1;\r\n      }\r\n      pcStack_58 = pcStack_68;\r\n      uStack_1a8 = pcVar12;\r\n      pcStack_1b8 = pcVar8;\r\n      uStack_1a0 = 0xf;\r\n      pcStack_1b0 = (char *)0xf;\r\n      pcStack_1c0 = pcVar7;\r\n    }\r\n    else {\r\n      uStack_250 = (char *)CONCAT44(uStack_13c,uStack_140);\r\n      uStack_258 = uStack_148;\r\n      pcStack_248 = (char *)CONCAT44(uStack_134,uStack_138);\r\n      uStack_1a8 = uStack_158;\r\n      pcStack_1b8 = uStack_168;\r\n      uStack_1a0 = uStack_150;\r\n      pcStack_1b0 = uStack_160;\r\n      pcStack_1c0 = uStack_170;\r\n    }\r\n    pcVar7 = pcStack_70;\r\n    pcStack_1d8 = pcStack_248;\r\n    pcStack_1e8 = uStack_258;\r\n    pcStack_1e0 = uStack_250;\r\n    pcStack_1c8 = pcStack_58;\r\n    uStack_198 = (undefined4)uStack_258;\r\n    uStack_194 = uStack_258._4_4_;\r\n    uStack_190 = (undefined4)uStack_250;\r\n    uStack_18c = uStack_250._4_4_;\r\n    pcStack_188 = pcStack_248;\r\n    uStack_49 = 1;\r\n    FUN_140c81e10();\r\n    LOCK();\r\n    cVar1 = *pcVar7;\r\n    if (cVar1 == '\\x01') {\r\n      *pcVar7 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (cVar1 != '\\x01') {\r\n      uStack_49 = 1;\r\n      FUN_1428cdb90(pcVar7,0);\r\n    }\r\n    uStack_49 = 1;\r\n    uVar13 = func_0x0001406d0cb0(&pcStack_1c8);\r\n    uStack_49 = 1;\r\n    uVar14 = func_0x0001406868b0(&pcStack_1c8);\r\n    iVar10 = (**(code **)(param_2 + 0xe0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,uVar13,uVar14)\r\n    ;\r\n    if (iVar10 == 0) {\r\n      puVar2 = *(undefined8 **)(param_2 + 0x648);\r\n      pcStack_218 = pcStack_188;\r\n      uStack_228 = uStack_198;\r\n      uStack_224 = uStack_194;\r\n      uStack_220 = uStack_190;\r\n      uStack_21c = uStack_18c;\r\n      uStack_238 = (undefined4)uStack_1a8;\r\n      uStack_234 = uStack_1a8._4_4_;\r\n      uStack_230 = (undefined4)uStack_1a0;\r\n      uStack_22c = uStack_1a0._4_4_;\r\n      pcStack_248 = pcStack_1b8;\r\n      pcStack_240 = pcStack_1b0;\r\n      uStack_258 = pcStack_1c8;\r\n      uStack_250 = pcStack_1c0;\r\n      pcStack_1e8 = *(char **)param_5;\r\n      pcStack_1e0 = *(char **)(param_5 + 2);\r\n      pcStack_1d8 = *(char **)(param_5 + 4);\r\n      uStack_1d0 = param_5[6];\r\n      uStack_1cc = param_5[7];\r\n      uStack_49 = 0;\r\n      FUN_140bdc2d0(&pcStack_178,pcStack_60,unaff_R15,unaff_R12,param_2 + 0x78,&uStack_258,\r\n                    &pcStack_1e8);\r\n      if (cStack_bc == '\\x03') {\r\n        param_1[8] = CONCAT44(uStack_134,uStack_138);\r\n        param_1[9] = uStack_130;\r\n        param_1[6] = uStack_148;\r\n        param_1[7] = CONCAT44(uStack_13c,uStack_140);\r\n        param_1[4] = uStack_158;\r\n        param_1[5] = uStack_150;\r\n        param_1[2] = uStack_168;\r\n        param_1[3] = uStack_160;\r\n        *param_1 = pcStack_178;\r\n        param_1[1] = uStack_170;\r\n      }\r\n      else {\r\n        func_0x000142923c00(&pcStack_318,&pcStack_178,0xbc);\r\n        uStack_4c = uStack_bb;\r\n        uStack_4a = uStack_b9;\r\n        func_0x000142923c00(auStack_430,&pcStack_318,0xbc);\r\n        puVar15 = (undefined8 *)puVar2[0x2f];\r\n        do {\r\n          puVar18 = puVar15;\r\n          if (puVar18 == (undefined8 *)0x0) {\r\n            func_0x000142923c00(&uStack_168,auStack_430,0xbc);\r\n            cStack_ac = cStack_bc;\r\n            uStack_ab = uStack_4c;\r\n            uStack_a9 = uStack_4a;\r\n            pcStack_178 = (char *)0x0;\r\n            uStack_170 = (char *)0x1;\r\n            uStack_49 = 0;\r\n            ppcVar17 = &pcStack_178;\r\n            uVar16 = FUN_1418bbd30(puVar2 + 1);\r\n            if ((ulonglong)puVar2[0x2d] <= uVar16) {\r\n              uStack_49 = 0;\r\n              FUN_1428d9430(&UNK_142d0528e,0x22,&UNK_142d02268);\r\n              goto code_r0x000140c08366;\r\n            }\r\n            uStack_49 = 0;\r\n            uVar11 = func_0x000140c111b0(uVar16);\r\n            if (uVar11 < 0x2c) {\r\n              puVar18 = (undefined8 *)((longlong)ppcVar17 * 0xd0 + (puVar2 + 1)[uVar11]);\r\n              goto code_r0x000140c0802a;\r\n            }\r\n            uStack_49 = 0;\r\n            FUN_1428d9518((ulonglong)uVar11,0x2c,&UNK_142d02268);\r\n            goto code_r0x000140c08366;\r\n          }\r\n          LOCK();\r\n          puVar15 = (undefined8 *)puVar2[0x2f];\r\n          bVar19 = puVar18 == puVar15;\r\n          if (bVar19) {\r\n            puVar2[0x2f] = puVar18[2];\r\n            puVar15 = puVar18;\r\n          }\r\n          UNLOCK();\r\n        } while (!bVar19);\r\n        func_0x000142923c00(puVar18 + 2,auStack_430,0xbc);\r\n        *(char *)((longlong)puVar18 + 0xcc) = cStack_bc;\r\n        *(undefined2 *)((longlong)puVar18 + 0xcd) = uStack_4c;\r\n        *(undefined1 *)((longlong)puVar18 + 0xcf) = uStack_4a;\r\n        *(undefined4 *)(puVar18 + 1) = 1;\r\n        *puVar18 = 0;\r\ncode_r0x000140c0802a:\r\n        uStack_90 = *(undefined4 *)((longlong)puVar18 + 0xc);\r\n        uStack_8c = *(undefined2 *)(puVar2 + 0x14a);\r\n        uStack_a0 = *puVar2;\r\n        puStack_a8 = puVar18 + 2;\r\n        uStack_8a = 0;\r\n        puStack_98 = puVar18;\r\n        if (lStack_180 != 0) {\r\n          pcStack_318 = *(char **)param_5;\r\n          pcStack_310 = *(char **)(param_5 + 2);\r\n          pcStack_308 = *(char **)(param_5 + 4);\r\n          pcStack_300 = *(char **)(param_5 + 6);\r\n          FUN_140bfe270(&pcStack_178,param_2,&pcStack_318,&uStack_208,&puStack_a8);\r\n          if (pcStack_178 != (char *)0xb) {\r\n            param_1[9] = uStack_130;\r\n            *(undefined4 *)(param_1 + 7) = uStack_140;\r\n            *(undefined4 *)((longlong)param_1 + 0x3c) = uStack_13c;\r\n            *(undefined4 *)(param_1 + 8) = uStack_138;\r\n            *(undefined4 *)((longlong)param_1 + 0x44) = uStack_134;\r\n            *(undefined4 *)(param_1 + 5) = (undefined4)uStack_150;\r\n            *(undefined4 *)((longlong)param_1 + 0x2c) = uStack_150._4_4_;\r\n            *(undefined4 *)(param_1 + 6) = (undefined4)uStack_148;\r\n            *(undefined4 *)((longlong)param_1 + 0x34) = uStack_148._4_4_;\r\n            *(undefined4 *)(param_1 + 3) = (undefined4)uStack_160;\r\n            *(undefined4 *)((longlong)param_1 + 0x1c) = uStack_160._4_4_;\r\n            *(undefined4 *)(param_1 + 4) = (undefined4)uStack_158;\r\n            *(undefined4 *)((longlong)param_1 + 0x24) = uStack_158._4_4_;\r\n            *(undefined4 *)(param_1 + 1) = (undefined4)uStack_170;\r\n            *(undefined4 *)((longlong)param_1 + 0xc) = uStack_170._4_4_;\r\n            *(undefined4 *)(param_1 + 2) = (undefined4)uStack_168;\r\n            *(undefined4 *)((longlong)param_1 + 0x14) = uStack_168._4_4_;\r\n            *param_1 = pcStack_178;\r\n            uStack_49 = 0;\r\n            FUN_140be24b0(&uStack_a0);\r\n            return param_1;\r\n          }\r\n        }\r\n        uVar13 = *(undefined8 *)param_5;\r\n        uVar14 = *(undefined8 *)(param_5 + 2);\r\n        uVar4 = *(undefined8 *)(param_5 + 4);\r\n        uVar5 = *(undefined8 *)(param_5 + 6);\r\n        param_1[1] = uStack_a0;\r\n        param_1[2] = puStack_98;\r\n        param_1[7] = uVar5;\r\n        param_1[5] = uVar14;\r\n        param_1[6] = uVar4;\r\n        param_1[3] = CONCAT17(uStack_89,CONCAT16(uStack_8a,CONCAT24(uStack_8c,uStack_90)));\r\n        param_1[4] = uVar13;\r\n        *param_1 = 0xb;\r\n      }\r\n      return param_1;\r\n    }\r\n  }\r\n  else {\r\n    if (lVar6 != 0) {\r\n      *param_5 = *param_5 | 2;\r\n    }\r\n    FUN_140bd5ed0(auStack_370,param_5,lVar6 != 0);\r\n    unaff_RDI = lVar6;\r\n    unaff_R14 = param_4;\r\n    if (iStack_354 == 0) goto code_r0x000140c081a2;\r\n    if (iStack_350 == 0) goto code_r0x000140c081ba;\r\n    if (iStack_34c == 0) goto code_r0x000140c081d2;\r\n    iVar10 = (**(code **)(param_2 + 0x1a0))\r\n                       (*(undefined8 *)(param_2 + 0x640),auStack_370,0,&pcStack_178);\r\n    unaff_R12 = pcStack_178;\r\n    if (iVar10 == 0) {\r\n      if (*(longlong *)(param_2 + 0x870) != 0) {\r\n        FUN_140d797d0(&pcStack_318,pcStack_60,param_4);\r\n        pcVar7 = pcStack_308;\r\n        if (!SBORROW8(0,(longlong)pcStack_318)) {\r\n          uStack_168 = pcStack_308;\r\n          uStack_160 = pcStack_300;\r\n          pcStack_178 = pcStack_318;\r\n          uStack_170 = pcStack_310;\r\n          FUN_1428d9760(&UNK_142b18318,0x2b,&pcStack_178,&UNK_142b182f8,&UNK_142b18b20);\r\n          goto code_r0x000140c08366;\r\n        }\r\n        pcStack_178 = (char *)CONCAT44(pcStack_178._4_4_,0x3b9cbe00);\r\n        uStack_170 = (char *)0x0;\r\n        uStack_168 = (char *)CONCAT44(uStack_168._4_4_,10);\r\n        uStack_160 = unaff_R12;\r\n        uStack_158 = pcStack_310;\r\n        iVar10 = (**(code **)(param_2 + 0x870))(*(undefined8 *)(param_2 + 0x8b0),&pcStack_178);\r\n        if (iVar10 != 0) {\r\n          pcStack_58 = pcStack_310;\r\n          pcStack_60 = pcVar7;\r\n          pcStack_318 = (char *)CONCAT44(pcStack_318._4_4_,iVar10);\r\n          FUN_1428d9760(&UNK_142b18b38,0x1b,&pcStack_318,&UNK_142b182b8,&UNK_142b18b58);\r\n          goto code_r0x000140c08366;\r\n        }\r\n        *pcStack_310 = '\\0';\r\n        if (pcVar7 != (char *)0x0) {\r\n          func_0x000140613c20(pcStack_310,pcVar7,1);\r\n        }\r\n      }\r\n      (**(code **)(param_2 + 0xf0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,&uStack_88);\r\n      unaff_R13 = *(longlong *)(param_2 + 0x678);\r\n      unaff_R14 = (char *)(unaff_R13 + 0x10);\r\n      LOCK();\r\n      bVar19 = *(char *)(unaff_R13 + 0x10) == '\\0';\r\n      if (bVar19) {\r\n        *(char *)(unaff_R13 + 0x10) = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      unaff_R15 = param_4;\r\n      if (!bVar19) goto code_r0x000140c081ea;\r\n      goto code_r0x000140c07aff;\r\n    }\r\n    pcStack_178 = (char *)CONCAT44(pcStack_178._4_4_,iVar10);\r\n    iVar10 = FUN_1428d9760(&UNK_142b18af8,0xc,&pcStack_178,&UNK_142b182b8,&UNK_142b18b08);\r\n  }\r\n  pcStack_178 = (char *)CONCAT44(pcStack_178._4_4_,iVar10);\r\n  uStack_49 = 1;\r\n  FUN_1428d9760(&UNK_142b18b70,0x11,&pcStack_178,&UNK_142b182b8,&UNK_142b18b88);\r\ncode_r0x000140c08366:\r\n                    /* WARNING: Does not return */\r\n  pcVar3 = (code *)invalidInstructionException();\r\n  (*pcVar3)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "2c7596018dbd56e8ba4bf871b20eefa5a86b82c6ba7161e3b4b8067840593386",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c08560"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.143Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c08560",
+        "address": "0x140C08560",
+        "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140c08560(longlong *param_1,int *param_2)\r\n\r\n{\r\n  ulonglong *puVar1;\r\n  ulonglong uVar2;\r\n  longlong lVar3;\r\n  uint *puVar4;\r\n  longlong lVar5;\r\n  undefined8 uVar6;\r\n  code *pcVar7;\r\n  undefined8 uVar8;\r\n  undefined8 uVar9;\r\n  ulonglong uVar10;\r\n  ulonglong uVar11;\r\n  ulonglong uVar12;\r\n  bool bVar13;\r\n  undefined4 uVar14;\r\n  undefined1 uStack_c2;\r\n  undefined1 uStack_c1;\r\n  undefined1 *puStack_c0;\r\n  uint uStack_b8;\r\n  undefined4 uStack_b4;\r\n  int **ppiStack_b0;\r\n  undefined8 uStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 uStack_98;\r\n  uint uStack_90;\r\n  undefined8 uStack_8c;\r\n  undefined8 uStack_84;\r\n  undefined2 uStack_7c;\r\n  undefined1 uStack_7a;\r\n  int *piStack_78;\r\n  code *pcStack_70;\r\n  \r\n  puVar1 = *(ulonglong **)(*param_1 + 8);\r\n  if (*(int *)((longlong)puVar1 + 0xc) == *(int *)(*param_1 + 0x10)) {\r\n    if (*param_2 != 1) {\r\n      pcStack_70 = FUN_140bed620;\r\n      puStack_c0 = &UNK_142b14bb0;\r\n      uStack_b8 = 1;\r\n      uStack_b4 = 0;\r\n      uStack_a0 = 0;\r\n      ppiStack_b0 = &piStack_78;\r\n      uStack_a8 = 1;\r\n      piStack_78 = param_2;\r\n      FUN_1428d9390(&puStack_c0,&UNK_142b14bf0);\r\n      pcVar7 = (code *)swi(3);\r\n      (*pcVar7)();\r\n      return;\r\n    }\r\n    uVar2 = *(ulonglong *)(param_2 + 2);\r\n    uVar10 = *puVar1;\r\n    do {\r\n      uVar12 = uVar2;\r\n      if (uVar2 < uVar10) {\r\n        uVar12 = uVar10;\r\n      }\r\n      LOCK();\r\n      uVar11 = *puVar1;\r\n      bVar13 = uVar10 == uVar11;\r\n      if (bVar13) {\r\n        *puVar1 = uVar12;\r\n        uVar11 = uVar10;\r\n      }\r\n      UNLOCK();\r\n      uVar10 = uVar11;\r\n    } while (!bVar13);\r\n  }\r\n  uVar9 = _UNK_142b0ff48;\r\n  uVar8 = _UNK_142b0ff40;\r\n  lVar3 = param_1[1];\r\n  puVar4 = (uint *)param_1[2];\r\n  uStack_a0 = *(undefined8 *)(lVar3 + 0x30);\r\n  uStack_90 = *puVar4;\r\n  lVar5 = param_1[3];\r\n  uVar6 = *(undefined8 *)(param_2 + 0x12);\r\n  piStack_78 = (int *)0x0;\r\n  uStack_c2 = 0;\r\n  uStack_c1 = 0x34;\r\n  puStack_c0 = &uStack_c2;\r\n  uStack_b8 = 1;\r\n  uStack_b4 = 0;\r\n  uStack_a8 = 1;\r\n  uStack_98 = 0xffffffffffffffff;\r\n  uStack_8c = _UNK_142b0ff40;\r\n  uStack_84 = _UNK_142b0ff48;\r\n  uStack_7c = 0;\r\n  uStack_7a = 1;\r\n  uVar14 = 0;\r\n  ppiStack_b0 = (int **)&uStack_c1;\r\n  FUN_1418afd20(lVar5 + 0x78,uVar6,&piStack_78,8,0,&puStack_c0,1);\r\n  puStack_c0 = (undefined1 *)(ulonglong)*puVar4;\r\n  if ((*puVar4 & 6) == 0) {\r\n    piStack_78 = (int *)0x0;\r\n    pcStack_70 = (code *)0x0;\r\n    ppiStack_b0._0_4_ = *(undefined4 *)param_1[5];\r\n    uStack_b4 = 0;\r\n    uStack_b8 = (uint)*(byte *)param_1[4];\r\n    (**(code **)(lVar5 + 0x3a8))\r\n              (uVar6,*(undefined8 *)(lVar3 + 0x30),7,&piStack_78,CONCAT44(uVar14,1),&puStack_c0);\r\n  }\r\n  else {\r\n    piStack_78 = (int *)0x0;\r\n    ppiStack_b0._0_4_ = *(undefined4 *)param_1[5];\r\n    uStack_b4 = 0;\r\n    uStack_b8 = (uint)*(byte *)param_1[4];\r\n    (**(code **)(lVar5 + 0x3b0))\r\n              (uVar6,*(undefined8 *)(lVar3 + 0x30),7,&piStack_78,CONCAT44(uVar14,1),&puStack_c0);\r\n  }\r\n  uStack_a0 = *(undefined8 *)(lVar3 + 0x30);\r\n  uStack_90 = *puVar4;\r\n  piStack_78 = (int *)0x0;\r\n  uStack_c2 = 0x34;\r\n  uStack_c1 = 0x22;\r\n  puStack_c0 = &uStack_c2;\r\n  uStack_b8 = 1;\r\n  uStack_b4 = 0;\r\n  uStack_a8 = 1;\r\n  uStack_98 = 0xffffffffffffffff;\r\n  uStack_8c = uVar8;\r\n  uStack_84 = uVar9;\r\n  uStack_7c = 0;\r\n  uStack_7a = 0;\r\n  ppiStack_b0 = (int **)&uStack_c1;\r\n  FUN_1418afd20(lVar5 + 0x78,uVar6,&piStack_78,8,0,&puStack_c0,1);\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "415af012761a739357999ffc3712818e126ea743a9bcad778dbe6152c9891476",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c08830"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.143Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c08830",
+        "address": "0x140C08830",
+        "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140c08830(longlong *param_1,int *param_2)\r\n\r\n{\r\n  ulonglong *puVar1;\r\n  ulonglong uVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  undefined4 *puVar5;\r\n  undefined8 uVar6;\r\n  code *pcVar7;\r\n  undefined8 uVar8;\r\n  undefined8 uVar9;\r\n  ulonglong uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  bool bVar14;\r\n  undefined4 uVar15;\r\n  undefined1 uStack_c2;\r\n  undefined1 uStack_c1;\r\n  undefined1 *puStack_c0;\r\n  undefined8 uStack_b8;\r\n  int **ppiStack_b0;\r\n  undefined8 uStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 uStack_98;\r\n  undefined4 uStack_90;\r\n  undefined8 uStack_8c;\r\n  undefined8 uStack_84;\r\n  undefined2 uStack_7c;\r\n  undefined1 uStack_7a;\r\n  int *piStack_78;\r\n  code *pcStack_70;\r\n  \r\n  puVar1 = *(ulonglong **)(*param_1 + 8);\r\n  if (*(int *)((longlong)puVar1 + 0xc) == *(int *)(*param_1 + 0x10)) {\r\n    if (*param_2 != 1) {\r\n      pcStack_70 = FUN_140bed620;\r\n      puStack_c0 = &UNK_142b14bb0;\r\n      uStack_b8 = 1;\r\n      uStack_a0 = 0;\r\n      ppiStack_b0 = &piStack_78;\r\n      uStack_a8 = 1;\r\n      piStack_78 = param_2;\r\n      FUN_1428d9390(&puStack_c0,&UNK_142b14bf0);\r\n      goto code_r0x000140c08ab1;\r\n    }\r\n    uVar2 = *(ulonglong *)(param_2 + 2);\r\n    uVar10 = *puVar1;\r\n    do {\r\n      uVar13 = uVar2;\r\n      if (uVar2 < uVar10) {\r\n        uVar13 = uVar10;\r\n      }\r\n      LOCK();\r\n      uVar11 = *puVar1;\r\n      bVar14 = uVar10 == uVar11;\r\n      if (bVar14) {\r\n        *puVar1 = uVar13;\r\n        uVar11 = uVar10;\r\n      }\r\n      UNLOCK();\r\n      uVar10 = uVar11;\r\n    } while (!bVar14);\r\n  }\r\n  lVar3 = param_1[1];\r\n  lVar12 = FUN_1418aed30(*(undefined8 *)(lVar3 + 0x648),param_1[2] + 8,param_2);\r\n  uVar9 = _UNK_142b0ff48;\r\n  uVar8 = _UNK_142b0ff40;\r\n  if (lVar12 != 0) {\r\n    lVar4 = param_1[3];\r\n    uStack_a0 = *(undefined8 *)(lVar4 + 0x30);\r\n    uStack_c2 = *(undefined1 *)param_1[4];\r\n    puVar5 = (undefined4 *)param_1[5];\r\n    uStack_90 = *puVar5;\r\n    uVar6 = *(undefined8 *)(param_2 + 0x12);\r\n    piStack_78 = (int *)0x0;\r\n    uStack_c1 = 0x34;\r\n    puStack_c0 = &uStack_c2;\r\n    uStack_b8 = 1;\r\n    ppiStack_b0 = (int **)&uStack_c1;\r\n    uStack_a8 = 1;\r\n    uStack_98 = 0xffffffffffffffff;\r\n    uStack_8c = _UNK_142b0ff40;\r\n    uStack_84 = _UNK_142b0ff48;\r\n    uStack_7c = 0;\r\n    uStack_7a = 1;\r\n    uVar15 = 0;\r\n    FUN_1418afd20(lVar3 + 0x78,uVar6,&piStack_78,8,0,&puStack_c0,1);\r\n    (**(code **)(lVar3 + 0x388))\r\n              (uVar6,*(undefined8 *)(lVar12 + 0x20),*(undefined8 *)(lVar4 + 0x30),7,\r\n               CONCAT44(uVar15,*(undefined4 *)(param_1[6] + 0x10)),*(undefined8 *)(param_1[6] + 8));\r\n    uStack_a0 = *(undefined8 *)(lVar4 + 0x30);\r\n    uStack_c1 = *(undefined1 *)param_1[7];\r\n    uStack_90 = *puVar5;\r\n    piStack_78 = (int *)0x0;\r\n    uStack_c2 = 0x34;\r\n    puStack_c0 = &uStack_c2;\r\n    uStack_b8 = 1;\r\n    ppiStack_b0 = (int **)&uStack_c1;\r\n    uStack_a8 = 1;\r\n    uStack_98 = 0xffffffffffffffff;\r\n    uStack_8c = uVar8;\r\n    uStack_84 = uVar9;\r\n    uStack_7c = 0;\r\n    uStack_7a = 0;\r\n    FUN_1418afd20(lVar3 + 0x78,uVar6,&piStack_78,8,0,&puStack_c0,1);\r\n    return;\r\n  }\r\ncode_r0x000140c08ab1:\r\n  FUN_1428d9310(&UNK_142b18ba0);\r\n  pcVar7 = (code *)swi(3);\r\n  (*pcVar7)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "1ec963cf16f02d0bc85f836ab61563fc997c4a21226594d31fb235714f8c6021",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1405b9b00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.143Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1405b9b00",
+        "address": "0x1405B9B00",
+        "decompiled_code": "\r\nuint * FUN_1405b9b00(uint *param_1,longlong param_2,uint *param_3,uint *param_4,uint *param_5,\r\n                    undefined8 param_6,undefined8 param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  undefined8 uVar3;\r\n  uint *puVar4;\r\n  uint *puVar5;\r\n  int iVar6;\r\n  undefined8 *puVar7;\r\n  uint *puVar8;\r\n  undefined8 uVar9;\r\n  undefined8 uVar10;\r\n  uint *unaff_R12;\r\n  longlong unaff_R13;\r\n  bool bVar11;\r\n  undefined1 auStack_418 [188];\r\n  char cStack_35c;\r\n  undefined2 uStack_35b;\r\n  undefined1 uStack_359;\r\n  undefined1 auStack_358 [28];\r\n  int iStack_33c;\r\n  int iStack_338;\r\n  int iStack_334;\r\n  uint *apuStack_300 [3];\r\n  uint *puStack_2e8;\r\n  uint *puStack_2e0;\r\n  uint *puStack_2d8;\r\n  uint *puStack_2d0;\r\n  undefined8 uStack_2b8;\r\n  undefined2 uStack_2b0;\r\n  undefined6 uStack_2ae;\r\n  undefined8 uStack_228;\r\n  undefined8 uStack_220;\r\n  uint *puStack_218;\r\n  uint *puStack_210;\r\n  undefined4 uStack_208;\r\n  undefined4 uStack_204;\r\n  undefined4 uStack_200;\r\n  undefined4 uStack_1fc;\r\n  undefined4 uStack_1f8;\r\n  undefined4 uStack_1f4;\r\n  uint uStack_1f0;\r\n  uint uStack_1ec;\r\n  undefined8 uStack_1e8;\r\n  undefined8 uStack_1d8;\r\n  undefined8 uStack_1d0;\r\n  undefined8 uStack_1c8;\r\n  uint uStack_1c0;\r\n  uint uStack_1bc;\r\n  uint *puStack_1b8;\r\n  uint *puStack_1b0;\r\n  uint *puStack_1a8;\r\n  uint *puStack_1a0;\r\n  undefined8 uStack_198;\r\n  undefined8 uStack_190;\r\n  undefined4 uStack_188;\r\n  undefined4 uStack_184;\r\n  uint uStack_180;\r\n  uint uStack_17c;\r\n  undefined8 uStack_178;\r\n  uint *puStack_170;\r\n  uint *puStack_168;\r\n  undefined8 uStack_160;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined8 uStack_148;\r\n  undefined8 uStack_140;\r\n  undefined8 uStack_138;\r\n  uint uStack_130;\r\n  uint uStack_12c;\r\n  uint uStack_128;\r\n  uint uStack_124;\r\n  undefined8 uStack_120;\r\n  char cStack_ac;\r\n  undefined2 uStack_ab;\r\n  undefined1 uStack_a9;\r\n  longlong lStack_a8;\r\n  undefined8 uStack_a0;\r\n  longlong lStack_98;\r\n  undefined4 uStack_90;\r\n  undefined2 uStack_8c;\r\n  undefined1 uStack_8a;\r\n  undefined1 uStack_89;\r\n  uint uStack_88;\r\n  uint uStack_84;\r\n  uint uStack_80;\r\n  uint uStack_7c;\r\n  undefined8 uStack_78;\r\n  uint *puStack_70;\r\n  uint *puStack_68;\r\n  uint *puStack_60;\r\n  uint *puStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  FUN_140bd5a40(apuStack_300,param_6,param_7);\r\n  if (*param_5 == 0) {\r\n    FUN_1428d9430(&UNK_142a048c2,0x3c,&UNK_142a04900);\r\ncode_r0x0001405ba27b:\r\n    FUN_1428d9430(&UNK_142a04918,0x2e,&UNK_142a04948);\r\ncode_r0x0001405ba293:\r\n    FUN_1428d9430(&UNK_142a04960,0x2f,&UNK_142a04990);\r\ncode_r0x0001405ba2ab:\r\n    FUN_1428d9430(&UNK_142a049a8,0x2e,&UNK_142a049d8);\r\n    puStack_60 = param_5;\r\ncode_r0x0001405ba2c3:\r\n    FUN_1428cd210(puStack_60);\r\ncode_r0x0001405b9ccc:\r\n    FUN_140c81c70(puStack_60);\r\n    uStack_2b8 = uStack_78;\r\n    _uStack_2b0 = CONCAT62(uStack_2ae,0x100);\r\n    puStack_2e8 = (uint *)0x2;\r\n    puStack_2d8 = param_3;\r\n    puStack_2d0 = param_4;\r\n    FUN_140c0da40(&puStack_168,unaff_R13 + 0x18,&puStack_2e8);\r\n    puVar4 = uStack_150;\r\n    puStack_58 = puStack_168;\r\n    if ((char)uStack_124 == '\\x02') {\r\n      puStack_68 = uStack_160;\r\n      puStack_70 = uStack_158;\r\n      puVar8 = (uint *)func_0x000140613c10(0xf,1);\r\n      puVar5 = puStack_60;\r\n      if (puVar8 == (uint *)0x0) {\r\n        FUN_1428d8fe3(1,0xf,&UNK_142a022c8);\r\n        goto code_r0x0001405ba3fa;\r\n      }\r\n      builtin_strncpy((char *)((longlong)puVar8 + 7),\" texture\",8);\r\n      puVar8[0] = 0x4f757047;\r\n      puVar8[1] = 0x20796c6e;\r\n      puStack_218 = (uint *)uStack_78;\r\n      uStack_228 = (uint *)CONCAT44(uStack_84,uStack_88);\r\n      uStack_220._0_4_ = uStack_80;\r\n      uStack_220._4_4_ = uStack_7c;\r\n      if (puStack_58 != (uint *)0xb) {\r\n        uStack_1c8 = uStack_78;\r\n        *(uint **)(param_1 + 2) = puStack_68;\r\n        *(uint **)(param_1 + 4) = puStack_70;\r\n        *(uint **)(param_1 + 6) = puVar4;\r\n        param_1[0xe] = uStack_88;\r\n        param_1[0xf] = uStack_84;\r\n        param_1[0x10] = uStack_80;\r\n        param_1[0x11] = uStack_7c;\r\n        *(undefined8 *)(param_1 + 0x12) = uStack_78;\r\n        *(uint **)param_1 = puStack_58;\r\n        param_1[8] = 0xf;\r\n        param_1[9] = 0;\r\n        *(uint **)(param_1 + 10) = puVar8;\r\n        param_1[0xc] = 0xf;\r\n        param_1[0xd] = 0;\r\n        FUN_140c81e10();\r\n        LOCK();\r\n        bVar11 = (char)*puVar5 == '\\x01';\r\n        if (bVar11) {\r\n          *(char *)puVar5 = '\\0';\r\n        }\r\n        UNLOCK();\r\n        if (bVar11) {\r\n          return param_1;\r\n        }\r\n        FUN_1428cdb90(puVar5,0);\r\n        return param_1;\r\n      }\r\n      puStack_58 = puStack_68;\r\n      uStack_198 = puVar8;\r\n      puStack_1a8 = puVar4;\r\n      uStack_190 = 0xf;\r\n      puStack_1b0 = puStack_70;\r\n      puStack_1a0 = (uint *)0xf;\r\n    }\r\n    else {\r\n      uStack_228 = (uint *)uStack_138;\r\n      uStack_220._0_4_ = uStack_130;\r\n      uStack_220._4_4_ = uStack_12c;\r\n      puStack_218 = (uint *)CONCAT44(uStack_124,uStack_128);\r\n      uStack_198 = uStack_148;\r\n      puStack_1a8 = uStack_158;\r\n      uStack_190 = uStack_140;\r\n      puStack_1b0 = uStack_160;\r\n      puStack_1a0 = uStack_150;\r\n    }\r\n    puVar4 = puStack_60;\r\n    uStack_1c8 = puStack_218;\r\n    uStack_1d8 = uStack_228;\r\n    puStack_1b8 = puStack_58;\r\n    uStack_188 = (undefined4)uStack_228;\r\n    uStack_184 = uStack_228._4_4_;\r\n    uStack_180 = (uint)uStack_220;\r\n    uStack_17c = uStack_220._4_4_;\r\n    uStack_178 = puStack_218;\r\n    uStack_49 = 1;\r\n    FUN_140c81e10();\r\n    LOCK();\r\n    bVar11 = (char)*puVar4 == '\\x01';\r\n    if (bVar11) {\r\n      *(char *)puVar4 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (!bVar11) {\r\n      uStack_49 = 1;\r\n      FUN_1428cdb90(puVar4,0);\r\n    }\r\n    uStack_49 = 1;\r\n    uVar9 = func_0x0001406d0cb0(&puStack_1b8);\r\n    uStack_49 = 1;\r\n    uVar10 = func_0x0001406868b0(&puStack_1b8);\r\n    iVar6 = (**(code **)(param_2 + 0xe0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,uVar9,uVar10);\r\n    if (iVar6 == 0) {\r\n      puVar7 = *(undefined8 **)(param_2 + 0x648);\r\n      uStack_1e8 = uStack_178;\r\n      uStack_1f8 = uStack_188;\r\n      uStack_1f4 = uStack_184;\r\n      uStack_1f0 = uStack_180;\r\n      uStack_1ec = uStack_17c;\r\n      uStack_208 = (undefined4)uStack_198;\r\n      uStack_204 = uStack_198._4_4_;\r\n      uStack_200 = (undefined4)uStack_190;\r\n      uStack_1fc = uStack_190._4_4_;\r\n      puStack_218 = puStack_1a8;\r\n      puStack_210 = puStack_1a0;\r\n      uStack_228 = puStack_1b8;\r\n      uStack_220 = puStack_1b0;\r\n      uStack_1d8 = *(undefined8 *)param_5;\r\n      uStack_1d0 = *(undefined8 *)(param_5 + 2);\r\n      uStack_1c8 = *(undefined8 *)(param_5 + 4);\r\n      uStack_1c0 = param_5[6];\r\n      uStack_1bc = param_5[7];\r\n      uStack_49 = 0;\r\n      FUN_140bdc2d0(&puStack_168,param_3,param_4,unaff_R12,param_2 + 0x78,&uStack_228,&uStack_1d8);\r\n      if (cStack_ac == '\\x03') {\r\n        *(ulonglong *)(param_1 + 0x10) = CONCAT44(uStack_124,uStack_128);\r\n        *(undefined8 *)(param_1 + 0x12) = uStack_120;\r\n        *(undefined8 *)(param_1 + 0xc) = uStack_138;\r\n        *(ulonglong *)(param_1 + 0xe) = CONCAT44(uStack_12c,uStack_130);\r\n        *(uint **)(param_1 + 8) = uStack_148;\r\n        *(undefined8 *)(param_1 + 10) = uStack_140;\r\n        *(uint **)(param_1 + 4) = uStack_158;\r\n        *(uint **)(param_1 + 6) = uStack_150;\r\n        *(uint **)param_1 = puStack_168;\r\n        *(uint **)(param_1 + 2) = uStack_160;\r\n      }\r\n      else {\r\n        func_0x000142923c00(&puStack_2e8,&puStack_168,0xbc);\r\n        uStack_35b = uStack_ab;\r\n        uStack_359 = uStack_a9;\r\n        func_0x000142923c00(auStack_418,&puStack_2e8,0xbc);\r\n        cStack_35c = cStack_ac;\r\n        uStack_49 = 0;\r\n        lStack_98 = FUN_140bdbd50(puVar7,auStack_418);\r\n        uStack_90 = *(undefined4 *)(lStack_98 + 0xc);\r\n        uStack_8c = *(undefined2 *)(puVar7 + 0x14a);\r\n        uStack_a0 = *puVar7;\r\n        lStack_a8 = lStack_98 + 0x10;\r\n        uStack_8a = 0;\r\n        if (puStack_170 != (uint *)0x0) {\r\n          puStack_2e8 = *(uint **)param_5;\r\n          puStack_2e0 = *(uint **)(param_5 + 2);\r\n          puStack_2d8 = *(uint **)(param_5 + 4);\r\n          puStack_2d0 = *(uint **)(param_5 + 6);\r\n          FUN_140bfe270(&puStack_168,param_2,&puStack_2e8,apuStack_300,&lStack_a8);\r\n          if (puStack_168 != (uint *)0xb) {\r\n            *(undefined8 *)(param_1 + 0x12) = uStack_120;\r\n            param_1[0xe] = uStack_130;\r\n            param_1[0xf] = uStack_12c;\r\n            param_1[0x10] = uStack_128;\r\n            param_1[0x11] = uStack_124;\r\n            param_1[10] = (uint)uStack_140;\r\n            param_1[0xb] = uStack_140._4_4_;\r\n            param_1[0xc] = (uint)uStack_138;\r\n            param_1[0xd] = uStack_138._4_4_;\r\n            param_1[6] = (uint)uStack_150;\r\n            param_1[7] = uStack_150._4_4_;\r\n            param_1[8] = (uint)uStack_148;\r\n            param_1[9] = uStack_148._4_4_;\r\n            param_1[2] = (uint)uStack_160;\r\n            param_1[3] = uStack_160._4_4_;\r\n            param_1[4] = (uint)uStack_158;\r\n            param_1[5] = uStack_158._4_4_;\r\n            *(uint **)param_1 = puStack_168;\r\n            uStack_49 = 0;\r\n            FUN_140be24b0(&uStack_a0);\r\n            return param_1;\r\n          }\r\n        }\r\n        uVar9 = *(undefined8 *)param_5;\r\n        uVar10 = *(undefined8 *)(param_5 + 2);\r\n        uVar2 = *(undefined8 *)(param_5 + 4);\r\n        uVar3 = *(undefined8 *)(param_5 + 6);\r\n        *(undefined8 *)(param_1 + 2) = uStack_a0;\r\n        *(longlong *)(param_1 + 4) = lStack_98;\r\n        *(undefined8 *)(param_1 + 0xe) = uVar3;\r\n        *(undefined8 *)(param_1 + 10) = uVar10;\r\n        *(undefined8 *)(param_1 + 0xc) = uVar2;\r\n        *(ulonglong *)(param_1 + 6) =\r\n             CONCAT17(uStack_89,CONCAT16(uStack_8a,CONCAT24(uStack_8c,uStack_90)));\r\n        *(undefined8 *)(param_1 + 8) = uVar9;\r\n        param_1[0] = 0xb;\r\n        param_1[1] = 0;\r\n      }\r\n      return param_1;\r\n    }\r\n  }\r\n  else {\r\n    if (apuStack_300[0] != (uint *)0x0) {\r\n      *param_5 = *param_5 | 2;\r\n    }\r\n    FUN_140bd5ed0(auStack_358,param_5,apuStack_300[0] != (uint *)0x0);\r\n    unaff_R12 = apuStack_300[0];\r\n    if (iStack_33c == 0) goto code_r0x0001405ba27b;\r\n    if (iStack_338 == 0) goto code_r0x0001405ba293;\r\n    if (iStack_334 == 0) goto code_r0x0001405ba2ab;\r\n    puStack_170 = apuStack_300[0];\r\n    iVar6 = (**(code **)(param_2 + 0x1a0))\r\n                      (*(undefined8 *)(param_2 + 0x640),auStack_358,0,&puStack_168);\r\n    unaff_R12 = puStack_168;\r\n    if (iVar6 == 0) {\r\n      puVar7 = (undefined8 *)func_0x000140bf8960(param_2);\r\n      if (puVar7 != (undefined8 *)0x0) {\r\n        puStack_58 = param_1;\r\n        FUN_140d797d0(&puStack_2e8,param_3,param_4);\r\n        puVar4 = puStack_2d8;\r\n        if (!SBORROW8(0,(longlong)puStack_2e8)) {\r\n          uStack_158 = puStack_2d8;\r\n          uStack_150 = puStack_2d0;\r\n          puStack_168 = puStack_2e8;\r\n          uStack_160 = puStack_2e0;\r\n          FUN_1428d9760(&UNK_142a02228,0x2b,&puStack_168,&UNK_142a02208,&UNK_142a04a18);\r\n          goto code_r0x0001405ba3fa;\r\n        }\r\n        puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,0x3b9cbe00);\r\n        uStack_160 = (uint *)0x0;\r\n        uStack_158 = (uint *)CONCAT44(uStack_158._4_4_,10);\r\n        uStack_150 = unaff_R12;\r\n        uStack_148 = puStack_2e0;\r\n        iVar6 = (*(code *)*puVar7)(puVar7[8],&puStack_168);\r\n        param_1 = puStack_58;\r\n        if (iVar6 != 0) {\r\n          puStack_60 = puStack_2e0;\r\n          puStack_58 = puVar4;\r\n          puStack_2e8 = (uint *)CONCAT44(puStack_2e8._4_4_,iVar6);\r\n          FUN_1428d9760(&UNK_142a04a30,0x1b,&puStack_2e8,&UNK_142a021e8,&UNK_142a04a50);\r\n          goto code_r0x0001405ba3fa;\r\n        }\r\n        *(char *)puStack_2e0 = '\\0';\r\n        if (puVar4 != (uint *)0x0) {\r\n          func_0x000140613c20(puStack_2e0,puVar4,1);\r\n        }\r\n      }\r\n      (**(code **)(param_2 + 0xf0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,&uStack_88);\r\n      unaff_R13 = *(longlong *)(param_2 + 0x678);\r\n      puStack_60 = (uint *)(unaff_R13 + 0x10);\r\n      LOCK();\r\n      bVar11 = *(char *)(unaff_R13 + 0x10) == '\\0';\r\n      if (bVar11) {\r\n        *(char *)(unaff_R13 + 0x10) = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      if (!bVar11) goto code_r0x0001405ba2c3;\r\n      goto code_r0x0001405b9ccc;\r\n    }\r\n    puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,iVar6);\r\n    iVar6 = FUN_1428d9760(&UNK_142a049f0,0xc,&puStack_168,&UNK_142a021e8,&UNK_142a04a00);\r\n  }\r\n  puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,iVar6);\r\n  uStack_49 = 1;\r\n  FUN_1428d9760(&UNK_142a04a68,0x11,&puStack_168,&UNK_142a021e8,&UNK_142a04a80);\r\ncode_r0x0001405ba3fa:\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "7b6291b3290405c40c11178b6ffcdec3d4dfe84fa630accc926cdb1cb058f96a",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1416a6700"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:35.093Z",
+      "completed_at": "2026-10-12T10:30:40.143Z",
+      "source": "actual_mcp_call",
+      "cache_key": "eb8eeea22cf5cf662b990bdcc262400aa93c895e3d5e95d6c48aaee704e23fbc",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1416a6700",
+        "address": "0x1416A6700",
+        "decompiled_code": "\r\nuint * FUN_1416a6700(uint *param_1,longlong param_2,uint *param_3,uint *param_4,uint *param_5,\r\n                    undefined8 param_6,undefined8 param_7)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  undefined8 uVar3;\r\n  uint *puVar4;\r\n  uint *puVar5;\r\n  int iVar6;\r\n  undefined8 *puVar7;\r\n  uint *puVar8;\r\n  undefined8 uVar9;\r\n  undefined8 uVar10;\r\n  uint *unaff_R12;\r\n  longlong unaff_R13;\r\n  bool bVar11;\r\n  undefined1 auStack_418 [188];\r\n  char cStack_35c;\r\n  undefined2 uStack_35b;\r\n  undefined1 uStack_359;\r\n  undefined1 auStack_358 [28];\r\n  int iStack_33c;\r\n  int iStack_338;\r\n  int iStack_334;\r\n  uint *apuStack_300 [3];\r\n  uint *puStack_2e8;\r\n  uint *puStack_2e0;\r\n  uint *puStack_2d8;\r\n  uint *puStack_2d0;\r\n  undefined8 uStack_2b8;\r\n  undefined2 uStack_2b0;\r\n  undefined6 uStack_2ae;\r\n  undefined8 uStack_228;\r\n  undefined8 uStack_220;\r\n  uint *puStack_218;\r\n  uint *puStack_210;\r\n  undefined4 uStack_208;\r\n  undefined4 uStack_204;\r\n  undefined4 uStack_200;\r\n  undefined4 uStack_1fc;\r\n  undefined4 uStack_1f8;\r\n  undefined4 uStack_1f4;\r\n  uint uStack_1f0;\r\n  uint uStack_1ec;\r\n  undefined8 uStack_1e8;\r\n  undefined8 uStack_1d8;\r\n  undefined8 uStack_1d0;\r\n  undefined8 uStack_1c8;\r\n  uint uStack_1c0;\r\n  uint uStack_1bc;\r\n  uint *puStack_1b8;\r\n  uint *puStack_1b0;\r\n  uint *puStack_1a8;\r\n  uint *puStack_1a0;\r\n  undefined8 uStack_198;\r\n  undefined8 uStack_190;\r\n  undefined4 uStack_188;\r\n  undefined4 uStack_184;\r\n  uint uStack_180;\r\n  uint uStack_17c;\r\n  undefined8 uStack_178;\r\n  uint *puStack_170;\r\n  uint *puStack_168;\r\n  undefined8 uStack_160;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined8 uStack_148;\r\n  undefined8 uStack_140;\r\n  undefined8 uStack_138;\r\n  uint uStack_130;\r\n  uint uStack_12c;\r\n  uint uStack_128;\r\n  uint uStack_124;\r\n  undefined8 uStack_120;\r\n  char cStack_ac;\r\n  undefined2 uStack_ab;\r\n  undefined1 uStack_a9;\r\n  longlong lStack_a8;\r\n  undefined8 uStack_a0;\r\n  longlong lStack_98;\r\n  undefined4 uStack_90;\r\n  undefined2 uStack_8c;\r\n  undefined1 uStack_8a;\r\n  undefined1 uStack_89;\r\n  uint uStack_88;\r\n  uint uStack_84;\r\n  uint uStack_80;\r\n  uint uStack_7c;\r\n  undefined8 uStack_78;\r\n  uint *puStack_70;\r\n  uint *puStack_68;\r\n  uint *puStack_60;\r\n  uint *puStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  FUN_140bd5a40(apuStack_300,param_6,param_7);\r\n  if (*param_5 == 0) {\r\n    FUN_1428d9430(&UNK_142c88dda,0x3c,&UNK_142c88e18);\r\ncode_r0x0001416a6e7b:\r\n    FUN_1428d9430(&UNK_142c88e30,0x2e,&UNK_142c88e60);\r\ncode_r0x0001416a6e93:\r\n    FUN_1428d9430(&UNK_142c88e78,0x2f,&UNK_142c88ea8);\r\ncode_r0x0001416a6eab:\r\n    FUN_1428d9430(&UNK_142c88ec0,0x2e,&UNK_142c88ef0);\r\n    puStack_60 = param_5;\r\ncode_r0x0001416a6ec3:\r\n    FUN_1428cd210(puStack_60);\r\ncode_r0x0001416a68cc:\r\n    FUN_140c81c70(puStack_60);\r\n    uStack_2b8 = uStack_78;\r\n    _uStack_2b0 = CONCAT62(uStack_2ae,0x100);\r\n    puStack_2e8 = (uint *)0x2;\r\n    puStack_2d8 = param_3;\r\n    puStack_2d0 = param_4;\r\n    FUN_140c0da40(&puStack_168,unaff_R13 + 0x18,&puStack_2e8);\r\n    puVar4 = uStack_150;\r\n    puStack_58 = puStack_168;\r\n    if ((char)uStack_124 == '\\x02') {\r\n      puStack_68 = uStack_160;\r\n      puStack_70 = uStack_158;\r\n      puVar8 = (uint *)func_0x000140613c10(0xf,1);\r\n      puVar5 = puStack_60;\r\n      if (puVar8 == (uint *)0x0) {\r\n        FUN_1428d8fe3(1,0xf,&UNK_142c88780);\r\n        goto code_r0x0001416a6ffa;\r\n      }\r\n      builtin_strncpy((char *)((longlong)puVar8 + 7),\" texture\",8);\r\n      puVar8[0] = 0x4f757047;\r\n      puVar8[1] = 0x20796c6e;\r\n      puStack_218 = (uint *)uStack_78;\r\n      uStack_228 = (uint *)CONCAT44(uStack_84,uStack_88);\r\n      uStack_220._0_4_ = uStack_80;\r\n      uStack_220._4_4_ = uStack_7c;\r\n      if (puStack_58 != (uint *)0xb) {\r\n        uStack_1c8 = uStack_78;\r\n        *(uint **)(param_1 + 2) = puStack_68;\r\n        *(uint **)(param_1 + 4) = puStack_70;\r\n        *(uint **)(param_1 + 6) = puVar4;\r\n        param_1[0xe] = uStack_88;\r\n        param_1[0xf] = uStack_84;\r\n        param_1[0x10] = uStack_80;\r\n        param_1[0x11] = uStack_7c;\r\n        *(undefined8 *)(param_1 + 0x12) = uStack_78;\r\n        *(uint **)param_1 = puStack_58;\r\n        param_1[8] = 0xf;\r\n        param_1[9] = 0;\r\n        *(uint **)(param_1 + 10) = puVar8;\r\n        param_1[0xc] = 0xf;\r\n        param_1[0xd] = 0;\r\n        FUN_140c81e10();\r\n        LOCK();\r\n        bVar11 = (char)*puVar5 == '\\x01';\r\n        if (bVar11) {\r\n          *(char *)puVar5 = '\\0';\r\n        }\r\n        UNLOCK();\r\n        if (bVar11) {\r\n          return param_1;\r\n        }\r\n        FUN_1428cdb90(puVar5,0);\r\n        return param_1;\r\n      }\r\n      puStack_58 = puStack_68;\r\n      uStack_198 = puVar8;\r\n      puStack_1a8 = puVar4;\r\n      uStack_190 = 0xf;\r\n      puStack_1b0 = puStack_70;\r\n      puStack_1a0 = (uint *)0xf;\r\n    }\r\n    else {\r\n      uStack_228 = (uint *)uStack_138;\r\n      uStack_220._0_4_ = uStack_130;\r\n      uStack_220._4_4_ = uStack_12c;\r\n      puStack_218 = (uint *)CONCAT44(uStack_124,uStack_128);\r\n      uStack_198 = uStack_148;\r\n      puStack_1a8 = uStack_158;\r\n      uStack_190 = uStack_140;\r\n      puStack_1b0 = uStack_160;\r\n      puStack_1a0 = uStack_150;\r\n    }\r\n    puVar4 = puStack_60;\r\n    uStack_1c8 = puStack_218;\r\n    uStack_1d8 = uStack_228;\r\n    puStack_1b8 = puStack_58;\r\n    uStack_188 = (undefined4)uStack_228;\r\n    uStack_184 = uStack_228._4_4_;\r\n    uStack_180 = (uint)uStack_220;\r\n    uStack_17c = uStack_220._4_4_;\r\n    uStack_178 = puStack_218;\r\n    uStack_49 = 1;\r\n    FUN_140c81e10();\r\n    LOCK();\r\n    bVar11 = (char)*puVar4 == '\\x01';\r\n    if (bVar11) {\r\n      *(char *)puVar4 = '\\0';\r\n    }\r\n    UNLOCK();\r\n    if (!bVar11) {\r\n      uStack_49 = 1;\r\n      FUN_1428cdb90(puVar4,0);\r\n    }\r\n    uStack_49 = 1;\r\n    uVar9 = func_0x0001406d0cb0(&puStack_1b8);\r\n    uStack_49 = 1;\r\n    uVar10 = func_0x0001406868b0(&puStack_1b8);\r\n    iVar6 = (**(code **)(param_2 + 0xe0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,uVar9,uVar10);\r\n    if (iVar6 == 0) {\r\n      puVar7 = *(undefined8 **)(param_2 + 0x648);\r\n      uStack_1e8 = uStack_178;\r\n      uStack_1f8 = uStack_188;\r\n      uStack_1f4 = uStack_184;\r\n      uStack_1f0 = uStack_180;\r\n      uStack_1ec = uStack_17c;\r\n      uStack_208 = (undefined4)uStack_198;\r\n      uStack_204 = uStack_198._4_4_;\r\n      uStack_200 = (undefined4)uStack_190;\r\n      uStack_1fc = uStack_190._4_4_;\r\n      puStack_218 = puStack_1a8;\r\n      puStack_210 = puStack_1a0;\r\n      uStack_228 = puStack_1b8;\r\n      uStack_220 = puStack_1b0;\r\n      uStack_1d8 = *(undefined8 *)param_5;\r\n      uStack_1d0 = *(undefined8 *)(param_5 + 2);\r\n      uStack_1c8 = *(undefined8 *)(param_5 + 4);\r\n      uStack_1c0 = param_5[6];\r\n      uStack_1bc = param_5[7];\r\n      uStack_49 = 0;\r\n      FUN_140bdc2d0(&puStack_168,param_3,param_4,unaff_R12,param_2 + 0x78,&uStack_228,&uStack_1d8);\r\n      if (cStack_ac == '\\x03') {\r\n        *(ulonglong *)(param_1 + 0x10) = CONCAT44(uStack_124,uStack_128);\r\n        *(undefined8 *)(param_1 + 0x12) = uStack_120;\r\n        *(undefined8 *)(param_1 + 0xc) = uStack_138;\r\n        *(ulonglong *)(param_1 + 0xe) = CONCAT44(uStack_12c,uStack_130);\r\n        *(uint **)(param_1 + 8) = uStack_148;\r\n        *(undefined8 *)(param_1 + 10) = uStack_140;\r\n        *(uint **)(param_1 + 4) = uStack_158;\r\n        *(uint **)(param_1 + 6) = uStack_150;\r\n        *(uint **)param_1 = puStack_168;\r\n        *(uint **)(param_1 + 2) = uStack_160;\r\n      }\r\n      else {\r\n        func_0x000142923c00(&puStack_2e8,&puStack_168,0xbc);\r\n        uStack_35b = uStack_ab;\r\n        uStack_359 = uStack_a9;\r\n        func_0x000142923c00(auStack_418,&puStack_2e8,0xbc);\r\n        cStack_35c = cStack_ac;\r\n        uStack_49 = 0;\r\n        lStack_98 = FUN_140bdbd50(puVar7,auStack_418);\r\n        uStack_90 = *(undefined4 *)(lStack_98 + 0xc);\r\n        uStack_8c = *(undefined2 *)(puVar7 + 0x14a);\r\n        uStack_a0 = *puVar7;\r\n        lStack_a8 = lStack_98 + 0x10;\r\n        uStack_8a = 0;\r\n        if (puStack_170 != (uint *)0x0) {\r\n          puStack_2e8 = *(uint **)param_5;\r\n          puStack_2e0 = *(uint **)(param_5 + 2);\r\n          puStack_2d8 = *(uint **)(param_5 + 4);\r\n          puStack_2d0 = *(uint **)(param_5 + 6);\r\n          FUN_140bfe270(&puStack_168,param_2,&puStack_2e8,apuStack_300,&lStack_a8);\r\n          if (puStack_168 != (uint *)0xb) {\r\n            *(undefined8 *)(param_1 + 0x12) = uStack_120;\r\n            param_1[0xe] = uStack_130;\r\n            param_1[0xf] = uStack_12c;\r\n            param_1[0x10] = uStack_128;\r\n            param_1[0x11] = uStack_124;\r\n            param_1[10] = (uint)uStack_140;\r\n            param_1[0xb] = uStack_140._4_4_;\r\n            param_1[0xc] = (uint)uStack_138;\r\n            param_1[0xd] = uStack_138._4_4_;\r\n            param_1[6] = (uint)uStack_150;\r\n            param_1[7] = uStack_150._4_4_;\r\n            param_1[8] = (uint)uStack_148;\r\n            param_1[9] = uStack_148._4_4_;\r\n            param_1[2] = (uint)uStack_160;\r\n            param_1[3] = uStack_160._4_4_;\r\n            param_1[4] = (uint)uStack_158;\r\n            param_1[5] = uStack_158._4_4_;\r\n            *(uint **)param_1 = puStack_168;\r\n            uStack_49 = 0;\r\n            FUN_140be24b0(&uStack_a0);\r\n            return param_1;\r\n          }\r\n        }\r\n        uVar9 = *(undefined8 *)param_5;\r\n        uVar10 = *(undefined8 *)(param_5 + 2);\r\n        uVar2 = *(undefined8 *)(param_5 + 4);\r\n        uVar3 = *(undefined8 *)(param_5 + 6);\r\n        *(undefined8 *)(param_1 + 2) = uStack_a0;\r\n        *(longlong *)(param_1 + 4) = lStack_98;\r\n        *(undefined8 *)(param_1 + 0xe) = uVar3;\r\n        *(undefined8 *)(param_1 + 10) = uVar10;\r\n        *(undefined8 *)(param_1 + 0xc) = uVar2;\r\n        *(ulonglong *)(param_1 + 6) =\r\n             CONCAT17(uStack_89,CONCAT16(uStack_8a,CONCAT24(uStack_8c,uStack_90)));\r\n        *(undefined8 *)(param_1 + 8) = uVar9;\r\n        param_1[0] = 0xb;\r\n        param_1[1] = 0;\r\n      }\r\n      return param_1;\r\n    }\r\n  }\r\n  else {\r\n    if (apuStack_300[0] != (uint *)0x0) {\r\n      *param_5 = *param_5 | 2;\r\n    }\r\n    FUN_140bd5ed0(auStack_358,param_5,apuStack_300[0] != (uint *)0x0);\r\n    unaff_R12 = apuStack_300[0];\r\n    if (iStack_33c == 0) goto code_r0x0001416a6e7b;\r\n    if (iStack_338 == 0) goto code_r0x0001416a6e93;\r\n    if (iStack_334 == 0) goto code_r0x0001416a6eab;\r\n    puStack_170 = apuStack_300[0];\r\n    iVar6 = (**(code **)(param_2 + 0x1a0))\r\n                      (*(undefined8 *)(param_2 + 0x640),auStack_358,0,&puStack_168);\r\n    unaff_R12 = puStack_168;\r\n    if (iVar6 == 0) {\r\n      puVar7 = (undefined8 *)func_0x000140bf8960(param_2);\r\n      if (puVar7 != (undefined8 *)0x0) {\r\n        puStack_58 = param_1;\r\n        FUN_140d797d0(&puStack_2e8,param_3,param_4);\r\n        puVar4 = puStack_2d8;\r\n        if (!SBORROW8(0,(longlong)puStack_2e8)) {\r\n          uStack_158 = puStack_2d8;\r\n          uStack_150 = puStack_2d0;\r\n          puStack_168 = puStack_2e8;\r\n          uStack_160 = puStack_2e0;\r\n          FUN_1428d9760(&UNK_142c88708,0x2b,&puStack_168,&UNK_142c886e8,&UNK_142c88f30);\r\n          goto code_r0x0001416a6ffa;\r\n        }\r\n        puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,0x3b9cbe00);\r\n        uStack_160 = (uint *)0x0;\r\n        uStack_158 = (uint *)CONCAT44(uStack_158._4_4_,10);\r\n        uStack_150 = unaff_R12;\r\n        uStack_148 = puStack_2e0;\r\n        iVar6 = (*(code *)*puVar7)(puVar7[8],&puStack_168);\r\n        param_1 = puStack_58;\r\n        if (iVar6 != 0) {\r\n          puStack_60 = puStack_2e0;\r\n          puStack_58 = puVar4;\r\n          puStack_2e8 = (uint *)CONCAT44(puStack_2e8._4_4_,iVar6);\r\n          FUN_1428d9760(&UNK_142c88f48,0x1b,&puStack_2e8,&UNK_142c886c8,&UNK_142c88f68);\r\n          goto code_r0x0001416a6ffa;\r\n        }\r\n        *(char *)puStack_2e0 = '\\0';\r\n        if (puVar4 != (uint *)0x0) {\r\n          func_0x000140613c20(puStack_2e0,puVar4,1);\r\n        }\r\n      }\r\n      (**(code **)(param_2 + 0xf0))(*(undefined8 *)(param_2 + 0x640),unaff_R12,&uStack_88);\r\n      unaff_R13 = *(longlong *)(param_2 + 0x678);\r\n      puStack_60 = (uint *)(unaff_R13 + 0x10);\r\n      LOCK();\r\n      bVar11 = *(char *)(unaff_R13 + 0x10) == '\\0';\r\n      if (bVar11) {\r\n        *(char *)(unaff_R13 + 0x10) = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      if (!bVar11) goto code_r0x0001416a6ec3;\r\n      goto code_r0x0001416a68cc;\r\n    }\r\n    puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,iVar6);\r\n    iVar6 = FUN_1428d9760(&UNK_142c88f08,0xc,&puStack_168,&UNK_142c886c8,&UNK_142c88f18);\r\n  }\r\n  puStack_168 = (uint *)CONCAT44(puStack_168._4_4_,iVar6);\r\n  uStack_49 = 1;\r\n  FUN_1428d9760(&UNK_142c88f80,0x11,&puStack_168,&UNK_142c886c8,&UNK_142c88f98);\r\ncode_r0x0001416a6ffa:\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "19aea49d66d18aa1c2e7174a80bcf3a9517221feb03a57bd7bceb36fc331b6bd",
+      "ok": true
+    },
+    {
+      "index": 3,
+      "tool": "close_database",
+      "args": {
+        "database": "newtexbuf_l2",
+        "save": false
+      },
+      "cache_key": "6b8160855ed4ed9a5fbb9f0d1db129d532b2cc08c1badf9629745b302361cb04",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:30:40.147Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newtexbuf_l2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newtexbuf_l2"
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:30:40.564Z",
+      "ok": true,
+      "result_sha256": "9fe4019aa8f0e27a4e62bacb9e329eff7d9dba44d8de7daa439ab1c2d8fa3399"
+    }
+  ],
+  "cleanup": [],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required"
+    }
+  ],
+  "ok": true,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "job_sha256": "ba138fd90cb0edd971e958e8831a1706e64de28a098ac65f680c2b67b804c57e",
+  "actual_server": {
+    "name": "Ghidra",
+    "version": "3.4.8"
+  },
+  "server_capabilities": {
+    "experimental": {},
+    "logging": {},
+    "prompts": {
+      "listChanged": false
+    },
+    "resources": {
+      "subscribe": false,
+      "listChanged": false
+    },
+    "tools": {
+      "listChanged": true
+    },
+    "extensions": {
+      "io.modelcontextprotocol/ui": {}
+    }
+  },
+  "catalog": [
+    {
+      "tools": [
+        {
+          "name": "close_database",
+          "title": "Close Database",
+          "description": "Close a database and terminate its worker process.\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. When other\nsessions still use the DB, detaches this session but keeps the\nworker alive.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "save": {
+                "default": true,
+                "type": "boolean"
+              },
+              "force": {
+                "default": false,
+                "type": "boolean"
+              },
+              "database": {
+                "default": "",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Close Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "save_database",
+          "title": "Save Database",
+          "description": "Save the current database to disk (may take minutes for large DBs).\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. Progress\nnotifications are sent every 5s during long saves.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "outfile": {
+                "default": "",
+                "type": "string"
+              },
+              "flags": {
+                "default": -1,
+                "type": "integer"
+              },
+              "force": {
+                "default": false,
+                "type": "boolean"
+              },
+              "database": {
+                "default": "",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Save Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "list_databases",
+          "title": "List Databases",
+          "description": "List all open databases with metadata (includes opening/analyzing status).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "List Databases"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "wait_for_analysis",
+          "title": "Wait for Analysis",
+          "description": "Block until database(s) finish opening and optional auto-analysis.\n\n**Single:** pass ``database`` to wait for one DB.\n**Multi:** pass ``databases`` list — returns when **at least one**\nis ready. Work on the ready one, call again for the rest.\n\nWhile analysis runs, the backend thread is blocked — tool calls queue.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "default": "",
+                "type": "string",
+                "description": "Single database ID to wait for."
+              },
+              "databases": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "List of database IDs (returns when first is ready)."
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Wait for Analysis"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "list_targets",
+          "title": "List Targets",
+          "description": "List available targets (processors, loaders, languages, etc.).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "List Targets"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "open_database",
+          "title": "Open Database",
+          "description": "Open a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\n\nAn explicit ``database_id`` always opens a worker of its own, so\ndistinct ids open the *same* file several times and let those\nworkers analyze it concurrently (up to the configured maximum).\nWithout ``database_id``, re-opening the same file returns the\nexisting worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "type": "string",
+                "description": "Path to the binary file."
+              },
+              "run_auto_analysis": {
+                "default": false,
+                "type": "boolean",
+                "description": "Run Ghidra auto-analysis after opening."
+              },
+              "keep_open": {
+                "default": true,
+                "type": "boolean",
+                "description": "Keep other open databases (default True)."
+              },
+              "database_id": {
+                "default": "",
+                "type": "string",
+                "description": "Custom ID (must match [a-z][a-z0-9_]{0,31}).\nReusing an id that is already open is rejected; a new id\nfor an already-open path opens an additional worker."
+              },
+              "force_new": {
+                "default": false,
+                "type": "boolean",
+                "description": "Delete existing project and start fresh. With no\ndatabase_id it replaces the path's worker; it does not by\nitself create a second one."
+              },
+              "language": {
+                "default": "",
+                "type": "string",
+                "description": "Ghidra language ID (e.g. ``x86:LE:64:default``,\n      ``ARM:LE:32:v8``). Auto-detected when omitted.\n      Use list_targets to see options."
+              },
+              "compiler_spec": {
+                "default": "",
+                "type": "string",
+                "description": "Ghidra compiler spec (e.g. ``gcc``,\n           ``windows``). Auto-detected when omitted."
+              }
+            },
+            "required": [
+              "file_path"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Open Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "set_comment",
+          "title": "Set Comment",
+          "description": "Set a comment at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "comment": {
+                "type": "string",
+                "description": "Comment text (empty string to clear)."
+              },
+              "comment_type": {
+                "default": "eol",
+                "type": "string",
+                "description": "One of \"eol\", \"pre\", \"post\", \"plate\", \"repeatable\"."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "comment",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "comment_type": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "comment_type",
+              "comment",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "set_decompiler_comment",
+          "title": "Set Decompiler Comment",
+          "description": "Set a pre-comment at an address (visible in decompiler output).\n\nThis sets a PRE comment, which Ghidra's decompiler renders\nabove the corresponding line in the pseudocode.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "comment",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "comment_type": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "comment_type",
+              "comment",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "comments",
+                "decompiler"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_database_info",
+          "title": "Get Database Info",
+          "description": "Get metadata about the currently open database.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "description": "Path to the binary.",
+                "type": "string"
+              },
+              "file_type": {
+                "description": "File format.",
+                "type": "string"
+              },
+              "processor": {
+                "description": "Processor/language.",
+                "type": "string"
+              },
+              "compiler_spec": {
+                "description": "Compiler specification.",
+                "type": "string"
+              },
+              "bitness": {
+                "description": "Address size in bits.",
+                "type": "integer"
+              },
+              "endian": {
+                "description": "Byte order (big/little).",
+                "type": "string"
+              },
+              "min_address": {
+                "description": "Minimum address (hex).",
+                "type": "string"
+              },
+              "max_address": {
+                "description": "Maximum address (hex).",
+                "type": "string"
+              },
+              "image_base": {
+                "description": "Image base address (hex).",
+                "type": "string"
+              },
+              "function_count": {
+                "description": "Number of functions.",
+                "type": "integer"
+              },
+              "segment_count": {
+                "description": "Number of memory blocks.",
+                "type": "integer"
+              },
+              "entry_point_count": {
+                "description": "Number of entry points.",
+                "type": "integer"
+              },
+              "capabilities": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "description": "Available capabilities.",
+                "type": "object"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "file_path",
+              "file_type",
+              "processor",
+              "compiler_spec",
+              "bitness",
+              "endian",
+              "min_address",
+              "max_address",
+              "image_base",
+              "function_count",
+              "segment_count",
+              "entry_point_count",
+              "capabilities"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "database"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_functions",
+          "title": "List Functions",
+          "description": "List all functions in the database, paginated with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "decompile_function",
+          "title": "Decompile Function",
+          "description": "Decompile a function to C pseudocode using Ghidra's decompiler.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "function_name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "decompiled_code": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "function_name",
+              "address",
+              "decompiled_code"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "decompiler",
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "disassemble_function",
+          "title": "Disassemble Function",
+          "description": "Disassemble a function into individual instructions.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "function_name": {
+                "type": "string"
+              },
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              },
+              "instruction_count": {
+                "type": "integer"
+              },
+              "instructions": {
+                "items": {
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "bytes": {
+                      "type": "string"
+                    },
+                    "mnemonic": {
+                      "type": "string"
+                    },
+                    "operands": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "bytes",
+                    "mnemonic",
+                    "operands"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "function_name",
+              "start",
+              "end",
+              "instruction_count",
+              "instructions"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "rename_function",
+          "title": "Rename Function",
+          "description": "Rename a function.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "new_name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "new_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address of the renamed item (hex).",
+                "type": "string"
+              },
+              "old_name": {
+                "description": "Previous name.",
+                "type": "string"
+              },
+              "new_name": {
+                "description": "New name.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "old_name",
+              "new_name"
+            ],
+            "description": "Result of a rename operation."
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_names",
+          "title": "List Names",
+          "description": "List all named locations, paginated with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "names"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_strings",
+          "title": "Get Strings",
+          "description": "Get defined strings from the database with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "min_length": {
+                "default": 4,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "search",
+                "strings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "find_code_by_string",
+          "title": "Find Code By String",
+          "description": "Find code references to strings matching a regex pattern.\n\nCombines string search + xref resolution + function lookup.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 50,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "pattern",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "search",
+                "strings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_structures",
+          "title": "List Structures",
+          "description": "List all structures and unions in the database.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_structure",
+          "title": "Get Structure",
+          "description": "Get detailed structure info including all members.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "is_union": {
+                "type": "boolean"
+              },
+              "category": {
+                "type": "string"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer"
+                    },
+                    "comment": {
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "offset",
+                    "name",
+                    "type",
+                    "size"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "name",
+              "size",
+              "is_union",
+              "category",
+              "members"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "create_structure",
+          "title": "Create Structure",
+          "description": "Create a new structure or union.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "is_union": {
+                "default": false,
+                "type": "boolean"
+              },
+              "size": {
+                "default": 0,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "is_union": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "name",
+              "is_union",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "add_struct_member",
+          "title": "Add Struct Member",
+          "description": "Add a member to a structure.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string",
+                "description": "Name of the structure."
+              },
+              "member_name": {
+                "type": "string",
+                "description": "Name for the new member."
+              },
+              "member_type": {
+                "default": "byte",
+                "type": "string",
+                "description": "C type of the member (e.g. \"int\", \"char *\")."
+              },
+              "offset": {
+                "default": -1,
+                "type": "integer",
+                "description": "Byte offset (-1 to append at end)."
+              },
+              "size": {
+                "default": 0,
+                "type": "integer",
+                "description": "Size in bytes (0 to auto-detect from type)."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "offset",
+              "type",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "retype_struct_member",
+          "title": "Retype Struct Member",
+          "description": "Change the type of a structure member.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "new_type": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "new_type",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "old_type": {
+                "type": "string"
+              },
+              "new_type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "old_type",
+              "new_type",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_type_info",
+          "title": "Get Type Info",
+          "description": "Get type information at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "default": "",
+                "type": "string"
+              },
+              "type_size": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "function_signature": {
+                "default": "",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "set_type",
+          "title": "Set Type",
+          "description": "Apply a data type at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "type_string": {
+                "type": "string",
+                "description": "C type string (e.g. \"int\", \"char *\", \"struct foo\")."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "type_string",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_local_types",
+          "title": "List Local Types",
+          "description": "List locally defined data types.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "parse_type_declaration",
+          "title": "Parse Type Declaration",
+          "description": "Parse a C type declaration and add it to the program's type library.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "declaration": {
+                "type": "string",
+                "description": "C declaration (e.g. \"typedef int DWORD;\" or\n         \"struct point { int x; int y; };\")."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "declaration",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "type_name": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "type_name",
+              "size",
+              "kind",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "apply_type_at_address",
+          "title": "Apply Type At Address",
+          "description": "Apply a named type from the type library at an address.\n\nThe type must already exist (defined via parse_type_declaration\nor present in the program's built-in types).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_xrefs_to",
+          "title": "Get Xrefs To",
+          "description": "Get all cross-references pointing TO an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "xrefs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_xrefs_from",
+          "title": "Get Xrefs From",
+          "description": "Get all cross-references FROM an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "xrefs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "search_tools",
+          "description": "Search hidden tools by regex (pinned tools excluded; use ``.*`` for all).\n\nReturns one-line signatures by default. Use ``detail=\"detailed\"``\nfor parameter schemas, or follow up with ``get_schema(tools=[...])``.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n— direct calls will fail because they are not in the client tool list.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "description": "Regex pattern to match against tool names, descriptions, and tags",
+                "type": "string"
+              },
+              "detail": {
+                "default": "brief",
+                "description": "'brief' (default) for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown, 'full' for complete JSON schemas",
+                "enum": [
+                  "brief",
+                  "detailed",
+                  "full"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "get_schema",
+          "description": "Get parameter schemas for specific tools by name (pinned and hidden).\n\nUse after search_tools or before execute/batch to check parameter\ntypes and return shapes. Pass ``detail=\"full\"`` for complete JSON schemas.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n— direct calls will fail because they are not in the client tool list.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tools": {
+                "description": "Tool names to get schemas for.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "detail": {
+                "default": "detailed",
+                "description": "'brief' for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown (default), 'full' for complete JSON schemas",
+                "enum": [
+                  "brief",
+                  "detailed",
+                  "full"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "tools"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "execute",
+          "description": "Run Python code that chains tool calls. Use `await invoke(name, params)` to call tools; use `return` to produce output.\n\n`database` is auto-injected into every `invoke` — omit it from params. Override per-call with explicit `database` for cross-database work.\n\n## When NOT to use execute\n\n- **Single tool call** → use the **call** meta-tool (or the direct tool if pinned).\n- **N independent calls** → use `batch` (lower overhead, per-item errors).\n  → Otherwise, use the **batch** meta-tool for sequential multi-tool\n    execution with per-item error collection and progress reporting.\n- Check if a tool has a built-in batch parameter first (e.g. get_strings `filters=[...]`).\n\n## When to use execute\n\n**Multi-step pipelines** — chaining one tool's output into another:\n```\ndecomp = await invoke(\"decompile_function\", {\"address\": \"0x1234\"})\naddrs = re.findall(r'sub_([0-9A-Fa-f]+)', decomp[\"pseudocode\"])\nxrefs = [await invoke(\"get_xrefs_to\", {\"address\": f\"0x{a}\"}) for a in addrs]\nreturn {\"decomp\": decomp, \"xrefs\": xrefs}\n```\n\n**Cross-database parallel queries** — use asyncio.gather with explicit `database` params. Same-database calls are serialized by the worker.\n\n## Reference\n\n- **Blocked tools:** open_database, close_database, wait_for_analysis, list_targets, and meta-tools (search_tools, get_schema, execute, batch, call) must be called directly. save_database and list_databases are allowed.\n- **Addresses** are strings: \"0x401000\", \"4010a0\", or symbol names.\n- **filter_pattern** is Python regex — use `re.escape()` for literals.\n- **Available imports:** asyncio, collections, functools, itertools, json, math, operator, re, struct, typing. No FS/network I/O.\n- **Paginated results** have `items`, `total`, `offset`, `limit`, `has_more` — always check `has_more`.\n- Use `get_schema(tools=[...])` to look up parameter names and types.\n- **Return only what you need** — filter before returning to save context.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "description": "Python async code to execute tool calls via invoke(name, arguments)",
+                "type": "string"
+              },
+              "database": {
+                "description": "Database to target (stem ID from open_database). Available as `database` variable in code and auto-injected into invoke params. Individual calls can override by passing `database` explicitly.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "batch",
+          "description": "Run 2+ independent tool calls in a single request with per-item error collection.\n\nPreferred over `execute` for independent calls (no sandbox overhead).\nExamples: decompile/disassemble N functions, rename N symbols, set N\ncomments, fetch N xrefs.\n\nUse `execute` only when chaining one tool's output into another.\n\n`database` is auto-injected into each operation — omit from params.\nOverride per-operation with explicit `database` for cross-DB work.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operations": {
+                "description": "List of tool calls to execute sequentially (max 50).",
+                "items": {
+                  "description": "A single operation in a batch request.",
+                  "properties": {
+                    "tool": {
+                      "description": "Tool name to call.",
+                      "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": true,
+                      "description": "Tool parameters.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "tool"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              "database": {
+                "description": "Database to target (stem ID from open_database). Auto-injected into each operation's params. Individual operations can override by including `database` in their params.",
+                "type": "string"
+              },
+              "stop_on_error": {
+                "default": true,
+                "description": "Stop on first error instead of continuing.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "operations",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "results": {
+                "description": "Per-operation results.",
+                "items": {
+                  "description": "Result of one operation in a batch.",
+                  "properties": {
+                    "index": {
+                      "description": "0-based position in the input list.",
+                      "type": "integer"
+                    },
+                    "tool": {
+                      "description": "Tool that was called.",
+                      "type": "string"
+                    },
+                    "result": {
+                      "default": null,
+                      "description": "Tool result on success, null on error.",
+                      "title": "Result"
+                    },
+                    "error": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Error message if this item failed."
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "tool"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "succeeded": {
+                "description": "Number of successful operations.",
+                "type": "integer"
+              },
+              "failed": {
+                "description": "Number of failed operations.",
+                "type": "integer"
+              },
+              "cancelled": {
+                "default": false,
+                "description": "Whether batch stopped before completing all operations (stop_on_error or client cancellation).",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "results",
+              "succeeded",
+              "failed"
+            ],
+            "description": "Result of a batch execution."
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "call",
+          "description": "Call any tool by name, including hidden tools not in the client tool list.\n\nUse for single hidden-tool calls. For multiple calls, prefer **batch**.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "description": "Tool name to call.",
+                "type": "string"
+              },
+              "arguments": {
+                "additionalProperties": true,
+                "description": "Arguments to pass to the tool.",
+                "type": "object"
+              },
+              "database": {
+                "default": "",
+                "description": "Database to target (stem ID from open_database). Auto-injected into arguments unless already present.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T10:30:40.826Z"
+}

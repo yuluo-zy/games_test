@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "status": "batch_04_started",
+  "identity": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "functions_sha256": "3f2a3653c68d1d8d030eaffc0c3ca4d2887342ac92670e5242fd108bfa2189da",
+    "calls_sha256": "35558cee3398e78837f9296552a9dae51d4b3f9c40cb7c2be6d5c9e96a6143f4",
+    "batch_03_integration_sha256": "bb4feb0726fb6b1ac539e4634122792d21c3abaa1782653d4d52b09da84ef40f"
+  },
+  "packages": {
+    "R6A-device-counters": {
+      "entries": [
+        {
+          "va": "0x140bf2560",
+          "code_size": 24416,
+          "names": [
+            "rhapsody::raw::device::GraphicsDevice::create",
+            "rhapsody::raw::device::GraphicsDevice::create::h76848aa62fb72a7d"
+          ],
+          "work_package": "B-device-resource-creation"
+        }
+      ]
+    },
+    "R6B-record-submit": {
+      "entries": [
+        {
+          "va": "0x1402c1d40",
+          "code_size": 4674,
+          "names": [
+            "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+          ],
+          "work_package": "D-graph-compiler"
+        },
+        {
+          "va": "0x140bebdf0",
+          "code_size": 1547,
+          "names": [
+            "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs",
+            "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs::h96d1f70c007d57d1"
+          ],
+          "work_package": "E-graph-executor"
+        },
+        {
+          "va": "0x140c04e20",
+          "code_size": 11047,
+          "names": [
+            "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+            "rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411"
+          ],
+          "work_package": "C-gpu-lifecycle"
+        }
+      ]
+    },
+    "R6C-pipeline-shader-interfaces": {
+      "shader_root": "D:\\game\\ljxsj_92385\\Tiny Glade\\compiled-shaders",
+      "shader_count": 404,
+      "kinds": {
+        "compute": 170,
+        "raster": 234
+      },
+      "inventory_sha256": "885432bd0c19dbd8f1f9f2af1042761b6ee016a606844ddfae7e8e3b892ad21e"
+    }
+  },
+  "interfaces": [
+    {
+      "from": "R6A-device-counters",
+      "to": "R5B-sequence-domain",
+      "contract": "counter initialization and queue identity establish the legal global u64 bucket key policy"
+    },
+    {
+      "from": "R5A-barrier-record",
+      "to": "R6B-record-submit",
+      "contract": "post-barrier pass recording produces command buffers and submit backend events"
+    },
+    {
+      "from": "R6C-pipeline-shader-interfaces",
+      "to": "country-core passes",
+      "contract": "reflected descriptor/push/stage interfaces identify compatible game pass consumers without reconstructing shader algorithms"
+    }
+  ],
+  "acceptance": {
+    "R6A-device-counters": [
+      "counter producer and initial values are observed or left unknown",
+      "queue identity and collision policy are explicit",
+      "no live Vulkan execution claim"
+    ],
+    "R6B-record-submit": [
+      "record tail and submit boundary produce deterministic backend events",
+      "uncovered indirect pass callbacks remain explicit",
+      "R5A/R5B invariants remain valid"
+    ],
+    "R6C-pipeline-shader-interfaces": [
+      "all shipped shader files enter a deterministic catalog",
+      "interfaces are grouped by reflected signature",
+      "reflection failure and opaque payloads are counted",
+      "shader algorithms are not claimed recovered"
+    ]
+  },
+  "shared_limits": [
+    "PDB void signatures are placeholders",
+    "static evidence does not prove runtime execution",
+    "ash/Vulkan/compiler libraries are reused",
+    "CPU/interface candidates are not image equivalence"
+  ]
+}

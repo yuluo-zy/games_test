@@ -1,0 +1,7 @@
+{
+  "scope":["populate_resources 0x140be7ba0..0x140be8cb8","pre barrier 0x1402c3d00..0x1402c427a","record batch 0x1402c1d40..0x1402c2f82","selected direct callers in workgraph/functions.json and calls.json"],
+  "positive_marker_stores":[{"address":"0x140be878e","expression":"registry.resources[logical].reused=0","path":"ordinary append"},{"address":"0x140be8001","expression":"registry.resources[logical].reused=1","path":"buffer local-map remove returns Some"},{"address":"0x140be80e6","expression":"registry.resources[logical].reused=1","path":"image local-map remove returns Some"}],
+  "registry_reuse_reads":["0x1402c1e92","0x1402c3ee0","0x140be78b0"],
+  "result":"Two marker=1 consumers of local map remove results exist. No insertion into those initially-empty local descriptor maps is observed within population. The upstream producer making removal succeed is not established; this is not a whole-program absence claim.",
+  "limits":["optimized machine code may merge stores","indirect calls and generated Bevy code excluded","global binary search intentionally not treated as proof"]
+}

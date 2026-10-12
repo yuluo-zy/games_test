@@ -1,0 +1,157 @@
+{
+  "status": "passed_candidate_persistent_serial_session",
+  "real_gpu": true,
+  "device": "Intel(R) UHD Graphics 630",
+  "functional_validation": {
+    "callback_failure_poisoned": true,
+    "commands_reused": 2,
+    "failure_timeline_unchanged": true,
+    "frames": [
+      {
+        "command_count": 2,
+        "frame": 1,
+        "pool_hits": [],
+        "readback_passed": true,
+        "resource_count": 2,
+        "sequences": [
+          1,
+          2
+        ],
+        "timeline": 2,
+        "work_token": 2
+      },
+      {
+        "command_count": 2,
+        "frame": 2,
+        "pool_hits": [
+          1
+        ],
+        "readback_passed": true,
+        "resource_count": 2,
+        "sequences": [
+          3,
+          4
+        ],
+        "timeline": 4,
+        "work_token": 2
+      },
+      {
+        "command_count": 2,
+        "frame": 3,
+        "pool_hits": [],
+        "readback_passed": true,
+        "resource_count": 3,
+        "sequences": [
+          5,
+          6
+        ],
+        "timeline": 6,
+        "work_token": 3
+      }
+    ],
+    "limits": [
+      "串行候选session，不证明原游戏并行调度",
+      "失败录制的原完整unwind仍未知；停止后wait_idle清除实际Arc"
+    ],
+    "next_sequence_after_failure": 9,
+    "next_timeline_after_failure": 7,
+    "old_resources_reclaimed": true,
+    "persistent_backend": true,
+    "persistent_chain_and_pool": true,
+    "resize_collected": 2,
+    "resources_after_clear": 0,
+    "same_timeline": true,
+    "status": "passed"
+  },
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--test",
+        "chain",
+        "--test",
+        "temporal"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 7 tests\ntest missing_queue_or_invalid_sync_has_no_begin_submit_or_timeline_reservation ... ok\ntest callback_failure_has_no_submission_or_timeline_allocation ... ok\ntest backend_failure_retains_timeline_reservation_without_receipt ... ok\ntest auxiliary_graph_queue_failure_keeps_reserved_pending_commands_without_receipt ... ok\ntest auxiliary_graph_produces_sequences_external_timeline_batches_and_completion ... ok\ntest declarations_reach_submit_and_completion_without_internal_fixture_inputs ... ok\ntest multiple_batches_use_monotonic_real_sequences ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 12 tests\ntest compile_take_failure_does_not_roll_back_taken_graph ... ok\ntest ownership_option_projection_matches_saved_original_machine_code_oracle ... ok\ntest initial_creation_failure_does_not_insert ... ok\ntest owned_resize_and_clear_release_all_cache_references_once ... ok\ntest export_is_idempotent_and_resize_does_not_reset_pair_parity ... ok\ntest pair_second_failure_keeps_first_and_does_not_flip ... ok\ntest buffer_hit_ignores_requested_descriptor_and_keeps_actual_descriptor ... ok\ntest population_failure_retains_exported_state_installed_before_population ... ok\ntest same_extent_fixed_mismatch_panics_and_wrong_kind_is_error ... ok\ntest same_frame_duplicate_is_error_without_another_import_or_create ... ok\ntest multi_frame_pair_exports_compile_consumer_and_preserves_parity ... ok\ntest texture_resize_replaces_only_after_success_and_retires_previous_owner ... ok\n\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n",
+      "stderr": "   Compiling rhapsody v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.45s\n     Running tests\\chain.rs (reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\deps\\chain-5c41968732789736.exe)\n     Running tests\\temporal.rs (reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\deps\\temporal-7fe04b69f5a09c83.exe)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--test",
+        "chain",
+        "--example",
+        "queue_graph_gpu",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Blocking waiting for file lock on build directory\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.99s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--example",
+        "queue_graph_gpu"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"available_auxiliary_queues\":0,\"bytes\":256,\"consumer_batches\":2,\"consumer_calls\":[{\"fence\":0,\"queue\":2021142090872,\"submits\":[{\"commands\":[2021142982472,2021143023464],\"signal_semaphores\":[2021142980536,2021142980536],\"stype\":4,\"timeline\":{\"signal_values\":[1,2],\"stype\":1000207003,\"wait_values\":[7]},\"wait_semaphores\":[2021142021256],\"wait_stages\":[4096]},{\"commands\":[],\"signal_semaphores\":[],\"stype\":4,\"timeline\":{\"signal_values\":[],\"stype\":1000207003,\"wait_values\":[]},\"wait_semaphores\":[],\"wait_stages\":[]}]},{\"fence\":0,\"queue\":2021142090872,\"submits\":[{\"commands\":[2021143211800,2021143250680],\"signal_semaphores\":[2021142021256,2021142980536,2021142980536],\"stype\":4,\"timeline\":{\"signal_values\":[13,3,4],\"stype\":1000207003,\"wait_values\":[]},\"wait_semaphores\":[],\"wait_stages\":[]},{\"commands\":[],\"signal_semaphores\":[],\"stype\":4,\"timeline\":{\"signal_values\":[],\"stype\":1000207003,\"wait_values\":[]},\"wait_semaphores\":[],\"wait_stages\":[]}]}],\"cross_family_import_without_transfer_rejected\":true,\"device\":\"Intel(R) UHD Graphics 630\",\"external_timeline\":13,\"missing_auxiliary_rejected\":true,\"pattern\":\"11223344\",\"persistent_session\":{\"callback_failure_poisoned\":true,\"commands_reused\":2,\"failure_timeline_unchanged\":true,\"frames\":[{\"command_count\":2,\"frame\":1,\"pool_hits\":[],\"readback_passed\":true,\"resource_count\":2,\"sequences\":[1,2],\"timeline\":2,\"work_token\":2},{\"command_count\":2,\"frame\":2,\"pool_hits\":[1],\"readback_passed\":true,\"resource_count\":2,\"sequences\":[3,4],\"timeline\":4,\"work_token\":2},{\"command_count\":2,\"frame\":3,\"pool_hits\":[],\"readback_passed\":true,\"resource_count\":3,\"sequences\":[5,6],\"timeline\":6,\"work_token\":3}],\"limits\":[\"串行候选session，不证明原游戏并行调度\",\"失败录制的原完整unwind仍未知；停止后wait_idle清除实际Arc\"],\"next_sequence_after_failure\":9,\"next_timeline_after_failure\":7,\"old_resources_reclaimed\":true,\"persistent_backend\":true,\"persistent_chain_and_pool\":true,\"resize_collected\":2,\"resources_after_clear\":0,\"same_timeline\":true,\"status\":\"passed\"},\"producer_calls\":[{\"fence\":0,\"queue\":2021142090872,\"submits\":[{\"commands\":[2021114573560,2021142941656],\"signal_semaphores\":[2021142021256,2021141966168,2021141966168],\"stype\":4,\"timeline\":{\"signal_values\":[7,1,2],\"stype\":1000207003,\"wait_values\":[]},\"wait_semaphores\":[],\"wait_stages\":[]},{\"commands\":[],\"signal_semaphores\":[],\"stype\":4,\"timeline\":{\"signal_values\":[],\"stype\":1000207003,\"wait_values\":[]},\"wait_semaphores\":[],\"wait_stages\":[]}]}],\"real_auxiliary_graph_executed\":false,\"real_gpu\":true,\"status\":\"passed\"}\n",
+      "stderr": "    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on build directory\n   Compiling rhapsody v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.95s\n     Running `reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\queue_graph_gpu.exe`\n"
+    }
+  ],
+  "input_sha256": {
+    "src/rg/executor.rs": "ceed3126e8c8be29d70cfa1439d81cc8dc00bd62c7758b293c46eadb15c229ee",
+    "src/rg/vulkan.rs": "85b372c533e73a00e0020e5cb69b465ee8bbe2f31396acae81dd1f1e25416cca",
+    "tests/chain.rs": "c9857ca3425689b1f14cb059084f244ac3c404d9c18e4af80f4ceea691d2aceb",
+    "examples/queue_graph_gpu.rs": "8634f30958eff0f42806d2a0ff8dc9782cc2741d5621858a3683fd69dff66de6",
+    "scripts/compare_queue_graph.py": "5a5e6b6a2518691a2b396800a56092cb6dc1968c7025df6e984405da9fac7424",
+    "scripts/native_support/queue_entry.py": "60bd2ca4907260f0f5860ba519021f4000af3e07a84769e0cee8c0b93fcdff38",
+    "scripts/native_support/pe_fixture.py": "c22e16837e20e2ae4621da4538d5b9e97c1d0c07a5dbeef8e5fc0184a4631e37",
+    "src/raw/device.rs": "398b3e03049d5feb0d449842d4f8aee7f26a6262a0af79cd1261dd2afd6344e6",
+    "src/raw/submit.rs": "7d1cd10fbdb4d8277c32df49eba77c2870f2a8e69cce256557b342476f67edaa",
+    "src/raw/command_buffer.rs": "35afbee92b39b5c847af11d1d09f3e3888940c28fadc28785b33266a24ff9fa2",
+    "src/raw/managed/lifecycle.rs": "7a880ad4c5d22d304dac2a4fd76d2195a5d08681ad89499d5b4ebb664a631db9",
+    "Cargo.toml": "9a8c16315056b70e28851ba74beecb7a8ffc5f3ec1f09f769efcd83121dce746",
+    "Cargo.lock": "a59c8693a2427a4af95d8e561539c357829350fffdcc317ff5d01f9d70714d0f"
+  },
+  "original_validation_boundary": {
+    "queue_entry": "0x140c04e20",
+    "queue_calls": 5,
+    "queue_mismatches": 0,
+    "persistent_session_whole_original_binary_compared": false
+  },
+  "implemented": [
+    "同backend/device/queue timeline/ExecutionChain/Pool跨帧保留，counter/timeline不会回到1",
+    "frame只clone managed借用，完成后drop借用而保留base",
+    "Pool命中重新发布resolver，实际同token/物理resource复用",
+    "真正completion后CB reset/重录，两个CB跨三帧复用",
+    "resize缓存显式collect_after_completion清掉旧token-map/Pool/Arc，完成前清理被拒绝",
+    "callback失败进入poison，counter不回滚，timeline没有伪分配；停止后GPU wait_idle清掉base实际Arc",
+    "Drop等待待完成帧再clear拥有者；旧owned execute继续可用"
+  ],
+  "limits": [
+    "串行session是可运行候选策略，不证明原游戏并行多帧/多队列调度",
+    "真实辅助队列数量0，未伪造硬件aux成功",
+    "原callback panic/unwind完整释放顺序未知，失败录制bucket作为停态审计状态直到session销毁；清理只保证完成后的实际Arc释放",
+    "外部import默认primary family；跨队列族无release/acquire计划明确拒绝",
+    "显式collect会清空暂存Pool，选择保留token由调用者提供；不声称原自动eviction策略恢复"
+  ]
+}

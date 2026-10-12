@@ -1,0 +1,11 @@
+{
+  "status": "open",
+  "unknowns": [
+    {"id":"U1","question":"Original Rust type names/repr/padding beyond CPU batch projection","evidence":"objdump 0x140be95e0/0x140be9600 and executor","impact":"low"},
+    {"id":"U2","question":"Complete RenderGraph and Registry ownership field mapping; block offsets resolved","evidence":"0x1402c4280; compile tail; record_batch","impact":"high"},
+    {"id":"U3","question":"Resource registry variant discriminants and physical handle ownership","evidence":"0x1402c3d00; compile call graph","impact":"high"},
+    {"id":"U4","question":"Queue submission/retirement state in executor; batch byte resolved as export flag","evidence":"0x1400fa190; record_batch has no submit calls","impact":"high"},
+    {"id":"U5","question":"Closure-independent generic body of each compile monomorph","evidence":"three monomorphs include country_core calls","impact":"high"},
+    {"id":"U6","question":"Runtime batch/barrier ordering under multiple queues","evidence":"static only; no execution trace","impact":"high"}
+  ]
+}

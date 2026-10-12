@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "scope": "Resource lifecycle in selected original functions",
+  "states": [
+    "external managed resource",
+    "ImportUnowned origin holding a cloned managed reference",
+    "ImportOwned origin holding a moved resource",
+    "Create origin",
+    "persistent pool bucket",
+    "registry backing resource",
+    "registry Empty slot",
+    "export map owning resource",
+    "remaining backing vector owning resource",
+    "managed reference dropped"
+  ],
+  "transitions": [
+    {"from": "external managed resource", "to": "ImportUnowned origin holding a cloned managed reference", "operation": "import_unowned", "effect": "increment reference count; retain caller reference", "evidence": ["0x140bd60a0", "0x140bd4fc0"]},
+    {"from": "external managed resource", "to": "ImportOwned origin holding a moved resource", "operation": "import_owned", "effect": "move; no reference increment", "evidence": ["0x140bd6220"]},
+    {"from": "Create origin", "to": "registry backing resource", "operation": "populate acquire", "effect": "override usage; pool take or device create; set debug name; consume origin", "evidence": ["0x140be7ba0"]},
+    {"from": "persistent pool bucket", "to": "registry backing resource", "operation": "take_texture/take_buffer", "effect": "exact descriptor match; Vec.pop; no reference increment; retain empty bucket", "evidence": ["0x140be6b90", "0x140be71e0"]},
+    {"from": "external managed resource", "to": "persistent pool bucket", "operation": "insert_texture/insert_buffer", "effect": "consume resource; append to descriptor bucket", "evidence": ["0x140be6d70", "0x140be7320"]},
+    {"from": "ImportUnowned origin holding a cloned managed reference", "to": "registry backing resource", "operation": "populate acquire", "effect": "move into unowned texture/buffer variant or Arc-backed variant; propagate initial access", "evidence": ["0x140be7ba0"]},
+    {"from": "ImportOwned origin holding a moved resource", "to": "registry backing resource", "operation": "populate acquire", "effect": "move into owned texture/buffer variant; other resource kind panics", "evidence": ["0x140be7ba0"]},
+    {"from": "Create origin", "to": "registry Empty slot", "operation": "populate acquire with zero usage", "effect": "allocate backing index but no resource", "evidence": ["0x140be7ba0"]},
+    {"from": "registry backing resource", "to": "export map owning resource", "operation": "into_exports exported logical handle", "effect": "move payload; replace physical slot with Empty", "evidence": ["0x140be9040", "0x1417e78e0"]},
+    {"from": "registry backing resource", "to": "remaining backing vector owning resource", "operation": "into_exports nonexported", "effect": "retain nonempty payloads in original order; move vector into output", "evidence": ["0x140be9040"]},
+    {"from": "persistent pool bucket", "to": "managed reference dropped", "operation": "clear", "effect": "drop stored resource handles, retain HashMap capacity; GPU destruction timing not established", "evidence": ["0x140be76f0", "0x140be24b0"]}
+  ],
+  "non_transitions": [
+    {"claim": "release event inserts resource into local reuse maps", "status": "not present; release bit16 is skipped at 0x140be7eb7"},
+    {"claim": "into_exports automatically returns remaining resources to persistent pool", "status": "not proven in selected functions"},
+    {"claim": "unowned resource contains no owned managed reference", "status": "false; import_unowned increments managed reference count"}
+  ],
+  "failure_boundary": {
+    "populate_return_false": "success",
+    "populate_return_true": "creation failure for observed error discriminants 0..8",
+    "populate_panic": "creation error tags 9/10, unsupported owned import, invalid logical/physical bounds, u16 backing-index overflow",
+    "cleanup": "pending constructed resource protected by unwind cleanup; partial registry content is left for owning caller cleanup, not specified as reusable success output"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version":1,
+  "oracle":"event-oracle.json",
+  "common":{"Handle":{"identity":"opaque control identity u64","generation":"u32"},"CommandKey":{"domain":"explicit oracle domain u32; original producer unknown","sequence":"u64 command sequence"}},
+  "events":{
+    "create":{"identity":"u64","generation":"u32"},
+    "track":{"identity":"u64","domain":"u32","sequence":"u64"},
+    "generation_skipped":{"identity":"u64","generation":"u32","effect":"no state write"},
+    "cpu_drop":{"identity":"u64","references":"u32"},
+    "waste_queued":{"identity":"u64","sequence":"optional last command sequence"},
+    "waste_attached":{"identity":"u64","domain":"u32","sequence":"u64"},
+    "cpu_pool_return":{"identity":"u64","effect":"CPU return/retire, no completion guarantee"},
+    "submit":{"queue":"u32","timeline":"u64 distinct from command sequence","commands":"array of CommandKey"},
+    "complete":{"queue":"u32","timeline":"external observed u64"},
+    "reclaim_command":{"domain":"u32","sequence":"u64 contiguous prefix"},
+    "external_dispose":{"identity":"u64","external":"private disposal/backend then generation/free-list return"}
+  },
+  "partial_order":["create precedes track/drop","command begin precedes track/end/submit","submit precedes timeline completion","last CPU drop precedes raw resource dispose","tracked command completion precedes removal of its bucket","CPU retire/drop may precede or follow submit/completion"],
+  "failure_boundaries":{"generation_mismatch_track":"skip","recording_tag_mismatch":"panic","moved_drop":"panic","bucket_duplicate":"panic","completion_duplicate_or_old":"panic","disposal_generation_or_device_or_kind":"panic","unknown_cross_domain_mapping":"candidate explicit error, no original equivalence claim"}
+}

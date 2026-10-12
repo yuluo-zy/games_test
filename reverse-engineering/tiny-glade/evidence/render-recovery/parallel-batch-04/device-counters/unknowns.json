@@ -1,0 +1,14 @@
+{
+  "resolved":[
+    {"question":"device+0x668/0x670 initialization","answer":"contiguous 8-byte counter array, length auxiliary_count+1, every counter1","kind":"observed"},
+    {"question":"global uniqueness or shared atomic","answer":"neither: independent per-queue slots overlap numerically","kind":"observed"},
+    {"question":"auxiliary identity versus family index","answer":"identity uses zero-based ordinal in chosen compute-only family","kind":"observed"}
+  ],
+  "remaining":[
+    {"question":"Can game private callers reach simultaneous primary/auxiliary begin with duplicate live bucket keys?","kind":"unknown","impact":"global bucket collision reachability"},
+    {"question":"Do private callers enforce same-resource queue exclusivity?","kind":"unknown","impact":"max(sequence) cannot establish cross-domain lifetime safety"},
+    {"question":"Original Rust AtomicU64 ordering argument?","kind":"unknown","impact":"locked xadd does not distinguish Relaxed/Acquire/Release/SeqCst source order"},
+    {"question":"Runtime physical-device queue topology on user GPU?","kind":"unknown","impact":"auxiliary family availability and count; static constructor is conditional"}
+  ],
+  "inference":"The target likely relies on caller restrictions for its per-queue counters/global buckets; that restriction is not established here."
+}

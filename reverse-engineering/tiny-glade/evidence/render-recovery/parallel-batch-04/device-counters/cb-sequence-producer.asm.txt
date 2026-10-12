@@ -1,0 +1,30 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bed2d8: 8d 47 01                    	leal	0x1(%rdi), %eax
+140bed2db: 31 c9                       	xorl	%ecx, %ecx
+140bed2dd: 40 f6 c5 01                 	testb	$0x1, %bpl
+140bed2e1: 48 0f 45 c8                 	cmovneq	%rax, %rcx
+140bed2e5: 48 8b 96 70 06 00 00        	movq	0x670(%rsi), %rdx
+140bed2ec: 48 39 d1                    	cmpq	%rdx, %rcx
+140bed2ef: 0f 83 b3 00 00 00           	jae	0x140bed3a8 <.text+0xbec3a8>
+140bed2f5: 48 8b 86 68 06 00 00        	movq	0x668(%rsi), %rax
+140bed2fc: 41 bf 01 00 00 00           	movl	$0x1, %r15d
+140bed302: f0                          	lock
+140bed303: 4c 0f c1 3c c8              	xaddq	%r15, (%rax,%rcx,8)
+140bed308: 48 c7 03 01 00 00 00        	movq	$0x1, (%rbx)
+140bed30f: 4c 89 7b 08                 	movq	%r15, 0x8(%rbx)
+140bed313: 89 6b 10                    	movl	%ebp, 0x10(%rbx)
+140bed316: 89 7b 14                    	movl	%edi, 0x14(%rbx)
+140bed319: c6 43 56 00                 	movb	$0x0, 0x56(%rbx)
+140bed31d: 4c 89 f1                    	movq	%r14, %rcx
+140bed320: ba 03 00 00 00              	movl	$0x3, %edx
+140bed325: 45 31 c0                    	xorl	%r8d, %r8d
+140bed328: ff 96 20 03 00 00           	callq	*0x320(%rsi)
+140bed32e: 48 81 c6 50 0a 00 00        	addq	$0xa50, %rsi            # imm = 0xA50
+140bed335: 48 89 f1                    	movq	%rsi, %rcx
+140bed338: 4c 89 fa                    	movq	%r15, %rdx
+140bed33b: e8 20 6f cd 00              	callq	0x1418c4260 <.text+0x18c3260>

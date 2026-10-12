@@ -1,0 +1,12 @@
+{
+  "candidate":"record-submit-r6",
+  "tier":"scoped-native-event-differential",
+  "production_integration":false,
+  "native_cases":108,
+  "invariants":["callbacks taken before call","callback error does not append new command","successful record ends all except last command","final flag does not end last command","submission takes pending vectors before validation","only last open command is ended by submit","end failure prevents queue submission","receipt stored only after delegation success","queue lock/reference count restored before error conversion"],
+  "read_only_dependencies":["R5A original-PE loader and boundary harness","R2 executor/queue static decompilation"],
+  "public_boundary_policy":"fixture captures, not Vulkan/std/ash/vk-sync reimplementation",
+  "r5_invariants":"unchanged; current record fixtures contain empty access lists",
+  "unknowns":"unknowns.json",
+  "validation":"validation.json"
+}

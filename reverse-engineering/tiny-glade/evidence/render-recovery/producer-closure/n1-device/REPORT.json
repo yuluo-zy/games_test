@@ -1,0 +1,108 @@
+{
+  "module": "rhapsody::raw::device (n1-device forensic pass)",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "method": "read-only RE-MCP/Ghidra decompile+disassemble via run-lanes.mjs --lanes 2",
+  "jobs": ["job1..job6.json"],
+  "reports": ["REPORT1..REPORT6.json"],
+  "key_structural_finding": {
+    "embedded_ash_device": "GraphicsDevice embeds the raw Vulkan device-fn table + VkDevice handle at offset +0x78; VkDevice handle lands at GraphicsDevice+0x640 (= +0x78 + 0x5c8). Function-table pointer passed as second arg into create_buffer_impl etc.",
+    "offset_relation": "ashDevice_offset X  <==>  GraphicsDevice offset 0x78 + X",
+    "note": "Some raw::submit / raw::semaphore / Queue methods take the ash-device (handle at +0x5c8) as self; GraphicsDevice methods take GraphicsDevice (handle at +0x640)."
+  },
+  "vk_slot_identities_confirmed_by_pCreateInfo_sType_or_args": {
+    "ash+0x40": "vkCreateSemaphore (sType 1000207003 SEMAPHORE_TYPE_CREATE_INFO via create_raw_timeline_semaphore 0x1418c8710)",
+    "ash+0x60/0x68/0x70/0x78": "vkBindBufferMemory / vkBindImageMemory / vkGetBufferMemoryRequirements / vkGetImageMemoryRequirements",
+    "ash+0x90": "vkCreateBuffer (sType 12 BUFFER_CREATE_INFO via create_buffer_impl 0x140bee200 param[0x21])",
+    "ash+0x478": "vkGetSemaphoreCounterValue (Queue::update_pending_submissions 0x140bf0b90: (device+s0x5c8, sem+0x88, &value))"
+  },
+  "graphicsdevice_relative_slots_confirmed": {
+    "0x270": "vkCreateFramebuffer (sType 37)",
+    "0x280": "vkCreateRenderPass (sType 38)",
+    "0x298": "vkCreateCommandPool (sType 39, queueFamilyIndex field)",
+    "0x2b0": "vkAllocateCommandBuffers (sType 40)",
+    "0x2c0": "vkBeginCommandBuffer (sType 42)",
+    "0x2c8": "vkEndCommandBuffer (CommandBuffer::end 0x140bed3d0)",
+    "0x2d0": "vkResetCommandBuffer (CommandBuffer::begin 0x140bed230)",
+    "0x328": "vkCmdBindDescriptorSets (bind_persistent_descriptor_set 0x140bee150: 8 args)",
+    "0x3e0": "vkCmdPipelineBarrier (10 args; issue_pipeline_barrier 0x140bee030 / issue_full 0x140bee090)",
+    "0x268": "vkUpdateDescriptorSets (update_persistent_descriptor_set 0x1416a2320)",
+    "0x898": "vkCmdBeginDebugUtilsLabelEXT",
+    "0x8a0": "vkCmdEndDebugUtilsLabelEXT"
+  },
+  "graphicsdevice_slots_inferred": {
+    "0x88": "vkQueueSubmit (prior round)",
+    "0x98": "device-level wait invoked as (*(dev+0x98))(*(dev+0x640)) (candidate vkDeviceWaitIdle)",
+    "0xe0/0xf0/0x1a0": "image create/view/bind family (create_texture 0x140c07950)",
+    "0x210/0x1c8/0x200": "pipeline-creation slots (create_compute_pipeline 0x1416a4b20)",
+    "0x3a0": "GPU buffer-marker write invoked by record_crash_marker 0x140befb00",
+    "0x4f0": "vkGetSemaphoreCounterValue (polled)",
+    "0x4f8": "vkWaitSemaphores (prior round)",
+    "0x870": "Option<debug-utils object>; null-gated, and invoked as (*(*(dev+0x870)))(*(dev+0x8b0), &nameInfo)"
+  },
+  "graphicsdevice_field_layout_observed": {
+    "0x20/0x28/0x3c": "per prior round (create)",
+    "0x78..0x640": "embedded ash-device fn table; VkDevice handle at +0x640",
+    "0x648": "ptr to context/registry S; S+0xa50 = u16 device generation (validated against desc+0x14)",
+    "0x658": "ptr to config/manager (Vec of stride 0x1c pools at +0x38/+0x40; u32 at +0x78; u32 at +0x3a8)",
+    "0x668/0x670": "ptr to per-queue u64 sequence counters (stride 8) / count",
+    "0x678": "ptr to global-allocator wrapper (lock byte +0x10, data +0x18)",
+    "0x718": "byte lock guarding recycle path",
+    "0x720": "SubmissionEngine { +0x10 Queue, +0xc8 Vec<Queue> ptr, +0xd0 len }",
+    "0x730": "graphics Queue (= 0x720+0x10), reclaim_command_buffer_resources target",
+    "0x7e8/0x7f0": "Vec<Queue> ptr / count, stride 0xb0",
+    "0x808": "pointer read in create_raster_pipeline (identity unknown)",
+    "0x810/0x818/0x848": "crash-marker lock byte / 4096-entry marker ring / write counter",
+    "0x870": "Option debug-utils object",
+    "0x8b0": "arg passed to debug-utils method",
+    "0x9b0": "command-buffer pool mutex lock byte",
+    "0x9c0/0x9c8": "pool array ptr / count (stride 0x18: {seq, free-list ptr, count})",
+    "0x9f0": "setup-command-buffer lock byte",
+    "0x9f8..0xa4f": "inline current setup CommandBuffer record (0x58 bytes) written by with_setup_cb 0x140c03fa0/0x140c04840",
+    "0xa50": "command-buffer / submit tracker object",
+    "0xa88/0xa90/0xa98": "GPU-assertion RwLock state / Vec ptr / len (has_any_gpu_assertion_failed 0x140bf0720)",
+    "0xad4": "u32 command-buffer count"
+  },
+  "command_buffer_layout_observed": {
+    "size": "0x58",
+    "+0x00": "state (0 New, 1 Recording, 2 Ended)",
+    "+0x08": "u64 submission sequence number (from dev+0x668[queueIndex])",
+    "+0x10": "u32 flags",
+    "+0x14": "u32 queue index / level",
+    "+0x48": "VkCommandBuffer handle",
+    "+0x50": "u32 queueFamilyIndex",
+    "+0x54": "u16 (from context+0xa50)",
+    "+0x56": "u8"
+  },
+  "queue_layout_observed": {
+    "size": "0xb0",
+    "+0x00": "ring capacity",
+    "+0x08": "ptr to ring of u64 submission values",
+    "+0x10": "ring head index",
+    "+0x18": "ring pending count",
+    "+0x0c(bit0)": "flag",
+    "+0x6c": "byte flags",
+    "+0x80": "cached semaphore counter",
+    "+0x88": "timeline VkSemaphore handle"
+  },
+  "descriptor_object_layout_observed": {
+    "+0x14": "u16 generation (must equal context+0xa50)",
+    "+0x16": "u8 kind (0 image-view, 4 framebuffer, 6 descriptor-set)",
+    "+0x08": "ptr, +0x10 len"
+  },
+  "crash_path": {
+    "record_crash_marker": "0x140befb00 records {index,arg1,arg2} into 4096-entry ring at dev+0x818 (counter dev+0x848) and writes GPU buffer marker via dev+0x3a0",
+    "log_vulkan_error_info": "0x140befc70 triggers log_gpu_crash_info only for VkResult in {2,-4}",
+    "log_gpu_crash_info": "0x140befd60 (2485B) reads marker ring; log_gpu_debug_info 0x1418c46c0 (2646B) formats",
+    "has_any_gpu_assertion_failed": "0x140bf0720 reads Vec<assertion> at dev+0xa90/+0xa98 under RwLock at dev+0xa88"
+  },
+  "profiler_path": {
+    "create_gpu_profiler_output_buffer": "0x140bff4a0 allocates 0x2000-byte VkBuffer via backend; stores u32 from *(dev+0x658)+0x3a8 at buf+0x50",
+    "VulkanBackend::create_buffer": "0x140bff5a0 - vkCreateBuffer(sType 12) + get-reqs + global-allocator alloc (dev+0x678) + bind",
+    "TimedFrame::new": "0x140bd3cb0", "send_to_puffin": "0x140bd4030", "mapped_slice": "0x140bd3c80"
+  },
+  "unknowns": [
+    "GraphicsDevice+0x168, +0x3f8, +0x400, +0x408 not observed as device field offsets in decompiled sources",
+    "tiny accessors device_uuid 0x140bf84c0 / physical_device 0x140bf8950 / debug_utils 0x140bf8960 / min_subgroup_size 0x140bf8fa0 / refresh_memory_budget 0x140bf8f80 have NO Ghidra function body (both decompile and disassemble fail) -> identity name-only",
+    "dev+0x808 meaning; dev+0x3a0 exact Vulkan identity; dev+0x200/0x210/0x1c8 exact identity; dev+0x320 command; exact ash fn-table ordering"
+  ]
+}

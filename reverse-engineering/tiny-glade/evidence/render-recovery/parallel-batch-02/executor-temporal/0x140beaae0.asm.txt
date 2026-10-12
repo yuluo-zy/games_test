@@ -1,0 +1,59 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140beaae0: 56                          	push	rsi
+140beaae1: 48 83 ec 20                 	sub	rsp, 0x20
+140beaae5: 48 89 d6                    	mov	rsi, rdx
+140beaae8: 48 83 c1 20                 	add	rcx, 0x20
+140beaaec: e8 df a1 fe ff              	call	0x140bd4cd0 <.text+0xbd3cd0>
+140beaaf1: 48 85 c0                    	test	rax, rax
+140beaaf4: 0f 84 a6 00 00 00           	je	0x140beaba0 <.text+0xbe9ba0>
+140beaafa: 48 83 fa 0f                 	cmp	rdx, 0xf
+140beaafe: 0f 86 a4 00 00 00           	jbe	0x140beaba8 <.text+0xbe9ba8>
+140beab04: 48 8b 48 08                 	mov	rcx, qword ptr [rax + 0x8]
+140beab08: 48 2b 08                    	sub	rcx, qword ptr [rax]
+140beab0b: 66 48 0f 6e c1              	movq	xmm0, rcx
+140beab10: 66 0f 62 05 18 3e d4 01     	punpckldq	xmm0, xmmword ptr [rip + 0x1d43e18] # xmm0 = xmm0[0],mem[0],xmm0[1],mem[1]
+                                                                        # 0x14292e930
+140beab18: 66 0f 5c 05 20 3e d4 01     	subpd	xmm0, xmmword ptr [rip + 0x1d43e20] # 0x14292e940
+140beab20: 66 0f 28 c8                 	movapd	xmm1, xmm0
+140beab24: 66 0f 15 c8                 	unpckhpd	xmm1, xmm0              # xmm1 = xmm1[1],xmm0[1]
+140beab28: f2 0f 58 c8                 	addsd	xmm1, xmm0
+140beab2c: 48 8b 86 58 06 00 00        	mov	rax, qword ptr [rsi + 0x658]
+140beab33: f3 0f 10 80 a8 03 00 00     	movss	xmm0, dword ptr [rax + 0x3a8]
+140beab3b: f3 0f 5a c0                 	cvtss2sd	xmm0, xmm0
+140beab3f: f2 0f 59 c1                 	mulsd	xmm0, xmm1
+140beab43: f2 0f 10 0d 5d 7a db 01     	movsd	xmm1, qword ptr [rip + 0x1db7a5d] # 0x1429a25a8
+140beab4b: 66 0f 2e c8                 	ucomisd	xmm1, xmm0
+140beab4f: 76 4f                       	jbe	0x140beaba0 <.text+0xbe9ba0>
+140beab51: f2 48 0f 2c c0              	cvttsd2si	rax, xmm0
+140beab56: 48 89 c1                    	mov	rcx, rax
+140beab59: 48 c1 f9 3f                 	sar	rcx, 0x3f
+140beab5d: 66 0f 28 c8                 	movapd	xmm1, xmm0
+140beab61: f2 0f 5c 0d 3f 51 de 01     	subsd	xmm1, qword ptr [rip + 0x1de513f] # 0x1429cfca8
+140beab69: f2 48 0f 2c d1              	cvttsd2si	rdx, xmm1
+140beab6e: 48 21 ca                    	and	rdx, rcx
+140beab71: 48 09 c2                    	or	rdx, rax
+140beab74: 31 c0                       	xor	eax, eax
+140beab76: 66 0f 57 c9                 	xorpd	xmm1, xmm1
+140beab7a: 66 0f 2e c1                 	ucomisd	xmm0, xmm1
+140beab7e: 48 0f 43 c2                 	cmovae	rax, rdx
+140beab82: 66 0f 2e 05 26 51 de 01     	ucomisd	xmm0, qword ptr [rip + 0x1de5126] # 0x1429cfcb0
+140beab8a: 48 c7 c2 ff ff ff ff        	mov	rdx, -0x1
+140beab91: 48 0f 46 d0                 	cmovbe	rdx, rax
+140beab95: b8 01 00 00 00              	mov	eax, 0x1
+140beab9a: 48 83 c4 20                 	add	rsp, 0x20
+140beab9e: 5e                          	pop	rsi
+140beab9f: c3                          	ret
+140beaba0: 31 c0                       	xor	eax, eax
+140beaba2: 48 83 c4 20                 	add	rsp, 0x20
+140beaba6: 5e                          	pop	rsi
+140beaba7: c3                          	ret
+140beaba8: 48 8d 0d 61 9b f2 01        	lea	rcx, [rip + 0x1f29b61]  # 0x142b14710
+140beabaf: 4c 8d 05 9a 9b f2 01        	lea	r8, [rip + 0x1f29b9a]   # 0x142b14750
+140beabb6: ba 3e 00 00 00              	mov	edx, 0x3e
+140beabbb: e8 70 e8 ce 01              	call	0x1428d9430 <.text+0x28d8430>
+140beabc0: cc                          	int3

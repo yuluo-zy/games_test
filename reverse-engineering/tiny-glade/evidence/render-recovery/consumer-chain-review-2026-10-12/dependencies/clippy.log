@@ -1,0 +1,32 @@
+    Checking rhapsody v0.1.0 (D:\game\reverse-engineering\tiny-glade\reconstruction\rhapsody-rebuild)
+error[E0308]: mismatched types
+    --> tests\state.rs:19:26
+     |
+  19 |     assert!(callbacks[0](10));
+     |             ------------ ^^ expected `PassContext<'_>`, found integer
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: implementation defined here
+    --> C:\Users\liyu\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\alloc\src\boxed.rs:2280:1
+     |
+2280 | impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> tests\state.rs:20:27
+     |
+  20 |     assert!(!callbacks[0](10));
+     |              ------------ ^^ expected `PassContext<'_>`, found integer
+     |              |
+     |              arguments to this function are incorrect
+     |
+note: implementation defined here
+    --> C:\Users\liyu\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\alloc\src\boxed.rs:2280:1
+     |
+2280 | impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `rhapsody` (test "state") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

@@ -1,0 +1,85 @@
+{
+ "exe": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+ "targets_analyzed": 1,
+ "pdata_functions": 116269,
+ "functions": {
+  "0x140c04e20": {
+   "va": "0x140c04e20",
+   "name": "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+   "modules": [
+    "raw::device",
+    "raw::submit"
+   ],
+   "n_incoming_direct_callsites": 1,
+   "n_resolved_callsites": 1,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "mem:[rbp+352]",
+     "rdx": "reg:rsi"
+    },
+    "stack_arg_stores": [
+     {
+      "base": "rsp",
+      "disp": 32,
+      "src": "reg:rbx",
+      "addr": "0x140bebfc4"
+     }
+    ],
+    "confidence": "high",
+    "from_site": "0x140bebfd6"
+   },
+   "callsites": [
+    {
+     "site": "0x140bebfd6",
+     "caller": "0x140bebdf0",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x140bebfd0"
+      },
+      "rcx": {
+       "source": "mem:[rbp+352]",
+       "addr": "0x140bebfc9"
+      }
+     },
+     "xmm_observed": [
+      "xmm0"
+     ],
+     "stack_arg_stores": [
+      {
+       "base": "rsp",
+       "disp": 32,
+       "src": "reg:rbx",
+       "addr": "0x140bebfc4"
+      }
+     ],
+     "barrier": [
+      "0x140bebf87",
+      "call"
+     ],
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "coverage": {
+  "targets": 1,
+  "targets_with_incoming_callsite": 1,
+  "targets_with_resolved_callsite": 1,
+  "targets_high_confidence": 1,
+  "targets_no_incoming_callsite": 0,
+  "targets_undecidable": 0
+ }
+}

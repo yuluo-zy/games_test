@@ -1,0 +1,13 @@
+{
+  "status": "bounded_static",
+  "generic_rhapsody": ["ResourceInfo::calculate", "ResourceRegistry::populate_resources", "RenderGraph::on_retire", "RenderGraph::create_raw_resource", "CompiledRenderGraph::new", "TemporalRenderGraphRecorder::export_temporal", "compiled graph barrier/record helpers"],
+  "closure_or_game_specific": ["country_core render passes", "texture/SSBO library import/export", "DynamicConstants allocation", "swapchain resolve", "UI/loading/menu/painterly/vermeer/final-post calls"],
+  "boundary_rule": "Attribute only named rhapsody callees and their direct evidence to generic logic. Treat surrounding monomorphized body as closure glue unless a call/field contract is independently evidenced.",
+  "monomorphs": [
+    {"address":"0x140161cd0","closure_role":"main frame/UI/post effects","confidence":"inferred","observed_game_calls":["ui_pass","final_post","painterly_pass","vermeer_pass"],"shared_tail":{"calculate":"0x140163ac9","populate":"0x140163af4","failure_on_retire":"0x140163b16","new":"0x140163c1f"}},
+    {"address":"0x1401647b0","closure_role":"loading/background render","confidence":"inferred","observed_game_calls":["loading_screen_pass","vermeer_render_from_target","SavedSession::loading_background_path"],"shared_tail":{"calculate":"0x1401657f8","populate":"0x140165827","failure_on_retire":"0x140165849","new":"0x140165959"}},
+    {"address":"0x140166510","closure_role":"resolve/present graph","confidence":"inferred","observed_game_calls":["resolve_to_swapchain","import_owned","import_unowned"],"shared_tail":{"calculate":"0x140166f9f","populate":"0x140166fc6","failure_on_retire":"0x140166fe8","new":"0x1401670f1"}}
+  ],
+  "attribution_limits": ["rhapsody helpers used by closures remain input-production context","folded no-op 0x14003bb80 has aliases; does not prove decorator execution","direct symbols do not recover generic signature"],
+  "sources": ["evidence/render-recovery/graph-compiler/contract.json", "evidence/render-recovery/workgraph/calls.json", "evidence/render-architecture/0x140161cd0.c", "evidence/render-recovery/parallel/compiled-state/0x1401647b0.c", "evidence/render-recovery/parallel/compiled-state/0x140166510.c"]
+}

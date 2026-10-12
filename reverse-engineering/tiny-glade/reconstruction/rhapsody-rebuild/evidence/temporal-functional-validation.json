@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "status": "passed_known_temporal_contract_scope",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "scope": "temporal跨帧资源、双缓冲、导入/导出与编译所有权生命周期",
+  "implemented_functionality": [
+    "原raw_texture0/raw_buffer1/exported2状态转换及同帧重复请求Error",
+    "buffer命中忽略请求描述符并保留物理资源的真实描述符",
+    "texture只将0xc..0x17的extent差异作为重建触发；同extent固定字段不匹配panic",
+    "创建失败保留旧exported资源，成功替换后释放旧缓存拥有者引用",
+    "纹理pair使用base:0/base:1；第二次失败保留首次mutation，失败不翻parity",
+    "pair复用标记为两个lookup的AND；parity原首次0、后续1-old、每key独立",
+    "export_temporal以0x37导出raw记录并置exported，重复export无操作且不翻parity",
+    "构图逻辑handle与编译输出导出物理映射相连，不再仅维护token表",
+    "PersistentCompileState先take graph再take temporal，缺temporal不回滚已移出的graph",
+    "先restore导出temporal，再population；后续失败不回滚旧历史",
+    "原依赖Ustr1.0.0键及显式GPU Arc拥有者接入；clear/resize不会丢掉提交持有的Arc"
+  ],
+  "original_evidence": {
+    "temporal_static_contract": "../../../evidence/render-recovery/parallel-batch-03/temporal-full/temporal-state-machine.json",
+    "temporal_type_ledger": "../../../evidence/render-recovery/parallel-batch-03/temporal-full/type-ledger.json",
+    "temporal_static_analysis": "../../../evidence/render-recovery/parallel-batch-03/temporal-full/validation.json",
+    "ownership_machine_code_saved_oracle": "../../../evidence/render-recovery/parallel-batch-06/temporal-lifecycle/native-oracle.json",
+    "ownership_machine_code_saved_validation": "../../../evidence/render-recovery/parallel-batch-06/temporal-lifecycle/validation.json",
+    "original_procedures": [
+      "0x14096c310",
+      "0x14096c890",
+      "0x14096ce90",
+      "0x14096d490",
+      "0x140166510"
+    ],
+    "original_machine_code_reexecuted_this_run": false,
+    "saved_original_oracle_projection_cases": 96,
+    "saved_original_projection_scope": "Option所有权take/restore及失败状态，不包括opaque结构字节/全编译ABI/旧HashMap drop内部",
+    "saved_original_projection_mismatches": 0
+  },
+  "candidate_validation": {
+    "temporal_tests": 12,
+    "state_tests": 2,
+    "test_scope": "6帧pair构图/编译消费者与重复/resize失败/固定字段panic/类型错误/部分pair失败/clear/compile错误路径",
+    "status": "passed"
+  },
+  "real_gpu_validation": {
+    "example": "examples/temporal_gpu.rs",
+    "device": "Intel(R) UHD Graphics 630",
+    "frames": 6,
+    "resize_frame": 3,
+    "physical_texture_creations": 4,
+    "scope": "共享TemporalGpuResources真实Arc创建→原状态机lookup→图访问→原take/export/restore合同→compile→barrier→command→timeline→双纹理读回→cache清除与回收",
+    "output": {
+      "backend_arc_preserves_pending_resources": true,
+      "cache_clear_before_completion_wait": true,
+      "cache_resources_after_clear": 0,
+      "device": "Intel(R) UHD Graphics 630",
+      "frames": [
+        {
+          "both_reused": false,
+          "current": 1,
+          "export_count": 4,
+          "frame": 0,
+          "parity": 0,
+          "previous": 77,
+          "readback_passed": true,
+          "tokens": [
+            1,
+            2
+          ],
+          "width": 4
+        },
+        {
+          "both_reused": true,
+          "current": 2,
+          "export_count": 4,
+          "frame": 1,
+          "parity": 1,
+          "previous": 1,
+          "readback_passed": true,
+          "tokens": [
+            2,
+            1
+          ],
+          "width": 4
+        },
+        {
+          "both_reused": true,
+          "current": 3,
+          "export_count": 4,
+          "frame": 2,
+          "parity": 0,
+          "previous": 2,
+          "readback_passed": true,
+          "tokens": [
+            1,
+            2
+          ],
+          "width": 4
+        },
+        {
+          "both_reused": false,
+          "current": 4,
+          "export_count": 4,
+          "frame": 3,
+          "parity": 1,
+          "previous": 77,
+          "readback_passed": true,
+          "tokens": [
+            4,
+            3
+          ],
+          "width": 8
+        },
+        {
+          "both_reused": true,
+          "current": 5,
+          "export_count": 4,
+          "frame": 4,
+          "parity": 0,
+          "previous": 4,
+          "readback_passed": true,
+          "tokens": [
+            3,
+            4
+          ],
+          "width": 8
+        },
+        {
+          "both_reused": true,
+          "current": 6,
+          "export_count": 4,
+          "frame": 5,
+          "parity": 1,
+          "previous": 5,
+          "readback_passed": true,
+          "tokens": [
+            4,
+            3
+          ],
+          "width": 8
+        }
+      ],
+      "limits": [
+        "显式候选Vulkan访问映射",
+        "每帧后端重建",
+        "不证明原作完整游戏调度或画面一致"
+      ],
+      "physical_creations": 4,
+      "real_gpu": true,
+      "reclaimed_after_completion": 4,
+      "status": "passed"
+    }
+  },
+  "still_unknown": [
+    "原ResourceValue/Texture等物理wrapper完整ABI与descriptor真实字段名；现公开Rust类型为语义候选",
+    "原游戏unused-key eviction和独立整cache reset触发策略；显式clear接口可用，但不推断为原游戏policy",
+    "原buffer pair实例/是否存在该功能；当前texture pair验收不扩张到buffer pair",
+    "原构图闭包panic/unwind全部资源释放顺序与错误文本/ABI",
+    "原整编译入口动态差分、持久多队列调度策略及完整游戏画面"
+  ],
+  "reset_and_drop_review": {
+    "known_original_helper": "country_core::FrameConstants::should_reset_temporal只判断frame_word==0；不是cache.clear",
+    "known_original_owner_behavior": "take/restore顺序有原机器码oracle；物理replacement经过managed资源drop helper；标准库HashMap/Arc drop直接复用",
+    "candidate_cleanup": "clear_owned及resize释放缓存owner Arc；提交后端另持Arc，直到完成等待/后端释放",
+    "policy": "不发明自动淘汰、不将游戏history reset标志改成cache.clear、不声称原整drop/unwind入口已验收"
+  },
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--test",
+        "temporal",
+        "--test",
+        "state"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 2 tests\ntest retirement_waits_for_completed_threshold_in_order ... ok\ntest graph_passes_commit_atomically_and_callbacks_are_consumed_once ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 12 tests\ntest compile_take_failure_does_not_roll_back_taken_graph ... ok\ntest ownership_option_projection_matches_saved_original_machine_code_oracle ... ok\ntest initial_creation_failure_does_not_insert ... ok\ntest pair_second_failure_keeps_first_and_does_not_flip ... ok\ntest owned_resize_and_clear_release_all_cache_references_once ... ok\ntest buffer_hit_ignores_requested_descriptor_and_keeps_actual_descriptor ... ok\ntest export_is_idempotent_and_resize_does_not_reset_pair_parity ... ok\ntest population_failure_retains_exported_state_installed_before_population ... ok\ntest same_extent_fixed_mismatch_panics_and_wrong_kind_is_error ... ok\ntest same_frame_duplicate_is_error_without_another_import_or_create ... ok\ntest multi_frame_pair_exports_compile_consumer_and_preserves_parity ... ok\ntest texture_resize_replaces_only_after_success_and_retires_previous_owner ... ok\n\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n",
+      "stderr": "   Compiling rhapsody v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.30s\n     Running tests\\state.rs (reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\deps\\state-951055cdf704beff.exe)\n     Running tests\\temporal.rs (reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\deps\\temporal-7fe04b69f5a09c83.exe)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--test",
+        "temporal",
+        "--test",
+        "state",
+        "--example",
+        "temporal_gpu",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.15s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\Cargo.toml",
+        "--example",
+        "temporal_gpu"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"backend_arc_preserves_pending_resources\":true,\"cache_clear_before_completion_wait\":true,\"cache_resources_after_clear\":0,\"device\":\"Intel(R) UHD Graphics 630\",\"frames\":[{\"both_reused\":false,\"current\":1,\"export_count\":4,\"frame\":0,\"parity\":0,\"previous\":77,\"readback_passed\":true,\"tokens\":[1,2],\"width\":4},{\"both_reused\":true,\"current\":2,\"export_count\":4,\"frame\":1,\"parity\":1,\"previous\":1,\"readback_passed\":true,\"tokens\":[2,1],\"width\":4},{\"both_reused\":true,\"current\":3,\"export_count\":4,\"frame\":2,\"parity\":0,\"previous\":2,\"readback_passed\":true,\"tokens\":[1,2],\"width\":4},{\"both_reused\":false,\"current\":4,\"export_count\":4,\"frame\":3,\"parity\":1,\"previous\":77,\"readback_passed\":true,\"tokens\":[4,3],\"width\":8},{\"both_reused\":true,\"current\":5,\"export_count\":4,\"frame\":4,\"parity\":0,\"previous\":4,\"readback_passed\":true,\"tokens\":[3,4],\"width\":8},{\"both_reused\":true,\"current\":6,\"export_count\":4,\"frame\":5,\"parity\":1,\"previous\":5,\"readback_passed\":true,\"tokens\":[4,3],\"width\":8}],\"limits\":[\"显式候选Vulkan访问映射\",\"每帧后端重建\",\"不证明原作完整游戏调度或画面一致\"],\"physical_creations\":4,\"real_gpu\":true,\"reclaimed_after_completion\":4,\"status\":\"passed\"}\n",
+      "stderr": "   Compiling rhapsody v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.33s\n     Running `reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\temporal_gpu.exe`\n"
+    }
+  ],
+  "input_sha256": {
+    "reconstruction/rhapsody-rebuild/src/rg/temporal.rs": "066b2e9577f8c29f2079d98f07cd3a63ea42ade579f2183f3592bdc472da62da",
+    "reconstruction/rhapsody-rebuild/src/rg/state.rs": "200ffff34077be2726be26848afd8f2ac001ac036373f432d20a7d9eee103f89",
+    "reconstruction/rhapsody-rebuild/src/rg/import_export.rs": "9de6136fefd1fc1e8c5cf56f09b49bacb9372689eabd4a926f9e40e0a28eec0c",
+    "reconstruction/rhapsody-rebuild/tests/temporal.rs": "7c142d37551aa008f938b673f201d226ef4774134e3ea54aa3cdf9414407e9ac",
+    "reconstruction/rhapsody-rebuild/tests/state.rs": "af6fd1d26aa6c8aed227f6ca095fdfbc3b361ea32714879da51dea6621da52db",
+    "reconstruction/rhapsody-rebuild/examples/temporal_gpu.rs": "8a955c126cb544166e836cdf546f9b3e2c7c596c7e2c241d22be56e96310ea73",
+    "reconstruction/rhapsody-rebuild/src/rg/vulkan.rs": "7484dc78cb9a313ef66682fc3caef98a727b6e63944b5d5ae18a21d29839ef49",
+    "reconstruction/rhapsody-rebuild/src/rg/graph.rs": "2ec56196c8e4c70989e3564a5cab9f6685931861119c0822e5ee0356f12f01d6",
+    "reconstruction/rhapsody-rebuild/src/rg/executor.rs": "2e4cfd57f14dbfc75ed309e1a8b491466735eb812718c91ba048b168100bc284",
+    "reconstruction/rhapsody-rebuild/Cargo.toml": "9a8c16315056b70e28851ba74beecb7a8ffc5f3ec1f09f769efcd83121dce746",
+    "reconstruction/rhapsody-rebuild/Cargo.lock": "a59c8693a2427a4af95d8e561539c357829350fffdcc317ff5d01f9d70714d0f",
+    "evidence/render-recovery/parallel-batch-03/temporal-full/temporal-state-machine.json": "f7a31985218f3278ace570f7093afafdc4bd41405bdaa6f8c1a972fdbaee4515",
+    "evidence/render-recovery/parallel-batch-03/temporal-full/type-ledger.json": "80bf9cc7f8682e7e05a7e16c5cffe68d36623a13bce0d753826b9b7d09bf5ab2",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/native-oracle.json": "22fbcfd802e204f7fa12162aae78f3a7c7d38ccd0930e18485b776b9eeeaea05",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/validation.json": "00165eb7d92fc3aa44ed92b36a1b0145d4b7528e47cf96418f527f74a6a89bf8"
+  }
+}

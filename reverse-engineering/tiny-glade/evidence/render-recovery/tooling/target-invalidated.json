@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T06:29:34.219Z",
+  "server": "fake",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "database_id": "fixture",
+        "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+        "run_auto_analysis": false
+      },
+      "cache_key": "4393dbcd451c64f302dbff71bbf23fa710903bf151e1402f75d3c18067348e39",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T06:29:34.222Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"open_database\",\"args\":{\"database_id\":\"fixture\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\evidence\\\\render-recovery\\\\tooling\\\\fixture\\\\target.bin\",\"run_auto_analysis\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "ok": true,
+      "result_sha256": "aa9a98565bd6254d5a0cdff78ef20b42125a56c816c536dc6bce93851ac044d8",
+      "completed_at": "2026-10-12T06:29:34.291Z"
+    },
+    {
+      "index": 1,
+      "tool": "decompile_function",
+      "args": {
+        "database": "fixture",
+        "address": "0x123"
+      },
+      "cache_key": "e4885620cfeb80d37bad60476ccddf54cb921a2769165724ee70fed135b2c36c",
+      "cache_eligible": true,
+      "started_at": "2026-10-12T06:29:34.292Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"decompile_function\",\"args\":{\"database\":\"fixture\",\"address\":\"0x123\"},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "ok": true,
+      "result_sha256": "b62d16fcb300c74772708c52a5902f6df9b92096a4dc7f7b14407f683d964934",
+      "completed_at": "2026-10-12T06:29:34.293Z"
+    },
+    {
+      "index": 2,
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "fixture",
+        "address": "0x123"
+      },
+      "cache_key": "fdf553823b2e515e7e2b0d09990279e5920d1b57226e88aef48ce5fb2d8b12da",
+      "cache_eligible": true,
+      "started_at": "2026-10-12T06:29:34.294Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"get_xrefs_to\",\"args\":{\"database\":\"fixture\",\"address\":\"0x123\"},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "ok": true,
+      "result_sha256": "bea1c9e75719d7f425d8e088e9b5acd2b80c4c09e82ea86d002ae511f1180d62",
+      "completed_at": "2026-10-12T06:29:34.295Z",
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      }
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "fixture",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"close_database\",\"args\":{\"database\":\"fixture\",\"save\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "ok": true
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "acquired",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\1b73d3ffc3f0a17638688f6d071a8439e5f07f494780c8417b784ebb45efa14e.lock",
+      "token": "9abf9942-dfcd-46cd-b174-52dbe530e32e",
+      "session_key": "fake:normal"
+    },
+    {
+      "event": "released",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\1b73d3ffc3f0a17638688f6d071a8439e5f07f494780c8417b784ebb45efa14e.lock",
+      "token": "9abf9942-dfcd-46cd-b174-52dbe530e32e",
+      "path_boundary_verified": true
+    }
+  ],
+  "ok": true,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": true,
+    "reason": "Caller-supplied provider manifest and DB revision/snapshot hashes; caller must update snapshot after DB changes.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+      "sha256": "b25bbde7055ac6765755e90cf8c8bdacc1e6bf87d4bb1d8595f1b41fadd4779e"
+    },
+    "provider": {
+      "id": "local-fake",
+      "version": "1"
+    },
+    "launch_sha256": "986e6fefa3ee4b273f5a19801567094d85b501564448dd3e9cb46f3a0bb38fa0",
+    "inputs": [
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\input.txt",
+        "sha256": "922fb3a215d0dd772daf3488d626a7c09df0fa32df16b5f2fdc293b59aa3c283"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\provider-manifest.json",
+        "sha256": "051e563027f30f8f9f9c8585e9a12a2ea7f5f6c2102d272e4986dccb791b2580",
+        "role": "provider_manifest"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\database-snapshot.json",
+        "sha256": "184ef6577a24d9524b9c0dc6ecc0f81e23676b5a21b7fec19833067d9119d62a",
+        "role": "database_snapshot"
+      }
+    ]
+  },
+  "job_sha256": "5ef12ca90c548be0cd40a952d6148c6454ec9fb9b660924cc76814c6c6b3fddb",
+  "actual_server": {
+    "name": "local-fake-mcp",
+    "version": "1"
+  },
+  "server_capabilities": {
+    "tools": {}
+  },
+  "catalog": [
+    {
+      "tools": [
+        {
+          "name": "open_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "close_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "decompile_function",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "get_xrefs_to",
+          "inputSchema": {
+            "type": "object"
+          }
+        }
+      ]
+    }
+  ],
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T06:29:34.307Z"
+}

@@ -1,0 +1,104 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bebc90: 55                          	push	rbp
+140bebc91: 56                          	push	rsi
+140bebc92: 57                          	push	rdi
+140bebc93: 53                          	push	rbx
+140bebc94: 48 81 ec e8 00 00 00        	sub	rsp, 0xe8
+140bebc9b: 48 8d ac 24 80 00 00 00     	lea	rbp, [rsp + 0x80]
+140bebca3: 48 c7 45 60 fe ff ff ff     	mov	qword ptr [rbp + 0x60], -0x2
+140bebcab: 48 83 79 50 00              	cmp	qword ptr [rcx + 0x50], 0x0
+140bebcb0: 0f 85 c3 00 00 00           	jne	0x140bebd79 <.text+0xbead79>
+140bebcb6: 48 89 ce                    	mov	rsi, rcx
+140bebcb9: 48 8b b9 78 01 00 00        	mov	rdi, qword ptr [rcx + 0x178]
+140bebcc0: 8b 87 d4 0a 00 00           	mov	eax, dword ptr [rdi + 0xad4]
+140bebcc6: 89 44 24 20                 	mov	dword ptr [rsp + 0x20], eax
+140bebcca: 4c 8d 05 c8 8a f2 01        	lea	r8, [rip + 0x1f28ac8]   # 0x142b14799
+140bebcd1: 48 8d 5d a8                 	lea	rbx, [rbp - 0x58]
+140bebcd5: 41 b9 0e 00 00 00           	mov	r9d, 0xe
+140bebcdb: 48 89 d9                    	mov	rcx, rbx
+140bebcde: 48 89 fa                    	mov	rdx, rdi
+140bebce1: e8 ba 37 00 00              	call	0x140bef4a0 <.text+0xbee4a0>
+140bebce6: c6 45 5f 01                 	mov	byte ptr [rbp + 0x5f], 0x1
+140bebcea: 48 89 d9                    	mov	rcx, rbx
+140bebced: 48 89 fa                    	mov	rdx, rdi
+140bebcf0: 45 31 c0                    	xor	r8d, r8d
+140bebcf3: e8 38 15 00 00              	call	0x140bed230 <.text+0xbec230>
+140bebcf8: 48 8d 4e 40                 	lea	rcx, [rsi + 0x40]
+140bebcfc: 48 8b 45 f8                 	mov	rax, qword ptr [rbp - 0x8]
+140bebd00: 48 89 45 50                 	mov	qword ptr [rbp + 0x50], rax
+140bebd04: 0f 10 45 e8                 	movups	xmm0, xmmword ptr [rbp - 0x18]
+140bebd08: 0f 29 45 40                 	movaps	xmmword ptr [rbp + 0x40], xmm0
+140bebd0c: 0f 10 45 a8                 	movups	xmm0, xmmword ptr [rbp - 0x58]
+140bebd10: 0f 10 4d b8                 	movups	xmm1, xmmword ptr [rbp - 0x48]
+140bebd14: 0f 10 55 c8                 	movups	xmm2, xmmword ptr [rbp - 0x38]
+140bebd18: 0f 10 5d d8                 	movups	xmm3, xmmword ptr [rbp - 0x28]
+140bebd1c: 0f 29 5d 30                 	movaps	xmmword ptr [rbp + 0x30], xmm3
+140bebd20: 0f 29 55 20                 	movaps	xmmword ptr [rbp + 0x20], xmm2
+140bebd24: 0f 29 4d 10                 	movaps	xmmword ptr [rbp + 0x10], xmm1
+140bebd28: 0f 29 45 00                 	movaps	xmmword ptr [rbp], xmm0
+140bebd2c: 48 83 39 00                 	cmp	qword ptr [rcx], 0x0
+140bebd30: 75 0c                       	jne	0x140bebd3e <.text+0xbead3e>
+140bebd32: 48 8d 15 6f 8a f2 01        	lea	rdx, [rip + 0x1f28a6f]  # 0x142b147a8
+140bebd39: e8 f2 71 97 ff              	call	0x140562f30 <.text+0x561f30>
+140bebd3e: 48 8b 46 48                 	mov	rax, qword ptr [rsi + 0x48]
+140bebd42: 0f 28 45 00                 	movaps	xmm0, xmmword ptr [rbp]
+140bebd46: 0f 28 4d 10                 	movaps	xmm1, xmmword ptr [rbp + 0x10]
+140bebd4a: 0f 28 55 20                 	movaps	xmm2, xmmword ptr [rbp + 0x20]
+140bebd4e: 0f 28 5d 30                 	movaps	xmm3, xmmword ptr [rbp + 0x30]
+140bebd52: 0f 28 65 40                 	movaps	xmm4, xmmword ptr [rbp + 0x40]
+140bebd56: 48 8b 4d 50                 	mov	rcx, qword ptr [rbp + 0x50]
+140bebd5a: 48 89 48 50                 	mov	qword ptr [rax + 0x50], rcx
+140bebd5e: 0f 11 60 40                 	movups	xmmword ptr [rax + 0x40], xmm4
+140bebd62: 0f 11 58 30                 	movups	xmmword ptr [rax + 0x30], xmm3
+140bebd66: 0f 11 50 20                 	movups	xmmword ptr [rax + 0x20], xmm2
+140bebd6a: 0f 11 48 10                 	movups	xmmword ptr [rax + 0x10], xmm1
+140bebd6e: 0f 11 00                    	movups	xmmword ptr [rax], xmm0
+140bebd71: 48 c7 46 50 01 00 00 00     	mov	qword ptr [rsi + 0x50], 0x1
+140bebd79: 48 81 c4 e8 00 00 00        	add	rsp, 0xe8
+140bebd80: 5b                          	pop	rbx
+140bebd81: 5f                          	pop	rdi
+140bebd82: 5e                          	pop	rsi
+140bebd83: 5d                          	pop	rbp
+140bebd84: c3                          	ret
+140bebd85: 66 66 2e 0f 1f 84 00 00 00 00 00    	nop	word ptr cs:[rax + rax]
+140bebd90: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140bebd95: 55                          	push	rbp
+140bebd96: 56                          	push	rsi
+140bebd97: 57                          	push	rdi
+140bebd98: 53                          	push	rbx
+140bebd99: 48 83 ec 28                 	sub	rsp, 0x28
+140bebd9d: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140bebda4: 80 7d 5f 00                 	cmp	byte ptr [rbp + 0x5f], 0x0
+140bebda8: 75 09                       	jne	0x140bebdb3 <.text+0xbeadb3>
+140bebdaa: 48 83 c4 28                 	add	rsp, 0x28
+140bebdae: 5b                          	pop	rbx
+140bebdaf: 5f                          	pop	rdi
+140bebdb0: 5e                          	pop	rsi
+140bebdb1: 5d                          	pop	rbp
+140bebdb2: c3                          	ret
+140bebdb3: 48 8d 4d a8                 	lea	rcx, [rbp - 0x58]
+140bebdb7: e8 44 21 ff ff              	call	0x140bddf00 <.text+0xbdcf00>
+140bebdbc: eb ec                       	jmp	0x140bebdaa <.text+0xbeadaa>
+140bebdbe: 66 90                       	nop
+140bebdc0: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140bebdc5: 55                          	push	rbp
+140bebdc6: 56                          	push	rsi
+140bebdc7: 57                          	push	rdi
+140bebdc8: 53                          	push	rbx
+140bebdc9: 48 83 ec 28                 	sub	rsp, 0x28
+140bebdcd: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140bebdd4: c6 45 5f 00                 	mov	byte ptr [rbp + 0x5f], 0x0
+140bebdd8: 48 89 e9                    	mov	rcx, rbp
+140bebddb: e8 20 21 ff ff              	call	0x140bddf00 <.text+0xbdcf00>
+140bebde0: c6 45 5f 00                 	mov	byte ptr [rbp + 0x5f], 0x0
+140bebde4: 48 83 c4 28                 	add	rsp, 0x28
+140bebde8: 5b                          	pop	rbx
+140bebde9: 5f                          	pop	rdi
+140bebdea: 5e                          	pop	rsi
+140bebdeb: 5d                          	pop	rbp
+140bebdec: c3                          	ret

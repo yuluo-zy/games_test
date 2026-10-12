@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:48:02.983Z",
+  "completed_at": "2026-10-12T10:48:31.797Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "ccpost_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\g7-post-ui\\ccpost_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: get_strings",
+      "steps": 4
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccpost_l1"
+      },
+      "cache_key": "c95d8657ed5f3582f539a0765983b35c5aa489b5a353f59b2f235cea037ef194",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:48:03.236Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"ccpost_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "ccpost_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:48:15.617Z",
+      "ok": true,
+      "result_sha256": "5b3a1027724626304c180f98c4dec1de30db069ede0473d25b86444a6137deab",
+      "lane": "ccpost_l1",
+      "database": "ccpost_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccpost_l1"
+      },
+      "cache_key": "9e803bddb5b0a03d1ae2c6d2267a23b93ee1f6fbce601f733dfe17f2d7e6fc61",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:48:15.619Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"ccpost_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "ccpost_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:48:27.957Z",
+      "ok": true,
+      "result_sha256": "f259093722e1f04d1f770dc3a6e32e192eb2dee3ecbf8effca1b064ec482ea35",
+      "lane": "ccpost_l1",
+      "database": "ccpost_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "get_strings",
+      "args": {
+        "address": "0x142acd490",
+        "length": 64
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:48:27.959Z",
+      "completed_at": "2026-10-12T10:48:31.129Z",
+      "source": "actual_mcp_call",
+      "cache_key": "538447b4110a8b2094e69fe7ceeb58e9e7bb40e4a25c71fe6577785f686d7e54",
+      "cache_eligible": false,
+      "error": "2 validation errors for call[get_strings]\naddress\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='0x142acd490', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument\nlength\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value=64, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument",
+      "ok": false,
+      "lane": "ccpost_l1",
+      "database": "ccpost_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "get_strings",
+      "args": {
+        "min_length": 3,
+        "limit": 5
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:48:27.959Z",
+      "completed_at": "2026-10-12T10:48:31.129Z",
+      "source": "actual_mcp_call",
+      "cache_key": "538447b4110a8b2094e69fe7ceeb58e9e7bb40e4a25c71fe6577785f686d7e54",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "address": "0x14319332A",
+            "value": "AddVectoredExceptionHandler",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193348",
+            "value": "CancelIo",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193354",
+            "value": "CloseHandle",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193362",
+            "value": "CompareStringOrdinal",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319337A",
+            "value": "CopyFileExW",
+            "length": 11,
+            "type": "TerminatedCString"
+          }
+        ],
+        "total": 472,
+        "offset": 0,
+        "limit": 5,
+        "has_more": true,
+        "database": "ccpost_l1"
+      },
+      "result_sha256": "0206f62201def5dcdeb48f648aa1f200dd9c03204a26eb64269033112e7e7d29",
+      "ok": true,
+      "lane": "ccpost_l1",
+      "database": "ccpost_l1"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "ccpost_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"ccpost_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "ccpost_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "ccpost_l1"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "ccpost_l1"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

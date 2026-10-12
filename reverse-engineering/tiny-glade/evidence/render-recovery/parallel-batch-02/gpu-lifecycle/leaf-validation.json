@@ -1,0 +1,23 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "passed": true,
+  "cases": 29692,
+  "counts": {
+    "track": 7268,
+    "seq": 15405,
+    "clone": 3007,
+    "drop": 4012
+  },
+  "failures": [],
+  "candidate_hashes": {
+    "lib.rs": "77ee2f1b2007c6a74dd463ad36e834a6bfb857fc3bf0b3bfb7737bc6669e7c47",
+    "runner.rs": "f5ddd545ce91f16342e1f48224579cf872eb35ed01ea0effe5f40f1b29a5a4e7",
+    "Cargo.toml": "5821ff07d3334fcf61c51a57ad6745bfd1b5fdeb3fb48c52198899159a5d3f92"
+  },
+  "boundaries": [
+    "Untouched original entry instructions under Unicorn; panic dependency entries observed without unwind.",
+    "Drop final-reference enqueue path is static-only; non-last drop and moved/null failure tested.",
+    "Clone count overflow/zero raw representations tested; these do not establish valid safe-Rust handle states.",
+    "No concurrent CAS race scheduling, Vulkan execution, allocation failure, or dependency implementation recovery."
+  ]
+}

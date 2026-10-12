@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "target_executed": false,
+  "manifest_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/producer-extra-manifest.json",
+  "requests": [
+    {
+      "id": "render-world-caller",
+      "status": "ok",
+      "cache_hit": false,
+      "cache_key": "bd989d1208a14d8bd14631f85ae1977a2cc8a1e154f99bc17a38bae34f928401",
+      "evidence_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/render-world-caller.json",
+      "assembly_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/render-world-caller.asm.txt",
+      "sampled_addresses": 1,
+      "instructions": 4010
+    },
+    {
+      "id": "restir-consumer",
+      "status": "ok",
+      "cache_hit": false,
+      "cache_key": "80ca0d1618938cd10c6cf4f7e6958d085efe830513dbf7a2f395b5f3623cc0c2",
+      "evidence_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/restir-consumer.json",
+      "assembly_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/restir-consumer.asm.txt",
+      "sampled_addresses": 1,
+      "instructions": 266
+    },
+    {
+      "id": "shader-key",
+      "status": "ok",
+      "cache_hit": false,
+      "cache_key": "96862e4471a716af4095c29fe2e3e6c1c1ff99340e068b096f57a580330406a4",
+      "evidence_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/shader-key.json",
+      "assembly_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b1237e511d78c48e8a/render-halfres-c/native-producers/shader-key.asm.txt",
+      "sampled_addresses": 1,
+      "instructions": 322
+    }
+  ],
+  "stats": {
+    "requests": 3,
+    "unique_requests": 3,
+    "cache_hits": 0,
+    "cache_misses": 3,
+    "symbolization_points": 3,
+    "evidence_output_bytes": 1478253,
+    "tool_processes": 6,
+    "version_processes": 2,
+    "analysis_processes": 4,
+    "tool_stdout_bytes": 289594,
+    "tool_stderr_bytes": 0,
+    "elapsed_seconds": 1.6600506659597158
+  },
+  "tool_invocations": [
+    {
+      "phase": "tool_version",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 64,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.14218158298172057,
+      "stderr": ""
+    },
+    {
+      "phase": "tool_version",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 1730,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.04314887500368059,
+      "stderr": ""
+    },
+    {
+      "phase": "disassemble",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--disassemble",
+        "--disassemble-zeroes",
+        "--disassembler-color=off",
+        "--start-address=0x140397c30",
+        "--stop-address=0x14039c9e2",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 249764,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.05411404091864824,
+      "stderr": ""
+    },
+    {
+      "phase": "disassemble",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--disassemble",
+        "--disassemble-zeroes",
+        "--disassembler-color=off",
+        "--start-address=0x140aed630",
+        "--stop-address=0x140aedafa",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 16804,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.03373220795765519,
+      "stderr": ""
+    },
+    {
+      "phase": "disassemble",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--disassemble",
+        "--disassemble-zeroes",
+        "--disassembler-color=off",
+        "--start-address=0x141770e40",
+        "--stop-address=0x1417712cf",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 19966,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.03914245800115168,
+      "stderr": ""
+    },
+    {
+      "phase": "symbolize",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+        "--obj=/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+        "--relative-address",
+        "--inlining",
+        "--output-style=JSON",
+        "--no-debuginfod",
+        "--disable-gsym",
+        "--fallback-debug-path=/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 1266,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.15994433290325105,
+      "stderr": ""
+    }
+  ],
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+    "sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+    "bytes": 65500056,
+    "id": "tiny-glade-C-halfres",
+    "version": "C",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny_glade.pdb",
+      "sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "bytes": 310013952,
+      "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "tools": {
+    "symbolizer": {
+      "path": "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+      "version": "llvm-symbolizer\nHomebrew LLVM version 22.1.2\n  Optimized build.",
+      "sha256": "b2e5452f03eb6a14d4e46e9c867902f90ae6003468848f2befe4206e5fe844fe"
+    },
+    "objdump": {
+      "path": "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+      "version": "Homebrew LLVM version 22.1.2\n  Optimized build.\n\n\n  Registered Targets:\n    aarch64     - AArch64 (little endian)\n    aarch64_32  - AArch64 (little endian ILP32)\n    aarch64_be  - AArch64 (big endian)\n    amdgcn      - AMD GCN GPUs\n    arm         - ARM\n    arm64       - ARM64 (little endian)\n    arm64_32    - ARM64 (little endian ILP32)\n    armeb       - ARM (big endian)\n    avr         - Atmel AVR Microcontroller\n    bpf         - BPF (host endian)\n    bpfeb       - BPF (big endian)\n    bpfel       - BPF (little endian)\n    hexagon     - Hexagon\n    lanai       - Lanai\n    loongarch32 - 32-bit LoongArch\n    loongarch64 - 64-bit LoongArch\n    mips        - MIPS (32-bit big endian)\n    mips64      - MIPS (64-bit big endian)\n    mips64el    - MIPS (64-bit little endian)\n    mipsel      - MIPS (32-bit little endian)\n    msp430      - MSP430 [experimental]\n    nvptx       - NVIDIA PTX 32-bit\n    nvptx64     - NVIDIA PTX 64-bit\n    ppc32       - PowerPC 32\n    ppc32le     - PowerPC 32 LE\n    ppc64       - PowerPC 64\n    ppc64le     - PowerPC 64 LE\n    r600        - AMD GPUs HD2XXX-HD6XXX\n    riscv32     - 32-bit RISC-V\n    riscv32be   - 32-bit big endian RISC-V\n    riscv64     - 64-bit RISC-V\n    riscv64be   - 64-bit big endian RISC-V\n    sparc       - Sparc\n    sparcel     - Sparc LE\n    sparcv9     - Sparc V9\n    spirv       - SPIR-V Logical\n    spirv32     - SPIR-V 32-bit\n    spirv64     - SPIR-V 64-bit\n    systemz     - SystemZ\n    thumb       - Thumb\n    thumbeb     - Thumb (big endian)\n    ve          - VE\n    wasm32      - WebAssembly 32-bit\n    wasm64      - WebAssembly 64-bit\n    x86         - 32-bit X86: Pentium-Pro and above\n    x86-64      - 64-bit X86: EM64T and AMD64\n    xcore       - XCore",
+      "sha256": "6eff2f88ec4034a9bc9bc16903afe64b66b4285ad3e12027a962265d7f6fcbf1"
+    }
+  }
+}

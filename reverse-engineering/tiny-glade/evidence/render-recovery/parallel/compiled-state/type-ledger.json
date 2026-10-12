@@ -1,0 +1,17 @@
+{
+  "status": "partial",
+  "evidence_mode": "static",
+  "addresses": ["0x1402c4280","0x1402c1d40","0x1402c3d00","0x1402c34b4","0x140be95e0","0x140be9600","0x1400fa190","0x140166510"],
+  "evidence_paths": ["evidence/render-recovery/parallel/compiled-state/findings.md","evidence/render-recovery/parallel/compiled-state/mcp-report.json","evidence/render-recovery/parallel/compiled-state/objdump-core.json","evidence/render-architecture/0x1400fa190.c","reconstruction/render/resource_info.rs"],
+  "signature_policy": "PDB void() is a placeholder; layout from original stores/caller pointer relations, not recovered author Rust ABI",
+  "types": [
+    {"name":"CompiledRenderGraph<UserData>","status":"partial","observed_size":"0x218","fields":[{"offset":"0x00","size":"0x90","role":"RenderGraph","confidence":"observed"},{"offset":"0x90","size":"0x18","role":"Vec<RecordedPass<UserData>>, stride 0x40","confidence":"observed"},{"offset":"0xa8","size":"0x108","role":"ResourceRegistry aggregate","confidence":"observed"},{"offset":"0xf0","size":"0x90","role":"ResourceInfo embedded at registry+0x48","confidence":"observed"},{"offset":"0x1b0","size":"0x50","role":"SynchronizationScope1","confidence":"observed"},{"offset":"0x200","size":"0x18","role":"Vec<u32> pending initial-transition indices","confidence":"observed"}]},
+    {"name":"BatchCompiler","status":"partial","fields":[{"offset":"0x00..0x17","role":"Vec<Batch> header","confidence":"observed"},{"offset":"0x18","role":"current batch start","confidence":"observed"},{"offset":"0x20","role":"current batch end/boundary","confidence":"observed"},{"offset":"0x28","role":"current export_barriers bool","confidence":"observed"}]},
+    {"name":"Batch","status":"partial","observed_size":"0x18","fields":[{"offset":"0x00","size":"0x08","role":"start pass index","confidence":"observed"},{"offset":"0x08","size":"0x08","role":"end pass index","confidence":"observed"},{"offset":"0x10","size":"0x01","role":"export_barriers flag; final batch","confidence":"observed"},{"offset":"0x11","size":"0x07","role":"padding","confidence":"unknown"}]},
+    {"name":"PassAccessRecord","status":"partial","observed_stride":"0x14","fields":[{"offset":"0x00","role":"resource index","confidence":"observed"},{"offset":"0x04","role":"previous access index","confidence":"observed"},{"offset":"0x08","role":"next access index","confidence":"observed"},{"offset":"0x0c","role":"synchronization group","confidence":"observed"},{"offset":"0x10","role":"access code","confidence":"observed"}]},
+    {"name":"RecordedPass<UserData>","status":"partial","observed_stride":"0x40","fields":[{"offset":"0x00","size":"0x18","role":"Vec<resource declarations>, 12-byte records","confidence":"observed"},{"offset":"0x18","size":"0x10","role":"name used by profiling","confidence":"inferred"},{"offset":"0x28","size":"0x18","role":"closure/data dispatch","confidence":"unknown"}]},
+    {"name":"CommandBuffer","status":"boundary","observed_stride":"0x58","fields":[{"role":"Vec element in record_batch arg6; implementation outside package","confidence":"observed"}]},
+    {"name":"SynchronizationScope1","status":"partial","observed_size":"0x50","fields":[{"offset":"0x00..0x4f","role":"image/buffer barrier accumulation","confidence":"observed"}]},
+    {"name":"RenderGraphState","status":"partial","fields":[{"role":"persistent graph/pool/registry state","confidence":"inferred"},{"role":"three monomorphized compile closures","confidence":"observed"}]}
+  ]
+}

@@ -1,0 +1,79 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140beced0: 41 56                       	push	r14
+140beced2: 56                          	push	rsi
+140beced3: 57                          	push	rdi
+140beced4: 53                          	push	rbx
+140beced5: 48 83 ec 28                 	sub	rsp, 0x28
+140beced9: 48 89 d6                    	mov	rsi, rdx
+140becedc: 48 89 cf                    	mov	rdi, rcx
+140becedf: 48 89 54 24 20              	mov	qword ptr [rsp + 0x20], rdx
+140becee4: 48 83 79 48 00              	cmp	qword ptr [rcx + 0x48], 0x0
+140becee9: 0f 84 9f 00 00 00           	je	0x140becf8e <.text+0xbebf8e>
+140beceef: 48 8d 4f 50                 	lea	rcx, [rdi + 0x50]
+140becef3: 48 8d 54 24 20              	lea	rdx, [rsp + 0x20]
+140becef8: e8 43 47 9c ff              	call	0x1405b1640 <.text+0x5b0640>
+140becefd: 48 8b 4f 30                 	mov	rcx, qword ptr [rdi + 0x30]
+140becf01: 48 8b 57 38                 	mov	rdx, qword ptr [rdi + 0x38]
+140becf05: 49 89 d0                    	mov	r8, rdx
+140becf08: 49 21 c0                    	and	r8, rax
+140becf0b: 48 c1 e8 39                 	shr	rax, 0x39
+140becf0f: 66 0f 6e c0                 	movd	xmm0, eax
+140becf13: 66 0f 60 c0                 	punpcklbw	xmm0, xmm0      # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+140becf17: f2 0f 70 c0 00              	pshuflw	xmm0, xmm0, 0x0         # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+140becf1c: 66 0f 70 c0 00              	pshufd	xmm0, xmm0, 0x0         # xmm0 = xmm0[0,0,0,0]
+140becf21: 48 8d 41 f0                 	lea	rax, [rcx - 0x10]
+140becf25: 45 31 c9                    	xor	r9d, r9d
+140becf28: 66 0f 76 c9                 	pcmpeqd	xmm1, xmm1
+140becf2c: f3 42 0f 6f 14 01           	movdqu	xmm2, xmmword ptr [rcx + r8]
+140becf32: 66 0f 6f da                 	movdqa	xmm3, xmm2
+140becf36: 66 0f 74 d8                 	pcmpeqb	xmm3, xmm0
+140becf3a: 66 44 0f d7 d3              	pmovmskb	r10d, xmm3
+140becf3f: 45 85 d2                    	test	r10d, r10d
+140becf42: 74 2c                       	je	0x140becf70 <.text+0xbebf70>
+140becf44: f3 45 0f bc da              	tzcnt	r11d, r10d
+140becf49: 4d 01 c3                    	add	r11, r8
+140becf4c: 49 21 d3                    	and	r11, rdx
+140becf4f: 4c 89 db                    	mov	rbx, r11
+140becf52: 48 c1 e3 04                 	shl	rbx, 0x4
+140becf56: 49 89 c6                    	mov	r14, rax
+140becf59: 49 29 de                    	sub	r14, rbx
+140becf5c: 49 39 36                    	cmp	qword ptr [r14], rsi
+140becf5f: 74 43                       	je	0x140becfa4 <.text+0xbebfa4>
+140becf61: 45 8d 5a ff                 	lea	r11d, [r10 - 0x1]
+140becf65: 66 45 21 d3                 	and	r11w, r10w
+140becf69: 45 89 da                    	mov	r10d, r11d
+140becf6c: 75 d6                       	jne	0x140becf44 <.text+0xbebf44>
+140becf6e: 66 90                       	nop
+140becf70: 66 0f 74 d1                 	pcmpeqb	xmm2, xmm1
+140becf74: 66 44 0f d7 d2              	pmovmskb	r10d, xmm2
+140becf79: 45 85 d2                    	test	r10d, r10d
+140becf7c: 75 10                       	jne	0x140becf8e <.text+0xbebf8e>
+140becf7e: 4d 01 c8                    	add	r8, r9
+140becf81: 49 83 c0 10                 	add	r8, 0x10
+140becf85: 49 83 c1 10                 	add	r9, 0x10
+140becf89: 49 21 d0                    	and	r8, rdx
+140becf8c: eb 9e                       	jmp	0x140becf2c <.text+0xbebf2c>
+140becf8e: 48 83 c7 30                 	add	rdi, 0x30
+140becf92: 31 db                       	xor	ebx, ebx
+140becf94: 48 89 f9                    	mov	rcx, rdi
+140becf97: 48 89 f2                    	mov	rdx, rsi
+140becf9a: 45 31 c0                    	xor	r8d, r8d
+140becf9d: e8 4e 0e cc 00              	call	0x1418addf0 <.text+0x18acdf0>
+140becfa2: eb 16                       	jmp	0x140becfba <.text+0xbebfba>
+140becfa4: 49 f7 db                    	neg	r11
+140becfa7: 49 c1 e3 04                 	shl	r11, 0x4
+140becfab: bb 01 00 00 00              	mov	ebx, 0x1
+140becfb0: 42 2b 5c 19 f8              	sub	ebx, dword ptr [rcx + r11 - 0x8]
+140becfb5: 42 89 5c 19 f8              	mov	dword ptr [rcx + r11 - 0x8], ebx
+140becfba: 89 d8                       	mov	eax, ebx
+140becfbc: 48 83 c4 28                 	add	rsp, 0x28
+140becfc0: 5b                          	pop	rbx
+140becfc1: 5f                          	pop	rdi
+140becfc2: 5e                          	pop	rsi
+140becfc3: 41 5e                       	pop	r14
+140becfc5: c3                          	ret

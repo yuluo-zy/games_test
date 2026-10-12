@@ -1,0 +1,23 @@
+{
+  "schema_version":1,
+  "candidate":"reconstruction/render/work-packages/gpu-lifecycle-r3/Cargo.toml",
+  "status":"verified_native_leaves_and_static_event_candidate",
+  "leaf_contracts":{
+    "track_handle":"generation mismatch silently skip; else require tag=1 and unsigned atomic max command sequence",
+    "track_sequence":"require recording tag=1 and atomic max",
+    "clone_reference":"wrapping atomic u32 increment; no overflow guard",
+    "drop_reference":"null/moved panic; wrapping decrement; zero result queues waste; handle pointer cleared",
+    "dispose_control":"device, kind and generation guards; backend call precedes refs==0 guard; wrapping generation increment"
+  },
+  "event_contracts":{
+    "identity":"opaque control identity plus observed generation; exact original pointer ABI not exposed",
+    "waste":"control record queued at last drop; look up last command sequence when detached",
+    "bucket":"found sequence defers disposal; absent sequence immediate disposal",
+    "submission":"queue timeline differs from command sequence; explicit mapping supplied by caller",
+    "completion":"external timeline counter gates pending command records; global/domain sequential prefix gates buckets",
+    "retire":"R4 CPU pool return can precede GPU completion; raw slot protection remains"
+  },
+  "public_dependencies_reused":["std atomics/Vec/maps/sets; no implementation recovery","original ash 0.38.0+1.3.281 is backend boundary, not needed in CPU candidate"],
+  "unknown_inputs":["exact sequence domain/global bucket namespace","same-resource multi-domain synchronization","original empty timeline policy"],
+  "non_goals":["full Vulkan runtime equivalence","author Rust text","dependency internals","full shader/render graph"]
+}

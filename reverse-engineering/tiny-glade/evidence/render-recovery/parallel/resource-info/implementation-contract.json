@@ -1,0 +1,45 @@
+{
+  "status": "candidate_compilable",
+  "scope": "ResourceInfo::calculate 0x140530430 through derived graph snapshot",
+  "source": "reconstruction/render/work-packages/resource-info",
+  "inputs": {
+    "origins": "72-byte declarations projected into neutral OriginKind",
+    "exports": "48-byte declarations projected into ExportDeclaration",
+    "passes": "64-byte pass slices containing 12-byte access declarations",
+    "dependency_access_mask": "explicit vk_sync_fork get_access_info boundary"
+  },
+  "outputs": [
+    "20-byte access chain records",
+    "half-open pass access index ranges",
+    "24-byte lifetime records",
+    "image and buffer usage flag arrays",
+    "sorted lifetime event words",
+    "exported u16 index set"
+  ],
+  "invariants": [
+    "calculate clears reusable vectors and export set first",
+    "access previous points to prior access for same resource; next starts NO_ACCESS and is linked later",
+    "lifetime first/last access use NO_ACCESS sentinel",
+    "origin tag 0 starts without lifetime; tags 1/2 start at pass zero",
+    "only lifetime endpoints with tag exactly 1 emit events",
+    "end event sets bit 16, start event leaves bit 16 clear",
+    "exports require index < 65536 and insert index even for zero masks",
+    "dependency and public-library implementations remain outside candidate scope"
+  ],
+  "panic_order": [
+    "earlier access append/lifetime writes remain before access-mask conversion panic",
+    "export zero mask bypasses usage conversion and array bounds",
+    "unsupported descriptor/access mask and out-of-range resource/index are rejected"
+  ],
+  "validation": {
+    "command": "workspace/python/Scripts/python.exe evidence/render-recovery/parallel/resource-info/verify_calculate.py",
+    "report": "evidence/render-recovery/parallel/resource-info/verification.json",
+    "cases": 512,
+    "outcomes": {"ok": 507, "panic": 5}
+  },
+  "limitations": [
+    "does not establish original Rust ABI, enum names, hashbrown layout or GPU ownership",
+    "uses canonical None payloads and zero padding",
+    "does not cover ResourcePool, ResourceRegistry physical allocation, barriers or executor"
+  ]
+}

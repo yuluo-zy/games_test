@@ -1,0 +1,69 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "tg_producer_closure",
+  "session_key": "re_mcp_ghidra:tg_producer_closure",
+  "steps": [
+    {"tool": "open_database", "args": {"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "database_id": "tg_producer_closure", "run_auto_analysis": false}},
+    {"tool": "wait_for_analysis", "args": {"database": "tg_producer_closure"}},
+
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140c04e20"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bfc750"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bfc780"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bfcf80"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf0b90"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1418c3300"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1418c8710"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf84e0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140c03d70"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf0cc0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bef4a0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bed050"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bed230"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bed3d0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bed4c0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140becfd0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf2560"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf8fb0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bea680"}},
+
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bebdf0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1400fa190"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1400fb5b0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bebc90"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bec400"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140beabd0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140bf8e60"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140bebdf0"}},
+
+    {"tool": "disassemble_function", "args": {"database": "tg_producer_closure", "address": "0x140bf2560"}},
+    {"tool": "disassemble_function", "args": {"database": "tg_producer_closure", "address": "0x140c04e20"}},
+
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140c04e20"}},
+    {"tool": "get_xrefs_from", "args": {"database": "tg_producer_closure", "address": "0x140c04e20"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x1418c3300"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140bfc750"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x1418c8710"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140bf84e0"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140bf0b90"}},
+
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "KHR", "min_length": 4, "limit": 300}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "ray", "min_length": 4, "limit": 150}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "accel", "min_length": 4, "limit": 80}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "bvh", "min_length": 4, "limit": 80}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "Vulkan", "min_length": 4, "limit": 200}},
+
+    {"tool": "find_code_by_string", "args": {"database": "tg_producer_closure", "pattern": "VK_KHR_acceleration_structure"}},
+    {"tool": "find_code_by_string", "args": {"database": "tg_producer_closure", "pattern": "VK_KHR_ray_tracing_pipeline"}},
+    {"tool": "find_code_by_string", "args": {"database": "tg_producer_closure", "pattern": "vkCmdTraceRaysKHR"}},
+    {"tool": "find_code_by_string", "args": {"database": "tg_producer_closure", "pattern": "vkCreateAccelerationStructureKHR"}},
+
+    {"tool": "list_names", "args": {"database": "tg_producer_closure", "filter_pattern": "ray", "limit": 100}},
+    {"tool": "list_names", "args": {"database": "tg_producer_closure", "filter_pattern": "bvh", "limit": 100}},
+    {"tool": "list_names", "args": {"database": "tg_producer_closure", "filter_pattern": "accel", "limit": 100}},
+    {"tool": "list_names", "args": {"database": "tg_producer_closure", "filter_pattern": "trace", "limit": 100}},
+    {"tool": "list_functions", "args": {"database": "tg_producer_closure", "filter_pattern": "ray|bvh|accel", "limit": 100}},
+
+    {"tool": "close_database", "args": {"database": "tg_producer_closure", "save": false}}
+  ]
+}

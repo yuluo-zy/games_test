@@ -2,9 +2,19 @@
 
 当前阶段是源码恢复；场景回放、GPU与最终画面验收后置。原作依赖全部保留在[dependency-policy.json](tracking/dependency-policy.json)，不要把901个package当作901个逆向任务。依赖实现不计入游戏源码覆盖。
 
+2026-10-12 最新用户指示继续渲染框架源码恢复和编译/原码测试：S25已完成确定性rhapsody工作图与三批并行恢复。批次01恢复ResourceInfo、Registry/Pool、CompiledGraph/Batch；批次02整合小图DSL、executor/temporal与tracked GPU生命周期；批次03关闭barrier/record分段、sequence/timeline分域和temporal完整payload主要路径。累计新增512个ResourceInfo快照、1600个BatchCompiler、29692个生命周期叶、1344个barrier和97个population原入口案例零差异；批次03候选13项Rust测试通过，跨包门禁13/13。CPU `compile -> barrier/record projection -> submit events -> immediate retire` 与 deferred GPU disposal合同进一步闭合；真实Vulkan/GPU、完整pass recording、counter构造、temporal reset/drop、pipeline/shader和游戏pass接线继续恢复。第三批门禁见[evidence/render-recovery/parallel-batch-03/integration.json](evidence/render-recovery/parallel-batch-03/integration.json)。
+
 ## 当前选择
 
-本轮先做 **依赖复用纠正 → 墙体高度规则/屋顶基准高度 → 屋顶编辑与参数消费者**。这能把已有屋顶CPU源码接到真实权威状态，并为墙、门窗、楼梯和历史操作提供共同基础。无需先重建渲染器或场景。
+最新执行规则以[WORKFLOW_RESET.md](evidence/render-recovery/WORKFLOW_RESET.md)为准。旧批次成果保留，停止继续创建R8等孤立函数包。优先把graph/registry/record/counter恢复结果接进单一共享调用入口，消除手填sequence与record输入；按真实consumer、私有stub移除和链级验收记进度。以下旧路线和批次数字仅作历史范围，不覆盖新规则。
+
+后续实施：共享 `ExecutionChain::execute_graph` 已接通graph声明→compiled→record→counter→实际queue数组→receipt/completion；正常、callback失败、queue失败3个候选链场景通过。下一任务为原shader/interface选择生产者→descriptor共享callback及真实wait/signal生产者；managed资源物理生产者、temporal跨帧和country-core consumer仍待接线。候选链不等同原完整compile ABI/原整链oracle，GPU未运行。详见 [共享入口验证](evidence/render-recovery/parallel-batch-06/shared-entry-validation.json)。
+
+最新功能范围：用户授权的新目录 `reconstruction/rhapsody-rebuild` 已统一通过64测试/13真实GPU探针/25验收命令，其 [MODULE_STATUS](reconstruction/rhapsody-rebuild/MODULE_STATUS.md) 是当前功能进度依据。旧共享入口新增带当前Command和compiled资源的callback上下文，4链级场景通过。下一功能链为主图registry→真实recording Command→managed descriptor→首个shader callback→同一submit/回收；新目录仍为两阶段桥。原并行/跨族、缓存淘汰、资产pass关联和本地分叉等价性继续保留。详情见 [消费链复核](evidence/render-recovery/consumer-chain-review-2026-10-12/README.md)；前段“GPU未运行”仅是旧共享CPU范围。
+
+当前用户指定先审计逆向工具、再创建多个agent继续 `rhapsody`。已完成审计与3个agent本轮交付：第四批统一门禁50/50、第五批27/27通过。第五批新增Primary调用者180、非空资源record/submit774、descriptor layout/pool/compute创建边界5184原指令案例零差异；5+2候选测试通过。工具runner27个本地协议测试通过，不计作游戏源码恢复。
+
+接下来按 **真实sequence生产接口适配 → 多队列真实调用/并行录制/完整queue前段 → sparse layout/descriptor writes/完整pipeline → country-core最小pass接线** 推进。模块状态、报告范围和下一步验收目标详见 [RHAPSODY_PROGRESS.md](evidence/render-recovery/RHAPSODY_PROGRESS.md)。xref缺少记录不等于无caller，跳表伪码需限定反汇编核对；缓存缺provider/数据库revision输入默认禁用。墙体、屋顶与历史任务保留在下表，当前优先恢复渲染框架。
 
 优先级为基于现有证据的工程判断，不是准确工时预测：P0立即进行；P1核心后续；P2在状态/几何基础后；P3当前后置。每项必须交付游戏自有Rust源码、输入输出/类型证据和必要的原码校验，不能以调用了反编译工具或写了提取脚本代替交付。
 
@@ -35,7 +45,7 @@
 | S22 | 资产/prefab/mesh metadata | P1/P2；供全部模块取数据 | 游戏格式schema、资源ID、atlas/prefab构建与绑定 | rkyv/ron/image/dds等公开依赖 | 解自有schema和资源关系，不重写通用解码器 |
 | S23 | 更新调度/缓存/任务 | P1；模块一致性基础 | 自有脏标记、依赖顺序、重建/取消/缓存策略 | Bevy scheduler/tasks与线程库 | 只恢复游戏系统的注册与依赖 |
 | S24 | 引擎分叉必要适配 | 按实际阻塞选择 | 可证实且影响游戏调用的fork差异 | 原Bevy/引擎整体 | fork仓库/commit待核实；不从0恢复Bevy |
-| S25 | GPU/游戏专属render passes | P3；用户要求后置 | 未来仅研究自有pass/参数/独特效果 | ash/kajiya/驱动/通用渲染依赖 | 当前不做shader逻辑/动态/GPU复现 |
+| S25 | 渲染框架/GPU游戏专属passes | 当前P0 | 自有资源图/同步/执行框架与pass/参数/效果 | 原ash/vk-sync/allocator/驱动依赖 | 共享graph声明→compiled→record→counter→queue→completion候选入口已接通，3个链级场景通过；descriptor接口已交付但真实shader选择/shared callback、managed物理生产者、wait/signal、多队列/并行、temporal跨帧、完整pipeline、原整链oracle和GPU仍未闭合 |
 | S26 | 场景回放/视觉/性能/完整游戏集成 | P3；最终验收 | 未来跨模块功能/画面/存档/性能对照 | 已复用依赖及完成模块 | 当前后置，不作为源码阶段的先决条件 |
 
 ## 具体入口与本轮状态

@@ -1,0 +1,338 @@
+{
+  "target": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+  "target_execution": false,
+  "actual_connection": true,
+  "results": [
+    {
+      "name": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_render_arch"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_render_arch\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_render_arch",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "wait_for_analysis",
+      "args": {
+        "database": "tg_render_arch"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_render_arch\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116270,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_render_arch",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116270,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "get_database_info",
+      "args": {
+        "database": "tg_render_arch"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"file_path\":\"/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe\",\"file_type\":\"Portable Executable (PE)\",\"processor\":\"x86:LE:64:default\",\"compiler_spec\":\"clangwindows\",\"bitness\":64,\"endian\":\"little\",\"min_address\":\"0x140000000\",\"max_address\":\"0x1437CC1FF\",\"image_base\":\"0x140000000\",\"function_count\":116270,\"segment_count\":8,\"entry_point_count\":2,\"capabilities\":{\"decompiler\":true},\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "file_path": "/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+          "file_type": "Portable Executable (PE)",
+          "processor": "x86:LE:64:default",
+          "compiler_spec": "clangwindows",
+          "bitness": 64,
+          "endian": "little",
+          "min_address": "0x140000000",
+          "max_address": "0x1437CC1FF",
+          "image_base": "0x140000000",
+          "function_count": 116270,
+          "segment_count": 8,
+          "entry_point_count": 2,
+          "capabilities": {
+            "decompiler": true
+          },
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd4b00"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140BD4B00\",\"error_type\":\"NotFound\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "create_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd4b00"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"address\":\"0x140BD4B00\",\"name\":\"FUN_140bd4b00\",\"end\":\"0x140BD4B01\",\"size\":1,\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "address": "0x140BD4B00",
+          "name": "FUN_140bd4b00",
+          "end": "0x140BD4B01",
+          "size": 1,
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd4b00"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140bd4b00\",\"address\":\"0x140BD4B00\",\"decompiled_code\":\"\\r\\nuint FUN_140bd4b00(uint param_1)\\r\\n\\r\\n{\\r\\n  uint uVar1;\\r\\n  uint uVar2;\\r\\n  \\r\\n  uVar2 = (param_1 & 6) << 5 | (param_1 & 1) << 8;\\r\\n  uVar1 = uVar2 + 0x20 + (param_1 & 8) * 2;\\r\\n  if ((param_1 & 0x18060) == 0) {\\r\\n    uVar1 = uVar2 + (param_1 & 8) * 2;\\r\\n  }\\r\\n  return uVar1 | param_1 >> 0xb & 3;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140bd4b00",
+          "address": "0x140BD4B00",
+          "decompiled_code": "\r\nuint FUN_140bd4b00(uint param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  \r\n  uVar2 = (param_1 & 6) << 5 | (param_1 & 1) << 8;\r\n  uVar1 = uVar2 + 0x20 + (param_1 & 8) * 2;\r\n  if ((param_1 & 0x18060) == 0) {\r\n    uVar1 = uVar2 + (param_1 & 8) * 2;\r\n  }\r\n  return uVar1 | param_1 >> 0xb & 3;\r\n}\r\n\r\n",
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd4b00",
+        "limit": 20
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":20,\"has_more\":false,\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 20,
+          "has_more": false,
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd49d0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140bd49d0\",\"address\":\"0x140BD49D0\",\"decompiled_code\":\"\\r\\nundefined8 FUN_140bd49d0(int param_1)\\r\\n\\r\\n{\\r\\n  code *pcVar1;\\r\\n  undefined8 uVar2;\\r\\n  int iStack_44;\\r\\n  int *piStack_40;\\r\\n  undefined *puStack_38;\\r\\n  undefined *puStack_30;\\r\\n  undefined8 uStack_28;\\r\\n  undefined4 **ppuStack_20;\\r\\n  undefined8 uStack_18;\\r\\n  undefined8 uStack_10;\\r\\n  \\r\\n  if (param_1 < 0x220) {\\r\\n    if (param_1 < 0x100) {\\r\\n      if (param_1 == 0x20) {\\r\\n        return 4;\\r\\n      }\\r\\n      if (param_1 == 0x40) {\\r\\n        return 8;\\r\\n      }\\r\\n      if (param_1 == 0x80) {\\r\\n        return 0x10;\\r\\n      }\\r\\n    }\\r\\n    else {\\r\\n      if ((param_1 == 0x100) || (param_1 == 0x180)) {\\r\\n        return 0x10;\\r\\n      }\\r\\n      if (param_1 == 0x200) {\\r\\n        return 0x20;\\r\\n      }\\r\\n    }\\r\\n  }\\r\\n  else if (param_1 < 0x800) {\\r\\n    if ((param_1 == 0x400) || (param_1 == 0x600)) {\\r\\n      return 0x20;\\r\\n    }\\r\\n    if (param_1 == 0x220) {\\r\\n      return 0x24;\\r\\n    }\\r\\n  }\\r\\n  else {\\r\\n    if (param_1 == 0x800) {\\r\\n      return 1;\\r\\n    }\\r\\n    if (param_1 == 0x1000) {\\r\\n      return 2;\\r\\n    }\\r\\n    if (param_1 == 0x18000) {\\r\\n      return 8;\\r\\n    }\\r\\n  }\\r\\n  piStack_40 = &iStack_44;\\r\\n  puStack_38 = &UNK_140c87a90;\\r\\n  puStack_30 = &UNK_142b0f710;\\r\\n  uStack_28 = 1;\\r\\n  uStack_10 = 0;\\r\\n  ppuStack_20 = &piStack_40;\\r\\n  uStack_18 = 1;\\r\\n  iStack_44 = param_1;\\r\\n  FUN_1428d9390(&puStack_30,&UNK_142b0f720);\\r\\n  pcVar1 = (code *)swi(3);\\r\\n  uVar2 = (*pcVar1)();\\r\\n  return uVar2;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140bd49d0",
+          "address": "0x140BD49D0",
+          "decompiled_code": "\r\nundefined8 FUN_140bd49d0(int param_1)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  int iStack_44;\r\n  int *piStack_40;\r\n  undefined *puStack_38;\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined4 **ppuStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_1 < 0x220) {\r\n    if (param_1 < 0x100) {\r\n      if (param_1 == 0x20) {\r\n        return 4;\r\n      }\r\n      if (param_1 == 0x40) {\r\n        return 8;\r\n      }\r\n      if (param_1 == 0x80) {\r\n        return 0x10;\r\n      }\r\n    }\r\n    else {\r\n      if ((param_1 == 0x100) || (param_1 == 0x180)) {\r\n        return 0x10;\r\n      }\r\n      if (param_1 == 0x200) {\r\n        return 0x20;\r\n      }\r\n    }\r\n  }\r\n  else if (param_1 < 0x800) {\r\n    if ((param_1 == 0x400) || (param_1 == 0x600)) {\r\n      return 0x20;\r\n    }\r\n    if (param_1 == 0x220) {\r\n      return 0x24;\r\n    }\r\n  }\r\n  else {\r\n    if (param_1 == 0x800) {\r\n      return 1;\r\n    }\r\n    if (param_1 == 0x1000) {\r\n      return 2;\r\n    }\r\n    if (param_1 == 0x18000) {\r\n      return 8;\r\n    }\r\n  }\r\n  piStack_40 = &iStack_44;\r\n  puStack_38 = &UNK_140c87a90;\r\n  puStack_30 = &UNK_142b0f710;\r\n  uStack_28 = 1;\r\n  uStack_10 = 0;\r\n  ppuStack_20 = &piStack_40;\r\n  uStack_18 = 1;\r\n  iStack_44 = param_1;\r\n  FUN_1428d9390(&puStack_30,&UNK_142b0f720);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bd49d0",
+        "limit": 20
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[{\"from_address\":\"0x1436A48D4\",\"from_function\":\"\",\"ref_type\":\"DATA\",\"is_call\":false}],\"total\":1,\"offset\":0,\"limit\":20,\"has_more\":false,\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [
+            {
+              "from_address": "0x1436A48D4",
+              "from_function": "",
+              "ref_type": "DATA",
+              "is_call": false
+            }
+          ],
+          "total": 1,
+          "offset": 0,
+          "limit": 20,
+          "has_more": false,
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140c10e10"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C10E10\",\"error_type\":\"NotFound\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "name": "create_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140c10e10"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"address\":\"0x140C10E10\",\"name\":\"FUN_140c10e10\",\"end\":\"0x140C10E11\",\"size\":1,\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "address": "0x140C10E10",
+          "name": "FUN_140c10e10",
+          "end": "0x140C10E11",
+          "size": 1,
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140c10e10"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140c10e10\",\"address\":\"0x140C10E10\",\"decompiled_code\":\"\\r\\nbool FUN_140c10e10(char param_1)\\r\\n\\r\\n{\\r\\n  return (byte)(param_1 - 0x28U) < 0x10;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140c10e10",
+          "address": "0x140C10E10",
+          "decompiled_code": "\r\nbool FUN_140c10e10(char param_1)\r\n\r\n{\r\n  return (byte)(param_1 - 0x28U) < 0x10;\r\n}\r\n\r\n",
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140c10e10",
+        "limit": 20
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":20,\"has_more\":false,\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 20,
+          "has_more": false,
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    },
+    {
+      "name": "close_database",
+      "args": {
+        "database": "tg_render_arch",
+        "save": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_render_arch\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_render_arch"
+        },
+        "isError": false
+      }
+    }
+  ]
+}

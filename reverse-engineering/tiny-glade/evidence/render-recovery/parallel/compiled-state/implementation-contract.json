@@ -1,0 +1,14 @@
+{
+  "status": "candidate",
+  "rust_recovery_unit": "compiled graph snapshot and batch/barrier state",
+  "required_inputs": ["resource declarations", "pass records", "access chains", "import/export records", "queue family/device scope"],
+  "outputs": ["compiled snapshot", "batch ranges", "pre/post barrier scopes", "resource physical mapping", "temporal/import-export state"],
+  "preconditions": ["batch pass range start <= end", "batch range end <= recorded pass count", "resource/access indices in bounds", "input command buffer Vec non-empty", "resource variant matches barrier kind"],
+  "candidate_scope": ["BatchCompiler::new/flush and executor final flag","constructor pending initial-transition resource indices","pre_pass_barrier transition decision with external concurrency callback","generic owned snapshot projection"],
+  "not_implemented": ["Vulkan record_batch","full RenderGraphState::compile","resource handle validation/allocation","queue submit/retire","temporal map and game closures"],
+  "ordering": ["drain pending indices once","initial barriers on incoming command buffer","per-pass barriers in recording closure","append returned command buffers","end incoming and returned buffers except final one","final batch export transitions on final command buffer"],
+  "failure_behavior": "preserve validation/panic boundary; do not silently clamp invalid indices",
+  "dependency_policy": "reuse ash/vk-sync/Bevy/public containers; recover game-owned graph rules only",
+  "evidence": ["0x1402c4280", "0x1402c3d00", "0x1402c1d40", "0x140be9600", "0x1400fa190", "0x1402c34b4"],
+  "evidence_paths": ["evidence/render-recovery/parallel/compiled-state/findings.md","evidence/render-recovery/parallel/compiled-state/mcp-report.json","evidence/render-recovery/parallel/compiled-state/objdump-core.json","evidence/render-architecture/0x1400fa190.c"]
+}

@@ -1,12 +1,12 @@
 # Tiny Glade 原作还原：里程碑与进度
 
-更新：2026-10-10T10:38:19.651657+00:00。目标：完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为。
+更新：2026-10-12T10:08:01.154567+00:00。目标：完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为。
 
 **当前不是完整游戏。整体完成百分比暂不报告：完整原作功能清单及验收分母仍在建立。**
 
 进度必须区分：定位原作 → 结构/调用链确认 → Rust 实现 → 局部机器码差分 → 系统场景验收。仅反编译不算还原验收。
 
-当前用户指定**源码恢复优先**；场景回放和 GPU 研究后置。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。
+当前用户指定**源码恢复优先**；最新指示已开始渲染框架的Rust恢复与原码验证，场景和完整GPU画面验收尚未开展。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。
 
 | ID | 里程碑 | 最终状态 | 源码关口 | 前置验收 | 验收条件 | 证据 |
 |---|---|---|---|---|---|---|
@@ -22,9 +22,17 @@
 | M09 | 门窗/装饰/附着关系 | 未开始 | — | M06, M07, M08 | 放置/尺寸/变形/冲突/宿主变化与恢复实现；原作样本与局部规则验证 | 尚无验收证据 |
 | M10 | 地形/道路/水/园景 | 未开始 | — | M01, M07 | 坐标/笔刷/曲线/插值及跨对象变化传播实现；对应原作场景操作对照 | 尚无验收证据 |
 | M11 | 输入/拾取/任务调度 | 未开始 | — | M06, M08, M09, M10 | 原作时序与脏更新依赖明确；连续拖动、反向、撤销与异步任务一致性通过 | 尚无验收证据 |
-| M12 | 资源/着色器/渲染 | 未开始 | — | M01, M06, M08, M09, M10 | 原作实际 pass、实例、材质与资源格式恢复；固定相机画面及性能对照 | 尚无验收证据 |
+| M12 | 资源/着色器/渲染 | 进行中 | 部分源码及原码校验通过：五批CPU/API合同统一门禁通过；第四批50/50、第五批27/27；新增Primary caller180、非空record774、descriptor创建5184原指令案例；生产sequence适配/并行queue/sparse layout/writes/完整pipeline/真实pass/GPU仍未验收 | M01, M06, M08, M09, M10 | 原作实际 pass、实例、材质与资源格式恢复；固定相机画面及性能对照 | [Cargo.toml](reconstruction/render/Cargo.toml)<br>[Cargo.toml](reconstruction/render/original-skeleton/crates/rhapsody/Cargo.toml)<br>[structure.json](reconstruction/render/original-skeleton/crates/rhapsody/structure.json)<br>[verification.json](reconstruction/render/original-skeleton/crates/rhapsody/verification.json)<br>[resource_info.rs](reconstruction/render/resource_info.rs)<br>[resource_usage.rs](reconstruction/render/resource_usage.rs)<br>[verification.json](evidence/render-recovery/verification.json)<br>[findings.md](evidence/render-recovery/findings.md)<br>[report.json](evidence/render-skeleton/report.json)<br>[rendering-framework-map.md](evidence/render-architecture/rendering-framework-map.md)<br>[rendering-framework-map.json](evidence/render-architecture/rendering-framework-map.json)<br>[BATCHED_RHAPSODY_RECOVERY_PLAN.md](evidence/render-recovery/BATCHED_RHAPSODY_RECOVERY_PLAN.md)<br>[summary.json](evidence/render-recovery/workgraph/summary.json)<br>[functions.json](evidence/render-recovery/workgraph/functions.json)<br>[calls.json](evidence/render-recovery/workgraph/calls.json)<br>[work-packages.json](evidence/render-recovery/workgraph/work-packages.json)<br>[contract.json](evidence/render-recovery/graph-compiler/contract.json)<br>[query-queue.json](evidence/render-recovery/graph-compiler/query-queue.json)<br>[integration.json](evidence/render-recovery/parallel/integration.json)<br>[contract.json](evidence/render-recovery/parallel-batch-02/contract.json)<br>[integration.json](evidence/render-recovery/parallel-batch-02/integration.json)<br>[contract.json](evidence/render-recovery/parallel-batch-03/contract.json)<br>[integration.json](evidence/render-recovery/parallel-batch-03/integration.json)<br>[RHAPSODY_PROGRESS.md](evidence/render-recovery/RHAPSODY_PROGRESS.md)<br>[contract.json](evidence/render-recovery/parallel-batch-04/contract.json)<br>[validation.json](evidence/render-recovery/parallel-batch-04/device-counters/validation.json)<br>[validation.json](evidence/render-recovery/parallel-batch-04/record-submit/validation.json)<br>[validation.json](evidence/render-recovery/parallel-batch-04/pipeline-shader-interfaces/validation.json)<br>[Cargo.toml](reconstruction/render/work-packages/graph-compiler-r2/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/gpu-lifecycle-r3/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/executor-temporal-r4/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/barrier-record-r5/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/sequence-domain-r5/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/temporal-r5/Cargo.toml)<br>[TOOLING_AUDIT_2026-10-12.md](evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md)<br>[README.md](evidence/render-recovery/tooling/README.md)<br>[runner-validation.json](evidence/render-recovery/tooling/runner-validation.json)<br>[integration.json](evidence/render-recovery/parallel-batch-04/integration.json)<br>[README.md](evidence/render-recovery/parallel-batch-05/README.md)<br>[integration.json](evidence/render-recovery/parallel-batch-05/integration.json)<br>[validation.json](evidence/render-recovery/parallel-batch-05/queue-callers/validation.json)<br>[validation.json](evidence/render-recovery/parallel-batch-05/record-resources/validation.json)<br>[validation.json](evidence/render-recovery/parallel-batch-05/pipeline-descriptors/validation.json)<br>[Cargo.toml](reconstruction/render/work-packages/queue-callers-r7/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/record-resources-r7/Cargo.toml)<br>[Cargo.toml](reconstruction/render/work-packages/pipeline-descriptors-r7/Cargo.toml)<br>[MODULE_STATUS.md](reconstruction/rhapsody-rebuild/MODULE_STATUS.md)<br>[functional-project-validation.json](reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json)<br>[README.md](evidence/render-recovery/consumer-chain-review-2026-10-12/README.md) |
 | M13 | 生态/天气/音频/UI/相机 | 未开始 | — | M07, M11, M12 | 观察到的外围系统行为/参数/资源依赖逐项实现并验证 | 尚无验收证据 |
 | M14 | 完整 Rust 游戏集成验收 | 未开始 | — | M06, M07, M08, M09, M10, M11, M12, M13 | 可运行交互游戏；全部确认的原作功能清单关闭；历史、场景、视觉、性能及异常恢复回归通过 | 尚无验收证据 |
+
+## rhapsody 当前进度
+
+新rhapsody-rebuild候选功能统一验收通过：64测试、严格Clippy、13真实GPU探针，25命令无失败；112输入/53外部依赖经只读复核。旧共享入口新增当前Command/compiled callback上下文，4链级场景通过。新目录自动首个shader callback仍为两阶段桥，原并行/跨族/资产关联/分叉与原整帧等价性未验收。
+
+已完成统一门禁的批次：1、2、3、4。当前工作 agent 数：0。M12保持 `verified_partial`。
+
+[模块进度与下一步](evidence/render-recovery/RHAPSODY_PROGRESS.md) · [工具审计](evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md)
 
 ## 已验证局部算法
 
@@ -38,6 +46,8 @@
 | Circular CPU tiles | verified_local：37输入、11467记录；25prepared/12完整入口 | [Rust](reconstruction/roof/tiles.rs) | [差分报告](evidence/roof-tiles/circular-verification.json) |
 | Wall height numeric policy / cached heights | verified_local：6624案例；clamp仅数值后段，3个缓存叶函数含缺失panic条件；ECS/哈希实现排除 | [Rust](reconstruction/wall/height_rules.rs) | [差分报告](evidence/scope-priorities/wall-rules-verification.json) |
 | Roof resolved edit core / feedback rules | verified_local：4514案例；完整88字节状态、changed tick、变化量、gable重建及反馈数值；已解析后段，不是完整ECS系统 | [Rust](reconstruction/roof/edit_rules.rs) | [差分报告](evidence/source-edits/verification.json) |
+| Renderer resource graph rules | verified_local：访问链、生命周期事件、并发判断；依赖classifier外供；78867案例 | [Rust](reconstruction/render/resource_info.rs) | [差分报告](evidence/render-recovery/verification.json) |
+| Renderer Vulkan usage conversions | verified_local：2个完整private用途转换叶函数；ash原版本复用；142149案例 | [Rust](reconstruction/render/resource_usage.rs) | [差分报告](evidence/render-recovery/verification.json) |
 
 ## 尚未关闭的边界
 
@@ -45,19 +55,20 @@
 - Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实
 - 屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成
 - 22个快照引用目标缺失
-- 完整游戏、场景回放与GPU尚未验收，后两项按用户要求后置
+- 完整游戏、场景回放与GPU尚未验收；GPU源码按最新用户要求开始恢复
 
 ## 当前后置工作
 
-- 场景回放与运行交互验收：用户要求当前不做
-- GPU/渲染/着色器动态算法：用户要求当前不做
+- 完整场景回放与运行交互验收仍后置
+- GPU/渲染按用户最新指示开始源码恢复；完整shader动态/画面验收尚未开展
 
 ## 下一批可执行任务
 
-1. S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器
-2. S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则
-3. S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half
-4. S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放
+1. rhapsody：按新目录MODULE_STATUS/统一功能验收记进度；将主图registry与正在录制的Command注入首个shader callback，闭合managed descriptor→同一submit/completion；随后核对原并行/跨族、资产关联/缓存与分叉依赖，禁止按路径/函数数计完成
+2. S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器
+3. S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则
+4. S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half
+5. S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放
 
 工程：[Cargo.toml](reconstruction/Cargo.toml)。完整研究计划：[MASTER_PLAN.md](MASTER_PLAN.md)。源码任务与优先级：[TASK_BACKLOG.md](TASK_BACKLOG.md)。依赖排除与持久记忆：[PROJECT_MEMORY.md](PROJECT_MEMORY.md)。机器可读台账：[project.json](tracking/project.json)。
 

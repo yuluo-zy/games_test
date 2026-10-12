@@ -1,0 +1,32 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "tg_producer_closure",
+  "session_key": "re_mcp_ghidra:tg_producer_closure",
+  "steps": [
+    {"tool":"open_database","args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","database_id":"tg_producer_closure","run_auto_analysis":false}},
+    {"tool":"wait_for_analysis","args":{"database":"tg_producer_closure"}},
+
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x1418c2150"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140bff400"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140be2a40"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140be2a70"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140be2aa0"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x1416a5380"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x1416a5910"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x1416a6010"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x14205eff0"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140be67f0"}},
+    {"tool":"decompile_function","args":{"database":"tg_producer_closure","address":"0x140be6850"}},
+
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x140be5a40"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x140be60a0"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x140be66c0"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x140bfef70"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x1416a3720"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x1416a4b20"}},
+    {"tool":"get_xrefs_to","args":{"database":"tg_producer_closure","address":"0x14205eff0"}},
+
+    {"tool":"close_database","args":{"database":"tg_producer_closure","save":false}}
+  ]
+}

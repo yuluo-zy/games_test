@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-11",
+  "working_directory": "reconstruction/render/work-packages/registry-pool",
+  "checks": [
+    {"command": "cargo test --offline", "exit_code": 0, "result": "6 passed; 0 failed; doc-tests 0"},
+    {"command": "cargo fmt --check", "exit_code": 0, "result": "clean after cargo fmt"},
+    {"command": "Get-ChildItem evidence/render-recovery/parallel/registry-pool -Filter '*.json' | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName | ConvertFrom-Json }", "exit_code": 0, "result": "all 9 then-present JSON files parsed, including 5 contract/evidence catalogs and 4 retained MCP reports"}
+  ],
+  "test_names": [
+    "pool_is_exact_key_lifo_and_retains_empty_buckets",
+    "moves_nonclone_handles_and_clear_drops_once_retaining_capacity",
+    "accessors_follow_logical_mapping_and_preserve_metadata",
+    "wrong_variant_panics",
+    "exports_move_payload_and_keep_remaining_order",
+    "aliased_export_slot_is_empty_after_first_move"
+  ],
+  "native_execution": "not performed",
+  "native_differential": "not performed",
+  "production_integration": "not performed",
+  "proof_boundary": "Tests verify recovered candidate semantics, not equivalence to a running original graphics device."
+}

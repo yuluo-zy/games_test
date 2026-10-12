@@ -1,0 +1,141 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "re_mcp_ghidra",
+    "version_provenance": "existing configuration"
+  },
+  "database": "tg_render_arch",
+  "inputs": [
+    "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-05\\pipeline-descriptors\\unknowns.json"
+  ],
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_render_arch"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_render_arch"
+      }
+    },
+    {
+      "tool": "get_database_info",
+      "args": {
+        "database": "tg_render_arch"
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1418c1a10"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1418c1a10",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1416a5380"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1416a5380",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1416a6010"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x1416a6010",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140b06020"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140b06020",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140a96740"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140a96740",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bee150"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bee150",
+        "limit": 40
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bff400"
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_render_arch",
+        "address": "0x140bff400",
+        "limit": 40
+      }
+    }
+  ]
+}

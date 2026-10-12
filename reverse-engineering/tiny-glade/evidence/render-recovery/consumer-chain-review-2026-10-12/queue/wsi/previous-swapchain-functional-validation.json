@@ -1,0 +1,90 @@
+{
+  "status": "candidate_gpu_verified",
+  "feature_chain": [
+    "隐藏Win32窗口创建→Vulkan Surface→呈现队列与swapchain",
+    "acquire binary信号量→VkSubmitInfo等待TRANSFER→render binary信号量→VkPresentInfoKHR等待",
+    "实际swapchain图像清除→transfer读回→PRESENT_SRC_KHR→present",
+    "320x240→384x256窗口resize→swapchain重建→再次呈现",
+    "vsync策略切换→重建→再次呈现",
+    "遗弃获取租约→stale→拒绝新acquire",
+    "frame提交fence及队列完成保护command、swapchain与semaphore销毁"
+  ],
+  "gpu": {
+    "abandoned_lease_stale": true,
+    "device": "Intel(R) UHD Graphics 630",
+    "frames": [
+      {
+        "binary_acquire_render_present": true,
+        "extent": [
+          320,
+          240
+        ],
+        "image_index": 0,
+        "pixel": [
+          0,
+          255,
+          0,
+          255
+        ],
+        "suboptimal": false
+      },
+      {
+        "binary_acquire_render_present": true,
+        "extent": [
+          384,
+          256
+        ],
+        "image_index": 0,
+        "pixel": [
+          0,
+          255,
+          0,
+          255
+        ],
+        "suboptimal": false
+      },
+      {
+        "binary_acquire_render_present": true,
+        "extent": [
+          384,
+          256
+        ],
+        "image_index": 0,
+        "pixel": [
+          0,
+          255,
+          0,
+          255
+        ],
+        "suboptimal": false
+      }
+    ],
+    "original_winit_flow_equivalence": false,
+    "resize_recreate": true,
+    "status": "passed",
+    "vsync_recreate": true,
+    "window_destroyed": true,
+    "window_hidden": true
+  },
+  "strict_clippy": "passed final selected targets",
+  "original_full_equivalence": false,
+  "limits": [
+    "隐藏Win32窗为WSI fixture，未实现或验证原winit分叉窗口流程",
+    "未对照原WSI选择、focus、全屏、失焦与驱动规避策略",
+    "resize/析构保守device_wait_idle，原细粒度呈现回收性能策略未恢复",
+    "OUT_OF_DATE/SUBOPTIMAL分支代码处理存在，当前驱动实测未触发这些返回",
+    "当前候选图形和呈现共用队列族，不覆盖分离呈现队列族",
+    "is_complete只查询渲染fence，不能作呈现引擎已完成的证明"
+  ],
+  "input_hashes": {
+    "src/raw/swapchain.rs": "b2c2a1444269039896c43d5ebc163edb197701e20fc1c289c481faad10fab5d3",
+    "src/raw/command_buffer.rs": "35afbee92b39b5c847af11d1d09f3e3888940c28fadc28785b33266a24ff9fa2",
+    "src/raw/device.rs": "398b3e03049d5feb0d449842d4f8aee7f26a6262a0af79cd1261dd2afd6344e6",
+    "src/raw/init.rs": "0b5c42cf7a75678d8e65fe74537178678bbf5b51201f961a9f3645d99621ac18",
+    "src/raw/instance.rs": "d5fdf59861f850cc93f5f4c072d600848a74fd24906b4875181bd2cdd5e6ec22",
+    "src/raw/buffer.rs": "b2f653c755178eb1d1db3c05f8a4b3d5ecfd8a03f3bfb5aab3b26a6e9e2fde4b",
+    "examples/swapchain_gpu.rs": "b457d6b4a1a32e16d2fcdc14b20d7ea3c67638ee12ae49220ddb8bf0a45a4076",
+    "Cargo.lock": "a59c8693a2427a4af95d8e561539c357829350fffdcc317ff5d01f9d70714d0f"
+  },
+  "window_destroyed_check": "DestroyWindow返回成功且IsWindow返回false"
+}

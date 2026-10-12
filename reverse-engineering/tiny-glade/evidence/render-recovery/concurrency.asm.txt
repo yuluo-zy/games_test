@@ -1,0 +1,42 @@
+
+D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bece70: 56                          	pushq	%rsi
+140bece71: 57                          	pushq	%rdi
+140bece72: 55                          	pushq	%rbp
+140bece73: 53                          	pushq	%rbx
+140bece74: 48 83 ec 28                 	subq	$0x28, %rsp
+140bece78: 48 89 d6                    	movq	%rdx, %rsi
+140bece7b: 48 89 cf                    	movq	%rcx, %rdi
+140bece7e: 0f b6 59 04                 	movzbl	0x4(%rcx), %ebx
+140bece82: 89 d9                       	movl	%ebx, %ecx
+140bece84: e8 87 3f 02 00              	callq	0x140c10e10 <.text+0xc0fe10>
+140bece89: 0f b6 6e 04                 	movzbl	0x4(%rsi), %ebp
+140bece8d: 84 c0                       	testb	%al, %al
+140bece8f: 75 0b                       	jne	0x140bece9c <.text+0xbebe9c>
+140bece91: 89 e9                       	movl	%ebp, %ecx
+140bece93: e8 78 3f 02 00              	callq	0x140c10e10 <.text+0xc0fe10>
+140bece98: 84 c0                       	testb	%al, %al
+140bece9a: 74 19                       	je	0x140beceb5 <.text+0xbebeb5>
+140bece9c: 40 38 eb                    	cmpb	%bpl, %bl
+140bece9f: 75 10                       	jne	0x140beceb1 <.text+0xbebeb1>
+140becea1: 8b 07                       	movl	(%rdi), %eax
+140becea3: 3b 06                       	cmpl	(%rsi), %eax
+140becea5: 0f 94 c1                    	sete	%cl
+140becea8: 85 c0                       	testl	%eax, %eax
+140beceaa: 0f 95 c0                    	setne	%al
+140becead: 20 c8                       	andb	%cl, %al
+140beceaf: eb 0a                       	jmp	0x140becebb <.text+0xbebebb>
+140beceb1: 31 c0                       	xorl	%eax, %eax
+140beceb3: eb 06                       	jmp	0x140becebb <.text+0xbebebb>
+140beceb5: 40 38 eb                    	cmpb	%bpl, %bl
+140beceb8: 0f 94 c0                    	sete	%al
+140becebb: 48 83 c4 28                 	addq	$0x28, %rsp
+140becebf: 5b                          	popq	%rbx
+140becec0: 5d                          	popq	%rbp
+140becec1: 5f                          	popq	%rdi
+140becec2: 5e                          	popq	%rsi
+140becec3: c3                          	retq

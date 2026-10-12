@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "candidate_implemented",
+  "scope": "managed 生命周期与七类 Vulkan 资源的 typed 所有权包装",
+  "modules": [
+    "handle",
+    "resources",
+    "buffer",
+    "texture",
+    "sampler",
+    "descriptor_set",
+    "framebuffer",
+    "render_pass",
+    "swapchain"
+  ],
+  "implemented": [
+    "PDB track/clone/eq/drop 线索对应 Arc 句柄、共享最大命令序列跟踪",
+    "store/index/generation 身份与陈旧句柄拒绝",
+    "最后 CPU 引用释放后排入待回收资源，不提前调用原资源析构",
+    "成功 submit 凭据将命令域/序列映射实际 queue/timeline",
+    "所有使用队列均完成后释放原资源 Arc 与依赖对象",
+    "buffer/texture/sampler/descriptor/framebuffer/render-pass/swapchain 可调用构造与持有",
+    "托管图像视图保持其父托管图像的引用与跟踪关系",
+    "共享提交事务与同域队列一致性校验",
+    "按存活/退役资源引用修剪完成凭据，避免逐帧历史无限增长",
+    "失败录制的未提交资源支持真实设备空闲等待后清理"
+  ],
+  "checks": {
+    "managed_tests": 7,
+    "managed_tests_passed": 7,
+    "all_target_clippy": "passed -D warnings, offline locked"
+  },
+  "original_evidence": [
+    "evidence/original-structure.json",
+    "evidence/original-structure-verification.json",
+    "../render/work-packages/gpu-lifecycle-r3/lib.rs",
+    "../render/work-packages/sequence-runtime-r8/src/lib.rs"
+  ],
+  "limits": [
+    "本次为完整模块候选实现，未对原完整 managed/Vulkan 入口做新增机器码差分",
+    "ResourceKey、Arc 布局和 Rust 参数签名为安全候选，不宣称等同原 ABI",
+    "CPU 调用者必须在录制阶段 track，在成功 submit 后注册凭据，再用后端真实完成值 complete",
+    "ResourceManager 拥有未完成资源时被遗弃会安全保留 pending Arc；应正常 collect 或 dispose_after_wait(||device.wait_idle()) 完成关闭",
+    "原实际全域 sequence prefix/bucket 规则仍由已有 lifecycle 模块提供；本候选按显式域与成功提交凭据保证 GPU 所有权",
+    "raw 对象析构目前保守 device_wait_idle，后续优化由真实 GPU/原行为证据驱动"
+  ],
+  "input_sha256": {
+    "src/raw/managed/handle.rs": "b78d4316df043a9ada458ef3b77b3867e93d25839efca8670e8ec4aedebf66c3",
+    "src/raw/managed/resources.rs": "1c28bc94de42c578d1cae3317b07a16b146525503fe3f8eac6729001a466dd95",
+    "src/raw/managed/buffer.rs": "75cea5ba65e89c43ed17f337aace597f7b6c0f7f59b1db5da0478f02235b0b1e",
+    "src/raw/managed/texture.rs": "2b37f39446661281e8963fb32fbf2b9c0f1f0d2facc06543b7af967655204878",
+    "src/raw/managed/sampler.rs": "81e76be4d96a8a97ee54441623a793af5f2d3e46c8b2424e433003ab0d95f2a6",
+    "src/raw/managed/descriptor_set.rs": "555864e424c784e1117053b92f5312df25b2974e436fd709bc4722d66bfd5509",
+    "src/raw/managed/framebuffer.rs": "01697d386c5c8f36e8967856a2bfec31e912cfb59b09630daaf603b082465c1b",
+    "src/raw/managed/render_pass.rs": "173cec85ff85964745fa7c2d1daad307a2aa9f05a6d125005b49aff19959d7cf",
+    "src/raw/managed/swapchain.rs": "bff3dc8abe7174556e668fa65c31a726c8252ed89ed9a102d9cbf6ba9d574bef",
+    "tests/managed.rs": "882d340ccc1dc5dc3b57af799fcfeb952d0deedb128d7e504b753e6d9a4a8cf8"
+  }
+}

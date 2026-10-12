@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "status": "verified_partial",
+  "observed": ["9 indexed direct begin/selected-submit call sites select Primary", "ensure_active_cb preserves existing command vector and creates/begins exactly one command when empty"],
+  "unknowns": [
+    {"question": "Other inlined or indirect game callers reach auxiliary queue simultaneously with primary?", "status": "unresolved", "blocking": "global bucket collision reachability"},
+    {"question": "Other queue_submit monomorphizations and their callers?", "status": "unresolved"},
+    {"question": "Full command creation and begin Vulkan failure/unwind paths?", "status": "unresolved", "scope": "fixture boundaries in this oracle"}
+  ],
+  "negative_search_boundary": "450-address rhapsody workgraph direct calls only; no whole-program absence claim"
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "compiled-render-graph-snapshot-candidate",
+  "status": "partial",
+  "evidence_addresses": ["0x1402c4280","0x1402c1d40","0x140166f9f","0x140166fc6","0x1401670f1","0x1402c34b4"],
+  "evidence_paths": ["evidence/render-recovery/parallel/compiled-state/0x1402c4280.c","evidence/render-recovery/parallel/compiled-state/0x1402c1d40.c","evidence/render-recovery/parallel/compiled-state/0x140166510.c","evidence/render-recovery/parallel/compiled-state/objdump-core.json"],
+  "layout": {"size":"0x218","render_graph":"0x00..0x8f","recorded_pass_vec":"0x90..0xa7","registry_aggregate":"0xa8..0x1af","resource_info_embedded":"0xf0..0x17f","sync_scope":"0x1b0..0x1ff","pending_initial_resource_vec":"0x200..0x217"},
+  "runtime_invariants": ["compiled graph owns one sync scope", "pending initial indices are drained on first record_batch", "pass ranges checked against recorded pass count", "barriers before each pass and exports on final batch", "batch ranges half-open and emitted when boundary differs from start", "last emitted batch has export flag"],
+  "oracle_projection": ["pass order/batch ranges","initial resource index list","pre-barrier resource/from/to access","export-barrier resource/from/to access","first/last access indices","physical allocation identity supplied by registry","temporal state return/unavailable niche"],
+  "unknown_fields": ["registry ownership","queue/submit state in executor","temporal map","access enum dependency provenance","full original Rust type/ABI"]
+}

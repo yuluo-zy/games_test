@@ -1,0 +1,3594 @@
+{
+  "status": "evidence_contract_started",
+  "scope": "R1 graph compiler: ResourceInfo through registry/pool and compiled graph",
+  "identity": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "workgraph_summary_sha256": "4b11a649c7b7875ad70096b10411cc4fe2720a8cbbc2ada0a5df1a4f43fca19a",
+    "functions_sha256": "3f2a3653c68d1d8d030eaffc0c3ca4d2887342ac92670e5242fd108bfa2189da",
+    "calls_sha256": "35558cee3398e78837f9296552a9dae51d4b3f9c40cb7c2be6d5c9e96a6143f4"
+  },
+  "observations": [
+    "ResourceInfo::calculate and RenderGraphState::compile are public-only entries in the retained PDB procedure inventory and are bounded by PE RUNTIME_FUNCTION records.",
+    "Three RenderGraphState::compile monomorphs exist; their machine bodies can include game closure work and cannot be attributed wholesale to generic rhapsody source.",
+    "Four ResourceInfo leaf rules already have scoped native differential verification.",
+    "ResourceRegistry::populate_resources is a 5274-byte emitted private function and crosses into resource creation and pool reuse."
+  ],
+  "inferences": [
+    "The fastest recovery unit is the compiled-graph snapshot boundary, not each helper function.",
+    "ResourceInfo::calculate should be recovered before interpreting registry allocation and batch compilation fields."
+  ],
+  "unknowns": [
+    "Complete ResourceInfo and access-record layouts",
+    "ResourcePool compatibility keys and ownership transfer",
+    "Registry resource variants and import/export representation",
+    "CompiledRenderGraph batch and barrier field layout",
+    "Exact generic rhapsody portion of each monomorphized RenderGraphState::compile body",
+    "Indirect call targets in the selected closure"
+  ],
+  "type_ledger": [
+    {
+      "type": "ResourceInfo",
+      "status": "partial",
+      "required_facts": [
+        "vector fields and offsets",
+        "access record layout",
+        "lifetime event encoding"
+      ]
+    },
+    {
+      "type": "PassResourceAccess",
+      "status": "partial",
+      "required_facts": [
+        "access kind",
+        "synchronization group",
+        "previous/next indices"
+      ]
+    },
+    {
+      "type": "ResourcePool",
+      "status": "unknown",
+      "required_facts": [
+        "texture/buffer key",
+        "compatibility predicate",
+        "reuse ownership"
+      ]
+    },
+    {
+      "type": "ResourceRegistry",
+      "status": "unknown",
+      "required_facts": [
+        "registry resource variants",
+        "physical handle mapping",
+        "export ownership"
+      ]
+    },
+    {
+      "type": "CompiledRenderGraph",
+      "status": "unknown",
+      "required_facts": [
+        "batch layout",
+        "barrier placement",
+        "pass/resource ranges"
+      ]
+    },
+    {
+      "type": "BatchCompiler",
+      "status": "unknown",
+      "required_facts": [
+        "batch flush condition",
+        "queue/pass range fields"
+      ]
+    },
+    {
+      "type": "RenderGraphState",
+      "status": "partial",
+      "required_facts": [
+        "compile inputs",
+        "persistent pool/state",
+        "monomorphized game closure boundary"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "va": "0x14003bb80",
+      "code_size": 1,
+      "names": [
+        "rhapsody::raw::shader::ComputePipelineDesc::new",
+        "rhapsody::raw::shader::ComputePipelineDesc::new::h237ebdf3e877ad58",
+        "rhapsody::raw::texture::impl$0::drop",
+        "rhapsody::rg::resource::impl$0::validate_read_access",
+        "rhapsody::rg::resource::impl$1::validate_read_access"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1401647b0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140161cd0",
+      "code_size": 9204,
+      "names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 125,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": "evidence/render-architecture/0x140161cd0.c",
+      "verification": [],
+      "internal_call_targets": [
+        "0x1402c4280",
+        "0x1404f7ca0",
+        "0x140530430",
+        "0x140bd52a0",
+        "0x140bd5460",
+        "0x140bd6380",
+        "0x140bd6ce0",
+        "0x140be7ba0",
+        "0x140be9420",
+        "0x140be94d0"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x14067dd80",
+        "0x140bd6b00",
+        "0x140c02370",
+        "0x140c02740"
+      ],
+      "external_call_sites": 123,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1401647b0",
+      "code_size": 5284,
+      "names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 125,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x14003bb80",
+        "0x1402c4280",
+        "0x1404f7ca0",
+        "0x140530430",
+        "0x140bd52a0",
+        "0x140bd5370",
+        "0x140bd6380",
+        "0x140bd6ce0",
+        "0x140be7ba0",
+        "0x140be9420",
+        "0x140be94d0"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x1405b9b00",
+        "0x14067dd80",
+        "0x140bd6b00",
+        "0x140be24b0",
+        "0x140c02370",
+        "0x140c02740"
+      ],
+      "external_call_sites": 71,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140166510",
+      "code_size": 3338,
+      "names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 118,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x1402c4280",
+        "0x1404f7ca0",
+        "0x140530430",
+        "0x140bd60a0",
+        "0x140bd6220",
+        "0x140bd6380",
+        "0x140be7ba0",
+        "0x140be9420"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x14067dd80",
+        "0x140bd6b00",
+        "0x140c02370",
+        "0x140c02740"
+      ],
+      "external_call_sites": 45,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1402c1d40",
+      "code_size": 4674,
+      "names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 118,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x140bd65e0",
+        "0x140bd6610",
+        "0x140bd6630",
+        "0x140bd66a0",
+        "0x140bd6810",
+        "0x140bd6950",
+        "0x140bd6980",
+        "0x140bd6c80",
+        "0x140be78b0",
+        "0x140bea1e0",
+        "0x140bee030"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x14067dd80",
+        "0x140becfd0",
+        "0x140bed3d0",
+        "0x140bf09b0",
+        "0x140bf0b40"
+      ],
+      "external_call_sites": 58,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1402c3d00",
+      "code_size": 1403,
+      "names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 105,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": "evidence/render-architecture/0x1402c3d00.c",
+      "verification": [],
+      "internal_call_targets": [
+        "0x140bd65e0",
+        "0x140bd6610",
+        "0x140bd6630",
+        "0x140bd66a0",
+        "0x140bd6810",
+        "0x140bd6c80",
+        "0x140be78b0",
+        "0x140be9690",
+        "0x140bece70"
+      ],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 18,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1402c4280",
+      "code_size": 385,
+      "names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 101,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x140bd6650"
+      ],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 5,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1404f7ca0",
+      "code_size": 563,
+      "names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 32,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x140bd6380"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x140bd5120"
+      ],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140530430",
+      "code_size": 1416,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 115,
+      "public_only_entry": true,
+      "source_bound_by_pdb": false,
+      "existing_decompilation": "evidence/render-architecture/0x140530430.c",
+      "verification": [],
+      "internal_call_targets": [
+        "0x140bd4410",
+        "0x140bd44b0",
+        "0x140bd4560",
+        "0x140bd47d0",
+        "0x140bd4860",
+        "0x140bd49d0",
+        "0x140bd4b00",
+        "0x140bd4b40",
+        "0x140bd4b80",
+        "0x140bd6d10",
+        "0x140bece40"
+      ],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 13,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4410",
+      "code_size": 151,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::clear",
+        "rhapsody::rg::resource_info::ResourceInfo::clear::h85547e88fc5e88f9"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd44b0",
+      "code_size": 173,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags",
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags::h8350bc7329361b01"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4560",
+      "code_size": 623,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports",
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports::hfe49450f500dbe82"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 22,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 6,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd47d0",
+      "code_size": 136,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::link_up_next_access_chains",
+        "rhapsody::rg::resource_info::ResourceInfo::link_up_next_access_chains::h799afc42e95269c7"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": -80,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": "evidence/render-architecture/0x140bd47d0.c",
+      "verification": [
+        {
+          "name": "ResourceInfo::link_up_next_access_chains",
+          "source": "reconstruction/render/resource_info.rs",
+          "report": "evidence/render-recovery/verification.json"
+        }
+      ],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4860",
+      "code_size": 359,
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate_lifetime_events",
+        "rhapsody::rg::resource_info::ResourceInfo::calculate_lifetime_events::h3af4a6222669e84b"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 1,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": "evidence/render-architecture/0x140bd4860.c",
+      "verification": [
+        {
+          "name": "ResourceInfo::calculate_lifetime_events",
+          "source": "reconstruction/render/resource_info.rs",
+          "report": "evidence/render-recovery/verification.json"
+        }
+      ],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd49d0",
+      "code_size": 292,
+      "names": [
+        "rhapsody::rg::resource_info::image_access_mask_to_usage_flags",
+        "rhapsody::rg::resource_info::image_access_mask_to_usage_flags::h2115598c512c1644"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": -79,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [
+        {
+          "name": "image_access_mask_to_usage_flags",
+          "source": "reconstruction/render/resource_usage.rs",
+          "report": "evidence/render-recovery/verification.json"
+        }
+      ],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4b00",
+      "code_size": 50,
+      "names": [
+        "rhapsody::rg::resource_info::buffer_access_mask_to_usage_flags",
+        "rhapsody::rg::resource_info::buffer_access_mask_to_usage_flags::h8483b2c5e0d86b05"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": -80,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [
+        {
+          "name": "buffer_access_mask_to_usage_flags",
+          "source": "reconstruction/render/resource_usage.rs",
+          "report": "evidence/render-recovery/verification.json"
+        }
+      ],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4b40",
+      "code_size": 62,
+      "names": [
+        "rhapsody::rg::resource_info::impl$13::from"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd4b80",
+      "code_size": 62,
+      "names": [
+        "rhapsody::rg::resource_info::impl$23::from"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd52a0",
+      "code_size": 49,
+      "names": [
+        "rhapsody::raw::texture::TextureDesc::new_2d",
+        "rhapsody::raw::texture::TextureDesc::new_2d::hc4077ae9f72b8ecc"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd5370",
+      "code_size": 21,
+      "names": [
+        "rhapsody::raw::texture::TextureDesc::sampled",
+        "rhapsody::raw::texture::TextureDesc::sampled::h8cc55aa1a698dc4e"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1401647b0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd5460",
+      "code_size": 50,
+      "names": [
+        "rhapsody::raw::texture::TextureDesc::mip_levels",
+        "rhapsody::raw::texture::TextureDesc::mip_levels::ha6ed619e1de0da6b"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x140161cd0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd60a0",
+      "code_size": 383,
+      "names": [
+        "rhapsody::rg::import_export::impl$0::import_unowned"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6220",
+      "code_size": 347,
+      "names": [
+        "rhapsody::rg::import_export::impl$0::import_owned"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6380",
+      "code_size": 108,
+      "names": [
+        "rhapsody::rg::import_export::impl$0::export"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510",
+        "0x1404f7ca0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd65e0",
+      "code_size": 34,
+      "names": [
+        "rhapsody::raw::barrier::ImageBarrier::new",
+        "rhapsody::raw::barrier::ImageBarrier::new::hd1b7d258d22b0f39"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6610",
+      "code_size": 23,
+      "names": [
+        "rhapsody::raw::barrier::BufferBarrier::new",
+        "rhapsody::raw::barrier::BufferBarrier::new::hf113a0c335d0233a"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6630",
+      "code_size": 26,
+      "names": [
+        "rhapsody::raw::barrier::image_aspect_mask_from_format",
+        "rhapsody::raw::barrier::image_aspect_mask_from_format::h6e9a5166d14f71a0"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6650",
+      "code_size": 68,
+      "names": [
+        "rhapsody::raw::barrier::SynchronizationScope1::new::h597d5eae8e6a9318",
+        "rhapsody::raw::barrier::impl$3::default"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c4280"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd66a0",
+      "code_size": 355,
+      "names": [
+        "rhapsody::raw::barrier::impl$5::image_barrier"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6810",
+      "code_size": 307,
+      "names": [
+        "rhapsody::raw::barrier::impl$5::buffer_barrier"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6950",
+      "code_size": 39,
+      "names": [
+        "rhapsody::raw::barrier::impl$5::reset"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6980",
+      "code_size": 29,
+      "names": [
+        "rhapsody::raw::barrier::impl$5::is_empty"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6c80",
+      "code_size": 96,
+      "names": [
+        "rhapsody::rg::resource::RuntimeResource::borrow",
+        "rhapsody::rg::resource::RuntimeResource::borrow::h730b8132d76a9a0d"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6ce0",
+      "code_size": 18,
+      "names": [
+        "rhapsody::rg::resource::impl$4::from"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bd6d10",
+      "code_size": 151,
+      "names": [
+        "rhapsody::rg::resource::ResourceOrigin::ty",
+        "rhapsody::rg::resource::ResourceOrigin::ty::hdc584f1cdd33a418"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be6b90",
+      "code_size": 473,
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture",
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture::h26b3104715ffe512"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 76,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be7ba0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be6d70",
+      "code_size": 1133,
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::insert_texture",
+        "rhapsody::rg::resource_pool::ResourcePool::insert_texture::h53bab513da388bf9"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 79,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [
+        "0x140be24b0"
+      ],
+      "external_call_sites": 7,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be71e0",
+      "code_size": 314,
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer",
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer::h513f64686516dba3"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 76,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be7ba0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be7320",
+      "code_size": 973,
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::insert_buffer",
+        "rhapsody::rg::resource_pool::ResourcePool::insert_buffer::h3eea23651d320e99"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 78,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [
+        "0x140be24b0"
+      ],
+      "external_call_sites": 7,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be76f0",
+      "code_size": 27,
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::clear",
+        "rhapsody::rg::resource_pool::ResourcePool::clear::h7d5fb6b4d781532a"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be78b0",
+      "code_size": 133,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource",
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource::hce3483e7bafad3cd"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [
+        "0x1402c1d40",
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be7940",
+      "code_size": 129,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle::h3b90484ad5fbe6d9"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x1428caa40"
+      ],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be79d0",
+      "code_size": 133,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer",
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer::hce71ca5335a61d17"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x1428caa60"
+      ],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be7a60",
+      "code_size": 320,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view::hd02b99e9bfc76099"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x1428caa80"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x140bdc5d0"
+      ],
+      "external_call_sites": 6,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be7ba0",
+      "code_size": 5274,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 105,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [
+        "0x140be6b90",
+        "0x140be71e0",
+        "0x140beec30",
+        "0x140bfe650",
+        "0x141739060"
+      ],
+      "other_rhapsody_call_targets": [
+        "0x140be24b0",
+        "0x140c03460",
+        "0x140c07950"
+      ],
+      "external_call_sites": 45,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be9040",
+      "code_size": 557,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::into_exports",
+        "rhapsody::rg::resource_registry::ResourceRegistry::into_exports::h59a4b29d0d72ea45"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 82,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 8,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be9420",
+      "code_size": 166,
+      "names": [
+        "rhapsody::rg::graph::RenderGraph::on_retire",
+        "rhapsody::rg::graph::RenderGraph::on_retire::h8b10076c7f507ca7"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0",
+        "0x140166510"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be94d0",
+      "code_size": 260,
+      "names": [
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource",
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource::hc7c365852e35bab8"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 21,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 3,
+      "incoming_selected_callers": [
+        "0x140161cd0",
+        "0x1401647b0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be95e0",
+      "code_size": 30,
+      "names": [
+        "rhapsody::rg::compiled::BatchCompiler::new",
+        "rhapsody::rg::compiled::BatchCompiler::new::h699831de4c862476"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 70,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be9600",
+      "code_size": 131,
+      "names": [
+        "rhapsody::rg::compiled::BatchCompiler::flush_batch",
+        "rhapsody::rg::compiled::BatchCompiler::flush_batch::h75a336a20fca1c53"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 70,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140be9690",
+      "code_size": 5,
+      "names": [
+        "rhapsody::rg::compiled::pass_access_range_indices",
+        "rhapsody::rg::compiled::pass_access_range_indices::hde667e2dde2ae554"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bea1e0",
+      "code_size": 237,
+      "names": [
+        "rhapsody::rg::executor::PassPgoStats::duration_ns",
+        "rhapsody::rg::executor::PassPgoStats::duration_ns::h5a784d1b51d4490b"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x1402c1d40"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bece40",
+      "code_size": 3,
+      "names": [
+        "rhapsody::rg::recorder::PassResourceRef::resource_index",
+        "rhapsody::rg::recorder::PassResourceRef::resource_index::hac6fb1e754094628"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x140530430"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bece70",
+      "code_size": 84,
+      "names": [
+        "rhapsody::rg::recorder::PassResourceAccessType::can_be_concurrent_with",
+        "rhapsody::rg::recorder::PassResourceAccessType::can_be_concurrent_with::hbf06e4a6c740335b"
+      ],
+      "work_package": "E-graph-executor",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": "evidence/render-architecture/0x140bece70.c",
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 2,
+      "incoming_selected_callers": [
+        "0x1402c3d00"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x140bee030",
+      "code_size": 96,
+      "names": [
+        "rhapsody::raw::barrier::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::issue_pipeline_barrier::h671c3006edd710d0",
+        "rhapsody::raw::device::GraphicsDevice::issue_pipeline_barrier"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 0,
+      "incoming_selected_callers": [
+        "0x1402c1d40"
+      ],
+      "indirect_call_sites": 1
+    },
+    {
+      "va": "0x140beec30",
+      "code_size": 867,
+      "names": [
+        "rhapsody::raw::buffer::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::set_buffer_debug_name::h11202c9cf2d5ab64",
+        "rhapsody::raw::device::GraphicsDevice::set_buffer_debug_name"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 23,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 17,
+      "incoming_selected_callers": [
+        "0x140be7ba0"
+      ],
+      "indirect_call_sites": 1
+    },
+    {
+      "va": "0x140bfe650",
+      "code_size": 871,
+      "names": [
+        "rhapsody::raw::device::GraphicsDevice::set_texture_debug_name",
+        "rhapsody::raw::texture::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::set_texture_debug_name::h9d739d203f6de8ac"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 23,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 16,
+      "incoming_selected_callers": [
+        "0x140be7ba0"
+      ],
+      "indirect_call_sites": 1
+    },
+    {
+      "va": "0x141739060",
+      "code_size": 124,
+      "names": [
+        "rhapsody::raw::format::vk_format_info",
+        "rhapsody::raw::format::vk_format_info::hb6dea88430b18d45"
+      ],
+      "work_package": "A-descriptors-sync",
+      "is_core": false,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be7ba0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1428caa40",
+      "code_size": 17,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle::panic_cold_explicit::h05ee72f6a1c08fcd (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::image_from_raw_handle::panic_cold_explicit"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be7940"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1428caa60",
+      "code_size": 17,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer::panic_cold_explicit::hda41c95fa11d4db1 (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::buffer::panic_cold_explicit"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be79d0"
+      ],
+      "indirect_call_sites": 0
+    },
+    {
+      "va": "0x1428caa80",
+      "code_size": 17,
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view::panic_cold_explicit::h557d252ef5ebcab8 (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::image_view::panic_cold_explicit"
+      ],
+      "work_package": "D-graph-compiler",
+      "is_core": true,
+      "priority": 20,
+      "public_only_entry": false,
+      "source_bound_by_pdb": true,
+      "existing_decompilation": null,
+      "verification": [],
+      "internal_call_targets": [],
+      "other_rhapsody_call_targets": [],
+      "external_call_sites": 1,
+      "incoming_selected_callers": [
+        "0x140be7a60"
+      ],
+      "indirect_call_sites": 0
+    }
+  ],
+  "internal_edges": [
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x1402c4280",
+      "target_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140163c1f"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x1404f7ca0",
+      "target_names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401637e7"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140530430",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140163ac9"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140bd52a0",
+      "target_names": [
+        "rhapsody::raw::texture::TextureDesc::new_2d",
+        "rhapsody::raw::texture::TextureDesc::new_2d::hc4077ae9f72b8ecc"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140162319",
+        "0x140162897",
+        "0x14016294e",
+        "0x1401629fa"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140bd5460",
+      "target_names": [
+        "rhapsody::raw::texture::TextureDesc::mip_levels",
+        "rhapsody::raw::texture::TextureDesc::mip_levels::ha6ed619e1de0da6b"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140162339"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140bd6380",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::export::h7fba0f623439730c",
+        "rhapsody::rg::import_export::impl$0::export"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401635be"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140bd6ce0",
+      "target_names": [
+        "_$LT$rhapsody..rg..resource..ResourceDesc$u20$as$u20$core..convert..From$LT$rhapsody..raw..texture..TextureDesc$GT$$GT$::from::h018caba005bfd623",
+        "rhapsody::rg::resource::impl$4::from"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14016236f",
+        "0x1401628cd",
+        "0x140162984",
+        "0x140162a33"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140be7ba0",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140163af4"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140be9420",
+      "target_names": [
+        "rhapsody::rg::graph::RenderGraph::on_retire",
+        "rhapsody::rg::graph::RenderGraph::on_retire::h8b10076c7f507ca7"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140163b16"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140161cd0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5"
+      ],
+      "target": "0x140be94d0",
+      "target_names": [
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource",
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource::hc7c365852e35bab8"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401623a2",
+        "0x140162900",
+        "0x1401629b7",
+        "0x140162a66"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x14003bb80",
+      "target_names": [
+        "_$LT$$LP$$RP$$u20$as$u20$country_core..resources..walls..decorator_storage..DecoAddrChangeTracker$GT$::insert::h37bcd7d6ada1fd09",
+        "_$LT$$LP$$RP$$u20$as$u20$country_core..resources..walls..decorator_storage..DecoAddrChangeTracker$GT$::remove::h98c432aa310cf54f",
+        "_$LT$$LP$$RP$$u20$as$u20$country_core..resources..walls..decorator_storage..DecoAddrChangeTracker$GT$::update::h2ee027ce9660b3cf",
+        "_$LT$$LP$$RP$$u20$as$u20$country_core..resources..walls..decorator_storage..DecoRemovalTracker$GT$::remove::h2c6b1f435bcff807",
+        "_$LT$alloc..boxed..Box$LT$E$GT$$u20$as$u20$core..error..Error$GT$::provide::ha52310e78b2ec5e3 (.llvm.14263456824525337974)",
+        "_$LT$alloc..boxed..Box$LT$E$GT$$u20$as$u20$core..error..Error$GT$::provide::hfb1ac0c3d4605564",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::apply_deferred::h48767ecf16856cdd (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::check_change_tick::h79d8c8331315cafa (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::initialize::hc85d9915d4faaae7 (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::queue_deferred::hb69f8eeb6d28054d (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::set_last_run::h7f1c95f16445255c (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..schedule..executor..ApplyDeferred$u20$as$u20$bevy_ecs..system..system..System$GT$::update_archetype_component_access::hb4bef985ad8cc6ff (.llvm.9782795160847769451)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::apply_deferred::h0b62768c71f9100c (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::apply_deferred::hcdca7a6be6f9cfc7 (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::apply_deferred::hf3118f8a7396a771 (.llvm.12781128074995600105)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::apply_deferred::hf6b1d68cbdb00cf6 (.llvm.17274531556286957487)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::queue_deferred::h3fa7c97a3396eb9d (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::queue_deferred::h8a45619559f16994 (.llvm.12781128074995600105)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::queue_deferred::h8ac4a3a2a51bd998 (.llvm.17274531556286957487)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::queue_deferred::hd9cc45ac9e5bb2d5 (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::update_archetype_component_access::h50aeece363215437 (.llvm.17274531556286957487)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::update_archetype_component_access::h929d89f0ddc6747b (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::update_archetype_component_access::h9bc06a0c122f9eb6 (.llvm.3933544933789313250)",
+        "_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$::update_archetype_component_access::hdb17a7361f6a01e5 (.llvm.12781128074995600105)",
+        "_$LT$country_core..render..fsr_plugin..plugin_impl..FsrPlugin$u20$as$u20$bevy_app..plugin..Plugin$GT$::build::h14645248ba73454c",
+        "_$LT$country_core..systems..camera_rig..butterfly..ButterflyCamera$u20$as$u20$country_core..systems..camera_rig..camera_body..CameraBody$GT$::constrain_to_be_above_terrain::he06c98a7907ff00e",
+        "_$LT$country_core..systems..camera_rig..butterfly..ButterflyCamera$u20$as$u20$country_core..systems..camera_rig..camera_body..CameraBody$GT$::rotate_yaw_pitch::h35aecd2a792077cc",
+        "_$LT$country_core..systems..camera_rig..butterfly..ButterflyCamera$u20$as$u20$country_core..systems..camera_rig..camera_body..CameraBody$GT$::translate_screen_space::h43aff39defc77f47",
+        "_$LT$country_core..systems..camera_rig..free..FreeCamera$u20$as$u20$country_core..systems..camera_rig..camera_body..CameraBody$GT$::constrain_to_be_above_terrain::haeb8de01062510dc",
+        "_$LT$iced_widget..space..Space$u20$as$u20$iced_core..widget..Widget$LT$Message$C$Theme$C$Renderer$GT$$GT$::draw::h0b3de3f5cac4aae4 (.llvm.12531780970269476476)",
+        "_$LT$iced_widget..space..Space$u20$as$u20$iced_core..widget..Widget$LT$Message$C$Theme$C$Renderer$GT$$GT$::draw::h4b6447f99ef317eb (.llvm.8046225761361234231)",
+        "_$LT$iced_widget..space..Space$u20$as$u20$iced_core..widget..Widget$LT$Message$C$Theme$C$Renderer$GT$$GT$::draw::hb8dae4411158a0b8 (.llvm.8046225761361234231)",
+        "_$LT$iced_widget..space..Space$u20$as$u20$iced_core..widget..Widget$LT$Message$C$Theme$C$Renderer$GT$$GT$::draw::hd6de45f324d0fa39 (.llvm.14710666788501003205)",
+        "_$LT$rhapsody..raw..buffer..Buffer$u20$as$u20$rhapsody..rg..resource..Resource$GT$::validate_read_access::hfc3e91621b7af5dd",
+        "_$LT$rhapsody..raw..buffer..Buffer$u20$as$u20$rhapsody..rg..resource..Resource$GT$::validate_write_access::h13b7e11d13aa5ef4",
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$core..ops..drop..Drop$GT$::drop::h0b2ed6cd9d1cdd6d",
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..resource..Resource$GT$::validate_read_access::h83678d6fcc0889d6",
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..resource..Resource$GT$::validate_write_access::h282e635457f6cf76",
+        "_$LT$tiny_glade..aftermath..NvAftermathDelegate$u20$as$u20$aftermath_rs..AftermathDelegate$GT$::description::h54ee138478cb977c",
+        "_$LT$tiny_glade..dlss_plugin..plugin_impl..DlssPlugin$u20$as$u20$bevy_app..plugin..Plugin$GT$::build::hf140f931dabfe0ec",
+        "_$LT$tiny_glade..run_game..ReflectionListingPlugin$u20$as$u20$bevy_app..plugin..Plugin$GT$::build::he38b73aa81fafb61",
+        "_$LT$toolbar..mei..widgets..ActionHintContent$u20$as$u20$toolbar..mei..core..NodeContent$GT$::on_input::h4b6c8d88f837ec28",
+        "_$LT$toolbar..mei..widgets..ActionHintContent$u20$as$u20$toolbar..mei..core..NodeContent$GT$::pre_update::h9f3a2b71386bd686",
+        "_$LT$toolbar..mei..widgets..tweaker..TweakerWidth$u20$as$u20$core..convert..From$LT$f32$GT$$GT$::from::hf90664b5e51edc55",
+        "_$LT$tracing_core..subscriber..NoSubscriber$u20$as$u20$tracing_core..subscriber..Subscriber$GT$::enter::h02a29037e228f49f (.llvm.1215573282129560762)",
+        "_$LT$tracing_core..subscriber..NoSubscriber$u20$as$u20$tracing_core..subscriber..Subscriber$GT$::event::h51615ac487edc0d7 (.llvm.1215573282129560762)",
+        "_$LT$tracing_core..subscriber..NoSubscriber$u20$as$u20$tracing_core..subscriber..Subscriber$GT$::exit::h14658c64b22436d4 (.llvm.1215573282129560762)",
+        "_$LT$tracing_core..subscriber..NoSubscriber$u20$as$u20$tracing_core..subscriber..Subscriber$GT$::record::h8880a131650682d1 (.llvm.1215573282129560762)",
+        "_$LT$tracing_core..subscriber..NoSubscriber$u20$as$u20$tracing_core..subscriber..Subscriber$GT$::record_follows_from::h30c689bc5c69041c (.llvm.1215573282129560762)",
+        "_$LT$utils..wall_space..WallSpaceCoord$u20$as$u20$core..convert..From$LT$glam..f32..vec2..Vec2$GT$$GT$::from::h681a571a8faa577d",
+        "aftermath_rs::callbacks::ResolveMarkerCallback::h137dae173eff2aa9",
+        "bevy_app::plugin::Plugin::cleanup::h08113d3a882e318a (.llvm.7789490526034806452)",
+        "bevy_app::plugin::Plugin::cleanup::h08c0f6936d6db79a (.llvm.14048210345176215555)",
+        "bevy_app::plugin::Plugin::cleanup::h12479e6029503658 (.llvm.15720425348161562225)",
+        "bevy_app::plugin::Plugin::cleanup::h1b772649989f3034 (.llvm.14227201223583772348)",
+        "bevy_app::plugin::Plugin::cleanup::h1d9ba1960dac938d (.llvm.15121817830994993606)",
+        "bevy_app::plugin::Plugin::cleanup::h2145d36fb8dd5b98 (.llvm.4364591205018956426)",
+        "bevy_app::plugin::Plugin::cleanup::h2abf831db52a7691 (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::cleanup::h2faaf545252e9a19 (.llvm.11354242655208346268)",
+        "bevy_app::plugin::Plugin::cleanup::h33c82fac69dedecb (.llvm.17804689725996397277)",
+        "bevy_app::plugin::Plugin::cleanup::h346b57184b0afa57 (.llvm.823095259154403401)",
+        "bevy_app::plugin::Plugin::cleanup::h35166fc423e3b4ca (.llvm.4428864551665673318)",
+        "bevy_app::plugin::Plugin::cleanup::h373bf6bcdd6dfe11 (.llvm.1651378587281896620)",
+        "bevy_app::plugin::Plugin::cleanup::h3a77ff9e6174f197 (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::cleanup::h3ea9b3dbc2b85121 (.llvm.9806319049520108636)",
+        "bevy_app::plugin::Plugin::cleanup::h49b76191bfbb8d96 (.llvm.15184617803829666076)",
+        "bevy_app::plugin::Plugin::cleanup::h51e89b06c9e9872c (.llvm.14048210345176215555)",
+        "bevy_app::plugin::Plugin::cleanup::h57a5cd7a056df581 (.llvm.17638543164784174637)",
+        "bevy_app::plugin::Plugin::cleanup::h5a4118f81a0590c3 (.llvm.16876994267616972192)",
+        "bevy_app::plugin::Plugin::cleanup::h5c7f6424e6847618 (.llvm.4495920109268975582)",
+        "bevy_app::plugin::Plugin::cleanup::h68bda95f907af5eb (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::cleanup::h7182dbc5a4d72772 (.llvm.5625093041226337839)",
+        "bevy_app::plugin::Plugin::cleanup::h7676a9ba70da89ae (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::cleanup::h7ca1ab40a1b8ef61 (.llvm.8590005977508013736)",
+        "bevy_app::plugin::Plugin::cleanup::h7d53c05491730b43 (.llvm.2152137666096805290)",
+        "bevy_app::plugin::Plugin::cleanup::h7e4b69bab870c38a (.llvm.11354242655208346268)",
+        "bevy_app::plugin::Plugin::cleanup::h801ff0391a7a41f1 (.llvm.4428864551665673318)",
+        "bevy_app::plugin::Plugin::cleanup::h8313af3b24e07ecd (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::cleanup::h861efbde9107fd46 (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::cleanup::h86b3eba623f00a82 (.llvm.15490479395184364306)",
+        "bevy_app::plugin::Plugin::cleanup::h89116e3a190c321c (.llvm.4135915377267885729)",
+        "bevy_app::plugin::Plugin::cleanup::h96909973bba6945d (.llvm.3933544933789313250)",
+        "bevy_app::plugin::Plugin::cleanup::h9b0f0a3d154f27c5 (.llvm.15682340119141564504)",
+        "bevy_app::plugin::Plugin::cleanup::h9c966f7ebdbdddf8 (.llvm.377088278389759241)",
+        "bevy_app::plugin::Plugin::cleanup::h9faebdd387e28297 (.llvm.11157534260473226015)",
+        "bevy_app::plugin::Plugin::cleanup::ha314aa3a7ede2cef (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::cleanup::ha349ebf1563df6ab (.llvm.1670512067297649760)",
+        "bevy_app::plugin::Plugin::cleanup::ha5a144839efd5566 (.llvm.14459660728778579270)",
+        "bevy_app::plugin::Plugin::cleanup::ha6cc23b2a31f07ce (.llvm.17785818503831313853)",
+        "bevy_app::plugin::Plugin::cleanup::haeb5a1362bc0bd2c (.llvm.8256044894369519453)",
+        "bevy_app::plugin::Plugin::cleanup::hb3286d218010f2e8 (.llvm.10815386406131266915)",
+        "bevy_app::plugin::Plugin::cleanup::hb6a01bafdb19e048 (.llvm.444719132062692353)",
+        "bevy_app::plugin::Plugin::cleanup::hb7478bc7c94d4fb0 (.llvm.2492373969012753087)",
+        "bevy_app::plugin::Plugin::cleanup::hbd1c68d0cb838582 (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::cleanup::hc3ce91d8ba969daa (.llvm.9875883182558591298)",
+        "bevy_app::plugin::Plugin::cleanup::hc3fda294c0846e25 (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::cleanup::hcbba9729df1b510d (.llvm.1670512067297649760)",
+        "bevy_app::plugin::Plugin::cleanup::hcf1df5c5f39bcce2 (.llvm.5727959510302062672)",
+        "bevy_app::plugin::Plugin::cleanup::hcf6057d6bebf2eb7 (.llvm.17299998699927497227)",
+        "bevy_app::plugin::Plugin::cleanup::he43c551a42789366 (.llvm.2152137666096805290)",
+        "bevy_app::plugin::Plugin::cleanup::hef998191bd453153 (.llvm.2492373969012753087)",
+        "bevy_app::plugin::Plugin::cleanup::hffda9ab20cad63d5 (.llvm.9945576641820377787)",
+        "bevy_app::plugin::Plugin::finish::h116f75e93a5c282a (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::finish::h13d097063861df0f (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::finish::h13f92e1b03d0f8a2 (.llvm.8256044894369519453)",
+        "bevy_app::plugin::Plugin::finish::h19d50e2ae2f51316 (.llvm.11354242655208346268)",
+        "bevy_app::plugin::Plugin::finish::h20076871a90a5ca7 (.llvm.4364591205018956426)",
+        "bevy_app::plugin::Plugin::finish::h25ba263eac9c6128 (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::finish::h28f36c400f09a824 (.llvm.14048210345176215555)",
+        "bevy_app::plugin::Plugin::finish::h296b5d152c8721f9 (.llvm.17638543164784174637)",
+        "bevy_app::plugin::Plugin::finish::h3488012d6bea6c09 (.llvm.15184617803829666076)",
+        "bevy_app::plugin::Plugin::finish::h38b56a1bc01487c7 (.llvm.9806319049520108636)",
+        "bevy_app::plugin::Plugin::finish::h391e8ad4cf23de24 (.llvm.5727959510302062672)",
+        "bevy_app::plugin::Plugin::finish::h42b37eaa18f438c3 (.llvm.377088278389759241)",
+        "bevy_app::plugin::Plugin::finish::h46d8905dce3b98fc (.llvm.10033930749071880004)",
+        "bevy_app::plugin::Plugin::finish::h52320c4620ab5954 (.llvm.14048210345176215555)",
+        "bevy_app::plugin::Plugin::finish::h5c2be0bd4a833259 (.llvm.4428864551665673318)",
+        "bevy_app::plugin::Plugin::finish::h5d39d04145645a10 (.llvm.9945576641820377787)",
+        "bevy_app::plugin::Plugin::finish::h5e0ecb5351cad4f0 (.llvm.1651378587281896620)",
+        "bevy_app::plugin::Plugin::finish::h613449acbeb32668 (.llvm.2492373969012753087)",
+        "bevy_app::plugin::Plugin::finish::h66996e5fc63ccf7e (.llvm.2152137666096805290)",
+        "bevy_app::plugin::Plugin::finish::h69822f644c79fe8e (.llvm.14227201223583772348)",
+        "bevy_app::plugin::Plugin::finish::h69833d317a126eb8 (.llvm.15490479395184364306)",
+        "bevy_app::plugin::Plugin::finish::h7199a6a77335a9f1 (.llvm.17804689725996397277)",
+        "bevy_app::plugin::Plugin::finish::h79e7a33eec4c0e8e (.llvm.10815386406131266915)",
+        "bevy_app::plugin::Plugin::finish::h80513284c9b3adae (.llvm.5625093041226337839)",
+        "bevy_app::plugin::Plugin::finish::h89578e2d0760b4ef (.llvm.8590005977508013736)",
+        "bevy_app::plugin::Plugin::finish::h8cb922d7e58465df (.llvm.14459660728778579270)",
+        "bevy_app::plugin::Plugin::finish::h91414099b4a8fdbc (.llvm.4135915377267885729)",
+        "bevy_app::plugin::Plugin::finish::h9169a82c4cfe95a8 (.llvm.1670512067297649760)",
+        "bevy_app::plugin::Plugin::finish::h96a03e3ced65db56 (.llvm.4428864551665673318)",
+        "bevy_app::plugin::Plugin::finish::h96bcf278a30730a9 (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::finish::h97ed214dbaacc570 (.llvm.15682340119141564504)",
+        "bevy_app::plugin::Plugin::finish::h98c99f96f5b817a4 (.llvm.11354242655208346268)",
+        "bevy_app::plugin::Plugin::finish::ha3f99e4ee801cde1 (.llvm.2152137666096805290)",
+        "bevy_app::plugin::Plugin::finish::ha55ee9367cfeb7cd (.llvm.444719132062692353)",
+        "bevy_app::plugin::Plugin::finish::hb181a076923e6304 (.llvm.2492373969012753087)",
+        "bevy_app::plugin::Plugin::finish::hc19a6bb98a4504f0 (.llvm.7789490526034806452)",
+        "bevy_app::plugin::Plugin::finish::hc4e0a35200c8e4d7 (.llvm.17299998699927497227)",
+        "bevy_app::plugin::Plugin::finish::hc58283b28ab95a92 (.llvm.17785818503831313853)",
+        "bevy_app::plugin::Plugin::finish::hc943bee32b157f42 (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::finish::hccf6ab75c2665b14 (.llvm.4495920109268975582)",
+        "bevy_app::plugin::Plugin::finish::hcfa143caba433ec8 (.llvm.9875883182558591298)",
+        "bevy_app::plugin::Plugin::finish::hd5859d8b2f1a7396 (.llvm.11157534260473226015)",
+        "bevy_app::plugin::Plugin::finish::hdde4ebaedb675eaa (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::finish::hdf3affe8b9af8dcb (.llvm.1670512067297649760)",
+        "bevy_app::plugin::Plugin::finish::he000d9d90151ed19 (.llvm.2414396619136334244)",
+        "bevy_app::plugin::Plugin::finish::he296989b20d0d9bb (.llvm.15121817830994993606)",
+        "bevy_app::plugin::Plugin::finish::he4562a199d4ab48d (.llvm.15720425348161562225)",
+        "bevy_app::plugin::Plugin::finish::heb7638053959d7e5 (.llvm.823095259154403401)",
+        "bevy_app::plugin::Plugin::finish::hee6c83f9f47d3526 (.llvm.16876994267616972192)",
+        "bevy_app::plugin::Plugin::finish::hf9a520dcd2388148 (.llvm.659948096336419756)",
+        "bevy_app::plugin::Plugin::finish::hfda0f4f4a2dab2d2 (.llvm.3933544933789313250)",
+        "bevy_ecs::system::commands::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$bevy_ecs..system..commands..Commands$GT$::new_archetype::h45070b2046d51674",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.10287167060108598613)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.11863181644703322370)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.13440121655215705044)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.1415720179037549317)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.14263456824525337974)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.14303135344485398799)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.17578469817412167321)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.380599686534537738)",
+        "bytes::bytes::static_drop::h8c2714f2b04e967e (.llvm.5732253321434684217)",
+        "core::error::Error::provide::h009361aac6e1c36b (.llvm.15554677920644413110)",
+        "core::error::Error::provide::h01d182146b8cb583 (.llvm.10151160348964214815)",
+        "core::error::Error::provide::h01d7b1c4047a936e (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h06644f54b76a64dd (.llvm.17200267746504193793)",
+        "core::error::Error::provide::h08012b75b8f014f0 (.llvm.15554677920644413110)",
+        "core::error::Error::provide::h0ad8284e72787153 (.llvm.5732253321434684217)",
+        "core::error::Error::provide::h0ce63b5486157655 (.llvm.13233847530752521574)",
+        "core::error::Error::provide::h0d8a51e780717609 (.llvm.5732253321434684217)",
+        "core::error::Error::provide::h0de7325ac366a395 (.llvm.9234348573347707599)",
+        "core::error::Error::provide::h0fdfa839ea82dda0 (.llvm.17130440098221269862)",
+        "core::error::Error::provide::h103a4c33e6ef808d (.llvm.8623229383319145567)",
+        "core::error::Error::provide::h11552eadf564655f (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h131f750978ce06ff (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h1383c256046d4214 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h16fa175496f053cb (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h1af57b957cd5378b (.llvm.5732253321434684217)",
+        "core::error::Error::provide::h1e59ff6eac780063 (.llvm.15390361594761184135)",
+        "core::error::Error::provide::h1ff25934ea421f2c (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h21c472dd1be10107 (.llvm.8623229383319145567)",
+        "core::error::Error::provide::h2329223a1b412d27 (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h2436b8791e5dc65d (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h260ecfe36797cecf (.llvm.16876994267616972192)",
+        "core::error::Error::provide::h28295b7ab046903c (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h2adf88087ebf9e2b (.llvm.992697252590873428)",
+        "core::error::Error::provide::h35087395c84fad8e (.llvm.5472170801812626019)",
+        "core::error::Error::provide::h3a00a629b1162521 (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h3f937a435519af59 (.llvm.16592569218806792717)",
+        "core::error::Error::provide::h455dd74a525dc2a4 (.llvm.15554677920644413110)",
+        "core::error::Error::provide::h46c6501c5be96a9f (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h47ed9465e927e94e (.llvm.10795016520310502370)",
+        "core::error::Error::provide::h48404005833aae3a (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h4b9b81554a6e82e8 (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h4fe0e1fcf820c10e (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h523f88f3eec091a0 (.llvm.6827303953861985160)",
+        "core::error::Error::provide::h52bc3631c955805b (.llvm.15390361594761184135)",
+        "core::error::Error::provide::h552f252a56c993e6 (.llvm.15554677920644413110)",
+        "core::error::Error::provide::h574ccd541df152de (.llvm.8623229383319145567)",
+        "core::error::Error::provide::h581803776937791a (.llvm.1221382701823492139)",
+        "core::error::Error::provide::h5b9047f201b008de (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h60f7c7739f2774c8 (.llvm.10144990216098069339)",
+        "core::error::Error::provide::h6480069d90760dae (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h6b5be78a353648da (.llvm.5732253321434684217)",
+        "core::error::Error::provide::h6ce92b46d8fdadf6 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h7a117241590320ad (.llvm.15390361594761184135)",
+        "core::error::Error::provide::h7b019a38e605979d (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h7c7c4ad9326ea432 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h7e70789917ef399f (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h7f45fc2c12828bdf (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h822943e979216b16 (.llvm.14263456824525337974)",
+        "core::error::Error::provide::h84dceabceb13baf4 (.llvm.3739918527894402990)",
+        "core::error::Error::provide::h8f7a829dad9c5483 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::h91393054500c29ac (.llvm.13623207379723389145)",
+        "core::error::Error::provide::h94e2a687a93845fd (.llvm.4325631391892984124)",
+        "core::error::Error::provide::ha731d8b89aaf796d (.llvm.3485725592004409409)",
+        "core::error::Error::provide::ha7da9020489c22e0 (.llvm.13569653155677213561)",
+        "core::error::Error::provide::ha839b312bf1b9e6a (.llvm.9234348573347707599)",
+        "core::error::Error::provide::ha871aa14c9fcd2df (.llvm.9234348573347707599)",
+        "core::error::Error::provide::hac05a45ea780ea23 (.llvm.5732253321434684217)",
+        "core::error::Error::provide::hae929dc0f336690f (.llvm.13074790633406210517)",
+        "core::error::Error::provide::hb14c6fd65b765110 (.llvm.3739918527894402990)",
+        "core::error::Error::provide::hb23e0894e79369be (.llvm.3485725592004409409)",
+        "core::error::Error::provide::hb44af00f2f871bb2 (.llvm.3739918527894402990)",
+        "core::error::Error::provide::hb61569a79b5e7228 (.llvm.3739918527894402990)",
+        "core::error::Error::provide::hbe17eb88eb074aca (.llvm.14263456824525337974)",
+        "core::error::Error::provide::hbe30d1729f5315ec (.llvm.3485725592004409409)",
+        "core::error::Error::provide::hc08b462cdc8f6b1e (.llvm.1415720179037549317)",
+        "core::error::Error::provide::hc08b462cdc8f6b1e (.llvm.15314213537260488666)",
+        "core::error::Error::provide::hc08b462cdc8f6b1e (.llvm.9884825888722911627)",
+        "core::error::Error::provide::hc2d38eb9a09fb9d3 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::hc45d57efdeb08cd4 (.llvm.15554677920644413110)",
+        "core::error::Error::provide::hcd296baffe54964a (.llvm.14263456824525337974)",
+        "core::error::Error::provide::hcd296baffe54964a (.llvm.6889958122243934997)",
+        "core::error::Error::provide::hd088349d370e3c5c (.llvm.17846271225686618864)",
+        "core::error::Error::provide::hd11fde4be0962bb0 (.llvm.13640983591461169967)",
+        "core::error::Error::provide::hd1cf017de19f1b58 (.llvm.4304959777568618140)",
+        "core::error::Error::provide::hd9cec94941260bb1 (.llvm.14786855264901504755)",
+        "core::error::Error::provide::hdd1835fcf5c954d5 (.llvm.14263456824525337974)",
+        "core::error::Error::provide::he61f474009dc272c (.llvm.8556715942208341225)",
+        "core::error::Error::provide::he6a7f8f339637158 (.llvm.13848739671265572721)",
+        "core::error::Error::provide::he85c7253ddf196b5 (.llvm.3485725592004409409)",
+        "core::error::Error::provide::hf2d4ac637c973ecc (.llvm.14315507890812711538)",
+        "core::error::Error::provide::hf2d4ac637c973ecc (.llvm.739414752861877873)",
+        "core::error::Error::provide::hf2d4ac637c973ecc (.llvm.9234348573347707599)",
+        "core::error::Error::provide::hf5d323f913a6690a (.llvm.9249355467015729020)",
+        "core::error::Error::provide::hf73e27c0b2af8385 (.llvm.1604273766477389903)",
+        "core::error::Error::provide::hf8fd1803fed68e53 (.llvm.1537989039997622926)",
+        "core::error::Error::provide::hf9b5d5a9bacda313 (.llvm.10151160348964214815)",
+        "core::error::Error::provide::hfe76ed82aee7c54c (.llvm.3485725592004409409)",
+        "core::ops::function::FnOnce::call_once$u7b$$u7b$vtable.shim$u7d$$u7d$::h7c1a1d6722285400 (.llvm.14742551539163111372)",
+        "core::ops::function::FnOnce::call_once$u7b$$u7b$vtable.shim$u7d$$u7d$::hf30c47ab9d0efc47 (.llvm.14742551539163111372)",
+        "country_core::render::nani::instance_data::BalconyDoorInstanceData::marker::h782b097d4caf3ac9",
+        "country_core::render::nani::instance_data::ClothInstanceData::marker::he840a09eddbef0b0",
+        "country_core::render::nani::instance_data::CurvedHalfTimberInstanceData::marker::h91f2b1580beabad7",
+        "country_core::render::nani::instance_data::GothicWindowBricksInstanceData::marker::h4346eee5c4c351c1",
+        "country_core::render::nani::instance_data::LanternEmissiveInstanceData::marker::h2234bccac0f609f8",
+        "country_core::render::nani::instance_data::PlantInstanceData::marker::h557bb550bf6d589c",
+        "country_core::render::nani::instance_data::PlasterInstanceData::marker::hd2e7b4640048cc98",
+        "country_core::render::nani::instance_data::PreplacedFlowerInstanceData::marker::h939fae8de92bc043",
+        "country_core::render::nani::instance_data::SmokeInstanceData::marker::h8bab00f4c35eded1",
+        "country_core::render::nani::instance_data::SolidAlbedoMapEmissiveInstanceData::marker::h3e0b94cb6f9d2345",
+        "country_core::render::nani::instance_data::SolidAlbedoMapInstanceData::marker::h8c14c3a4405ed506",
+        "country_core::render::nani::instance_data::SolidVertexColorBricksInstanceData::marker::hc8d27370e3051992",
+        "country_core::render::nani::instance_data::SolidVertexColorInstanceData::marker::h08291f16c872fe7f",
+        "country_core::render::nani::instance_data::SolidVertexColorWindowGlassInstanceData::marker::h729cfd9c5eb42cc9",
+        "country_core::render::nani::instance_data::SolidVertexColorWindowInstanceData::marker::h4530ec998f7d80c9",
+        "country_core::render::nani::instance_data::StairsFloorInstanceData::marker::h9db4623d7c6a49a6",
+        "country_core::render::nani::instance_data::StoneFloorInstanceData::marker::h2f4e87f1c48b4cd3",
+        "country_core::render::nani::instance_data::UberInstanceData::marker::h4789b91e3aed7131",
+        "country_core::render::nani::instance_data::VelocityOnlyInstanceData::marker::ha1d8b43fa66fb350",
+        "country_core::render::nani::instance_data::WrenInstanceData::marker::h7689e5563800368d",
+        "country_core::resources::walls::decorator_archivist::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_archivist..DecoratorArchivalResources$GT$::apply::h5a5e984d0efef157",
+        "country_core::resources::walls::decorator_archivist::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_archivist..DecoratorArchivalResources$GT$::new_archetype::h0ac81f57df73eb90",
+        "country_core::resources::walls::decorator_archivist::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_archivist..DecoratorArchivalResources$GT$::queue::h569ee97fdfdf83f8",
+        "country_core::resources::walls::decorator_storage::DecoratorStorage::verify_integrity::h982309db03af812b",
+        "country_core::resources::walls::decorator_subtype::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_subtype..DerivedDecoratorInfoResources$GT$::apply::ha305db895ad62760",
+        "country_core::resources::walls::decorator_subtype::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_subtype..DerivedDecoratorInfoResources$GT$::new_archetype::hdc16ee398af7fe0b",
+        "country_core::resources::walls::decorator_subtype::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..walls..decorator_subtype..DerivedDecoratorInfoResources$GT$::queue::hfb5e72694f56d9dd",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterRead$GT$::apply::ha98f8b6ad44b7511",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterRead$GT$::new_archetype::h419a90834e3c11be",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterRead$GT$::queue::h30d0101c4f10053d",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterWrite$GT$::apply::h3209a768de9ad99a",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterWrite$GT$::new_archetype::h410a7a57fcbb7682",
+        "country_core::resources::world_raster_defs::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..resources..world_raster_defs..AllWorldRasterWrite$GT$::queue::hbfa8e1a0a6a78c36",
+        "country_core::systems::collision::world::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..collision..world..Raycasting$GT$::apply::hc3dc870a3d082bac",
+        "country_core::systems::collision::world::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..collision..world..Raycasting$GT$::new_archetype::hd59a392dd01492b8",
+        "country_core::systems::collision::world::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..collision..world..Raycasting$GT$::queue::h13e852cacb0113c3",
+        "country_core::systems::paths::draw_path::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..paths..draw_path..PathRastersResources$GT$::apply::h18b1f6fb98adb3a6",
+        "country_core::systems::paths::draw_path::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..paths..draw_path..PathRastersResources$GT$::new_archetype::h59bee0430c9ca8aa",
+        "country_core::systems::paths::draw_path::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..paths..draw_path..PathRastersResources$GT$::queue::h2d7da3a3e5232ce5",
+        "country_core::systems::steam::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..steam..SteamOverlayOpenResources$GT$::apply::h4f95c961011c0f59",
+        "country_core::systems::steam::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..steam..SteamOverlayOpenResources$GT$::new_archetype::h269fcf61a10a5747",
+        "country_core::systems::steam::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..steam..SteamOverlayOpenResources$GT$::queue::h116652b46d760af1",
+        "country_core::systems::ui::resources::slider3d::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..ui..resources..slider3d..Slider3d$GT$::apply::h1b75b44036bb2934",
+        "country_core::systems::ui::resources::slider3d::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..ui..resources..slider3d..Slider3d$GT$::new_archetype::hb67f5deee63e14a6",
+        "country_core::systems::ui::resources::slider3d::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..ui..resources..slider3d..Slider3d$GT$::queue::he8eb77d6fe96f697",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterDrawResources$GT$::apply::h0413737f75d9ebc5",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterDrawResources$GT$::new_archetype::hf20f8555ae9c3878",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterDrawResources$GT$::queue::h9d2e87be278c7bfe",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterHistoryRecordResources$GT$::apply::hc28c4e7b19170ee8",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterHistoryRecordResources$GT$::new_archetype::h90a5cdecf3fe0ae9",
+        "country_core::systems::world_raster::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$country_core..systems..world_raster..RasterHistoryRecordResources$GT$::queue::h4eb31f8231a475d5",
+        "crossbeam_epoch::deferred::Deferred::NO_OP::no_op_call::h6f1410447db714bd (.llvm.15432493430506093023)",
+        "erased_serde::any::Any::new::inline_drop::h048ca80b8ec75d1d (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h08cc77af39b078ee (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h08ec82745e4e5a38 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h0ad057a91bf34dd0 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h154a22e51a7f212e (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h1601903b47b283e2 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h1875b7c72e531792 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h19d91070cfd4e746 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h1cbce3e2e192d334 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h1e4a0de2b9ee166a (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h257cb36ae5fcd118 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h2b7d22a67943e1ac (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h2bf553a9112f8205 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h2d9956d1de92ab7e (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h3f48041bda8a817f (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h426fef02cf86cd41 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h47b4f669a287967e (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h5250d177a88355ef (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h55fa77f7ffd00fba (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h57714ca46c92917c (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h57c419192f024b6a (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h5a6bfe8dffc6d7c7 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h5e82017e38a09f71 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h644a767d38c8e794 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h64d1db21f28574d5 (.llvm.17110990420833433069)",
+        "erased_serde::any::Any::new::inline_drop::h67d51ba4a995c809 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h69f493bc60396df8 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h6bcc1008ec1092f5 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h6efd7af025c50561 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h70ceeee5b10996c0 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h73eb603377c18381 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h7542abcfd1c62ace (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h78ab2060c4e604ea (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h7ef2b79ca6dd7aa2 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h81490e91189fee40 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h81f4c439aa484435 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h837614e48e98bd7d (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h843ba53b43cc4ecf (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h84be53678f8a64a7 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h89984d1c1641cf25 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h955481b4374eb66b (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h9909daa0d6331d13 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h9bf38d36787ea162 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h9cee37fd843471d5 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::h9e10faa4571cc45e (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::ha01c8da7d41ebebe (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::ha132f616eff1e508 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hb13e05f44551b9d2 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hb8095bdcaff22578 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hbbb606e8020c4fa2 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hbd96cebd5e5c0f3e (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hbdf150bff904255f (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hc223df31f34f4ab2 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hc48803e4097632aa (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hd0ebdfaa7c8de142 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hd28d9cb986b1aa64 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hd8982d74c970d71b (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hdb6f59b5ba6426c0 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::he3ea3c2b7bce7b91 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hef9ff76d188f3ff7 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hf3018cb24ffff509 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hf5c2c9e7dbb24282 (.llvm.12967679703441014276)",
+        "erased_serde::any::Any::new::inline_drop::hf71bde0dbfbf4038 (.llvm.12967679703441014276)",
+        "gpu_allocator::visualizer::SubAllocatorVisualizer::draw_visualization::h4a4baa734b2b42ee",
+        "iced_core::widget::Widget::diff::h03aac33205d32453 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h03b7b8468f6fedb8 (.llvm.12531780970269476476)",
+        "iced_core::widget::Widget::diff::h1c32cc4a7594d539 (.llvm.14710666788501003205)",
+        "iced_core::widget::Widget::diff::h20bfcbebf64bb6f6 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h315207b2ff9e7fc7 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h496383edbe7bcaaa (.llvm.6556846962532919725)",
+        "iced_core::widget::Widget::diff::h4c01d49d553a88da (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h69ce23fba769e0a5 (.llvm.14710666788501003205)",
+        "iced_core::widget::Widget::diff::h868f6084e79271ed (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h8808caa19a4822af (.llvm.14710666788501003205)",
+        "iced_core::widget::Widget::diff::h90bc3e72cfcefe09 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::diff::h9394e17f73b3448a (.llvm.12531780970269476476)",
+        "iced_core::widget::Widget::diff::hb350a19e79762c2d (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::h019b31764d826459 (.llvm.14710666788501003205)",
+        "iced_core::widget::Widget::operate::h0268bafc3d979b4b (.llvm.12531780970269476476)",
+        "iced_core::widget::Widget::operate::h2eb75f7b48dfc7a9 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::h509b7d4b3d8cceaa (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::h6c67bf1ee88cf472 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::h6dd9e85927867ef6 (.llvm.12531780970269476476)",
+        "iced_core::widget::Widget::operate::h75a9346f714abb86 (.llvm.6556846962532919725)",
+        "iced_core::widget::Widget::operate::h7c28f81dc9ce371d (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::h965638f439e52a40 (.llvm.14710666788501003205)",
+        "iced_core::widget::Widget::operate::hb3da0f2fce93b53b (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::hcdc721873a6a10a3 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::he0ae013640fc5586 (.llvm.8046225761361234231)",
+        "iced_core::widget::Widget::operate::he7d23723cf2f213c (.llvm.14710666788501003205)",
+        "rhapsody::raw::shader::ComputePipelineDesc::new",
+        "rhapsody::raw::shader::ComputePipelineDesc::new::h237ebdf3e877ad58",
+        "rhapsody::raw::texture::impl$0::drop",
+        "rhapsody::rg::resource::impl$0::validate_read_access",
+        "rhapsody::rg::resource::impl$1::validate_read_access",
+        "system_wall_constructor::debug_force_update_arches::hed49ea11b2c98d60",
+        "tiny_skia::shaders::linear_gradient::LinearGradient::push_stages::_$u7b$$u7b$closure$u7d$$u7d$::hcb9a9c74a0666ee9 (.llvm.14742551539163111372)",
+        "tiny_skia::shaders::linear_gradient::LinearGradient::push_stages::_$u7b$$u7b$closure$u7d$$u7d$::hff9502117d3a3bcb (.llvm.14742551539163111372)",
+        "toolbar::mei::core::NodeContent::on_input::h0a304dbf363b9830",
+        "toolbar::mei::core::NodeContent::on_input::h1c34da0962192bb8",
+        "toolbar::mei::core::NodeContent::on_input::h2400fad8b164e9f5",
+        "toolbar::mei::core::NodeContent::on_input::h464365bcc2d3f29f",
+        "toolbar::mei::core::NodeContent::on_input::h6abd85efb7abad7f",
+        "toolbar::mei::core::NodeContent::on_input::h7596633150401363",
+        "toolbar::mei::core::NodeContent::on_input::hacdadd0c05f8ecf3",
+        "toolbar::mei::core::NodeContent::on_input::hb20c98cdeb76be55",
+        "toolbar::mei::core::NodeContent::on_input::hbfea29f8b7044703",
+        "toolbar::mei::core::NodeContent::on_input::hd0a1764d3f2f0dc8",
+        "toolbar::mei::core::NodeContent::on_input::hd550b8e89d8bb974",
+        "toolbar::mei::core::NodeContent::on_input::hd9a7e19e6a597da0",
+        "toolbar::mei::core::NodeContent::on_input::hdc9ad89d24f9e3e4",
+        "toolbar::mei::core::NodeContent::on_input::hde5444f3b48c227e",
+        "toolbar::mei::core::NodeContent::pre_update::h04f19c8094b36139",
+        "toolbar::mei::core::NodeContent::pre_update::h48d65d2f57701f0f",
+        "toolbar::mei::core::NodeContent::pre_update::h5f1338492c80af21",
+        "toolbar::mei::core::NodeContent::pre_update::h71ffac046205daca",
+        "toolbar::mei::core::NodeContent::pre_update::h87183ccb7a4f1ca0",
+        "toolbar::mei::core::NodeContent::pre_update::h8d60de38617ada3a",
+        "toolbar::mei::core::NodeContent::pre_update::h8e4e6bd91d423350",
+        "toolbar::mei::core::NodeContent::pre_update::hb8fe0a082b13c109",
+        "toolbar::mei::core::NodeContent::pre_update::hbd94a9689aae9189",
+        "toolbar::mei::core::NodeContent::pre_update::hc002337ac4d6ee08",
+        "toolbar::mei::core::NodeContent::pre_update::hd85bb22aaf1848d4",
+        "toolbar::mei::core::NodeContent::pre_update::hd95c7506751847ab",
+        "toolbar::mei::core::NodeContent::pre_update::hfa0664063121ce40",
+        "toolbar::mei::core::NodeContent::pre_update::hfa986ca321f360cd",
+        "toolbar::mei::core::NodeContent::render::h0f566a37d43c9e2a",
+        "toolbar::mei::core::NodeContent::render::h6ed4d88462705998",
+        "toolbar::mei::core::NodeContent::render::h9ee171f9d40f1be2",
+        "toolbar::mei::core::NodeContent::render::hf004956db90e000c",
+        "tracing_core::subscriber::Subscriber::drop_span::h21eaf96f4febf31b (.llvm.1215573282129560762)",
+        "tracing_core::subscriber::Subscriber::on_register_dispatch::h1b7694db5070dad3 (.llvm.1215573282129560762)",
+        "utils::timer::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$utils..timer..FilteredWallTime$GT$::apply::h78ce11b842bc2b78",
+        "utils::timer::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$utils..timer..FilteredWallTime$GT$::new_archetype::h3a8e41f267c353f4",
+        "utils::timer::_::_$LT$impl$u20$bevy_ecs..system..system_param..SystemParam$u20$for$u20$utils..timer..FilteredWallTime$GT$::queue::hc668ba6712ee0e20",
+        "utils::wall_space::WallSpaceCoord::new_unchecked::h76dae8b6ebe6ff7f"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401650b9"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x1402c4280",
+      "target_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140165959"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x1404f7ca0",
+      "target_names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140165516"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140530430",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401657f8"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140bd52a0",
+      "target_names": [
+        "rhapsody::raw::texture::TextureDesc::new_2d",
+        "rhapsody::raw::texture::TextureDesc::new_2d::hc4077ae9f72b8ecc"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140164de4",
+        "0x14016513a"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140bd5370",
+      "target_names": [
+        "rhapsody::raw::texture::TextureDesc::sampled",
+        "rhapsody::raw::texture::TextureDesc::sampled::h8cc55aa1a698dc4e"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140164e01"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140bd6380",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::export::h7fba0f623439730c",
+        "rhapsody::rg::import_export::impl$0::export"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401653ba"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140bd6ce0",
+      "target_names": [
+        "_$LT$rhapsody..rg..resource..ResourceDesc$u20$as$u20$core..convert..From$LT$rhapsody..raw..texture..TextureDesc$GT$$GT$::from::h018caba005bfd623",
+        "rhapsody::rg::resource::impl$4::from"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140165170"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140be7ba0",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140165827"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140be9420",
+      "target_names": [
+        "rhapsody::rg::graph::RenderGraph::on_retire",
+        "rhapsody::rg::graph::RenderGraph::on_retire::h8b10076c7f507ca7"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140165849"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1401647b0",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "target": "0x140be94d0",
+      "target_names": [
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource",
+        "rhapsody::rg::graph::RenderGraph::create_raw_resource::hc7c365852e35bab8"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401651a3"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x1402c4280",
+      "target_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1401670f1"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x1404f7ca0",
+      "target_names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166cb1"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140530430",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166f9f"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140bd60a0",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::import_unowned::hab9e8e7f185e6b38",
+        "rhapsody::rg::import_export::impl$0::import_unowned"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166aca"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140bd6220",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::import_owned::hf76873d12fc48aee",
+        "rhapsody::rg::import_export::impl$0::import_owned"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166aa6"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140bd6380",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::export::h7fba0f623439730c",
+        "rhapsody::rg::import_export::impl$0::export"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166b4c"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140be7ba0",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166fc6"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140166510",
+      "source_names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "target": "0x140be9420",
+      "target_names": [
+        "rhapsody::rg::graph::RenderGraph::on_retire",
+        "rhapsody::rg::graph::RenderGraph::on_retire::h8b10076c7f507ca7"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140166fe8"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd65e0",
+      "target_names": [
+        "rhapsody::raw::barrier::ImageBarrier::new",
+        "rhapsody::raw::barrier::ImageBarrier::new::hd1b7d258d22b0f39"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1faf",
+        "0x1402c2927"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6610",
+      "target_names": [
+        "rhapsody::raw::barrier::BufferBarrier::new",
+        "rhapsody::raw::barrier::BufferBarrier::new::hf113a0c335d0233a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1f19",
+        "0x1402c289b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6630",
+      "target_names": [
+        "rhapsody::raw::barrier::image_aspect_mask_from_format",
+        "rhapsody::raw::barrier::image_aspect_mask_from_format::h6e9a5166d14f71a0"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1f96",
+        "0x1402c290e"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd66a0",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::image_barrier::h9cf4cfdff2f8e282",
+        "rhapsody::raw::barrier::impl$5::image_barrier"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1fc2",
+        "0x1402c293a"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6810",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::buffer_barrier::h96b4727750c28de9",
+        "rhapsody::raw::barrier::impl$5::buffer_barrier"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1f2c",
+        "0x1402c28ae"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6950",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::reset::h7c51285be7e6affd",
+        "rhapsody::raw::barrier::impl$5::reset"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c2002",
+        "0x1402c2971"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6980",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::is_empty::h76a17729ca9a9144",
+        "rhapsody::raw::barrier::impl$5::is_empty"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1fe0",
+        "0x1402c294b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bd6c80",
+      "target_names": [
+        "rhapsody::rg::resource::RuntimeResource::borrow",
+        "rhapsody::rg::resource::RuntimeResource::borrow::h730b8132d76a9a0d"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1ea3",
+        "0x1402c2736",
+        "0x1402c27cf"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140be78b0",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource",
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource::hce3483e7bafad3cd"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1e8d",
+        "0x1402c2726",
+        "0x1402c27bf"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bea1e0",
+      "target_names": [
+        "rhapsody::rg::executor::PassPgoStats::duration_ns",
+        "rhapsody::rg::executor::PassPgoStats::duration_ns::h5a784d1b51d4490b"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c22c9"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140bee030",
+      "target_names": [
+        "rhapsody::raw::barrier::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::issue_pipeline_barrier::h671c3006edd710d0",
+        "rhapsody::raw::device::GraphicsDevice::issue_pipeline_barrier"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1ffa",
+        "0x1402c2965"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd65e0",
+      "target_names": [
+        "rhapsody::raw::barrier::ImageBarrier::new",
+        "rhapsody::raw::barrier::ImageBarrier::new::hd1b7d258d22b0f39"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3db7"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd6610",
+      "target_names": [
+        "rhapsody::raw::barrier::BufferBarrier::new",
+        "rhapsody::raw::barrier::BufferBarrier::new::hf113a0c335d0233a"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3f6a"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd6630",
+      "target_names": [
+        "rhapsody::raw::barrier::image_aspect_mask_from_format",
+        "rhapsody::raw::barrier::image_aspect_mask_from_format::h6e9a5166d14f71a0"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3d9d",
+        "0x1402c402a"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd66a0",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::image_barrier::h9cf4cfdff2f8e282",
+        "rhapsody::raw::barrier::impl$5::image_barrier"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3dc4"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd6810",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$rhapsody..raw..barrier..SynchronizationScope$GT$::buffer_barrier::h96b4727750c28de9",
+        "rhapsody::raw::barrier::impl$5::buffer_barrier"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3f77"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bd6c80",
+      "target_names": [
+        "rhapsody::rg::resource::RuntimeResource::borrow",
+        "rhapsody::rg::resource::RuntimeResource::borrow::h730b8132d76a9a0d"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3e1b",
+        "0x1402c3f0b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140be78b0",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource",
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource::hce3483e7bafad3cd"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3df5"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140be9690",
+      "target_names": [
+        "rhapsody::rg::compiled::pass_access_range_indices",
+        "rhapsody::rg::compiled::pass_access_range_indices::hde667e2dde2ae554"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3d36"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c3d00",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+      ],
+      "target": "0x140bece70",
+      "target_names": [
+        "rhapsody::rg::recorder::PassResourceAccessType::can_be_concurrent_with",
+        "rhapsody::rg::recorder::PassResourceAccessType::can_be_concurrent_with::hbf06e4a6c740335b"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c3e78",
+        "0x1402c3fd2"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1402c4280",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "target": "0x140bd6650",
+      "target_names": [
+        "_$LT$rhapsody..raw..barrier..SynchronizationScope1$u20$as$u20$core..default..Default$GT$::default::hc0aac0c0cd623875",
+        "rhapsody::raw::barrier::SynchronizationScope1::new::h597d5eae8e6a9318",
+        "rhapsody::raw::barrier::impl$3::default"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c4348"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x1404f7ca0",
+      "source_names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+      ],
+      "target": "0x140bd6380",
+      "target_names": [
+        "_$LT$rhapsody..raw..texture..Texture$u20$as$u20$rhapsody..rg..import_export..ImportExportToRenderGraph$GT$::export::h7fba0f623439730c",
+        "rhapsody::rg::import_export::impl$0::export"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1404f7d8b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4410",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::clear",
+        "rhapsody::rg::resource_info::ResourceInfo::clear::h85547e88fc5e88f9"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140530451"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd44b0",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags",
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags::h8350bc7329361b01"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1405305f8"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4560",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports",
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports::hfe49450f500dbe82"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140530603"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd47d0",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::link_up_next_access_chains",
+        "rhapsody::rg::resource_info::ResourceInfo::link_up_next_access_chains::h799afc42e95269c7"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1405308ae"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4860",
+      "target_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate_lifetime_events",
+        "rhapsody::rg::resource_info::ResourceInfo::calculate_lifetime_events::h3af4a6222669e84b"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1405308b6"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd49d0",
+      "target_names": [
+        "rhapsody::rg::resource_info::image_access_mask_to_usage_flags",
+        "rhapsody::rg::resource_info::image_access_mask_to_usage_flags::h2115598c512c1644"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1405306c0"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4b00",
+      "target_names": [
+        "rhapsody::rg::resource_info::buffer_access_mask_to_usage_flags",
+        "rhapsody::rg::resource_info::buffer_access_mask_to_usage_flags::h8483b2c5e0d86b05"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14053085c"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4b40",
+      "target_names": [
+        "_$LT$rhapsody..rg..resource_info..PassIndex$u20$as$u20$core..convert..From$LT$usize$GT$$GT$::from::hdeea264458b3cbf6",
+        "rhapsody::rg::resource_info::impl$13::from"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14053077a",
+        "0x140530799",
+        "0x1405307c3"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd4b80",
+      "target_names": [
+        "_$LT$rhapsody..rg..resource_info..ResourceAccessIndex$u20$as$u20$core..convert..From$LT$usize$GT$$GT$::from::hf916c92a9d543298",
+        "rhapsody::rg::resource_info::impl$23::from"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140530704",
+        "0x140530875",
+        "0x140530880"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bd6d10",
+      "target_names": [
+        "rhapsody::rg::resource::ResourceOrigin::ty",
+        "rhapsody::rg::resource::ResourceOrigin::ty::hdc584f1cdd33a418"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14053081b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140530430",
+      "source_names": [
+        "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e"
+      ],
+      "target": "0x140bece40",
+      "target_names": [
+        "rhapsody::rg::recorder::PassResourceRef::resource_index",
+        "rhapsody::rg::recorder::PassResourceRef::resource_index::hac6fb1e754094628",
+        "tokio::loom::std::atomic_u32::AtomicU32::unsync_load::h0d503f36788b5453",
+        "utils::loop_range::LoopIdx::raw_idx::h7d0ec4316db23cac"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1405306a0",
+        "0x1405306dd",
+        "0x1405307fe",
+        "0x14053083c"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7940",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle::h3b90484ad5fbe6d9"
+      ],
+      "target": "0x1428caa40",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle::panic_cold_explicit::h05ee72f6a1c08fcd (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::image_from_raw_handle::panic_cold_explicit"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be798b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be79d0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer",
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer::hce71ca5335a61d17"
+      ],
+      "target": "0x1428caa60",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer::panic_cold_explicit::hda41c95fa11d4db1 (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::buffer::panic_cold_explicit"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be7a1f"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7a60",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view::hd02b99e9bfc76099"
+      ],
+      "target": "0x1428caa80",
+      "target_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view::panic_cold_explicit::h557d252ef5ebcab8 (.llvm.15200196457440221650)",
+        "rhapsody::rg::resource_registry::impl$1::image_view::panic_cold_explicit"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be7b58"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7ba0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target": "0x140be6b90",
+      "target_names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture",
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture::h26b3104715ffe512"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be83b4"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7ba0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target": "0x140be71e0",
+      "target_names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer",
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer::h513f64686516dba3"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be846d"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7ba0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target": "0x140beec30",
+      "target_names": [
+        "rhapsody::raw::buffer::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::set_buffer_debug_name::h11202c9cf2d5ab64",
+        "rhapsody::raw::device::GraphicsDevice::set_buffer_debug_name"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be8568"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7ba0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target": "0x140bfe650",
+      "target_names": [
+        "rhapsody::raw::device::GraphicsDevice::set_texture_debug_name",
+        "rhapsody::raw::texture::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::set_texture_debug_name::h9d739d203f6de8ac"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be865b"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140be7ba0",
+      "source_names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "target": "0x141739060",
+      "target_names": [
+        "rhapsody::raw::format::vk_format_info",
+        "rhapsody::raw::format::vk_format_info::hb6dea88430b18d45"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140be8350",
+        "0x140be8362"
+      ],
+      "kinds": [
+        "call"
+      ]
+    }
+  ],
+  "query_queue": [
+    {
+      "address": "0x1401647b0",
+      "names": [
+        "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x1402c1d40",
+      "names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140166510",
+      "names": [
+        "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be7ba0",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources",
+        "rhapsody::rg::resource_registry::ResourceRegistry::populate_resources::h6b51b4dcc8eb468a"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x1402c4280",
+      "names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::new::h6e8718a94436b742"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be9040",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::into_exports",
+        "rhapsody::rg::resource_registry::ResourceRegistry::into_exports::h59a4b29d0d72ea45"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be6d70",
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::insert_texture",
+        "rhapsody::rg::resource_pool::ResourcePool::insert_texture::h53bab513da388bf9"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be7320",
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::insert_buffer",
+        "rhapsody::rg::resource_pool::ResourcePool::insert_buffer::h3eea23651d320e99"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be6b90",
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture",
+        "rhapsody::rg::resource_pool::ResourcePool::take_texture::h26b3104715ffe512"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be71e0",
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer",
+        "rhapsody::rg::resource_pool::ResourcePool::take_buffer::h513f64686516dba3"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be9600",
+      "names": [
+        "rhapsody::rg::compiled::BatchCompiler::flush_batch",
+        "rhapsody::rg::compiled::BatchCompiler::flush_batch::h75a336a20fca1c53"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be95e0",
+      "names": [
+        "rhapsody::rg::compiled::BatchCompiler::new",
+        "rhapsody::rg::compiled::BatchCompiler::new::h699831de4c862476"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140bd4560",
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports",
+        "rhapsody::rg::resource_info::ResourceInfo::extend_usage_flags_for_exports::hfe49450f500dbe82"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be7a60",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_view::hd02b99e9bfc76099"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140bd44b0",
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags",
+        "rhapsody::rg::resource_info::ResourceInfo::extract_creation_flags::h8350bc7329361b01"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140bd4410",
+      "names": [
+        "rhapsody::rg::resource_info::ResourceInfo::clear",
+        "rhapsody::rg::resource_info::ResourceInfo::clear::h85547e88fc5e88f9"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be78b0",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource",
+        "rhapsody::rg::resource_registry::ResourceRegistry::resource::hce3483e7bafad3cd"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be79d0",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer",
+        "rhapsody::rg::resource_registry::ResourceRegistry::buffer::hce71ca5335a61d17"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be7940",
+      "names": [
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle",
+        "rhapsody::rg::resource_registry::ResourceRegistry::image_from_raw_handle::h3b90484ad5fbe6d9"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    },
+    {
+      "address": "0x140be76f0",
+      "names": [
+        "rhapsody::rg::resource_pool::ResourcePool::clear",
+        "rhapsody::rg::resource_pool::ResourcePool::clear::h7d5fb6b4d781532a"
+      ],
+      "requested_evidence": [
+        "decompilation",
+        "direct callers and callees",
+        "field reads and writes",
+        "panic/error branches"
+      ],
+      "question": "Which shared type fields and state invariant does this function establish or consume?"
+    }
+  ],
+  "acceptance": {
+    "implementation_unit": "pass/resource declaration to compiled graph snapshot",
+    "oracle_fields": [
+      "pass order",
+      "resource lifetime endpoints",
+      "previous/next access chain",
+      "physical allocation identity",
+      "pre/post barriers",
+      "import/export state",
+      "temporal parity and history mapping"
+    ],
+    "not_accepted_by": [
+      "number of translated functions",
+      "successful compilation alone",
+      "a single decompiler output",
+      "PDB void signatures"
+    ]
+  },
+  "limitations": [
+    "This contract is generated from static evidence and does not observe runtime execution.",
+    "Query queue items are evidence requests, not permission to mutate an analysis database.",
+    "Existing decompilation is pseudocode and does not establish original Rust source or ABI."
+  ]
+}

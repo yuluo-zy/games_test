@@ -1,0 +1,100 @@
+{
+  "passed": true,
+  "status": "scoped-native-event-differential-pass",
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 108,
+  "by_mode": {
+    "0": 28,
+    "1": 48,
+    "2": 20,
+    "3": 12
+  },
+  "failure_count": 0,
+  "rust_tests": 3,
+  "candidate_sha256": "600626bb465e50e2c4bb1eac1b633e400b8eeb7e54b6c00ce485a4d4c2651f2e",
+  "commands": [
+    {
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-04\\record-submit\\verify.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"cases\": 108, \"failure_count\": 0, \"failures\": []}\n",
+      "stderr": "   Compiling tiny-glade-record-submit-r6 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6)\n    Finished `release` profile [optimized] target(s) in 0.54s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\Cargo.toml"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 3 tests\ntest tests::callback_failure_does_not_append_command ... ok\ntest tests::empty_wait_only_panics_after_take ... ok\ntest tests::submit_ends_only_last_open_command ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+      "stderr": "   Compiling tiny-glade-record-submit-r6 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s\n     Running unittests src\\lib.rs (reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\target\\debug\\deps\\tiny_glade_record_submit_r6-a38936be904b97d2.exe)\n     Running unittests src\\main.rs (reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\target\\debug\\deps\\tiny_glade_record_submit_r6-0d231b0fbba2bea9.exe)\n   Doc-tests tiny_glade_record_submit_r6\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\Cargo.toml",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Checking tiny-glade-record-submit-r6 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.25s\n"
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\src\\lib.rs",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-submit-r6\\src\\main.rs"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "original_entries": [
+    "0x1402c1d40",
+    "0x1402c3240",
+    "0x140bebdf0"
+  ],
+  "injected_tail": [
+    "0x140c06151",
+    "0x140c0634f"
+  ],
+  "public_boundaries": [
+    "std allocator and memcpy",
+    "command create/begin/end",
+    "timing/profiling",
+    "user callbacks",
+    "structured queue payload capture",
+    "device-error conversion fixture",
+    "post-submit/reclamation boundaries"
+  ],
+  "not_claimed": [
+    "nonempty resource record integration",
+    "parallel recording",
+    "full queue entry",
+    "GPU/Vulkan",
+    "ABI/padding/unwinding"
+  ],
+  "write_scope": [
+    "parallel-batch-04/record-submit",
+    "work-packages/record-submit-r6"
+  ]
+}

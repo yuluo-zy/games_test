@@ -1,0 +1,324 @@
+{
+  "status": "verified_partial_boundary",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "rust_tests": 3,
+  "native_complete_entries": 10,
+  "matched_backend_calls": 13,
+  "mismatches": [],
+  "original_calls": [
+    {
+      "cb": 100,
+      "call": [
+        "viewport",
+        0.0,
+        1080.0,
+        1920.0,
+        -1080.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "scissor",
+        0,
+        0,
+        1920,
+        1080
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "stencil",
+        3,
+        255
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "line_width",
+        2.5
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "vertex",
+        3,
+        20,
+        0
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "index",
+        21,
+        0,
+        1
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "push",
+        30,
+        31,
+        0,
+        [
+          1,
+          2,
+          3,
+          4
+        ]
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "push",
+        31,
+        32,
+        0,
+        [
+          5,
+          6,
+          7,
+          8
+        ]
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "end"
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "copy",
+        20,
+        21,
+        [
+          [
+            4,
+            8,
+            16
+          ]
+        ]
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "fill",
+        21,
+        0,
+        18446744073709551615,
+        3735928559
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "fill",
+        21,
+        4,
+        16,
+        42
+      ]
+    },
+    {
+      "cb": 100,
+      "call": [
+        "clear",
+        40,
+        7,
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          1,
+          0,
+          4,
+          0,
+          6
+        ]
+      ]
+    }
+  ],
+  "candidate_calls": [
+    {
+      "call": [
+        "viewport",
+        0.0,
+        1080.0,
+        1920.0,
+        -1080.0,
+        0.0,
+        1.0
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "scissor",
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "stencil",
+        3,
+        255
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "line_width",
+        2.5
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "vertex",
+        3,
+        20,
+        0
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "index",
+        21,
+        0,
+        1
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "push",
+        30,
+        31,
+        0,
+        [
+          1,
+          2,
+          3,
+          4
+        ]
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "push",
+        31,
+        32,
+        0,
+        [
+          5,
+          6,
+          7,
+          8
+        ]
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "end"
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "copy",
+        20,
+        21,
+        [
+          [
+            4,
+            8,
+            16
+          ]
+        ]
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "fill",
+        21,
+        0,
+        18446744073709551615,
+        3735928559
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "fill",
+        21,
+        4,
+        16,
+        42
+      ],
+      "cb": 100
+    },
+    {
+      "call": [
+        "clear",
+        40,
+        7,
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          1,
+          0,
+          4,
+          0,
+          6
+        ]
+      ],
+      "cb": 100
+    }
+  ],
+  "alignment_original_panic_boundaries": [
+    "0x1428d95d4",
+    "0x1428d95d4"
+  ],
+  "managed_resolver_hook_calls": 2,
+  "limits": [
+    "begin_render_pass附件/视图及缓存生产者未比较",
+    "vertex/index使用外供managed get/track返回对象",
+    "copy/fill/clear内联校验成功路径使用fixture对象；校验失败边界未全部覆盖",
+    "Vulkan函数指针以参数捕获hook代替，无GPU执行",
+    "Rust填充对齐错误返回Result，原对应路径panic；已显式记录接口差异"
+  ],
+  "input_hashes": {
+    "src\\rg\\pass_api.rs": "18f95ea99874e9a4de0bc737efeb23946e438c0d568ff1c87b7da93c009b58fb",
+    "tests\\pass_api.rs": "1a7ed5ceb4a7f0100eb81d9c02c8ab1b03da89b5f2113ed04909eba329b2e6ec",
+    "scripts\\compare_pass_api.py": "39e6c0dd598bb150c75210dc02492bc3f8511de223070a309d36750513e6dcf2",
+    "Cargo.lock": "b9ada79f3f94baf816641849f97d2c3d247e49ae3110b889036dc1be95a09290"
+  }
+}

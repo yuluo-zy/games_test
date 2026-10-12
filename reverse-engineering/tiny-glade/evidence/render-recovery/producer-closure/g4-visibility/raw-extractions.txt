@@ -1,0 +1,71 @@
+# g4-visibility raw extractions (read-only forensics)
+
+target: workspace/input/tiny-glade.exe  sha256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03
+
+## 1. Pass / resource name strings (VA -> text)
+Read directly from PE .rdata (VA = imagebase 0x140000000 + RVA).
+
+0x142aca980 (18) 'Nani cull & bucket'
+0x142aca992 (21) 'Nani sorted instances'
+0x142aca9a7 (32) 'Nani fill unsorted instance list'
+0x142aca9c7 (41) '/nani/fill_unsorted_instance_list.cs.hlsl'
+0x142aca9f0 (30) 'Nani fill sorted instance list'
+0x142acaa0e (39) '/nani/fill_sorted_instance_list.cs.hlsl'
+0x142acaa35 (30) 'Nani unsorted atlas idx prefix'
+0x142acaa53 (34) 'Nani unsorted atlas idx prefix sum'
+0x142acaa75 (59) '/nani/prefix_sum_unsorted_instances_per_atlas_entry.cs.hlsl'
+0x142acaae7 (30) 'Nani draw cmd histogram prefix'
+0x142acab05 (39) '/nani/group_draw_cmd_prefix_sum.cs.hlsl'
+0x142acab2c (29) 'Nani draw cmd subtotal prefix'
+0x142acab49 (33) '/nani/subtotal_prefix_sum.cs.hlsl'
+0x142ab8bd8 (27) 'Nani list sorting histogram'
+0x142ab8bf3 (27) 'Nani filtered instance meta'
+0x142ab8c47 (21) 'Nani clear draw lists'
+0x142ab8c5c (30) '/nani/clear_draw_lists.cs.hlsl'
+0x142ab8c88 (21) 'Nani clear histograms'
+0x142ab8c9d (29) '/nani/clear_histogram.cs.hlsl'
+0x142acab6a (32) 'Nani prepare unsorted draw lists'
+0x142acab8a (41) '/nani/prepare_unsorted_draw_lists.cs.hlsl'
+0x142ab8ee0 (24) 'Generate wall draw lists'
+0x142ab8ef8 (42) '/wall/generate_draw_lists.cs.hlsl:cs_pass1'
+0x142ab8f22 (28) 'Wall pass2 reset inst counts'
+0x142ab8f3e (37) '/wall/reset_pass2_inst_counts.cs.hlsl'
+0x142ab8fc8 (29) 'Generate wall draw lists OC/2'
+0x142ab8fe5 (42) '/wall/generate_draw_lists.cs.hlsl:cs_pass2'
+0x142aaf518 (3)  'HZB'
+0x142aaf51b (12) 'Generate HZB'
+0x142aaf527 (21) '/generate_hzb.cs.hlsl'
+0x142acb800 (17) 'Firefly vis query'
+0x142acb811 (35) '/critters/firefly_vis_query.cs.hlsl'
+0x142aaaf60 (19) 'Reset indirect arguments'
+
+## 2. External cull component type-name strings (matched by string compare)
+0x142a9de39 (61) 'country_core::resources::roofs::roof_buffers::WoodenPlankSsbo'   (user: cull_and_bucket_external 0x140a27b10)
+0x142a9e3cd (53) 'country_core::resources::roof_tile_ssbo::RoofTileSsbo'          (user: cull_and_bucket_external 0x140a280a0)
+
+## 3. Default DrawIndexedIndirectCommand template table @ 0x142aaaa78 (.rdata), 24 entries x 20 bytes
+stride 20 bytes = 5 x u32.  Fields observed: [indexCount, instanceCount=0, firstIndex=0, vertexOffset=0, firstInstance=0]
+0:27  1:300  2:96  3:57  4:36  5:6  6:60  7:6  8:48  9:174
+10:0  11:0  12:2817  13:4716  14:66  15:180  16:15  17:900  18:18  19:900
+20:18  21:18  22:18  23:18
+(consumed by multi_draw_indexed_indirect 0x140907990: offset = index*0x14; and reset_indirect_args copies 0x1e0 = 480 = 24*20 bytes.)
+
+reset_indirect_args also copies default blobs of 0x80 / 0x1e0 / 0x10 / 8 bytes; 0x80-pattern = [0x100000000,0x1] x8 qwords.
+
+## 4. render_world (0x1404ec110) visibility drive (observed lines)
+237  FUN_14098aaf0(param_2,param_3);              # generate_wall_draw_lists (cs_pass1)
+238  FUN_140987dd0(param_2,param_3,0);            # gpu_generate_draw_lists(graph,world,0)
+291  FUN_140833bc0(...);                          # main_pass
+292  FUN_1409286f0(auStack_458,param_2,param_3,&uStack_254,&UNK_1429ebfd7,4);   # generate_hzb -> auStack_458
+293  if (*pcRam000000014362c0d8 == '\0') {        # GLOBAL BYTE FLAG
+294    FUN_14098b2a0(param_2,param_3,auStack_458);  # generate_wall_draw_lists_pass2(hzb)
+295    FUN_140987dd0(param_2,param_3,auStack_458);  # gpu_generate_draw_lists(graph,world,hzb)
+296  }
+299  FUN_140835a40(...)  # main_pass_oc2
+300  FUN_140a2f2e0(param_2,param_3,&uStack_254);  # run_visibility_queries
+
+## 5. Access codes observed (helper -> code)
+FUN_1408ee240 / FUN_140905260 : 0x19   (cull pass all 6 variants, pass2, generate_hzb, run_visibility_queries x3)
+FUN_1408edd00                 : 0x37   (generate_hzb storage-image writes x2)
+FUN_1409dca90                 : 2      (draw_indexed_indirect_raw/count, multi_draw_indexed_indirect)
+FUN_1409dca90                 : 0x34   (reset_indirect_args 0x14090a870, x4 indirect buffers)

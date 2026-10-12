@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T06:29:34.515Z",
+  "server": "fake",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "database_id": "fixture",
+        "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+        "run_auto_analysis": false
+      },
+      "cache_key": "4393dbcd451c64f302dbff71bbf23fa710903bf151e1402f75d3c18067348e39",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T06:29:34.517Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"open_database\",\"args\":{\"database_id\":\"fixture\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\evidence\\\\render-recovery\\\\tooling\\\\fixture\\\\target.bin\",\"run_auto_analysis\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "ok": true,
+      "result_sha256": "aa9a98565bd6254d5a0cdff78ef20b42125a56c816c536dc6bce93851ac044d8",
+      "completed_at": "2026-10-12T06:29:34.609Z"
+    },
+    {
+      "index": 1,
+      "tool": "decompile_function",
+      "args": {
+        "throw": true
+      },
+      "cache_key": "184d0f6e7ddd2acfa3509790fcdeca1561f9de38c1638bbfe36f83f4392a8446",
+      "cache_eligible": true,
+      "started_at": "2026-10-12T06:29:34.611Z",
+      "error": "ProtocolError: fixture protocol error",
+      "ok": false
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "fixture",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"close_database\",\"args\":{\"database\":\"fixture\",\"save\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "ok": true
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "acquired",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\640578c6e1448d788dd7e640a8942fe6a20551663efeeeaadfe5cbb85402f988.lock",
+      "token": "b4e27bbc-bd7a-4183-8bd0-59365458e42a",
+      "session_key": "fake:protocol"
+    },
+    {
+      "event": "released",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\640578c6e1448d788dd7e640a8942fe6a20551663efeeeaadfe5cbb85402f988.lock",
+      "token": "b4e27bbc-bd7a-4183-8bd0-59365458e42a",
+      "path_boundary_verified": true
+    }
+  ],
+  "ok": false,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": true,
+    "reason": "Caller-supplied provider manifest and DB revision/snapshot hashes; caller must update snapshot after DB changes.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+      "sha256": "b25bbde7055ac6765755e90cf8c8bdacc1e6bf87d4bb1d8595f1b41fadd4779e"
+    },
+    "provider": {
+      "id": "local-fake",
+      "version": "1"
+    },
+    "launch_sha256": "986e6fefa3ee4b273f5a19801567094d85b501564448dd3e9cb46f3a0bb38fa0",
+    "inputs": [
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\input.txt",
+        "sha256": "922fb3a215d0dd772daf3488d626a7c09df0fa32df16b5f2fdc293b59aa3c283"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\provider-manifest.json",
+        "sha256": "051e563027f30f8f9f9c8585e9a12a2ea7f5f6c2102d272e4986dccb791b2580",
+        "role": "provider_manifest"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\database-snapshot.json",
+        "sha256": "184ef6577a24d9524b9c0dc6ecc0f81e23676b5a21b7fec19833067d9119d62a",
+        "role": "database_snapshot"
+      }
+    ]
+  },
+  "job_sha256": "20e765f41cfc213c49fd145273921f730e5994c59bd4bcb16c3c672045243bfd",
+  "actual_server": {
+    "name": "local-fake-mcp",
+    "version": "1"
+  },
+  "server_capabilities": {
+    "tools": {}
+  },
+  "catalog": [
+    {
+      "tools": [
+        {
+          "name": "open_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "close_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "decompile_function",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "get_xrefs_to",
+          "inputSchema": {
+            "type": "object"
+          }
+        }
+      ]
+    }
+  ],
+  "error": "ProtocolError: fixture protocol error",
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T06:29:34.628Z"
+}

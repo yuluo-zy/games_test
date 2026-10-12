@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "status": "scoped-native-nonempty-record-submit-differential-pass",
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 774,
+  "failure_count": 0,
+  "rust_tests": 5,
+  "candidate_sha256": "679f97fbe39ecc740fe71113d956baaf54dacf42e4f15b617202e521f7226b87",
+  "hashes": {
+    "reconstruction/render/work-packages/record-resources-r7/Cargo.toml": "4253c68437b02b6aeb3f85c1c8aea44b9eb2c1e830e2088094d0e9c4fdfd8815",
+    "reconstruction/render/work-packages/record-resources-r7/Cargo.lock": "a6064e9b38586a6800cb7e0b06c00b62e68f250da4b6a75196144d82aabb0071",
+    "reconstruction/render/work-packages/record-resources-r7/src/lib.rs": "679f97fbe39ecc740fe71113d956baaf54dacf42e4f15b617202e521f7226b87",
+    "reconstruction/render/work-packages/record-resources-r7/src/main.rs": "2b5d04f2c41aa2d3b7c4a344a23321a5895777f5bc5ed54184a8138cd06d240c",
+    "evidence/render-recovery/parallel-batch-05/record-resources/verify.py": "d80bd42bcb30ec6e800b55a4c7ea40083ccb3b62d34ce729f122d175c06ae2a4",
+    "evidence/render-recovery/parallel-batch-05/record-resources/validate.py": "570957598d4cbe3f9c11257ce1260f083e038e9ef7f3228ecaddf8c48156fbbc",
+    "evidence/render-recovery/parallel-batch-05/record-resources/native-validation.json": "c181686acd8bdb97ed27a93cc0457660db748c0a73e32c7a7875b572f1cd7094",
+    "reconstruction/render/work-packages/barrier-record-r5/Cargo.toml": "49932952d0d342a685944dc74506f4978ac2304443c31f2220a123e9fb9ca230",
+    "reconstruction/render/work-packages/barrier-record-r5/Cargo.lock": "c175010c257a650269d954f7d0624c8db51e67bfb5cb579d274cbfa214468704",
+    "reconstruction/render/work-packages/barrier-record-r5/src/lib.rs": "a3cda72c6dba88b7ec4e3b78b056ca8299047c81bc12afaa03e78230f01df23f",
+    "evidence/render-recovery/parallel-batch-03/barrier-record/verify.py": "e6b99e6fa400909d042598a66f41fcf077630687b6d326eaa3efa19ea71d7ec5",
+    "evidence/render-recovery/parallel-batch-04/record-submit/verify.py": "7ecd3d6204980036d1d8c5bfbc92b080301c03ac9e83eff1efc3c65e2e225b40",
+    "evidence/render-recovery/parallel-batch-04/record-submit/record.objdump.txt": "e4ee9b5d7133ff08a4cafbb7b6fc1e4537f8aade87c1b024135a4e14b400e8d0",
+    "evidence/render-recovery/parallel-batch-04/record-submit/pass-record.objdump.txt": "c82ce15eec54f8fb49923cd379ce07a3807f0b9c5ca4b6304e68f6f2559bc25e",
+    "evidence/render-recovery/parallel-batch-04/record-submit/submit.objdump.txt": "2a1a07af40c34f264b37007646e57529ca6ef55490bd45aa6fd3b71a631670bf"
+  },
+  "nonempty_resource_cases": 774,
+  "nonempty_pass_access_cases": 726,
+  "no_access_export_fallback_cases": 48,
+  "record_to_submit_cases": 330,
+  "begin_tags_observed": [
+    0
+  ],
+  "pool_selectors_observed": [
+    0
+  ],
+  "sequence_is_original_initialization": false,
+  "fixture_command_sequence": 7,
+  "old_108_cases_recounted": false,
+  "original_entries": [
+    "0x1402c1d40",
+    "0x1402c3240",
+    "0x1402c3d00",
+    "0x140bd6a70",
+    "0x140bebdf0"
+  ],
+  "original_unique_instruction_starts_by_region": {
+    "0x1402c1d40": 514,
+    "0x1402c3240": 271,
+    "0x1402c3d00": 261,
+    "0x140bd6a70": 17,
+    "0x140bebdf0": 103
+  },
+  "commands": [
+    {
+      "command": [
+        "C:\\Users\\liyu\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-05\\record-resources\\verify.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"cases\": 774, \"failure_count\": 0, \"failures\": []}\n",
+      "stderr": "    Finished `release` profile [optimized] target(s) in 0.07s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\Cargo.toml"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 5 tests\ntest tests::empty_pass_export_uses_initial_and_preserves_tracker_sequence ... ok\ntest tests::failure_preserves_earlier_barriers_and_consumes_callback ... ok\ntest tests::invalid_later_initial_drains_before_fail_and_skips_create ... ok\ntest tests::reused_initial_is_deferred_until_pass_and_callback_sees_barrier ... ok\ntest tests::submit_error_keeps_last_open_in_taken_storage_and_clears_executor ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s\n     Running unittests src\\lib.rs (reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\target\\debug\\deps\\tiny_glade_record_resources_r7-b76b57d072b4790b.exe)\n     Running unittests src\\main.rs (reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\target\\debug\\deps\\tiny_glade_record_resources_r7-e24fa9f0d5f50b05.exe)\n   Doc-tests tiny_glade_record_resources_r7\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\Cargo.toml",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s\n"
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\src\\lib.rs",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\record-resources-r7\\src\\main.rs"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "original_private_helpers_unmodified": [
+    "0x140be78b0",
+    "0x140bd6c80",
+    "0x140bece70",
+    "0x140be9690",
+    "0x140bd6a70"
+  ],
+  "public_boundaries": [
+    "std allocation/memcpy/drop fixture",
+    "dependency write classifier",
+    "aspect mapping",
+    "synchronization constructors/append/emit/reset",
+    "device command creation/begin/end",
+    "profiling/timing",
+    "user callback",
+    "queue-submit structured capture"
+  ],
+  "private_device_boundaries_still_stubbed": [
+    "0x140bfc750 queue-family index returns 0 fixture",
+    "0x140becfd0 tracker counted, internals not executed",
+    "0x140c04e20 queue prefix/tail not executed in this oracle"
+  ],
+  "observed_post_pass_contract": "No separate post-pass barrier scope in sequential helper; next pre-pass transition or final export follows callback success.",
+  "not_claimed": [
+    "parallel recording",
+    "full queue entry",
+    "natural reachability of reused=true",
+    "real Vulkan/GPU",
+    "actual device command sequence initialization",
+    "ABI/padding/unwinding",
+    "full descriptor or game pass integration"
+  ],
+  "write_scope": [
+    "parallel-batch-05/record-resources",
+    "work-packages/record-resources-r7"
+  ]
+}

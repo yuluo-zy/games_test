@@ -1,0 +1,97 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "invariant": "initial R2 snapshot",
+      "case": [
+        1,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      "native": "ok|0:0:1|0|1|1|1"
+    },
+    {
+      "invariant": "initial R2 snapshot",
+      "case": [
+        1,
+        1,
+        4,
+        0,
+        4,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        0
+      ],
+      "native": "ok|1:4:2|0|1|1|1"
+    },
+    {
+      "invariant": "pre R2 snapshot",
+      "pass": 2,
+      "case": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1,
+        1,
+        0
+      ],
+      "native": "ok|0:1:3|0|0|0|0"
+    },
+    {
+      "invariant": "export R2 snapshot",
+      "case": [
+        2,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        4,
+        0,
+        0,
+        1,
+        0
+      ],
+      "native": "ok|0:3:4|0|1|1|1"
+    },
+    {
+      "invariant": "R2 empty pass has final batch but no transitions",
+      "scope": "snapshot assertion, not native compile entry"
+    },
+    {
+      "invariant": "R2 backend error partial consumption",
+      "native_origin_tags": [
+        3,
+        3,
+        1
+      ],
+      "native_backing_count": 1
+    }
+  ],
+  "r2_status_unchanged": "candidate_static",
+  "limits": [
+    "Each barrier extracted into single-resource fixture; not complete graph compiler differential",
+    "R2 files are read-only",
+    "Empty graph check uses R2 snapshot; no native compile invocation"
+  ]
+}

@@ -1,0 +1,904 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:48:32.895Z",
+  "completed_at": "2026-10-12T10:49:02.280Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "ccgi3_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\g5-gi-lighting\\ccgi3_l1.report.json",
+      "ok": true,
+      "cleanup_ok": true,
+      "error": null,
+      "steps": 5
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccgi3_l1"
+      },
+      "cache_key": "ca89ae0d9cca731ddc16a7a1ec526264040b70662d00ed7283c00d2659f5d419",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:48:33.036Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"ccgi3_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "ccgi3_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:48:45.158Z",
+      "ok": true,
+      "result_sha256": "920a7c02dfc76dc0be7ecfd96697ff58b9714bcead5bdc386b8036716bafe6ee",
+      "lane": "ccgi3_l1",
+      "database": "ccgi3_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccgi3_l1"
+      },
+      "cache_key": "caac28c24d9d19c259f1136cda17a27bf1ec4a0b83bd5bb77f4c04a011f0fc63",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:48:45.159Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"ccgi3_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "ccgi3_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:48:57.209Z",
+      "ok": true,
+      "result_sha256": "fb5f4ab6085b04c1861f8d7a2cde3535bf3b5ddc15a24d53fd59c0f332979b06",
+      "lane": "ccgi3_l1",
+      "database": "ccgi3_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "get_strings",
+      "args": {},
+      "via_batch": true,
+      "started_at": "2026-10-12T10:48:57.212Z",
+      "completed_at": "2026-10-12T10:49:01.535Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c6f3859dffb0fb13ec08862e65796faecaaeb13e06d52d48d115ecbdb6fa812f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "address": "0x14319332A",
+            "value": "AddVectoredExceptionHandler",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193348",
+            "value": "CancelIo",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193354",
+            "value": "CloseHandle",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193362",
+            "value": "CompareStringOrdinal",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319337A",
+            "value": "CopyFileExW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193388",
+            "value": "CreateDirectoryW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319339C",
+            "value": "CreateFileMappingW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933B2",
+            "value": "CreateFileW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933C0",
+            "value": "CreateIoCompletionPort",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933DA",
+            "value": "CreateMutexA",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933EA",
+            "value": "CreateNamedPipeW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933FE",
+            "value": "CreateProcessW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193410",
+            "value": "CreateSemaphoreW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193424",
+            "value": "CreateThread",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193434",
+            "value": "CreateWaitableTimerExW",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319344E",
+            "value": "DeleteCriticalSection",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193466",
+            "value": "DeleteFileW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193474",
+            "value": "DuplicateHandle",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193486",
+            "value": "EnterCriticalSection",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319349E",
+            "value": "ExitProcess",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934AC",
+            "value": "FindClose",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934B8",
+            "value": "FindFirstFileExW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934CC",
+            "value": "FindNextFileW",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934DC",
+            "value": "FlushFileBuffers",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934F0",
+            "value": "FormatMessageW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193502",
+            "value": "FreeEnvironmentStringsW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319351C",
+            "value": "FreeLibrary",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319352A",
+            "value": "GetCommandLineW",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319353C",
+            "value": "GetComputerNameExW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193552",
+            "value": "GetConsoleMode",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193564",
+            "value": "GetConsoleOutputCP",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319357A",
+            "value": "GetConsoleScreenBufferInfo",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193598",
+            "value": "GetCurrentDirectoryW",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935B0",
+            "value": "GetCurrentProcess",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935C4",
+            "value": "GetCurrentProcessId",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935DA",
+            "value": "GetCurrentThread",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935EE",
+            "value": "GetCurrentThreadId",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193604",
+            "value": "GetEnvironmentStringsW",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319361E",
+            "value": "GetEnvironmentVariableW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193638",
+            "value": "GetExitCodeProcess",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319364E",
+            "value": "GetFileAttributesW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193664",
+            "value": "GetFileInformationByHandle",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193682",
+            "value": "GetFileInformationByHandleEx",
+            "length": 28,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936A2",
+            "value": "GetFileType",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936B0",
+            "value": "GetFinalPathNameByHandleW",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936CC",
+            "value": "GetFullPathNameW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936E0",
+            "value": "GetLastError",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936F0",
+            "value": "GetModuleFileNameW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193706",
+            "value": "GetModuleHandleA",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319371A",
+            "value": "GetModuleHandleW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319372E",
+            "value": "GetProcAddress",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193740",
+            "value": "GetProcessHeap",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193752",
+            "value": "GetProcessId",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193762",
+            "value": "GetQueuedCompletionStatusEx",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193780",
+            "value": "GetStdHandle",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193790",
+            "value": "GetSystemDirectoryW",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937A6",
+            "value": "GetSystemInfo",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937B6",
+            "value": "GetSystemTimeAsFileTime",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937D0",
+            "value": "GetSystemTimePreciseAsFileTime",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937F2",
+            "value": "GetTempPathW",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193802",
+            "value": "GetUserPreferredUILanguages",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193820",
+            "value": "GetWindowsDirectoryW",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193838",
+            "value": "GlobalAlloc",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193846",
+            "value": "GlobalFree",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193854",
+            "value": "GlobalLock",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193862",
+            "value": "GlobalSize",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193870",
+            "value": "GlobalUnlock",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193880",
+            "value": "HeapAlloc",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319388C",
+            "value": "HeapFree",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193898",
+            "value": "HeapReAlloc",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938A6",
+            "value": "InitializeCriticalSection",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938C2",
+            "value": "InitializeSListHead",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938D8",
+            "value": "IsDebuggerPresent",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938EC",
+            "value": "IsProcessorFeaturePresent",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193908",
+            "value": "LeaveCriticalSection",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193920",
+            "value": "LoadLibraryA",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193930",
+            "value": "LoadLibraryExW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193942",
+            "value": "LockFileEx",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193950",
+            "value": "MapViewOfFile",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193960",
+            "value": "MoveFileExW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319396E",
+            "value": "MultiByteToWideChar",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193984",
+            "value": "OpenProcess",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193992",
+            "value": "PostQueuedCompletionStatus",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939B0",
+            "value": "QueryPerformanceCounter",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939CA",
+            "value": "QueryPerformanceFrequency",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939E6",
+            "value": "ReadDirectoryChangesW",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939FE",
+            "value": "ReadFileEx",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A0C",
+            "value": "RegisterWaitForSingleObject",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A2A",
+            "value": "ReleaseMutex",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A3A",
+            "value": "ReleaseSemaphore",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A4E",
+            "value": "RemoveVectoredExceptionHandler",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A70",
+            "value": "RtlCaptureContext",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A84",
+            "value": "RtlLookupFunctionEntry",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A9E",
+            "value": "RtlVirtualUnwind",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AB2",
+            "value": "SetConsoleMode",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AC4",
+            "value": "SetConsoleTextAttribute",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193ADE",
+            "value": "SetEnvironmentVariableW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AF8",
+            "value": "SetFileAttributesW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B0E",
+            "value": "SetFileCompletionNotificationModes",
+            "length": 34,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B34",
+            "value": "SetFileInformationByHandle",
+            "length": 26,
+            "type": "TerminatedCString"
+          }
+        ],
+        "total": 466,
+        "offset": 0,
+        "limit": 100,
+        "has_more": true,
+        "database": "ccgi3_l1"
+      },
+      "result_sha256": "1257aa2584d607fe659aa9b4a922a0515da08eba450cd3e537d766d4872d8d65",
+      "ok": true,
+      "lane": "ccgi3_l1",
+      "database": "ccgi3_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "list_structures",
+      "args": {},
+      "via_batch": true,
+      "started_at": "2026-10-12T10:48:57.212Z",
+      "completed_at": "2026-10-12T10:49:01.536Z",
+      "source": "actual_mcp_call",
+      "cache_key": "c6f3859dffb0fb13ec08862e65796faecaaeb13e06d52d48d115ecbdb6fa812f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "name": "_IMAGE_RUNTIME_FUNCTION_ENTRY",
+            "size": 12,
+            "member_count": 3,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "DotNetPdbInfo",
+            "size": 38,
+            "member_count": 4,
+            "is_union": false,
+            "category": "/PDB"
+          },
+          {
+            "name": "IMAGE_BASE_RELOCATION",
+            "size": 8,
+            "member_count": 2,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DATA_DIRECTORY",
+            "size": 8,
+            "member_count": 2,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DEBUG_DIRECTORY",
+            "size": 28,
+            "member_count": 8,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DOS_HEADER",
+            "size": 120,
+            "member_count": 20,
+            "is_union": false,
+            "category": "/DOS"
+          },
+          {
+            "name": "IMAGE_FILE_HEADER",
+            "size": 20,
+            "member_count": 7,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_LOAD_CONFIG_CODE_INTEGRITY",
+            "size": 12,
+            "member_count": 4,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_LOAD_CONFIG_DIRECTORY64",
+            "size": 256,
+            "member_count": 41,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_NT_HEADERS64",
+            "size": 264,
+            "member_count": 3,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_OPTIONAL_HEADER64",
+            "size": 240,
+            "member_count": 30,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_SECTION_HEADER",
+            "size": 40,
+            "member_count": 10,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_THUNK_DATA64",
+            "size": 40,
+            "member_count": 6,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "Misc",
+            "size": 4,
+            "member_count": 2,
+            "is_union": true,
+            "category": "/PE"
+          }
+        ],
+        "total": 14,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "ccgi3_l1"
+      },
+      "result_sha256": "ed57813bfb9a1e83c995b1f9d9da480da6eadf33d7fe61a01afe918fd1c4030b",
+      "ok": true,
+      "lane": "ccgi3_l1",
+      "database": "ccgi3_l1"
+    },
+    {
+      "index": 3,
+      "tool": "close_database",
+      "args": {
+        "database": "ccgi3_l1",
+        "save": false
+      },
+      "cache_key": "9727af663753ac114e342ef457c84ac21e4d2814429959011f9ca576d24ff736",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:49:01.538Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"ccgi3_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "ccgi3_l1"
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:49:01.967Z",
+      "ok": true,
+      "result_sha256": "1667a3b3d49551d6eb6fdb06e82d385e97db6795a2fc0e7388bbffea6567d2c0",
+      "lane": "ccgi3_l1",
+      "database": "ccgi3_l1"
+    }
+  ],
+  "cleanup": [],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "ccgi3_l1"
+    }
+  ],
+  "ok": true,
+  "cleanup_ok": true
+}
