@@ -1,0 +1,61 @@
+{
+  "versions": [
+    {
+      "baseline": "A",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "game_private_sources": [
+        {
+          "path": "crates/country-core/src/resources/walls/public_wall_state.rs",
+          "sha256": [
+            "3a4216214751b376d784e697763245b68fcda53c333d654d992fa0e49372bc12"
+          ]
+        },
+        {
+          "path": "crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs",
+          "sha256": [
+            "46622cec446fedc8e3531ff3492aa771a7671097be3791471f7468253a04f0a5"
+          ]
+        }
+      ]
+    },
+    {
+      "baseline": "B",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "game_private_sources": [
+        {
+          "path": "crates/country-core/src/resources/walls/public_wall_state.rs",
+          "sha256": [
+            "d7fe5e903d8bea9329457bf533459d645fc5bcb84fc078f16b15fb75ab49546b"
+          ]
+        },
+        {
+          "path": "crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs",
+          "sha256": [
+            "fc6ddbac324a7c419656d6274ebbe5256051c85871454d317726a2ec5cc9cf71"
+          ]
+        }
+      ]
+    },
+    {
+      "baseline": "C",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "game_private_sources": [
+        {
+          "path": "crates/country-core/src/resources/walls/public_wall_state.rs",
+          "sha256": [
+            "fd48ca868f597a23173cfebde24453e85e3f5cb74d88428da041af0e110ab300"
+          ]
+        },
+        {
+          "path": "crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs",
+          "sha256": [
+            "78645eef0444abcbccaf0e4493db3a847543cd23e553a7265b1326b651ebdb4f"
+          ]
+        }
+      ]
+    }
+  ],
+  "classification": "country-core public wall and wall-constructor gable consumer are private game business; three-version shared algorithms are retained, std/Bevy/query/Vec glue is reused.",
+  "evidence_boundary": "PDB source paths/checksums establish module provenance and change scope; not recovered original source text or A/C gable execution equivalence.",
+  "execution": "B entire resolved per-arch gable consumer tested separately in B-gable-verification.json; A/C regular base-cache tested separately in three-version-cache-verification.json."
+}

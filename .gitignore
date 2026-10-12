@@ -1,4 +1,4 @@
-# Publish project source and Tiny Glade reverse-engineering research.
+# Publish project source, workspace deliverables and reverse-engineering research.
 /*
 !/.gitignore
 !/.gitattributes
@@ -10,9 +10,78 @@
 !/tiny-garden/
 !/TinyGlade_类手游_*.md
 !/TinyGlade_美术架构资产/
+!/WORKSPACE_CONTENTS.md
+!/.mcp.json
+!/.agents/
+!/TinyGlade_Blender_Library/
+!/tools/
 
+# Original game files and asset archives remain local.
+/Tiny\ Glade/
+/ljxsj_92385/
+/tiny.glade/
+/TinyGlade_Blender_Library/source/
+
+# Publish only tool documentation and our scripts, not installed toolchains.
+/tools/*
+!/tools/README.md
+!/tools/ghidra-scripts/
+!/tools/blender/
+/tools/blender/*
+!/tools/blender/README.md
+!/tools/blender/enable-addon.py
+!/tools/blender/open-blender.command
+!/tools/blender/installation.json
+!/tools/blender/connection-verification.json
+
+**/.DS_Store
+**/.idea/
+**/.claude/
 **/target/
 **/__pycache__/
 **/*.pyc
 **/*.blend1
 **/*.blend2
+
+# Original PDB copies remain local; large analysis data has lossless .gz snapshots.
+/reverse-engineering/tiny-glade/skeleton*/_pdb/*/original.pdb
+/reverse-engineering/tiny-glade/skeleton*/_pdb/*/enrichment/metadata-stage.pickle
+/reverse-engineering/tiny-glade/skeleton/task-index/index.sqlite3
+
+# User-selected publication scope: recovered source, docs and bounded delivery evidence.
+# Full regenerated PDB skeletons, symbol/assembly dumps and caches remain local.
+/reverse-engineering/tiny-glade/skeleton-enriched/
+/reverse-engineering/tiny-glade/skeleton/_pdb/
+/reverse-engineering/tiny-glade/skeleton/_assembly/
+/reverse-engineering/tiny-glade/skeleton/_dependencies/
+/reverse-engineering/tiny-glade/skeleton/_cargo/
+/reverse-engineering/tiny-glade/skeleton/A/*
+/reverse-engineering/tiny-glade/skeleton/B/*
+/reverse-engineering/tiny-glade/skeleton/C/*
+!/reverse-engineering/tiny-glade/skeleton/A/Cargo.lock
+!/reverse-engineering/tiny-glade/skeleton/B/Cargo.lock
+!/reverse-engineering/tiny-glade/skeleton/C/Cargo.lock
+!/reverse-engineering/tiny-glade/skeleton/A/Cargo.toml
+!/reverse-engineering/tiny-glade/skeleton/B/Cargo.toml
+!/reverse-engineering/tiny-glade/skeleton/C/Cargo.toml
+!/reverse-engineering/tiny-glade/skeleton/A/*.md
+!/reverse-engineering/tiny-glade/skeleton/B/*.md
+!/reverse-engineering/tiny-glade/skeleton/C/*.md
+/reverse-engineering/tiny-glade/skeleton/task-index/index.sqlite3.gz
+/reverse-engineering/tiny-glade/skeleton/task-index/functions.csv
+/reverse-engineering/tiny-glade/skeleton/task-index/tasks.csv
+
+# Locally compiled analysis helpers; their C++/Python sources are published.
+/reverse-engineering/tiny-glade/skeleton/_tools/export_pdb
+/reverse-engineering/tiny-glade/skeleton/_tools/export_pdb_asan
+/reverse-engineering/tiny-glade/skeleton/_tools/extract_calls
+/reverse-engineering/tiny-glade/skeleton/_tools/scan_refs
+**/*.dSYM/
+
+# Full regenerated inventories/queue snapshots remain local; publish work and documentation.
+/reverse-engineering/tiny-glade/skeleton/*.json
+/reverse-engineering/tiny-glade/skeleton/task-index/*
+!/reverse-engineering/tiny-glade/skeleton/task-index/work/
+!/reverse-engineering/tiny-glade/skeleton/task-index/*.md
+!/reverse-engineering/tiny-glade/skeleton/task-index/*.sql
+!/reverse-engineering/tiny-glade/skeleton/task-index/schemas/

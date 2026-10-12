@@ -1,0 +1,70 @@
+{
+  "scope": "read-only analysis; no Java or database mutations",
+  "sources": [
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/headless/DirectThreadingStrategy.java",
+      "sha256": "7bce9ecfc0bcc8296f26f94598f1a03c8bbbc35e049e69d45f0ae14c02f8baae"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/FunctionBundleService.java",
+      "sha256": "5eb40c029d004f6e63edce6c61ea91c14974c3ad3481d680dc0d07d44a73b72b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/FunctionService.java",
+      "sha256": "f808c5c42b953047957bfb2f363b1263e467100f9669262168a2c412178f0e84"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/ServiceUtils.java",
+      "sha256": "2aada4891d847c29d0a151a7c961d27aecce3f4aa502fc2501835bef4e75a798"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/McpHttpServer.java",
+      "sha256": "a43063b96071969f78d7c8e05af49d60608bc4f7f49ac76f035c460f5e8fa370"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/headless/GhidraMCPHeadlessServer.java",
+      "sha256": "92be907294a7e6a05bebf9d72d8acec9af481c947916ab4d3b6831b63be3c176"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/ProgramScriptService.java",
+      "sha256": "7d18188eff2ee17b384993a9e4e7d9c0b84b58ae9f332c239aa1feefbad5954d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/src/main/java/com/xebyte/core/XrefCallGraphService.java",
+      "sha256": "00abbebd9b2a704273f5a59a0c04fe009d3ecee40b149f754fa91a6e2c371118"
+    }
+  ],
+  "findings": [
+    {
+      "claim": "Headless shared backend has 10 HTTP request workers.",
+      "evidence": "GhidraMCPHeadlessServer.java:378 and McpHttpServer.java:114,333"
+    },
+    {
+      "claim": "DirectThreadingStrategy uses one ReentrantLock for wrapped reads and writes, so calls using that strategy are serialised. It does not imply all reads are serialised.",
+      "evidence": "DirectThreadingStrategy.java:38-94"
+    },
+    {
+      "claim": "get_functions is built directly on HTTP worker and deliberately bypasses threadingStrategy.",
+      "evidence": "FunctionBundleService.java:30-35,139-148,225-231"
+    },
+    {
+      "claim": "get_functions creates a separate DecompInterface per decompilation, disposing it in finally. No shared decompiler cache/object on this path.",
+      "evidence": "FunctionService.java:216-230 and ServiceUtils.java:606-615"
+    },
+    {
+      "claim": "get_metadata, read_memory, get_xrefs_to and get_xrefs_from use request-local containers and directly query the selected program, without executeRead wrapping.",
+      "evidence": "ProgramScriptService.java:174-201,2756-2803 and XrefCallGraphService.java:79-183"
+    },
+    {
+      "claim": "Source exposes ProgramRevision in get_functions; fields restriction prevents unwanted caller decompilation.",
+      "evidence": "FunctionFacts.java:168-172,290-293"
+    }
+  ],
+  "limits": [
+    "Client barrier measures simultaneously outstanding requests, not a full CPU execution trace. Ghidra internals can lock fine-grained resources.",
+    "These tests prove three independent read clients for one existing B database, not all possible tools, every function, or arbitrary counts of clients.",
+    "Requests involving simultaneous mutation of the same database need coordination; worker clones are the parent agent planned solution.",
+    "The shared backend currently auto-discovers a UDS endpoint before launcher routing isolation is repaired; identities matched B in the before-fix run, but that does not certify intended project/backend selection in multi-instance scenarios.",
+    "No measured speedup ratio is claimed."
+  ]
+}

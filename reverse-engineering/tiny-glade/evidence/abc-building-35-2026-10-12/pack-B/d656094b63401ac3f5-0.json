@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "abc-building-35",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "d656094b63401ac3f5-0",
+  "cache_key": "ad99c3b0143903499bb83ee6cdb2289771717525f9cf0d8cb8224960a7990cb4",
+  "status": "ok",
+  "range": {
+    "rva": "0xc980f0",
+    "length": 37,
+    "start_va": "0x140c980f0",
+    "stop_va_exclusive": "0x140c98115",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140c980f0",
+      "rva": "0xc980f0",
+      "bytes": "f20f1001",
+      "size": 4,
+      "assembly": "movsd\t(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c980f4",
+      "rva": "0xc980f4",
+      "bytes": "0f14ca",
+      "size": 3,
+      "assembly": "unpcklps\t%xmm2, %xmm1            # xmm1 = xmm1[0],xmm2[0],xmm1[1],xmm2[1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c980f7",
+      "rva": "0xc980f7",
+      "bytes": "0f5cc8",
+      "size": 3,
+      "assembly": "subps\t%xmm0, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c980fa",
+      "rva": "0xc980fa",
+      "bytes": "0f59c9",
+      "size": 3,
+      "assembly": "mulps\t%xmm1, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c980fd",
+      "rva": "0xc980fd",
+      "bytes": "f30f16c1",
+      "size": 4,
+      "assembly": "movshdup\t%xmm1, %xmm0            # xmm0 = xmm1[1,1,3,3]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98101",
+      "rva": "0xc98101",
+      "bytes": "f30f58c1",
+      "size": 4,
+      "assembly": "addss\t%xmm1, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98105",
+      "rva": "0xc98105",
+      "bytes": "f30f104908",
+      "size": 5,
+      "assembly": "movss\t0x8(%rcx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9810a",
+      "rva": "0xc9810a",
+      "bytes": "f30f59c9",
+      "size": 4,
+      "assembly": "mulss\t%xmm1, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9810e",
+      "rva": "0xc9810e",
+      "bytes": "0f2ec8",
+      "size": 3,
+      "assembly": "ucomiss\t%xmm0, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98111",
+      "rva": "0xc98111",
+      "bytes": "0f97c0",
+      "size": 3,
+      "assembly": "seta\t%al",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98114",
+      "rva": "0xc98114",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xc980f0",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/circle.rs",
+          "FunctionName": "utils::geometry::circle::Circle2d::contains_point::h8496caffe7f7bd2f",
+          "Line": 259,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140c980f0: f2 0f 10 01                 \tmovsd\t(%rcx), %xmm0\n140c980f4: 0f 14 ca                    \tunpcklps\t%xmm2, %xmm1            # xmm1 = xmm1[0],xmm2[0],xmm1[1],xmm2[1]\n140c980f7: 0f 5c c8                    \tsubps\t%xmm0, %xmm1\n140c980fa: 0f 59 c9                    \tmulps\t%xmm1, %xmm1\n140c980fd: f3 0f 16 c1                 \tmovshdup\t%xmm1, %xmm0            # xmm0 = xmm1[1,1,3,3]\n140c98101: f3 0f 58 c1                 \taddss\t%xmm1, %xmm0\n140c98105: f3 0f 10 49 08              \tmovss\t0x8(%rcx), %xmm1\n140c9810a: f3 0f 59 c9                 \tmulss\t%xmm1, %xmm1\n140c9810e: 0f 2e c8                    \tucomiss\t%xmm0, %xmm1\n140c98111: 0f 97 c0                    \tseta\t%al\n140c98114: c3                          \tretq\n",
+  "original_target_executed": false
+}

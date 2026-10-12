@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-11",
+  "mode": "planning_readonly_source_audit",
+  "native_execution_this_turn": false,
+  "production_rust_modified_this_turn": false,
+  "evidence_levels_separated": true,
+  "reports": [
+    {
+      "report": "evidence/multi-version/workspace-build-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "Current locked Rust workspace tests/build and B registry dependency identities; no full-game acceptance",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-runtime/B-runtime-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "Actual upstream Bevy0.16 App/World/Commands/events plus CPU tile chain, headless CLI scenario; B gable final scalar store vs Rust (256). No original scheduler/fork/whole-game acceptance.",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-holes/B-invalidation-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "Actual RecalculateWallHoles reader forwards OnWallChanged only when InnerWalls key exists; missing skip, reader consumed and event/tick writes executed. This is one link, not opening geometry acceptance.",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-holes/storage-B-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "Whole new/add/hash/finalize/clone-and-reopen/add/finalize lifecycle plus original resolved frame-row transition/recollection/finalize, both fingerprints, cached length/closed flag, Aabb conversion/wrap duplicates and ordered type/origin geometry. Record padding excluded, not fabricated.",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-holes/opening-B-verification.json",
+      "ok": true,
+      "candidate_source_count": 6,
+      "source_binding_mismatches": [],
+      "scope": "Complete resolved B raw-hole production blocks of four wall window/balcony-door families, all 3 size variants and 4 host shape tags; exact f32 record fields and original preserved tail padding.",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-history/B-transaction-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "B Rim-only recording/commit/redo truncation/cursor, original replay_edit expansion/reversal and RoofReplayCmd::process emits the Rim event with record_history=0; no original ECS/history loader/auxiliary-owner replay/timed command scheduler",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-holes/B-world-chain-verification.json",
+      "ok": true,
+      "candidate_source_count": 59,
+      "source_binding_mismatches": [],
+      "scope": "Real Bevy App/Commands/Events continuous resolved decorator→RawWallHole→cached finalized geometry plus explicitly initialized B Rim history commit/instant undo/redo/branch; not full assets/placement/wall mesh/history owners/timed replay/fork/GPU acceptance.",
+      "rerun_this_planning_turn": false
+    },
+    {
+      "report": "evidence/building-runtime/B-roof-pipeline-host-verification.json",
+      "ok": false,
+      "candidate_source_count": 10,
+      "source_binding_mismatches": [],
+      "scope": null,
+      "rerun_this_planning_turn": false
+    }
+  ],
+  "input_sha256": {
+    "AGENTS.md": "fa3a2f7fbddbb30a07728dabcccd6b7dc337e836d5294cdc71be0bcd76b5bdd2",
+    "PROJECT_MEMORY.md": "019b90d1ede33a3cfbd71a17afbb08b17310e8059469afe07c35123990966633",
+    "TASK_BACKLOG.md": "11f1d56ec68dda1c85ada7a65eea336c2b8a72b0ed00d3303fbb0c91bb7f9e34",
+    "tracking/project.json": "7a2fac0d71dfd0160eb0a07dd17e5a285b315541e211360b149a057859adbcd0",
+    "tracking/version-map.json": "571573f82e935dc8291c3a24c97901984b6fe119e6462fdeafe30b6e5ad0faf5",
+    "tracking/module-coverage.json": "3a1b528063e8e2588008a766e914d96f350afa7db1c48160a357db2d9287343f",
+    "tracking/baselines.json": "4902418e3e1d7e8e6010624377701f9b222f753ce872f1f57f1ba40bf4b61da2",
+    "tracking/dependency-exclusions.json": "ab89fe470be57b9211365c6dcccfbfb446010dc53932fc0e135ac521035f9065",
+    "evidence/multi-version/corpus-index.json": "65b839ae55b23ac2348e172cf8ac3acb8fdfbfb7b6b15acfe020fe03675db47f",
+    "evidence/multi-version/workspace-build-verification.json": "eca57634c169b7d898190f8fd9c8a8357f655ffa8e7b3216e460a0ea4194d074",
+    "evidence/building-runtime/B-runtime-verification.json": "942394395f71ae1e9e1d4024c91a25ac3a2510bad3e20e4e35b149d0082bcc93",
+    "evidence/building-holes/B-invalidation-verification.json": "51f6d5715c0d59e8ed9cc4f407d76b5af1f87cfe84f7cd1270504e6319aac2ca",
+    "evidence/building-holes/storage-B-verification.json": "773d1445939754e90faa0646abf4b68feecdc1cceb1b1a9011fd39c39be68247",
+    "evidence/building-holes/opening-B-verification.json": "c337f89fdd1dce768acceb8bcb72eb535ebca97333fd11214755f4c2ec74c879",
+    "evidence/building-history/B-transaction-verification.json": "be2b51ad2371a8be6eae75fbb8a41eb9312b38462802d799fe6519ab17b9f4c7",
+    "evidence/building-holes/B-world-chain-verification.json": "7da2350339027a9395ffb5fa200c44c5e17c58908967436a35db0be2129710db",
+    "evidence/building-runtime/B-roof-pipeline-host-verification.json": "2d8106e8135d6e6c79fd83a7c792f3ec35bf5294e453583574f0f8704bd231fb",
+    "evidence/building-planning/walls-audit.md": "189ac43924324203c787c4dde0dfc3f99ee16ad1caa2c1e545585aebb7b6e493",
+    "evidence/building-planning/roofs-decorators-audit.md": "1d04ffa88bc344db6f2cb0abaf1931720ee2cb231a338f06e81fb8e62a70fb44",
+    "evidence/building-planning/history-schedule-audit.md": "907b2329059db2fab8242654437dd74f03522417fb57aea5e6997d5a439855eb",
+    "evidence/building-planning/roof-decorator-business-function-candidates.json": "c1341a0449a47b6f284e02394d613c0349223dccc3c321c7271acb008e058c23",
+    "evidence/building-planning/roof-decorator-color-candidates.json": "a49d844eb6e1e599d2b4a26342fe1b731be991f576c0dd6bddb625a7549e44e0",
+    "evidence/building-planning/roof-decorator-direct-public-candidates.json": "a3c56d74836f3a4c10d306b041b45d77c2edeba21514f9630866ca14434d9d49",
+    "evidence/building-planning/roof-decorator-library-and-function-schemas-B.json": "7f3c656706e507b8d31fef8ddae8c7860e9eb7cce95f4fc20f2b8229407b77b5",
+    "evidence/building-planning/roof-decorator-source-candidates.json": "921adf4e8d9ab31e3528ffd304bf62a1b4b63d7690b4c8e3b24d16d8b909ae0e",
+    "evidence/building-planning/walls-candidates.json": "13ac6fbd521f39b2fe8080bcd7c1b9e2b9b7093613b467f127e05760c98d5496"
+  },
+  "baseline": "B",
+  "delivery_target": "C v1.16.0",
+  "candidate_mapping_is_equivalence": false
+}

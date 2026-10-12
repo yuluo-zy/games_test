@@ -1,0 +1,11 @@
+C original Sheep::being_petted
+140935910 movss xmm0, dword ptr [rcx + 0x58]
+140935915 ucomiss xmm0, dword ptr [rip + 0x25ed8c4]
+14093591c seta al
+14093591f ret 
+C original walk caller pet gate
+142934fb9 call 0x140935910
+142934fbe test al, al
+142934fc0 jne 0x142934cca
+142934fc6 mov eax, dword ptr [rsi + 0x10]
+C predicate constant 0ad7233c

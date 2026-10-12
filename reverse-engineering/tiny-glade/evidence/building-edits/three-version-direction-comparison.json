@@ -1,0 +1,63 @@
+{
+  "versions": [
+    {
+      "baseline": "A",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "entry": "0x1412e3ec0",
+      "direction_write_candidates": [
+        {
+          "address": "0x1412e41a5",
+          "instruction": "mov byte ptr [rbp + r14 + 0x3c], dl"
+        }
+      ],
+      "private_sources": [
+        {
+          "path": "crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+          "sha256": [
+            "d599014f246a74ef4b8721c6bb9885b4e1cebadd70cdc2420238c38ba27473fa"
+          ]
+        }
+      ]
+    },
+    {
+      "baseline": "B",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "entry": "0x141a3a730",
+      "direction_write_candidates": [
+        {
+          "address": "0x141a3aa3a",
+          "instruction": "mov byte ptr [rbp + r14 + 0x3c], al"
+        }
+      ],
+      "private_sources": [
+        {
+          "path": "crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+          "sha256": [
+            "b2e2b5a67c7a02377f06fed47c4d096cb8dc0befa8921fdd627166a9d3253b79"
+          ]
+        }
+      ]
+    },
+    {
+      "baseline": "C",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "entry": "0x141f3a380",
+      "direction_write_candidates": [
+        {
+          "address": "0x141f3a669",
+          "instruction": "mov byte ptr [rbp + rsi + 0x3c], cl"
+        }
+      ],
+      "private_sources": [
+        {
+          "path": "crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+          "sha256": [
+            "0b81feca01ca8185276b55443a957d6c24a7e3786d7ac29ec517d1615dea1dba"
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": "PDB source/procedure provenance and static direction writes; B resolved consumer execution separate. A/C full consumers are not execution-equivalence claims.",
+  "classification": "system_roof private business event consumer; EventReader/Query/writers and Vec growth are dependency internals."
+}

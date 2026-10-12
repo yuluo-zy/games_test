@@ -1,0 +1,11 @@
+{
+  "fault": "Roof delete final-cache changes occur after early WallGeometry, leaving stale old Roof bricks for one frame",
+  "tick": 7,
+  "expected_records": 362,
+  "actual_records": 726,
+  "expected_sha256": "e0aca60e7913767c4bf494bcdfbfee90a9c9d02c32c2a0b5903fe9b99e983b8a",
+  "actual_sha256": "7e8d14c56c87e8780ea6b61dca7165b098a147ac1f8779736d160955f7cdb1d8",
+  "preserved_trace": "evidence/building-integrate/roof-wall-production-first.jsonl",
+  "oracle_scope": "Actual complete B from_curve with current final World source fields, original return assertion",
+  "fix": "Run Placement/Openings/WallGeometry after final reassociation/cache and before cleanup; adapter consistency, not original fork graph"
+}

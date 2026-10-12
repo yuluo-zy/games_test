@@ -1,0 +1,21 @@
+14051a860 push rsi
+14051a861 push rdi
+14051a862 sub rsp, 0x28
+14051a866 mov rdi, rdx
+14051a869 mov rsi, rcx
+14051a86c mov rax, qword ptr [rcx]
+14051a86f test rax, rax
+14051a872 je 0x14051a88b
+14051a874 mov rcx, qword ptr [rsi + 8]
+14051a878 shl rax, 2
+14051a87c lea rdx, [rax + rax*8]
+14051a880 mov r8d, 4
+14051a886 call 0x1403da790
+14051a88b mov rax, qword ptr [rdi + 0x10]
+14051a88f mov qword ptr [rsi + 0x10], rax
+14051a893 movups xmm0, xmmword ptr [rdi]
+14051a896 movups xmmword ptr [rsi], xmm0
+14051a899 add rsp, 0x28
+14051a89d pop rdi
+14051a89e pop rsi
+14051a89f ret 

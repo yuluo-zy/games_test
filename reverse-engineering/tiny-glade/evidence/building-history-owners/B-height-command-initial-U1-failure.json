@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "cases": 1024,
+  "failure_count": 619,
+  "scope": "Pre-correction candidate used source Curve U1, while native no-anchor policy selects U0.5",
+  "sample": {
+    "case": 2,
+    "input": "000000007ed5084005f04b408173f04001000000aae9f040b0eaaf188a4d7fae0200000000000000 4177d6c5 2 1 3dcccccd 0 3dcccccd 408ad85b be97bd37 40cd9e4e 3f904be6 4071e2cf",
+    "original": "some 40f0e9aa 1 30b9d43e5bd88a40db47a340 M0:2",
+    "rust": "some 40f0e9aa 1 e64b903f5bd88a40cfe27140 M0:2"
+  },
+  "correction": "140ac234c MOVAPS XMM1,XMM7; XMM7 was loaded with original .5f32 at142925870; candidate now samples U0.5",
+  "provenance": "Preserved exact first failure from initial no-report diagnostic execution; no final candidate acceptance hash claimed"
+}

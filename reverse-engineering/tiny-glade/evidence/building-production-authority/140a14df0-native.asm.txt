@@ -1,0 +1,237 @@
+140a14df0 sub rsp, 0x78
+140a14df4 movaps xmmword ptr [rsp + 0x60], xmm10
+140a14dfa movaps xmmword ptr [rsp + 0x50], xmm9
+140a14e00 movaps xmmword ptr [rsp + 0x40], xmm8
+140a14e06 movaps xmmword ptr [rsp + 0x30], xmm7
+140a14e0b movaps xmmword ptr [rsp + 0x20], xmm6
+140a14e10 movaps xmm9, xmm2
+140a14e14 mov rax, qword ptr [rip + 0x2c174ed]
+140a14e1b unpcklps xmm9, xmm1
+140a14e1f movss xmm0, dword ptr [rsp + 0xa0]
+140a14e28 unpcklps xmm0, xmm3
+140a14e2b divps xmm9, xmm0
+140a14e2f addps xmm9, xmmword ptr [rip + 0x1f10aa9]
+140a14e37 cmp byte ptr [rax], 0
+140a14e3a je 0x140a14f6c
+140a14e40 movshdup xmm6, xmm9
+140a14e45 movss xmm0, dword ptr [rip + 0x1f10ab7]
+140a14e4d minss xmm6, xmm0
+140a14e51 minss xmm9, xmm0
+140a14e56 movss xmm0, dword ptr [rip + 0x1f8ee52]
+140a14e5e mulss xmm6, xmm0
+140a14e62 mulss xmm9, xmm0
+140a14e67 movss xmm0, dword ptr [rip + 0x1f45279]
+140a14e6f addss xmm6, xmm0
+140a14e73 addss xmm9, xmm0
+140a14e78 xorps xmm0, xmm0
+140a14e7b maxss xmm6, xmm0
+140a14e7f cvttss2si rax, xmm6
+140a14e84 xor r8d, r8d
+140a14e87 ucomiss xmm6, xmm0
+140a14e8a cmovb eax, r8d
+140a14e8e maxss xmm9, xmm0
+140a14e93 movss xmm1, dword ptr [rip + 0x1f8b935]
+140a14e9b ucomiss xmm6, xmm1
+140a14e9e mov r9d, 0xffffffff
+140a14ea4 cmova eax, r9d
+140a14ea8 cvttss2si rdx, xmm9
+140a14ead ucomiss xmm9, xmm0
+140a14eb1 cmovb edx, r8d
+140a14eb5 ucomiss xmm9, xmm1
+140a14eb9 cmova edx, r9d
+140a14ebd xorps xmm0, xmm0
+140a14ec0 cvtsi2ss xmm0, rax
+140a14ec5 xorps xmm1, xmm1
+140a14ec8 cvtsi2ss xmm1, rdx
+140a14ecd subss xmm6, xmm0
+140a14ed1 subss xmm9, xmm1
+140a14ed6 cmp eax, 0x1ff
+140a14edb mov r9d, 0x1ff
+140a14ee1 mov r8d, 0x1ff
+140a14ee7 cmovb r8d, eax
+140a14eeb inc eax
+140a14eed cmp eax, 0x1ff
+140a14ef2 cmovae eax, r9d
+140a14ef6 cmp edx, 0x1ff
+140a14efc mov r10d, 0x1ff
+140a14f02 cmovb r10d, edx
+140a14f06 inc edx
+140a14f08 cmp edx, 0x1ff
+140a14f0e cmovae edx, r9d
+140a14f12 mov rcx, qword ptr [rcx]
+140a14f15 shl r10d, 9
+140a14f19 mov r9, r10
+140a14f1c or r9, r8
+140a14f1f movzx r9d, byte ptr [rcx + r9]
+140a14f24 xorps xmm0, xmm0
+140a14f27 cvtsi2ss xmm0, r9d
+140a14f2c or r10, rax
+140a14f2f movzx r9d, byte ptr [rcx + r10]
+140a14f34 cvtsi2ss xmm7, r9d
+140a14f39 movss xmm3, dword ptr [rip + 0x1f25d2f]
+140a14f41 divss xmm0, xmm3
+140a14f45 shl edx, 9
+140a14f48 or r8, rdx
+140a14f4b movzx r8d, byte ptr [rcx + r8]
+140a14f50 xorps xmm1, xmm1
+140a14f53 cvtsi2ss xmm1, r8d
+140a14f58 divss xmm7, xmm3
+140a14f5c divss xmm1, xmm3
+140a14f60 or rdx, rax
+140a14f63 movzx eax, byte ptr [rcx + rdx]
+140a14f67 jmp 0x140a150dd
+140a14f6c xorps xmm0, xmm0
+140a14f6f maxps xmm0, xmm9
+140a14f73 cmpordps xmm9, xmm9
+140a14f78 andps xmm9, xmm0
+140a14f7c movaps xmm0, xmmword ptr [rip + 0x1f1972d]
+140a14f83 movaps xmm1, xmm0
+140a14f86 minps xmm1, xmm9
+140a14f8a cmpunordps xmm9, xmm9
+140a14f8f andps xmm0, xmm9
+140a14f93 andnps xmm9, xmm1
+140a14f97 orps xmm9, xmm0
+140a14f9b mulps xmm9, xmmword ptr [rip + 0x1f8ecdd]
+140a14fa3 movaps xmm3, xmm9
+140a14fa7 shufps xmm3, xmm9, 0xff
+140a14fac cvttss2si r8, xmm3
+140a14fb1 xor eax, eax
+140a14fb3 xorps xmm0, xmm0
+140a14fb6 ucomiss xmm3, xmm0
+140a14fb9 cmovb r8d, eax
+140a14fbd movss xmm1, dword ptr [rip + 0x1f8b80b]
+140a14fc5 ucomiss xmm3, xmm1
+140a14fc8 mov edx, 0xffffffff
+140a14fcd cmova r8d, edx
+140a14fd1 movd xmm3, r8d
+140a14fd6 movaps xmm4, xmm9
+140a14fda unpckhpd xmm4, xmm9
+140a14fdf cvttss2si r8, xmm4
+140a14fe4 ucomiss xmm4, xmm0
+140a14fe7 cmovb r8d, eax
+140a14feb ucomiss xmm4, xmm1
+140a14fee cmova r8d, edx
+140a14ff2 movd xmm4, r8d
+140a14ff7 cvttss2si r8, xmm9
+140a14ffc ucomiss xmm9, xmm0
+140a15000 cmovb r8d, eax
+140a15004 ucomiss xmm9, xmm1
+140a15008 cmova r8d, edx
+140a1500c movshdup xmm6, xmm9
+140a15011 cvttss2si r9, xmm6
+140a15016 ucomiss xmm6, xmm0
+140a15019 cmovb r9d, eax
+140a1501d ucomiss xmm6, xmm1
+140a15020 punpckldq xmm4, xmm3
+140a15024 cmova r9d, edx
+140a15028 movd xmm0, r8d
+140a1502d movd xmm1, r9d
+140a15032 punpckldq xmm0, xmm1
+140a15036 punpcklqdq xmm0, xmm4
+140a1503a movdqa xmm1, xmmword ptr [rip + 0x1f108ae]
+140a15042 pxor xmm1, xmm0
+140a15046 pcmpgtd xmm1, xmmword ptr [rip + 0x1f8ec42]
+140a1504e movdqa xmm3, xmm1
+140a15052 pandn xmm3, xmm0
+140a15056 pand xmm1, xmmword ptr [rip + 0x1f8ec42]
+140a1505e por xmm1, xmm3
+140a15062 pshufd xmm3, xmm1, 0x55
+140a15067 movd eax, xmm3
+140a1506b movd edx, xmm1
+140a1506f shl edx, 9
+140a15072 lea r8, [rdx + rax]
+140a15076 inc r8
+140a15079 lea r9, [rdx + rax]
+140a1507d add r9, 0x200
+140a15084 lea r10, [rdx + rax]
+140a15088 add r10, 0x201
+140a1508f or rdx, rax
+140a15092 mov rax, qword ptr [rcx]
+140a15095 movzx ecx, byte ptr [rax + rdx]
+140a15099 xorps xmm0, xmm0
+140a1509c cvtsi2ss xmm0, ecx
+140a150a0 cvtdq2ps xmm3, xmm3
+140a150a3 cvtdq2ps xmm1, xmm1
+140a150a6 subss xmm6, xmm3
+140a150aa subss xmm9, xmm1
+140a150af movss xmm3, dword ptr [rip + 0x1f25bb9]
+140a150b7 movzx ecx, byte ptr [rax + r8]
+140a150bc cvtsi2ss xmm7, ecx
+140a150c0 movzx ecx, byte ptr [rax + r9]
+140a150c5 xorps xmm1, xmm1
+140a150c8 cvtsi2ss xmm1, ecx
+140a150cc divss xmm0, xmm3
+140a150d0 divss xmm7, xmm3
+140a150d4 divss xmm1, xmm3
+140a150d8 movzx eax, byte ptr [rax + r10]
+140a150dd cvtsi2ss xmm8, eax
+140a150e2 divss xmm8, xmm3
+140a150e7 movaps xmm2, xmm9
+140a150eb call 0x140c904d0
+140a150f0 movaps xmm10, xmm0
+140a150f4 movaps xmm0, xmm7
+140a150f7 movaps xmm1, xmm8
+140a150fb movaps xmm2, xmm9
+140a150ff call 0x140c904d0
+140a15104 movaps xmm1, xmm0
+140a15107 movaps xmm0, xmm10
+140a1510b movaps xmm2, xmm6
+140a1510e movaps xmm6, xmmword ptr [rsp + 0x20]
+140a15113 movaps xmm7, xmmword ptr [rsp + 0x30]
+140a15118 movaps xmm8, xmmword ptr [rsp + 0x40]
+140a1511e movaps xmm9, xmmword ptr [rsp + 0x50]
+140a15124 movaps xmm10, xmmword ptr [rsp + 0x60]
+140a1512a add rsp, 0x78
+140a1512e jmp 0x140c904d0
+140a15133 int3 
+140a15134 int3 
+140a15135 int3 
+140a15136 int3 
+140a15137 int3 
+140a15138 int3 
+140a15139 int3 
+140a1513a int3 
+140a1513b int3 
+140a1513c int3 
+140a1513d int3 
+140a1513e int3 
+140a1513f int3 
+140a15140 push r15
+140a15142 push r14
+140a15144 push rsi
+140a15145 push rdi
+140a15146 push rbx
+140a15147 sub rsp, 0x50
+140a1514b mov r8, qword ptr [rdx + 8]
+140a1514f mov rax, qword ptr [rdx + 0x18]
+140a15153 cmp r8, 1
+140a15157 je 0x140a15174
+140a15159 test r8, r8
+140a1515c jne 0x140a15179
+140a1515e test rax, rax
+140a15161 jne 0x140a15179
+140a15163 mov r14, rcx
+140a15166 mov edx, 1
+140a1516b xor esi, esi
+140a1516d mov edi, 1
+140a15172 jmp 0x140a151e3
+140a15174 test rax, rax
+140a15177 je 0x140a1519f
+140a15179 movups xmm0, xmmword ptr [rdx]
+140a1517c movups xmm1, xmmword ptr [rdx + 0x10]
+140a15180 movups xmm2, xmmword ptr [rdx + 0x20]
+140a15184 movaps xmmword ptr [rsp + 0x40], xmm2
+140a15189 movaps xmmword ptr [rsp + 0x30], xmm1
+140a1518e movaps xmmword ptr [rsp + 0x20], xmm0
+140a15193 lea rdx, [rsp + 0x20]
+140a15198 call 0x140d79f90
+140a1519d jmp 0x140a151f9
+140a1519f mov rax, qword ptr [rdx]
+140a151a2 mov rsi, qword ptr [rax + 8]
+140a151a6 test rsi, rsi
+140a151a9 js 0x140a15205
+140a151ab mov r14, rcx
+140a151ae mov rdx, qword ptr [rax]
+140a151b1 je 0x140a151dc
+140a151b3 mov r15, rdx
+140a151b6 movzx eax, byte ptr [rip + 0x2c1fa4c]

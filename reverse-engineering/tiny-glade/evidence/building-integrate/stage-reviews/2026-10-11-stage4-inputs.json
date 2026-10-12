@@ -1,0 +1,29 @@
+{
+  "inputs": {
+    "reconstruction/crates/tg-building-runtime/src/history.rs": "eff03d47d60fd77876eb9c834229ca6657e1208c1813205604f8782189904515",
+    "reconstruction/crates/tg-building-runtime/src/wall_authoring.rs": "b9c185a96d50a1d0cd206e1a82348c53891cd72ef1a622d570c8ed2bb4372795",
+    "reconstruction/history/building_transactions.rs": "f87218f20f0667be8b6066f5b23e4dab9bf1bf4d865c9398ba3d6e2d0c17b7ff",
+    "reconstruction/crates/tg-building-runtime/src/roof_invalid.rs": "3d281cf2e2572a3cf1e3e441bf7f4970a450e1cc3d2c048f8c38aab7a74d9f2a",
+    "reconstruction/crates/tg-building-runtime/tests/wall_authoring_chain.rs": "dddfea87749a796fd8d9700788adbcb89159295a5864c53f6480b96c6a90a3b9",
+    "reconstruction/crates/tg-building-runtime/tests/asset_parameter_history_chain.rs": "3911aae309e9ec65823a5780ee1a279082cf13c49c39945912f6b3625c0a4b75"
+  },
+  "review_scope": "Independent source/World review of parent Unified Wall/Roof runtime; does not independently accept reviewer-owned history/timed/bulldoze producer cores.",
+  "tests": {
+    "asset_parameter_history_chain": 13,
+    "wall_authoring_chain": 6,
+    "all_passed": true
+  },
+  "extra_reproducer": {
+    "path": "/tmp/tinyglade-g14-runtime-review/src/main.rs",
+    "sha256": "6ef9e52b759bd386cbbfc37a0409a606084a71721bb21dc2310bbc258ad0eea9",
+    "before": "partial_queue remaining0 pending1; latebackfill committed0 pendingObservation1",
+    "after": "partial_queue remaining3 pending0; latebackfill committed0 pendingObservation1"
+  },
+  "fixed_parent_p1": [
+    "Old RemoveWall reader cleanup moved afterAuthoring consume/edit to avoid erasing replay restored metadata",
+    "Old unrecorded InvalidRoof observations retained; recording_pending only captures active producer-frame mutations",
+    "Direct deletion owner sequence isRoofDelete thenprimitiveWallDelete, with actualanimatedbulldoze distinction retained"
+  ],
+  "review_p2": "Fixed: Unsupported owner prevalidation preserves all3requests withpending0; success-onlydequeue prevents dropping failure suffix.",
+  "conclusion": "Pass in statedUnifiedruntime CPU adapter scope before subsequentBulldoze addition; ownedcores need separate independentreview."
+}

@@ -1,0 +1,2761 @@
+{
+  "ok": true,
+  "history_segment_cases": 16,
+  "full_animate_returns": 96,
+  "failure_count": 0,
+  "failures": [],
+  "candidate_binary_sha256": "83dbd655291c50d98820d9a7f9dd0180da5296a91eda5b26f2a37b9ff58a4b43",
+  "candidate_sources": {
+    "reconstruction/building/wall_bulldoze.rs": "958d01f675b3d5cb4532ab8f6e8c39a268679a010579985458b3280125868255",
+    "reconstruction/building/wall_history_edit.rs": "bb22c45529f73e1b4c19af21b2e14a73fe7134e776bdfd313be90ba48577a8b5",
+    "reconstruction/src/bin/wall-bulldoze-probe.rs": "763e075cd574a22d98b03a50f26e2dbe1634fe3b22d859e3358a166cc812e1ce",
+    "reconstruction/building/wall_authoring.rs": "2043afa2ba091e57d9368a5b2b88acc0803b510fd2d2ea8671e95b9714c7c2bb",
+    "reconstruction/building/wall_collection.rs": "b74c6aa577a9c012d4d34fcfb1851a8d33a84ee154872ece077d66e96ab198b6",
+    "reconstruction/building/wall_freeform_cache.rs": "7d2a2870be3cfd73e4318ce4fb3d240b17f59ac2f3738d5504d11dc7c6b637a6",
+    "reconstruction/building/wall_state.rs": "3ac4555841032f8347e1d28da60be7260eead44ae7408c8de265169ce269cf4d",
+    "reconstruction/roof/surface.rs": "132b17182082410908cae6a0d897638eeebb0e8095183d124767ec886428bbcd",
+    "reconstruction/history/building_transactions.rs": "f87218f20f0667be8b6066f5b23e4dab9bf1bf4d865c9398ba3d6e2d0c17b7ff",
+    "reconstruction/Cargo.lock": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc"
+  },
+  "oracle_sources": {
+    "scripts/multi-version/verify_wall_bulldoze.py": "33d2714e7a49f0024d081ab5bded5e45988bc1e197907a3aab2436c40b801968",
+    "evidence/building-wall-history/native_wall_delete.py": "c55905f9660cf3f579c702da84ec3c47a9087dcef2dcdbb8e1296bc6d8790b1a",
+    "evidence/building-wall-history/native_wall_history.py": "f1d79d49abf86c39b357db2d1d90eb97b6e80b46166b4cf0c77a2edf7bfac1e0",
+    "evidence/building-authoring/native_authoring.py": "0caa5dc2889b2cb18c5fda8c938d27a1246dca99621ff183650d46a349853aeb",
+    "evidence/building-constructor/native_fixture.py": "3a1d9654cbb346ed458185543ea30778b147e2b658a0301cd59e5ea9b73eec1e"
+  },
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "inputs": [
+    "record 00000000b44f94c0e8a1dc3fb3d54040a90403bc0000000000000000 00000000b44f94c0e8a1dc3fb3d54040a90403bc000000000000000099872940dce1803f33333340a46d7bf0000000000000000000000000 9 0 3e257c6d 3f6aa2e7 -",
+    "animate 00000000b44f94c0e8a1dc3fb3d54040a90403bc0000000000000000 00000000b44f94c0e8a1dc3fb3d54040a90403bc000000000000000099872940dce1803f33333340a46d7bf0000000000000000000000000 9 0 3e257c6d 3f6aa2e7 65fa5fbf887eb93f03f80640 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f0000000079d9f3bdc04307c0b9a1ec3f1b7f9940 010000000000803f0000000079d9f3bdc04307c0b9a1ec3f1b7f9940c3254b400f424cbf333333404e99f9f001000107010d000000000000 9 1 3e1f5510 3f6a69a8 -",
+    "animate 010000000000803f0000000079d9f3bdc04307c0b9a1ec3f1b7f9940 010000000000803f0000000079d9f3bdc04307c0b9a1ec3f1b7f9940c3254b400f424cbf333333404e99f9f001000107010d000000000000 9 1 3e1f5510 3f6a69a8 485c8140d56f583f215f8c40 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 000000001c0191c007caddbea33c353ff8ea32400000000000000000 000000001c0191c007caddbea33c353ff8ea3240000000000000000047b69d3f03feca3e33333340b1af32600201020e021a000000000000 9 2 3e4183ae 3f4c2e00 -",
+    "animate 000000001c0191c007caddbea33c353ff8ea32400000000000000000 000000001c0191c007caddbea33c353ff8ea3240000000000000000047b69d3f03feca3e33333340b1af32600201020e021a000000000000 9 2 3e4183ae 3f4c2e00 4afc363e901bc2bd83c61240 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f000000007ec6794018461e3f74538840ac726f40 010000000000803f000000007ec6794018461e3f74538840ac726f40edf182405819943f333333402489bee2030100150327000000000000 9 3 3d016b20 3f6fa062 -",
+    "animate 010000000000803f000000007ec6794018461e3f74538840ac726f40 010000000000803f000000007ec6794018461e3f74538840ac726f40edf182405819943f333333402489bee2030100150327000000000000 9 3 3d016b20 3f6fa062 780a2fc04303fb3f2d8b5840 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 000000007f3b2a3f50c087bf8f9adc3f8acd2fc00000000000000000 000000007f3b2a3f50c087bf8f9adc3f8acd2fc000000000000000007395d03f975c46bf33333340273a79830400011c0034000000000000 9 4 3e0fcb36 3f7e84fa 090000000000000000000000000000000000000000000000000000000000000000000000762a688a1f3e3ee77c8129088d922012e8a8ea40a0742b2e7f78f09bb9fcc9d271dc70b06ee2a27c53ae7e81a530c10f00000000",
+    "animate 000000007f3b2a3f50c087bf8f9adc3f8acd2fc00000000000000000 000000007f3b2a3f50c087bf8f9adc3f8acd2fc000000000000000007395d03f975c46bf33333340273a79830400011c0034000000000000 9 4 3e0fcb36 3f7e84fa b57e29408e763fbf5749efbf 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f00000000e95df8bf38337a403fb801403ce01e40 010000000000803f00000000e95df8bf38337a403fb801403ce01e409d08b03f165632bf333333403644d1cd050002230141000000000000 9 5 3de77ac3 3f266485 0900000000000000000000000000000000000000000000000000000000000000000000009ea84516a0d6ffe6b9ae2b614d9cd4aaa2d1a9287db5419de7b1af85f2630b36cd884e3db9ced7ac3c4cff4c75c897ab00000000",
+    "animate 010000000000803f00000000e95df8bf38337a403fb801403ce01e40 010000000000803f00000000e95df8bf38337a403fb801403ce01e409d08b03f165632bf333333403644d1cd050002230141000000000000 9 5 3de77ac3 3f266485 82d560bf4621e83faa920940 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 000000003837fcbda76a4a3f0908334061b186bf0000000000000000 000000003837fcbda76a4a3f0908334061b186bf000000000000000095d12d40b970743f333333405b0759390601002a024e000000000000 9 6 3e484435 3f401762 0900000000000000000000000000000000000000000000000000000000000000000000003d0d9ae937d00922a3ad5c378679b460a69bccdb06d87e52c381efde1d99b2751d6da2e491d0edf4b63f2ba1a20df41100000000",
+    "animate 000000003837fcbda76a4a3f0908334061b186bf0000000000000000 000000003837fcbda76a4a3f0908334061b186bf000000000000000095d12d40b970743f333333405b0759390601002a024e000000000000 9 6 3e484435 3f401762 e1d044bebd3cfd3fac76edbf 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f00000000912859c00e7201c03ff89840b6fa3840 010000000000803f00000000912859c00e7201c03ff89840b6fa3840ad671840ae1ed13e33333340beaaffde07010131035b000000000000 9 7 3e379636 3f506fbe 09000000000000000000000000000000000000000000000000000000000000000000000015497e190acef04b2b95632d544f7dd2ec3313011853eeb46106b036e21ae441157bacc6ec18d6c53966683aba90677400000000",
+    "animate 010000000000803f00000000912859c00e7201c03ff89840b6fa3840 010000000000803f00000000912859c00e7201c03ff89840b6fa3840ad671840ae1ed13e33333340beaaffde07010131035b000000000000 9 7 3e379636 3f506fbe 45bf31c0962214bfe86b9ec0 0 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 00000000ea86384012b96b40c4ea1f3f483ac8bf0000000000000000 00000000ea86384012b96b40c4ea1f3f483ac8bf0000000000000000e1af9440ed9a153d33333340da24efa8080002380068000000000000 9 8 3ec1de1f 3f412c64 -",
+    "animate 00000000ea86384012b96b40c4ea1f3f483ac8bf0000000000000000 00000000ea86384012b96b40c4ea1f3f483ac8bf0000000000000000e1af9440ed9a153d33333340da24efa8080002380068000000000000 9 8 3ec1de1f 3f412c64 e17253c017e2bb3f6c05b63f 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f000000009ca177405c048640d72fc33f272e8240 010000000000803f000000009ca177405c048640d72fc33f272e824048884940355a5f3e33333340d65ac1750900003f0175000000000000 9 9 3da16f59 3f27dd17 -",
+    "animate 010000000000803f000000009ca177405c048640d72fc33f272e8240 010000000000803f000000009ca177405c048640d72fc33f272e824048884940355a5f3e33333340d65ac1750900003f0175000000000000 9 9 3da16f59 3f27dd17 261974c013c7e93e9cb88e40 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 00000000ba10e5be84319bc08a300f4059a70b400000000000000000 00000000ba10e5be84319bc08a300f4059a70b4000000000000000003cd54b40af208c3e33333340bee4f1830a0101460282000000000000 9 10 3ecbb263 3f4d6053 -",
+    "animate 00000000ba10e5be84319bc08a300f4059a70b400000000000000000 00000000ba10e5be84319bc08a300f4059a70b4000000000000000003cd54b40af208c3e33333340bee4f1830a0101460282000000000000 9 10 3ecbb263 3f4d6053 55b390c0dc7fce3f9c939e40 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f00000000149792bfdbc720c023c5604012a04240 010000000000803f00000000149792bfdbc720c023c5604012a042407d7f1040074314be33333340a98cf8200b01024d038f000000000000 9 11 3eb4edad 3f5f8f25 -",
+    "animate 010000000000803f00000000149792bfdbc720c023c5604012a04240 010000000000803f00000000149792bfdbc720c023c5604012a042407d7f1040074314be33333340a98cf8200b01024d038f000000000000 9 11 3eb4edad 3f5f8f25 6573d3bfa9b2a73fbe1890bf 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 000000002894834021674dbc23e428400e498bbf0000000000000000 000000002894834021674dbc23e428400e498bbf0000000000000000a4d22240897b673f333333409fbb75f30c000054009c000000000000 9 12 3e9151a1 3f21723e 090000000000000000000000000000000000000000000000000000000000000000000000cf1723d9c2a9a1acf774e2f6215ff9f267c095d0d07dd26b7276756e99828b7825e3d53d6fa3765720f375fc138d2dd300000000",
+    "animate 000000002894834021674dbc23e428400e498bbf0000000000000000 000000002894834021674dbc23e428400e498bbf0000000000000000a4d22240897b673f333333409fbb75f30c000054009c000000000000 9 12 3e9151a1 3f21723e fbc2c1bf48ec2e3fca9d15c0 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f0000000064317440a75180406f9c484092b98440 010000000000803f0000000064317440a75180406f9c484092b9844089a01b406ed21cbf333333406f9702130d00015b01a9000000000000 9 13 3ec116db 3f5dd720 09000000000000000000000000000000000000000000000000000000000000000000000065df5e606c7785e2de456619cc1f3888601efe0d0e325a731180a614d3802a08044e5a0bf4d112ba645d40a750c8599600000000",
+    "animate 010000000000803f0000000064317440a75180406f9c484092b98440 010000000000803f0000000064317440a75180406f9c484092b9844089a01b406ed21cbf333333406f9702130d00015b01a9000000000000 9 13 3ec116db 3f5dd720 d51765bf97fbe83f6c4b08c0 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 000000003c8827408466d13ed4bb9340dfaa97bf0000000000000000 000000003c8827408466d13ed4bb9340dfaa97bf00000000000000004c0428405c1a8a3f333333406cd09f140e01026202b6000000000000 9 14 3d77a43a 3f61ccba 090000000000000000000000000000000000000000000000000000000000000000000000ba841b6590f1be67a52912b73bbf5835c13ce3e64b9b2c246ec165a871ab11820437b5f59764c49bbd3ccf062478681600000000",
+    "animate 000000003c8827408466d13ed4bb9340dfaa97bf0000000000000000 000000003c8827408466d13ed4bb9340dfaa97bf00000000000000004c0428405c1a8a3f333333406cd09f140e01026202b6000000000000 9 14 3d77a43a 3f61ccba f204fabecdf763bf34f02d3f 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd",
+    "record 010000000000803f0000000012f2e6be26e4e5bf98ea62405daf4940 010000000000803f0000000012f2e6be26e4e5bf98ea62405daf4940dd438e3fc473e83f33333340bc239c640f01006903c3000000000000 9 15 3ec30a34 3f36ee82 090000000000000000000000000000000000000000000000000000000000000000000000c97fb2b8cdad87c4ffd886f58e278e914391f2261aa1522ded21f9379e653281aa7bffcf556433d5d6ab800a735e6f6500000000",
+    "animate 010000000000803f0000000012f2e6be26e4e5bf98ea62405daf4940 010000000000803f0000000012f2e6be26e4e5bf98ea62405daf4940dd438e3fc473e83f33333340bc239c640f01006903c3000000000000 9 15 3ec30a34 3f36ee82 68a40d40a56ff83f982be8bf 1 00000000 00000000,3ccccccd,3ccccccd,3d4ccccd,3dcccccd,3ccccccd"
+  ],
+  "native": [
+    {
+      "case": 0,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "9296cfbf708cd93f18a8d5bfb66a983f32a5e6bf627e323f560801c0a0db6e3e549013c0f85a40be19622ac078d00dbf94d544c004c45abff62762c0525d8abfa2c080c0b8049dbf5afd90c0e2cea4bf8952a1c06882a1bfe547b1c0923793bfe867c0c04caf74bf2743cec0c8332fbfa273dac030f8afbe8d9fe4c08055673d007cecc0102e013f14cff1c004e17c3f9671f4c0c4ffbe3f1c50f4c0a23400409d6bf1c0a265204066d9ebc0ce253f4080c2e3c0ae925b408162d9c0e2da7440cb05cdc0242285406c07bfc096988d4073ceafc070929340feca9fc0b2e39640f8728fc0ec739740887d7ec0f93e9540654b5fc019559040503542c07eda8840751128c0700c7e405da011c05a416640a40effbffa024b403097e4bfee192d40429dd4bf74620d409296cfbf6c8cd93f",
+                      "us": "000000008967dd3cd8675d3dcf0da63dc467dd3dde600a3ed90d263ed3ba413ec4675d3ebf14793ede608a3e5b37983ed90da63e51e4b33ecfbac13e4c91cf3ec967dd3e413eeb3ebf14f93e9e75033fdd600a3f1b4c113f5a37183f96221f3fd50d263f13f92c3f52e4333f90cf3a3fcfba413f0ca6483f4b914f3f887c563fc8675d3f0753643f453e6b3f8329723fc214793f0000803f",
+                      "length": 1100432682,
+                      "n": 38
+                    },
+                    "enclosure": "00000000b44f94c0e8a1dc3fb3d54040a90403bc",
+                    "scalar_bits": "99872940dce1803f33333340a46d7bf0",
+                    "metadata": "000000000000"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "974a44c0ad2f59bf94d544c004c45abff62762c0525d8abfa2c080c0b8049dbf5afd90c0e2cea4bf8952a1c06882a1bfe547b1c0923793bfe867c0c04caf74bf2743cec0c8332fbfa273dac030f8afbe8d9fe4c08055673d007cecc0102e013f14cff1c004e17c3f9671f4c0c4ffbe3f1c50f4c0a23400409d6bf1c0a265204066d9ebc0ce253f4080c2e3c0ae925b408162d9c0e2da7440cb05cdc0242285406c07bfc096988d4073ceafc070929340feca9fc0b2e39640f8728fc0ec739740887d7ec0f93e9540654b5fc019559040503542c07eda8840751128c0700c7e405da011c05a416640b71d01c0be664d40",
+                      "us": "00000000baa0403ac3a5153d6924943d0c76dd3dd963133ea90c383e7db55c3e1faf803e8803933ef157a53e59acb73ebb00ca3e2355dc3e8ca9ee3efa7e003f2ea9093f62d3123f93fd1b3fc827253ffc512e3f307c373f63a6403f97d0493fcafa523fff245c3f324f653f66796e3f9aa3773f0000803f",
+                      "length": 1097098855,
+                      "n": 30
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "99872940dce1803f33333340a46d7bf0",
+                    "metadata": "000000000000"
+                  },
+                  "wall": 9,
+                  "range": "010000006d7c253ee7a26a3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "974a44c0ad2f59bf94d544c004c45abff62762c0525d8abfa2c080c0b8049dbf5afd90c0e2cea4bf8952a1c06882a1bfe547b1c0923793bfe867c0c04caf74bf2743cec0c8332fbfa273dac030f8afbe8d9fe4c08055673d007cecc0102e013f14cff1c004e17c3f9671f4c0c4ffbe3f1c50f4c0a23400409d6bf1c0a265204066d9ebc0ce253f4080c2e3c0ae925b408162d9c0e2da7440cb05cdc0242285406c07bfc096988d4073ceafc070929340feca9fc0b2e39640f8728fc0ec739740887d7ec0f93e9540654b5fc019559040503542c07eda8840751128c0700c7e405da011c05a416640b71d01c0be664d40",
+                      "us": "00000000baa0403ac3a5153d6924943d0c76dd3dd963133ea90c383e7db55c3e1faf803e8803933ef157a53e59acb73ebb00ca3e2355dc3e8ca9ee3efa7e003f2ea9093f62d3123f93fd1b3fc827253ffc512e3f307c373f63a6403f97d0493fcafa523fff245c3f324f653f66796e3f9aa3773f0000803f",
+                      "length": 1097098855,
+                      "n": 30
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "99872940dce1803f33333340a46d7bf0",
+                    "metadata": "000000000000"
+                  },
+                  "wall": 9,
+                  "color": 0
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 1,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "748e85bf6e6190c0748e85bfd8da913e8a264e3fd8da913e8a264e3f6e6190c0748e85bf6e6190c0",
+                      "us": "00000000abc8b83e0000003f55645c3f0000803f",
+                      "length": 1096066954,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f0000000079d9f3bdc04307c0b9a1ec3f1b7f9940",
+                    "scalar_bits": "c3254b400f424cbf333333404e99f9f0",
+                    "metadata": "01000107010d"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "748e85bf25681cc0748e85bfd8da913e8a264e3fd8da913e8a264e3f6e6190c078699e3d6e6190c0",
+                      "us": "000000007f4c8a3eabfee73eae8d6d3f0000803f",
+                      "length": 1092723259,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "c3254b400f424cbf333333404e99f9f0",
+                    "metadata": "01000107010d"
+                  },
+                  "wall": 9,
+                  "range": "0100000010551f3ea8696a3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "748e85bf25681cc0748e85bfd8da913e8a264e3fd8da913e8a264e3f6e6190c078699e3d6e6190c0",
+                      "us": "000000007f4c8a3eabfee73eae8d6d3f0000803f",
+                      "length": 1092723259,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "c3254b400f424cbf333333404e99f9f0",
+                    "metadata": "01000107010d"
+                  },
+                  "wall": 9,
+                  "color": 1
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 2,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "fc50a6c092b845be37a49ac04e81543e3f5289c0f6676e3ee20079c0ae3007be786277c0e65b2cbf015e87c02e7589bff9af98c002b28cbfc781a5c0dafd3bbffc50a6c074b845be",
+                      "us": "000000000300003e0300803e0100c03e0000003f0000203f0100403f0100603f0000803f",
+                      "length": 1082832499,
+                      "n": 9
+                    },
+                    "enclosure": "000000001c0191c007caddbea33c353ff8ea3240",
+                    "scalar_bits": "47b69d3f03feca3e33333340b1af3260",
+                    "metadata": "0201020e021a"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "c6c691c014c3613e3f5289c0f6676e3ee20079c0ae3007be786277c0e65b2cbf015e87c02e7589bff9af98c002b28cbf14919dc075d775bf",
+                      "us": "00000000d357cd3dd67e9c3edcd3023f4e68373fc0fc6b3f0000803f",
+                      "length": 1076418350,
+                      "n": 7
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "47b69d3f03feca3e33333340b1af3260",
+                    "metadata": "0201020e021a"
+                  },
+                  "wall": 9,
+                  "range": "01000000ae83413e002e4c3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "c6c691c014c3613e3f5289c0f6676e3ee20079c0ae3007be786277c0e65b2cbf015e87c02e7589bff9af98c002b28cbf14919dc075d775bf",
+                      "us": "00000000d357cd3dd67e9c3edcd3023f4e68373fc0fc6b3f0000803f",
+                      "length": 1076418350,
+                      "n": 7
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "47b69d3f03feca3e33333340b1af3260",
+                    "metadata": "0201020e021a"
+                  },
+                  "wall": 9,
+                  "color": 2
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 3,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "14e6e23fa04fa0bf14e6e23fdc4a1f40f90cc140dc4a1f40f90cc140a04fa0bf14e6e23fa04fa0bf",
+                      "us": "00000000b6666f3e0000003faed93b3f0000803f",
+                      "length": 1098909285,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f000000007ec6794018461e3f74538840ac726f40",
+                    "scalar_bits": "edf182405819943f333333402489bee2",
+                    "metadata": "030100150327"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "15e6e23fa92d3fbf14e6e23fdc4a1f40f90cc140dc4a1f40f90cc140a04fa0bfc8f43240a04fa0bf",
+                      "us": "00000000d8eb643e8094043fedc0463f0000803f",
+                      "length": 1097307456,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "edf182405819943f333333402489bee2",
+                    "metadata": "030100150327"
+                  },
+                  "wall": 9,
+                  "range": "01000000206b013d62a06f3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "15e6e23fa92d3fbf14e6e23fdc4a1f40f90cc140dc4a1f40f90cc140a04fa0bfc8f43240a04fa0bf",
+                      "us": "00000000d8eb643e8094043fedc0463f0000803f",
+                      "length": 1097307456,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "edf182405819943f333333402489bee2",
+                    "metadata": "030100150327"
+                  },
+                  "wall": 9,
+                  "color": 3
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 4,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "01000000a530c10fb9fcc9d271dc70b06ee2a27c762a688a1f3e3ee77c8129088d922012e8a8ea40a0742b2e7f78f09b0900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "630e6dbf1c93dcbf9e7b86bffec79cbfe4ec82bfd23c36bfdf5758bffc606bbea37c08bf489c363ea803ebbd68f0f33ef9efbe3e1053233f50f5623f120b263f0eb4b03f5ae2013f36cae73f603d683efceb084020302cbe699015401a7424bfcdb2184091af93bfdb0b1240a315d4bfe4320240b0d906c0c820d53f16b51dc0f17b9a3f1c952cc06a5a333f672732c0b4b5433e38ed2dc070708dbebb4620c005f528bf6d6a0ac05f0e6dbf2093dcbf",
+                      "us": "00000000000c433d280cc33d1d49123e280c433e3ccf733e1e49923eabaaaa3e2e0cc33eb86ddb3e3acff33e6118063f2349123fe7791e3fabaa2a3f6edb363f310c433ff33c4f3fb86d5b3f7a9e673f3dcf733f0000803f",
+                      "length": 1093443010,
+                      "n": 22
+                    },
+                    "enclosure": "000000007f3b2a3f50c087bf8f9adc3f8acd2fc0",
+                    "scalar_bits": "7395d03f975c46bf33333340273a7983",
+                    "metadata": "0400011c0034"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "33ab5abff24c82bedf5758bffc606bbea37c08bf489c363ea803ebbd68f0f33ef9efbe3e1053233f50f5623f120b263f0eb4b03f5ae2013f36cae73f603d683efceb084020302cbe699015401a7424bfcdb2184091af93bfdb0b1240a315d4bfe4320240b0d906c0c820d53f16b51dc0f17b9a3f1c952cc06a5a333f672732c0b4b5433e38ed2dc070708dbebb4620c005f528bf6d6a0ac00ec964bf3f68e3bf",
+                      "us": "00000000fac83a3b511f703d2149ea3d35412e3ef75d673e513d903eafcbac3e045ac93e5fe8e53e5c3b013f89820f3fb6c91d3fe3102c3f0e583a3f3a9f483f68e6563f942d653fc074733f0000803f",
+                      "length": 1091789030,
+                      "n": 20
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "7395d03f975c46bf33333340273a7983",
+                    "metadata": "0400011c0034"
+                  },
+                  "wall": 9,
+                  "range": "0100000036cb0f3efa847e3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "33ab5abff24c82bedf5758bffc606bbea37c08bf489c363ea803ebbd68f0f33ef9efbe3e1053233f50f5623f120b263f0eb4b03f5ae2013f36cae73f603d683efceb084020302cbe699015401a7424bfcdb2184091af93bfdb0b1240a315d4bfe4320240b0d906c0c820d53f16b51dc0f17b9a3f1c952cc06a5a333f672732c0b4b5433e38ed2dc070708dbebb4620c005f528bf6d6a0ac00ec964bf3f68e3bf",
+                      "us": "00000000fac83a3b511f703d2149ea3d35412e3ef75d673e513d903eafcbac3e045ac93e5fe8e53e5c3b013f89820f3fb6c91d3fe3102c3f0e583a3f3a9f483f68e6563f942d653fc074733f0000803f",
+                      "length": 1091789030,
+                      "n": 20
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "7395d03f975c46bf33333340273a7983",
+                    "metadata": "0400011c0034"
+                  },
+                  "wall": 9,
+                  "color": 4
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 5,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "0100000075c897abf2630b36cd884e3db9ced7ac9ea84516a0d6ffe6b9ae2b614d9cd4aaa2d1a9287db5419de7b1af850900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "140b3dc01ac32a40140b3dc0abd1a440544b6dbfabd1a440544b6dbf1ac32a40140b3dc01ac32a40",
+                      "us": "000000007bee8c3e0000003f3d77463f0000803f",
+                      "length": 1091587134,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f00000000e95df8bf38337a403fb801403ce01e40",
+                    "scalar_bits": "9d08b03f165632bf333333403644d1cd",
+                    "metadata": "050002230141"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "140b3dc01a006c40140b3dc0abd1a440544b6dbfabd1a440544b6dbf6e137340",
+                      "us": "000000007cb19a3e737f383f0000803f",
+                      "length": 1083897266,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "9d08b03f165632bf333333403644d1cd",
+                    "metadata": "050002230141"
+                  },
+                  "wall": 9,
+                  "range": "01000000c37ae73d8564263f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "140b3dc01a006c40140b3dc0abd1a440544b6dbfabd1a440544b6dbf6e137340",
+                      "us": "000000007cb19a3e737f383f0000803f",
+                      "length": 1083897266,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "9d08b03f165632bf333333403644d1cd",
+                    "metadata": "050002230141"
+                  },
+                  "wall": 9,
+                  "color": 5
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 6,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "01000000a20df4111d99b2751d6da2e491d0edf43d0d9ae937d00922a3ad5c378679b460a69bccdb06d87e52c381efde0900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "eaafa13f58cad1bfe69b4e3f447aecbf1e61a43eae4ffcbfca8937be296400c0257f2dbf68bff9bff04594bfce6ee7bf048acdbf366dcabf4d5a00c04aa9a3bf5a1016c009c468bf853427c08671f8bec43933c0c0bca5bc2fbd39c02712f13e2f893ac0c6e1783f359735c014debb3ff10f2bc03a82f83f054a1bc03135184038c706c045e530409e60dcbf37864540389fa4bf4b6e5540032a50bfa01a60406ad0a2be6333654010d03b3ea68e64406bca2c3fb5315e40e207923fe95052404e77c83fff4d414092f3f73fefb42b40fc7a0f4073371240c71e1e407c4eeb3fb26c2740b6dead3f2f182b4024325c3f0b0329402529b83e6a3e214098f401be360a14400d8215bf16d301403b377fbfce5dd63f861badbfe8afa13f5ccad1bf",
+                      "us": "00000000a70eea3ca90e6a3dff8aaf3d950eea3d2049123ef68a2f3ecbcc4c3ea00e6a3e3ba8833e2549923e0feaa03ef98aaf3ee42bbe3ececccc3eb96ddb3ea40eea3e8eaff83e3ca8033fb1f80a3f2649123f9b99193f0fea203f843a283ff98a2f3f6edb363fe32b3e3f587c453fcdcc4c3f421d543fb76d5b3f2cbe623fa20e6a3f165f713f8aaf783f0000803f",
+                      "length": 1099721747,
+                      "n": 36
+                    },
+                    "enclosure": "000000003837fcbda76a4a3f0908334061b186bf",
+                    "scalar_bits": "95d12d40b970743f333333405b075939",
+                    "metadata": "0601002a024e"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "eac6f8bf0daba9bf4d5a00c04aa9a3bf5a1016c009c468bf853427c08671f8bec43933c0c0bca5bc2fbd39c02712f13e2f893ac0c6e1783f359735c014debb3ff10f2bc03a82f83f054a1bc03135184038c706c045e530409e60dcbf37864540389fa4bf4b6e5540032a50bfa01a60406ad0a2be6333654010d03b3ea68e64406bca2c3fb5315e40e207923fe95052404e77c83fff4d414092f3f73fefb42b40fc7a0f4073371240bb52134016b80a40",
+                      "us": "0000000058bf023c97a1733db149e33d4a61263ebb1d5b3e16ed873e4f4ba23e88a9bc3ec007d73efa65f13e1ae2053f3611133f5340203f6f6f2d3f8b9e3a3fa5cd473fc1fc543fdd2b623ff95a6f3f148a7c3f0000803f",
+                      "length": 1092341465,
+                      "n": 22
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "95d12d40b970743f333333405b075939",
+                    "metadata": "0601002a024e"
+                  },
+                  "wall": 9,
+                  "range": "010000003544483e6217403f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "eac6f8bf0daba9bf4d5a00c04aa9a3bf5a1016c009c468bf853427c08671f8bec43933c0c0bca5bc2fbd39c02712f13e2f893ac0c6e1783f359735c014debb3ff10f2bc03a82f83f054a1bc03135184038c706c045e530409e60dcbf37864540389fa4bf4b6e5540032a50bfa01a60406ad0a2be6333654010d03b3ea68e64406bca2c3fb5315e40e207923fe95052404e77c83fff4d414092f3f73fefb42b40fc7a0f4073371240bb52134016b80a40",
+                      "us": "0000000058bf023c97a1733db149e33d4a61263ebb1d5b3e16ed873e4f4ba23e88a9bc3ec007d73efa65f13e1ae2053f3611133f5340203f6f6f2d3f8b9e3a3fa5cd473fc1fc543fdd2b623ff95a6f3f148a7c3f0000803f",
+                      "length": 1092341465,
+                      "n": 22
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "95d12d40b970743f333333405b075939",
+                    "metadata": "0601002a024e"
+                  },
+                  "wall": 9,
+                  "color": 6
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "01000000ba906774e21ae441157bacc6ec18d6c515497e190acef04b2b95632d544f7dd2ec3313011853eeb46106b0360900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "6810b9c069ef5dc06810b9c0ccd213bfa46080bfccd213bfa46080bf69ef5dc06810b9c069ef5dc0",
+                      "us": "000000003dec403e0000003f0f3b303f0000803f",
+                      "length": 1098216858,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f00000000912859c00e7201c03ff89840b6fa3840",
+                    "scalar_bits": "ad671840ae1ed13e33333340beaaffde",
+                    "metadata": "07010131035b"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "6810b9c047a137bf6810b9c0ccd213bfa46080bfccd213bfa46080bf69ef5dc02db53bc068ef5dc0",
+                      "us": "00000000a9446b3c0850013fa3464d3f0000803f",
+                      "length": 1092344043,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "ad671840ae1ed13e33333340beaaffde",
+                    "metadata": "07010131035b"
+                  },
+                  "wall": 9,
+                  "range": "010000003696373ebe6f503f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "6810b9c047a137bf6810b9c0ccd213bfa46080bfccd213bfa46080bf69ef5dc02db53bc068ef5dc0",
+                      "us": "00000000a9446b3c0850013fa3464d3f0000803f",
+                      "length": 1092344043,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "ad671840ae1ed13e33333340beaaffde",
+                    "metadata": "07010131035b"
+                  },
+                  "wall": 9,
+                  "color": 7
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 0,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "a0c9384098be4340df6e1940d4975240327e11406a5d74403df2264089d0874063a349407aed8740f2715f407ddf744024f25740220053409fc9384098be4340",
+                      "us": "000000002a49123e2349923eb76ddb3e2649123f6edb363fb76d5b3f0000803f",
+                      "length": 1081268564,
+                      "n": 8
+                    },
+                    "enclosure": "00000000ea86384012b96b40c4ea1f3f483ac8bf",
+                    "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+                    "metadata": "080002380068"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "f6721f40f60c83403df2264089d0874063a349407aed8740f2715f407ddf744066545d406e516b40",
+                      "us": "0000000047fc073e0847033ff98e643f0000803f",
+                      "length": 1068930906,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+                    "metadata": "080002380068"
+                  },
+                  "wall": 9,
+                  "range": "010000001fdec13e642c413f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "f6721f40f60c83403df2264089d0874063a349407aed8740f2715f407ddf744066545d406e516b40",
+                      "us": "0000000047fc073e0847033ff98e643f0000803f",
+                      "length": 1068930906,
+                      "n": 5
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+                    "metadata": "080002380068"
+                  },
+                  "wall": 9,
+                  "color": 8
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "a0c9384098be4340df6e1940d4975240327e11406a5d74403df2264089d0874063a349407aed8740f2715f407ddf744024f25740220053409fc9384098be4340",
+              "us": "000000002a49123e2349923eb76ddb3e2649123f6edb363fb76d5b3f0000803f",
+              "length": 1081268564,
+              "n": 8
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+            "metadata": "080002380068"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000e17253c017e2bb3f6c05b63f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "6a2338404e0d4440df6e1940d4975240327e11406a5d74403df2264089d0874063a349407aed8740f2715f407ddf744024f2574022005340ad34394003f34340",
+              "us": "0000000061f50f3efb7a913e4cfbda3ecf3d123ff5fd363f1dbe5b3f0000803f",
+              "length": 1081190970,
+              "n": 8
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+            "metadata": "080002380068"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000e17253c017e2bb3f6c05b63f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "ed9733404d344640df6e1940d4975240327e11406a5d74403df2264089d0874063a349407aed8740f2715f407ddf744024f25740220053400f223c40ee614540",
+              "us": "000000001b03fe3d4e9d8b3edcb9d73e35eb113f7bf9373fc1075e3f0000803f",
+              "length": 1080647802,
+              "n": 8
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+            "metadata": "080002380068"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000e17253c017e2bb3f6c05b63f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "b5d91640f4935d40327e11406a5d74403df2264089d0874063a349407aed8740f2715f407ddf744024f25740220053401d8d53404ad95040",
+              "us": "00000000aa780f3e8f0db23e652f0e3f0058433f9c80783f0000803f",
+              "length": 1076302465,
+              "n": 7
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "e1af9440ed9a153d33333340da24efa8",
+            "metadata": "080002380068"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000e17253c017e2bb3f6c05b63f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "a6d5464091da0940a6d54640701bc740c9369440701bc740c936944091da0940a6d5464091da0940",
+                      "us": "000000001c34ba3e0000003f0e1a5d3f0000803f",
+                      "length": 1093859870,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f000000009ca177405c048640d72fc33f272e8240",
+                    "scalar_bits": "48884940355a5f3e33333340d65ac175",
+                    "metadata": "0900003f0175"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "a6d5464024494240a6d54640701bc740c9369440701bc740c9369440185e8f40",
+                      "us": "00000000bbcffc3e38e63a3f0000803f",
+                      "length": 1087275052,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "48884940355a5f3e33333340d65ac175",
+                    "metadata": "0900003f0175"
+                  },
+                  "wall": 9,
+                  "range": "01000000596fa13d17dd273f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "a6d5464024494240a6d54640701bc740c9369440701bc740c9369440185e8f40",
+                      "us": "00000000bbcffc3e38e63a3f0000803f",
+                      "length": 1087275052,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "48884940355a5f3e33333340d65ac175",
+                    "metadata": "0900003f0175"
+                  },
+                  "wall": 9,
+                  "color": 9
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "a6d5464091da0940a6d54640701bc740c9369440701bc740c936944091da0940a6d5464091da0940",
+              "us": "000000001c34ba3e0000003f0e1a5d3f0000803f",
+              "length": 1093859870,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "48884940355a5f3e33333340d65ac175",
+            "metadata": "0900003f0175"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000261974c013c7e93e9cb88e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "a6d546406e4b0a40a6d54640701bc740c9369440701bc740c936944091da094099c2484091da0940",
+              "us": "000000003681ba3e2e44003f49ad5d3f0000803f",
+              "length": 1093821098,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "48884940355a5f3e33333340d65ac175",
+            "metadata": "0900003f0175"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000261974c013c7e93e9cb88e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "a6d546407a610d40a6d54640701bc740c9369440701bc740c936944091da0940403d564091da0940",
+              "us": "000000009fabbc3e6d2e023fe0cf613f0000803f",
+              "length": 1093549692,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "48884940355a5f3e33333340d65ac175",
+            "metadata": "0900003f0175"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000261974c013c7e93e9cb88e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "a6d54640da112640a6d54640701bc740c9369440701bc740c9369440697f2340",
+              "us": "000000004b92d23e3b8c153f0000803f",
+              "length": 1091378458,
+              "n": 4
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "48884940355a5f3e33333340d65ac175",
+            "metadata": "0900003f0175"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000261974c013c7e93e9cb88e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 10,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "88a0ddbfc12041c03252a5bff0c731c087314fbf5f1529c062329ebeb57827c020e13c3ea3062dc0596d253fdb7739c04ccc863fa62c4cc06840b13fe03464c000f2cf3f022e80c02257e13f5d9c8fc07890e43f689f9fc09e74d93f9769afc02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0c0ef29c0a7c6a6c0698c2bc09dc396c07cfe25c06ff986c0458d19c09c6570c07ad806c0cb5a56c082a0ddbfbe2041c0",
+                      "us": "000000002749123d2849923dbd6ddb3d2849123e73db363ebd6d5b3e0300803e2349923e4792a43e6ddbb63e9124c93eb86ddb3edcb6ed3e0000003f9224093f2549123fb86d1b3f4a92243fdcb62d3f6fdb363f0200403f9324493f2649523fb86d5b3f4a92643fdcb66d3f6edb763f0000803f",
+                      "length": 1096839995,
+                      "n": 29
+                    },
+                    "enclosure": "00000000ba10e5be84319bc08a300f4059a70b40",
+                    "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+                    "metadata": "0a0101460282"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "dafad53fea79b1c02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0264425c0e40fafc0",
+                      "us": "00000000999a9b3d013c283e5f55813ebc8cae3e1bc4db3ebd7d043f69191b3f19b5313fc750483f78ec5e3f2288753f0000803f",
+                      "length": 1085639083,
+                      "n": 13
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+                    "metadata": "0a0101460282"
+                  },
+                  "wall": 9,
+                  "range": "0100000063b2cb3e53604d3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "dafad53fea79b1c02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0264425c0e40fafc0",
+                      "us": "00000000999a9b3d013c283e5f55813ebc8cae3e1bc4db3ebd7d043f69191b3f19b5313fc750483f78ec5e3f2288753f0000803f",
+                      "length": 1085639083,
+                      "n": 13
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+                    "metadata": "0a0101460282"
+                  },
+                  "wall": 9,
+                  "color": 10
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "88a0ddbfc12041c03252a5bff0c731c087314fbf5f1529c062329ebeb57827c020e13c3ea3062dc0596d253fdb7739c04ccc863fa62c4cc06840b13fe03464c000f2cf3f022e80c02257e13f5d9c8fc07890e43f689f9fc09e74d93f9769afc02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0c0ef29c0a7c6a6c0698c2bc09dc396c07cfe25c06ff986c0458d19c09c6570c07ad806c0cb5a56c082a0ddbfbe2041c0",
+              "us": "000000002749123d2849923dbd6ddb3d2849123e73db363ebd6d5b3e0300803e2349923e4792a43e6ddbb63e9124c93eb86ddb3edcb6ed3e0000003f9224093f2549123fb86d1b3f4a92243fdcb62d3f6fdb363f0200403f9324493f2649523fb86d5b3f4a92643fdcb66d3f6edb763f0000803f",
+              "length": 1096839995,
+              "n": 29
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+            "metadata": "0a0101460082"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000055b390c0dc7fce3f9c939e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "12bad8bfd6ca3fc03252a5bff0c731c087314fbf5f1529c062329ebeb57827c020e13c3ea3062dc0596d253fdb7739c04ccc863fa62c4cc06840b13fe03464c000f2cf3f022e80c02257e13f5d9c8fc07890e43f689f9fc09e74d93f9769afc02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0c0ef29c0a7c6a6c0698c2bc09dc396c07cfe25c06ff986c0458d19c09c6570c07ad806c0cb5a56c0c3b4dfbfce0b42c0",
+              "us": "00000000d62d063d09938c3d260fd63da2c50f3eb083343ebf41593eccff7d3ee85e913eeebda33ef61cb63efd7bc83e06dbda3e0b3aed3e1299ff3e0cfc083f902b123f145b1b3f978a243f1bba2d3f9fe9363f2319403fa448493f2978523faca75b3f2fd7643fb2066e3f3636773f0000803f",
+              "length": 1096771550,
+              "n": 29
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+            "metadata": "0a0101460082"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000055b390c0dc7fce3f9c939e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "da6cb6bf667136c03252a5bff0c731c087314fbf5f1529c062329ebeb57827c020e13c3ea3062dc0596d253fdb7739c04ccc863fa62c4cc06840b13fe03464c000f2cf3f022e80c02257e13f5d9c8fc07890e43f689f9fc09e74d93f9769afc02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0c0ef29c0a7c6a6c0698c2bc09dc396c07cfe25c06ff986c0458d19c09c6570c07ad806c0cb5a56c09a42eebf427948c0",
+              "us": "00000000379f383ce618463dfd04af3d88fdfa3d0a7b233e4f77493e94736f3ee7b78a3e0ab69d3e2eb4b03e50b2c33e74b0d63e95aee93eb8acfc3e6dd5073f7f54113f90d31a3fa152243fb3d12d3fc450373fd6cf403fe54e4a3ff8cd533f094d5d3f19cc663f2a4b703f3bca793f0000803f",
+              "length": 1096292437,
+              "n": 29
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+            "metadata": "0a0101460082"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000055b390c0dc7fce3f9c939e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "37c9603faa2044c04ccc863fa62c4cc06840b13fe03464c000f2cf3f022e80c02257e13f5d9c8fc07890e43f689f9fc09e74d93f9769afc02a92c03f3b30bec09c289b3fa235cbc04d30563fa9d2d5c03c27cb3e107fddc0f4f9aebd58d8e1c096f715bfada6e2c07e248abfb7dfdfc0063fc5bf1ba7d9c0a654f9bfb64cd0c061e411c09848c4c02f3d21c00535b6c0c0ef29c0a7c6a6c0698c2bc09dc396c07cfe25c06ff986c0101d23c0b38d83c0",
+              "us": "00000000833ab33c1bf8943d7a21fd3d7aa5323e38ba663e7b678d3ede71a73e397cc13e9886db3ef690f53eaacd073fdad2143f08d8213f37dd2e3f67e23b3f97e7483fc4ec553ff5f1623f24f76f3f52fc7c3f0000803f",
+              "length": 1092459528,
+              "n": 22
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "3cd54b40af208c3e33333340bee4f183",
+            "metadata": "0a0101460082"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000055b390c0dc7fce3f9c939e4000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 11,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "1cae39c0f20b81c01cae39c048df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c01cae39c0f20b81c0",
+                      "us": "000000007b996d3e0000003f5f663b3f0000803f",
+                      "length": 1095873179,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f00000000149792bfdbc720c023c5604012a04240",
+                    "scalar_bits": "7d7f1040074314be33333340a98cf820",
+                    "metadata": "0b01024d038f"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "48cba7bf49df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c012c69ebff20b81c0",
+                      "us": "000000004565903e29733a3f0000803f",
+                      "length": 1088031591,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "7d7f1040074314be33333340a98cf820",
+                    "metadata": "0b01024d038f"
+                  },
+                  "wall": 9,
+                  "range": "01000000adedb43e258f5f3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "48cba7bf49df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c012c69ebff20b81c0",
+                      "us": "000000004565903e29733a3f0000803f",
+                      "length": 1088031591,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "7d7f1040074314be33333340a98cf820",
+                    "metadata": "0b01024d038f"
+                  },
+                  "wall": 9,
+                  "color": 11
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "",
+        "owner_pointer": 536891392,
+        "owner_count": 1
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "1cae39c0f20b81c01cae39c048df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c01cae39c0f20b81c0",
+              "us": "000000007b996d3e0000003f5f663b3f0000803f",
+              "length": 1095873179,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7d7f1040074314be33333340a98cf820",
+            "metadata": "0b01024d008f"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "110000000000000009000000000000006573d3bfa9b2a73fbe1890bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "1cae39c013c77fc01cae39c048df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c084d938c0f20b81c0",
+              "us": "000000000ba86b3e848bff3e61653b3f0000803f",
+              "length": 1095821633,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7d7f1040074314be33333340a98cf820",
+            "metadata": "0b01024d008f"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "110000000000000009000000000000006573d3bfa9b2a73fbe1890bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "1cae39c05c916fc01cae39c048df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c06a0933c0f20b81c0",
+              "us": "0000000045a25d3ee942fc3e3a5e3b3f0000803f",
+              "length": 1095460812,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7d7f1040074314be33333340a98cf820",
+            "metadata": "0b01024d008f"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "110000000000000009000000000000006573d3bfa9b2a73fbe1890bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "1cae39c03ec7dbbf1cae39c048df7dbf1e5c1c3f48df7dbf1e5c1c3ff20b81c0908804c0f20b81c0",
+              "us": "00000000e624953d05d3d93e2e133b3f0000803f",
+              "length": 1092574246,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7d7f1040074314be33333340a98cf820",
+            "metadata": "0b01024d008f"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "110000000000000009000000000000006573d3bfa9b2a73fbe1890bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 12,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "01000000138d2dd399828b7825e3d53d6fa37657cf1723d9c2a9a1acf774e2f6215ff9f267c095d0d07dd26b7276756e0900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "56c5aa40fc6616c019e89b407a8822c0ba298c4091d128c0f0377840110829c0a5a65840082a23c0a6c33a40c06d17c074a31f40c73f06c0124108402a7ee0bfc6e9ea3f8d6eacbf9ad9cf3fbc6464bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e25408671a24050671c40edc2b04057e10d404272bd406d66f43f2e0ac840fe25c43fa928d040e0bf8c3f9682d5402f69203f72e6d740e6a2053e1d3ed7401bd5bdbeae8fd3404fed5bbf36fdcc40718da8bf84c3c340821bddbff037b84058dd04c052c5aa40006716c0",
+                      "us": "00000000f23df83c413e783d9c2eba3d173ef83dca261b3e912e3a3e5836593e173e783eeaa28b3ec9269b3eb2aaaa3e912eba3e70b2c93e4f36d93e33bae83e113ef83ef7e0033fe9a20b3fd964133fcb261b3fbae8223facaa2a3f9c6c323f8c2e3a3f7cf0413f6db2493f5e74513f4f36593f40f8603f30ba683f207c703f113e783f0000803f",
+                      "length": 1099199057,
+                      "n": 34
+                    },
+                    "enclosure": "000000002894834021674dbc23e428400e498bbf",
+                    "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+                    "metadata": "0c000054009c"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "5327ca3f44c136bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e254080889f401f121e40",
+                      "us": "00000000eccd623dfa2b123e3ea46b3e428ea23e654acf3e9606fc3e5c61143f6dbf2a3f861d413f977b573fafd96d3f0000803f",
+                      "length": 1085783563,
+                      "n": 13
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+                    "metadata": "0c000054009c"
+                  },
+                  "wall": 9,
+                  "range": "01000000a151913e3e72213f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "5327ca3f44c136bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e254080889f401f121e40",
+                      "us": "00000000eccd623dfa2b123e3ea46b3e428ea23e654acf3e9606fc3e5c61143f6dbf2a3f861d413f977b573fafd96d3f0000803f",
+                      "length": 1085783563,
+                      "n": 13
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+                    "metadata": "0c000054009c"
+                  },
+                  "wall": 9,
+                  "color": 12
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "56c5aa40fc6616c019e89b407a8822c0ba298c4091d128c0f0377840110829c0a5a65840082a23c0a6c33a40c06d17c074a31f40c73f06c0124108402a7ee0bfc6e9ea3f8d6eacbf9ad9cf3fbc6464bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e25408671a24050671c40edc2b04057e10d404272bd406d66f43f2e0ac840fe25c43fa928d040e0bf8c3f9682d5402f69203f72e6d740e6a2053e1d3ed7401bd5bdbeae8fd3404fed5bbf36fdcc40718da8bf84c3c340821bddbff037b84058dd04c052c5aa40006716c0",
+              "us": "00000000f23df83c413e783d9c2eba3d173ef83dca261b3e912e3a3e5836593e173e783eeaa28b3ec9269b3eb2aaaa3e912eba3e70b2c93e4f36d93e33bae83e113ef83ef7e0033fe9a20b3fd964133fcb261b3fbae8223facaa2a3f9c6c323f8c2e3a3f7cf0413f6db2493f5e74513f4f36593f40f8603f30ba683f207c703f113e783f0000803f",
+              "length": 1099199057,
+              "n": 34
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+            "metadata": "0c000054009c"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000fbc2c1bf48ec2e3fca9d15c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "e4aea9403a4a17c019e89b407a8822c0ba298c4091d128c0f0377840110829c0a5a65840082a23c0a6c33a40c06d17c074a31f40c73f06c0124108402a7ee0bfc6e9ea3f8d6eacbf9ad9cf3fbc6464bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e25408671a24050671c40edc2b04057e10d404272bd406d66f43f2e0ac840fe25c43fa928d040e0bf8c3f9682d5402f69203f72e6d740e6a2053e1d3ed7401bd5bdbeae8fd3404fed5bbf36fdcc40718da8bf84c3c340821bddbff037b84058dd04c0240dac407abb14c0",
+              "us": "00000000d241e73c2a63703d8d92b63d85f3f43d3faa193ec4da383e4a0b583ec73b773e21368b3e5fce9a3ea866aa3ee5feb93e2397c93e612fd93ea5c7e83ee35ff83e10fc033f32c80b3f5194133f72601b3f922c233fb3f82a3fd3c4323ff3903a3f125d423f33294a3f53f5513f74c1593f948d613fb459693fd425713ff4f1783f0000803f",
+              "length": 1099154765,
+              "n": 34
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+            "metadata": "0c000054009c"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000fbc2c1bf48ec2e3fca9d15c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "c811a240ea801dc019e89b407a8822c0ba298c4091d128c0f0377840110829c0a5a65840082a23c0a6c33a40c06d17c074a31f40c73f06c0124108402a7ee0bfc6e9ea3f8d6eacbf9ad9cf3fbc6464bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e25408671a24050671c40edc2b04057e10d404272bd406d66f43f2e0ac840fe25c43fa928d040e0bf8c3f9682d5402f69203f72e6d740e6a2053e1d3ed7401bd5bdbeae8fd3404fed5bbf36fdcc40718da8bf84c3c340821bddbff037b84058dd04c0dd03b540d60a09c0",
+              "us": "000000007d9b563c880e373def3a9c3d9aeedc3d23d10e3e022b2f3ee2844f3eb8de6f3e461c883e3149983e2676a83e10a3b83efbcfc83ee5fcd83ed629e93ec156f93ed6c1043f4dd80c3fc3ee143f3b051d3fb11b253f29322d3f9e48353f155f3d3f8b75453f028c4d3f79a2553fefb85d3f66cf653fdde56d3f53fc753fcb127e3f0000803f",
+              "length": 1098781771,
+              "n": 34
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+            "metadata": "0c000054009c"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000fbc2c1bf48ec2e3fca9d15c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "0c3c4440ba251bc0a6c33a40c06d17c074a31f40c73f06c0124108402a7ee0bfc6e9ea3f8d6eacbf9ad9cf3fbc6464bf024cc03fb891cfbeead0bc3f50afc33d8c88c53f58b4173f3822da3fb9ac883f54dff93fd87fc03f24cd1140154ff13f6ce82a405aab0c403e59474032921b407e18664036d22440ce048340c915284090029340b93e25408671a24050671c40edc2b04057e10d404272bd406d66f43f2e0ac840fe25c43fa928d040e0bf8c3f9682d5402f69203fc1acd740c088353e",
+              "us": "00000000ca9e693cf4b8723d1c85d53dd1d6183e14eb463e57ff743edc89913efd93a83e1e9ebf3e40a8d63e6ab2ed3e465e023f56e30d3f6a68193f7bed243f8f72303fa0f73b3fb47c473fc401533fd7865e3fe80b6a3ffb90753f0000803f",
+              "length": 1093820883,
+              "n": 24
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a4d22240897b673f333333409fbb75f3",
+            "metadata": "0c000054009c"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000fbc2c1bf48ec2e3fca9d15c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 13,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "0100000050c85996d3802a08044e5a0bf4d112ba65df5e606c7785e2de456619cc1f3888601efe0d0e325a731180a6140900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "2ce30f4078d3f73f2ce30f4070aec240ce3fac4070aec240ce3fac4078d3f73f2ce30f4078d3f73f",
+                      "us": "00000000b5ce913e0000003f5ae7483f0000803f",
+                      "length": 1097402314,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f0000000064317440a75180406f9c484092b98440",
+                    "scalar_bits": "89a01b406ed21cbf333333406f970213",
+                    "metadata": "0d00015b01a9"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "63f7654070aec240ce3fac4070aec240ce3fac4078d3f73f1222864079d3f73f",
+                      "us": "000000007f89803e1739553f0000803f",
+                      "length": 1088691050,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "89a01b406ed21cbf333333406f970213",
+                    "metadata": "0d00015b01a9"
+                  },
+                  "wall": 9,
+                  "range": "01000000db16c13e20d75d3f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "63f7654070aec240ce3fac4070aec240ce3fac4078d3f73f1222864079d3f73f",
+                      "us": "000000007f89803e1739553f0000803f",
+                      "length": 1088691050,
+                      "n": 4
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "89a01b406ed21cbf333333406f970213",
+                    "metadata": "0d00015b01a9"
+                  },
+                  "wall": 9,
+                  "color": 13
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "2ce30f4078d3f73f2ce30f4070aec240ce3fac4070aec240ce3fac4078d3f73f2ce30f4078d3f73f",
+              "us": "00000000b5ce913e0000003f5ae7483f0000803f",
+              "length": 1097402314,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "89a01b406ed21cbf333333406f970213",
+            "metadata": "0d00015b01a9"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000d51765bf97fbe83f6c4b08c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "2ce30f409651fd3f2ce30f4070aec240ce3fac4070aec240ce3fac4078d3f73fefdb104078d3f73f",
+              "us": "0000000077e0903ebb82ff3e76f3483f0000803f",
+              "length": 1097341397,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "89a01b406ed21cbf333333406f970213",
+            "metadata": "0d00015b01a9"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000d51765bf97fbe83f6c4b08c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "2ce30f4031e211402ce30f4070aec240ce3fac4070aec240ce3fac4078d3f73f3ca9174078d3f73f",
+              "us": "00000000cf258a3ef1f8fb3e014b493f0000803f",
+              "length": 1096914985,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "89a01b406ed21cbf333333406f970213",
+            "metadata": "0d00015b01a9"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000d51765bf97fbe83f6c4b08c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "2ce30f40b4d695402ce30f4070aec240ce3fac4070aec240ce3fac4078d3f73fa8134e4078d3f73f",
+              "us": "00000000994c043e741dd63eb0f34c3f0000803f",
+              "length": 1093503680,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "89a01b406ed21cbf333333406f970213",
+            "metadata": "0d00015b01a9"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000d51765bf97fbe83f6c4b08c000000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 14,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "010000002478681671ab11820437b5f59764c49bba841b6590f1be67a52912b73bbf5835c13ce3e64b9b2c246ec165a80900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "0c5f8b40769077c0847e7840e6fd80c0f34b5940238984c0048439404e5f86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfeddcd240ffe3f8bfbaf9c940a80b17c0b8b3bf4070912fc0c629b440b0b945c0857ea740e84159c0f0d799408cef69c00a5f8b40789077c0",
+                      "us": "00000000cb3d8d3cc73d0d3dabdc533dc73d8d3d388db03dbedcd33d1b2cf73dd13d0d3e7fe51e3e428d303ef134423eb4dc533e6284653e252c773eee69843ecb3d8d3ea711963e84e59e3e60b9a73e3d8db03e1961b93ef534c23ed608cb3eaedcd33e8bb0dc3e6784e53e4858ee3e252cf73e0100003fef69043fddd3083fcb3d0d3fb9a7113fa711163f957b1a3f84e51e3f724f233f60b9273f4e232c3f3e8d303f2cf7343f1a61393f08cb3d3ff734423fe69e463fd4084b3fc2724f3fb1dc533f9f46583f8db05c3f7b1a613f6a84653f58ee693f47586e3f35c2723f222c773f12967b3f0000803f",
+                      "length": 1105719860,
+                      "n": 59
+                    },
+                    "enclosure": "000000003c8827408466d13ed4bb9340dfaa97bf",
+                    "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+                    "metadata": "0e01026202b6"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "a64e2940486d86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfed17d9409b1bc9bf",
+                      "us": "00000000b9a1293cb45d003d2a53563d1f24963ddb1ec13d6319ec3d108a0b3e5507213eb384363ef7014c3e557f613ea5fc763efb3c863ea4fb903e4dba9b3ef578a63e9e37b13e47f6bb3ef0b4c63e9e73d13e4132dc3eeaf0e63e92aff13e406efc3e7596033fc9f5083f1d550e3f72b4133fc613193f1a731e3f6fd2233fc331293f17912e3f6cf0333fc04f393f15af3e3f6a0e443fbf6d493f13cd4e3f672c543fbc8b593f11eb5e3f664a643fbaa9693f0e096f3f6368743fb7c7793f0b277f3f0000803f",
+                      "length": 1103007590,
+                      "n": 50
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+                    "metadata": "0e01026202b6"
+                  },
+                  "wall": 9,
+                  "range": "010000003aa4773dbacc613f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "a64e2940486d86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfed17d9409b1bc9bf",
+                      "us": "00000000b9a1293cb45d003d2a53563d1f24963ddb1ec13d6319ec3d108a0b3e5507213eb384363ef7014c3e557f613ea5fc763efb3c863ea4fb903e4dba9b3ef578a63e9e37b13e47f6bb3ef0b4c63e9e73d13e4132dc3eeaf0e63e92aff13e406efc3e7596033fc9f5083f1d550e3f72b4133fc613193f1a731e3f6fd2233fc331293f17912e3f6cf0333fc04f393f15af3e3f6a0e443fbf6d493f13cd4e3f672c543fbc8b593f11eb5e3f664a643fbaa9693f0e096f3f6368743fb7c7793f0b277f3f0000803f",
+                      "length": 1103007590,
+                      "n": 50
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+                    "metadata": "0e01026202b6"
+                  },
+                  "wall": 9,
+                  "color": 14
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "0c5f8b40769077c0847e7840e6fd80c0f34b5940238984c0048439404e5f86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfeddcd240ffe3f8bfbaf9c940a80b17c0b8b3bf4070912fc0c629b440b0b945c0857ea740e84159c0f0d799408cef69c00a5f8b40789077c0",
+              "us": "00000000cb3d8d3cc73d0d3dabdc533dc73d8d3d388db03dbedcd33d1b2cf73dd13d0d3e7fe51e3e428d303ef134423eb4dc533e6284653e252c773eee69843ecb3d8d3ea711963e84e59e3e60b9a73e3d8db03e1961b93ef534c23ed608cb3eaedcd33e8bb0dc3e6784e53e4858ee3e252cf73e0100003fef69043fddd3083fcb3d0d3fb9a7113fa711163f957b1a3f84e51e3f724f233f60b9273f4e232c3f3e8d303f2cf7343f1a61393f08cb3d3ff734423fe69e463fd4084b3fc2724f3fb1dc533f9f46583f8db05c3f7b1a613f6a84653f58ee693f47586e3f35c2723f222c773f12967b3f0000803f",
+              "length": 1105719860,
+              "n": 59
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+            "metadata": "0e01026200b6"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000f204fabecdf763bf34f02d3f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "f9f48a4088d977c0847e7840e6fd80c0f34b5940238984c0048439404e5f86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfeddcd240ffe3f8bfbaf9c940a80b17c0b8b3bf4070912fc0c629b440b0b945c0857ea740e84159c0f0d799408cef69c017258c40f6d576c0",
+              "us": "000000004a90893c43800b3d6438523d42788c3d52d4af3d7630d33d728cf63d4cf40c3e49a21e3e5b50303e59fe413e6bac533e695a653e7b08773e415b843e45328d3e4909963e4de09e3e51b7a73e558eb03e5965b93e5d3cc23e6613cb3e65ead33e69c1dc3e6d98e53e766fee3e7a46f73ebf0e003f417a043fc3e5083f45510d3fc7bc113f4928163fcb931a3f4dff1e3fcf6a233f51d6273fd3412c3f56ad303fd818353f5a84393fdcef3d3f5e5b423fe1c6463f63324b3fe59d4f3f6709543fe974583f6be05c3fed4b613f6fb7653ff1226a3f748e6e3ff6f9723f7765773ffad07b3f0000803f",
+              "length": 1105698670,
+              "n": 59
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+            "metadata": "0e01026200b6"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000f204fabecdf763bf34f02d3f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "7c0e88400dd979c0847e7840e6fd80c0f34b5940238984c0048439404e5f86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfeddcd240ffe3f8bfbaf9c940a80b17c0b8b3bf4070912fc0c629b440b0b945c0857ea740e84159c0f0d799408cef69c0678f914078bc71c0",
+              "us": "000000004e0f5f3c2e5dfe3c5e99463d1102873d74b7aa3deb6cce3d3a22f23dd9eb0a3e80c61c3e3ca12e3ee37b403e9f56523e4531643e010c763e59f3833eb2e08c3e0ace953e63bb9e3ebca8a73e1596b03e6e83b93ec670c23e245ecb3e784bd43ed138dd3e2926e63e8713ef3ee000f83e1c77003fc9ed043f7564093f21db0d3fce51123f7ac8163f273f1b3fd3b51f3f7f2c243f2ca3283fd8192d3f8690313f3207363fde7d3a3f8bf43e3f376b433fe5e1473f91584c3f3dcf503fea45553f96bc593f43335e3fefa9623f9b20673f48976b3ff50d703fa284743f4dfb783ffb717d3f0000803f",
+              "length": 1105550344,
+              "n": 59
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+            "metadata": "0e01026200b6"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000f204fabecdf763bf34f02d3f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "0ffe604057a983c0f34b5940238984c0048439404e5f86c01c861940e57a86c07e64f33f94db84c0c5cfb43f388681c09414703fb20979c0a027f73ee2cc6bc080bf573ddc7d5bc010d3b1be6a4d48c0746836bf547532c07ef484bff4361ac0e237a9bf91b6ffbfe891c7bf5f62c7bf30a7dfbfbf1a8cbf982ff1bf00231dbf70f6fbbf10f5f7bd68dbffbf017ac13ed0d2fcbf8890603fc0e5f2bf287eaf3f0432e2bf7242ed3fbce9cabfe16d1440b852adbfaacb3040fcc589bf44654b400c5c41bf06eb63400019cabe48137a4000c09b3ac8cd8640d804db3e96248f409849613f0cf59540f223ad3fb72a9b401789eb3ff4b59e407a8c15401e8ca040628a3540b4a7a0403f5e554063089f408aa8744009b39b40ac858940a7b19640bc15984044139040c0d8a540bdeb874068a5b24014a77c405055be40eace66405ac5c84098904e4038d6d140dc343440b46cd940d30a18400872df4007cef43f22d4e340b544b73fd985e6400d65703f167fe740d452e13ef0bce640e0a172bdab41e440e3950dbfbc14e0403c8f84bfaa42da408b28c0bfeddcd240ffe3f8bfbaf9c940a80b17c0b8b3bf4070912fc0c205b940f4643cc0",
+              "us": "000000000104993b9054c13c0e342e3dd5bd7b3de4a3a43db168cb3dac2df23d3c790c3eb9db1f3e203e333e9ea0463e03035a3e80656d3ef863803e31158a3e6ac6933ea3779d3edc28a73e15dab03e4e8bba3e873cc43ec4edcd3ef89ed73e3150e13e6a01eb3ea8b2f43ee163fe3e8d0a043f29e3083fc6bb0d3f6294123fff6c173f9b451c3f381e213fd4f6253f70cf2a3f0da82f3fa980343f4759393fe3313e3f800a433f1ce3473fb9bb4c3f5694513ff36c563f8f455b3f2c1e603fc8f6643f65cf693f01a86e3f9e80733f3a59783fd8317d3f0000803f",
+              "length": 1104363726,
+              "n": 55
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "4c0428405c1a8a3f333333406cd09f14",
+            "metadata": "0e01026200b6"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "11000000000000000900000000000000f204fabecdf763bf34f02d3f00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    },
+    {
+      "case": 15,
+      "actual_history_segment_stop": true,
+      "recording": {
+        "actual_segment_stop": true,
+        "upstream_selection": "resolved observed Wall/source/range/Roof context; full UI entry unclaimed",
+        "owners": [
+          {
+            "tag": 8,
+            "roof_payload": "01000000735e6f659e653281aa7bffcf556433d5c97fb2b8cdad87c4ffd886f58e278e914391f2261aa1522ded21f9370900000000000000"
+          },
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "kind": "state_change",
+                  "previous": {
+                    "curve": {
+                      "points": "8e530ec0c2c957c08e530ec048a661be142ea93f48a661be142ea93fc2c957c08e530ec0c2c957c0",
+                      "us": "00000000f5ed703e0000003f7d3b3c3f0000803f",
+                      "length": 1096174843,
+                      "n": 5
+                    },
+                    "enclosure": "010000000000803f0000000012f2e6be26e4e5bf98ea62405daf4940",
+                    "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+                    "metadata": "0f01006903c3"
+                  },
+                  "next": {
+                    "curve": {
+                      "points": "88c48bbe48a661be142ea93f48a661be142ea93ffb0946c0",
+                      "us": "000000006ab6b63e0000803f",
+                      "length": 1083113368,
+                      "n": 3
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+                    "metadata": "0f01006903c3"
+                  },
+                  "wall": 9,
+                  "range": "01000000340ac33e82ee363f"
+                }
+              ],
+              [
+                {
+                  "kind": "delete",
+                  "source": {
+                    "curve": {
+                      "points": "88c48bbe48a661be142ea93f48a661be142ea93ffb0946c0",
+                      "us": "000000006ab6b63e0000803f",
+                      "length": 1083113368,
+                      "n": 3
+                    },
+                    "enclosure": "02000000",
+                    "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+                    "metadata": "0f01006903c3"
+                  },
+                  "wall": 9,
+                  "color": 15
+                }
+              ]
+            ]
+          }
+        ],
+        "delete_roof_events": "110000000000000009000000000000000000000000000000",
+        "owner_pointer": 536891392,
+        "owner_count": 2
+      },
+      "actual_animation_returns": 6,
+      "steps": [
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "8e530ec0c2c957c08e530ec048a661be142ea93f48a661be142ea93fc2c957c08e530ec0c2c957c0",
+              "us": "00000000f5ed703e0000003f7d3b3c3f0000803f",
+              "length": 1096174843,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+            "metadata": "0f01006900c3"
+          },
+          "phase": 0,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000068a40d40a56ff83f982be8bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "8e530ec0ad3c55c08e530ec048a661be142ea93f48a661be142ea93fc2c957c0396a0cc0c2c957c0",
+              "us": "000000007b206f3ed6ceff3e9a733c3f0000803f",
+              "length": 1096101729,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+            "metadata": "0f01006900c3"
+          },
+          "phase": 1040187392,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000068a40d40a56ff83f982be8bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "8e530ec01c6143c08e530ec048a661be142ea93f48a661be142ea93fc2c957c0d011febfc2c957c0",
+              "us": "00000000d1f5613ec667fe3e780d3e3f0000803f",
+              "length": 1095589928,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+            "metadata": "0f01006900c3"
+          },
+          "phase": 1048576000,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000068a40d40a56ff83f982be8bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "source": {
+            "curve": {
+              "points": "8e530ec0531252bf8e530ec048a661be142ea93f48a661be142ea93fc2c957c0f4f29fbec2c957c0",
+              "us": "000000002ca3893d5eaaed3e1b29513f0000803f",
+              "length": 1091495524,
+              "n": 5
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "dd438e3fc473e83f33333340bc239c64",
+            "metadata": "0f01006900c3"
+          },
+          "phase": 1056964608,
+          "finished": 0,
+          "buffer_count": 1,
+          "notifications": [
+            [
+              536871008,
+              9
+            ]
+          ],
+          "audio": "1100000000000000090000000000000068a40d40a56ff83f982be8bf00000000",
+          "audio_count": 1
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [
+            [
+              536871056,
+              9
+            ]
+          ],
+          "audio": "",
+          "audio_count": 0
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "source": null,
+          "phase": 1065353216,
+          "finished": 1,
+          "buffer_count": 0,
+          "notifications": [],
+          "audio": "",
+          "audio_count": 0
+        }
+      ]
+    }
+  ],
+  "scope": "Resolved actual wall_eraser_bulldoze recording business segment1409e1a11->1409df738 asserts real stop, not a whole UI entry RET claim. All private roofquery/snapshot/slice/Compound/History instructions original; std/ECS carriers explicit. Full animate_wall_bulldoze140ac27e0 entry->RET compares source/metadata/phase/buffer removal/audio. Upstream UI/hit selection and resolved range/anchor choice remain outside this proof."
+}

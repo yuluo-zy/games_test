@@ -1,0 +1,147 @@
+141940a40: push r15
+141940a42: push r14
+141940a44: push r12
+141940a46: push rsi
+141940a47: push rdi
+141940a48: push rbp
+141940a49: push rbx
+141940a4a: sub rsp, 0xe0
+141940a51: movaps xmmword ptr [rsp + 0xd0], xmm11
+141940a5a: movaps xmmword ptr [rsp + 0xc0], xmm10
+141940a63: movaps xmmword ptr [rsp + 0xb0], xmm9
+141940a6c: movaps xmmword ptr [rsp + 0xa0], xmm8
+141940a75: movaps xmmword ptr [rsp + 0x90], xmm7
+141940a7d: movaps xmmword ptr [rsp + 0x80], xmm6
+141940a85: mov rsi, r9
+141940a88: mov rax, qword ptr [rcx + 0x10]
+141940a8c: cmp rax, 1
+141940a90: jbe 0x141940cdb
+141940a96: movaps xmm6, xmm1
+141940a99: mov rdi, rcx
+141940a9c: mov rdx, qword ptr [rcx + 8]
+141940aa0: lea rax, [rdx + rax*8]
+141940aa4: mov qword ptr [rsp + 0x28], rax
+141940aa9: lea r15, [rsp + 0x30]
+141940aae: mov dword ptr [rsp + 0x30], 0
+141940ab6: mov qword ptr [rsp + 0x48], 0
+141940abf: unpcklps xmm6, xmm2
+141940ac2: xorps xmm8, xmm8
+141940ac6: movss xmm11, dword ptr [rip + 0xfe4eb1]
+141940acf: xor ecx, ecx
+141940ad1: movss xmm10, dword ptr [rip + 0x10195fe]
+141940ada: movss xmm7, dword ptr [rip + 0xfe4e22]
+141940ae2: lea r12, [rsp + 0x20]
+141940ae7: lea rbx, [rsp + 0x6c]
+141940aec: lea r14, [rsp + 0x50]
+141940af1: xor eax, eax
+141940af3: xor ebp, ebp
+141940af5: xorps xmm9, xmm9
+141940af9: jmp 0x141940b13
+141940afb: nop dword ptr [rax + rax]
+141940b00: mov rdx, qword ptr [rsp + 0x20]
+141940b05: movaps xmm1, xmm0
+141940b08: cmp rdx, qword ptr [rsp + 0x28]
+141940b0d: je 0x141940c27
+141940b13: lea r8, [rdx + 8]
+141940b17: mov qword ptr [rsp + 0x20], r8
+141940b1c: movsd xmm0, qword ptr [rdx]
+141940b20: test al, 1
+141940b22: je 0x141940b40
+141940b24: movaps xmm2, xmm1
+141940b27: movlhps xmm2, xmm0
+141940b2a: movups xmmword ptr [rsp + 0x34], xmm2
+141940b2f: mov rdx, rcx
+141940b32: jmp 0x141940b8c
+141940b34: nop word ptr cs:[rax + rax]
+141940b40: mov dword ptr [rsp + 0x58], 1
+141940b48: movlps qword ptr [rsp + 0x5c], xmm0
+141940b4d: mov qword ptr [rsp + 0x50], r12
+141940b52: mov rcx, rbx
+141940b55: mov rdx, r14
+141940b58: call 0x1412aff00
+141940b5d: mov eax, dword ptr [rsp + 0x7c]
+141940b61: mov dword ptr [r15 + 0x10], eax
+141940b65: movups xmm0, xmmword ptr [rsp + 0x6c]
+141940b6a: movups xmmword ptr [r15], xmm0
+141940b6e: mov eax, dword ptr [rsp + 0x30]
+141940b72: cmp eax, 1
+141940b75: jne 0x141940c27
+141940b7b: movsd xmm1, qword ptr [rsp + 0x34]
+141940b81: movsd xmm0, qword ptr [rsp + 0x3c]
+141940b87: mov rdx, qword ptr [rsp + 0x48]
+141940b8c: lea rcx, [rdx + 1]
+141940b90: mov qword ptr [rsp + 0x48], rcx
+141940b95: movaps xmm2, xmm6
+141940b98: subps xmm2, xmm1
+141940b9b: movaps xmm3, xmm0
+141940b9e: subps xmm3, xmm1
+141940ba1: mulps xmm2, xmm3
+141940ba4: movshdup xmm4, xmm2
+141940ba8: addss xmm4, xmm2
+141940bac: mulps xmm3, xmm3
+141940baf: movshdup xmm2, xmm3
+141940bb3: addss xmm2, xmm3
+141940bb7: maxss xmm2, xmm10
+141940bbc: divss xmm4, xmm2
+141940bc0: xorps xmm3, xmm3
+141940bc3: maxss xmm3, xmm4
+141940bc7: movaps xmm2, xmm7
+141940bca: minss xmm2, xmm3
+141940bce: movaps xmm3, xmm7
+141940bd1: subss xmm3, xmm2
+141940bd5: movsldup xmm3, xmm3
+141940bd9: mulps xmm3, xmm1
+141940bdc: movsldup xmm1, xmm2
+141940be0: mulps xmm1, xmm0
+141940be3: addps xmm1, xmm3
+141940be6: movaps xmm3, xmm6
+141940be9: subps xmm3, xmm1
+141940bec: mulps xmm3, xmm3
+141940bef: movshdup xmm1, xmm3
+141940bf3: addss xmm1, xmm3
+141940bf7: sqrtss xmm1, xmm1
+141940bfb: ucomiss xmm11, xmm1
+141940bff: jbe 0x141940b00
+141940c05: ucomiss xmm2, xmm8
+141940c09: jb 0x141940cc3
+141940c0f: ucomiss xmm7, xmm2
+141940c12: jb 0x141940cc3
+141940c18: movaps xmm9, xmm2
+141940c1c: mov ebp, edx
+141940c1e: movaps xmm11, xmm1
+141940c22: jmp 0x141940b00
+141940c27: mov ecx, ebp
+141940c29: mov rdx, qword ptr [rdi + 0x28]
+141940c2d: cmp rdx, rcx
+141940c30: jbe 0x141940d17
+141940c36: lea rax, [rcx + 1]
+141940c3a: cmp rax, rdx
+141940c3d: jae 0x141940d1f
+141940c43: mov rax, qword ptr [rdi + 0x20]
+141940c47: subss xmm7, xmm9
+141940c4c: movsd xmm0, qword ptr [rax + rcx*4]
+141940c51: unpcklps xmm7, xmm9
+141940c55: mulps xmm7, xmm0
+141940c58: movshdup xmm0, xmm7
+141940c5c: addss xmm0, xmm7
+141940c60: ucomiss xmm0, xmm0
+141940c63: jp 0x141940cef
+141940c69: movd eax, xmm0
+141940c6d: and eax, 0x7fffffff
+141940c72: cmp eax, 0x7f800000
+141940c77: je 0x141940d03
+141940c7d: movaps xmm6, xmmword ptr [rsp + 0x80]
+141940c85: movaps xmm7, xmmword ptr [rsp + 0x90]
+141940c8d: movaps xmm8, xmmword ptr [rsp + 0xa0]
+141940c96: movaps xmm9, xmmword ptr [rsp + 0xb0]
+141940c9f: movaps xmm10, xmmword ptr [rsp + 0xc0]
+141940ca8: movaps xmm11, xmmword ptr [rsp + 0xd0]
+141940cb1: add rsp, 0xe0
+141940cb8: pop rbx
+141940cb9: pop rbp
+141940cba: pop rdi
+141940cbb: pop rsi
+141940cbc: pop r12
+141940cbe: pop r14
+141940cc0: pop r15
+141940cc2: ret 

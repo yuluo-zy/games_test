@@ -1,0 +1,34 @@
+[
+  {
+    "tool": "open_database",
+    "args": {
+      "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe",
+      "database_id": "ai_tools_b",
+      "run_auto_analysis": false
+    },
+    "timeout_seconds": 180
+  },
+  {
+    "tool": "wait_for_analysis",
+    "args": {
+      "database": "ai_tools_b"
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "decompile_function",
+    "args": {
+      "database": "ai_tools_b",
+      "address": "0x14090e510"
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "close_database",
+    "args": {
+      "database": "ai_tools_b",
+      "save": false
+    },
+    "timeout_seconds": 120
+  }
+]

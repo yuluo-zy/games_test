@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-tools-52",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "660f917f279366ed15-0",
+  "cache_key": "51ce093702089458d378844612e840232fc35839f1231773588dc3364986ec7b",
+  "status": "ok",
+  "range": {
+    "rva": "0x5f72f0",
+    "length": 9,
+    "start_va": "0x1405f72f0",
+    "stop_va_exclusive": "0x1405f72f9",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x1405f72f0",
+      "rva": "0x5f72f0",
+      "bytes": "4883791800",
+      "size": 5,
+      "assembly": "cmpq\t$0x0, 0x18(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1405f72f5",
+      "rva": "0x5f72f5",
+      "bytes": "0f94c0",
+      "size": 3,
+      "assembly": "sete\t%al",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1405f72f8",
+      "rva": "0x5f72f8",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x5f72f0",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/rust/deps\\hashbrown-0.14.3\\src\\map.rs",
+          "FunctionName": "hashbrown::map::HashMap::is_empty",
+          "Line": 848,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6\\library\\std\\src\\collections\\hash\\map.rs",
+          "FunctionName": "std::collections::hash::map::HashMap::is_empty",
+          "Line": 589,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/history/decorator_edit.rs",
+          "FunctionName": "country_core::resources::history::decorator_edit::DecoratorHistoryDiff::is_empty",
+          "Line": 362,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/history/mod.rs",
+          "FunctionName": "country_core::resources::history::is_decorator_history_diff_empty::h35f13fc3b4de192f",
+          "Line": 240,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n1405f72f0: 48 83 79 18 00              \tcmpq\t$0x0, 0x18(%rcx)\n1405f72f5: 0f 94 c0                    \tsete\t%al\n1405f72f8: c3                          \tretq\n",
+  "original_target_executed": false
+}

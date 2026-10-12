@@ -1,0 +1,82 @@
+1403b4ca0 push rsi
+1403b4ca1 push rdi
+1403b4ca2 push rbx
+1403b4ca3 sub rsp, 0x40
+1403b4ca7 mov rsi, rcx
+1403b4caa mov rdi, qword ptr [rdx]
+1403b4cad mov rax, qword ptr [rdi + 0x10]
+1403b4cb1 cmp qword ptr [rdi], rax
+1403b4cb4 je 0x1403b4dd3
+1403b4cba mov rcx, qword ptr [rdi + 8]
+1403b4cbe mov byte ptr [rcx + rax], 0x7b
+1403b4cc2 inc rax
+1403b4cc5 mov qword ptr [rdi + 0x10], rax
+1403b4cc9 mov qword ptr [rsp + 0x30], rdx
+1403b4cce mov byte ptr [rsp + 0x38], 1
+1403b4cd3 lea rdx, [rip + 0x2617d26]
+1403b4cda lea rcx, [rsp + 0x30]
+1403b4cdf mov r8d, 3
+1403b4ce5 mov r9, rsi
+1403b4ce8 call 0x1404bdc80
+1403b4ced test rax, rax
+1403b4cf0 jne 0x1403b4dcb
+1403b4cf6 lea r9, [rsi + 4]
+1403b4cfa lea rdx, [rip + 0x2617d02]
+1403b4d01 lea rcx, [rsp + 0x30]
+1403b4d06 mov r8d, 5
+1403b4d0c call 0x1404bdc80
+1403b4d11 test rax, rax
+1403b4d14 jne 0x1403b4dcb
+1403b4d1a lea r9, [rsi + 8]
+1403b4d1e lea rdx, [rip + 0x2617ce3]
+1403b4d25 lea rcx, [rsp + 0x30]
+1403b4d2a mov r8d, 8
+1403b4d30 call 0x1404b8bd0
+1403b4d35 test rax, rax
+1403b4d38 jne 0x1403b4dcb
+1403b4d3e lea r9, [rsi + 0x14]
+1403b4d42 lea rdx, [rip + 0x2617cc7]
+1403b4d49 lea rcx, [rsp + 0x30]
+1403b4d4e mov r8d, 0x15
+1403b4d54 call 0x1404bdc80
+1403b4d59 test rax, rax
+1403b4d5c jne 0x1403b4dcb
+1403b4d5e lea r9, [rsi + 0x1c]
+1403b4d62 lea rdx, [rip + 0x2617cbc]
+1403b4d69 lea rcx, [rsp + 0x30]
+1403b4d6e mov r8d, 0xc
+1403b4d74 call 0x1404bdc80
+1403b4d79 test rax, rax
+1403b4d7c jne 0x1403b4dcb
+1403b4d7e add rsi, 0x20
+1403b4d82 lea rdx, [rip + 0x2617ca8]
+1403b4d89 lea rcx, [rsp + 0x30]
+1403b4d8e mov r8d, 0xa
+1403b4d94 mov r9, rsi
+1403b4d97 call 0x1404bdc80
+1403b4d9c test rax, rax
+1403b4d9f jne 0x1403b4dcb
+1403b4da1 cmp byte ptr [rsp + 0x38], 0
+1403b4da6 je 0x1403b4dc9
+1403b4da8 mov rax, qword ptr [rsp + 0x30]
+1403b4dad mov rcx, qword ptr [rax]
+1403b4db0 lea rdx, [rip + 0x2617aa9]
+1403b4db7 lea r9, [rip + 0x2618032]
+1403b4dbe mov r8d, 1
+1403b4dc4 call 0x1402b5870
+1403b4dc9 xor eax, eax
+1403b4dcb add rsp, 0x40
+1403b4dcf pop rbx
+1403b4dd0 pop rdi
+1403b4dd1 pop rsi
+1403b4dd2 ret 
+1403b4dd3 mov qword ptr [rsp + 0x20], 1
+1403b4ddc mov r8d, 1
+1403b4de2 mov r9d, 1
+1403b4de8 mov rcx, rdi
+1403b4deb mov rbx, rdx
+1403b4dee mov rdx, rax
+1403b4df1 call 0x1428a29e0
+1403b4df6 mov rdx, rbx
+1403b4df9 mov rax, qword ptr [rdi + 0x10]
+1403b4dfd jmp 0x1403b4cba

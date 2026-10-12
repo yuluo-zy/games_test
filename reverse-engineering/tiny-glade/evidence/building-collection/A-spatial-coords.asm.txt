@@ -1,0 +1,46 @@
+1405d36f0 push rsi
+1405d36f1 push rdi
+1405d36f2 push rbx
+1405d36f3 sub rsp, 0x40
+1405d36f7 movaps xmmword ptr [rsp + 0x30], xmm7
+1405d36fc movaps xmmword ptr [rsp + 0x20], xmm6
+1405d3701 movss xmm3, dword ptr [rcx + 0x50]
+1405d3706 movss xmm4, dword ptr [rcx + 0x54]
+1405d370b movss xmm6, dword ptr [rip + 0x1b76cf1]
+1405d3713 movaps xmm0, xmm3
+1405d3716 mulss xmm0, xmm6
+1405d371a mulss xmm6, xmm4
+1405d371e addss xmm0, xmm1
+1405d3722 xorps xmm1, xmm1
+1405d3725 cvtsi2ss xmm1, dword ptr [rcx + 0x48]
+1405d372a addss xmm6, xmm2
+1405d372e xorps xmm2, xmm2
+1405d3731 cvtsi2ss xmm2, dword ptr [rcx + 0x4c]
+1405d3736 divss xmm3, xmm1
+1405d373a divss xmm0, xmm3
+1405d373e divss xmm4, xmm2
+1405d3742 divss xmm6, xmm4
+1405d3746 call 0x142144d70
+1405d374b cvttss2si esi, xmm0
+1405d374f movss xmm7, dword ptr [rip + 0x1bb0a49]
+1405d3757 ucomiss xmm0, xmm7
+1405d375a mov edi, 0x7fffffff
+1405d375f cmova esi, edi
+1405d3762 xor ebx, ebx
+1405d3764 ucomiss xmm0, xmm0
+1405d3767 cmovp esi, ebx
+1405d376a movaps xmm0, xmm6
+1405d376d call 0x142144d70
+1405d3772 cvttss2si edx, xmm0
+1405d3776 ucomiss xmm0, xmm7
+1405d3779 cmova edx, edi
+1405d377c ucomiss xmm0, xmm0
+1405d377f cmovp edx, ebx
+1405d3782 mov eax, esi
+1405d3784 movaps xmm6, xmmword ptr [rsp + 0x20]
+1405d3789 movaps xmm7, xmmword ptr [rsp + 0x30]
+1405d378e add rsp, 0x40
+1405d3792 pop rbx
+1405d3793 pop rdi
+1405d3794 pop rsi
+1405d3795 ret 

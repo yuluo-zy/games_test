@@ -8,8 +8,13 @@ publish = false
 
 [dependencies]
 fastrand = "=1.8.0"
+perchance = "=0.4.0"
 glam = "=0.29.3"
 half = "=2.4.1"
+tg-history = { path = "crates/tg-history" }
+rapier3d = { git = "https://github.com/PounceLight/rapier.git", rev = "7b5ece73c45a4d39bb983c48c283e773d7241050" }
+parry3d = "=0.17.0"
+slotmap = "=1.0.6"
 
 [features]
 default = ["library"]
@@ -26,4 +31,4 @@ path = "src/main.rs"
 debug = true
 
 [workspace]
-members = ["."]
+members = [".", "crates/tg-history", "crates/tg-building-runtime"]

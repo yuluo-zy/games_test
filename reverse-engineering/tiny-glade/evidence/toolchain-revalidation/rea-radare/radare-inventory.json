@@ -1,0 +1,929 @@
+{
+  "kind": "radare",
+  "label": "inventory",
+  "started": "2026-10-11T12:10:01.454Z",
+  "calls": [],
+  "ok": true,
+  "stderr": "INFO: [R2MCP] r2mcp starting\nINFO: [R2MCP] sandbox grain: exec,socket\nINFO: Radare2 core initialized\n",
+  "server": {
+    "name": "Radare2 MCP Connector",
+    "version": "1.8.8"
+  },
+  "tools": [
+    {
+      "name": "open_file",
+      "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path to the file to open"
+          },
+          "baddr": {
+            "type": "string",
+            "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+          },
+          "arch": {
+            "type": "string",
+            "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+          },
+          "bits": {
+            "type": "string",
+            "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+          },
+          "cpu": {
+            "type": "string",
+            "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "run_javascript",
+      "description": "Executes JavaScript code using radare2's qjs runtime",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "The JavaScript code to execute"
+          }
+        },
+        "required": [
+          "script"
+        ]
+      }
+    },
+    {
+      "name": "run_command",
+      "description": "Executes a raw radare2 command directly",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The radare2 command to execute"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    },
+    {
+      "name": "sql",
+      "description": "Runs one SQL statement through a loaded SQL core plugin such as r2xsql; supports reads and writes",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SQL statement to pass to the loaded SQL core plugin (r2xsql)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "run_script",
+      "description": "Runs a local radare2 command script file through r2's command-file API. The path must satisfy MCP path policy and the active r2 sandbox.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Absolute path to the radare2 script file to execute"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "close_file",
+      "description": "Close the currently open file",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_functions",
+      "description": "Lists all functions discovered during analysis",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "only_named": {
+            "type": "boolean",
+            "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "start": {
+            "type": "integer",
+            "description": "Starting index for pagination (default: 0)"
+          },
+          "max_length": {
+            "type": "integer",
+            "description": "Maximum number of results to return, -1 for all (default: 50)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_functions_tree",
+      "description": "Lists functions and successors (aflmu)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_libraries",
+      "description": "Lists all shared libraries linked to the binary",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_imports",
+      "description": "Lists imported symbols (note: use list_symbols for addresses with sym.imp. prefix)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_exports",
+      "description": "Lists exported symbols from the binary or process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_sections",
+      "description": "Displays memory sections and segments from the binary",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_memory_maps",
+      "description": "Lists memory regions of the process with addresses and permissions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "show_function_details",
+      "description": "Displays detailed information about the current function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_current_address",
+      "description": "Shows the current position and function name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "show_info",
+      "description": "Displays information about the binary or target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_symbols",
+      "description": "Shows all symbols (functions, variables, imports) with addresses",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_entrypoints",
+      "description": "Displays program entrypoints, constructors and main function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_methods",
+      "description": "Lists all methods belonging to the specified class",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "classname": {
+            "type": "string",
+            "description": "Name of the class to list methods for"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "classname"
+        ]
+      }
+    },
+    {
+      "name": "list_classes",
+      "description": "Lists class names from various languages (C++, ObjC, Swift, Java, Dalvik)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_decompilers",
+      "description": "Shows all available decompiler backends",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "rename_function",
+      "description": "Renames the function at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New function name"
+          },
+          "address": {
+            "type": "string",
+            "description": "Address of the function to rename"
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "rename_flag",
+      "description": "Renames a local variable or data reference within the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the flag containing the variable or data reference"
+          },
+          "name": {
+            "type": "string",
+            "description": "Current variable name or data reference"
+          },
+          "new_name": {
+            "type": "string",
+            "description": "New variable name or data reference"
+          }
+        },
+        "required": [
+          "address",
+          "name",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "use_decompiler",
+      "description": "Selects which decompiler backend to use (default: pdc)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the decompiler"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_function_prototype",
+      "description": "Retrieves the function signature at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "set_function_prototype",
+      "description": "Sets the function signature (return type, name, arguments)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function"
+          },
+          "prototype": {
+            "type": "string",
+            "description": "Function signature in C-like syntax"
+          }
+        },
+        "required": [
+          "address",
+          "prototype"
+        ]
+      }
+    },
+    {
+      "name": "set_comment",
+      "description": "Adds a comment at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to put the comment in"
+          },
+          "message": {
+            "type": "string",
+            "description": "Comment text to use"
+          }
+        },
+        "required": [
+          "address",
+          "message"
+        ]
+      }
+    },
+    {
+      "name": "list_strings",
+      "description": "Lists strings from data sections with optional regex filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_all_strings",
+      "description": "Scans the entire binary for strings with optional regex filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "analyze",
+      "description": "Runs binary analysis with optional depth level",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "number",
+            "description": "Analysis level (0-4, higher is more thorough)"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "xrefs_to",
+      "description": "Finds all code references to the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to check for cross-references"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "decompile_function",
+      "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function to decompile"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "list_files",
+      "description": "Lists files in the specified path using radare2's ls -q command. Files ending with / are directories, otherwise they are files.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to list files from"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "disassemble_function",
+      "description": "Shows assembly listing of the function at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function to disassemble"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "disassemble",
+      "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to start disassembly"
+          },
+          "num_instructions": {
+            "type": "integer",
+            "description": "Number of instructions to disassemble (default: 10)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "calculate",
+      "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+          }
+        },
+        "required": [
+          "expression"
+        ]
+      }
+    },
+    {
+      "name": "get_pid",
+      "description": "Get the process ID of the target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_threads",
+      "description": "List all threads in the target process with their IDs and state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "dump_registers",
+      "description": "Show register values for the target process threads",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "integer",
+            "description": "Optional thread ID to show registers for a specific thread"
+          }
+        }
+      }
+    },
+    {
+      "name": "hexdump",
+      "description": "Print memory contents in hexdump style at the given address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to hexdump"
+          },
+          "size": {
+            "type": "string",
+            "description": "Number of bytes to dump (empty string for default size)"
+          }
+        },
+        "required": [
+          "address",
+          "size"
+        ]
+      }
+    },
+    {
+      "name": "memory_map_here",
+      "description": "Show memory map information at the current address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_heap_allocations",
+      "description": "List malloc/heap memory ranges in the target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search for strings, hex patterns, wide strings, or numeric values",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query (string, hex bytes, or numeric value)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Search type: string (default), hex, wide, or value"
+          },
+          "value_size": {
+            "type": "integer",
+            "description": "For value search: byte width 1, 2, 4 (default), or 8"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "lookup_address",
+      "description": "Describe what is at a given address (flag name, symbol, module)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to describe"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "lookup_export",
+      "description": "Resolve an export name to its implementation address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Export name to look up"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "lookup_symbol",
+      "description": "Resolve an address to its symbol name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to resolve"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    }
+  ],
+  "finished": "2026-10-11T12:10:01.638Z"
+}

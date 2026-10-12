@@ -1,0 +1,18 @@
+140a1b0b0 MOV RAX,RCX
+140a1b0b3 LEA RCX,[RDX + 0x30]
+140a1b0b7 MOV R8,qword ptr [RDX + 0x60]
+140a1b0bb MOV R9,qword ptr [RDX + 0x68]
+140a1b0bf ADD R9,R8
+140a1b0c2 INC R9
+140a1b0c5 MOVDQA XMM0,xmmword ptr [R8]
+140a1b0ca PMOVMSKB R10D,XMM0
+140a1b0cf NOT R10D
+140a1b0d2 MOV word ptr [RAX + 0x18],R10W
+140a1b0d7 MOV qword ptr [RAX],R8
+140a1b0da ADD R8,0x10
+140a1b0de MOV qword ptr [RAX + 0x8],R8
+140a1b0e2 MOV qword ptr [RAX + 0x10],R9
+140a1b0e6 MOV RDX,qword ptr [RDX + 0x78]
+140a1b0ea MOV qword ptr [RAX + 0x20],RDX
+140a1b0ee MOV qword ptr [RAX + 0x28],RCX
+140a1b0f2 RET

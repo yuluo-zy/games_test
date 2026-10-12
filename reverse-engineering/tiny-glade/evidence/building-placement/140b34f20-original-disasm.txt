@@ -1,0 +1,22 @@
+140b34f20 cmp qword ptr [rcx], 0
+140b34f24 setne al
+140b34f27 ret 
+140b34f28 int3 
+140b34f29 int3 
+140b34f2a int3 
+140b34f2b int3 
+140b34f2c int3 
+140b34f2d int3 
+140b34f2e int3 
+140b34f2f int3 
+140b34f30 mov rax, rcx
+140b34f33 xor ecx, ecx
+140b34f35 cmp byte ptr [rdx], 1
+140b34f38 sete dl
+140b34f3b xorps xmm0, xmm0
+140b34f3e je 0x140b34f48
+140b34f40 movss xmm0, dword ptr [rip + 0x1f4940c]
+140b34f48 mov cl, dl
+140b34f4a movd xmm1, ecx
+140b34f4e pshufd xmm1, xmm1, 0x50
+140b34f53 pslld xmm1, 0x1f

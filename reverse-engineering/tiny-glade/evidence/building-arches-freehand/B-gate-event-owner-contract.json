@@ -1,0 +1,56 @@
+{
+  "status": "native caller ABI + exact dependency-source attribution; no game resource constructor required",
+  "correction": "Earlier allocation-counter/deferred-resource interpretation was wrong; true owner is Bevy Events<ConstructGateCmd>. Pure CPU APIs are now counter-free and return game120B ConstructGateCmd projection; regular130 and freehand270 full native proofs reexecuted.",
+  "source_signature": {
+    "name": "_ZN4core3ptr1498drop_in_place$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$bevy_ecs..system..function_system..FunctionSystem$LT$fn$LP$bevy_ecs..event..reader..EventReader$LT$country_core..systems..wall..wall_state..publish_public_wall_state..OnWallChanged$GT$$C$bevy_ecs..event..reader..EventReader$LT$country_core..resources..roofs..commands..CreateRoofCmd$GT$$C$bevy_ecs..event..reader..EventReader$LT$country_core..resources..roofs..commands..SwitchRoofTypeCmd$GT$$C$bevy_ecs..change_detection..ResMut$LT$country_core..resources..walls..public_walls..PublicWalls$GT$$C$bevy_ecs..change_detection..ResMut$LT$system_wall_constructor..WallPathSegmentationMasksMinusStairs$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..asset_libraries..ssbo_library..AssetSsboLibrary$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..systems..ui..signifiers..signifier_create..UiSignifierStream$GT$$C$bevy_ecs..event..writer..EventWriter$LT$system_wall_constructor..construct_gates..systems..ConstructGateCmd$GT$$C$bevy_ecs..change_detection..ResMut$LT$country_core..resources..walls..arches..ArchSegments$GT$$C$bevy_ecs..change_detection..ResMut$LT$country_core..resources..walls..arches..BuildingHadArchesLastFrame$GT$$C$bevy_ecs..event..writer..EventWriter$LT$country_core..resources..roofs..commands..RecalculateRoofCmd$GT$$C$bevy_ecs..system..query..Query$LT$$RF$country_core..resources..roofs..roof_shape..Roof$GT$$RP$$C$system_wall_constructor..construct_arches..construct_arches$GT$$GT$$GT$17h0fe0d9777fe64fa6E",
+    "va": "0x1405ddcb0",
+    "definition_ownership": "dependency_reuse",
+    "defining_root": "core"
+  },
+  "abi": {
+    "rbp_from_entry_rsp": -1000,
+    "resource_load": "RBP+428 = entryRSP+40 = Win64 argument8",
+    "arguments": {
+      "R9": "ResMut<PublicWalls>",
+      "entry+28": "ResMut<WallPathSegmentationMasksMinusStairs>",
+      "entry+30": "Res<AssetSsboLibrary>",
+      "entry+38": "Res<UiSignifierStream>",
+      "entry+40": "EventWriter<ConstructGateCmd>",
+      "entry+48": "ResMut<ArchSegments>",
+      "entry+50": "ResMut<BuildingHadArchesLastFrame>",
+      "entry+58": "EventWriter<RecalculateRoofCmd>",
+      "entry+60": "Query<&Roof>"
+    }
+  },
+  "native_layout": {
+    "resource+00..1f": "Events.events_a EventSequence32",
+    "resource+20..3f": "Events.events_b EventSequence32",
+    "resource+20/28/30": "events_b.events Vec128 capacity/pointer/len",
+    "resource+38": "events_b.start_event_count (not read in selected send block)",
+    "resource+40": "Events.event_count",
+    "EventInstance[0..104]": "ConstructGateCmd.profile-mutated WallPathSegment104",
+    "EventInstance+104": "ConstructGateCmd.WallId64",
+    "EventInstance+112": "ConstructGateCmd.segment_ordinal64",
+    "EventInstance+120": "Bevy EventId.id64 (dependency, not game allocation index)"
+  },
+  "native_send": {
+    "counter_read": "1407609e1",
+    "payload_footer_store": "140760a72..a79",
+    "EventInstance128_push": "140760a80..b16",
+    "event_count_increment": "140760b1a"
+  },
+  "lifecycle_from_pinned_dependency": {
+    "default": "Both sequences and event_count initialized by Default, event_count0",
+    "send": "Assign id=event_count; push into events_b; event_count +=1",
+    "update": "Swap buffers; clear old events_b; start_event_count=event_count; counter remains monotonic",
+    "clear": "Clear both buffers/set start counts to event_count, does not reset event_count",
+    "integration": "Real Bevy EventWriter<ConstructGateCmd>, EventReader consumer and app event maintenance. No captured counter/no Vec.len-derived ID/no custom EventSequence implementation."
+  },
+  "file_hashes": {
+    "evidence/building-structures/B-core/14075f680.asm.txt": "6371fc306b68d7a07f90bc3e59b206c028e1f6fd0700de62aa8eec8fd5e6bc8d",
+    "evidence/building-lifecycle/B-types/trait-candidates.json": "19b60979046058d05adef342e0aa01f04cb91283af13def9fd2d422057af5716",
+    "tracking/dependency-exclusions.json": "ab89fe470be57b9211365c6dcccfbfb446010dc53932fc0e135ac521035f9065"
+  },
+  "dependency_source": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/collections.rs",
+  "dependency_sha256": "3d907ec05cdd2f5175ea40e113acf57304fcbe9acd032722e56dc9cbb2dc97f9"
+}

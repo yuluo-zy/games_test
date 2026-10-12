@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "target_executed": false,
+  "manifest_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/manifest.json",
+  "requests": [
+    {
+      "id": "pet_owner",
+      "status": "ok",
+      "cache_hit": false,
+      "cache_key": "96313bc066d7c7f617200306250346955e399d51d98df4df7325495d242ed302",
+      "evidence_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/cold/pet_owner.json",
+      "assembly_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/cold/pet_owner.asm.txt",
+      "sampled_addresses": 2,
+      "instructions": 314
+    },
+    {
+      "id": "pet_ui",
+      "status": "ok",
+      "cache_hit": false,
+      "cache_key": "46eadcb9b23d7b14452b23cfdd8896059d438432588e0eeb36885e0512526e83",
+      "evidence_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/cold/pet_ui.json",
+      "assembly_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/cold/pet_ui.asm.txt",
+      "sampled_addresses": 2,
+      "instructions": 789
+    }
+  ],
+  "stats": {
+    "requests": 2,
+    "unique_requests": 2,
+    "cache_hits": 0,
+    "cache_misses": 2,
+    "symbolization_points": 4,
+    "evidence_output_bytes": 367798,
+    "tool_processes": 5,
+    "version_processes": 2,
+    "analysis_processes": 3,
+    "tool_stdout_bytes": 75279,
+    "tool_stderr_bytes": 0,
+    "elapsed_seconds": 0.5237314169062302
+  },
+  "tool_invocations": [
+    {
+      "phase": "tool_version",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 64,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.011738625005818903,
+      "stderr": ""
+    },
+    {
+      "phase": "tool_version",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 1730,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.011974541004747152,
+      "stderr": ""
+    },
+    {
+      "phase": "disassemble",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--disassemble",
+        "--disassemble-zeroes",
+        "--disassembler-color=off",
+        "--start-address=0x14293a350",
+        "--stop-address=0x14293a83d",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 19578,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.013367832987569273,
+      "stderr": ""
+    },
+    {
+      "phase": "disassemble",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+        "--disassemble",
+        "--disassemble-zeroes",
+        "--disassembler-color=off",
+        "--start-address=0x142943c20",
+        "--stop-address=0x142944b28",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 52189,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.011955290916375816,
+      "stderr": ""
+    },
+    {
+      "phase": "symbolize",
+      "argv": [
+        "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+        "--obj=/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+        "--relative-address",
+        "--inlining",
+        "--output-style=JSON",
+        "--no-debuginfod",
+        "--disable-gsym",
+        "--fallback-debug-path=/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0"
+      ],
+      "returncode": 0,
+      "stdout_bytes": 1718,
+      "stderr_bytes": 0,
+      "elapsed_seconds": 0.049939375021494925,
+      "stderr": ""
+    }
+  ],
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+    "sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+    "bytes": 65500056,
+    "id": "pet-pilot",
+    "version": "C-original",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny_glade.pdb",
+      "sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "bytes": 310013952,
+      "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "tools": {
+    "symbolizer": {
+      "path": "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-symbolizer",
+      "version": "llvm-symbolizer\nHomebrew LLVM version 22.1.2\n  Optimized build.",
+      "sha256": "b2e5452f03eb6a14d4e46e9c867902f90ae6003468848f2befe4206e5fe844fe"
+    },
+    "objdump": {
+      "path": "/opt/homebrew/Cellar/llvm/22.1.2/bin/llvm-objdump",
+      "version": "Homebrew LLVM version 22.1.2\n  Optimized build.\n\n\n  Registered Targets:\n    aarch64     - AArch64 (little endian)\n    aarch64_32  - AArch64 (little endian ILP32)\n    aarch64_be  - AArch64 (big endian)\n    amdgcn      - AMD GCN GPUs\n    arm         - ARM\n    arm64       - ARM64 (little endian)\n    arm64_32    - ARM64 (little endian ILP32)\n    armeb       - ARM (big endian)\n    avr         - Atmel AVR Microcontroller\n    bpf         - BPF (host endian)\n    bpfeb       - BPF (big endian)\n    bpfel       - BPF (little endian)\n    hexagon     - Hexagon\n    lanai       - Lanai\n    loongarch32 - 32-bit LoongArch\n    loongarch64 - 64-bit LoongArch\n    mips        - MIPS (32-bit big endian)\n    mips64      - MIPS (64-bit big endian)\n    mips64el    - MIPS (64-bit little endian)\n    mipsel      - MIPS (32-bit little endian)\n    msp430      - MSP430 [experimental]\n    nvptx       - NVIDIA PTX 32-bit\n    nvptx64     - NVIDIA PTX 64-bit\n    ppc32       - PowerPC 32\n    ppc32le     - PowerPC 32 LE\n    ppc64       - PowerPC 64\n    ppc64le     - PowerPC 64 LE\n    r600        - AMD GPUs HD2XXX-HD6XXX\n    riscv32     - 32-bit RISC-V\n    riscv32be   - 32-bit big endian RISC-V\n    riscv64     - 64-bit RISC-V\n    riscv64be   - 64-bit big endian RISC-V\n    sparc       - Sparc\n    sparcel     - Sparc LE\n    sparcv9     - Sparc V9\n    spirv       - SPIR-V Logical\n    spirv32     - SPIR-V 32-bit\n    spirv64     - SPIR-V 64-bit\n    systemz     - SystemZ\n    thumb       - Thumb\n    thumbeb     - Thumb (big endian)\n    ve          - VE\n    wasm32      - WebAssembly 32-bit\n    wasm64      - WebAssembly 64-bit\n    x86         - 32-bit X86: Pentium-Pro and above\n    x86-64      - 64-bit X86: EM64T and AMD64\n    xcore       - XCore",
+      "sha256": "6eff2f88ec4034a9bc9bc16903afe64b66b4285ad3e12027a962265d7f6fcbf1"
+    }
+  }
+}

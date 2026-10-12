@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-tools-52",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "c887f684cec61c9ddf-0",
+  "cache_key": "47cf26fc53bb2b30c37287e31a16fef6e042b05f060215daa5436a92ac439d5b",
+  "status": "ok",
+  "range": {
+    "rva": "0x686410",
+    "length": 7,
+    "start_va": "0x140686410",
+    "stop_va_exclusive": "0x140686417",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140686410",
+      "rva": "0x686410",
+      "bytes": "803902",
+      "size": 3,
+      "assembly": "cmpb\t$0x2, (%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140686413",
+      "rva": "0x686413",
+      "bytes": "0f92c0",
+      "size": 3,
+      "assembly": "setb\t%al",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140686416",
+      "rva": "0x686416",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x686410",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/ui/resources/ui_state.rs",
+          "FunctionName": "country_core::systems::ui::resources::ui_state::DragState::is_finished::h50c63648f82a7dfe",
+          "Line": 346,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140686410: 80 39 02                    \tcmpb\t$0x2, (%rcx)\n140686413: 0f 92 c0                    \tsetb\t%al\n140686416: c3                          \tretq\n",
+  "original_target_executed": false
+}

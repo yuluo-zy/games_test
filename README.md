@@ -32,4 +32,13 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 - [美术架构](TinyGlade_类手游_美术架构.md)
 - [原实现计划与桌面优先修订](TinyGlade_类手游_实现计划.md)
 
-文件名中的“手游”保留为历史链接；当前执行基线是桌面计划。美术概念图与引擎截图已区分，planned 模型清单不代表获批生产资产。仓库不包含编译产物或工作区其他项目。
+文件名中的“手游”保留为历史链接；当前执行基线是桌面计划。美术概念图与引擎截图已区分，planned 模型清单不代表获批生产资产。仓库不包含编译产物或原始游戏发行文件。
+
+## 工作区成果
+
+除 Tiny Garden 外，仓库还归档 Tiny Glade 逆向研究、还原出的 Rust 源码、可编辑 Blender 素材库和自写工具脚本。上传范围和本地排除项见 [工作区成果归档](WORKSPACE_CONTENTS.md)。
+
+- [逆向研究与源码还原](reverse-engineering/tiny-glade/SOURCE_RECOVERY.md)
+- [Blender 可编辑素材库](TinyGlade_Blender_Library/README.md)
+- [逆向工具链说明](tools/README.md)
+- [Blender 工具链说明](tools/blender/README.md)

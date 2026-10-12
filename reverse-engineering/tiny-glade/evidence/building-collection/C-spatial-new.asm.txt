@@ -1,0 +1,48 @@
+140ac2e40 push rbp
+140ac2e41 push rsi
+140ac2e42 push rdi
+140ac2e43 sub rsp, 0x70
+140ac2e47 lea rbp, [rsp + 0x70]
+140ac2e4c mov qword ptr [rbp - 8], 0xfffffffffffffffe
+140ac2e54 mov rsi, rcx
+140ac2e57 mov qword ptr [rbp - 0x50], 0
+140ac2e5f mov qword ptr [rbp - 0x48], 8
+140ac2e67 xorps xmm0, xmm0
+140ac2e6a movups xmmword ptr [rbp - 0x40], xmm0
+140ac2e6e mov qword ptr [rbp - 0x30], 8
+140ac2e76 mov qword ptr [rbp - 0x28], 0
+140ac2e7e lea rcx, [rbp - 0x20]
+140ac2e82 lea rdx, [rbp - 0x50]
+140ac2e86 mov r8d, 0x1000
+140ac2e8c call 0x140b45c00
+140ac2e91 nop 
+140ac2e92 call 0x140f32930
+140ac2e97 nop 
+140ac2e98 mov rdi, rax
+140ac2e9b cmp byte ptr [rax + 0x10], 1
+140ac2e9f jne 0x140ac2f09
+140ac2ea1 mov rax, qword ptr [rdi]
+140ac2ea4 mov rdx, qword ptr [rdi + 8]
+140ac2ea8 lea rcx, [rax + 1]
+140ac2eac mov qword ptr [rdi], rcx
+140ac2eaf mov rcx, qword ptr [rbp - 0x10]
+140ac2eb3 mov qword ptr [rsi + 0x10], rcx
+140ac2eb7 movups xmm0, xmmword ptr [rbp - 0x20]
+140ac2ebb movups xmmword ptr [rsi], xmm0
+140ac2ebe movups xmm0, xmmword ptr [rip + 0x25714eb]
+140ac2ec5 movups xmmword ptr [rsi + 0x18], xmm0
+140ac2ec9 movups xmm0, xmmword ptr [rip + 0x25714f0]
+140ac2ed0 movups xmmword ptr [rsi + 0x28], xmm0
+140ac2ed4 mov qword ptr [rsi + 0x38], rax
+140ac2ed8 mov qword ptr [rsi + 0x40], rdx
+140ac2edc movabs rax, 0x4000000040
+140ac2ee6 mov qword ptr [rsi + 0x48], rax
+140ac2eea movsd xmm0, qword ptr [rip + 0x2441b3e]
+140ac2ef2 movsd qword ptr [rsi + 0x50], xmm0
+140ac2ef7 mov dword ptr [rsi + 0x58], 0
+140ac2efe mov rax, rsi
+140ac2f01 add rsp, 0x70
+140ac2f05 pop rdi
+140ac2f06 pop rsi
+140ac2f07 pop rbp
+140ac2f08 ret 

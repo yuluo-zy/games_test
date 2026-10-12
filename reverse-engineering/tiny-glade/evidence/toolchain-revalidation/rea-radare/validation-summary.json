@@ -1,0 +1,91 @@
+{
+  "scope": "Tool and concurrent target-session validation. REA native decompilation used explicit 1KB PE fixtures; no full-game REA autoanalysis or reconstruction claim.",
+  "checks": {
+    "original_B_unchanged": true,
+    "REA_two_clients_overlap": true,
+    "REA_both_original_B_identity": true,
+    "REA_one_authentic_aspect_bytes": true,
+    "REA_two_different_bytes_same_va": true,
+    "REA_independent_target_digest": true,
+    "REA_aspect_signature_recovered": true,
+    "REA_native_Pcode_available": true,
+    "REA_other_function_return_37": true,
+    "r2_two_clients_overlap": true,
+    "r2_original_B_aspect_disassembly": true,
+    "r2_fixture_isolation": true,
+    "r2ghidra_two_clients_overlap": true,
+    "r2ghidra_aspect_division": true,
+    "r2ghidra_other_returns_37": true,
+    "r2_actual_call_xref": true
+  },
+  "rea": {
+    "version": "6.3.0",
+    "startup": {
+      "command": "/Users/yuluo/Desktop/game/tools/node/bin/node",
+      "args": [
+        "/Users/yuluo/Desktop/game/tools/node/bin/rea",
+        "--mcp"
+      ],
+      "env": {
+        "GHIDRA_INSTALL_DIR": "/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC",
+        "JAVA_HOME": "/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home",
+        "REA_ANALYSIS_PROVIDER": "ghidra",
+        "REA_GHIDRA_STARTUP_TIMEOUT_MS": "120000"
+      }
+    },
+    "tool_count": 139,
+    "schema_compact_bytes": 1870563,
+    "cold_analysis_ms": [
+      93324,
+      93328
+    ],
+    "usable": "PE identity, native function dossier/decompile, exact bytes, references, recovered ABI and high P-code def-use work; useful as optional independent evidence provider.",
+    "limits": [
+      "One active target per MCP server process; independent process per agent isolates target/database.",
+      "Imports a fresh ephemeral Ghidra project; closes discard annotations; cannot directly reuse existing persistent project.",
+      "Default analysis must finish before native queries; fixture cold startup about 93 seconds during concurrent build load.",
+      "inspect_binary_layout initial profile only Linux amd64 ELF, not this Mac PE target.",
+      "139-tool full schema is excessive for current Rust task; use narrow gate/lazy routing."
+    ]
+  },
+  "radare2": {
+    "r2_version": "6.2.4",
+    "mcp_version": "1.8.8",
+    "mcp_source_commit": "d48078bb5440d5564374e102c28e1c8892784de8",
+    "r2ghidra_version": "6.2.4",
+    "r2ghidra_commit": "d690abdbfded6fa9237dec4732a9f288a1f9a887",
+    "sleigh_release": "6.1.4",
+    "startup": {
+      "command": "/opt/homebrew/bin/r2pm",
+      "args": [
+        "-r",
+        "r2mcp",
+        "-r",
+        "-d",
+        "pdg",
+        "-C",
+        "both"
+      ]
+    },
+    "tool_count": 46,
+    "schema_compact_bytes": 18400,
+    "usable": "Actual B PE identity/sections/PDB GUID, disassembly, local function creation, fixture call reference and mature pdg backend validated.",
+    "fixed": [
+      "Deleted r2mcp installation rebuilt at same version and exact repository commit.",
+      "Default pdc is assembly-like pseudo-code; missing r2ghidra + SLEIGH fixed to enable native Ghidra decompiler."
+    ],
+    "pdb_limits": [
+      "Default internal MCP sandbox prevents raw idp/idpi reading local PDB. disk,files grain still insufficient; isolated trusted test with -g all reached parser.",
+      "Parser then reports There is no tpi stream in current pdb, whereas LLVM PDB summary says Has Types/IDs/Globals/Publics=true. Not a missing original PDB; r2 PDB type parsing compatibility limit.",
+      "PDB import is not validated as successful; no recovered WindowSize type or signature claim.",
+      "Native r2 CLI prints publics while reporting missing TPI; retain LLVM for authoritative complete debug information extraction."
+    ],
+    "concurrency": "Use independent stdio process per agent. Each owns RCore; tested different binary bytes and results at identical virtual address. Shared HTTP without -X shares state; if HTTP is needed require -X and per-client X-Session-ID.",
+    "limits": [
+      "Pdg recovers useful division but arg1 type remains int64_t, unlike complete Ghidra uint*.",
+      "run_command returns textual ERROR inside successful MCP envelope; always validate content, not merely isError.",
+      "No original executable modifications; source SHA checked again."
+    ]
+  },
+  "recommendation": "Restore installations as usable optional tools. Keep Ghidra/ReVa persistent database as primary workflow and LLVM for PDB. Expose REA/r2 through per-agent lazy/narrow routing rather than every schema globally."
+}

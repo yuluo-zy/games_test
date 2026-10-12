@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+    "sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+    "bytes": 65500056,
+    "id": "abc-tools-52",
+    "version": "C",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny_glade.pdb",
+      "sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902",
+      "bytes": 310013952,
+      "guid": "6A287060-44E4-AFA2-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "58cd0366efd714b7ea-0",
+  "cache_key": "e641e7a609c4ac0a85ddebe57a6ab7131d48f2053aa4d67802c2f764f9804554",
+  "status": "ok",
+  "range": {
+    "rva": "0xa75490",
+    "length": 30,
+    "start_va": "0x140a75490",
+    "stop_va_exclusive": "0x140a754ae",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140a75490",
+      "rva": "0xa75490",
+      "bytes": "4889c8",
+      "size": 3,
+      "assembly": "movq\t%rcx, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a75493",
+      "rva": "0xa75493",
+      "bytes": "c6422401",
+      "size": 4,
+      "assembly": "movb\t$0x1, 0x24(%rdx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a75497",
+      "rva": "0xa75497",
+      "bytes": "0f1002",
+      "size": 3,
+      "assembly": "movups\t(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a7549a",
+      "rva": "0xa7549a",
+      "bytes": "0f104a10",
+      "size": 4,
+      "assembly": "movups\t0x10(%rdx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a7549e",
+      "rva": "0xa7549e",
+      "bytes": "0f114910",
+      "size": 4,
+      "assembly": "movups\t%xmm1, 0x10(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a754a2",
+      "rva": "0xa754a2",
+      "bytes": "0f1101",
+      "size": 3,
+      "assembly": "movups\t%xmm0, (%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a754a5",
+      "rva": "0xa754a5",
+      "bytes": "488b4a20",
+      "size": 4,
+      "assembly": "movq\t0x20(%rdx), %rcx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a754a9",
+      "rva": "0xa754a9",
+      "bytes": "48894820",
+      "size": 4,
+      "assembly": "movq\t%rcx, 0x20(%rax)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140a754ad",
+      "rva": "0xa754ad",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xa75490",
+      "ModuleName": "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/utils/debug_viz.rs",
+          "FunctionName": "country_core::utils::debug_viz::DebugSphere::solid::hf66d404bddf1e1fb",
+          "Line": 130,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140a75490: 48 89 c8                    \tmovq\t%rcx, %rax\n140a75493: c6 42 24 01                 \tmovb\t$0x1, 0x24(%rdx)\n140a75497: 0f 10 02                    \tmovups\t(%rdx), %xmm0\n140a7549a: 0f 10 4a 10                 \tmovups\t0x10(%rdx), %xmm1\n140a7549e: 0f 11 49 10                 \tmovups\t%xmm1, 0x10(%rcx)\n140a754a2: 0f 11 01                    \tmovups\t%xmm0, (%rcx)\n140a754a5: 48 8b 4a 20                 \tmovq\t0x20(%rdx), %rcx\n140a754a9: 48 89 48 20                 \tmovq\t%rcx, 0x20(%rax)\n140a754ad: c3                          \tretq\n",
+  "original_target_executed": false
+}

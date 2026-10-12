@@ -1,0 +1,33 @@
+--- reverse-operator.before.py
++++ reverse-operator.py
+@@ -61,7 +61,7 @@
+       'ghidra':[str(ROOT/'tools/venv/bin/python'),str(HERE/'ghidra/launch.py')],
+       'reva':[str(ROOT/'tools/mcp-servers/ghidra-mcp/.venv/bin/python'),str(HERE/'reva/proxy.py')],
+       'rea':[str(ROOT/'tools/node/bin/node'),str(ROOT/'tools/node/bin/rea'),'--mcp'],
+-      'radare2':['/opt/homebrew/bin/r2pm','-r','r2mcp','-r','-d','pdg','-C','both'],
++      'radare2':['/opt/homebrew/bin/r2pm','-r','r2mcp','-d','pdg','-C','both'],
+       're-mcp':[str(ROOT/'tools/mcp-servers/re-mcp/.venv/bin/re-mcp-ghidra'),'proxy'],
+     }
+     command=commands[args.backend]
+@@ -75,8 +75,19 @@
+                 await asyncio.wait_for(session.initialize(),90)
+                 report['actual_mcp_connection']=True
+                 catalog=await session.list_tools()
+-                report['catalog']=catalog.model_dump(mode='json');save()
+-                names={tool.name for tool in catalog.tools}
++                all_tools=list(catalog.tools)
++                seen_cursors=set()
++                while catalog.nextCursor:
++                    cursor=catalog.nextCursor
++                    if cursor in seen_cursors:
++                        raise RuntimeError('MCP tool catalog returned a repeated pagination cursor')
++                    seen_cursors.add(cursor)
++                    catalog=await asyncio.wait_for(session.list_tools(cursor=cursor),30)
++                    all_tools.extend(catalog.tools)
++                report['catalog']=catalog.model_dump(mode='json')
++                report['catalog']['tools']=[tool.model_dump(mode='json') for tool in all_tools]
++                report['catalog_pages']=1+len(seen_cursors);save()
++                names={tool.name for tool in all_tools}
+                 print(json.dumps({'connected':True,'backend':args.backend,'worker':args.worker,'tools':len(names)}),flush=True)
+                 for step in job:
+                     name=step.get('tool',step.get('name'));values=dict(step.get('args',{}))

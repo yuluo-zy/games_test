@@ -1,0 +1,4123 @@
+{
+  "ok": true,
+  "cases": 24,
+  "finish_returns": 24,
+  "process_returns": 72,
+  "failure_count": 0,
+  "failures": [],
+  "baseline": "B",
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "candidate_binary_sha256": "1ce9aed7ea75c1fdf5747f5e5ed9cdfbb1ea11a179e44ae8e25adcf33e624a99",
+  "candidate_sources": {
+    "reconstruction/building/wall_history_edit.rs": "2be910c7806f16e13988ff02e822d6cd514db07145c7451479fcf8346c31e58c",
+    "reconstruction/building/wall_history_replay.rs": "13dd71845beeb14e95ebcc7b9f639d3969530d6db736a3c5ff2bba26f4f327ab",
+    "reconstruction/building/wall_history_transition.rs": "03268d77edcc153b8d4f7ddd1b362fde975f3dda6469e2aa6434c392398c62de",
+    "reconstruction/src/bin/wall-rectangle-history-probe.rs": "1220b89c58512d6dce12f7a29966ba1608836176b8404b56cef0b1028fb0a543",
+    "reconstruction/building/wall_authoring.rs": "2043afa2ba091e57d9368a5b2b88acc0803b510fd2d2ea8671e95b9714c7c2bb",
+    "reconstruction/building/wall_freeform_cache.rs": "7d2a2870be3cfd73e4318ce4fb3d240b17f59ac2f3738d5504d11dc7c6b637a6",
+    "reconstruction/building/wall_collection.rs": "b74c6aa577a9c012d4d34fcfb1851a8d33a84ee154872ece077d66e96ab198b6",
+    "reconstruction/building/wall_state.rs": "3ac4555841032f8347e1d28da60be7260eead44ae7408c8de265169ce269cf4d",
+    "reconstruction/roof/surface.rs": "132b17182082410908cae6a0d897638eeebb0e8095183d124767ec886428bbcd",
+    "reconstruction/history/building_transactions.rs": "f87218f20f0667be8b6066f5b23e4dab9bf1bf4d865c9398ba3d6e2d0c17b7ff",
+    "reconstruction/Cargo.lock": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc"
+  },
+  "oracle_sources": {
+    "scripts/multi-version/verify_wall_rectangle_history.py": "aaef2f208c9c4d25396f26e21f2ce055d6f2bad152da95471519190a725c6334",
+    "evidence/building-wall-history/native_rectangle_finish_research.py": "e8bc33443d998334f76e83f4cdda4e324b9012177438b2eedad9a286875906af",
+    "evidence/building-wall-history/native_wall_timed.py": "7157e6f465edc8e867463ec53dd3aebb3977e359cd13883a8c32214ed93a7527",
+    "evidence/building-wall-history/native_wall_history.py": "f1d79d49abf86c39b357db2d1d90eb97b6e80b46166b4cf0c77a2edf7bfac1e0",
+    "evidence/building-authoring/native_authoring.py": "0caa5dc2889b2cb18c5fda8c938d27a1246dca99621ff183650d46a349853aeb",
+    "evidence/building-constructor/native_fixture.py": "3a1d9654cbb346ed458185543ea30778b147e2b658a0301cd59e5ea9b73eec1e"
+  },
+  "inputs": [
+    "010000000000803f0000000063aeb8bfaf077f409797fe40821dd040 01000000a7ca6b3fd761c73ec897f13f8ad938c06e0bda40b3ad6c40 0 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000000000803f000000006c6b7840865cadbf23aae5409827ab40 01000000a7ca6b3fd761c73eb1c5f0bf24b7593fe72731409a843740 1 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000000000803f0000000080901740ff4793bf79ceff3eb59eb240 01000000a7ca6b3fd761c73eaa93d5bf1c4f05405ea9c23f2014fb40 0 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000000000803f000000006b0d714042681ec08b5ed340f4238140 01000000a7ca6b3fd761c73eb35c953f567ab03d53db3740d22d6b40 1 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000000000803f000000003b6395bf2805db3fb45f1040b2ce4940 01000000a7ca6b3fd761c73eea25224056e21640d9f0b6408563d840 0 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000000000803f000000008e4f41c04d40b83e113a3d3fc6ed8340 01000000a7ca6b3fd761c73edbb7be3ff88e7e3eab019840971cba3f 1 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000000000803f00000000338d7bc024f6bd3fdab135409db69740 01000000a7ca6b3fd761c73ed48c04404c5563c0bf4cf23f14cbc240 0 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000000000803f00000000c2fbe83f6f64d33ffa4296404d22a240 01000000a7ca6b3fd761c73ed215794079a564bf3b27fa40a6fa9040 1 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973ecb93744064c93cc0279192404e4e8440 01000000ef90743f6d4e97be47c909c0e704d4bf0e4db2402a6c0840 0 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973e0fe05b40bf86293f15e9ed40ecaec640 01000000ef90743f6d4e97bee99f913fe060b2bfc882253f51f95a40 1 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973e779e86bea1790ebf17f0cb405b030840 01000000ef90743f6d4e97be4e6386bff590e1bf1908e7404dcbc640 0 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973e64dee33f8f9e563f5f9ce43f9e9a1340 01000000ef90743f6d4e97be823021c097490e3f99080240fa613a40 1 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973ee9dd63c08c682fc0c86ec94075f81640 01000000ef90743f6d4e97be9e11504064da4fc0f7d8bd3fee2a6240 0 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973ee751cabf211f3dc06a203440968fa73e 01000000ef90743f6d4e97be447e32c03cf570bfd3a5e63f55acdf40 1 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973e9eda7ac0f89f514033a4a740fb1ebb40 01000000ef90743f6d4e97bef3938e3fe13e0d40635e8c40429d9040 0 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "01000000ef90743f6d4e973ec5200e3ffb8ecbbeb9fc92401c95c140 01000000ef90743f6d4e97be2a4b02c0ab9b77c0104ada40b068be3f 1 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3eba4f7dbf787345c0ecd8bf4004222e3f 0100000098b87e3f7675cc3dd48c16bf4fe5c2bfe140d2401675e240 0 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3ea6a8823f9925b03f2e888040f91be140 0100000098b87e3f7675cc3de0bffd3fb05a9d3fc405d7406efcef40 1 0 0 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3eaf192c40e8004e4083240a3f4659043f 0100000098b87e3f7675cc3d4c2042bfa9cf69406b0081400135dd40 0 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3eb39e383e8e1f57c0b0a1b840b9637e40 0100000098b87e3f7675cc3d0760dc3f0ed07b401400bf40f8dc8240 1 1 0 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3ed985a93ee250b2bf01cba340d8809b40 0100000098b87e3f7675cc3dabd80440d7d11bc04b4b94409ede1240 0 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3e3bcf314062fb73c04a442f401bff6f40 0100000098b87e3f7675cc3d89acd8bf5c59b53e3a3fd3403d2a3a40 1 0 1 3ecccccd 00000000 0 3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3e59ba6840fc1c07bf1a0cd140d52ebd40 0100000098b87e3f7675cc3d34fd0ec096bf55c02e0c244098ef6440 0 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9",
+    "010000007c3571bf9183ab3ee12f2dbf2cce27bf1eec3340a9efa540 0100000098b87e3f7675cc3d3122a6bed2c92c3fcec49340a1583740 1 1 1 3ecccccd 00000000 0 3dcccccd,3dcccccd,3e4ccccd,3dcccccd,3dcccccd 9"
+  ],
+  "native": [
+    {
+      "case": 0,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f0000000063aeb8bfaf077f409797fe40821dd040",
+                  "next": "01000000a7ca6b3fd761c73ec897f13f8ad938c06e0bda40b3ad6c40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000000000803f0000000063aeb8bfaf077f409797fe40821dd040a7ca6b3fd761c73e00000000000000006e0bda40b3ad6c401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "58cf07bf0761bdc0283dfcbf3ec320c0cfc58940a0ef103e2edbb740d6ef50c058cf07bf0761bdc0",
+              "us": "00000000e61e343e0000003fb9072d3f0000803f",
+              "length": 1101541668,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd761c73ec897f13f8ad938c06e0bda40b3ad6c40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 1,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f000000006c6b7840865cadbf23aae5409827ab40",
+                  "next": "01000000a7ca6b3fd761c73eb1c5f0bf24b7593fe72731409a843740"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000000000803f000000006c6b7840865cadbf23aae5409827ab40a7ca6b3fd761c73e0000000000000000e72731409a84374000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "3a3d26c04a2981bf56b46dc0b6e6d03fee1095bf37702d40e05644bde8068d3d3a3d26c04a2981bf",
+              "us": "000000000342823e0000003f0121413f0000803f",
+              "length": 1093948992,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd761c73eb1c5f0bf24b7593fe72731409a843740",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 2,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f0000000080901740ff4793bf79ceff3eb59eb240",
+                  "next": "01000000a7ca6b3fd761c73eaa93d5bf1c4f05405ea9c23f2014fb40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000000000803f0000000080901740ff4793bf79ceff3eb59eb240a7ca6b3fd761c73e00000000000000005ea9c23f2014fb401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000aa93d5bf0000403f1c4f054000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000aa93d5bf0000403f1c4f054000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000aa93d5bf0000403f1c4f054000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000aa93d5bf0000403f1c4f054000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 3,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f000000006b0d714042681ec08b5ed340f4238140",
+                  "next": "01000000a7ca6b3fd761c73eb35c953f567ab03d53db3740d22d6b40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000000000803f000000006b0d714042681ec08b5ed340f4238140a7ca6b3fd761c73e000000000000000053db3740d22d6b4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000006b0d71400000403f42681ec000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000006b0d71400000403f42681ec000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000006b0d71400000403f42681ec000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000006b0d71400000403f42681ec000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 4,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f000000003b6395bf2805db3fb45f1040b2ce4940",
+                  "next": "01000000a7ca6b3fd761c73eea25224056e21640d9f0b6408563d840"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000000000803f000000003b6395bf2805db3fb45f1040b2ce4940a7ca6b3fd761c73e0000000000000000d9f0b6408563d8401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "12d49b3fc453efbf0e3cb5bfb6798b40cb61764047b7d240ee74cf40088ab63e12d49b3fc453efbf",
+              "us": "00000000a8b88a3e0100003f545c453f0000803f",
+              "length": 1103604270,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd761c73eea25224056e21640d9f0b6408563d840",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "12d49b3fc453efbf0e3cb5bfb6798b40cb61764047b7d240ee74cf40088ab63e12d49b3fc453efbf",
+              "us": "00000000a8b88a3e0100003f545c453f0000803f",
+              "length": 1103604270,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd761c73eea25224056e21640d9f0b6408563d840",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 5,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f000000008e4f41c04d40b83e113a3d3fc6ed8340",
+                  "next": "01000000a7ca6b3fd761c73edbb7be3ff88e7e3eab019840971cba3f"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000000000803f000000008e4f41c04d40b83e113a3d3fc6ed8340a7ca6b3fd761c73e0000000000000000ab019840971cba3f00000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "d0f658c079cbd9bfd0f658c0d0f51a404ca829c0d0f51a404ca829c079cbd9bfd0f658c079cbd9bf",
+              "us": "000000007b14d93e0000003f3d8a6c3f0000803f",
+              "length": 1092326664,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000008e4f41c04d40b83e113a3d3fc6ed8340",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "d0f658c079cbd9bfd0f658c0d0f51a404ca829c0d0f51a404ca829c079cbd9bfd0f658c079cbd9bf",
+              "us": "000000007b14d93e0000003f3d8a6c3f0000803f",
+              "length": 1092326664,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000008e4f41c04d40b83e113a3d3fc6ed8340",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 6,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f00000000338d7bc024f6bd3fdab135409db69740",
+                  "next": "01000000a7ca6b3fd761c73ed48c04404c5563c0bf4cf23f14cbc240"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000000000803f00000000338d7bc024f6bd3fdab135409db69740a7ca6b3fd761c73e0000000000000000bf4cf23f14cbc2401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000d48c04400000403f4c5563c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "1033abc02cee62bf1033abc0afb1764046b420c0afb1764046b420c02cee62bf1033abc02cee62bf",
+              "us": "00000000811ea03e0000003f410f503f0000803f",
+              "length": 1098026890,
+              "n": 5
+            },
+            "enclosure": "010000000000803f00000000338d7bc024f6bd3fdab135409db69740",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000d48c04400000403f4c5563c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "774e9cc07e7da3bf8f2aa0c055f86240387a0ec0d76a674008c206c07a989abf774e9cc07e7da3bf",
+              "us": "00000000c16ca23e0000003f6136513f0000803f",
+              "length": 1098079348,
+              "n": 5
+            },
+            "enclosure": "0100000085eb7f3f58c7cc3c938b63c018ac953f22e93140e4679a40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000d48c04400000403f4c5563c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "af90c6bf7a047bc0721f28c0042ab13f3cc09dbe8054ed3f4a7c443f3cef5cc0af90c6bf7a047bc0",
+              "us": "000000003826b23effffff3e1c13593f0000803f",
+              "length": 1098446568,
+              "n": 5
+            },
+            "enclosure": "01000000a5e57a3ffa6f4b3ebe006ebf3a5a84bf1d6c1740d840ad40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000d48c04400000403f4c5563c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "ec9c18405a2bd7c0009c663cec028fbf79f9e03f209fc2be861984409194bfc0ec9c18405a2bd7c0",
+              "us": "000000007346c33e0000003f39a3613f0000803f",
+              "length": 1098866244,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd861c73ed48c04404c5563c0bf4cf23f14cbc240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "ec9c18405a2bd7c0009c663cec028fbf79f9e03f209fc2be861984409194bfc0ec9c18405a2bd7c0",
+              "us": "000000007346c33e0000003f39a3613f0000803f",
+              "length": 1098866244,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd861c73ed48c04404c5563c0bf4cf23f14cbc240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000000000803f00000000c2fbe83f6f64d33ffa4296404d22a240",
+                  "next": "01000000a7ca6b3fd761c73ed215794079a564bf3b27fa40a6fa9040"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000000000803f00000000c2fbe83f6f64d33ffa4296404d22a240a7ca6b3fd761c73e00000000000000003b27fa40a6fa904000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c2fbe83f0000403f6f64d33f00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "d245963f230e90c0601d17bf8654a8be5e84d3408ac92d40bffc05415890babfd245963f230e90c0",
+              "us": "00000000fddb3b3effffff3efff62e3f0000803f",
+              "length": 1103466737,
+              "n": 5
+            },
+            "enclosure": "01000000a7ca6b3fd861c73ed215794079a564bf3b27fa40a6fa9040",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c2fbe83f0000403f6f64d33f00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4aaa863f761c88c054a01ebf8060d6bbc021cf40a34132402f5002413218bbbf4aaa863f761c88c0",
+              "us": "0000000016c23f3e0000003f85f02f3f0000803f",
+              "length": 1103297292,
+              "n": 5
+            },
+            "enclosure": "01000000bf356e3f1488bb3e53cc704093ee3bbff7e8f340210d9240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c2fbe83f0000403f6f64d33f00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "78a1883ee10026c08cbd2fbfe4fc0640c23fae40bb8956408cc1cc4016e8acbf78a1883ee10026c0",
+              "us": "00000000c23d5e3e0000003f728f373f0000803f",
+              "length": 1102111178,
+              "n": 5
+            },
+            "enclosure": "01000000a5e57a3ffa6f4b3edac936406523c23e1a35c8407a8e9940",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c2fbe83f0000403f6f64d33f00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "641407bf56c061bf641407bf42ea85406e60854042ea85406e60854056c061bf641407bf56c061bf",
+              "us": "0000000052dd843e0000003fa96e423f0000803f",
+              "length": 1100755620,
+              "n": 5
+            },
+            "enclosure": "010000000000803f00000000c2fbe83f6f64d33ffa4296404d22a240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "641407bf56c061bf641407bf42ea85406e60854042ea85406e60854056c061bf641407bf56c061bf",
+              "us": "0000000052dd843e0000003fa96e423f0000803f",
+              "length": 1100755620,
+              "n": 5
+            },
+            "enclosure": "010000000000803f00000000c2fbe83f6f64d33ffa4296404d22a240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973ecb93744064c93cc0279192404e4e8440",
+                  "next": "01000000ef90743f6d4e97be47c909c0e704d4bf0e4db2402a6c0840"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0100000000000000000000000000000009000000000000000000000000000000ef90743f6d4e973ecb93744064c93cc0279192404e4e8440ef90743f6d4e97be00000000000000000e4db2402a6c08401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "0824a4c028f7ecbfa2fb8fc0f88b3d3e08d6523fa612bbbf604b463ea6dd5fc00824a4c028f7ecbf",
+              "us": "0000000053ac0d3e0000003f156b233f0000803f",
+              "length": 1098285859,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e97be47c909c0e704d4bf0e4db2402a6c0840",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973e0fe05b40bf86293f15e9ed40ecaec640",
+                  "next": "01000000ef90743f6d4e97bee99f913fe060b2bfc882253f51f95a40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "020000000000000009000000000000000000000000000000ef90743f6d4e973e0fe05b40bf86293f15e9ed40ecaec640ef90743f6d4e97be0000000000000000c882253f51f95a4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "0089a53e10ac3bc064ceaa3f542cac3e92ddf93ff8b2143edce2703f6ae647c00089a53e10ac3bc0",
+              "us": "000000005b50d73e0000003f2da86b3f0000803f",
+              "length": 1090661634,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e97bee99f913fe060b2bfc882253f51f95a40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 10,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973e779e86bea1790ebf17f0cb405b030840",
+                  "next": "01000000ef90743f6d4e97be4e6386bff590e1bf1908e7404dcbc640"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0100000000000000000000000000000009000000000000000000000000000000ef90743f6d4e973e779e86bea1790ebf17f0cb405b030840ef90743f6d4e97be00000000000000001908e7404dcbc6401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004e6386bf0000403ff590e1bf00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004e6386bf0000403ff590e1bf00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004e6386bf0000403ff590e1bf00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004e6386bf0000403ff590e1bf00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 11,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973e64dee33f8f9e563f5f9ce43f9e9a1340",
+                  "next": "01000000ef90743f6d4e97be823021c097490e3f99080240fa613a40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "020000000000000009000000000000000000000000000000ef90743f6d4e973e64dee33f8f9e563f5f9ce43f9e9a1340ef90743f6d4e97be000000000000000099080240fa613a4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000064dee33f0000403f8f9e563f00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000064dee33f0000403f8f9e563f00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000064dee33f0000403f8f9e563f00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000064dee33f0000403f8f9e563f00010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 12,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973ee9dd63c08c682fc0c86ec94075f81640",
+                  "next": "01000000ef90743f6d4e97be9e11504064da4fc0f7d8bd3fee2a6240"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0100000000000000000000000000000009000000000000000000000000000000ef90743f6d4e973ee9dd63c08c682fc0c86ec94075f81640ef90743f6d4e97be0000000000000000f7d8bd3fee2a62401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "e54e01401dee96c0332544408996abbf2c6a8f401bb1e3bf09fe5b40c2f4a4c0e54e01401dee96c0",
+              "us": "00000000b251b43e0100003fd9285a3f0000803f",
+              "length": 1092651957,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e97be9e11504064da4fc0f7d8bd3fee2a6240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "e54e01401dee96c0332544408996abbf2c6a8f401bb1e3bf09fe5b40c2f4a4c0e54e01401dee96c0",
+              "us": "00000000b251b43e0100003fd9285a3f0000803f",
+              "length": 1092651957,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e97be9e11504064da4fc0f7d8bd3fee2a6240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 13,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973ee751cabf211f3dc06a203440968fa73e",
+                  "next": "01000000ef90743f6d4e97be447e32c03cf570bfd3a5e63f55acdf40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "020000000000000009000000000000000000000000000000ef90743f6d4e973ee751cabf211f3dc06a203440968fa73eef90743f6d4e97be0000000000000000d3a5e63f55acdf4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "1b1b38c0f0bd61c0ab4b3ec079bb4dc060b691be528018c0c06340bec9822cc01b1b38c0f0bd61c0",
+              "us": "00000000b055553d0000003f5b550d3f0000803f",
+              "length": 1086919261,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e973ee751cabf211f3dc06a203440968fa73e",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "1b1b38c0f0bd61c0ab4b3ec079bb4dc060b691be528018c0c06340bec9822cc01b1b38c0f0bd61c0",
+              "us": "00000000b055553d0000003f5b550d3f0000803f",
+              "length": 1086919261,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e973ee751cabf211f3dc06a203440968fa73e",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 14,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973e9eda7ac0f89f514033a4a740fb1ebb40",
+                  "next": "01000000ef90743f6d4e97bef3938e3fe13e0d40635e8c40429d9040"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0100000000000000000000000000000009000000000000000000000000000000ef90743f6d4e973e9eda7ac0f89f514033a4a740fb1ebb40ef90743f6d4e97be0000000000000000635e8c40429d90401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000f3938e3f0000403fe13e0d4000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "dddab1c0d07095be2a27e9c06a6ca94082ff11c005f7da40a09b0dbf38cea03fdddab1c0d07095be",
+              "us": "000000004107873e0000003fa083433f0000803f",
+              "length": 1102143895,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e973e9eda7ac0f89f514033a4a740fb1ebb40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000f3938e3f0000403fe13e0d4000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "6e8dabc080aa7dbe906bdbc0e437aa409aabecbf3a47d54048ccb4be08888c3f6e8dabc080aa7dbe",
+              "us": "000000009cc4863e0000003f4e62433f0000803f",
+              "length": 1102000988,
+              "n": 5
+            },
+            "enclosure": "01000000053b773fa0dc843e54b866c0e6594d40d6efa540df76b840",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000f3938e3f0000403fe13e0d4000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "9dc973c0e014193e9dc973c0c5a6aa40f271803fc5a6aa40f271803fe014193e9dc973c0e014193e",
+              "us": "0000000037bf843e0000003f9b5f423f0000803f",
+              "length": 1101000628,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000b3a490b3bf6c6f2f404b019a401edea540",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000f3938e3f0000403fe13e0d4000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "f917d3bfd849323f6097a0befd70a040f01f78404ceb6d40dfa62240e09019bff917d3bfd849323f",
+              "us": "000000002be8813e0000003f16f4403f0000803f",
+              "length": 1099857362,
+              "n": 5
+            },
+            "enclosure": "01000000ee90743f704e97bef3938e3fe13e0d40635e8c40429d9040",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "f917d3bfd849323f6097a0befd70a040f01f78404ceb6d40dfa62240e09019bff917d3bfd849323f",
+              "us": "000000002be8813e0000003f16f4403f0000803f",
+              "length": 1099857362,
+              "n": 5
+            },
+            "enclosure": "01000000ee90743f704e97bef3938e3fe13e0d40635e8c40429d9040",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 15,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "01000000ef90743f6d4e973ec5200e3ffb8ecbbeb9fc92401c95c140",
+                  "next": "01000000ef90743f6d4e97be2a4b02c0ab9b77c0104ada40b068be3f"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "020000000000000009000000000000000000000000000000ef90743f6d4e973ec5200e3ffb8ecbbeb9fc92401c95c140ef90743f6d4e97be0000000000000000104ada40b068be3f00000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c5200e3f0000403ffb8ecbbe00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4c73b0c0479364c00a62a2c07d9f09c08aa0b83f085285c07e5b803feccbb2c04c73b0c0479364c0",
+              "us": "000000005053b73d0000003f6aea163f0000803f",
+              "length": 1099231774,
+              "n": 5
+            },
+            "enclosure": "01000000ee90743f704e97be2a4b02c0ab9b77c0104ada40b068be3f",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c5200e3f0000403ffb8ecbbe00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "2c94aac0560469c0d0db9bc013e7f6bfdd98ca3fc66d6ac06db78f3f49ffabc02c94aac0560469c0",
+              "us": "00000000b5b1d63d0000003f36d61a3f0000803f",
+              "length": 1099384715,
+              "n": 5
+            },
+            "enclosure": "01000000043b773fa2dc84bee9dbefbf0eb969c03bd5d5406ce7e23f",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c5200e3f0000403ffb8ecbbe00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "e00466c0348f80c0e00466c008f27ebee841074018f27ebee8410740358f80c0e00466c0348f80c0",
+              "us": "00000000459e4b3e0000003f91e7323f0000803f",
+              "length": 1100455300,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000b3f2853dbfc58608c064a3b640482f7140",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000c5200e3f0000403ffb8ecbbe00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "17bb3ebfa2d17dc0081922c0971be83f507eed3fe4ed4a406a2969408af126c017bb3ebfa2d17dc0",
+              "us": "000000002d83913e0000003f97c1483f0000803f",
+              "length": 1101678827,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e973ec5200e3ffb8ecbbeb9fc92401c95c140",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "17bb3ebfa2d17dc0081922c0971be83f507eed3fe4ed4a406a2969408af126c017bb3ebfa2d17dc0",
+              "us": "000000002d83913e0000003f97c1483f0000803f",
+              "length": 1101678827,
+              "n": 5
+            },
+            "enclosure": "01000000ef90743f6d4e973ec5200e3ffb8ecbbeb9fc92401c95c140",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 16,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3eba4f7dbf787345c0ecd8bf4004222e3f",
+                  "next": "0100000098b87e3f7675cc3dd48c16bf4fe5c2bfe140d2401675e240"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000007c3571bf9183ab3eba4f7dbf787345c0ecd8bf4004222e3f98b87e3f7675cc3d0000000000000000e140d2401675e2401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "893b60c0d2e1abc06cb986c091c6d53f1ff5144054de14406d2c42404ce496c0893b60c0d2e1abc0",
+              "us": "00000000d7bf843e0000003fec5f423f0000803f",
+              "length": 1104829180,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f7675cc3dd48c16bf4fe5c2bfe140d2401675e240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 17,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3ea6a8823f9925b03f2e888040f91be140",
+                  "next": "0100000098b87e3f7675cc3de0bffd3fb05a9d3fc405d7406efcef40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000007c3571bf9183ab3ea6a8823f9925b03f2e888040f91be14098b87e3f7675cc3d0000000000000000c405d7406efcef4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "actual_return": true,
+          "source_count": 0,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "ac757cbf929335c07a10debfb8ff9340a66e9e402177a9400e64b640c1a40ac0ac757cbf929335c0",
+              "us": "00000000c805873e0000003fe482433f0000803f",
+              "length": 1105428761,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f7675cc3de0bffd3fb05a9d3fc405d7406efcef40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 18,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3eaf192c40e8004e4083240a3f4659043f",
+                  "next": "0100000098b87e3f7675cc3d4c2042bfa9cf69406b0081400135dd40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000007c3571bf9183ab3eaf192c40e8004e4083240a3f4659043f98b87e3f7675cc3d00000000000000006b0081400135dd401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004c2042bf0000403fa9cf694000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004c2042bf0000403fa9cf694000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004c2042bf0000403fa9cf694000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000009000000000000004c2042bf0000403fa9cf694000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 19,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3eb39e383e8e1f57c0b0a1b840b9637e40",
+                  "next": "0100000098b87e3f7675cc3d0760dc3f0ed07b401400bf40f8dc8240"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000007c3571bf9183ab3eb39e383e8e1f57c0b0a1b840b9637e4098b87e3f7675cc3d00000000000000001400bf40f8dc824000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000b39e383e0000403f8e1f57c000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000b39e383e0000403f8e1f57c000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000b39e383e0000403f8e1f57c000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000b39e383e0000403f8e1f57c000010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 20,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3ed985a93ee250b2bf01cba340d8809b40",
+                  "next": "0100000098b87e3f7675cc3dabd80440d7d11bc04b4b94409ede1240"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000007c3571bf9183ab3ed985a93ee250b2bf01cba340d8809b4098b87e3f7675cc3d00000000000000004b4b94409ede12401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "6005ecbd3cb173c0284eb0bee81cc3bfc0888840e3e487bf8edd8f403a1556c06005ecbd3cb173c0",
+              "us": "00000000f891293effffff3e7e642a3f0000803f",
+              "length": 1096661659,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f7675cc3dabd80440d7d11bc04b4b94409ede1240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "6005ecbd3cb173c0284eb0bee81cc3bfc0888840e3e487bf8edd8f403a1556c06005ecbd3cb173c0",
+              "us": "00000000f891293effffff3e7e642a3f0000803f",
+              "length": 1096661659,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f7675cc3dabd80440d7d11bc04b4b94409ede1240",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 21,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3e3bcf314062fb73c04a442f401bff6f40",
+                  "next": "0100000098b87e3f7675cc3d89acd8bf5c59b53e3a3fd3403d2a3a40"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000007c3571bf9183ab3e3bcf314062fb73c04a442f401bff6f4098b87e3f7675cc3d00000000000000003a3fd3403d2a3a4000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "f0499640e84520c07f2e5c409a33c1c05c2a5c3f6ed8a3c0f76f0740201fcbbff0499640e84520c0",
+              "us": "00000000c2f3933e0000003fe1f9493f0000803f",
+              "length": 1095737779,
+              "n": 5
+            },
+            "enclosure": "010000007c3571bf9183ab3e3bcf314062fb73c04a442f401bff6f40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "actual_return": true,
+          "source_count": 1,
+          "notifications": [],
+          "events": [],
+          "counter": 100,
+          "source": {
+            "curve": {
+              "points": "f0499640e84520c07f2e5c409a33c1c05c2a5c3f6ed8a3c0f76f0740201fcbbff0499640e84520c0",
+              "us": "00000000c2f3933e0000003fe1f9493f0000803f",
+              "length": 1095737779,
+              "n": 5
+            },
+            "enclosure": "010000007c3571bf9183ab3e3bcf314062fb73c04a442f401bff6f40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 22,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3e59ba6840fc1c07bf1a0cd140d52ebd40",
+                  "next": "0100000098b87e3f7675cc3d34fd0ec096bf55c02e0c244098ef6440"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "01000000000000000000000000000000090000000000000000000000000000007c3571bf9183ab3e59ba6840fc1c07bf1a0cd140d52ebd4098b87e3f7675cc3d00000000000000002e0c244098ef64401100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000034fd0ec00000403f96bf55c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "1689f64037e4943f5429b74090078dc0c8ebdcbe9a000ec01244c63fa18056401689f64037e4943f",
+              "us": "00000000f63a733effffff3ebece3c3f0000803f",
+              "length": 1103568249,
+              "n": 5
+            },
+            "enclosure": "010000007c3571bf9183ab3e59ba6840fc1c07bf1a0cd140d52ebd40",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000034fd0ec00000403f96bf55c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "e26ded4074e98d3e844c9340f02198c0107861bf6f95d7bf72c9f73f58365640e26ded4074e98d3e",
+              "us": "00000000aefb743effffff3eec3e3d3f0000803f",
+              "length": 1103155089,
+              "n": 5
+            },
+            "enclosure": "0100000038615fbf9119fa3ee03e5140121b34bfb91bc9406583b840",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000034fd0ec00000403f96bf55c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "120d324052448fc033c6f6bf64f179c0db9fb0bf3e071c3f3e205540e0a31a3d120d324052448fc0",
+              "us": "0000000020b5823e0000003f905a413f0000803f",
+              "length": 1100262964,
+              "n": 5
+            },
+            "enclosure": "010000003acaf63d70227e3f4a7a333fd586f7bf1889914050d39740",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000090000000000000034fd0ec00000403f96bf55c000010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "e62c55c0a5eaa7c0e2076cc0fb14d8bf039b91bfc353b7bf1aca47bf57ba9fc0e62c55c0a5eaa7c0",
+              "us": "000000009022953e0000003f47914a3f0000803f",
+              "length": 1095007714,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f5075cc3d34fd0ec096bf55c02e0c244098ef6440",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "e62c55c0a5eaa7c0e2076cc0fb14d8bf039b91bfc353b7bf1aca47bf57ba9fc0e62c55c0a5eaa7c0",
+              "us": "000000009022953e0000003f47914a3f0000803f",
+              "length": 1095007714,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f5075cc3d34fd0ec096bf55c02e0c244098ef6440",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    },
+    {
+      "case": 23,
+      "finish": {
+        "actual_return": true,
+        "ui_tag": 0,
+        "cursor": 1,
+        "history": [
+          {
+            "tag": 7,
+            "groups": [
+              [
+                {
+                  "niche": "0x8000000000000004",
+                  "wall": 9,
+                  "previous": "010000007c3571bf9183ab3ee12f2dbf2cce27bf1eec3340a9efa540",
+                  "next": "0100000098b87e3f7675cc3d3122a6bed2c92c3fcec49340a1583740"
+                }
+              ]
+            ]
+          }
+        ],
+        "events": [
+          {
+            "stride": 88,
+            "count": 1,
+            "bytes": "0200000000000000090000000000000000000000000000007c3571bf9183ab3ee12f2dbf2cce27bf1eec3340a9efa54098b87e3f7675cc3d0000000000000000cec49340a158374000000000000000001100000000000000"
+          },
+          {
+            "stride": 8,
+            "count": 1,
+            "bytes": "1100000000000000"
+          },
+          {
+            "stride": 16,
+            "count": 1,
+            "bytes": "11000000000000000900000000000000"
+          }
+        ],
+        "archivist_header": "00c2002000000000000000000000000000000000000000000000000000000000"
+      },
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000e12f2dbf0000403f2cce27bf00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "2ea51ec0bc147bbf02f330c0ea51ef3f4439ea3f182a1540766a0740301005bf2ea51ec0bc147bbf",
+              "us": "000000006e06443effffff3e9b01313f0000803f",
+              "length": 1097822496,
+              "n": 5
+            },
+            "enclosure": "0100000098b87e3f5075cc3d3122a6bed2c92c3fcec49340a1583740",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000e12f2dbf0000403f2cce27bf00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "f89407c0a184babfe1ba3ac025e9b83fea76b63f7a0229405f610e404ca385bef89407c0a184babf",
+              "us": "00000000b4114d3e0000003f6d44333f0000803f",
+              "length": 1097889896,
+              "n": 5
+            },
+            "enclosure": "010000007fcf763f10f3873e0a66b1be5280173fe22790400ca14040",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000e12f2dbf0000403f2cce27bf00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "8005a33fb2e504c0a9382ec08cb5cbbffe9211c09c240640d650dc3f6033ce3f8005a33fb2e504c0",
+              "us": "000000001323853e0100003f8991423f0000803f",
+              "length": 1098361707,
+              "n": 5
+            },
+            "enclosure": "010000003acaf63d70227e3f7d2000bfc0741f3cddba6d40fdcd8040",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              9
+            ],
+            [
+              536871008,
+              9
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000000900000000000000e12f2dbf0000403f2cce27bf00010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4c1bc23fe485a83f78eb61bea06f64c096a537c0082a28c072f290bf8a8810404c1bc23fe485a83f",
+              "us": "00000000b400a63e0000003f5900533f0000803f",
+              "length": 1098900920,
+              "n": 5
+            },
+            "enclosure": "010000007c3571bf9183ab3ee12f2dbf2cce27bf1eec3340a9efa540",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4c1bc23fe485a83f78eb61bea06f64c096a537c0082a28c072f290bf8a8810404c1bc23fe485a83f",
+              "us": "00000000b400a63e0000003f5900533f0000803f",
+              "length": 1098900920,
+              "n": 5
+            },
+            "enclosure": "010000007c3571bf9183ab3ee12f2dbf2cce27bf1eec3340a9efa540",
+            "scalar_bits": "cdcc4c403333333f3333334000000000",
+            "metadata": "000000000105"
+          }
+        }
+      ]
+    }
+  ],
+  "scope": "Actual rectangle finish141464a60 full entry-toRET creates niche4 owner; original process140abfb30 whole RET tests Rectangle2d::lerp/Curve regeneration/source writes/notif count/audio/completion across dims/orientation/center/undo/instant/timed/absent/alreadyfinished. glam angle_to dependency reused; valid finite positive dimensions/unit axes. Circle/mixed shape not accepted. Nonempty cancel and producer threshold Rust closure separate."
+}

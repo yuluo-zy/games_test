@@ -1,0 +1,68 @@
+1408cea30 mov rax, qword ptr [rcx + 0x18]
+1408cea34 mov rax, qword ptr [rax + 0x80]
+1408cea3b mov r8, qword ptr [rdx + 0x18]
+1408cea3f cmp rax, qword ptr [r8 + 0x80]
+1408cea46 jne 0x1408ceb04
+1408cea4c movzx r8d, byte ptr [rcx]
+1408cea50 cmp r8b, byte ptr [rdx]
+1408cea53 jne 0x1408ceb04
+1408cea59 mov al, 1
+1408cea5b cmp r8d, 0x10
+1408cea5f ja 0x1408ceae7
+1408cea65 mov r8d, r8d
+1408cea68 lea r9, [rip + 0x21d5a85]
+1408cea6f movsxd r8, dword ptr [r9 + r8*4]
+1408cea73 add r8, r9
+1408cea76 jmp r8
+1408cea79 mov rax, qword ptr [rcx + 8]
+1408cea7d cmp rax, qword ptr [rdx + 8]
+1408cea81 jmp 0x1408ceae4
+1408cea83 mov r8d, dword ptr [rcx + 4]
+1408cea87 cmp r8d, dword ptr [rdx + 4]
+1408cea8b jne 0x1408ceb04
+1408cea8d mov r8, qword ptr [rcx + 8]
+1408cea91 cmp r8, qword ptr [rdx + 8]
+1408cea95 jne 0x1408ceb04
+1408cea97 test r8, r8
+1408cea9a jne 0x1408ceae7
+1408cea9c mov rax, qword ptr [rcx + 0x10]
+1408ceaa0 cmp rax, qword ptr [rdx + 0x10]
+1408ceaa4 jmp 0x1408ceae4
+1408ceaa6 movq xmm0, qword ptr [rcx + 8]
+1408ceaab movq xmm1, qword ptr [rdx + 8]
+1408ceab0 pcmpeqd xmm1, xmm0
+1408ceab4 pshufd xmm0, xmm1, 0x50
+1408ceab9 movmskpd eax, xmm0
+1408ceabd cmp eax, 3
+1408ceac0 jne 0x1408ceb04
+1408ceac2 mov eax, dword ptr [rcx + 4]
+1408ceac5 cmp eax, dword ptr [rdx + 4]
+1408ceac8 jmp 0x1408ceae4
+1408ceaca movq xmm0, qword ptr [rcx + 4]
+1408ceacf movq xmm1, qword ptr [rdx + 4]
+1408cead4 pcmpeqd xmm1, xmm0
+1408cead8 pshufd xmm0, xmm1, 0x50
+1408ceadd movmskpd eax, xmm0
+1408ceae1 cmp eax, 3
+1408ceae4 sete al
+1408ceae7 ret 
+1408ceae8 mov rax, qword ptr [rcx + 8]
+1408ceaec cmp rax, qword ptr [rdx + 8]
+1408ceaf0 jne 0x1408ceb04
+1408ceaf2 movzx eax, byte ptr [rcx + 1]
+1408ceaf6 cmp al, byte ptr [rdx + 1]
+1408ceaf9 jne 0x1408ceb04
+1408ceafb movzx eax, byte ptr [rcx + 2]
+1408ceaff cmp al, byte ptr [rdx + 2]
+1408ceb02 jmp 0x1408ceae4
+1408ceb04 xor eax, eax
+1408ceb06 ret 
+1408ceb07 int3 
+1408ceb08 int3 
+1408ceb09 int3 
+1408ceb0a int3 
+1408ceb0b int3 
+1408ceb0c int3 
+1408ceb0d int3 
+1408ceb0e int3 
+1408ceb0f int3 

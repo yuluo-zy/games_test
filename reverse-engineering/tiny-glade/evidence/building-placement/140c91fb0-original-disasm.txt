@@ -1,0 +1,20 @@
+140c91fb0: push rsi
+140c91fb1: push rdi
+140c91fb2: sub rsp, 0x28
+140c91fb6: mov rsi, rdx
+140c91fb9: mov rdi, rcx
+140c91fbc: movss xmm1, dword ptr [rcx]
+140c91fc0: movss xmm2, dword ptr [rcx + 8]
+140c91fc5: lea r9, [rip + 0x1e9b9cc]
+140c91fcc: mov rcx, rdx
+140c91fcf: call 0x141940a40
+140c91fd4: xorps xmm1, xmm1
+140c91fd7: maxss xmm1, xmm0
+140c91fdb: movss xmm0, dword ptr [rip + 0x1c93921]
+140c91fe3: minss xmm0, xmm1
+140c91fe7: mulss xmm0, dword ptr [rsi + 0x30]
+140c91fec: movss xmm1, dword ptr [rdi + 4]
+140c91ff1: add rsp, 0x28
+140c91ff5: pop rdi
+140c91ff6: pop rsi
+140c91ff7: ret 

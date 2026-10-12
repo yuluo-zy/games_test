@@ -1,0 +1,90 @@
+
+void __cdecl
+system_wall_constructor::construct_lintels::place_support_beams::SupportBeamGrower::propose(void)
+
+{
+  float fVar1;
+  undefined4 uVar2;
+  undefined8 uVar3;
+  uint uVar4;
+  undefined4 uVar5;
+  undefined1 auVar6 [16];
+  ulonglong *in_RCX;
+  uint *in_RDX;
+  ulonglong in_R8;
+  longlong in_R9;
+  undefined1 uVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar16;
+  undefined1 auVar15 [16];
+  undefined1 auVar17 [16];
+  ulonglong in_stack_00000028;
+  longlong in_stack_00000030;
+  ulonglong in_stack_00000038;
+  
+  uVar7 = 2;
+  if ((char)in_RDX[10] == '\0') {
+    if (in_stack_00000028 <= in_R8) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    fVar1 = *(float *)(in_R9 + 8 + in_R8 * 0xc);
+    fVar8 = fVar1 - (float)in_RDX[8];
+    uVar3 = *(undefined8 *)(in_R9 + in_R8 * 0xc);
+    fVar9 = (float)uVar3 - (float)*(undefined8 *)(in_RDX + 6);
+    fVar10 = (float)((ulonglong)uVar3 >> 0x20) -
+             (float)((ulonglong)*(undefined8 *)(in_RDX + 6) >> 0x20);
+    fVar11 = SQRT(fVar9 * fVar9 + fVar8 * fVar8);
+    fVar14 = __real_3f800000 / SQRT(fVar10 * fVar10 + fVar9 * fVar9 + fVar8 * fVar8);
+    fVar8 = fVar8 * fVar14;
+    uVar4 = *in_RDX;
+    fVar12 = fVar8;
+    if ((uVar4 & 1) != 0) {
+      fVar12 = (float)in_RDX[3];
+    }
+    fVar13 = fVar11 + (float)in_RDX[9];
+    if (fVar13 <= __real_40499999) {
+      if (in_stack_00000038 <= in_R8) {
+                    /* WARNING: Subroutine does not return */
+        core::panicking::panic_bounds_check();
+      }
+      fVar9 = fVar9 * fVar14;
+      fVar10 = fVar10 * fVar14;
+      uVar2 = *(undefined4 *)(in_R9 + in_R8 * 0xc);
+      uVar5 = *(undefined4 *)(in_R9 + 4 + in_R8 * 0xc);
+      fVar14 = 0.0;
+      if (__real_3f800000 <= (float)in_RDX[9]) {
+        auVar15._0_8_ = CONCAT44((int)(uVar4 << 0x1f) >> 0x1f,(int)(uVar4 << 0x1f) >> 0x1f);
+        auVar15._8_8_ = 0;
+        auVar17._8_8_ = 0;
+        auVar17._0_8_ = *(ulonglong *)(in_RDX + 1) & auVar15._0_8_;
+        auVar6._4_4_ = fVar10;
+        auVar6._0_4_ = fVar9;
+        auVar6._8_8_ = 0;
+        auVar17 = ~auVar15 & auVar6 | auVar17;
+        fVar14 = auVar17._0_4_ - fVar9;
+        fVar16 = auVar17._4_4_ - fVar10;
+        fVar14 = fVar13 * (SQRT((fVar12 - fVar8) * (fVar12 - fVar8) +
+                                fVar16 * fVar16 + fVar14 * fVar14) + __real_3f000000);
+      }
+      uVar7 = (*(byte *)(in_stack_00000030 + in_R8) & 0xf) != 0;
+      *in_RCX = in_R8;
+      *(float *)(in_RCX + 1) = fVar11;
+      *(ulonglong *)((longlong)in_RCX + 0xc) = CONCAT44(fVar10,fVar9);
+      *(float *)((longlong)in_RCX + 0x14) = fVar8;
+      *(float *)(in_RCX + 3) = fVar14;
+      *(undefined4 *)((longlong)in_RCX + 0x1c) = uVar2;
+      *(undefined4 *)(in_RCX + 4) = uVar5;
+      *(float *)((longlong)in_RCX + 0x24) = fVar1;
+    }
+  }
+  *(undefined1 *)(in_RCX + 5) = uVar7;
+  return;
+}
+

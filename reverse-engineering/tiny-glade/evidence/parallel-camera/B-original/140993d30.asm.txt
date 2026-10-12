@@ -1,0 +1,61 @@
+140993d30 push r15
+140993d32 push r14
+140993d34 push r12
+140993d36 push rsi
+140993d37 push rdi
+140993d38 push rbx
+140993d39 sub rsp, 0x78
+140993d3d movaps xmmword ptr [rsp + 0x60], xmm6
+140993d42 mov rdi, rdx
+140993d45 mov rsi, rcx
+140993d48 movups xmm0, xmmword ptr [rip + 0x21590fd]
+140993d4f movups xmmword ptr [rsp + 0x2c], xmm0
+140993d54 movups xmm0, xmmword ptr [rip + 0x21590e5]
+140993d5b movaps xmmword ptr [rsp + 0x20], xmm0
+140993d60 mov r15, qword ptr [rdx + 0x10]
+140993d64 test r15, r15
+140993d67 je 0x140993dd5
+140993d69 movaps xmm6, xmm2
+140993d6c mov r12, qword ptr [rdi + 8]
+140993d70 shl r15, 4
+140993d74 add r15, r12
+140993d77 lea rbx, [rsp + 0x44]
+140993d7c lea r14, [rsp + 0x20]
+140993d81 nop word ptr cs:[rax + rax]
+140993d90 mov rdx, qword ptr [r12]
+140993d94 mov rax, qword ptr [r12 + 8]
+140993d99 mov rcx, rbx
+140993d9c mov r8, r14
+140993d9f movaps xmm3, xmm6
+140993da2 call qword ptr [rax + 0x30]
+140993da5 movups xmm0, xmmword ptr [rsp + 0x44]
+140993daa movups xmm1, xmmword ptr [rsp + 0x50]
+140993daf movups xmmword ptr [rsp + 0x2c], xmm1
+140993db4 movaps xmmword ptr [rsp + 0x20], xmm0
+140993db9 add r12, 0x10
+140993dbd cmp r12, r15
+140993dc0 jne 0x140993d90
+140993dc2 movaps xmm0, xmmword ptr [rsp + 0x20]
+140993dc7 movsd xmm1, qword ptr [rsp + 0x30]
+140993dcd movss xmm2, dword ptr [rsp + 0x38]
+140993dd3 jmp 0x140993de2
+140993dd5 xorps xmm1, xmm1
+140993dd8 movaps xmm0, xmmword ptr [rip + 0x1faa2e1]
+140993ddf xorps xmm2, xmm2
+140993de2 movups xmm3, xmmword ptr [rsp + 0x2c]
+140993de7 movups xmmword ptr [rdi + 0x24], xmm3
+140993deb movaps xmm3, xmmword ptr [rsp + 0x20]
+140993df0 movups xmmword ptr [rdi + 0x18], xmm3
+140993df4 movlps qword ptr [rsi], xmm1
+140993df7 movss dword ptr [rsi + 8], xmm2
+140993dfc movaps xmmword ptr [rsi + 0x10], xmm0
+140993e00 mov rax, rsi
+140993e03 movaps xmm6, xmmword ptr [rsp + 0x60]
+140993e08 add rsp, 0x78
+140993e0c pop rbx
+140993e0d pop rdi
+140993e0e pop rsi
+140993e0f pop r12
+140993e11 pop r14
+140993e13 pop r15
+140993e15 ret 

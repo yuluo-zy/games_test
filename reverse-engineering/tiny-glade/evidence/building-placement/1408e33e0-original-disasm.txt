@@ -1,0 +1,57 @@
+1408e33e0 mov rax, rcx
+1408e33e3 movss xmm0, dword ptr [rdx + 0x34]
+1408e33e8 xor ecx, ecx
+1408e33ea ucomiss xmm0, dword ptr [rip + 0x2042513]
+1408e33f1 jne 0x1408e3418
+1408e33f3 jp 0x1408e3418
+1408e33f5 movss xmm0, dword ptr [rip + 0x2042587]
+1408e33fd ucomiss xmm0, dword ptr [rdx + 0x30]
+1408e3401 jae 0x1408e3418
+1408e3403 movzx ecx, byte ptr [rdx + 0x3c]
+1408e3407 mov qword ptr [rax + 8], rcx
+1408e340b or rcx, 2
+1408e340f mov qword ptr [rax + 0x10], rcx
+1408e3413 mov ecx, 1
+1408e3418 mov qword ptr [rax], rcx
+1408e341b ret 
+1408e341c int3 
+1408e341d int3 
+1408e341e int3 
+1408e341f int3 
+1408e3420 push rsi
+1408e3421 push rdi
+1408e3422 sub rsp, 0xa8
+1408e3429 movaps xmmword ptr [rsp + 0x90], xmm7
+1408e3431 movaps xmmword ptr [rsp + 0x80], xmm6
+1408e3439 mov rsi, rcx
+1408e343c movss xmm7, dword ptr [rdx + 0x2c]
+1408e3441 movzx eax, byte ptr [rip + 0x2d517c1]
+1408e3448 mov ecx, 0xa0
+1408e344d mov edx, 4
+1408e3452 call 0x140613c10
+1408e3457 test rax, rax
+1408e345a je 0x1408e3729
+1408e3460 mov rdi, rax
+1408e3463 movss xmm0, dword ptr [rip + 0x2042465]
+1408e346b mulss xmm0, xmm7
+1408e346f movss xmm6, dword ptr [rip + 0x204248d]
+1408e3477 subss xmm6, xmm7
+1408e347b mulss xmm6, dword ptr [rip + 0x20423ed]
+1408e3483 addss xmm6, xmm0
+1408e3487 xorps xmm0, xmm0
+1408e348a movaps xmm1, xmm6
+1408e348d call 0x142923f70
+1408e3492 mov dword ptr [rdi], 0
+1408e3498 movss dword ptr [rdi + 4], xmm0
+1408e349d movss xmm0, dword ptr [rip + 0x21c1bef]
+1408e34a5 movaps xmm1, xmm6
+1408e34a8 call 0x142923f70
+1408e34ad mov dword ptr [rdi + 8], 0x3d579436
+1408e34b4 movss dword ptr [rdi + 0xc], xmm0
+1408e34b9 movss xmm0, dword ptr [rip + 0x21c1bd7]
+1408e34c1 movaps xmm1, xmm6
+1408e34c4 call 0x142923f70
+1408e34c9 mov dword ptr [rdi + 0x10], 0x3dd79436
+1408e34d0 movss dword ptr [rdi + 0x14], xmm0
+1408e34d5 movss xmm0, dword ptr [rip + 0x21c1bbf]
+1408e34dd movaps xmm1, xmm6

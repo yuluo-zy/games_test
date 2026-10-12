@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "status": "proposed_not_implemented",
+  "date": "2026-10-11",
+  "scope": "Metadata and workflow redesign; business implementation/build/oracle not performed in this proposal task",
+  "proposal": "NATIVE_RECONSTRUCTION_ACCELERATION_PLAN.md",
+  "reports": {
+    "pdb": "evidence/reconstruction-strategy-2026-10-11/pdb-capability-audit.md",
+    "automation": "evidence/reconstruction-strategy-2026-10-11/automation-pipeline.md",
+    "parallel": "evidence/reconstruction-strategy-2026-10-11/parallel-execution-plan.md"
+  },
+  "measured_rust_variables": {
+    "A": 0,
+    "B": 0,
+    "C": 0
+  },
+  "target_baseline": "C",
+  "existing_reference_baseline": "B",
+  "parallel_slots": {
+    "parent": 1,
+    "business_agents": 3
+  },
+  "business_validation_deferred": true,
+  "milestones": [
+    {
+      "id": "M0",
+      "status": "complete",
+      "deliverable": "Three PDB capability audits and positive controls"
+    },
+    {
+      "id": "M1",
+      "status": "planned",
+      "deliverable": "On-demand bounded owner packs ready enough for implementation; no full DB prerequisite"
+    },
+    {
+      "id": "M2",
+      "status": "conditional",
+      "deliverable": "Single persistent decompiler worker + cache + one inline extraction pilot",
+      "trigger": "Repeated measured startup/queue or relationship-query costs justify worker/index upgrade"
+    },
+    {
+      "id": "M3",
+      "status": "planned",
+      "deliverable": "Three complete business chain implementations"
+    },
+    {
+      "id": "M4",
+      "status": "planned",
+      "deliverable": "Shared API/dependency/schedule integration and conflict reconciliation"
+    },
+    {
+      "id": "M5",
+      "status": "deferred",
+      "deliverable": "Scoped native and World acceptance with actual dependency closure"
+    },
+    {
+      "id": "M6",
+      "status": "planned",
+      "deliverable": "Full C building G00-G19 including persistence/tasks/GPU"
+    }
+  ],
+  "acceptance_unchanged": true,
+  "speedup_claim": null,
+  "proposal_peer_review": "evidence/reconstruction-strategy-2026-10-11/proposal-peer-review.json",
+  "proposal_sha256": "89a7846e45b7ec8bf517c2c67a632043d63572e49e349f3f8f76de0aaaf7cf2e",
+  "recommended_revision": "NATIVE_RECONSTRUCTION_FAST_ROUTE.md",
+  "recommended_mode": "consumer_pull_on_demand_evidence_api_reuse_two_loops",
+  "infrastructure_is_prerequisite": false,
+  "fast_path_observation": {
+    "baseline": "B",
+    "read_only_metadata": true,
+    "pc_count": 2,
+    "raw_assembly_range_bytes": 32,
+    "observed_process_seconds": 0.08,
+    "general_speedup_claim": null,
+    "report": "evidence/reconstruction-strategy-2026-10-11/alternatives-evidence-runtime.md"
+  },
+  "alternate_reports": [
+    "evidence/reconstruction-strategy-2026-10-11/alternatives-code-reduction.md",
+    "evidence/reconstruction-strategy-2026-10-11/alternatives-evidence-runtime.md",
+    "evidence/reconstruction-strategy-2026-10-11/alternatives-execution-decision.md"
+  ]
+}
