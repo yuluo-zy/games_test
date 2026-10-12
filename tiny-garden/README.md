@@ -27,6 +27,16 @@
 
 ## 运行
 
+### 月色悬崖城堡
+
+双击根目录 [运行城堡.cmd](运行城堡.cmd)，或选择共享配置 [Run Castle Scene](.run/Run%20Castle%20Scene.run.xml)。此模式载入精修原创城堡、岩岸与植被，带水波/反射、暖窗、星空及萤火；右键环绕、滚轮缩放，R 复位，L 切换夜景/日光，Esc 退出。普通启动仍进入建造编辑庭院。
+
+```powershell
+cargo run -p garden-presentation --features desktop --bin tiny-garden --locked -- --castle
+```
+
+这是独立观赏场景，圆塔/桥/尖拱窗的自由建造尚未接入。架构与源资产见[城堡场景架构与运行](docs/城堡场景架构与运行.md)，游戏渲染图和真实窗口验收限制见[实机验收](docs/城堡场景实机验收.md)。
+
 ### IDE 一键运行
 
 在 RustRover / IDEA 中打开 `D:\game\tiny-garden`，等待 Cargo 同步后，打开 [游戏入口 main.rs](crates/presentation/src/main.rs)，点击 `fn main()` 左侧绿色 ▶。IDE 默认会根据目标的 `required-features = ["desktop"]` 补齐桌面功能；若关闭过自动功能选项，可以直接选择项目共享配置 [Run Tiny Garden](.run/Run%20Tiny%20Garden.run.xml) 启动，它已显式填写 desktop。

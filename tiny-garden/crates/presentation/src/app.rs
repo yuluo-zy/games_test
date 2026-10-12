@@ -50,6 +50,17 @@ pub fn run() {
         .next()
         .as_deref()
     {
+        Some("--castle") => {
+            assert!(args.next().is_none(), "城堡观赏模式不接受其他参数");
+            crate::castle::run(None);
+            return;
+        }
+        Some("--castle-capture") => {
+            let path = PathBuf::from(args.next().expect("需要城堡截图路径"));
+            assert!(args.next().is_none(), "意外的城堡参数");
+            crate::castle::run(Some(path));
+            return;
+        }
         None => (None, false, false, false, false, false),
         Some(
             flag @ ("--capture" | "--review-capture" | "--tools-review" | "--art-closeup"

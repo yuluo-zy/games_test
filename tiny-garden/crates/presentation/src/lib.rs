@@ -4,6 +4,8 @@ pub mod app;
 pub mod building_kit;
 #[cfg(feature = "desktop")]
 pub mod camera;
+#[cfg(feature = "desktop")]
+pub mod castle;
 pub mod catalog;
 #[cfg(feature = "desktop")]
 pub mod context_tools;
@@ -22,6 +24,7 @@ pub mod pointer;
 pub mod preview;
 #[cfg(feature = "desktop")]
 pub mod renderer;
+pub mod scene_asset;
 #[cfg(feature = "desktop")]
 pub mod strokes;
 #[cfg(feature = "desktop")]

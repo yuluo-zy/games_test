@@ -52,9 +52,19 @@ pub struct OrbitCamera {
     home: Pose,
     dragging: bool,
     pan_anchor: Option<Vec3>,
+    min_pitch: f32,
 }
 impl OrbitCamera {
     pub fn from_view(position: Vec3, target: Vec3) -> Option<Self> {
+        Self::from_view_min_pitch(position, target, MIN_PITCH)
+    }
+
+    /// 景观参考镜头允许低于观察目标；编辑器继续使用原来的俯视下限。
+    pub fn from_reference_view(position: Vec3, target: Vec3) -> Option<Self> {
+        Self::from_view_min_pitch(position, target, -0.30)
+    }
+
+    fn from_view_min_pitch(position: Vec3, target: Vec3, min_pitch: f32) -> Option<Self> {
         let offset = position - target;
         let distance = offset.length();
         if !position.is_finite() || !target.is_finite() || !distance.is_finite() || distance < 0.01
@@ -67,7 +77,7 @@ impl OrbitCamera {
             pitch: (offset.y / distance)
                 .clamp(-1.0, 1.0)
                 .asin()
-                .clamp(MIN_PITCH, MAX_PITCH),
+                .clamp(min_pitch, MAX_PITCH),
             distance: distance.clamp(MIN_DISTANCE, MAX_DISTANCE),
         };
         Some(Self {
@@ -75,6 +85,7 @@ impl OrbitCamera {
             home: pose,
             dragging: false,
             pan_anchor: None,
+            min_pitch,
         })
     }
 
@@ -93,7 +104,7 @@ impl OrbitCamera {
             return;
         }
         self.pose.yaw = (self.pose.yaw - delta.x * 0.005).rem_euclid(std::f32::consts::TAU);
-        self.pose.pitch = (self.pose.pitch + delta.y * 0.005).clamp(MIN_PITCH, MAX_PITCH);
+        self.pose.pitch = (self.pose.pitch + delta.y * 0.005).clamp(self.min_pitch, MAX_PITCH);
     }
     fn zoom(&mut self, lines: f32) {
         if !lines.is_finite() {
@@ -215,6 +226,12 @@ fn button_view(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reference_view_preserves_the_low_water_camera() {
+        let eye = Vec3::new(10.0, 2.6, 30.0);
+        let view = OrbitCamera::from_reference_view(eye, Vec3::new(0.0, 5.8, 0.0)).unwrap();
+        assert!(view.transform().translation.distance(eye) < 0.0001);
+    }
     fn camera() -> OrbitCamera {
         OrbitCamera::from_view(Vec3::new(40.0, 38.0, 52.0), Vec3::new(0.0, 3.0, 0.0)).unwrap()
     }

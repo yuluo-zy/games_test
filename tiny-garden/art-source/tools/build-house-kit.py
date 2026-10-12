@@ -234,7 +234,8 @@ def audit_and_compile(col, max_triangles, max_materials):
             assert (p[1]-p[0]).cross(p[2]-p[0]).length > 1e-9
             for li in tri.loops:
                 position = mesh.vertices[mesh.loops[li].vertex_index].co
-                normal = mesh.polygons[tri.polygon_index].normal
+                # 导出使用实际角法线：硬边保持面法线，精修树冠/岩石可保留平滑着色。
+                normal = mesh.corner_normals[li].vector
                 data['indices'].append(len(data['positions']))
                 data['positions'].append([round(position.x, 6), round(position.z, 6), round(-position.y, 6)])
                 data['normals'].append([round(normal.x, 6), round(normal.z, 6), round(-normal.y, 6)])

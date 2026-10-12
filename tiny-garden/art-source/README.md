@@ -49,3 +49,15 @@ node art-source/tools/validate-house-kit.cjs 'C:/Users/liyu/AppData/Local/Temp/t
 ```
 
 制作迭代：v1 烘焙成功但静态检查中止；v2 初始模型；v3 调整木板和 UV；v4 导出切线后通过格式门。早期版本不是当前运行时资源，保留本地排查资料，不发布。
+
+## 悬崖城堡扩展资产
+
+2026-10-10，按用户指定 Reddit 夜景首图制作 25 个原创模块与 5 个 LOD1。当前源为 `models/cliff-castle-v4.blend`，输出为 `assets/themes/warm-stone/cliff-castle-v4/`；登记为 blockout，尚未接入圆塔/桥/尖拱门窗编辑工具。
+
+见[制作简报](悬崖城堡资产制作简报.md)与[制作验收](../docs/悬崖城堡资产制作与验收.md)。使用 `tools/build-cliff-castle-kit.py` 创建新版本，改源后使用 `tools/export-cliff-castle-kit.py` 重导出，均拒绝覆盖已有版本。后者读取实际源集合和预算，不重跑原建模配方。
+
+## 精修与游戏展示版本
+
+2026-10-10 后续精修交付为 `models/cliff-castle-v8.blend` / `assets/themes/warm-stone/cliff-castle-v8/`，现行清单指向 v8。已有 v4 保留为拆解制作历史。石/瓦/岩石共享纹理、磨圆岩壁、团簇树冠和屋檐已精修，并通过 `--castle` 接入游戏观赏场景。
+
+`tools/polish-cliff-castle.py` 提供从 v4 开始的制作配方；`tools/compile-cliff-castle-scene.py` 从实际艺术家源同时重导出模块和展示场景，保留旧版本。后二者共用同一场景编译步骤，不能只改 GLB 而保留旧 `scene.json`。合同、命令与实机图见[城堡架构与运行](../docs/城堡场景架构与运行.md)。

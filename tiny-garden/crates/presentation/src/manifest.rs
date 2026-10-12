@@ -242,8 +242,8 @@ mod tests {
         let summary = manifest.check(&root, false).unwrap();
         assert_eq!(summary.approved, 0);
         assert_eq!(summary.planned, 22);
-        assert_eq!(summary.blockout, 4);
-        assert_eq!(summary.triangles, 1468);
+        assert_eq!(summary.blockout, 29);
+        assert_eq!(summary.triangles, 12144);
         assert!(manifest.check(&root, true).is_err());
         for path in ["../a.glb", "/a.glb", "D:/a.glb", "a\\b.glb"] {
             assert!(!safe_path(path));
