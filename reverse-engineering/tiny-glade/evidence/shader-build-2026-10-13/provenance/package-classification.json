@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "verified_utc": "2026-10-13T09:15:10.305Z",
+  "original_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "packages": [
+    {
+      "name": "DXC",
+      "classification": "public compiler core; original deployed version/fork unverified",
+      "upstream": "Microsoft DirectXShaderCompiler, itself LLVM/Clang-derived",
+      "original_lock_entry": false,
+      "public_fork": "h3r2tic/DirectXShaderCompiler",
+      "fork_branches": [
+        {
+          "branch": "fix-storage-rw-caps",
+          "commit": "fd2e4ec9fb2c1b9b2e58a35de759fd6068419fb1",
+          "behavior": "correct capability selection for unknown-format storage images"
+        },
+        {
+          "branch": "raw-load-buffer-uint2",
+          "commit": "16ceb560954f2238dcdad73a75d5e5842e58c839",
+          "behavior": "adds vk::RawBufferLoad2(uint2[,alignment])"
+        }
+      ],
+      "official_1_9_2609": {
+        "rawbufferload2": "absent; real compiler probe rejects API",
+        "storage_caps": "modern default-add plus SPIRVTools trim; real sampled and unknown-format storage probes satisfy target behavior, not exact old patch code"
+      },
+      "game_fork_used": "not proved",
+      "required_fork_gap": "RawBufferLoad2 only if reconstructed HLSL actually requests it; current recovered sources have no usage proved",
+      "evidence": [
+        "dxc-fork-patch-0.json",
+        "dxc-fork-patch-1.json",
+        "fork-heads-0.json",
+        "official-dxc-1.9.2609-source-0.json",
+        "official-dxc-1.9.2609-source-1.json",
+        "../dxc/official-fork-capability-probes.json"
+      ],
+      "current_build_toolchains": [
+        {
+          "evidence": "../dxc/toolchain.json",
+          "identity": {
+            "generated": "2026-10-13T09:02:40.435Z",
+            "official_release_url": "https://github.com/microsoft/DirectXShaderCompiler/releases/tag/v1.9.2609",
+            "tag": "v1.9.2609",
+            "release_commit_short": "01b62ad",
+            "download_url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
+            "official_sha256": "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1",
+            "archive_sha256": "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1",
+            "archive_bytes": 32287592,
+            "official_digest_matches": true,
+            "reported_version": "dxcompiler.dll: 1.9(5512-01b62ad4)(1.9.2609.5) - 1.9.2609.5 (01b62ad47)",
+            "installed_to": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/",
+            "global_environment_modified": false,
+            "original_dxc_version": null,
+            "original_dxc_parity": false,
+            "binaries": [
+              {
+                "path": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe",
+                "sha256": "aa7965b3763d9c710baaa5a28cedcc633449962a75d1391d161a85304a41b3e2",
+                "bytes": 1359640
+              },
+              {
+                "path": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxcompiler.dll",
+                "sha256": "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
+                "bytes": 22274872
+              },
+              {
+                "path": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxil.dll",
+                "sha256": "64be2368211d257a038a7d4ea6bb3e24c878eb8d588c7b8414fccf759b69c2ac",
+                "bytes": 1995584
+              }
+            ]
+          }
+        },
+        {
+          "evidence": "../dxc/alternate-toolchain.json",
+          "identity": {
+            "tag": "v1.10.2605.37",
+            "release_url": "https://github.com/microsoft/DirectXShaderCompiler/releases/tag/v1.10.2605.37",
+            "download_url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.10.2605.37/dxc_2026_08_11.zip",
+            "archive_sha256": "18da85ccac4d1736209bad960f0a124928a5c5a6046882e331c605d66744a889",
+            "official_sha256": "18da85ccac4d1736209bad960f0a124928a5c5a6046882e331c605d66744a889",
+            "bytes": 27306141,
+            "installed_to": "D:/game/tools/shader-toolchain/dxc-v1.10.2605.37/",
+            "version": "dxcompiler.dll: 1.10(5373-c4d8f4f9)(1.10.2605.37) - 1.10.2605.37 (c4d8f4f99)",
+            "original_version": null,
+            "purpose": "isolated official-version differential for three real compiler access violations; original flags unchanged"
+          }
+        }
+      ],
+      "current_toolchain_origin_original_equivalence": false
+    },
+    {
+      "name": "shader-prepper",
+      "version": "0.3.0-pre.3",
+      "classification": "author original public library, not a fork",
+      "author": "Tomasz Stachowiak / h3r2tic",
+      "license": "MIT",
+      "repository": "https://github.com/h3r2tic/shader-prepper",
+      "source_commit": "845491a0e4c90847b2197972d743a02202219f25",
+      "checksum": "32f4c8898380bb21a998144ddb2a532b1c533b43c643fb75628fee2b01a9c041",
+      "archive_matches_original_lock": true,
+      "source_identity": "all7 published source files equal pinned git source after CRLF->LF; byte digests differ only due to publisher CRLF",
+      "role": "include scanning/crawling; conditional macros remain for DXC; game-specific provider and chunk/#line policy still wrapper behavior"
+    },
+    {
+      "name": "spirq",
+      "version": "0.6.2",
+      "classification": "explicit public fork",
+      "upstream": "PENGUINLIONG/spirq-rs",
+      "repository": "https://github.com/h3r2tic/spirq-rs",
+      "source_commit": "4f22e6f149750401705d47ae15a60e77cd5a6905",
+      "branch": "fix-missing-bindings",
+      "base_commit": "86b2ea3198256a1eb1a08502e11cdbbd84b86240",
+      "fork_change": "do not prematurely stop definition scan on unknown instructions such as OpUndef",
+      "original_lock_binds_exact_commit": true,
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "name": "rspirv",
+      "version": "0.11.0+1.5.4",
+      "classification": "public registry dependency",
+      "repository": "https://github.com/gfx-rs/rspirv",
+      "source_commit": "5fca73eb78969bccfe3d548b52a8b10394eb2ca7",
+      "checksum": "1503993b59ca9ae4127365c3293517576d7ce56be9f3d8abb1625c85ddc583ba",
+      "cached_archive_matches_original_lock": true,
+      "license": "Apache-2.0",
+      "game_declared_generator": "638 headers0x000f0000 matches public ModuleHeader::new default; loader retains source header; wrapper rebuilding is inference, not proof of exact processing"
+    },
+    {
+      "name": "speedy",
+      "version": "0.8.6",
+      "classification": "public registry dependency",
+      "repository": "https://github.com/koute/speedy",
+      "source_commit": "d197c5db1d82e3c730885352b540c97a9a3969b8",
+      "checksum": "7642861d1a1569b105c57008df95fb12ba648f7f90358f46e99bdfbf26729b84",
+      "cached_archive_matches_original_lock": true,
+      "license": "MIT OR Apache-2.0",
+      "role": "generic binary codec; game CompiledShaderPipeline/Reflection schema is separate local contract"
+    },
+    {
+      "name": "shader-pipeline",
+      "version": "0.1.0",
+      "classification": "project local source; upstream/authorship/license unverified",
+      "original_pdb_sources": [
+        {
+          "path": "crates/rhapsody/crates/shader-pipeline/src/compiled.rs",
+          "sha256": [
+            "c8c20064026577d3ac2c2ada033638d7528c90998e047f91b5dfecd6c2bd9dd2"
+          ]
+        },
+        {
+          "path": "crates/rhapsody/crates/shader-pipeline/src/pipeline_desc.rs",
+          "sha256": [
+            "70d36740a680b8ee09a5a5672378dce969a7531578d9630ef3a6f0734bc00fe4"
+          ]
+        },
+        {
+          "path": "crates/rhapsody/crates/shader-pipeline/src/reflection.rs",
+          "sha256": [
+            "c365ecfa1d1f95792c934448aba50fcbdef73d0f1c1dbe0065f2a526b879bcd6"
+          ]
+        },
+        {
+          "path": "crates/rhapsody/crates/shader-pipeline/src/reflection_ty.rs",
+          "sha256": [
+            "5251f4e9315389468e34802d10803b0e29a7a669ca6b2f95e5935be2ea9e6857"
+          ]
+        },
+        {
+          "path": "crates/rhapsody/crates/shader-pipeline/src/shader_defines.rs",
+          "sha256": [
+            "556e58228ce5e0303817e9e97ae33760b4c39e580ca6e42a4228e58cf1bc9150"
+          ]
+        }
+      ],
+      "private_contract_evidence": "B compiled schema/keys/layout original consumer evidence; 404 original byte-compatible schema recovered",
+      "public_equivalence_proved": false
+    },
+    {
+      "name": "shader-compiler",
+      "version": "0.1.0",
+      "classification": "project local tooling package; upstream/authorship/license unverified",
+      "original_pdb_source_paths": [],
+      "private_contract_evidence": "original lock dependencies and638module embedded compile requests; full author source/body not present in searched runtime PDB inventory",
+      "public_equivalence_proved": false
+    },
+    {
+      "name": "shader-variants",
+      "version": "0.1.0",
+      "classification": "project local source; upstream/authorship/license unverified",
+      "original_pdb_sources": [
+        {
+          "path": "crates/shader-variants/src/lib.rs",
+          "sha256": [
+            "e7276181be8b5cf88d954854be5e608359d3fdc5013346d4fccfefdc13a8942b"
+          ]
+        }
+      ],
+      "private_contract_evidence": "original depth-only variant definitions and file keys recovered",
+      "public_equivalence_proved": false
+    },
+    {
+      "name": "asset-pipe",
+      "version": "0.1.0",
+      "classification": "project local source; upstream/authorship/license unverified",
+      "original_pdb_sources": [
+        {
+          "path": "crates/asset-pipe/src/lib.rs",
+          "sha256": [
+            "5fe89e5c2b8caa9a6ddccfdb5fc9f121dcf66e6200f9613ec0b98d0a270e32d0"
+          ]
+        },
+        {
+          "path": "crates/asset-pipe/src/texture.rs",
+          "sha256": [
+            "4b281954bf3032df8465118ec2de0a7e5588536679690b0700f918b3a54a8c02"
+          ]
+        }
+      ],
+      "public_equivalence_proved": false
+    },
+    {
+      "name": "asset-pipe-bin",
+      "version": "0.1.0",
+      "classification": "project local CLI/tooling package; upstream/authorship/license unverified",
+      "original_pdb_source_paths": [],
+      "public_equivalence_proved": false
+    }
+  ],
+  "public_candidate_comparisons": {
+    "kajiya": {
+      "source": "https://github.com/EmbarkStudios/kajiya/blob/main/crates/lib/kajiya-backend/src/shader_compiler.rs",
+      "observed": "uses author shader-prepper include provider, paths, DXC HLSL compile; public author predecessor/reference candidate",
+      "material_differences": [
+        "hassle-rs API instead of original observed external dxc command",
+        "target Vulkan1.2 vs original embedded Vulkan1.1",
+        "no matching CompiledShaderPipeline/Reflection speedy schema",
+        "different entry/key/layout ecosystem"
+      ],
+      "same_source_hash": false,
+      "conclusion": "shared approach does not prove TinyGlade local crates are a kajiya fork; no wholesale replacement"
+    },
+    "rendertoy": {
+      "source": "https://github.com/h3r2tic/rendertoy/blob/master/src/shader.rs",
+      "observed": "author public shader orchestration includes shader-prepper and resource reflection",
+      "material_differences": [
+        "shaderc/spirv-reflect/snoozy vs B DXC/spirq/speedy local package chain",
+        "old ash0.29/SPIRV and schema differ"
+      ],
+      "conclusion": "public predecessor/reference, not source-identical replacement"
+    },
+    "negative_search": {
+      "registry": "five exact local names/0.1.0 return404 fromcrates.io API",
+      "authors": "h3r2tic88public repos over3pages; PounceLight public profile/listing bounded",
+      "api_failure": "GitHub REST unauthenticated inventory403rate limit retained; HTML/raw/git protocols used for actual evidence",
+      "conclusion": "search absence does not prove original authorship, closed-source status, or no public fork elsewhere"
+    }
+  },
+  "source_citations": [
+    {
+      "title": "Microsoft DXC upstream",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler"
+    },
+    {
+      "title": "Author native public include library",
+      "url": "https://github.com/h3r2tic/shader-prepper"
+    },
+    {
+      "title": "Exact author include crate publication",
+      "url": "https://crates.io/api/v1/crates/shader-prepper/0.3.0-pre.3"
+    },
+    {
+      "title": "Exact explicit SpirQ fork patch",
+      "url": "https://github.com/h3r2tic/spirq-rs/commit/4f22e6f149750401705d47ae15a60e77cd5a6905.patch"
+    },
+    {
+      "title": "Author RawBufferLoad2 patch",
+      "url": "https://github.com/h3r2tic/DirectXShaderCompiler/commit/16ceb560954f2238dcdad73a75d5e5842e58c839.patch"
+    },
+    {
+      "title": "Author storage cap patch",
+      "url": "https://github.com/h3r2tic/DirectXShaderCompiler/commit/fd2e4ec9fb2c1b9b2e58a35de759fd6068419fb1.patch"
+    },
+    {
+      "title": "Exact official intrinsic list",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/blob/v1.9.2609/utils/hct/gen_intrin_main.txt"
+    },
+    {
+      "title": "Exact official capability logic",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/blob/v1.9.2609/tools/clang/lib/SPIRV/CapabilityVisitor.cpp"
+    },
+    {
+      "title": "rspirv source atpublished commit",
+      "url": "https://github.com/gfx-rs/rspirv/tree/5fca73eb78969bccfe3d548b52a8b10394eb2ca7"
+    },
+    {
+      "title": "Speedy source atpublished commit",
+      "url": "https://github.com/koute/speedy/tree/d197c5db1d82e3c730885352b540c97a9a3969b8"
+    },
+    {
+      "title": "Official baseline release",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/releases/tag/v1.9.2609"
+    },
+    {
+      "title": "Official preview fallback release",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/releases/tag/v1.10.2605.37"
+    }
+  ],
+  "version_boundary": {
+    "B": "baseline of current runtime/producer reconstruction",
+    "A": "same8local source paths appear in A PDB; hashes retained independently, not interpreted as identical behavior",
+    "C": {
+      "shaderface_source": "git+ssh://git@github.com/PounceLight/shabriri.git#2212a07a7c6aaa58f47283f6fff090a6744dfbed",
+      "source_inventory": "C PDB includes git checkout shabriri-rt compile/api plus shaderface schema files; generated out/shabriri.rs gameconsumer paths also recorded",
+      "rspirv_version": "0.12.0+sdk-1.3.268.0",
+      "public_repo_access": "anonymous repo and exactcommitCargo fetch404; cannot decide private/deleted/unavailable",
+      "B_crates": "shader-compiler/shader-pipeline/shader-variants absent from C lock; no automatic source equivalence"
+    }
+  },
+  "current_corpus_build": {
+    "evidence": "../dxc/merged-audit.json",
+    "summary": {
+      "version": "B",
+      "original_assets": 404,
+      "original_modules": 638,
+      "unique_assets_covered": 404,
+      "valid_new_packages": 404,
+      "new_modules_in_packages": 638,
+      "remaining_build_failures": 0,
+      "compiler_asset_counts": {
+        "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe": 393,
+        "D:/game/tools/shader-toolchain/dxc-v1.10.2605.37/bin/x64/dxc.exe": 11
+      },
+      "all_compute_original_define_tuples_not_independently_proven": 170,
+      "nonzero_compute_define_keys_unresolved": 38,
+      "raster_define_tuples_observed": 234,
+      "complete_semantic_schema_equal_assets": 210,
+      "complete_public_reflection_equal_modules": 302,
+      "capability_equal_modules": 617,
+      "non_debug_opcode_histogram_equal_modules": 100,
+      "source_dependency_sets_equal_assets": 213,
+      "source_dependency_sets_different_assets": 191,
+      "schema_difference_asset_counts_by_field": {
+        "hashes": 86,
+        "names": 86,
+        "sets": 86,
+        "inputs": 148,
+        "uniform": 35,
+        "local_size": 2
+      },
+      "original_shader_algorithm_equivalence": false,
+      "original_dxc_version_confirmed": false,
+      "compiler_fork_equivalence_confirmed": false,
+      "raw_non_debug_byte_equivalence_verified": false
+    }
+  }
+}

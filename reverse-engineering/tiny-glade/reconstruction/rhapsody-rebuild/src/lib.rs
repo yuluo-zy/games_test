@@ -5,3 +5,7 @@ pub mod rg;
 pub use rg::executor::{ExecutionBackend, ExecutionChain};
 
 pub mod leek;
+
+// 原着色器资产格式及编译请求的恢复模块；验证边界见 shader-toolchain 报告。
+pub mod shader_pipeline;
+pub mod shader_compiler;

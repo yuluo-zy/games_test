@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "reviewer": "shader_runtime",
+  "reviewed_owner": "shader_pipeline",
+  "status": "final_source_and_consumer_review_passed_with_recorded_residuals",
+  "producer_code": [
+    "src/shader_compiler/reflect.rs",
+    "src/shader_compiler/pack.rs",
+    "src/shader_compiler/build.rs",
+    "src/shader_compiler/preprocess.rs"
+  ],
+  "observations": {
+    "no_old_metadata_injection": "generate_reflection accepts only stage records; package accepts newstages and provider deps; onlytests load originalref to compareexpected",
+    "public_reflection": "uses exact original SpirQ fork with allresources and no samplercombination/uniquenames",
+    "game_contracts": "stored_type schema projection, __alias_ resource names and in.var. vertex names stripped, BindingNameHash keys, descriptor stage merging, UBO member offsets, LocalSize and maxpush extent",
+    "postprocessing": "uses public rspirv ModuleHeader::new generator15 and retains SourceLF while keeping files/lines/compilecommand",
+    "asset_comparison": "404originalassets/638stages complete reflection equal after mapordering normalization",
+    "fresh_build_scope": "threecontainers/5stages from restored fill andegui HLSL, actualDXC official1.9.2609",
+    "actual_gpu": {
+      "log": "../fresh-consumer-gpu-current.log",
+      "result": {
+        "binding": 13,
+        "compute_file": "reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-fill.bin",
+        "device": "Intel(R) UHD Graphics 630",
+        "fill_value": 3221344269,
+        "fill_words": 64,
+        "original_exe_executed": false,
+        "original_metadata_injected": false,
+        "raster_draw": false,
+        "raster_variants": [
+          {
+            "actual_layout_created": true,
+            "bindings": 3,
+            "failed_registration_preserves_layout": true,
+            "file": "reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-egui-color.bin",
+            "push_constant_size": 8,
+            "set_count": 1,
+            "variant": 0
+          },
+          {
+            "actual_layout_created": true,
+            "bindings": 1,
+            "failed_registration_preserves_layout": true,
+            "file": "reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-egui-depth.bin",
+            "push_constant_size": 8,
+            "set_count": 1,
+            "variant": 1
+          }
+        ],
+        "resource_name": "output",
+        "set": 0,
+        "status": "fresh_compilation_runtime_consumer_verified",
+        "stored_metadata_consumed": true
+      }
+    },
+    "preprocessor": "Original shader-prepper include crawler used unchanged; game provider/#line/macros new wrappers are explicit adapter policies, full conditional macro expansion delegated to real DXC",
+    "wire_order_audit": {
+      "log": "wire-order-audit.json",
+      "files": 404,
+      "byte_exact": 27,
+      "byte_different": 377,
+      "equal_lengths": true,
+      "semantic_maps_equal": true,
+      "ordering_difference_counts": [
+        295,
+        339,
+        349,
+        95,
+        267,
+        252
+      ],
+      "original_metadata_injected": false,
+      "original_shader_recompiled": false
+    },
+    "restored_source_corpus_build": {
+      "evidence": "../dxc/merged-audit.json",
+      "summary": {
+        "version": "B",
+        "original_assets": 404,
+        "original_modules": 638,
+        "unique_assets_covered": 404,
+        "valid_new_packages": 404,
+        "new_modules_in_packages": 638,
+        "remaining_build_failures": 0,
+        "compiler_asset_counts": {
+          "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe": 393,
+          "D:/game/tools/shader-toolchain/dxc-v1.10.2605.37/bin/x64/dxc.exe": 11
+        },
+        "all_compute_original_define_tuples_not_independently_proven": 170,
+        "nonzero_compute_define_keys_unresolved": 38,
+        "raster_define_tuples_observed": 234,
+        "complete_semantic_schema_equal_assets": 210,
+        "complete_public_reflection_equal_modules": 302,
+        "capability_equal_modules": 617,
+        "non_debug_opcode_histogram_equal_modules": 100,
+        "source_dependency_sets_equal_assets": 213,
+        "source_dependency_sets_different_assets": 191,
+        "schema_difference_asset_counts_by_field": {
+          "hashes": 86,
+          "names": 86,
+          "sets": 86,
+          "inputs": 148,
+          "uniform": 35,
+          "local_size": 2
+        },
+        "original_shader_algorithm_equivalence": false,
+        "original_dxc_version_confirmed": false,
+        "compiler_fork_equivalence_confirmed": false,
+        "raw_non_debug_byte_equivalence_verified": false
+      },
+      "original_metadata_injected": false
+    },
+    "final_validation": {
+      "tests": "../tests-current.log",
+      "passed": 10,
+      "failed": 0,
+      "clippy": "../clippy-current.log",
+      "all_targets_deny_warnings": true
+    },
+    "independent_artifact_bindings": {
+      "evidence": "independent-artifact-bindings.json",
+      "checked": 1446,
+      "mismatches": 0
+    }
+  },
+  "limits": [
+    "Canonical metadata semantic equality is not byte-identical whole packed assets: deterministic newlygenerated maps use order different from originalHashMap wire order.",
+    "No full author compiler body recovered from B runtime; names normalization/merge/sanitize policies are output-constrained reconstruction, unsampled collisions/errors not fully equal.",
+    "Whole404spv->metadata audit does not mean404shaderalgorithms recompiled from author source; originalsource strings14492 are LFonly.",
+    "Current officialDXC can differ from original compiler/fork; RawBufferLoad2 unsupported if future source requires it.",
+    "Newinclude provider root/path/failure/tempdirectory behavior is explicitcandidate, not originalfullfilesystemABI.",
+    "Original complete build manifest remains unknown, including38compute assets with nonzero define hashes; new candidate source corpus now compiles/packages404/638 using two identified officialDXC releases; original semantic and macro manifest equality still not proved."
+  ],
+  "final_source_and_artifact_bindings": [
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/examples/shader_rebuild_consumer_gpu.rs",
+      "bytes": 7341,
+      "sha256": "52e674e21189b1306fef3fd030b8b3175daff5a0196b7223457745397e161f7a"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/shader_rebuild_consumer.rs",
+      "bytes": 3867,
+      "sha256": "8900043a7095ff1b166ae873907e3868c26e4adf40e9f93d4f68a39b498132c4"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/shader.rs",
+      "bytes": 61129,
+      "sha256": "53cf46557b2ba24afb4522feed201188701e59a9571c3f8040d5b303c8f30822"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler/reflect.rs",
+      "bytes": 10869,
+      "sha256": "c321bddb024fe880b54baec75e4bfcb0fa572ee9b8e1ac2ed9d95f8fe9ee3bec"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler/pack.rs",
+      "bytes": 1628,
+      "sha256": "4b8f98c73a948668e41765ca535146dd408e154b372036fecb5459816f223e52"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler/build.rs",
+      "bytes": 3091,
+      "sha256": "080764323a5ee91410263661cf6edc3c1e5c32dbd6e728cc61279d1234c885b2"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler/preprocess.rs",
+      "bytes": 3524,
+      "sha256": "08104de3204660e1c743d6ee6f7617ddb8c44be40bb1dbe2ed3415f2934b3618"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml",
+      "bytes": 2169,
+      "sha256": "7bbb79557c12ba16c81676701dde8bcfa599f0db7f3afe579d98e550e80b6823"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.lock",
+      "bytes": 23541,
+      "sha256": "db88b446cdee8c806904293334851dfe0156c5030dacd0f2688b90c6bc24a359"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-fill.bin",
+      "bytes": 2431,
+      "sha256": "cecca8d110d2132cb08ad0c4fe3631d2866408bdb393675842e97ab20f998eed"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-egui-color.bin",
+      "bytes": 8597,
+      "sha256": "6412c6aed52ded26d19511759c9692d9f58f51164ed299e6b3a98aae5f02126a"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/pipeline/fresh-egui-depth.bin",
+      "bytes": 7641,
+      "sha256": "92101e316feee8369fcf7b33b0b67967976e911664051790653d841c40db6f9e"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/tests-current.log",
+      "bytes": 2109,
+      "sha256": "546b889639eef2c64d2eba9d1ba08c9ff8295378c3c75983c4d83bc853997232"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/clippy-current.log",
+      "bytes": 174,
+      "sha256": "a6cb428c84ba3a85dfed907fec65751d26f53f3432a38546f96481b5c1cd2b27"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/fresh-consumer-gpu-current.log",
+      "bytes": 902,
+      "sha256": "f55edeec5bc0ec213d20d12151427b130b8cd6b32fa1dc2872e7b5fa343f6db4"
+    },
+    {
+      "file": "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler.rs",
+      "bytes": 9156,
+      "sha256": "f8c27d9518fc82d93a8b721308b384761c405bac99a8e9bed8387494a16490bd"
+    }
+  ]
+}

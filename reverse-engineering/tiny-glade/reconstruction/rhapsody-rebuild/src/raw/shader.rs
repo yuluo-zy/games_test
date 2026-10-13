@@ -1,4 +1,4 @@
-//! shader 资产选择、反射布局生产、管线与缓存的可运行候选。
+//! shader 资产选择、原容器存储反射布局生产、管线与缓存的可运行候选。
 //! SPIR-V 解析复用原锁 rspirv；反射 schema 复用原 spirq fork 已保存目录。
 //! 原资产键到 country-core pass 的关联、完整原缓存策略与 ABI 仍未全部对齐。
 use crate::raw::binding::ResourceOwner;
@@ -1032,6 +1032,8 @@ pub struct ShaderLibrary {
     pub cache: PipelineCache,
     shaders: BTreeMap<String, ReflectedShader>,
     layouts: BTreeMap<String, Arc<PipelineLayout>>,
+    compiled_rasters: BTreeMap<(String, String), Arc<crate::shader_pipeline::compiled::CompiledShaderPipeline>>,
+    compiled_computes: BTreeMap<String, Arc<crate::shader_pipeline::compiled::CompiledShaderPipeline>>,
 }
 pub struct RasterProgram {
     pub vertex: ReflectedShader,
@@ -1062,6 +1064,8 @@ impl ShaderLibrary {
             cache: PipelineCache::new(device, &[])?,
             shaders: BTreeMap::new(),
             layouts: BTreeMap::new(),
+            compiled_rasters: BTreeMap::new(),
+            compiled_computes: BTreeMap::new(),
         })
     }
     pub fn register(&mut self, key: String, shader: ReflectedShader) -> Result<(), vk::Result> {
@@ -1070,6 +1074,8 @@ impl ShaderLibrary {
         }
         self.layouts.clear();
         self.cache.invalidate();
+        self.compiled_computes.remove(&key);
+        self.compiled_rasters.retain(|(vertex, fragment), _| vertex != &key && fragment != &key);
         self.shaders.insert(key, shader);
         Ok(())
     }
@@ -1111,12 +1117,12 @@ impl ShaderLibrary {
                 by_name.insert(descriptor.name.clone(), handle);
             }
         }
-        let plan = ShaderInterfacePlan::from_reflection(
-            std::slice::from_ref(&shader.entry),
-            &by_name,
-            runtime_device_scalar,
-        )
-        .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+        let plan = if let Some(compiled) = self.compiled_computes.get(key) {
+            ShaderInterfacePlan::from_compiled_pipeline(compiled, &by_name, runtime_device_scalar)?
+        } else {
+            ShaderInterfacePlan::from_reflection(std::slice::from_ref(&shader.entry), &by_name, runtime_device_scalar)
+                .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?
+        };
         let layout_key = serde_json::to_string(&(key, &plan.sets, runtime_device_scalar)).unwrap();
         let layout = match self.layouts.get(&layout_key) {
             Some(layout) => layout.clone(),
@@ -1139,6 +1145,8 @@ impl ShaderLibrary {
     }
     pub fn invalidate(&mut self, key: &str) {
         self.shaders.remove(key);
+        self.compiled_computes.remove(key);
+        self.compiled_rasters.retain(|(vertex, fragment), _| vertex != key && fragment != key);
         self.layouts.clear();
         self.cache.invalidate();
     }
@@ -1176,12 +1184,12 @@ impl ShaderLibrary {
             .iter()
             .map(|(name, sampler)| (name.clone(), sampler.handle.as_raw()))
             .collect();
-        let plan = ShaderInterfacePlan::from_reflection(
-            &[vertex.entry.clone(), fragment.entry.clone()],
-            &sampler_map,
-            runtime_device_scalar,
-        )
-        .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+        let plan = if let Some(compiled) = self.compiled_rasters.get(&(vertex_key.to_owned(), fragment_key.to_owned())) {
+            ShaderInterfacePlan::from_compiled_pipeline(compiled, &sampler_map, runtime_device_scalar)?
+        } else {
+            ShaderInterfacePlan::from_reflection(&[vertex.entry.clone(), fragment.entry.clone()], &sampler_map, runtime_device_scalar)
+                .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?
+        };
         let key =
             serde_json::to_string(&(vertex_key, fragment_key, &plan.sets, runtime_device_scalar))
                 .unwrap();
@@ -1199,5 +1207,227 @@ impl ShaderLibrary {
             fragment,
             layout,
         })
+    }
+}
+/// 复用原作锁定版本的公开反射库。容器保留原序列化反射尾段；
+/// 此处重新反射是已明确标记的候选接口，尚未证明原尾段schema与合并规则等价。
+pub fn reflect_spirv_entries(words: &[u32]) -> Result<Vec<ReflectedEntry>, vk::Result> {
+    use spirq::{ReflectConfig, SpirvBinary, Variable};
+    let reflected = ReflectConfig::new()
+        .spv(SpirvBinary::from(words))
+        .ref_all_rscs(true)
+        .combine_img_samplers(false)
+        .gen_unique_names(false)
+        .reflect()
+        .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+    reflected.into_iter().map(|entry| {
+        let mut descriptors = Vec::new();
+        let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
+        let mut push_constants = Vec::new();
+        for variable in entry.vars {
+            match variable {
+                Variable::Descriptor { name, desc_bind, desc_ty, ty, nbind } => {
+                    descriptors.push(ReflectedDescriptor {
+                        set: desc_bind.set(), binding: desc_bind.bind(),
+                        name: name.unwrap_or_default(), count: nbind,
+                        descriptor_type: format!("{desc_ty:?}"),
+                        reflected_type: reflected_type_json(&ty),
+                    });
+                }
+                Variable::Input { location, ty, .. } => inputs.push(ReflectedLocation {
+                    location: location.loc(), component: location.comp(),
+                    reflected_type: reflected_type_json(&ty),
+                }),
+                Variable::Output { location, ty, .. } => outputs.push(ReflectedLocation {
+                    location: location.loc(), component: location.comp(),
+                    reflected_type: reflected_type_json(&ty),
+                }),
+                Variable::PushConstant { ty, .. } => push_constants.push(ReflectedPushConstant {
+                    reflected_type: reflected_type_json(&ty),
+                }),
+                // 特殊化常量由调用者另行提供，当前运行时接口计划不生成默认值。
+                Variable::SpecConstant { .. } => {},
+            }
+        }
+        descriptors.sort_by_key(|value| (value.set, value.binding));
+        inputs.sort_by_key(|value| (value.location, value.component));
+        outputs.sort_by_key(|value| (value.location, value.component));
+        Ok(ReflectedEntry {
+            entry_point: entry.name, stage: format!("{:?}", entry.exec_model),
+            descriptors, inputs, outputs, push_constants,
+        })
+    }).collect()
+}
+
+/// 复用既有公开fork反射字段投影，类型解析仍由spirq执行。
+fn reflected_type_json(ty: &spirq::ty::Type) -> serde_json::Value {
+    use serde_json::json;
+    use spirq::ty::Type;
+    let detail = match ty {
+        Type::Struct(value) => json!({"kind":"Struct","members":value.members.iter().map(|member| json!({"name":member.name,"offset":member.offset,"type":reflected_type_json(&member.ty)})).collect::<Vec<_>>()}),
+        Type::Array(value) => json!({"kind":"Array","count":value.nrepeat,"stride":value.stride,"element":reflected_type_json(&value.proto_ty)}),
+        Type::Matrix(value) => json!({"kind":"Matrix","axis_order":value.major.map(|major|format!("{major:?}")),"vector":value.vec_ty.to_string(),"count":value.nvec,"stride":value.stride}),
+        Type::DevicePointer(value) => json!({"kind":"DevicePointer","target":reflected_type_json(&value.pointee_ty)}),
+        _ => json!({"kind":ty.to_string()}),
+    };
+    json!({"minimum_bytes":ty.nbyte(),"detail":detail})
+}
+
+/// 从真实容器stage记录取得SPIR-V，不使用外部catalog偏移或magic扫描。
+/// 序列化stage/入口名与payload不一致时，在Vulkan对象创建前拒绝。
+pub fn compiled_pipeline_entries(
+    compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+) -> Result<Vec<ReflectedEntry>, vk::Result> {
+    use crate::shader_pipeline::compiled::ShaderStage;
+    compiled.stages.iter().map(|stage| {
+        let expected = match stage.stage {
+            ShaderStage::Compute => "GLCompute",
+            ShaderStage::Vertex => "Vertex",
+            ShaderStage::Fragment => "Fragment",
+        };
+        reflect_spirv_entries(&stage.spirv)?.into_iter()
+            .find(|entry| entry.entry_point == stage.entry_point && entry.stage == expected)
+            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)
+    }).collect()
+}
+
+impl ShaderInterfacePlan {
+    /// 直接消费发行容器的stored reflection；SPIR-Q重反射仅用于独立核对。
+    pub fn from_compiled_pipeline(
+        compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+        samplers: &BTreeMap<String, u64>,
+        runtime_device_scalar: u32,
+    ) -> Result<Self, vk::Result> {
+        use crate::shader_pipeline::{compiled::ShaderStage, reflection::{BindingArray, BindingKind}};
+        let compute = compiled.stages.len() == 1 && compiled.stages[0].stage == ShaderStage::Compute;
+        let raster = compiled.stages.len() == 2
+            && compiled.stages.iter().any(|stage| stage.stage == ShaderStage::Vertex)
+            && compiled.stages.iter().any(|stage| stage.stage == ShaderStage::Fragment);
+        if !compute && !raster { return Err(vk::Result::ERROR_INVALID_SHADER_NV); }
+        for index in 0..compiled.stages.len() {stored_pipeline_entry(compiled, index)?;}
+        let visibility = if compute {vk::ShaderStageFlags::COMPUTE} else {vk::ShaderStageFlags::ALL_GRAPHICS};
+        let mut sets = Vec::new();
+        for stored_set in compiled.reflection.effective_descriptor_sets() {
+            let mut set = LayoutPlan {flags: 0, bindings: Vec::new(), binding_flags: Vec::new()};
+            for (index, binding) in stored_set {
+                let tag = match binding.kind {
+                    BindingKind::StorageBuffer => 0, BindingKind::UniformBuffer => 1,
+                    BindingKind::CombinedImageSampler => 2, BindingKind::StorageImage => 3,
+                    BindingKind::SampledImage => 4, BindingKind::Sampler => 5,
+                };
+                let (count, runtime) = match binding.array {BindingArray::Fixed(count) => (count, false), BindingArray::Runtime => (0, true)};
+                let sampler = if tag == 5 {
+                    samplers.get(&binding.name).copied().filter(|handle| *handle != 0)
+                        .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)?
+                } else {0};
+                let plan = descriptor_set_layout(&[Binding {tag, name: binding.name.clone(), count, runtime, sampler}], u64::from(index), visibility, runtime_device_scalar)
+                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+                set.flags |= plan.flags;
+                set.bindings.extend(plan.bindings);
+                set.binding_flags.extend(plan.binding_flags);
+            }
+            for (index, flags) in set.binding_flags.iter().enumerate() {
+                if flags & vk::DescriptorBindingFlags::VARIABLE_DESCRIPTOR_COUNT.as_raw() != 0 && index + 1 != set.bindings.len() {
+                    return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+                }
+            }
+            sets.push(set);
+        }
+        let size = compiled.reflection.push_constant_size;
+        if size % 4 != 0 {return Err(vk::Result::ERROR_INITIALIZATION_FAILED);}
+        let push_constants = if size == 0 {Vec::new()} else {vec![vk::PushConstantRange {stage_flags: visibility, offset: 0, size}]};
+        Ok(Self { sets, push_constants })
+    }
+}
+
+fn serialized_stage_name(stage: crate::shader_pipeline::compiled::ShaderStage) -> &'static str {
+    use crate::shader_pipeline::compiled::ShaderStage;
+    match stage {ShaderStage::Compute => "GLCompute", ShaderStage::Vertex => "Vertex", ShaderStage::Fragment => "Fragment"}
+}
+
+/// 原存储反射直接生产资源名字/编号/数组和push范围；不重新解析公开库类型。
+/// SPIR-V只用于入口名/执行模型的一致性检查，完整stage IO独立核对时才重新反射。
+pub fn stored_pipeline_entry(
+    compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+    index: usize,
+) -> Result<ReflectedEntry, vk::Result> {
+    use crate::shader_pipeline::{compiled::ShaderStage, reflection::{BindingArray, BindingKind}};
+    let stage = compiled.stages.get(index).ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+    let expected = match stage.stage {ShaderStage::Compute => rspirv::spirv::ExecutionModel::GLCompute, ShaderStage::Vertex => rspirv::spirv::ExecutionModel::Vertex, ShaderStage::Fragment => rspirv::spirv::ExecutionModel::Fragment};
+    let module = rspirv::dr::load_words(&stage.spirv).map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+    let present = module.entry_points.iter().any(|point| matches!(
+        (point.operands.first(), point.operands.get(2)),
+        (Some(rspirv::dr::Operand::ExecutionModel(model)), Some(rspirv::dr::Operand::LiteralString(name)))
+        if *model == expected && name == &stage.entry_point
+    ));
+    if !present {return Err(vk::Result::ERROR_INVALID_SHADER_NV);}
+    let mut descriptors = Vec::new();
+    for (set, bindings) in compiled.reflection.effective_descriptor_sets().into_iter().enumerate() {
+        for (binding, value) in bindings {
+            let descriptor_type = match value.kind {
+                BindingKind::StorageBuffer => "StorageBuffer(ReadWrite)",
+                BindingKind::UniformBuffer => "UniformBuffer",
+                BindingKind::CombinedImageSampler => "CombinedImageSampler",
+                BindingKind::StorageImage => "StorageImage(ReadWrite)",
+                BindingKind::SampledImage => "SampledImage",
+                BindingKind::Sampler => "Sampler",
+            };
+            let count = match value.array {BindingArray::Fixed(count) => count, BindingArray::Runtime => 0};
+            let reflected_type = compiled.reflection.uniform_block.as_ref()
+                .filter(|block| block.binding.set == set as u32 && block.binding.binding == binding)
+                .map_or(serde_json::Value::Null, |block| serde_json::json!({"minimum_bytes":block.byte_size}));
+            descriptors.push(ReflectedDescriptor {set: set as u32, binding, name: value.name.clone(), count, descriptor_type: descriptor_type.into(), reflected_type});
+        }
+    }
+    let push_constants = if compiled.reflection.push_constant_size == 0 {Vec::new()} else {
+        vec![ReflectedPushConstant {reflected_type: serde_json::json!({"minimum_bytes":compiled.reflection.push_constant_size})}]
+    };
+    let inputs = if stage.stage == ShaderStage::Vertex {
+        compiled.reflection.effective_vertex_inputs().into_values().map(|input| {
+            let ty = input.ty.to_spirq().ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            Ok(ReflectedLocation {location: input.location, component: 0, reflected_type: reflected_type_json(&ty)})
+        }).collect::<Result<Vec<_>, vk::Result>>()?
+    } else {Vec::new()};
+    Ok(ReflectedEntry {entry_point: stage.entry_point.clone(), stage: serialized_stage_name(stage.stage).into(), descriptors, push_constants, inputs, outputs: Vec::new()})
+}
+
+impl ReflectedShader {
+    /// 运行时完整容器入口：消费真实stored reflection，不构造空尾段替身。
+    pub fn from_compiled_pipeline_stage(
+        device: Arc<VulkanDevice>,
+        compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
+        index: usize,
+    ) -> Result<Self, vk::Result> {
+        let entry = stored_pipeline_entry(compiled, index)?;
+        let bytes = compiled.stages[index].spirv_bytes();
+        Ok(Self {module: ShaderModule::from_spirv(device, &bytes)?, entry})
+    }
+}
+
+impl ShaderLibrary {
+    /// 资产owner提供选择键；原存储字段保留至实际layout生产。
+    pub fn register_compiled_compute(&mut self, key: String, bytes: &[u8]) -> Result<(), vk::Result> {
+        use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
+        let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        if compiled.stages.len() != 1 || compiled.stages[0].stage != ShaderStage::Compute {return Err(vk::Result::ERROR_INVALID_SHADER_NV);}
+        let shader = ReflectedShader::from_compiled_pipeline_stage(self.cache.device.clone(), &compiled, 0)?;
+        self.register(key.clone(), shader)?;
+        self.compiled_computes.insert(key, Arc::new(compiled));
+        Ok(())
+    }
+    /// 两个stage创建成功后一起注册；fragment失败不破坏旧资产/缓存。
+    pub fn register_compiled_raster(&mut self, vertex_key: String, fragment_key: String, bytes: &[u8]) -> Result<(), vk::Result> {
+        use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
+        let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        if vertex_key == fragment_key || compiled.stages.len() != 2 {return Err(vk::Result::ERROR_INVALID_SHADER_NV);}
+        let vertex_index = compiled.stages.iter().position(|stage| stage.stage == ShaderStage::Vertex).ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+        let fragment_index = compiled.stages.iter().position(|stage| stage.stage == ShaderStage::Fragment).ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+        let vertex = ReflectedShader::from_compiled_pipeline_stage(self.cache.device.clone(), &compiled, vertex_index)?;
+        let fragment = ReflectedShader::from_compiled_pipeline_stage(self.cache.device.clone(), &compiled, fragment_index)?;
+        self.register(vertex_key.clone(), vertex)?;
+        self.register(fragment_key.clone(), fragment)?;
+        self.compiled_rasters.insert((vertex_key, fragment_key), Arc::new(compiled));
+        Ok(())
     }
 }

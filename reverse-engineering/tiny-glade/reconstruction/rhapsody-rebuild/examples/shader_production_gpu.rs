@@ -240,32 +240,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let replacement = unsafe { state.allocate_descriptor_set(&writes) }?;
     assert!(!Arc::ptr_eq(&replacement, &set));
 
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let catalog: serde_json::Value = serde_json::from_slice(&std::fs::read(root.join(
-        "evidence/render-recovery/parallel-batch-04/pipeline-shader-interfaces/catalog.json",
-    ))?)?;
-    let file = catalog["files"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|file| file["file"] == "_fill_buffer.cs.hlsl_cs_main_0.bin")
-        .unwrap();
     let bytes = std::fs::read(
         "D:/game/ljxsj_92385/Tiny Glade/compiled-shaders/_fill_buffer.cs.hlsl_cs_main_0.bin",
     )?;
-    let original = ReflectedShader::from_compiled_container(
-        device.clone(),
-        &bytes,
-        &file["modules"][0],
-        "cs_main",
-    )?;
-    let original_entry = original.entry.clone();
-    library.register("original_fill_buffer".into(), original)?;
+    let compiled = rhapsody::shader_pipeline::compiled::CompiledShaderPipeline::decode(&bytes)?;
+    let original_entry = rhapsody::raw::shader::stored_pipeline_entry(&compiled, 0)?;
+    library.register_compiled_compute("original_fill_buffer".into(), &bytes)?;
     let original_pipeline =
         library.create_compute_pipeline("original_fill_buffer", &BTreeMap::new())?;
     let original_state = DescriptorSetState::new(original_pipeline.layout.sets[0].clone(), 2)?;
     let slots = BTreeMap::from([(
-        "__alias_output".into(),
+        "output".into(),
         vec![PassResourceSlot::StorageBuffer {
             resource: ResourceHandle::from_raw(1),
             offset: 0,
@@ -349,6 +334,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .chunks_exact(4)
             .all(|word| u32::from_le_bytes(word.try_into().unwrap()) == 0xabcd)
     );
+    let raster_bytes = std::fs::read(
+        "D:/game/ljxsj_92385/Tiny Glade/compiled-shaders/_egui.raster.hlsl_f0adff76827e73ff.bin",
+    )?;
+    library.register_compiled_raster("original_egui_vs".into(), "original_egui_ps".into(), &raster_bytes)?;
+    let program = library.prepare_raster_program("original_egui_vs", "original_egui_ps", &BTreeMap::new())?;
+    assert_eq!(program.layout.sets[0].plan.bindings[0].binding, 13);
+    assert_eq!(program.layout.sets[0].plan.bindings[0].stage_flags, vk::ShaderStageFlags::ALL_GRAPHICS.as_raw());
+    assert_eq!(program.layout.push_constants[0].size, 8);
+    assert_eq!(program.layout.push_constants[0].stage_flags, vk::ShaderStageFlags::ALL_GRAPHICS);
+    assert!(library.register_compiled_raster("original_egui_vs".into(), "original_egui_ps".into(), &bytes).is_err());
+    let retained = library.prepare_raster_program("original_egui_vs", "original_egui_ps", &BTreeMap::new())?;
+    assert!(Arc::ptr_eq(&program.layout, &retained.layout));
     let properties = unsafe {
         device
             .instance
@@ -359,7 +356,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         unsafe { std::ffi::CStr::from_ptr(properties.device_name.as_ptr()) }.to_string_lossy();
     println!(
         "{}",
-        serde_json::json!({"status":"candidate_shader_production_gpu_passed","device":name,"arithmetic_input":25,"arithmetic_result":result,"sparse_set":2,"sparse_bindings":[3,9],"descriptor_cache_reused":false,"descriptor_pool_reused":true,"descriptor_invalidation_validated":true,"pipeline_cache_reused":true,"original_shader":"_fill_buffer.cs.hlsl_cs_main_0.bin","original_sparse_binding":13,"original_fill_words":64,"original_fill_value":43981,"original_full_rhapsody_comparison":false})
+        serde_json::json!({"status":"candidate_shader_production_gpu_passed","device":name,"arithmetic_input":25,"arithmetic_result":result,"sparse_set":2,"sparse_bindings":[3,9],"descriptor_cache_reused":false,"descriptor_pool_reused":true,"descriptor_invalidation_validated":true,"pipeline_cache_reused":true,"original_shader":"_fill_buffer.cs.hlsl_cs_main_0.bin","original_sparse_binding":13,"original_fill_words":64,"original_fill_value":43981,"stored_metadata_consumed":true,"original_raster_layout_created":true,"original_raster_stage_flags":31,"failed_raster_registration_preserves_layout":true,"original_full_rhapsody_comparison":false})
     );
     Ok(())
 }

@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-13",
+  "scope": [
+    "shader-pipeline runtime schema and compiled assets",
+    "shader-compiler game-owned compilation and runtime dependencies",
+    "real asset loading through existing rhapsody consumer"
+  ],
+  "agents": [
+    {
+      "name": "shader_pipeline",
+      "worker": "shader-pipeline-20261013",
+      "review": "shader_compiler"
+    },
+    {
+      "name": "shader_compiler",
+      "worker": "shader-compiler-20261013",
+      "review": "shader_runtime"
+    },
+    {
+      "name": "shader_runtime",
+      "worker": "shader-runtime-20261013",
+      "review": "shader_pipeline"
+    }
+  ],
+  "integration_owner": "root",
+  "original_baseline": "B only; A/C not implied",
+  "acceptance": "Behavioral contracts and actual consumer closure; no source-text/ABI mirroring requirement",
+  "preserve_existing_changes": true,
+  "baseline_inputs": [
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.toml",
+      "sha256": "28324257df71fee65c3da987ce437e3f7ced5ae8c6104c13b2c2d660120d8559"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.lock",
+      "sha256": "c0de4497f3f6fe54e254fa487627e1736a984346df8fb55be9903ee4d7924e2f"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/lib.rs",
+      "sha256": "e8b7a6f0ce2980b2b61462af980df1a7144e7834130856241a00bc2d1340e18a"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/raw/shader.rs",
+      "sha256": "64e0b948d4a1fbe33523b40655d09ddeb84b17fcce974f9b6cc2851c004a95dd"
+    },
+    {
+      "path": "tracking/module-progress-overrides.json",
+      "sha256": "f258c29bd80f0c020d9e8fec04bbf240d7aea01a90e3d174659f9920fdc58b67"
+    }
+  ]
+}

@@ -13,10 +13,14 @@
 
 StructuredBuffer<uint> instance_indirection_buffer : register(t14);
 
+#ifndef TINYGLADE_AFFINE3PACKED
+#define TINYGLADE_AFFINE3PACKED
+// 与 wall/inc/draw_lists.hlsl 共享同一 12-f32 布局，避免经 user.hlsl 重复声明。
 struct Affine3Packed
 {
     float data[12];
 };
+#endif
 
 struct InstanceVelocityData
 {

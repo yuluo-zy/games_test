@@ -1,0 +1,17 @@
+# shader runtime 交叉审查
+
+审查者shader_compiler，2026-10-13；最终源码复审基于raw/shader.rs、tests/shader_toolchain_runtime.rs、examples/shader_production_gpu.rs。运行结果由根集中验证报告补充。
+
+生产链已改为 shared Speedy完整原schema→stored reflection→descriptor/push布局。SPIR-Q原fork重反射只作独立核对oracle，生产不读取catalog、旧offset或重算reflection。compiled_computes/raster保留实际CompiledShaderPipeline Arc，真实create_compute_pipeline/prepare_raster_program从它生产布局。stored metadata mutation测试把binding13改7、push改16时实际plan随stored改变，public重反射仍13，防止测到另一fallback路径。
+
+初审真实raster消费者漏ALL_GRAPHICS而纯计划有0x1f；现已将compiled来源与真实library接线，旧人工入口明确分开。独立复核原0x1416a3720.c的FUN_140be60a0第四参0x1f与push range0x1f，compute-layout.asm.txt的0x1416a4b8e r9d=0x20→call0x140be60a0及0x1416a4c24 range0x20。原证据是局部静态/旧原指令，不算新原完整运行差分。
+
+中间合并发现重复ShaderLibrary/RasterProgram和丢失修改，已即时通知owner修复；最终复核只有一份定义，stored helper和compiled来源完整。失败快照保留但不计交付。
+
+真实asset注册先核对serialized stage/entry和SPIR-V再创建module，raster两阶段校验/创建成功后注册，失败不会破坏旧资产/缓存。公开from_compiled_pipeline入口也已调用stored_pipeline_entry逐stage核查；错阶段/入口反例同时覆盖纯计划入口，检查在Vulkan调用前完成。
+
+GPU示例验证原fill_buffer计算和原egui descriptor/push layout，后者不宣称实际graphics draw或整帧成功。完整pass key/hash策略、原缓存淘汰、source watcher、编译器原构建/异常流程仍不在本次运行等价验收内。Type schema映射复用原公共SPIR-Q尺寸API，不重写反射算法。
+
+最终复审源码所列生产接线成立；integration-cpu-tests.log确认compiler3/3、runtime3/3、既有shader production4/4通过。GPU运行结论由root报告，不把CPU通过记为GPU通过。
+
+真实GPU检查发现旧fixture以public SPIR-V名__alias_output查实际stored资源名output，导致MissingResource；生产stored路径保持正确，已修fixture为output并补public/stored名字差异断言。独立404原资产2577阶段descriptor对照：2362同名、215恰去__alias_前缀（69种名字对），其他差异0；同文件stored同名跨binding碰撞0、同slot跨stage不同public名0、Binding.name与binding_names字段不一致0。详见stored-public-binding-name-audit.json。只确认B产物映射；没有证实原producer处理位置、顺序、任意输入的冲突/异常规则，不新增推测算法。修fixture后的CPU/GPU结果由根集中报告确认，失败日志gpu-attempt-1.log保留。

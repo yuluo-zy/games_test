@@ -1,0 +1,36 @@
+{
+  "reviewer": "shader_runtime",
+  "reviewed_owner": "shader_pipeline",
+  "status": "reviewed_with_fixes",
+  "findings": [
+    {
+      "issue": "BindingKind tag2 initially named AccelerationStructure",
+      "evidence": "Original descriptor tag2 maps to Vk COMBINED_IMAGE_SAMPLER(1); stored404 assets have no tag2 so inventory cannot decide",
+      "fix": "Owner renamed CombinedImageSampler; runtime uses same original raw tag2",
+      "resolved": true
+    },
+    {
+      "issue": "Final stored u32 previously unknown flags; optional block could be misidentified as push",
+      "evidence": "Original compute/raster compiled+0x148 consumed as push size;404 stored43nonzero final u32 agrees independent public push extents",
+      "fix": "push_constant_size named; optional UniformBlock retained separately at actual $Globals UBO binding",
+      "resolved": true
+    },
+    {
+      "issue": "Vec preserves map wire records but duplicate records must overwrite in production",
+      "fix": "Owner supplies effective_descriptor_sets/effective_vertex_inputs, runtime consumes effective projections",
+      "resolved": true
+    }
+  ],
+  "verified_scope": "Full404 roundtrip declared by owner tests; runtime independent stored layouts versus exact-fork SPIRV reflection404/638 passed",
+  "residual": "Unsampled tags need original decoder/consumer evidence; full malformed-input original panic/error formatting not proved",
+  "final_review_utc": "2026-10-13T08:44:10.987Z",
+  "final_review": {
+    "full_wire_codec": "404 assets/638stages roundtrip in owner5tests; actual all-asset runtime compare independently passed",
+    "maps": "effective projections used by runtime, final-key overwrite retained",
+    "push_uniform": "43 original nonzero push extents agree independently;328$Globals uniformblocks distinct",
+    "types": "resource wire tags preserve unsupported/no-payload boundary; nbyte edge probes do not claim all authors types covered",
+    "runtime_name_authority": "stored names output vs public __alias_output caused and fixed actual GPU failure; independent compiler404audit reports215 aliases and no other name discrepancies",
+    "actual_gpu": "Intel UHD630 fill64 words passed and egui stored actuallayout created",
+    "unresolved": "Complete original compiler reflection producer strategy, full country-core asset registration IDs and gamepass association remain outside selected runtime closure"
+  }
+}

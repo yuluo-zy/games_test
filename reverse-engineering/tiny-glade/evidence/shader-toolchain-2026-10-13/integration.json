@@ -1,0 +1,205 @@
+{
+  "date": "2026-10-13",
+  "status": "selected_shader_toolchain_contracts_verified",
+  "full_crate_acceptance": false,
+  "full_game_or_frame_acceptance": false,
+  "original_baseline": "B only",
+  "agents": [
+    {
+      "name": "shader_pipeline",
+      "reviewer": "shader_runtime",
+      "report": "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+      "peer_review": "evidence/shader-toolchain-2026-10-13/runtime/pipeline-peer-review.json"
+    },
+    {
+      "name": "shader_compiler",
+      "reviewer": "shader_pipeline",
+      "report": "evidence/shader-toolchain-2026-10-13/compiler/delivery.json",
+      "peer_review": "evidence/shader-toolchain-2026-10-13/pipeline/review-compiler.md"
+    },
+    {
+      "name": "shader_runtime",
+      "reviewer": "shader_compiler",
+      "report": "evidence/shader-toolchain-2026-10-13/runtime/runtime-contract.json",
+      "peer_review": "evidence/shader-toolchain-2026-10-13/compiler/review-runtime.md"
+    }
+  ],
+  "implementation": {
+    "existing_crate": "reconstruction/rhapsody-rebuild",
+    "new_isolated_crates": false,
+    "pipeline": "Complete B released .bin typed schema, stored reflection, type tags, keys/hash and byte-preserving roundtrip",
+    "compiler": "Observed DXC request extraction from OpModuleProcessed(330), reconstruction, shared stage/model validation; real compile adapter candidate",
+    "runtime": "Released asset→shared typed decoder→retained stored metadata→descriptor/push layout→actual compute consumption; no catalog-offset fixture in new loading path"
+  },
+  "verification": [
+    {
+      "scope": "pipeline",
+      "tests": 5,
+      "passed": true,
+      "assets": 404,
+      "modules": 638,
+      "log": "evidence/shader-toolchain-2026-10-13/pipeline/cargo-test-verified.log"
+    },
+    {
+      "scope": "compiler",
+      "tests": 3,
+      "passed": true,
+      "modules": 638,
+      "log": "evidence/shader-toolchain-2026-10-13/compiler/cargo-test-verified.log"
+    },
+    {
+      "scope": "runtime",
+      "tests": 3,
+      "passed": true,
+      "log": "evidence/shader-toolchain-2026-10-13/runtime/cargo-test-current.log"
+    },
+    {
+      "scope": "existing shader production regression",
+      "tests": 4,
+      "passed": true,
+      "log": "evidence/shader-toolchain-2026-10-13/integration-cpu-tests.log"
+    },
+    {
+      "scope": "all-targets strict Clippy",
+      "passed": true,
+      "log": "evidence/shader-toolchain-2026-10-13/clippy-current.log"
+    },
+    {
+      "scope": "live Vulkan selected chain",
+      "passed": true,
+      "device": "Intel(R) UHD Graphics 630",
+      "original_fill_words": 64,
+      "original_fill_value": 43981,
+      "raster_scope": "egui layout creation only; not raster draw",
+      "failed_registration_preserves_layout": true,
+      "stored_metadata_consumed": true,
+      "log": "evidence/shader-toolchain-2026-10-13/runtime/gpu-verified.log"
+    }
+  ],
+  "differences_found_and_fixed": [
+    "Binding kind tag2 is CombinedImageSampler, not AccelerationStructure",
+    "UniformBlock is UBO data; final field is push_constant_size",
+    "Runtime raster visibility must use ALL_GRAPHICS(31)",
+    "Original map duplicate keys must resolve to final insertion",
+    "638 embedded DXC requests use OpModuleProcessed(330), not OpString",
+    "Original stored resource name output differs from SPIR-V debug name __alias_output; fixture changed to stored name"
+  ],
+  "independent_name_audit": {
+    "records": 2577,
+    "exact_name_matches": 2362,
+    "alias_prefix_removed": 215,
+    "other_differences": 0,
+    "report": "evidence/shader-toolchain-2026-10-13/compiler/stored-public-binding-name-audit.json",
+    "scope": "Released B asset mapping only; producer algorithm/order/collision policy not claimed"
+  },
+  "dependencies": "evidence/shader-toolchain-2026-10-13/dependency-projection.json",
+  "inputs": [
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/lib.rs",
+      "sha256": "8b5c5477d805dc3b2a5872e8b5812ae5ab20423c722617e9e9b4e1e7b7200e1b"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/raw/shader.rs",
+      "sha256": "53cf46557b2ba24afb4522feed201188701e59a9571c3f8040d5b303c8f30822"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_compiler.rs",
+      "sha256": "eff569a26525195e48907e8d8525768bbd35c7b858d5e4558d604c00dd05532d"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs",
+      "sha256": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/mod.rs",
+      "sha256": "45f60348cb6b537cfdfd19368836077e785e608601bfa9aad54d479ee5936bbb"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs",
+      "sha256": "5dfeb34b124ca41e017faf2354a2f54a6fa89d38750c542b0bf55e9064102e39"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs",
+      "sha256": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs",
+      "sha256": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs",
+      "sha256": "3d004b0811c83239ed3e5f29b9aa6638a24bdcbedd38e2753ba307edb6fbfad1"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/tests/shader_pipeline_contract.rs",
+      "sha256": "de6e017c0dd3f954725451475bb0fe930f8363edb69eb38173ecb24768196112"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/tests/shader_compiler_contract.rs",
+      "sha256": "ab4eea4fcd34c48e2757e32b7c8249444b5ab5f424f0ffd687a321403b584a80"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/tests/shader_toolchain_runtime.rs",
+      "sha256": "e39df68c12e5c218e1448ad0f71b0ff76a7b0000fa89932fe5b307199aecee79"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/tests/shader_production.rs",
+      "sha256": "f48580345e28f9b0ab68050d691c62da4cc7b56e943e3b6ce3b5ab40c6520991"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/examples/shader_production_gpu.rs",
+      "sha256": "5524389efbbfaa1f6bb9229b610de7b2477420cbef842a5e339a3661c291b9f5"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/examples/device_policy_gpu.rs",
+      "sha256": "c7f5c020b26a9327332078d9714afd438181181ca25e1ee0fe50bb12226c58fe"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.toml",
+      "sha256": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.lock",
+      "sha256": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e"
+    }
+  ],
+  "residuals": [
+    "Original local package public source/fork identity unknown",
+    "Original load_compiled full error contexts/cache/ownership and optional descriptor fields",
+    "Real DXC executable unavailable; HLSL preprocessing/recompile/reflection generation/variant packing and temp/cleanup/cancellation not verified",
+    "Original AssetShaderLibrary/pass variant selection and lifetime/state machine; current external keys/candidate cache remain",
+    "Raster draw, automatic vertex input consumer, complete frame and A/C equivalence not verified",
+    "Original error side effects/limits beyond tested malformed release-format data not verified"
+  ],
+  "integration_repairs": {
+    "workspace_overwrite_cause": "not established; source snapshots kept and existing tracked edits reapplied with apply_patch",
+    "native_build_environment": "Initial default exec helper failed, Ghidra prefs needed escalation, tests required MSVC environment",
+    "unrelated_minimal_fix": "Existing Windows device_policy_gpu example builder made mutable for all-target compilation"
+  },
+  "analysis_projects": {
+    "workers": [
+      "shader-pipeline-20261013",
+      "shader-compiler-20261013",
+      "shader-runtime-20261013"
+    ],
+    "copied_frozen_B_seed": true,
+    "seed_synchronized": false,
+    "stop_report": "evidence/shader-toolchain-2026-10-13/workers-stop.log",
+    "stopped": true,
+    "persistence_scope": "Per-job Ghidra checkpoint succeeded; three own workers stopped normally; no claim of original seed sync or final reopen verification"
+  },
+  "final_input_check": {
+    "matched": true,
+    "files": 17,
+    "changes": []
+  },
+  "progress_ledger": {
+    "check": "passed",
+    "log": "evidence/shader-toolchain-2026-10-13/progress-check.log",
+    "retained_preexisting_issues": [
+      "country-core render source delivery missing",
+      "country-core render_loop source delivery missing"
+    ],
+    "full_module_accepted": false
+  }
+}

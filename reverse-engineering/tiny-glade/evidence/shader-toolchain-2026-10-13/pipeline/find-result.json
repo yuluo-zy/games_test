@@ -1,0 +1,91 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "shader-pipeline-20261013",
+  "pid": 5772,
+  "project": "D:\\game\\tools\\reverse-runtime\\shader-pipeline-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-toolchain-2026-10-13\\pipeline\\find-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-toolchain-2026-10-13\\\\\\\\pipeline\\\\\\\\find-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 274, \\\"sha256\\\": \\\"e1ab8352899238e72c78224897f74f16f15ade786ac6c094b3acfacee0640f52\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":19}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.032,
+      "stdout": "{\"name\": \"tiny-glade.exe\", \"sha256\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"path\": \"/tiny-glade.exe\", \"functions\": 116270, \"language\": \"x86:LE:64:default\", \"adapter\": \"Windows ReVa transport / Ghidra engine\", \"preexisting_Mac_overlays\": false}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "shader_pipeline::",
+        "limit": 100
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-toolchain-2026-10-13\\pipeline\\find-result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-toolchain-2026-10-13\\\\\\\\pipeline\\\\\\\\find-result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 1728, \\\"sha256\\\": \\\"af62ffddd0224ead39c85d5eb00efbd5c2fac40efae570689510d5d073968a40\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2091}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 2.094,
+      "stdout": "{\"total_matches\": 10, \"functions\": [{\"address\": \"0x1409e3980\", \"name\": \"shader_pipeline::pipeline_desc::RasterPipelineDesc::new_vertex_fragment::hdf322c6b9869db01\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1420bda00\", \"name\": \"shader_pipeline::reflection_ty::Type::nbyte::h1b0ca38ff2cb7f6b\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1420cfbf0\", \"name\": \"shader_pipeline::compiled::calculate_hash::h575119b677e0a7e9\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409e3c50\", \"name\": \"shader_pipeline::compiled::ShaderCompilerArtifacts::load_compiled::h1e917fda150a6837\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140c87650\", \"name\": \"shader_pipeline::reflection::BindingNameHash::with_suffix_dims::h00eff87ff47557cd\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409e4160\", \"name\": \"shader_pipeline::compiled::ShaderCompilerArtifacts::load_compiled::h7b07c7faa9ff4bf5\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140539370\", \"name\": \"shader_pipeline::pipeline_desc::ComputePipelineDesc::with_entry::h33a205290a2ea0c4\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140c87660\", \"name\": \"shader_pipeline::reflection::BindingNameHash::new::h93777bff228a0b75\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1420bd380\", \"name\": \"shader_pipeline::reflection_ty::ScalarType::nbyte::h9936d90a27c7ace2\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409e3ab0\", \"name\": \"shader_pipeline::pipeline_desc::ComputePipelineDesc::with_entry::hca29d12b920881c0\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 5.985,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":148}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "9e37dda808be9d11c36dbccd71542518",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

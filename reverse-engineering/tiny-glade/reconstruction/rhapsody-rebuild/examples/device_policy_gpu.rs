@@ -156,7 +156,8 @@ fn gpu_run() -> Result<Value, Box<dyn std::error::Error>> {
     .is_err();
     assert!(missing_layer && missing_extension && blocked_layer);
     let loader_report = json!({"version":loader.api_version,"attempts":loader.attempts.iter().map(|a|json!({"candidate":a.candidate,"error":a.error})).collect::<Vec<_>>(),"layers":loader.layers.iter().map(|l|json!({"name":l.name,"vendor":l.vendor(),"allowed":allowlist.permits(l)})).collect::<Vec<_>>(),"implicit_layer_origins_known":loader.implicit_layers().is_some()});
-    let builder = InstanceBuilder::default();
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
+    let mut builder = InstanceBuilder::default();
     #[cfg(target_os = "windows")]
     {
         builder.extensions = vec![

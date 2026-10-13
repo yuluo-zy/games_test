@@ -7,6 +7,8 @@
 // terrain_height() helper (INC fix #3); unused here, dxc DCEs it.
 Texture2D terrain_heightmap : register(t63);
 
+// 原 color 变体的 color_library 为 set0 binding21，不能与 VS 的 t14 混用。
+#define TINYGLADE_COLOR_LIBRARY_REGISTER b21
 #include "inc/common.hlsl"
 #include "inc/frame_constants.hlsl"
 #include "inc/current_view.hlsl"

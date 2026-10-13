@@ -1,0 +1,1 @@
+Texture2D<float4> input_tex:register(t0); RWStructuredBuffer<float4> result:register(u1); [numthreads(1,1,1)] void cs_main(uint3 tid:SV_DispatchThreadID){result[tid.x]=input_tex.Load(int3(tid.xy,0));}

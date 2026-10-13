@@ -1,0 +1,5 @@
+{
+  "url": "https://raw.githubusercontent.com/EmbarkStudios/kajiya/main/Cargo.toml",
+  "status": 200,
+  "body": "[workspace]\nresolver = \"2\"\nmembers = [\n    \"crates/bin/bake\",\n    \"crates/bin/hello\",\n    \"crates/bin/view\",\n\n    \"crates/lib/kajiya-asset\",\n    \"crates/lib/kajiya-asset-pipe\",\n    \"crates/lib/kajiya-backend\",\n    \"crates/lib/kajiya-imgui\",\n    \"crates/lib/kajiya-rg\",\n    \"crates/lib/kajiya-simple\",\n    \"crates/lib/kajiya\",\n    \"crates/lib/rust-shaders\",\n    \"crates/lib/rust-shaders-shared\",\n\n    \"crates/lib/ash-imgui\",\n]\n\nexclude = [\n    \"crates/bin/rust-shader-builder\",\n    \"crates/lib/ngx_dlss\"\n]\n\n[patch.crates-io]\n# Official ray-tracing extensions\nrspirv = { git = \"https://github.com/gfx-rs/rspirv.git\", rev = \"dae552c\" }\nspirv_headers = { git = \"https://github.com/gfx-rs/rspirv.git\", rev = \"dae552c\" }\n\n[profile.release]\ndebug = 1\n\n#[patch.\"https://github.com/h3r2tic/rspirv-reflect\"]\n#rspirv-reflect = { path = \"../rspirv-reflect\" }\n\n#[patch.\"https://github.com/h3r2tic/gpu-profiler.git\"]\n#gpu-profiler = { path = \"../gpu_profiler\", features = [\"use-ash\"] }\n"
+}

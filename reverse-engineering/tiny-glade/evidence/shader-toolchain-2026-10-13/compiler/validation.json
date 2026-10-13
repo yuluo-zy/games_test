@@ -1,0 +1,101 @@
+{
+  "generated": "2026-10-13T08:37:16.904Z",
+  "baseline": "B",
+  "status": "passed_bounded_compiler_request_contract",
+  "cargo_command": "cargo test --locked --test shader_compiler_contract --test shader_toolchain_runtime --test shader_production -- --nocapture",
+  "test_counts": {
+    "compiler": 3,
+    "shared_runtime": 3,
+    "existing_shader_production_regression": 4
+  },
+  "original_artifact_coverage": {
+    "bins": 404,
+    "modules": 638,
+    "stage_counts": {
+      "compute": 170,
+      "vertex": 234,
+      "fragment": 234
+    },
+    "bin_hash_mismatches": 0,
+    "embedded_request_opcode": 330,
+    "embedded_request_record": "OpModuleProcessed",
+    "command_token_roundtrip_mismatches": 0,
+    "serialized_stage_entry_vs_spirv_vs_profile_mismatches": 0
+  },
+  "actual_dxc_recompile": false,
+  "original_complete_compiler_equivalence": false,
+  "original_failure_cleanup_equivalence": false,
+  "inputs": [
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_compiler.rs",
+      "sha256": "eff569a26525195e48907e8d8525768bbd35c7b858d5e4558d604c00dd05532d",
+      "bytes": 8593
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/tests/shader_compiler_contract.rs",
+      "sha256": "ab4eea4fcd34c48e2757e32b7c8249444b5ab5f424f0ffd687a321403b584a80",
+      "bytes": 6262
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/lib.rs",
+      "sha256": "8b5c5477d805dc3b2a5872e8b5812ae5ab20423c722617e9e9b4e1e7b7200e1b",
+      "bytes": 399
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs",
+      "sha256": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7",
+      "bytes": 2681
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs",
+      "sha256": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986",
+      "bytes": 3717
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs",
+      "sha256": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7",
+      "bytes": 4435
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.toml",
+      "sha256": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff",
+      "bytes": 2110
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/Cargo.lock",
+      "sha256": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e",
+      "bytes": 23029
+    },
+    {
+      "path": "evidence/render-passes/validation/compile-commands.json",
+      "sha256": "a1b6ddcae116c2af82496074dd0a8207477a854d0c1641590fd4bb02d5570673",
+      "bytes": 1037890
+    },
+    {
+      "path": "evidence/shader-toolchain-2026-10-13/compiler/original-bin-hashes.json",
+      "sha256": "ad69081e7e92f25cdcf50f85672344717115c6b6b24ef7b0a281432c72d7b78b",
+      "bytes": 105775
+    },
+    {
+      "path": "evidence/shader-toolchain-2026-10-13/compiler/embedded-request-opcodes.json",
+      "sha256": "1dcdfeee2100ba59fdfa2e40401ede9407dafab5c49386ee2b1a0cd8e9dcb1f6",
+      "bytes": 121272
+    },
+    {
+      "path": "evidence/shader-toolchain-2026-10-13/compiler/cargo-test-verified.log",
+      "sha256": "25b1181e4867013865e847f19970061c1c2c26d381466dc236daa80677c22abe",
+      "bytes": 1751
+    }
+  ],
+  "mutual_review": "evidence/shader-toolchain-2026-10-13/pipeline/review-compiler.md",
+  "negative_search_limit": "MCP/PDB public symbol shader_compiler query returned 0; not proof of absence",
+  "failures_retained": [
+    "evidence/shader-toolchain-2026-10-13/compiler/cargo-test.log",
+    "evidence/shader-toolchain-2026-10-13/integration-test-attempt-1.log"
+  ],
+  "differences_fixed": [
+    "Original opcode330 discovered by real638 test; replaced unproven OpString assumption with ModuleProcessed",
+    "rspirv0.11 test constructor uses LiteralInt32",
+    "Entry identifier initial digit rejected; fake OpSource/OpString and duplicate ModuleProcessed requests rejected"
+  ]
+}

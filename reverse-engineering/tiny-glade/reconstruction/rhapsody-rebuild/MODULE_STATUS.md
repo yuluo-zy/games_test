@@ -2,6 +2,8 @@
 
 候选已实现多条可运行功能链，原作全功能等价性尚未验收。验收仅限证据明确覆盖的行为。
 
+2026-10-13 shader 构建续轮已接通 include/pragma once→宏/#line→实际 DXC→独立反射→后处理/Speedy 打包，404 新包/638 阶段全部生成（393 包官方 1.9.2609，11 包官方 preview 1.10.2605.37）；最终 10 项受影响测试、严格 all-targets Clippy、新 fill 在 Intel UHD 630 上 64 word 读回、新 egui 两变体布局验证通过。当前范围见 [构建及来源交付](../../evidence/shader-build-2026-10-13/SUMMARY.md) 和 [输入哈希/验证](../../evidence/shader-build-2026-10-13/integration.json)。新编译包中 210/404 完整反射、302/638 阶段公共接口与原一致，191 包依赖集合有差异。170 compute 原宏 tuple 未独证，其中 38 非零 key 明确未知。可运行构建链已交付；完整原宏 manifest、shader 算法、原 DXC/fork、provider/异常/cache、资产库状态机、raster draw 与整帧仍未验收。前轮 schema/请求及旧 shader-production 报告保留历史输入与范围。
+
 以可观察功能、原二进制对照范围和实际GPU验收作为进度依据。文件数量不计入完成度。
 
 | 子系统 | 功能验收范围 | 证据状态 / 输入 | 剩余缺口 | 难度 |

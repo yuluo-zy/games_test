@@ -65,7 +65,14 @@ VsOut vs_main(uint vertex_id : SV_VertexID)
     return o;
 }
 
+// 原 SHADER_VARIANT_DEPTH_ONLY=1 的片元入口无资源、输入、输出或 discard。
+#if SHADER_VARIANT_DEPTH_ONLY
+void ps_main()
+{
+}
+#else
 float4 ps_main(VsOut vin) : SV_Target0
 {
     return vin.color * color_tex.Sample(sampler_llc, vin.uv);
 }
+#endif

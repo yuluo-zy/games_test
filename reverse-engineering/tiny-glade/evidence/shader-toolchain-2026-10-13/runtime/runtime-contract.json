@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "scope": "B shipped compiled shader metadata -> rhapsody runtime registration -> stored descriptor/push layout -> compute dispatch and raster layout",
+  "target_execution": false,
+  "actual_mcp_connection": true,
+  "worker": "shader-runtime-20261013",
+  "program": "/tiny-glade.exe",
+  "binary_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "original_evidence": [
+    "consumer-query.json",
+    "consumer-focused-query.json",
+    "../../render-recovery/consumer-chain-review-2026-10-12/0x1416a3720.c",
+    "../../render-recovery/parallel-batch-05/pipeline-descriptors/compute-layout.asm.txt"
+  ],
+  "cpu_verification": {
+    "log": "cargo-test-verified.log",
+    "runtime_tests": 3,
+    "existing_shader_production_regressions": 4,
+    "files": 404,
+    "compute": 170,
+    "raster": 234,
+    "stage_records": 638,
+    "stored_metadata_independent_oracle": "exact original public spirq0.6.2 fork commit 4f22e6f149750401705d47ae15a60e77cd5a6905",
+    "metadata_mutation_test": "stored binding changed13->7,push size8->16; runtime follows stored values, public SPIRV reflection remains13",
+    "current_runtime_log": "cargo-test-current.log",
+    "current_runtime_tests": 3
+  },
+  "runtime_api": [
+    "ShaderInterfacePlan::from_compiled_pipeline",
+    "stored_pipeline_entry",
+    "ReflectedShader::from_compiled_pipeline_stage",
+    "ShaderLibrary::register_compiled_compute",
+    "ShaderLibrary::register_compiled_raster"
+  ],
+  "semantics": {
+    "compiled_metadata_retained": "Arc<CompiledShaderPipeline> keyed compute asset or raster stage pair",
+    "ordinary_registration_or_invalidation": "remove compiled provenance and invalidate layout/pipeline caches",
+    "failed_raster_stage_registration": "retain previous shaders and layout cache",
+    "compute_visibility": 32,
+    "raster_visibility": 31,
+    "push_size": "original stored push_constant_size at native CompiledShaderPipeline+0x148",
+    "uniform_block": "$Globals UBO, distinct from push constants",
+    "duplicates": "effective stored maps keep final duplicate key value"
+  },
+  "gpu_verification": {
+    "log": "gpu-verified.log",
+    "actual_target": "rebuilt Rust rhapsody example executes shipped SPIR-V, not original EXE",
+    "device": "Intel(R) UHD Graphics 630",
+    "original_fill_words": 64,
+    "original_fill_value": 43981,
+    "stored_metadata_consumed": true,
+    "original_raster_layout_created": true,
+    "original_raster_stage_flags": 31,
+    "original_raster_push_bytes": 8,
+    "failed_raster_registration_preserves_layout": true,
+    "raster_draw": false,
+    "original_full_rhapsody_comparison": false
+  },
+  "limitations": [
+    "Not original full AssetShaderLibrary registration/name/handle lifecycle: key remains supplied by game asset owner.",
+    "No full game pass association, shader algorithm restoration or complete frame validation.",
+    "Stored entry projection does not invent absent stage outputs/full storage-type layout; pipeline layouts use stored fields directly.",
+    "Original cache eviction/hot reload and all original exception pathways are not fully validated.",
+    "Type2 CombinedImageSampler absent from404 assets; name fixed by original descriptor consumer evidence, not inferred from inventory."
+  ],
+  "input_hashes": {
+    "src/raw/shader.rs": "53cf46557b2ba24afb4522feed201188701e59a9571c3f8040d5b303c8f30822",
+    "tests/shader_toolchain_runtime.rs": "e39df68c12e5c218e1448ad0f71b0ff76a7b0000fa89932fe5b307199aecee79",
+    "examples/shader_production_gpu.rs": "5524389efbbfaa1f6bb9229b610de7b2477420cbef842a5e339a3661c291b9f5",
+    "src/shader_pipeline/compiled.rs": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7",
+    "src/shader_pipeline/reflection.rs": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986",
+    "src/shader_pipeline/reflection_ty.rs": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7",
+    "Cargo.toml": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff",
+    "Cargo.lock": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e"
+  },
+  "alias_name_observation": {
+    "asset": "_fill_buffer.cs.hlsl_cs_main_0.bin",
+    "binding": 13,
+    "stored_owner_name": "output",
+    "public_spirv_name": "__alias_output",
+    "first_gpu_result": "MissingResource due to old example public-name fixture",
+    "fix": "Named pass resource key changed to original stored name output; kept full stored metadata production"
+  },
+  "status": "selected_runtime_contract_verified",
+  "clippy": {
+    "log": "../clippy-current.log",
+    "scope": "all-targets -D warnings",
+    "passed": true
+  },
+  "verified_utc": "2026-10-13T08:44:10.982Z",
+  "original_exe_execution": false,
+  "reconstructed_runtime_gpu_execution": true
+}

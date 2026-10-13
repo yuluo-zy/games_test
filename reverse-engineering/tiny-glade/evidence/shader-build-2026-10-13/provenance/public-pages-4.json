@@ -1,0 +1,5 @@
+{
+  "url": "https://github.com/h3r2tic/spirq-rs/commit/4f22e6f149750401705d47ae15a60e77cd5a6905.patch",
+  "status": 200,
+  "body": "From 4f22e6f149750401705d47ae15a60e77cd5a6905 Mon Sep 17 00:00:00 2001\nFrom: Tomasz Stachowiak <h3@h3.gd>\nDate: Sat, 1 Oct 2022 04:35:33 +0200\nSubject: [PATCH] Don't break def parsing\n\n---\n spirq/src/reflect.rs | 5 ++++-\n 1 file changed, 4 insertions(+), 1 deletion(-)\n\ndiff --git a/spirq/src/reflect.rs b/spirq/src/reflect.rs\nindex 1a59a0a..128d00c 100644\n--- a/spirq/src/reflect.rs\n+++ b/spirq/src/reflect.rs\n@@ -1503,7 +1503,10 @@ impl<'a> ReflectIntermediate<'a> {\n             } else if SPEC_CONST_RANGE.contains(&opcode) {\n                 self.populate_one_spec_const(instr)?;\n             } else {\n-                break;\n+                // Note: Don't break. A rogue instruction like OpUndef can otherwise\n+                // make us miss definitions.\n+\n+                //break;\n             }\n             instrs.next();\n         }\n"
+}

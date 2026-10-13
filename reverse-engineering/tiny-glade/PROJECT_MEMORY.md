@@ -1,5 +1,9 @@
 # Tiny Glade 项目记忆
 
+2026-10-13 shader 构建续轮三 agent 共研互审已交付：现有 rhapsody-rebuild 接通原 shader-prepper include 展开/pragma once、宏与 #line 配置→实际 DXC 原参数→精确 SpirQ fork 独立反射→rspirv 后处理→Speedy 原 schema 打包。404 个新包/638 阶段全部生成（393 包官方 DXC 1.9.2609、11 包官方 preview 1.10.2605.37），1446 份构建输入/产物由两个 agent 独立核对 SHA/长度一致；原 DXC 版本或 fork 未确认。最终 10 项受影响测试、严格 all-targets Clippy、新 fill 在 Intel UHD 630 上 64 word 读回及新 egui 两变体布局通过。原 SPIR-V 的 404 包完整反射再生成零差异；新编译包仅 210/404 完整反射一致、302/638 阶段公共接口一致、213/404 依赖集合一致，全部构建成功不等于完整原 shader 算法等价。170 compute 原宏 tuple 均未独立证实，其中 38 非零 define key 明确未知、采用标注的空宏诊断基线；234 raster tuple 有原 depth-only=0/1 证据。shader-prepper 是作者原生公开 MIT 库，SpirQ 是明确公开 fork，其余 local 工具包上游仍未知；公共实现直接复用，12 项 shader 依赖身份与原锁匹配。详见 [当前构建与来源交付](evidence/shader-build-2026-10-13/SUMMARY.md)。完整原宏 manifest、精确 provider/临时文件/错误/cache 策略、原资产库/pass 联接、raster draw、整帧与 A/C 仍未验收。
+
+前轮 [schema/请求交付](evidence/shader-toolchain-2026-10-13/SUMMARY.md) 保留历史范围与哈希，当前编译入口及 Cargo 输入已变化，不覆盖旧报告成功标记。原 pipeline 五文件单列模块主键，compiler 原源路径未在 B PDB 定位，不补造路径。分析副本未同步原数据库，原历史报告保留。
+
 ## 用户已确定的目标与边界
 
 - 原作研究路径：`D:/game/ljxsj_92385/Tiny Glade`。分析目录：`D:/game/reverse-engineering/tiny-glade`。Rust工程：`reconstruction/Cargo.toml`。

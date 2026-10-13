@@ -6,6 +6,8 @@
 
 ## 当前选择
 
+2026-10-13 用户指定先完成真实 DXC 和预处理/打包及来源调查：已在现有 rhapsody-rebuild 交付可调用完整构建入口，404 新包/638 阶段生成，10 测试、严格 Clippy、新 fill GPU 读回和 egui 布局通过。精确复用 shader-prepper/SpirQ fork/rspirv/Speedy；shader-prepper 为作者公开库，五个 local 工具包公开上游仍未知。新编译反射 210/404 与原一致；170 compute 原宏 tuple 未独证（其中 38 非零 key 未知）、原 DXC/fork/provider/异常/cache 与 shader 算法残差保留。当前构建证据见 [SUMMARY](evidence/shader-build-2026-10-13/SUMMARY.md)。后续优先从原 pass/variant 生产者恢复完整宏 manifest，再逐项修复绑定、vertex inputs、uniform 和 local_size 残差；原资产库状态机与整帧属于后续范围，不因构建链通过计完成。
+
 最新执行规则以[WORKFLOW_RESET.md](evidence/render-recovery/WORKFLOW_RESET.md)为准。旧批次成果保留，停止继续创建R8等孤立函数包。优先把graph/registry/record/counter恢复结果接进单一共享调用入口，消除手填sequence与record输入；按真实consumer、私有stub移除和链级验收记进度。以下旧路线和批次数字仅作历史范围，不覆盖新规则。
 
 后续实施：共享 `ExecutionChain::execute_graph` 已接通graph声明→compiled→record→counter→实际queue数组→receipt/completion；正常、callback失败、queue失败3个候选链场景通过。下一任务为原shader/interface选择生产者→descriptor共享callback及真实wait/signal生产者；managed资源物理生产者、temporal跨帧和country-core consumer仍待接线。候选链不等同原完整compile ABI/原整链oracle，GPU未运行。详见 [共享入口验证](evidence/render-recovery/parallel-batch-06/shared-entry-validation.json)。

@@ -49,7 +49,11 @@ struct ColorLibrary {
 // observed binding (terrain_lighting_texture family). The cbuffer NAME matches
 // the original OpName (`color_library`, adjudicated inc-fix #10); consumers
 // reference the member variable `color_library` (e.g. color_library.temp_color_1).
-cbuffer color_library : register(b14, space0) {
+// 恢复适配：各消费者可指定原发行已证实的槽位，默认保持 b14。
+#ifndef TINYGLADE_COLOR_LIBRARY_REGISTER
+#define TINYGLADE_COLOR_LIBRARY_REGISTER b14
+#endif
+cbuffer color_library : register(TINYGLADE_COLOR_LIBRARY_REGISTER, space0) {
     ColorLibrary color_library;
 };
 
