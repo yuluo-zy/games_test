@@ -1,0 +1,21 @@
+// 0x140b2a7d0 is_circle
+// sig: void __cdecl is_circle(void)
+
+void __cdecl country_core::resources::walls::public_wall_state::PublicWallState::is_circle(void)
+
+{
+  undefined8 uVar1;
+  undefined4 *in_RCX;
+  longlong in_RDX;
+  
+  if (*(int *)(in_RDX + 600) != 0) {
+    *in_RCX = 0;
+    return;
+  }
+  uVar1 = *(undefined8 *)(in_RDX + 0x264);
+  *(undefined8 *)(in_RCX + 1) = *(undefined8 *)(in_RDX + 0x25c);
+  *(undefined8 *)(in_RCX + 3) = uVar1;
+  *in_RCX = 1;
+  return;
+}
+

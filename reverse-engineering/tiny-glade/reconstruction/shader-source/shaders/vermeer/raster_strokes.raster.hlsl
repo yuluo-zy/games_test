@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/vermeer/raster_strokes.raster.hlsl | evidence: _vermeer_raster_strokes.raster.hlsl_{b903,f0ad}.bin — vs expands each stroke into a quad (vertex_id/6): RGBA8 color srgb-decode + gamma brighten near start, luma-boost falloff over progress, quad y scaled by brush aspect*lerp(1,1,size_scale), size*aspect offset, appear passed as 1.0 + stroke_index out; ps alpha-tests brush with reveal sweep + procedural blue-noise-ish dither (photomode disables dither/boost); caps Shader+RuntimeDescriptorArray | status: O (vs quad layout + ps dither from inlined SPIR-V); I (VsOut names)
 //
 // Vermeer thumbnail chain: rasterizes generated strokes as textured quads.
@@ -125,3 +128,22 @@ float4 ps_main(VsOut input) : SV_Target0
 
     return input.color * alpha;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _vermeer_raster_strokes.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

@@ -1,0 +1,21 @@
+// signature: void __cdecl roof_uv_at_ws_pos(void)
+
+void __cdecl country_core::resources::roofs::roof_shape::roof_uv_at_ws_pos(void)
+
+{
+  longlong in_RCX;
+  undefined1 local_20;
+  undefined1 local_1f;
+  undefined8 local_1c;
+  
+  roof_uv_and_point_at_ws_pos();
+  if (local_20 == '\0') {
+    *(undefined8 *)(in_RCX + 4) = local_1c;
+  }
+  else {
+    *(undefined1 *)(in_RCX + 1) = local_1f;
+  }
+  *(bool *)in_RCX = local_20 != '\0';
+  return;
+}
+

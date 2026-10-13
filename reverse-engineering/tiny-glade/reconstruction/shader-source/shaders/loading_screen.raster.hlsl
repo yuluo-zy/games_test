@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/loading_screen.raster.hlsl | F-E | bins: _loading_screen.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
 // Loading-screen animation: a centered quad samples a Texture2DArray frame strip
 // (8 layers driven by progress_time); black content (1 - sample.x) fades in/out.
@@ -44,3 +47,22 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
     float a = animation.Sample(sampler_lnc, float3(uv, float(layer))).x;
     return (1.0f - a) * (1.0f - fade) * smoothstep(3.0f, 3.5f, progress_time);
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _loading_screen.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

@@ -1,0 +1,73 @@
+// addr=0x140a59430 name=stop
+// signature=void __cdecl stop(void)
+
+
+void __cdecl country_core::utils::audio_utils::AudioLoop::stop(void)
+
+{
+  ulonglong uVar1;
+  longlong lVar2;
+  int extraout_EAX;
+  undefined8 extraout_RAX;
+  longlong in_RCX;
+  undefined4 uVar3;
+  ulonglong in_RDX;
+  ulonglong uVar4;
+  undefined8 local_a0;
+  
+  uVar3 = (undefined4)in_RDX;
+  if (*(int *)(in_RCX + 0x20) == 1000000000) {
+    std::time::Instant::now();
+    *(undefined8 *)(in_RCX + 0x18) = extraout_RAX;
+    *(undefined4 *)(in_RCX + 0x20) = uVar3;
+  }
+  else {
+    std::time::Instant::elapsed();
+    if (*(uint *)(in_RCX + 0x30) <
+        (uint)((int)((in_RDX & 0xffffffff) / 1000000) + extraout_EAX * 1000)) {
+      uVar1 = *(ulonglong *)(in_RCX + 0x10);
+      uVar4 = *(ulonglong *)(in_RCX + 0x28);
+      if (*(char *)(in_RCX + 0x35) == '\0') {
+        if (uVar1 <= uVar4) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+        if (*(int *)(*(longlong *)(in_RCX + 8) + uVar4 * 0x30) == 1) {
+          libfmod::EventInstance::stop();
+          if (local_a0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+            core::result::unwrap_failed();
+          }
+        }
+      }
+      else {
+        if (uVar1 <= uVar4) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+        lVar2 = *(longlong *)(in_RCX + 8);
+        resources::audio_resources::impl$10::set_parameter();
+        if ((*(char *)(in_RCX + 0x36) == '\x01') && (*(int *)(uVar4 * 0x30 + lVar2) == 1)) {
+          libfmod::EventInstance::stop();
+          if (local_a0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+            core::result::unwrap_failed();
+          }
+        }
+      }
+      uVar4 = uVar4 + 1;
+      if ((uVar4 | uVar1) >> 0x20 == 0) {
+        uVar4 = (uVar4 & 0xffffffff) % (uVar1 & 0xffffffff);
+      }
+      else {
+        uVar4 = uVar4 % uVar1;
+      }
+      *(ulonglong *)(in_RCX + 0x28) = uVar4;
+      *(undefined1 *)(in_RCX + 0x34) = 0;
+      *(undefined4 *)(in_RCX + 0x20) = 1000000000;
+    }
+  }
+  return;
+}
+
+

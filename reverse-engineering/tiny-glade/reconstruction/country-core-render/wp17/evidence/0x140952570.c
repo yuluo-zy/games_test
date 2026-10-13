@@ -1,0 +1,56 @@
+// 0x140952570 _deprecated_morph_curve
+
+void __cdecl country_core::systems::history::replay_wall::_deprecated_morph_curve(void)
+
+{
+  size_t sVar1;
+  void *pvVar2;
+  undefined1 *extraout_RAX;
+  undefined1 *extraout_RAX_00;
+  longlong in_R8;
+  undefined1 *puVar3;
+  float in_stack_00000028;
+  
+  if ((in_stack_00000028 != 0.0) || (NAN(in_stack_00000028))) {
+    ::utils::curve::Curve::crashy_lerp<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>();
+  }
+  else {
+    sVar1 = *(ulonglong *)(in_R8 + 0x10) * 8;
+    if ((*(ulonglong *)(in_R8 + 0x10) >> 0x3d != 0) || (0x7ffffffffffffffc < sVar1)) {
+LAB_140952729:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    pvVar2 = *(void **)(in_R8 + 8);
+    if (sVar1 == 0) {
+      puVar3 = &DAT_00000004;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      puVar3 = extraout_RAX;
+      if (extraout_RAX == (undefined1 *)0x0) goto LAB_140952729;
+    }
+    memcpy(puVar3,pvVar2,sVar1);
+    sVar1 = *(ulonglong *)(in_R8 + 0x28) * 4;
+    if ((*(ulonglong *)(in_R8 + 0x28) >> 0x3e != 0) || (0x7ffffffffffffffc < sVar1)) {
+LAB_14095273b:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    pvVar2 = *(void **)(in_R8 + 0x20);
+    if (sVar1 == 0) {
+      puVar3 = &DAT_00000004;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      puVar3 = extraout_RAX_00;
+      if (extraout_RAX_00 == (undefined1 *)0x0) goto LAB_14095273b;
+    }
+    memcpy(puVar3,pvVar2,sVar1);
+  }
+  resources::walls::inner_walls::InnerWalls::
+  _try_update_state<country_core::resources::walls::inner_walls::impl_1::update_wall_state_curve::closure_env_0>
+            ();
+  return;
+}
+

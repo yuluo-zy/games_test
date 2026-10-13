@@ -1,0 +1,28 @@
+[package]
+name = "country-core-render-wp13"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP13 — Tiny Glade country-core session/prefab/history/save domain (B skeleton-aligned)"
+publish = false
+
+# Standalone skeleton crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Versions respect the original release Cargo.lock baseline (reconstruction/Cargo.lock).
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+hashbrown = "=0.14.5"
+fastrand = "=1.8.0"
+uuid = { version = "=1.15.1", features = ["v4"] }
+anyhow = "=1.0.103"
+
+# bevy_ecs 0.16.0 = the game's Bevy family (as confirmed for country-core).
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+
+# NOT declared (reused dependencies / unavailable offline): rkyv, ron, indexmap,
+# parking_lot, fmod(libfmod) — referenced as typed-gap boundaries.

@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_b903e43ffb3da915.bin:ps_main, lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/roof_snow.raster.hlsl | F-V | bins: _roof_snow.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
 // Roof snow overlay (roof family). The vs displaces each roof vertex with a
 // fine snow-noise jitter: a trilinear 3D-lattice float2 noise (custom 3D hash)
@@ -167,3 +170,84 @@ PsOut ps_main(PsIn pin)
     o.gbuffer.y = albedo_word | 117440512u;
     return o;
 }
+
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _roof_snow.raster.hlsl_b903e43ffb3da915.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+static float3 in_var_C0;
+static float3 in_var_C1;
+static float3 in_var_C3;
+static uint2 out_var_SV_TARGET0;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+};
+
+struct SPIRV_Cross_Output
+{
+    uint2 out_var_SV_TARGET0 : SV_Target0;
+};
+
+void frag_main()
+{
+    if (in_var_C3.y < 0.5f)
+    {
+        discard;
+    }
+    float3 _64 = (normalize(in_var_C1) * 0.5f) + 0.5f.xxx;
+    float3 _86 = sqrt(clamp(in_var_C0, 0.0f.xxx, 1.0f.xxx));
+    uint _105 = (uint((clamp(_86.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_86.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_86.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u);
+    uint2 _106 = uint2(((uint((clamp(_64.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_64.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_64.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) + 3422552064u, _105);
+    _106.y = _105 | 117440512u;
+    out_var_SV_TARGET0 = _106;
+}
+
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C0 = stage_input.in_var_C0;
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C3 = stage_input.in_var_C3;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _roof_snow.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+static float3 in_var_C3;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+};
+
+void frag_main()
+{
+    if (in_var_C3.y < 0.5f)
+    {
+        discard;
+    }
+}
+
+void ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C3 = stage_input.in_var_C3;
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

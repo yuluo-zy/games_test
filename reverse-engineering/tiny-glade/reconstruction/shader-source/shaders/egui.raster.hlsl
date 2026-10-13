@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/egui.raster.hlsl | F-E | bins: _egui.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
 // egui (immediate-mode UI) textured quad: a packed vertex buffer (20-byte stride:
 // xy = pixel position, zw = uv, byte16 = RGBA8 color) is decoded in the VS; ps
@@ -75,4 +78,23 @@ float4 ps_main(VsOut vin) : SV_Target0
 {
     return vin.color * color_tex.Sample(sampler_llc, vin.uv);
 }
+#endif // SHADER_VARIANT_DEPTH_ONLY fallback
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _egui.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
 #endif

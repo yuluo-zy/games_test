@@ -1,0 +1,129 @@
+{
+  "work_package": "wp7",
+  "domain": "country-core water content (water state / water_mask / water systems)",
+  "version": "B",
+  "binary": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe",
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "oracle_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "pdb": { "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911" },
+  "ghidra_worker": "shared (read-only)",
+  "decompiles": {
+    "new_this_round": {
+      "0x140a13970": "compute_water::water_spawn_vegetation (W13, size 2269)",
+      "0x1409bf800": "transparency_pass::water_surface_pass (W45 water, size 3099)",
+      "0x1409c08d0": "transparency_pass::ice_surface_pass (W45 ice, size 8874)",
+      "0x1409d9bc0": "draw_shaders::water_planes_draw::water_planes_draw (size 1522)",
+      "0x1409da580": "water_planes_draw::lilypad_draw",
+      "0x1409da760": "water_planes_draw::lilypad_flower_draw",
+      "0x1409da940": "water_planes_draw::reed_draw",
+      "0x1406501d0": "system_water::WaterPlugin::build (WaterRaster insert + events)",
+      "0x141ba9130": "system_water::draw_water::draw_water (editor water tool)",
+      "0x141baefe0": "system_water::water_audio_grid::update_water_audio_grid",
+      "0x1408f1a20": "startup::startup_water (surface mesh/shader load + spawn)",
+      "0x14098c680": "read_terrain_data (W5; water mask readback)",
+      "0x140974a20": "pass_resource_access::write_access_buffer<WaterMaskSsbo>",
+      "0x140974e20": "pass_resource_access::write_access_buffer<WaterExcludeClutterMaskSsbo>",
+      "0x140970320": "pass_resource_access::read_access_buffer<RippleSourceSsbo>"
+    },
+    "reused_prior": {
+      "0x140a12680": "compute_water::water_rasterize_from_cpu (W2) — evidence/render-recovery/producer-closure/g6-scene-passes/decomp/0x140A12680.c + water-cpu-analysis.md (re-verified this round)",
+      "0x142260ae0": "world_raster::draw_raster<WaterRasterStagingSsbo,WorldRaster<512>,…> (water-cpu-analysis)",
+      "0x1409f4650": "history::replay_raster<WaterRasterStagingSsbo,…> (water-cpu-analysis)",
+      "0x141444c70": "history::generate_replay_cmds_from_edit<replay_water> (water-cpu-analysis)",
+      "0x140a01560": "history::replay_water::replay_water::closure$2 (water-cpu-analysis)",
+      "0x140a14df0": "bilinear_sample_at_world_xz<RasterBufferRef<512>> (water-cpu-analysis)",
+      "0x1409f18a0/0x1409f1890": "BrushSizes::set_water/reset_water (water-cpu-analysis)"
+    },
+    "symbol_addresses": {
+      "0x140ae8320": "GladeType::is_winter (co-located with BackupSaveFileKind::is_corrupted; identical code folding — public-symbols.json two S_PUB32 same VA)",
+      "0x14092e6c0": "GladeType::is_autumn",
+      "0x140a9fa70": "GladeType::is_olden",
+      "0x14092e6a0": "GladeType::is_flowery",
+      "0x2314b70": "system_critters::duck::update_duck_ripples (RippleSourceSsbo producer, cross-crate)"
+    }
+  },
+  "skeleton_bundles": {
+    "resources/water module": {
+      "path": "skeleton/B/crates/country-core/src/resources/mod.rs.structures.json.gz",
+      "sha256": "a4897bbad9e99da2f23c58a093a73dc7abdee846f8a05994646b60f1d0591cef",
+      "note": "entities country_core::resources::water::{RippleSourceSsbo,WaterDrawEvent,WaterEraseEvent} (name_and_relations_only; no separate water.rs bundle exists)"
+    },
+    "water_mask.rs": {
+      "path": "skeleton/B/crates/country-core/src/resources/water_mask.rs.structures.json.gz",
+      "sha256": "cba28036100cc343b8c557c930f728878fb1def5136605bdb07caa135dd2d404",
+      "note": "WaterMaskSsbo name-only; file metadata-only (5 records, 0 procedures)"
+    },
+    "water_exclude_clutter_mask.rs": {
+      "path": "skeleton/B/crates/country-core/src/resources/water_exclude_clutter_mask.rs.structures.json.gz",
+      "sha256": "57cb141284bf3b327707804d5dfea9ddc4bb23f38d09f87948a43e84ab0b698a",
+      "note": "WaterExcludeClutterMaskSsbo name-only"
+    },
+    "compute_water.rs": {
+      "path": "skeleton/B/crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs.enriched.json.gz",
+      "sha256": "a6bb926b6d959ee2dba947a6a644411fc24c9415210421c2b15ea0effda48f2a",
+      "note": "LilypadSsbo/LilypadFlowerSsbo/ReedSsbo name-only; water_rasterize_from_cpu rva 0xa12680 line 22, water_spawn_vegetation rva 0xa13970 line 73"
+    },
+    "spawn_boats.rs": {
+      "path": "skeleton/B/crates/country-core/src/systems/render_loop/compute_passes/spawn_boats.rs.pdb.json",
+      "sha256": "86c9dba60f0a9fb7f4a1d73bce8ff074695851ef45d2b99a72fff406d50c7b5c",
+      "note": "BoatSsbo only; 0 procedures / 5 metadata — boats/wheels URI runtime-dynamic (U)"
+    },
+    "system_water lib.rs": {
+      "path": "skeleton/B/crates/systems/water/src/lib.rs.enriched.json.gz",
+      "sha256": "f525d8512a9af92c2d1e489560a77a0953d2c447f730cbac0b9d71bb981b0e85",
+      "note": "WaterPlugin::build rva 0x6501d0 line 21; + record_water_history / update_water_audio_grid registration"
+    },
+    "system_water draw_water.rs": {
+      "path": "skeleton/B/crates/systems/water/src/draw_water.rs.enriched.json.gz",
+      "sha256": "f3dfe7454e02088c4bf35584802a8836b3507aff9510ed89a85d6eea38e6677e",
+      "note": "draw_water rva 0x1ba9130 line 28 + closures"
+    },
+    "session.rs": {
+      "path": "skeleton/B/crates/country-core/src/resources/session.rs.enriched.json.gz",
+      "sha256": "41390374125f1d7e12ae1dff285b27a570f83fb71e6f58b0ee1d0db502bd91eb",
+      "note": "GladeType::is_winter rva 0xae8320 line 119 (is_autumn 0x92e6c0, is_olden 0xa9fa70, is_flowery 0x92e6a0)"
+    }
+  },
+  "shader_evidence": {
+    "draw_water_mask.cs.hlsl": "reconstruction/shader-source/shaders/water/draw_water_mask.cs.hlsl (O: $Globals{out_water_mask_dims,is_add,is_subtract,cursor_position_ws}; 65.0 half-extent)",
+    "read_water_mask.cs.hlsl": "reconstruction/shader-source/shaders/water/read_water_mask.cs.hlsl (O: >0.5 water / >0.2 clutter, 32 texels/thread, 512 row)",
+    "water_mask_sampler.inc.hlsl": "reconstruction/shader-source/shaders/water/water_mask_sampler.inc.hlsl (O: 1/130 world mapping, .y channel)",
+    "spawn_waterwheels.cs.hlsl": "reconstruction/shader-source/shaders/water/spawn_waterwheels.cs.hlsl (O: empty body → waterwheel spawn CPU-side, I)",
+    "water_plane.raster.hlsl": "reconstruction/shader-source/shaders/water_plane.raster.hlsl (O: reads RippleSourceSsbo/water_noise_texture/half_depth_tex)"
+  },
+  "candidate_verdicts": {
+    "resources::water module": "O-names + lifecycle glue; fields typed gap. CPU water state = WaterRaster (WorldRaster<512>, water-cpu-analysis layout O) inserted by WaterPlugin::build (O).",
+    "WaterMaskSsbo / WaterExcludeClutterMaskSsbo": "O-names + write_access_buffer glue; layout U. Semantics (I): read_water_mask packed water/clutter bits (>0.5/0.2).",
+    "WaterDrawEvent / WaterEraseEvent": "O events registered in WaterPlugin::build; produced by draw_raster/replay_raster; layout U.",
+    "water_rasterize_from_cpu": "O (0x140a12680): WaterRasterStagingSsbo type-id 0x1ad182936286a0ee; 4 draw_water_mask compute passes upload 512B staging → 512x512 mask.",
+    "water_spawn_vegetation": "O (0x140a13970): two passes (lilypad+lilypad_flower / reed), write_storage_buffer + DrawIndexedIndirectBuffer concurrent + autumn uniform + dispatch.",
+    "spawn_boats": "BoatSsbo name-only; spawn_boats.cs URI absent (O) → runtime-dynamic or inlined in water_spawn_vegetation (I). waterwheel GPU stub empty → CPU-side spawn (I).",
+    "water_planes_draw": "O (0x1409d9bc0): reads RippleSourceSsbo + DofAutofocusSsbo, session byte@+0x58==4 winter snow texture; lilypad/reed draws read instance SSBOs + multi_draw_indexed_indirect.",
+    "surface selection": "O: render_world W45 dispatch by GladeType::is_winter (0x140ae8320); water_surface_pass ↔ ice_surface_pass.",
+    "system_water chain": "O (system_water crate, cross-crate): draw_water→draw_raster<Water>→rasterize_stroke<512>→copy_to_staging; replay_raster<Water> for history restore; update_water_audio_grid (6400.0 dist + >0.5 water + raycast). Not assembled into country-core (crate boundary)."
+  },
+  "assembly_patches_country_core": {
+    "lib.rs": "resources facade: removed inline `pub struct Water(pub Gap)` placeholder (no usages); added pub mod {brush_sizes, session, water, water_exclude_clutter_mask, water_mask}.",
+    "resources/world_raster_defs.rs": "added WaterRasterStagingSsbo (typed-gap carrier, type-id 0x1ad182936286a0ee O).",
+    "compute_passes/compute_water.rs": "fleshed: LilypadSsbo/LilypadFlowerSsbo/ReedSsbo impl SsboType; world_to_water_grid (130/512 O); water_rasterize_from_cpu/water_spawn_vegetation signatures + O docs.",
+    "compute_passes/spawn_boats.rs": "BoatSsbo impl SsboType + URI-dynamic note.",
+    "compute_passes/read_terrain_data.rs": "water readback wired: WaterMaskSsbo + WaterExcludeClutterMaskSsbo writes (slot 0x13); pack_water_mask_bits real code.",
+    "draw_passes/transparency_pass.rs": "WaterSurfaceKind enum + select_water_surface(is_winter→Ice) real code; water/ice pass O docs.",
+    "draw_passes/draw_shaders/water_planes_draw.rs": "new module; water_planes_draw/lilypad_draw/lilypad_flower_draw/reed_draw.",
+    "draw_passes/draw_shaders/mod.rs + draw_passes/mod.rs": "wired draw_shaders submodule."
+  },
+  "verification": {
+    "cargo_check_offline": "0 errors / 136 warnings (skeleton markers)",
+    "cargo_clippy_all_targets_offline": "0 errors / 216 warnings (pre-existing skeleton warnings; none from WP7 modules)",
+    "note": "all implemented_unverified — no runtime/GPU acceptance; contracts are the reviewable basis"
+  },
+  "reused_candidates": {
+    "evidence/multi-baseline/water-cpu-analysis.md": "WorldRaster<512> layout + CPU raster chain + replay chain (re-verified this round)",
+    "evidence/multi-baseline/system-water-inventory.json": "VA inventory",
+    "evidence/render-passes/cpu-frame/sequence.md": "W2/W13/W44/W45 order + is_winter branch",
+    "reconstruction/country-core-render/wp5/contracts/{compute-passes,draw-passes,frame-wiring}.md": "water pass consumer wiring",
+    "reconstruction/shader-source/shaders/water/*": "mask/brush/readback shader O evidence"
+  }
+}

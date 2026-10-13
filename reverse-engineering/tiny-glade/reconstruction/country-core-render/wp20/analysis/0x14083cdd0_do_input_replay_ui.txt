@@ -1,0 +1,256 @@
+ADDR: 0x14083cdd0
+SIG: void __cdecl do_input_replay_ui(void)
+
+
+void __cdecl
+country_core::systems::backend::input::input_replay_for_trailers::do_input_replay_ui(void)
+
+{
+  char *pcVar1;
+  undefined4 uVar2;
+  undefined4 *puVar3;
+  longlong lVar4;
+  undefined8 ***pppuVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  char *extraout_RAX;
+  undefined1 *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  undefined8 *extraout_RAX_02;
+  undefined8 *extraout_RAX_03;
+  longlong *extraout_RAX_04;
+  longlong *in_RDX;
+  longlong in_R8;
+  longlong local_150 [2];
+  longlong *local_140;
+  longlong *local_f0;
+  code *local_e8;
+  longlong **local_e0;
+  code *pcStack_d8;
+  undefined8 local_d0;
+  undefined **local_c8;
+  undefined8 local_c0;
+  undefined8 ***local_b8;
+  undefined8 local_b0;
+  undefined8 local_a8;
+  longlong **local_98;
+  code *pcStack_90;
+  undefined8 local_88;
+  undefined4 local_80;
+  undefined4 local_78;
+  undefined8 local_70;
+  undefined1 local_68;
+  undefined4 local_63;
+  undefined3 uStack_5f;
+  undefined8 local_58;
+  undefined1 local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  uVar2 = *(undefined4 *)((longlong)in_RDX + 0x1c);
+  puVar3 = (undefined4 *)in_RDX[2];
+  *puVar3 = uVar2;
+  lVar4 = *in_RDX;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  pcVar1 = (char *)(lVar4 + 0xfc);
+  builtin_strncpy(extraout_RAX,"Enable input recording",0x16);
+  local_68 = 0;
+  local_63 = 0;
+  uStack_5f = 0;
+  local_c8 = (undefined **)0x3;
+  local_b0 = 6;
+  local_98 = (longlong **)0x16;
+  local_88 = 0x16;
+  local_80 = 0;
+  local_78 = 0;
+  local_70 = 0;
+  local_50 = 0;
+  local_58 = pcVar1;
+  egui::widgets::button::impl$3::ui();
+  LOCK();
+  *local_140 = *local_140 + -1;
+  UNLOCK();
+  if (*local_140 == 0) {
+    alloc::sync::Arc::
+    drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+              ();
+  }
+  if (*pcVar1 != '\x01') {
+    return;
+  }
+  if (*(longlong *)(in_R8 + 0x40) == -0x7ffffffffffffffc) {
+    local_f0 = *(longlong **)(in_R8 + 0x38);
+    pcStack_d8 = core::fmt::num::imp::impl$9::fmt;
+    local_c8 = (undefined **)&DAT_142a937b8;
+    local_c0 = 1;
+    local_b8 = &local_e0;
+    local_b0 = 1;
+    local_a8 = 0;
+    local_e0 = &local_f0;
+    alloc::fmt::format::format_inner();
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (undefined1 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *extraout_RAX_00 = 0x2d;
+    local_150[0] = 1;
+    local_140 = (longlong *)0x1;
+  }
+  local_e8 = alloc::string::impl$23::fmt;
+  local_c8 = &PTR_s_Stream_frame_count__142a937e0;
+  local_c0 = 1;
+  local_b0 = 1;
+  local_a8 = 0;
+  local_f0 = local_150;
+  local_b8 = (undefined8 ***)&local_f0;
+  alloc::fmt::format::format_inner();
+  if (local_150[0] != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  pcVar1 = local_58;
+  local_88 = local_d0;
+  local_98 = local_e0;
+  pcStack_90 = pcStack_d8;
+  local_68 = 0;
+  local_63 = 0;
+  uStack_5f = 0;
+  local_c8 = (undefined **)0x3;
+  local_b0 = 6;
+  local_80 = 0;
+  local_78 = 0;
+  local_70 = 0;
+  local_58 = (char *)CONCAT53(local_58._3_5_,0x20200);
+  uVar6 = local_58;
+  local_58._6_2_ = SUB82(pcVar1,6);
+  local_58._0_5_ = (undefined5)uVar6;
+  local_58._0_6_ = CONCAT15(2,(undefined5)local_58);
+  egui::widgets::label::impl$2::ui();
+  LOCK();
+  *local_140 = *local_140 + -1;
+  UNLOCK();
+  if (*local_140 == 0) {
+    alloc::sync::Arc::
+    drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+              ();
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  uVar6 = local_58;
+  if (extraout_RAX_01 != (undefined8 *)0x0) {
+    *(undefined8 *)((longlong)extraout_RAX_01 + 10) = 0x7220706f74732f74;
+    *(undefined8 *)((longlong)extraout_RAX_01 + 0x12) = 0x676e6964726f6365;
+    *extraout_RAX_01 = 0x7473202d20604f60;
+    extraout_RAX_01[1] = 0x706f74732f747261;
+    local_68 = 0;
+    local_63 = 0;
+    uStack_5f = 0;
+    local_c8 = (undefined **)0x3;
+    local_b0 = 6;
+    local_98 = (longlong **)0x1a;
+    local_88 = 0x1a;
+    local_80 = 0;
+    local_78 = 0;
+    local_70 = 0;
+    local_58 = (char *)CONCAT53(local_58._3_5_,0x20200);
+    uVar7 = local_58;
+    local_58._6_2_ = SUB82(uVar6,6);
+    local_58._0_5_ = (undefined5)uVar7;
+    local_58._0_6_ = CONCAT15(2,(undefined5)local_58);
+    egui::widgets::label::impl$2::ui();
+    LOCK();
+    *local_140 = *local_140 + -1;
+    UNLOCK();
+    if (*local_140 == 0) {
+      alloc::sync::Arc::
+      drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+                ();
+    }
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    uVar6 = local_58;
+    if (extraout_RAX_02 != (undefined8 *)0x0) {
+      *extraout_RAX_02 = 0x6572202d20604960;
+      *(undefined4 *)(extraout_RAX_02 + 1) = 0x79616c70;
+      local_68 = 0;
+      local_63 = 0;
+      uStack_5f = 0;
+      local_c8 = (undefined **)0x3;
+      local_b0 = 6;
+      local_98 = (longlong **)0xc;
+      local_88 = 0xc;
+      local_80 = 0;
+      local_78 = 0;
+      local_70 = 0;
+      local_58 = (char *)CONCAT53(local_58._3_5_,0x20200);
+      uVar7 = local_58;
+      local_58._6_2_ = SUB82(uVar6,6);
+      local_58._0_5_ = (undefined5)uVar7;
+      local_58._0_6_ = CONCAT15(2,(undefined5)local_58);
+      egui::widgets::label::impl$2::ui();
+      LOCK();
+      *local_140 = *local_140 + -1;
+      UNLOCK();
+      if (*local_140 == 0) {
+        alloc::sync::Arc::
+        drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+                  ();
+      }
+      *puVar3 = uVar2;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_03 != (undefined8 *)0x0) {
+        local_58 = (char *)(lVar4 + 0xfb);
+        *extraout_RAX_03 = 0x532079616c706552;
+        *(undefined4 *)(extraout_RAX_03 + 1) = 0x70656568;
+        local_68 = 0;
+        local_63 = 0;
+        uStack_5f = 0;
+        local_c8 = (undefined **)0x3;
+        local_b0 = 6;
+        local_98 = (longlong **)0xc;
+        local_88 = 0xc;
+        local_80 = 0;
+        local_78 = 0;
+        local_70 = 0;
+        local_50 = 0;
+        egui::widgets::button::impl$3::ui();
+        LOCK();
+        *local_140 = *local_140 + -1;
+        UNLOCK();
+        if (*local_140 == 0) {
+          alloc::sync::Arc::
+          drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+                    ();
+        }
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        if (extraout_RAX_04 != (longlong *)0x0) {
+          *extraout_RAX_04 = in_R8;
+          extraout_RAX_04[1] = in_R8 + 0x40;
+          egui::ui::Ui::horizontal_with_main_wrap_dyn<tuple_<>_>();
+          pppuVar5 = local_b8;
+          LOCK();
+          *local_b8 = (undefined8 **)((longlong)*local_b8 + -1);
+          UNLOCK();
+          if (*pppuVar5 != (undefined8 **)0x0) {
+            return;
+          }
+          alloc::sync::Arc::
+          drop_slow<epaint::mutex::rw_lock_impl::RwLock<egui::context::ContextImpl>,alloc::alloc::Global>
+                    ();
+          return;
+        }
+                    // WARNING: Subroutine does not return
+        alloc::alloc::handle_alloc_error();
+      }
+    }
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+                    // WARNING: Subroutine does not return
+  alloc::raw_vec::handle_error();
+}
+

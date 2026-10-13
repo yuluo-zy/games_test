@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/demo_terrain_overlay.raster.hlsl | evidence: spirv-cross of _demo_terrain_overlay.raster.hlsl_* (46x46 grid over the terrain; overlay tinted quad in sample space) | status: O (bindings/entry/flow); I (names)
 
 #include "inc/common.hlsl"
@@ -70,3 +73,34 @@ float4 ps_main(VS_OUTPUT input) : SV_Target0
     }
     return float4(0.0f, 0.0f, 0.0f, 0.6f) * demo_overlay_texture.Sample(sampler_llr, input.position.xy * 0.0074999998323619365692138671875f).x;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _demo_terrain_overlay.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+static float3 in_var_C1;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+};
+
+void frag_main()
+{
+    if (length(in_var_C1.xz) < 15.0f)
+    {
+        discard;
+    }
+}
+
+void ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C1 = stage_input.in_var_C1;
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

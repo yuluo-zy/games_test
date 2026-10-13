@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/ui_2d.raster.hlsl | F-E | bins: _ui_2d.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
 // Simple 2D UI quad (no per-camera transform): position/size in window pixels.
 // vs emits the 6-vertex quad; ps samples ui_texture with -1 mip bias and applies
@@ -59,3 +62,22 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
 
     return col;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _ui_2d.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

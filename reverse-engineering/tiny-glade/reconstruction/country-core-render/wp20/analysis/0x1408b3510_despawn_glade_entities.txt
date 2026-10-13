@@ -1,0 +1,61 @@
+ADDR: 0x1408b3510
+SIG: void __cdecl despawn_glade_entities(void)
+
+
+void __cdecl country_core::systems::despawn::despawn_glade_entities(void)
+
+{
+  uint *puVar1;
+  uint uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  longlong lVar5;
+  longlong *in_RCX;
+  longlong lVar6;
+  uint *puVar7;
+  
+  lVar3 = *in_RCX;
+  lVar4 = in_RCX[1];
+  puVar7 = *(uint **)(lVar3 + 0xf8);
+  puVar1 = puVar7 + *(longlong *)(lVar3 + 0x100);
+  if (*(char *)(lVar3 + 0x108) == '\0') {
+    while (puVar7 != puVar1) {
+      uVar2 = *puVar7;
+      puVar7 = puVar7 + 1;
+      lVar3 = *(longlong *)(lVar4 + 0x100);
+      lVar5 = *(longlong *)(lVar3 + 0x58 + (ulonglong)uVar2 * 0xa0);
+      if (lVar5 != 0) {
+        lVar3 = *(longlong *)(lVar3 + (ulonglong)uVar2 * 0xa0 + 0x50);
+        lVar6 = 0;
+        do {
+          if (*(ulonglong *)(lVar3 + lVar6 * 0x10) >> 0x20 == 0) {
+            return;
+          }
+          lVar6 = lVar6 + 1;
+          bevy_ecs::system::commands::EntityCommands::despawn();
+        } while (lVar6 != lVar5);
+      }
+    }
+  }
+  else {
+    while (puVar7 != puVar1) {
+      uVar2 = *puVar7;
+      puVar7 = puVar7 + 1;
+      lVar3 = *(longlong *)(lVar4 + 0x1a8);
+      lVar5 = *(longlong *)(lVar3 + 0x10 + (ulonglong)uVar2 * 0x48);
+      if (lVar5 != 0) {
+        lVar3 = *(longlong *)(lVar3 + (ulonglong)uVar2 * 0x48 + 8);
+        lVar6 = 0;
+        do {
+          if (*(ulonglong *)(lVar3 + lVar6 * 8) >> 0x20 == 0) {
+            return;
+          }
+          lVar6 = lVar6 + 1;
+          bevy_ecs::system::commands::EntityCommands::despawn();
+        } while (lVar6 != lVar5);
+      }
+    }
+  }
+  return;
+}
+

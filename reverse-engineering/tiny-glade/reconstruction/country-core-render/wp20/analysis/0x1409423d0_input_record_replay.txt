@@ -1,0 +1,245 @@
+ADDR: 0x1409423d0
+SIG: void __cdecl input_record_replay(void)
+
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl country_core::systems::backend::input::input_record_replay::input_record_replay(void)
+
+{
+  undefined8 uVar1;
+  undefined1 uVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  undefined8 *puVar5;
+  longlong lVar6;
+  longlong lVar7;
+  undefined4 *puVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  undefined8 uVar15;
+  undefined8 uVar16;
+  undefined8 uVar17;
+  longlong lVar18;
+  ulonglong uVar19;
+  ulonglong uVar20;
+  ulonglong uVar21;
+  uint uVar22;
+  undefined4 uVar23;
+  ulonglong uVar24;
+  ulonglong uVar25;
+  bool bVar26;
+  bool bVar27;
+  float fVar29;
+  double dVar28;
+  undefined1 auVar30 [16];
+  undefined1 auVar31 [16];
+  undefined1 auVar32 [16];
+  undefined1 auVar33 [16];
+  float fVar34;
+  longlong *in_stack_00000028;
+  undefined8 *in_stack_00000030;
+  undefined8 *in_stack_00000038;
+  longlong *in_stack_00000040;
+  longlong *in_stack_00000048;
+  undefined8 *in_stack_00000050;
+  longlong *in_stack_00000058;
+  undefined8 uStack_98;
+  undefined8 uStack_90;
+  undefined8 uStack_88;
+  
+  *(undefined4 *)in_stack_00000048[2] = *(undefined4 *)((longlong)in_stack_00000048 + 0x1c);
+  lVar4 = in_stack_00000050[1];
+  uVar21 = *(ulonglong *)*in_stack_00000050;
+  uVar19 = 0;
+  uVar24 = uVar21 - *(ulonglong *)(lVar4 + 0x18);
+  if (uVar21 < *(ulonglong *)(lVar4 + 0x18)) {
+    uVar24 = uVar19;
+  }
+  uVar20 = uVar21 - *(ulonglong *)(lVar4 + 0x38);
+  if (uVar21 < *(ulonglong *)(lVar4 + 0x38)) {
+    uVar20 = uVar19;
+  }
+  bVar26 = uVar20 <= *(ulonglong *)(lVar4 + 0x30);
+  uVar20 = *(ulonglong *)(lVar4 + 0x30) - uVar20;
+  uVar21 = uVar20;
+  if (!bVar26) {
+    uVar21 = uVar19;
+  }
+  bVar27 = uVar24 <= *(ulonglong *)(lVar4 + 0x10);
+  uVar24 = *(ulonglong *)(lVar4 + 0x10) - uVar24;
+  uVar25 = uVar24;
+  if (!bVar27) {
+    uVar25 = uVar19;
+  }
+  uVar21 = uVar25 + uVar21;
+  if (bVar27 && uVar24 != 0 || bVar26 && uVar20 != 0) {
+    uVar21 = uVar19;
+  }
+  puVar5 = (undefined8 *)*in_stack_00000048;
+  *(ulonglong *)*in_stack_00000050 = *(longlong *)(lVar4 + 0x40) - uVar21;
+  switch(puVar5[8] ^ 0x8000000000000000) {
+  default:
+    if (((bVar27 && uVar24 != 0 || bVar26 && uVar20 != 0) || *in_stack_00000058 != 0) ||
+       ((*(byte *)(*in_stack_00000040 + 0xa3) & 1) != 0)) {
+      alloc::vec::impl$11::
+      clone<country_core::resources::toolbar::ToolbarCategoryModes,alloc::alloc::Global>();
+      camera_rig::MainCamera::store_parameters();
+      alloc::vec::spec_from_iter::impl$0::
+      from_iter<country_core::input::input_stream::InputStreamSyncPoint,core::iter::sources::once::Once<country_core::input::input_stream::InputStreamSyncPoint>_>
+                ();
+      core::ptr::
+      drop_in_place<alloc::collections::vec_deque::VecDeque<country_core::input::input_stream::InputStreamSyncPoint,alloc::alloc::Global>_>
+                ();
+      core::ptr::
+      drop_in_place<alloc::collections::vec_deque::VecDeque<country_core::input::input_stream::InputFrame,alloc::alloc::Global>_>
+                ();
+      *puVar5 = uStack_98;
+      puVar5[1] = uStack_90;
+      puVar5[2] = 0;
+      puVar5[3] = uStack_88;
+      puVar5[4] = 0;
+      puVar5[5] = 8;
+      puVar5[6] = 0;
+      puVar5[7] = 0;
+    }
+    auVar30._0_8_ = *(ulonglong *)*in_stack_00000030 & 0xffffffff;
+    auVar30._8_4_ = (int)(*(ulonglong *)*in_stack_00000030 >> 0x20);
+    auVar30._12_4_ = 0;
+    fVar29 = (float)(SUB168(auVar30 | ___xmm_43300000000000004330000000000000,8) -
+                    __xmm_43300000000000004330000000000000._8_8_);
+    auVar32._0_4_ =
+         (float)(SUB168(auVar30 | ___xmm_43300000000000004330000000000000,0) -
+                (double)__xmm_43300000000000004330000000000000) * -0.5 +
+         (float)*(undefined8 *)*in_stack_00000038;
+    auVar32._4_4_ = fVar29 * -0.5 + (float)((ulonglong)*(undefined8 *)*in_stack_00000038 >> 0x20);
+    auVar32._8_8_ = 0;
+    auVar31._4_4_ = fVar29;
+    auVar31._0_4_ = fVar29;
+    auVar31._8_8_ = 0;
+    divps(auVar32,auVar31);
+    country_core::input::input_stream::InputStream::add_frame();
+    break;
+  case 2:
+    *(undefined4 *)in_stack_00000040[2] = *(undefined4 *)((longlong)in_stack_00000040 + 0x1c);
+    if ((ulonglong)puVar5[7] <= (ulonglong)puVar5[9]) {
+                    // WARNING: Subroutine does not return
+      core::option::expect_failed();
+    }
+    uVar24 = puVar5[9] + puVar5[6];
+    lVar4 = *in_stack_00000040;
+    lVar6 = puVar5[5];
+    uVar21 = 0;
+    if ((ulonglong)puVar5[4] <= uVar24) {
+      uVar21 = puVar5[4];
+    }
+    lVar18 = (uVar24 - uVar21) * 0xd0;
+    puVar5 = (undefined8 *)(lVar6 + 0x68 + lVar18);
+    uVar1 = *puVar5;
+    uVar9 = puVar5[1];
+    puVar5 = (undefined8 *)(lVar6 + 0x78 + lVar18);
+    uVar10 = *puVar5;
+    uVar11 = puVar5[1];
+    puVar5 = (undefined8 *)(lVar6 + 0x88 + lVar18);
+    uVar12 = *puVar5;
+    uVar13 = puVar5[1];
+    puVar5 = (undefined8 *)(lVar6 + 0x98 + lVar18);
+    uVar14 = *puVar5;
+    uVar15 = puVar5[1];
+    puVar5 = (undefined8 *)(lVar6 + 0xa8 + lVar18);
+    uVar16 = *puVar5;
+    uVar17 = puVar5[1];
+    *(undefined8 *)(lVar4 + 0xa8) = *(undefined8 *)(lVar6 + 0xb8 + lVar18);
+    *(undefined8 *)(lVar4 + 0x98) = uVar16;
+    *(undefined8 *)(lVar4 + 0xa0) = uVar17;
+    *(undefined8 *)(lVar4 + 0x88) = uVar14;
+    *(undefined8 *)(lVar4 + 0x90) = uVar15;
+    *(undefined8 *)(lVar4 + 0x78) = uVar12;
+    *(undefined8 *)(lVar4 + 0x80) = uVar13;
+    *(undefined8 *)(lVar4 + 0x68) = uVar10;
+    *(undefined8 *)(lVar4 + 0x70) = uVar11;
+    *(undefined8 *)(lVar4 + 0x58) = uVar1;
+    *(undefined8 *)(lVar4 + 0x60) = uVar9;
+    uVar2 = *(undefined1 *)(lVar6 + 0x3c + lVar18);
+    lVar7 = *in_stack_00000028;
+    uVar1 = *(undefined8 *)(lVar6 + 0x30 + lVar18);
+    uVar23 = *(undefined4 *)(lVar6 + 0x38 + lVar18);
+    *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+    *(undefined8 *)(lVar7 + 0xe8) = uVar1;
+    *(undefined4 *)(lVar7 + 0xf0) = uVar23;
+    *(undefined1 *)(lVar7 + 0xf4) = uVar2;
+    uVar1 = *(undefined8 *)(lVar6 + 0x40 + lVar18);
+    fVar29 = (float)uVar1;
+    uVar22 = (uint)(longlong)fVar29;
+    if (fVar29 < 0.0) {
+      uVar22 = 0;
+    }
+    if (4.294967e+09 < fVar29) {
+      uVar22 = 0xffffffff;
+    }
+    puVar5 = (undefined8 *)*in_stack_00000030;
+    fVar29 = (float)((ulonglong)uVar1 >> 0x20);
+    uVar23 = (undefined4)(longlong)fVar29;
+    if (fVar29 < 0.0) {
+      uVar23 = 0;
+    }
+    if (4.294967e+09 < fVar29) {
+      uVar23 = 0xffffffff;
+    }
+    *(undefined4 *)in_stack_00000030[2] = *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+    *puVar5 = CONCAT44(uVar23,uVar22);
+    uVar3 = *(undefined4 *)((longlong)in_stack_00000038 + 0x1c);
+    puVar5 = (undefined8 *)*in_stack_00000038;
+    puVar8 = (undefined4 *)in_stack_00000038[2];
+    auVar33._4_4_ = 0;
+    auVar33._0_4_ = uVar22;
+    auVar33._8_4_ = uVar23;
+    auVar33._12_4_ = 0;
+    auVar33 = auVar33 | ___xmm_43300000000000004330000000000000;
+    dVar28 = (double)__xmm_43300000000000004330000000000000;
+    fVar29 = (float)(auVar33._8_8_ - __xmm_43300000000000004330000000000000._8_8_);
+    fVar34 = fVar29 / *(float *)(lVar6 + 0x44 + lVar18);
+    *(ulonglong *)(lVar4 + 0x60) =
+         CONCAT44(fVar34 * (float)((ulonglong)*(undefined8 *)(lVar4 + 0x60) >> 0x20),
+                  fVar34 * (float)*(undefined8 *)(lVar4 + 0x60));
+    uVar1 = *(undefined8 *)(lVar6 + 0xc0 + lVar18);
+    *puVar8 = uVar3;
+    *puVar5 = CONCAT44(fVar29 * 0.5 + (float)((ulonglong)uVar1 >> 0x20) * fVar29,
+                       (float)(auVar33._0_8_ - dVar28) * 0.5 + (float)uVar1 * fVar29);
+    break;
+  case 3:
+    *(undefined4 *)in_stack_00000040[2] = *(undefined4 *)((longlong)in_stack_00000040 + 0x1c);
+    puVar5 = (undefined8 *)*in_stack_00000040;
+    puVar5[0x14] = 0;
+    puVar5[0x15] = 0;
+    puVar5[0x12] = 0;
+    puVar5[0x13] = 0;
+    puVar5[0x10] = 0;
+    puVar5[0x11] = 0;
+    puVar5[0xe] = 0;
+    puVar5[0xf] = 0;
+    puVar5[0xc] = 0;
+    puVar5[0xd] = 0;
+    puVar5[10] = 0;
+    puVar5[0xb] = 0;
+    puVar5[8] = 0;
+    puVar5[9] = 0;
+    puVar5[6] = 0;
+    puVar5[7] = 0;
+    puVar5[4] = 0;
+    puVar5[5] = 0;
+    puVar5[2] = 0;
+    puVar5[3] = 0;
+    *puVar5 = 0;
+    puVar5[1] = 0;
+    break;
+  case 4:
+    break;
+  }
+  return;
+}
+

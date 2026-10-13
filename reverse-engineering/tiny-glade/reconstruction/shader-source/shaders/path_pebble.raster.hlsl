@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_b903e43ffb3da915.bin:ps_main, lsl_b903e43ffb3da915.bin:vs_main, lsl_f0adff76827e73ff.bin:ps_main, lsl_f0adff76827e73ff.bin:vs_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)) || (defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/path_pebble.raster.hlsl | F-R | bins: _path_pebble.raster.hlsl_b903e43ffb3da915.bin, _path_pebble.raster.hlsl_f0adff76827e73ff.bin | entry vs:vs_main (vs_6_4) ps:ps_main (ps_6_4)
 // Path pebble instancing pass. One instanced quad per pebble: the vertex shader
 // reads the pebble's affine transform from pebble_placement_buffer (one
@@ -127,3 +130,326 @@ uint2 ps_main(ps_main_input input) : SV_Target0
     result.y = color_packed | 117440512u;
     return result;
 }
+
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)
+// lifted from _path_pebble.raster.hlsl_b903e43ffb3da915.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct Affine3Packed
+{
+    float data[12];
+};
+
+struct PebblePlacement
+{
+    Affine3Packed transform;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    uint2 _Globals_dirtpath_1_dims : packoffset(c0.y);
+    int _Globals_bool_render_shadows : packoffset(c0.w);
+};
+
+ByteAddressBuffer pebble_placement_buffer : register(t14, space0);
+
+static float4 gl_Position;
+static int gl_InstanceIndex;
+static float3 in_var_Vertex_Position;
+static float3 in_var_Vertex_Normal;
+static float3 out_var_C1;
+static float3 out_var_C2;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    uint gl_InstanceIndex : SV_InstanceID;
+};
+
+struct SPIRV_Cross_Output
+{
+    [[vk::location(1)]] float3 out_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 out_var_C2 : TEXCOORD2;
+    float4 gl_Position : SV_Position;
+};
+
+void vert_main()
+{
+    Affine3Packed _80;
+    [unroll]
+    for (int _1ident = 0; _1ident < 12; _1ident++)
+    {
+        _80.data[_1ident] = pebble_placement_buffer.Load<float>(_1ident * 4 + uint(gl_InstanceIndex) * 48 + 0);
+    }
+    float3x4 _99 = transpose(float4x3(float3(_80.data[0], _80.data[1], _80.data[2]), float3(_80.data[3], _80.data[4], _80.data[5]), float3(_80.data[6], _80.data[7], _80.data[8]), float3(_80.data[9], _80.data[10], _80.data[11])));
+    float3 _104 = mul(_99, float4(in_var_Vertex_Position, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_104, 1.0f));
+    out_var_C1 = mul(_99, float4(in_var_Vertex_Normal, 0.0f));
+    out_var_C2 = _104;
+}
+
+SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_InstanceIndex = int(stage_input.gl_InstanceIndex);
+    in_var_Vertex_Position = stage_input.in_var_Vertex_Position;
+    in_var_Vertex_Normal = stage_input.in_var_Vertex_Normal;
+    vert_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.gl_Position = gl_Position;
+    stage_output.out_var_C1 = out_var_C1;
+    stage_output.out_var_C2 = out_var_C2;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _path_pebble.raster.hlsl_b903e43ffb3da915.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+SamplerState sampler_llr : register(s1, space0);
+Texture2D<float4> dirtpath_1 : register(t15, space0);
+
+static float3 in_var_C1;
+static float3 in_var_C2;
+static uint2 out_var_SV_TARGET0;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+};
+
+struct SPIRV_Cross_Output
+{
+    uint2 out_var_SV_TARGET0 : SV_Target0;
+};
+
+void frag_main()
+{
+    float4 _70 = dirtpath_1.Sample(sampler_llr, in_var_C2.xz * 0.1500000059604644775390625f);
+    float3 _71 = _70.xyz;
+    _71.x = _70.x * 0.699999988079071044921875f;
+    _71.y = _70.y * 0.89999997615814208984375f;
+    float3 _80 = (normalize(in_var_C1) * 0.5f) + 0.5f.xxx;
+    float3 _102 = sqrt(clamp(_71, 0.0f.xxx, 1.0f.xxx));
+    uint _121 = (uint((clamp(_102.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_102.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_102.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u);
+    uint2 _122 = uint2(((uint((clamp(_80.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_80.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_80.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) + 4278190080u, _121);
+    _122.y = _121 | 117440512u;
+    out_var_SV_TARGET0 = _122;
+}
+
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C2 = stage_input.in_var_C2;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)
+// lifted from _path_pebble.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct Affine3Packed
+{
+    float data[12];
+};
+
+struct PebblePlacement
+{
+    Affine3Packed transform;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    uint2 _Globals_dirtpath_1_dims : packoffset(c0.y);
+    int _Globals_bool_render_shadows : packoffset(c0.w);
+};
+
+ByteAddressBuffer pebble_placement_buffer : register(t14, space0);
+
+static float4 gl_Position;
+static int gl_InstanceIndex;
+static float3 in_var_Vertex_Position;
+static float3 in_var_Vertex_Normal;
+static float3 out_var_C1;
+static float3 out_var_C2;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    uint gl_InstanceIndex : SV_InstanceID;
+};
+
+struct SPIRV_Cross_Output
+{
+    [[vk::location(1)]] float3 out_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 out_var_C2 : TEXCOORD2;
+    float4 gl_Position : SV_Position;
+};
+
+void vert_main()
+{
+    Affine3Packed _80;
+    [unroll]
+    for (int _1ident = 0; _1ident < 12; _1ident++)
+    {
+        _80.data[_1ident] = pebble_placement_buffer.Load<float>(_1ident * 4 + uint(gl_InstanceIndex) * 48 + 0);
+    }
+    float3x4 _99 = transpose(float4x3(float3(_80.data[0], _80.data[1], _80.data[2]), float3(_80.data[3], _80.data[4], _80.data[5]), float3(_80.data[6], _80.data[7], _80.data[8]), float3(_80.data[9], _80.data[10], _80.data[11])));
+    float3 _104 = mul(_99, float4(in_var_Vertex_Position, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_104, 1.0f));
+    out_var_C1 = mul(_99, float4(in_var_Vertex_Normal, 0.0f));
+    out_var_C2 = _104;
+}
+
+SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_InstanceIndex = int(stage_input.gl_InstanceIndex);
+    in_var_Vertex_Position = stage_input.in_var_Vertex_Position;
+    in_var_Vertex_Normal = stage_input.in_var_Vertex_Normal;
+    vert_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.gl_Position = gl_Position;
+    stage_output.out_var_C1 = out_var_C1;
+    stage_output.out_var_C2 = out_var_C2;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _path_pebble.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

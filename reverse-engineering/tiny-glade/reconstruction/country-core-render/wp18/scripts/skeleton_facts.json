@@ -1,0 +1,2982 @@
+{
+ "billboard_forest.rs": {
+  "functions": [
+   "build",
+   "startup_billboard_forest",
+   "closure$0"
+  ],
+  "source_lines": [
+   18,
+   27,
+   38
+  ],
+  "rvas": [
+   "0xae8070",
+   "0xae8080"
+  ],
+  "compile_units": [
+   499,
+   570
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_app",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "std"
+  ],
+  "game_calls": [
+   "asset_libraries::mesh_library::",
+   "asset_libraries::meshwatch::",
+   "asset_libraries::shader_library::",
+   "render::",
+   "render::impl$0::deref",
+   "render::shaderwatch::inner::",
+   "startup::load_mesh_into_library",
+   "systems::render_loop::draw_passes::draw_shaders::billboard_forest::impl$0::build",
+   "systems::render_loop::draw_passes::draw_shaders::billboard_forest::startup_billboard_forest",
+   "systems::render_loop::draw_passes::draw_shaders::billboard_forest::startup_billboard_forest::closure$0"
+  ],
+  "draw_builder_methods": [],
+  "rhapsody": [],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ]
+  ]
+ },
+ "clearing_shaders.rs": {
+  "functions": [
+   "tree_trunk",
+   "tree_canopy"
+  ],
+  "source_lines": [
+   26,
+   80
+  ],
+  "rvas": [
+   "0x9c9830",
+   "0x9ca350"
+  ],
+  "compile_units": [
+   530
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "lerp",
+   "modular_bitfield",
+   "rhapsody",
+   "utils"
+  ],
+  "game_calls": [
+   "asset_libraries::shader_library::",
+   "asset_libraries::ssbo_library::",
+   "render::",
+   "render::frame_constants::impl$35::eq",
+   "render::nani::gpu_world::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "render::shaderwatch::inner::",
+   "resources::history::tree_edit::",
+   "resources::render::mesh_atlas_library::",
+   "systems::camera_rig::",
+   "systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tree_canopy",
+   "systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tree_trunk",
+   "utils::get_res"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [
+   "raw::shader::"
+  ],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ]
+  ]
+ },
+ "clouds.rs": {
+  "functions": [
+   "build",
+   "startup_clouds",
+   "closure$0"
+  ],
+  "source_lines": [
+   19,
+   24,
+   35
+  ],
+  "rvas": [
+   "0x85b8a0",
+   "0x85b8b0"
+  ],
+  "compile_units": [
+   479,
+   542,
+   1585
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_app",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "std"
+  ],
+  "game_calls": [
+   "asset_libraries::mesh_library::",
+   "asset_libraries::meshwatch::",
+   "asset_libraries::shader_library::",
+   "asset_libraries::texture_library::",
+   "asset_libraries::texture_watch::",
+   "render::",
+   "render::impl$0::deref",
+   "render::pass_builder::draw_stream::",
+   "render::shaderwatch::inner::",
+   "render::sparse_instance_buffer::",
+   "resources::history::replay_cmd_buffer::",
+   "resources::roof_tile_ssbo::",
+   "resources::session::",
+   "startup::load_mesh_into_library",
+   "systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::",
+   "systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure$0::closure_env$0",
+   "systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure_env$0",
+   "systems::render_loop::draw_passes::draw_shaders::clouds::impl$0::build",
+   "systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds",
+   "systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure$0",
+   "systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure_env$0"
+  ],
+  "draw_builder_methods": [],
+  "rhapsody": [],
+  "file_candidates": [
+   {
+    "signature": "enum2$<core::option::Option<country_core::systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::PushConstants> > (*)(ref_mut$<core::iter::adapters::flatten::FlatMap<core::option::Iter<country_core::render::sparse_instance_buffer::SparseInstanceBufferAllocation<country_core::resources::roof_tile_ssbo::RoofTileSsbo> >,core::iter::adapters::map::Map<alloc::vec::into_iter::IntoIter<country_core::render::pass_builder::draw_stream::InstancedDraw,alloc::alloc::Global>,country_core::systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure$0::closure_env$0>,country_core::systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure_env$0> >)",
+    "params": [
+     "ref_mut$<core::iter::adapters::flatten::FlatMap<core::option::Iter<country_core::render::sparse_instance_buffer::SparseInstanceBufferAllocation<country_core::resources::roof_tile_ssbo::RoofTileSsbo> >,core::iter::adapters::map::Map<alloc::vec::into_iter::IntoIter<country_core::render::pass_builder::draw_stream::InstancedDraw,alloc::alloc::Global>,country_core::systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure$0::closure_env$0>,country_core::systems::render_loop::compute_passes::roof_tiles_gravity::roof_tiles_gravity_compute::closure$0::closure_env$0> >"
+    ]
+   },
+   {
+    "signature": "nalgebra::geometry::point::OPoint<f32,nalgebra::base::dimension::Const<3> > (*)(glam::f32::vec3::Vec3)",
+    "params": [
+     "glam::f32::vec3::Vec3"
+    ]
+   },
+   {
+    "signature": "relative_path::RelativePathBuf (*)(ref$<ref$<str$> >)",
+    "params": [
+     "ref$<ref$<str$> >"
+    ]
+   },
+   {
+    "signature": "glam::f32::vec2::Vec2 (*)(glam::f32::vec3::Vec3)",
+    "params": [
+     "glam::f32::vec3::Vec3"
+    ]
+   },
+   {
+    "signature": "enum2$<core::option::Option<enum2$<country_core::resources::history::replay_cmd_buffer::ReplayCmd> > > (*)(enum2$<country_core::resources::history::replay_cmd_buffer::ReplayCmd>)",
+    "params": [
+     "enum2$<country_core::resources::history::replay_cmd_buffer::ReplayCmd>"
+    ]
+   },
+   {
+    "signature": "array$<f32,3> (*)(glam::f32::sse2::vec3a::Vec3A)",
+    "params": [
+     "glam::f32::sse2::vec3a::Vec3A"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher> > >,bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>)",
+    "params": [
+     "enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ]
+  ]
+ },
+ "common_includes.rs": {
+  "functions": [
+   "bind_terrain_heightmap",
+   "bind_terrain_lighting",
+   "ComputePass>",
+   "DrawBuilder>",
+   "ComputePass>"
+  ],
+  "source_lines": [
+   13,
+   30,
+   47,
+   47,
+   65
+  ],
+  "rvas": [
+   "0x160e330",
+   "0x1631f90",
+   "0x160e630"
+  ],
+  "compile_units": [
+   495,
+   497,
+   498,
+   502,
+   514,
+   521,
+   528,
+   529,
+   530,
+   531,
+   532,
+   536,
+   538,
+   540,
+   542,
+   545,
+   547,
+   550,
+   551,
+   552,
+   589,
+   1615,
+   1632,
+   1638
+  ],
+  "namespaces": [
+   "alloc",
+   "core",
+   "country_core",
+   "hashbrown",
+   "shader_pipeline",
+   "std"
+  ],
+  "game_calls": [
+   "game_config::",
+   "game_profile::",
+   "input::",
+   "input::action_set::",
+   "input::input_stream::",
+   "render::pass_builder::compute_pass_builder::",
+   "render::pass_builder::compute_pass_builder::impl$3::read_storage_buffer",
+   "render::pass_builder::compute_pass_builder::impl$3::read_texture",
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "resources::gui::",
+   "resources::mouse_capture::",
+   "resources::mouse_terrain_raycast::",
+   "resources::session::",
+   "resources::time::",
+   "resources::toolbar::",
+   "resources::walls::decorator::",
+   "resources::window::",
+   "systems::backend::input::calculate_input_delta::",
+   "systems::backend::input::translate_input::",
+   "systems::backend::input::translate_input_to_cursor_moved::",
+   "systems::camera_rig::",
+   "systems::mod_key::",
+   "systems::mode_manager::",
+   "systems::render_loop::compute_passes::compute_garden::garden_spawn_vegetation",
+   "systems::render_loop::compute_passes::compute_path_masks::compute_path_masks",
+   "systems::render_loop::compute_passes::leaf_particles::leaf_particles_compute",
+   "systems::render_loop::compute_passes::primary_rt_debug::primary_rt_debug",
+   "systems::render_loop::compute_passes::rasterize_terrain_stroke::rasterize_terrain_stroke",
+   "systems::render_loop::compute_passes::ray_trace_gi::ray_trace_gi",
+   "systems::render_loop::compute_passes::spawn_vegetation_around_buildings::spawn_vegetation_around_buildings",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$0::bind_terrain_heightmap",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$1::bind_terrain_lighting",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$2::bind_water_object_push",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$3::bind_garden_exclusion",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::draw_instanced_ivy_branch_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::ivy_leaf_shader",
+   "systems::render_loop::draw_passes::draw_shaders::water_planes_draw::lilypad_draw",
+   "systems::render_loop::draw_passes::draw_shaders::water_planes_draw::lilypad_flower_draw",
+   "systems::render_loop::draw_passes::draw_shaders::water_planes_draw::reed_draw",
+   "systems::render_loop::draw_passes::draw_shaders::water_planes_draw::water_planes_draw",
+   "systems::render_loop::draw_passes::transparency_pass::ice_surface_pass",
+   "systems::render_loop::draw_passes::transparency_pass::water_surface_pass",
+   "systems::steam::"
+  ],
+  "draw_builder_methods": [
+   "read_texture"
+  ],
+  "rhapsody": [],
+  "file_candidates": [
+   {
+    "signature": "bool (*)(ref$<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId> >,ref$<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId> >)",
+    "params": [
+     "ref$<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId> >",
+     "ref$<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId> >"
+    ]
+   },
+   {
+    "signature": "bool (*)(ref$<country_core::resources::walls::decorator::DecoratorId>,ref$<country_core::resources::walls::decorator::DecoratorId>)",
+    "params": [
+     "ref$<country_core::resources::walls::decorator::DecoratorId>",
+     "ref$<country_core::resources::walls::decorator::DecoratorId>"
+    ]
+   },
+   {
+    "signature": "bool (*)(ref$<u64>,ref$<u64>)",
+    "params": [
+     "ref$<u64>",
+     "ref$<u64>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved> >,bevy_ecs::event::writer::EventWriter<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>",
+     "bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>",
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>",
+     "bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved> >",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >,bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::mouse::MouseButton> > >,enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource> > >,bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState> >,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<bevy_input::mouse::MouseWheel>,bevy_ecs::system::system_param::Local<country_core::systems::backend::input::translate_input::MouseMoved>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>,bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::mouse::MouseButton> > >",
+     "enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource> > >",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState> >",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>",
+     "bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>",
+     "bevy_ecs::event::reader::EventReader<bevy_input::mouse::MouseWheel>",
+     "bevy_ecs::system::system_param::Local<country_core::systems::backend::input::translate_input::MouseMoved>",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>",
+     "bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::toolbar::Toolbar>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>,enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::resources::session::NextSession> > >)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::toolbar::Toolbar>",
+     "bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>",
+     "bevy_ecs::change_detection::ResMut<country_core::game_config::GameConfig>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::window::WindowSize>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>",
+     "enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::resources::session::NextSession> > >"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetStates>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetValues>",
+     "bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetStates>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::ResMut<country_core::systems::mod_key::Modifiers>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::system::system_param::Local<country_core::systems::mod_key::ToggleSnapping>,bevy_ecs::event::reader::EventReader<country_core::resources::walls::decorator::DecoratorOpEvent>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::mod_key::Modifiers>",
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>",
+     "bevy_ecs::system::system_param::Local<country_core::systems::mod_key::ToggleSnapping>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::walls::decorator::DecoratorOpEvent>",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>,bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::event::writer::EventWriter<country_core::resources::window::CursorMovedScreenSpace>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>",
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::window::CursorMovedScreenSpace>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::system::commands::Commands",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>"
+    ]
+   },
+   {
+    "signature": "bool (*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)",
+    "params": [
+     "bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd>)",
+    "params": [
+     "country_core::systems::world_raster::RasterHistoryRecordResources",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::event::writer::EventWriter<country_core::systems::backend::grow_grass::GrowGrass>,bevy_ecs::system::system_param::Local<country_core::systems::backend::grow_grass::platform::Timer>,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >)",
+    "params": [
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::backend::grow_grass::GrowGrass>",
+     "bevy_ecs::system::system_param::Local<country_core::systems::backend::grow_grass::platform::Timer>",
+     "bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >"
+    ]
+   },
+   {
+    "signature": "core::char::EscapeDebug (*)(char)",
+    "params": [
+     "char"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>,bevy_ecs::change_detection::ResMut<country_core::resources::rt::RtWorld>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid> > >,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::game_loading_audio::GameLoadingAudioState>)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::rt::RtWorld>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>",
+     "bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::audio::game_loading_audio::GameLoadingAudioState>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::system::commands::Commands",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::system::commands::Commands",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::glade_settings::GladeSettings>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>",
+     "bevy_ecs::system::commands::Commands",
+     "bevy_ecs::change_detection::Res<country_core::resources::glade_settings::GladeSettings>",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::Without<country_core::components::KeepOnLevelUnload> >,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::Without<country_core::components::KeepOnLevelUnload> >",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher> > >,bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>)",
+    "params": [
+     "enum2$<core::option::Option<bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::time_of_day::TodSequence>)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::time_of_day::TodSequence>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::shapes::circle::signifiers::edit_line::SignifierEditCircleShapeLine>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref$<country_core::systems::ui::signifiers::SignifierAnimation> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>)",
+    "params": [
+     "bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::shapes::circle::signifiers::edit_line::SignifierEditCircleShapeLine>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref$<country_core::systems::ui::signifiers::SignifierAnimation> >,tuple$<> >",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>"
+    ]
+   },
+   {
+    "signature": "bool (*)(bevy_ecs::event::reader::EventReader<country_core::game_profile::SaveGameProfileCmd>)",
+    "params": [
+     "bevy_ecs::event::reader::EventReader<country_core::game_profile::SaveGameProfileCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,country_core::systems::world_raster::RasterDrawResources,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>,bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >,bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd> >,country_core::systems::paths::draw_path::PathRastersResources)",
+    "params": [
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "country_core::systems::world_raster::RasterDrawResources",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>",
+     "bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>",
+     "bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>",
+     "tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >",
+     "bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>",
+     "tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd> >",
+     "country_core::systems::paths::draw_path::PathRastersResources"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >,bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::feedback_report_resources::FeedbackReportResources>,bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::resources::feedback_report_resources::FeedbackReportResources>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [],
+   [],
+   [],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved> >"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::mouse::MouseButton> > >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<bevy_input::mouse::MouseWheel>"
+    ],
+    [
+     "system_local",
+     "bevy_ecs::system::system_param::Local<country_core::systems::backend::input::translate_input::MouseMoved>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::toolbar::Toolbar>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::game_config::GameConfig>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::window::WindowSize>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::NextSession>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetValues>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetStates>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::mod_key::Modifiers>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>"
+    ],
+    [
+     "system_local",
+     "bevy_ecs::system::system_param::Local<country_core::systems::mod_key::ToggleSnapping>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::walls::decorator::DecoratorOpEvent>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::mouse_capture::CursorCapturedPosition>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::window::CursorMovedScreenSpace>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd>"
+    ]
+   ],
+   [
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::backend::grow_grass::GrowGrass>"
+    ],
+    [
+     "system_local",
+     "bevy_ecs::system::system_param::Local<country_core::systems::backend::grow_grass::platform::Timer>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >"
+    ]
+   ],
+   [],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::rt::RtWorld>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::audio::game_loading_audio::GameLoadingAudioState>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::InteractableForestPlacements>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::glade_settings::GladeSettings>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "query_without_filter",
+     "bevy_ecs::query::filter::Without<country_core::components::KeepOnLevelUnload>"
+    ],
+    [
+     "component_query",
+     "bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::Without<country_core::components::KeepOnLevelUnload> >"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::texture_watch::TextureWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::draw_passes::final_post::FinalPostResources>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::startup::load_prefabs::PrefabWatcher>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::prefab::PrefabLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::world_raster_defs::PathRaster>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::audio_resources::AudioSamplesLoadedPromise>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::time_of_day::TodSequence>"
+    ]
+   ],
+   [
+    [
+     "component_query",
+     "bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::shapes::circle::signifiers::edit_line::SignifierEditCircleShapeLine>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref$<country_core::systems::ui::signifiers::SignifierAnimation> >,tuple$<> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::game_profile::GameProfile>"
+    ]
+   ],
+   [
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::game_profile::SaveGameProfileCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder>"
+    ],
+    [
+     "system_local",
+     "bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "query_with_filter",
+     "bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath>"
+    ],
+    [
+     "component_query",
+     "bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::feedback_report_resources::FeedbackReportResources>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::gui::EscapeMenuJustClosed>"
+    ]
+   ]
+  ]
+ },
+ "draw_bricks.rs": {
+  "functions": [
+   "indirect_draw_bricks<0>",
+   "indirect_draw_bricks<1>"
+  ],
+  "source_lines": [
+   19,
+   19
+  ],
+  "rvas": [
+   "0x8a53d0",
+   "0x8a4ca0"
+  ],
+  "compile_units": [
+   487
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "modular_bitfield",
+   "rhapsody"
+  ],
+  "game_calls": [
+   "asset_libraries::shader_library::",
+   "asset_libraries::ssbo_library::",
+   "geometry::instanced_wall::",
+   "render::",
+   "render::frame_constants::",
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "render::shaderwatch::inner::",
+   "render::sparse_instance_buffer::",
+   "systems::render_loop::draw_passes::draw_shaders::draw_bricks::indirect_draw_bricks",
+   "systems::render_loop::session_selection::"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [
+   "raw::shader::"
+  ],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::session_selection::ThumbnailTextures>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::session_selection::ThumbnailTextures>"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::render_loop::session_selection::ThumbnailTextures>"
+    ]
+   ]
+  ]
+ },
+ "floor_shader.rs": {
+  "functions": [
+   "draw_floor_shader"
+  ],
+  "source_lines": [
+   14
+  ],
+  "rvas": [
+   "0x9cacb0"
+  ],
+  "compile_units": [
+   530
+  ],
+  "namespaces": [
+   "core",
+   "country_core",
+   "modular_bitfield",
+   "rhapsody"
+  ],
+  "game_calls": [
+   "asset_libraries::shader_library::",
+   "asset_libraries::ssbo_library::",
+   "render::",
+   "render::nani::gpu_world::",
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "render::pass_builder::draw_list::",
+   "render::shaderwatch::inner::",
+   "resources::render::mesh_atlas_library::",
+   "systems::render_loop::compute_passes::read_terrain_data::read_terrain_data",
+   "systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$46",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$0::bind_terrain_heightmap",
+   "systems::render_loop::draw_passes::draw_shaders::floor_shader::draw_floor_shader"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [
+   "raw::shader::"
+  ],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ]
+  ]
+ },
+ "grass_shader.rs": {
+  "functions": [
+   "draw_common",
+   "draw_grass_shader",
+   "draw_grass_lod1_shader"
+  ],
+  "source_lines": [
+   18,
+   37,
+   47
+  ],
+  "rvas": [
+   "0xb4af70",
+   "0xb4b1d0"
+  ],
+  "compile_units": [
+   589
+  ],
+  "namespaces": [
+   "core",
+   "country_core"
+  ],
+  "game_calls": [
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "resources::brush_sizes::",
+   "resources::cursor_terrain_raycast::",
+   "resources::glade_border::",
+   "resources::path_stroke::",
+   "systems::mode_manager::",
+   "systems::paths::draw_path::",
+   "systems::paths::path_brush_preview_size::",
+   "systems::paths::record_path_history::",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$0::bind_terrain_heightmap",
+   "systems::render_loop::draw_passes::draw_shaders::grass_shader::draw_common",
+   "systems::render_loop::draw_passes::draw_shaders::grass_shader::draw_grass_lod1_shader",
+   "systems::render_loop::draw_passes::draw_shaders::grass_shader::draw_grass_shader",
+   "systems::ui::resources::ui_state::",
+   "systems::ui::signifiers::signifier_create::",
+   "systems::ui_clutter::decoclutter_show_pins::",
+   "systems::wall::eraser::",
+   "systems::world_raster::"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,country_core::systems::world_raster::RasterDrawResources,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>,bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >,bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd> >,country_core::systems::paths::draw_path::PathRastersResources)",
+    "params": [
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "country_core::systems::world_raster::RasterDrawResources",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>",
+     "bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>",
+     "bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>",
+     "tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >",
+     "bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>",
+     "tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd> >",
+     "country_core::systems::paths::draw_path::PathRastersResources"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >,bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathDrawEvent>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::path_stroke::PathEraseEvent>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordPathEditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder>"
+    ],
+    [
+     "system_local",
+     "bevy_ecs::system::system_param::Local<country_core::systems::paths::draw_path::DrawState>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone1EditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone2EditToHistoryCmd>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::paths::record_path_history::RecordCobblestone3EditToHistoryCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "query_with_filter",
+     "bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath>"
+    ],
+    [
+     "component_query",
+     "bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::systems::paths::path_brush_preview_size::SetSizeBasedOnAppModePath> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::brush_sizes::BrushSizes>"
+    ]
+   ]
+  ]
+ },
+ "instanced_critters.rs": {
+  "functions": [
+   "draw_instanced_butterfly_shader",
+   "draw_instanced_firefly_shader",
+   "draw_instanced_firefly_glow_shader",
+   "draw_duck_shader",
+   "draw_wren_shader"
+  ],
+  "source_lines": [
+   19,
+   34,
+   55,
+   80,
+   124
+  ],
+  "rvas": [
+   "0x15547e0",
+   "0x15549b0",
+   "0x1554cf0",
+   "0x1555080",
+   "0x1555ec0"
+  ],
+  "compile_units": [
+   1615
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "glam",
+   "modular_bitfield",
+   "rhapsody",
+   "utils"
+  ],
+  "game_calls": [
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$0::bind_terrain_heightmap",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_critters::draw_duck_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_critters::draw_instanced_butterfly_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_critters::draw_instanced_firefly_glow_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_critters::draw_instanced_firefly_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_critters::draw_wren_shader",
+   "utils::get_res"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [
+   "raw::shader::"
+  ],
+  "file_candidates": [],
+  "system_interfaces": []
+ },
+ "instanced_ivy.rs": {
+  "functions": [
+   "draw_instanced_ivy_branch_shader",
+   "draw_instanced_ivy_leaf_shader",
+   "draw_instanced_ivy_flower_shader",
+   "ivy_leaf_shader"
+  ],
+  "source_lines": [
+   19,
+   50,
+   60,
+   70
+  ],
+  "rvas": [
+   "0x8dbc50",
+   "0x8dc180",
+   "0x8dc1a0",
+   "0x8dc1c0"
+  ],
+  "compile_units": [
+   497
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "hashbrown",
+   "std",
+   "utils"
+  ],
+  "game_calls": [
+   "asset_libraries::ssbo_library::",
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "resources::ivy::ivy_storage::",
+   "resources::ivy::ivy_storage::impl$2::total_segment_count::closure$0",
+   "systems::render_loop::draw_passes::draw_shaders::common_includes::impl$0::bind_terrain_heightmap",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::draw_instanced_ivy_branch_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::draw_instanced_ivy_flower_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::draw_instanced_ivy_leaf_shader",
+   "systems::render_loop::draw_passes::draw_shaders::instanced_ivy::ivy_leaf_shader",
+   "utils::get_res"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [],
+  "file_candidates": [],
+  "system_interfaces": []
+ },
+ "leaf_particle_draw.rs": {
+  "functions": [
+   "leaf_particle_draw"
+  ],
+  "source_lines": [
+   13
+  ],
+  "rvas": [
+   "0xa8a090"
+  ],
+  "compile_units": [
+   556
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core"
+  ],
+  "game_calls": [
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "systems::render_loop::draw_passes::draw_shaders::leaf_particle_draw::leaf_particle_draw",
+   "utils::get_res"
+  ],
+  "draw_builder_methods": [
+   "read_texture"
+  ],
+  "rhapsody": [],
+  "file_candidates": [],
+  "system_interfaces": []
+ },
+ "path_pebble_shader.rs": {
+  "functions": [
+   "path_pebble_draw"
+  ],
+  "source_lines": [
+   14
+  ],
+  "rvas": [
+   "0x8e5a10"
+  ],
+  "compile_units": [
+   498
+  ],
+  "namespaces": [
+   "country_core"
+  ],
+  "game_calls": [
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "systems::render_loop::draw_passes::draw_shaders::path_pebble_shader::path_pebble_draw"
+  ],
+  "draw_builder_methods": [
+   "read_texture"
+  ],
+  "rhapsody": [],
+  "file_candidates": [],
+  "system_interfaces": []
+ },
+ "rocky_terrain_draw.rs": {
+  "functions": [
+   "rocky_terrain_shader"
+  ],
+  "source_lines": [
+   16
+  ],
+  "rvas": [
+   "0x9cb4e0"
+  ],
+  "compile_units": [
+   530
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "modular_bitfield",
+   "rhapsody"
+  ],
+  "game_calls": [
+   "asset_libraries::shader_library::",
+   "asset_libraries::ssbo_library::",
+   "render::",
+   "render::nani::gpu_world::",
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "render::pass_builder::draw_list::",
+   "render::shaderwatch::inner::",
+   "resources::render::mesh_atlas_library::",
+   "systems::render_loop::compute_passes::read_terrain_data::read_terrain_data",
+   "systems::render_loop::draw_passes::draw_lists::build_draw_lists::closure_env$43",
+   "systems::render_loop::draw_passes::draw_shaders::rocky_terrain_draw::rocky_terrain_shader",
+   "utils::get_res"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [
+   "raw::shader::"
+  ],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>,bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<country_core::resources::render::mesh_atlas_library::MeshAtlasesModifiedCmd>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::render::mesh_atlas_library::MeshAtlasLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::nani::gpu_world::GpuWorld>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ]
+  ]
+ },
+ "stairs_draw.rs": {
+  "functions": [
+   "stairs_draw",
+   "closure$0"
+  ],
+  "source_lines": [
+   15,
+   23
+  ],
+  "rvas": [
+   "0x86a780"
+  ],
+  "compile_units": [
+   482
+  ],
+  "namespaces": [
+   "bevy_ecs",
+   "bevy_platform",
+   "core",
+   "country_core",
+   "equivalent",
+   "hashbrown",
+   "std"
+  ],
+  "game_calls": [
+   "render::pass_builder::draw_builder::",
+   "render::pass_builder::draw_builder::impl$2::read_texture",
+   "render::pass_builder::draw_builder::impl$2::uniform",
+   "systems::render_loop::draw_passes::draw_shaders::stairs_draw::stairs_draw",
+   "systems::render_loop::draw_passes::draw_shaders::stairs_draw::stairs_draw::closure$0"
+  ],
+  "draw_builder_methods": [
+   "read_texture",
+   "uniform"
+  ],
+  "rhapsody": [],
+  "file_candidates": [],
+  "system_interfaces": []
+ },
+ "stars.rs": {
+  "functions": [
+   "build",
+   "startup_stars",
+   "closure$0"
+  ],
+  "source_lines": [
+   19,
+   24,
+   35
+  ],
+  "rvas": [
+   "0x903c90",
+   "0x903ca0"
+  ],
+  "compile_units": [
+   502,
+   1598
+  ],
+  "namespaces": [
+   "alloc",
+   "bevy_app",
+   "bevy_ecs",
+   "core",
+   "country_core",
+   "std"
+  ],
+  "game_calls": [
+   "app_loading_state::",
+   "asset_libraries::color_library::",
+   "asset_libraries::configwatch::",
+   "asset_libraries::mesh_library::",
+   "asset_libraries::meshwatch::",
+   "asset_libraries::shader_library::",
+   "asset_libraries::ssbo_library::",
+   "asset_libraries::texture_library::",
+   "asset_libraries::texture_watch::",
+   "game_config::",
+   "meta_commander::",
+   "render::",
+   "render::impl$0::deref",
+   "render::shaderwatch::inner::",
+   "resources::critters::",
+   "resources::ivy::ivy_storage::",
+   "resources::rt::",
+   "resources::session::",
+   "resources::time::",
+   "startup::load_mesh_into_library",
+   "systems::backend::input::input_record_replay::",
+   "systems::mode_manager::",
+   "systems::render_loop::draw_passes::draw_shaders::stars::impl$0::build",
+   "systems::render_loop::draw_passes::draw_shaders::stars::startup_stars",
+   "systems::render_loop::draw_passes::draw_shaders::stars::startup_stars::closure$0",
+   "systems::save::save_game::"
+  ],
+  "draw_builder_methods": [],
+  "rhapsody": [],
+  "file_candidates": [
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::meta_commander::MetaCommander>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::rt::RtBvhBuilderGlueResource>,bevy_ecs::change_detection::Res<country_core::resources::rt::RtWorld>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::With<country_core::resources::critters::Critter> >,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterControl>,bevy_ecs::change_detection::ResMut<country_core::resources::ivy::ivy_storage::IvyStorage>,bevy_ecs::change_detection::ResMut<enum2$<bevy_state::state::resources::NextState<country_core::app_loading_state::AppLoadingState> > >,bevy_ecs::change_detection::ResMut<country_core::resources::time::GameTime>,bevy_ecs::change_detection::ResMut<country_core::render::RenderTemporalState>,tuple$<bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >,bevy_ecs::event::writer::EventWriter<country_core::systems::save::save_game::SaveGameCmd> >,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::meta_commander::MetaCommander>",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::change_detection::Res<country_core::resources::rt::RtBvhBuilderGlueResource>",
+     "bevy_ecs::change_detection::Res<country_core::resources::rt::RtWorld>",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::With<country_core::resources::critters::Critter> >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterControl>",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::ivy::ivy_storage::IvyStorage>",
+     "bevy_ecs::change_detection::ResMut<enum2$<bevy_state::state::resources::NextState<country_core::app_loading_state::AppLoadingState> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::time::GameTime>",
+     "bevy_ecs::change_detection::ResMut<country_core::render::RenderTemporalState>",
+     "tuple$<bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >,bevy_ecs::event::writer::EventWriter<country_core::systems::save::save_game::SaveGameCmd> >",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::configwatch::ConfigWatch>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::configwatch::ConfigWatch>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::system::commands::Commands)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)",
+    "params": [
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>,bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>",
+     "bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >,bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>",
+     "bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>",
+     "bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>"
+    ]
+   },
+   {
+    "signature": "void (*)(bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>)",
+    "params": [
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>"
+    ]
+   },
+   {
+    "signature": "bool (*)(enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession> > >)",
+    "params": [
+     "enum2$<core::option::Option<bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession> > >"
+    ]
+   }
+  ],
+  "system_interfaces": [
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::meta_commander::MetaCommander>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::rt::RtBvhBuilderGlueResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::rt::RtWorld>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "query_with_filter",
+     "bevy_ecs::query::filter::With<country_core::resources::critters::Critter>"
+    ],
+    [
+     "component_query",
+     "bevy_ecs::system::query::Query<bevy_ecs::entity::Entity,bevy_ecs::query::filter::With<country_core::resources::critters::Critter> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterControl>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::ivy::ivy_storage::IvyStorage>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<enum2$<bevy_state::state::resources::NextState<country_core::app_loading_state::AppLoadingState> > >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::time::GameTime>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::render::RenderTemporalState>"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >"
+    ],
+    [
+     "event_writer",
+     "bevy_ecs::event::writer::EventWriter<country_core::systems::save::save_game::SaveGameCmd>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::configwatch::ConfigWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::configwatch::ConfigWatch>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::color_library::ColorLibrarySsbo>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>"
+    ],
+    [
+     "deferred_command_interface",
+     "bevy_ecs::system::commands::Commands"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>"
+    ],
+    [
+     "event_reader",
+     "bevy_ecs::event::reader::EventReader<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<bevy_input::button_input::ButtonInput<enum2$<bevy_input::keyboard::KeyCode> > >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::systems::camera_rig::MainCamera>"
+    ],
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >"
+    ],
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>"
+    ]
+   ],
+   [
+    [
+     "resource_write_capability",
+     "bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>"
+    ]
+   ],
+   [
+    [
+     "resource_read",
+     "bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>"
+    ]
+   ]
+  ]
+ }
+}

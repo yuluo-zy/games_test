@@ -1,0 +1,37 @@
+[package]
+name = "country-core-systems-wp20"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP20 standalone offline-gate crate: country-core camera / remaining-UI / time-weather / backend-input systems (version B)"
+publish = false
+
+# Standalone crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Versions respect the original release Cargo.lock baseline (glam 0.29.3,
+# serde 1.0.200, hashbrown 0.14.5, log 0.4.27); all confirmed present in the
+# offline registry cache.
+glam = { version = "=0.29.3", features = ["serde", "mint"] }
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+hashbrown = "=0.14.5"
+log = "=0.4.27"
+anyhow = "=1.0.103"
+
+# bevy_ecs 0.16.0 = the game's Bevy family (0.16.0), confirmed in the offline
+# cache. Used for Resource / Component / Entity / World / Query / system-param
+# markers. bevy_app / bevy_state / bevy_input / bevy_time at 0.16.0 are NOT all
+# present in the offline cache -> `reused` contract modules (see src/reused.rs).
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+
+# dolly 0.6.0 = the game's camera-rig dependency (confirmed in skeleton/B
+# Cargo.lock, registry checksum 1057c2875c640d0d6c961e0bfe5c31d03010d0e72ea96f6c40fffe6b7aebf235).
+dolly = "=0.6.0"
+
+[profile.dev]
+opt-level = 0

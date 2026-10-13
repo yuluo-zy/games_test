@@ -1,0 +1,112 @@
+// 0x140b38250 replay_pop_bucket
+
+void __cdecl country_core::systems::history::replay_pop_bucket::replay_pop_bucket(void)
+
+{
+  undefined4 uVar1;
+  undefined4 *puVar2;
+  ulonglong *puVar3;
+  longlong lVar4;
+  longlong *in_RCX;
+  ulonglong uVar5;
+  longlong in_R8;
+  longlong in_R9;
+  longlong in_stack_00000028;
+  longlong *in_stack_00000030;
+  longlong in_stack_00000038;
+  longlong in_stack_00000040;
+  longlong *local_70;
+  longlong *local_68;
+  
+  uVar1 = *(undefined4 *)((longlong)in_RCX + 0x1c);
+  puVar2 = (undefined4 *)in_RCX[2];
+  *puVar2 = uVar1;
+  puVar3 = (ulonglong *)*in_RCX;
+  if (puVar3[3] != 0) {
+    uVar5 = 0;
+    if (*puVar3 <= puVar3[2]) {
+      uVar5 = *puVar3;
+    }
+    if (*(longlong *)(puVar3[1] + 0x10 + (puVar3[2] - uVar5) * 0x40) == 0) {
+      *puVar2 = uVar1;
+      resources::history::replay_cmd_buffer::ReplayBuffer::pop_front();
+      if (local_70 != (longlong *)0x0) {
+        **(undefined4 **)(in_R8 + 0x10) = *(undefined4 *)(in_R8 + 0x1c);
+        **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+        **(undefined4 **)(in_stack_00000038 + 0x10) = *(undefined4 *)(in_stack_00000038 + 0x1c);
+        **(undefined4 **)(in_stack_00000040 + 0x10) = *(undefined4 *)(in_stack_00000040 + 0x1c);
+        resources::walls::decorator_storage::DecoratorStorage::
+        restore_decorators<country_core::systems::history::replay_pop_bucket::replay_pop_bucket::closure_env_0>
+                  ();
+        LOCK();
+        *local_70 = *local_70 + -1;
+        UNLOCK();
+        if (*local_70 == 0) {
+          alloc::sync::Arc::
+          drop_slow<country_core::resources::history::decorator_edit::DecoratorHistoryDiff,alloc::alloc::Global>
+                    ();
+        }
+      }
+      if (local_68 == (longlong *)0x0) {
+        core::ptr::drop_in_place<country_core::resources::history::replay_cmd_buffer::ReplayBucket>
+                  ();
+        **(undefined4 **)(in_R9 + 0x10) = *(undefined4 *)(in_R9 + 0x1c);
+        resources::walls::decorator_archivist::DecoratorArchivist::extract_diff();
+        hashbrown::raw::RawTableInner::
+        drop_inner_table<tuple_<enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>,country_core::resources::history::decorator_edit::DecoratorStorageHistoryDiff>,alloc::alloc::Global>
+                  ();
+        if (local_70 == (longlong *)0x0) {
+          return;
+        }
+      }
+      else {
+        uVar1 = *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+        puVar2 = (undefined4 *)in_stack_00000030[2];
+        *puVar2 = uVar1;
+        lVar4 = *in_stack_00000030;
+        resources::stairs::stairs_state::StairsState::restore_backup();
+        *puVar2 = uVar1;
+        resources::stairs::stairs_state::StairsState::apply_diff();
+        *puVar2 = uVar1;
+        resources::stairs::stairs_state::StairsState::
+        iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::restore_backup::closure_env_0>
+                  ();
+        indexmap::map::core::IndexMapCore::
+        clear<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>
+                  ();
+        indexmap::map::core::IndexMapCore::
+        clear<tuple_<country_core::systems::collision::world::SubworldColliderHandle,country_core::systems::collision::world::SubworldColliderHandle>,country_core::resources::stairs::structural_graph::StructuralGraphConnection>
+                  ();
+        *(undefined1 *)(lVar4 + 0x178) = 0;
+        *puVar2 = uVar1;
+        resources::stairs::stairs_state::StairsState::make_backup();
+        LOCK();
+        *local_68 = *local_68 + -1;
+        UNLOCK();
+        if (*local_68 == 0) {
+          alloc::sync::Arc::
+          drop_slow<country_core::resources::stairs::stairs_state::StairsHistoryDiff,alloc::alloc::Global>
+                    ();
+        }
+        core::ptr::drop_in_place<country_core::resources::history::replay_cmd_buffer::ReplayBucket>
+                  ();
+        **(undefined4 **)(in_R9 + 0x10) = *(undefined4 *)(in_R9 + 0x1c);
+        resources::walls::decorator_archivist::DecoratorArchivist::extract_diff();
+        hashbrown::raw::RawTableInner::
+        drop_inner_table<tuple_<enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>,country_core::resources::history::decorator_edit::DecoratorStorageHistoryDiff>,alloc::alloc::Global>
+                  ();
+      }
+      **(undefined4 **)(in_stack_00000038 + 0x10) = *(undefined4 *)(in_stack_00000038 + 0x1c);
+      collision::world::RaycastWorld::flush_colliders();
+    }
+    else {
+      **(undefined4 **)(in_R9 + 0x10) = *(undefined4 *)(in_R9 + 0x1c);
+      resources::walls::decorator_archivist::DecoratorArchivist::extract_diff();
+      hashbrown::raw::RawTableInner::
+      drop_inner_table<tuple_<enum2_<country_core::resources::walls::decorator_storage::DecoratorStorageAddr>,country_core::resources::history::decorator_edit::DecoratorStorageHistoryDiff>,alloc::alloc::Global>
+                ();
+    }
+  }
+  return;
+}
+

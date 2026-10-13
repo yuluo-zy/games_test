@@ -1,0 +1,41 @@
+// name: append_on_load<array$<enum2$<country_core::meta_commander::MetaCommand>,3>_> size: 233
+// void __cdecl append_on_load<array$<enum2$<country_core::meta_commander::MetaCommand>,3>_>(void)
+
+void __cdecl
+country_core::resources::session::NextSession::
+append_on_load<array_<enum2_<country_core::meta_commander::MetaCommand>,3>_>(void)
+
+{
+  undefined8 *puVar1;
+  longlong lVar2;
+  longlong lVar3;
+  void *_Dst;
+  void *in_RCX;
+  longlong *in_RDX;
+  void *in_R8;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (_Dst != (void *)0x0) {
+    memcpy(_Dst,in_R8,0xa8);
+    lVar2 = in_RDX[2];
+    if (lVar2 == *in_RDX) {
+      alloc::raw_vec::RawVec::
+      grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar3 = in_RDX[1];
+    puVar1 = (undefined8 *)(lVar3 + 0x10 + lVar2 * 0x20);
+    *puVar1 = 0;
+    puVar1[1] = 3;
+    puVar1 = (undefined8 *)(lVar3 + lVar2 * 0x20);
+    *puVar1 = 3;
+    puVar1[1] = _Dst;
+    in_RDX[2] = lVar2 + 1;
+    memcpy(in_RCX,in_RDX,0xa0);
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  alloc::raw_vec::handle_error();
+}
+
+

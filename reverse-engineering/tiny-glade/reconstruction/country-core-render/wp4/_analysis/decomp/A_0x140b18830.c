@@ -1,0 +1,79 @@
+// ADDRESS: 0x140b18830
+// SIZE: 695
+// SIGNATURE: void __cdecl set_direction_towards_light(void)
+
+void __cdecl
+country_core::render::directional_light::DirectionalLight::set_direction_towards_light(void)
+
+{
+  undefined1 auVar1 [16];
+  undefined1 auVar2 [16];
+  undefined1 auVar3 [16];
+  undefined1 (*in_RCX) [16];
+  undefined8 *in_RDX;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  
+  fVar5 = *(float *)(in_RDX + 1);
+  fVar8 = *(float *)in_RCX[7];
+  fVar9 = (float)*(undefined8 *)(in_RCX[6] + 4);
+  fVar11 = (float)((ulonglong)*(undefined8 *)(in_RCX[6] + 4) >> 0x20);
+  fVar6 = (float)*in_RDX;
+  fVar7 = (float)((ulonglong)*in_RDX >> 0x20);
+  fVar4 = 1.0 / SQRT(fVar7 * fVar7 + fVar6 * fVar6 + fVar5 * fVar5);
+  fVar6 = fVar8 * fVar4 * fVar6 + fVar9;
+  fVar7 = fVar8 * fVar4 * fVar7 + fVar11;
+  fVar5 = fVar4 * fVar5 * fVar8 + *(float *)(in_RCX[6] + 0xc);
+  fVar9 = fVar9 - fVar6;
+  fVar11 = fVar11 - fVar7;
+  fVar4 = *(float *)(in_RCX[6] + 0xc) - fVar5;
+  fVar8 = 1.0 / SQRT(fVar4 * fVar4 + fVar11 * fVar11 + fVar9 * fVar9);
+  fVar9 = fVar8 * fVar9;
+  fVar11 = fVar8 * fVar11;
+  fVar8 = fVar8 * fVar4;
+  fVar4 = fVar9 - fVar11 * 0.0;
+  fVar12 = fVar11 * 0.0 - fVar8;
+  fVar10 = fVar8 * 0.0 - fVar9 * 0.0;
+  fVar14 = 1.0 / SQRT(fVar4 * fVar4 + fVar10 * fVar10 + fVar12 * fVar12);
+  fVar12 = fVar12 * fVar14;
+  fVar10 = fVar10 * fVar14;
+  fVar4 = fVar4 * fVar14;
+  fVar14 = fVar11 * fVar12 - fVar9 * fVar10;
+  fVar13 = fVar8 * fVar10 - fVar11 * fVar4;
+  fVar15 = fVar4 * fVar9 - fVar8 * fVar12;
+  *(ulonglong *)(in_RCX[4] + 0xc) = CONCAT44(fVar7,fVar6);
+  *(float *)(in_RCX[5] + 4) = fVar5;
+  auVar3._4_4_ = fVar13;
+  auVar3._0_4_ = fVar12;
+  auVar3._8_4_ = -fVar9;
+  auVar3._12_4_ = 0;
+  *in_RCX = auVar3;
+  auVar2._4_4_ = fVar15;
+  auVar2._0_4_ = fVar10;
+  auVar2._8_4_ = -fVar11;
+  auVar2._12_4_ = 0;
+  in_RCX[1] = auVar2;
+  auVar1._4_4_ = fVar14;
+  auVar1._0_4_ = fVar4;
+  auVar1._8_4_ = -fVar8;
+  auVar1._12_4_ = 0;
+  in_RCX[2] = auVar1;
+  *(float *)in_RCX[3] = -(fVar5 * fVar4 + fVar12 * fVar6 + fVar7 * fVar10);
+  *(float *)(in_RCX[3] + 4) = -(fVar5 * fVar14 + fVar15 * fVar7 + fVar6 * fVar13);
+  *(float *)(in_RCX[3] + 8) = fVar5 * fVar8 + fVar7 * fVar11 + fVar6 * fVar9;
+  *(undefined4 *)(in_RCX[3] + 0xc) = 0x3f800000;
+  *(ulonglong *)in_RCX[4] = CONCAT44(fVar11,fVar9);
+  *(float *)(in_RCX[4] + 8) = fVar8;
+  return;
+}
+

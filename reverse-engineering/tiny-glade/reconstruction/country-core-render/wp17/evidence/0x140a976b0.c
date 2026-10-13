@@ -1,0 +1,76 @@
+// 0x140a976b0 from
+
+void __cdecl country_core::resources::history::path_edit::impl$1::from(void)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined1 uVar3;
+  undefined4 uVar4;
+  ulonglong uVar5;
+  ulonglong extraout_RAX;
+  ulonglong *in_RCX;
+  ulonglong uVar6;
+  undefined4 *in_RDX;
+  longlong lVar7;
+  longlong *plVar8;
+  
+  uVar5 = *(ulonglong *)(in_RDX + 4);
+  if (0xaaaaaaaaaaaaaaa < uVar5) {
+LAB_140a977f7:
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  plVar8 = *(longlong **)(in_RDX + 2);
+  if (uVar5 == 0) {
+    uVar6 = 4;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == 0) goto LAB_140a977f7;
+    if (uVar5 == 1) {
+      uVar6 = 0;
+    }
+    else {
+      lVar7 = 0;
+      uVar6 = 0;
+      do {
+        *(undefined4 *)(extraout_RAX + 8 + lVar7) = *(undefined4 *)((longlong)plVar8 + lVar7 + 0x18)
+        ;
+        *(undefined8 *)(extraout_RAX + lVar7) = *(undefined8 *)((longlong)plVar8 + lVar7 + 0x10);
+        *(undefined8 *)(extraout_RAX + 0xc + lVar7) =
+             *(undefined8 *)((longlong)plVar8 + lVar7 + 0x1c);
+        *(undefined4 *)(extraout_RAX + 0x14 + lVar7) =
+             *(undefined4 *)((longlong)plVar8 + lVar7 + 0x24);
+        uVar6 = uVar6 + 2;
+        lVar7 = lVar7 + 0x18;
+      } while ((uVar5 & 0xffffffffffffffe) != uVar6);
+    }
+    if ((uVar5 & 1) != 0) {
+      lVar7 = uVar6 * 0xc;
+      *(undefined4 *)(extraout_RAX + 8 + lVar7) = *(undefined4 *)((longlong)plVar8 + lVar7 + 0x18);
+      *(undefined8 *)(extraout_RAX + lVar7) = *(undefined8 *)((longlong)plVar8 + lVar7 + 0x10);
+    }
+    plVar8 = *(longlong **)(in_RDX + 2);
+    uVar6 = extraout_RAX;
+  }
+  uVar3 = *(undefined1 *)(in_RDX + 7);
+  uVar1 = in_RDX[6];
+  uVar4 = *in_RDX;
+  uVar2 = in_RDX[1];
+  *in_RCX = uVar5;
+  in_RCX[1] = uVar6;
+  in_RCX[2] = uVar5;
+  *(undefined1 *)((longlong)in_RCX + 0x24) = uVar3;
+  *(undefined4 *)(in_RCX + 4) = uVar1;
+  *(undefined4 *)(in_RCX + 3) = uVar4;
+  *(undefined4 *)((longlong)in_RCX + 0x1c) = uVar2;
+  LOCK();
+  *plVar8 = *plVar8 + -1;
+  UNLOCK();
+  if (*plVar8 == 0) {
+    alloc::sync::Arc::drop_slow<slice2_<glam::f32::vec3::Vec3>,alloc::alloc::Global>();
+  }
+  return;
+}
+

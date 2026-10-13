@@ -1,0 +1,1623 @@
+// ===== 0x140b067d0 snapshot_at_tod | sig: void __cdecl snapshot_at_tod(void) | size: 824 =====
+
+void __cdecl country_core::resources::time_of_day::TodSequence::snapshot_at_tod(void)
+
+{
+  longlong lVar1;
+  float *pfVar2;
+  float *in_RCX;
+  longlong in_RDX;
+  longlong lVar3;
+  float *pfVar4;
+  float *pfVar5;
+  float fVar6;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float fVar7;
+  float extraout_XMM0_Da_01;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float in_XMM2_Da;
+  float fVar11;
+  float fVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  
+  lVar1 = *(longlong *)(in_RDX + 0x10);
+  if (lVar1 == 1) {
+    lVar1 = *(longlong *)(in_RDX + 8);
+    in_RCX[0x10] = *(float *)(lVar1 + 0x4c);
+    fVar6 = *(float *)(lVar1 + 0xc);
+    fVar11 = *(float *)(lVar1 + 0x10);
+    fVar8 = *(float *)(lVar1 + 0x14);
+    fVar7 = *(float *)(lVar1 + 0x18);
+    fVar9 = *(float *)(lVar1 + 0x1c);
+    fVar10 = *(float *)(lVar1 + 0x20);
+    fVar12 = *(float *)(lVar1 + 0x24);
+    fVar19 = *(float *)(lVar1 + 0x28);
+    uVar13 = *(undefined8 *)(lVar1 + 0x2c);
+    uVar14 = *(undefined8 *)(lVar1 + 0x34);
+    fVar15 = *(float *)(lVar1 + 0x3c);
+    fVar16 = *(float *)(lVar1 + 0x40);
+    fVar17 = *(float *)(lVar1 + 0x44);
+    fVar18 = *(float *)(lVar1 + 0x48);
+LAB_140b06ac7:
+    in_RCX[0xc] = fVar15;
+    in_RCX[0xd] = fVar16;
+    in_RCX[0xe] = fVar17;
+    in_RCX[0xf] = fVar18;
+    *(undefined8 *)(in_RCX + 8) = uVar13;
+    *(undefined8 *)(in_RCX + 10) = uVar14;
+    in_RCX[4] = fVar9;
+    in_RCX[5] = fVar10;
+    in_RCX[6] = fVar12;
+    in_RCX[7] = fVar19;
+    *in_RCX = fVar6;
+    in_RCX[1] = fVar11;
+    in_RCX[2] = fVar8;
+    in_RCX[3] = fVar7;
+  }
+  else {
+    fVar6 = fmodf(in_XMM2_Da,1.0);
+    if (lVar1 == 0) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    fVar11 = (float)(~-(uint)(fVar6 < 0.0) & (uint)fVar6 |
+                    (uint)(fVar6 + 1.0) & -(uint)(fVar6 < 0.0));
+    pfVar4 = *(float **)(in_RDX + 8);
+    pfVar5 = pfVar4 + lVar1 * 0x14;
+    fVar6 = 1.0;
+    if (pfVar4[2] <= fVar11) {
+      if ((fVar11 < pfVar4[2]) || (pfVar4[0x16] < fVar11)) {
+        if (lVar1 != 2) {
+          pfVar2 = pfVar4 + 0x16;
+          lVar3 = 0;
+          do {
+            if ((*pfVar2 <= fVar11) && (fVar11 <= pfVar2[0x14])) {
+              pfVar5 = (float *)((longlong)pfVar4 + (0xa0 - lVar3));
+              pfVar4 = pfVar2 + -2;
+              goto LAB_140b069f7;
+            }
+            lVar3 = lVar3 + -0x50;
+            pfVar2 = pfVar2 + 0x14;
+          } while (lVar1 * -0x50 + 0xa0 != lVar3);
+        }
+        if (pfVar5 == (float *)&DAT_00000050) {
+                    // WARNING: Subroutine does not return
+          core::option::unwrap_failed();
+        }
+        ::utils::inverse_lerp();
+        fVar8 = 0.0;
+        fVar11 = extraout_XMM0_Da_00;
+        if (0.0 <= extraout_XMM0_Da_00) {
+          fVar8 = extraout_XMM0_Da_00;
+        }
+        goto LAB_140b068e9;
+      }
+      pfVar5 = pfVar4 + 0x14;
+LAB_140b069f7:
+      pfVar2 = pfVar4 + 3;
+      ::utils::inverse_lerp();
+      fVar11 = 0.0;
+      if (0.0 <= extraout_XMM0_Da_01) {
+        fVar11 = extraout_XMM0_Da_01;
+      }
+      if ((0x7f7fffff < (uint)ABS(extraout_XMM0_Da_01) && 0.0 <= extraout_XMM0_Da_01) &&
+          fVar11 <= 1.0) goto LAB_140b06ab2;
+      if (fVar11 <= 1.0) {
+        fVar6 = fVar11;
+      }
+      country_core::render::atmosphere::SunSkyColors::lerp();
+      fVar7 = pfVar5[0x10] * fVar6;
+      fVar9 = fVar6 * (float)*(undefined8 *)(pfVar5 + 0x11);
+      fVar10 = fVar6 * (float)((ulonglong)*(undefined8 *)(pfVar5 + 0x11) >> 0x20);
+      fVar12 = (pfVar5[0x13] - pfVar4[0x13]) * fVar6 + pfVar4[0x13];
+      fVar11 = pfVar4[0xf];
+      fVar8 = pfVar4[0x10];
+      fVar19 = pfVar5[0xf] - fVar11;
+      fVar15 = (float)*(undefined8 *)(pfVar4 + 0x11);
+      fVar16 = (float)((ulonglong)*(undefined8 *)(pfVar4 + 0x11) >> 0x20);
+    }
+    else {
+      if (pfVar5 == (float *)&DAT_00000050) {
+                    // WARNING: Subroutine does not return
+        core::option::unwrap_failed();
+      }
+      ::utils::inverse_lerp();
+      fVar8 = 0.0;
+      fVar11 = extraout_XMM0_Da;
+      if (0.0 <= extraout_XMM0_Da) {
+        fVar8 = extraout_XMM0_Da;
+      }
+LAB_140b068e9:
+      pfVar2 = pfVar5 + -0x11;
+      if ((0x7f7fffff < (uint)ABS(fVar11) && 0.0 <= fVar11) && fVar8 <= 1.0) {
+LAB_140b06ab2:
+        in_RCX[0x10] = pfVar2[0x10];
+        fVar6 = *pfVar2;
+        fVar11 = pfVar2[1];
+        fVar8 = pfVar2[2];
+        fVar7 = pfVar2[3];
+        fVar9 = pfVar2[4];
+        fVar10 = pfVar2[5];
+        fVar12 = pfVar2[6];
+        fVar19 = pfVar2[7];
+        uVar13 = *(undefined8 *)(pfVar2 + 8);
+        uVar14 = *(undefined8 *)(pfVar2 + 10);
+        fVar15 = pfVar2[0xc];
+        fVar16 = pfVar2[0xd];
+        fVar17 = pfVar2[0xe];
+        fVar18 = pfVar2[0xf];
+        goto LAB_140b06ac7;
+      }
+      if (fVar8 <= 1.0) {
+        fVar6 = fVar8;
+      }
+      country_core::render::atmosphere::SunSkyColors::lerp();
+      fVar7 = pfVar4[0x10] * fVar6;
+      fVar9 = fVar6 * (float)*(undefined8 *)(pfVar4 + 0x11);
+      fVar10 = fVar6 * (float)((ulonglong)*(undefined8 *)(pfVar4 + 0x11) >> 0x20);
+      fVar12 = (pfVar4[0x13] - pfVar5[-1]) * fVar6 + pfVar5[-1];
+      fVar11 = pfVar5[-5];
+      fVar8 = pfVar5[-4];
+      fVar19 = pfVar4[0xf] - fVar11;
+      fVar15 = (float)*(undefined8 *)(pfVar5 + -3);
+      fVar16 = (float)((ulonglong)*(undefined8 *)(pfVar5 + -3) >> 0x20);
+    }
+    in_RCX[0xc] = fVar11 + fVar6 * fVar19;
+    in_RCX[0xd] = fVar7 + fVar8 * (1.0 - fVar6);
+    in_RCX[0xe] = fVar9 + fVar15 * (1.0 - fVar6);
+    in_RCX[0xf] = fVar10 + fVar16 * (1.0 - fVar6);
+    in_RCX[0x10] = fVar12;
+  }
+  return;
+}
+
+
+
+// ===== 0x140b06790 default | sig: void __cdecl default(void) | size: 50 =====
+
+void __cdecl country_core::resources::time_of_day::impl$5::default(void)
+
+{
+  std::thread::local::LocalKey::
+  with<fastrand::Rng,fastrand::usize::closure_env_0<core::ops::range::RangeInclusive<usize>_>,usize>
+            ();
+  return;
+}
+
+
+
+// ===== 0x140af89d0 contains | sig: void __cdecl contains(void) | size: 284 =====
+
+void __cdecl country_core::resources::toolbar::ToolbarCategoryModes::contains(void)
+
+{
+  char cVar1;
+  char cVar2;
+  uint uVar3;
+  uint uVar4;
+  longlong lVar5;
+  longlong lVar6;
+  byte bVar7;
+  longlong lVar8;
+  longlong lVar9;
+  longlong in_RCX;
+  uint *in_RDX;
+  longlong lVar10;
+  ulonglong uVar11;
+  byte bVar12;
+  bool bVar13;
+  
+  lVar5 = *(longlong *)(in_RCX + 0x10);
+  if (lVar5 != 0) {
+    lVar6 = *(longlong *)(in_RCX + 8);
+    uVar3 = *in_RDX;
+    uVar11 = (ulonglong)uVar3;
+    lVar8 = 0;
+    if (5 < uVar11) {
+      lVar8 = uVar11 - 5;
+    }
+    cVar1 = (char)in_RDX[1];
+    bVar7 = cVar1 - 0x38U;
+    if (7 < (byte)(cVar1 - 0x38U)) {
+      bVar7 = 6;
+    }
+    if (uVar11 < 6) {
+      lVar10 = 0;
+      do {
+        uVar4 = *(uint *)(lVar6 + lVar10);
+        lVar9 = (ulonglong)uVar4 - 5;
+        if (0xe < uVar4 - 6) {
+          lVar9 = 0;
+        }
+        if (lVar9 == lVar8) {
+          switch(lVar8) {
+          case 0:
+            if (uVar4 == uVar3) {
+                    // WARNING: Could not recover jumptable at 0x000140af8abf. Too many branches
+                    // WARNING: Treating indirect jump as call
+              (*(code *)(&UNK_142ae5eec + *(int *)(&UNK_142ae5eec + uVar11 * 4)))
+                        (lVar6,&UNK_142ae5eec + *(int *)(&UNK_142ae5eec + uVar11 * 4));
+              return;
+            }
+            break;
+          case 1:
+          case 4:
+            if (*(char *)(lVar6 + 4 + lVar10) == cVar1) {
+              return;
+            }
+            break;
+          default:
+            goto LAB_140af8c00;
+          case 3:
+            if (*(longlong *)(lVar6 + 8 + lVar10) == *(longlong *)(in_RDX + 2)) {
+              return;
+            }
+            break;
+          case 6:
+            cVar2 = *(char *)(lVar6 + 4 + lVar10);
+            bVar12 = cVar2 - 0x38;
+            if (7 < bVar12) {
+              bVar12 = 6;
+            }
+            if ((bVar12 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) {
+              return;
+            }
+          }
+        }
+        lVar10 = lVar10 + 0x10;
+      } while (lVar5 << 4 != lVar10);
+    }
+    else {
+      switch(uVar3) {
+      case 6:
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar6 + lVar8) == 6) && (*(char *)(lVar6 + 4 + lVar8) == cVar1)) {
+            return;
+          }
+          lVar8 = lVar8 + 0x10;
+        } while (lVar5 << 4 != lVar8);
+        break;
+      default:
+        lVar10 = 0;
+        do {
+          lVar9 = (ulonglong)*(uint *)(lVar6 + lVar10) - 5;
+          if (0xe < *(uint *)(lVar6 + lVar10) - 6) {
+            lVar9 = 0;
+          }
+        } while ((lVar9 != lVar8) &&
+                (bVar13 = lVar5 * 0x10 + -0x10 != lVar10, lVar10 = lVar10 + 0x10, bVar13));
+        break;
+      case 8:
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar6 + lVar8) == 8) &&
+             (*(longlong *)(lVar6 + 8 + lVar8) == *(longlong *)(in_RDX + 2))) {
+            return;
+          }
+          lVar8 = lVar8 + 0x10;
+        } while (lVar5 << 4 != lVar8);
+        break;
+      case 9:
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar6 + lVar8) == 9) && (*(char *)(lVar6 + 4 + lVar8) == cVar1)) {
+            return;
+          }
+          lVar8 = lVar8 + 0x10;
+        } while (lVar5 << 4 != lVar8);
+        break;
+      case 0xb:
+        lVar8 = 0;
+        do {
+          if (*(int *)(lVar6 + lVar8) == 0xb) {
+            cVar2 = *(char *)(lVar6 + 4 + lVar8);
+            bVar12 = cVar2 - 0x38;
+            if (7 < bVar12) {
+              bVar12 = 6;
+            }
+            if ((bVar12 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) {
+              return;
+            }
+          }
+          lVar8 = lVar8 + 0x10;
+        } while (lVar5 << 4 != lVar8);
+      }
+    }
+  }
+LAB_140af8c00:
+  return;
+}
+
+
+
+// ===== 0x140af8c50 new | sig: void __cdecl new(void) | size: 2126 =====
+
+void __cdecl country_core::resources::toolbar::Toolbar::new(void)
+
+{
+  undefined4 *puVar1;
+  undefined4 *puVar2;
+  undefined4 *extraout_RAX;
+  undefined4 *extraout_RAX_00;
+  undefined4 *extraout_RAX_01;
+  undefined4 *extraout_RAX_02;
+  undefined4 *extraout_RAX_03;
+  undefined4 *extraout_RAX_04;
+  undefined4 *extraout_RAX_05;
+  undefined4 *extraout_RAX_06;
+  undefined4 *extraout_RAX_07;
+  undefined4 *puVar3;
+  undefined4 *extraout_RAX_08;
+  undefined4 *extraout_RAX_09;
+  undefined4 *extraout_RAX_10;
+  undefined4 *extraout_RAX_11;
+  undefined4 *extraout_RAX_12;
+  undefined4 *extraout_RAX_13;
+  undefined8 *extraout_RAX_14;
+  undefined8 *in_RCX;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined4 *puVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined4 *local_a8;
+  undefined4 *local_98;
+  undefined8 local_90;
+  undefined8 local_88;
+  
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_02 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_02 = 6;
+    *(undefined1 *)(extraout_RAX_02 + 1) = 1;
+    extraout_RAX_02[4] = 6;
+    *(undefined1 *)(extraout_RAX_02 + 5) = 2;
+    extraout_RAX_02[8] = 0xb;
+    *(undefined1 *)(extraout_RAX_02 + 9) = 0x3f;
+    extraout_RAX_02[0xc] = 6;
+    *(undefined1 *)(extraout_RAX_02 + 0xd) = 0;
+    extraout_RAX_02[0x10] = 0x12;
+    uVar5 = 5;
+    puVar2 = extraout_RAX_02;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX = 6;
+    *(undefined1 *)(extraout_RAX + 1) = 1;
+    extraout_RAX[4] = 6;
+    *(undefined1 *)(extraout_RAX + 5) = 2;
+    extraout_RAX[8] = 6;
+    *(undefined1 *)(extraout_RAX + 9) = 0;
+    uVar5 = 3;
+    puVar2 = extraout_RAX;
+  }
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_00 = 7;
+    extraout_RAX_00[4] = 8;
+    *(undefined8 *)(extraout_RAX_00 + 6) = 1;
+    extraout_RAX_00[8] = 8;
+    *(undefined8 *)(extraout_RAX_00 + 10) = 2;
+    extraout_RAX_00[0xc] = 8;
+    *(undefined8 *)(extraout_RAX_00 + 0xe) = 3;
+    uVar8 = 4;
+    puVar1 = extraout_RAX_00;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_03 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_03 = 7;
+    uVar8 = 1;
+    puVar1 = extraout_RAX_03;
+  }
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_01 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_01 = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 1) = 0x38;
+    extraout_RAX_01[4] = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 5) = 0x39;
+    extraout_RAX_01[8] = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 9) = 0x3a;
+    extraout_RAX_01[0xc] = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 0xd) = 0x3c;
+    extraout_RAX_01[0x10] = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 0x11) = 0x3d;
+    extraout_RAX_01[0x14] = 0xb;
+    *(undefined1 *)(extraout_RAX_01 + 0x15) = 0x3b;
+    uVar7 = 6;
+    puVar6 = extraout_RAX_01;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_04 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_04 = 0xb;
+    *(undefined1 *)(extraout_RAX_04 + 1) = 0x38;
+    extraout_RAX_04[4] = 0xb;
+    *(undefined1 *)(extraout_RAX_04 + 5) = 0x3c;
+    uVar7 = 2;
+    puVar6 = extraout_RAX_04;
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_05 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_05 = 0xc;
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_07 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_07 = 9;
+    *(undefined1 *)(extraout_RAX_07 + 1) = 1;
+    extraout_RAX_07[4] = 9;
+    *(undefined1 *)(extraout_RAX_07 + 5) = 2;
+    extraout_RAX_07[8] = 9;
+    *(undefined1 *)(extraout_RAX_07 + 9) = 3;
+    extraout_RAX_07[0xc] = 9;
+    *(undefined1 *)(extraout_RAX_07 + 0xd) = 5;
+    extraout_RAX_07[0x10] = 9;
+    *(undefined1 *)(extraout_RAX_07 + 0x11) = 6;
+    extraout_RAX_07[0x14] = 9;
+    *(undefined1 *)(extraout_RAX_07 + 0x15) = 4;
+    uVar4 = 6;
+    puVar3 = extraout_RAX_07;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_06 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_06 = 9;
+    *(undefined1 *)(extraout_RAX_06 + 1) = 1;
+    extraout_RAX_06[4] = 9;
+    *(undefined1 *)(extraout_RAX_06 + 5) = 2;
+    extraout_RAX_06[8] = 9;
+    *(undefined1 *)(extraout_RAX_06 + 9) = 5;
+    extraout_RAX_06[0xc] = 9;
+    *(undefined1 *)(extraout_RAX_06 + 0xd) = 3;
+    uVar4 = 4;
+    puVar3 = extraout_RAX_06;
+  }
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_08 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_08 = 0x10;
+    local_90 = 1;
+    local_98 = extraout_RAX_08;
+  }
+  else {
+    local_98 = (undefined4 *)&DAT_00000008;
+    local_90 = 0;
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_09 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_09 = 10;
+  local_a8 = (undefined4 *)&DAT_00000008;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_10 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_10 = 0;
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_11 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *extraout_RAX_11 = 0xf;
+    local_88 = 1;
+    local_a8 = extraout_RAX_11;
+  }
+  else {
+    local_88 = 0;
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_12 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_12 = 0x11;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_13 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_13 = 0x13;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_14 != (undefined8 *)0x0) {
+    *extraout_RAX_14 = uVar5;
+    extraout_RAX_14[1] = puVar2;
+    extraout_RAX_14[2] = uVar5;
+    extraout_RAX_14[3] = 0;
+    extraout_RAX_14[4] = uVar8;
+    extraout_RAX_14[5] = puVar1;
+    extraout_RAX_14[6] = uVar8;
+    extraout_RAX_14[7] = 0;
+    extraout_RAX_14[8] = uVar7;
+    extraout_RAX_14[9] = puVar6;
+    extraout_RAX_14[10] = uVar7;
+    extraout_RAX_14[0xb] = 0;
+    extraout_RAX_14[0xc] = 1;
+    extraout_RAX_14[0xd] = extraout_RAX_05;
+    extraout_RAX_14[0xe] = 1;
+    extraout_RAX_14[0xf] = 0;
+    extraout_RAX_14[0x10] = uVar4;
+    extraout_RAX_14[0x11] = puVar3;
+    extraout_RAX_14[0x12] = uVar4;
+    extraout_RAX_14[0x13] = 0;
+    extraout_RAX_14[0x14] = local_90;
+    extraout_RAX_14[0x15] = local_98;
+    extraout_RAX_14[0x16] = local_90;
+    extraout_RAX_14[0x17] = 0;
+    extraout_RAX_14[0x18] = 1;
+    extraout_RAX_14[0x19] = extraout_RAX_09;
+    extraout_RAX_14[0x1a] = 1;
+    extraout_RAX_14[0x1b] = 0;
+    extraout_RAX_14[0x1c] = 1;
+    extraout_RAX_14[0x1d] = extraout_RAX_10;
+    extraout_RAX_14[0x1e] = 1;
+    extraout_RAX_14[0x1f] = 0;
+    extraout_RAX_14[0x20] = local_88;
+    extraout_RAX_14[0x21] = local_a8;
+    extraout_RAX_14[0x22] = local_88;
+    extraout_RAX_14[0x23] = 0;
+    extraout_RAX_14[0x24] = 1;
+    extraout_RAX_14[0x25] = extraout_RAX_12;
+    extraout_RAX_14[0x26] = 1;
+    extraout_RAX_14[0x27] = 0;
+    extraout_RAX_14[0x28] = 1;
+    extraout_RAX_14[0x29] = extraout_RAX_13;
+    extraout_RAX_14[0x2a] = 1;
+    extraout_RAX_14[0x2b] = 0;
+    *in_RCX = 0xb;
+    in_RCX[1] = extraout_RAX_14;
+    in_RCX[2] = 0xb;
+    *(undefined1 *)(in_RCX + 3) = 0;
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  alloc::alloc::handle_alloc_error();
+}
+
+
+
+// ===== 0x140af9850 switch_mode | sig: void __cdecl switch_mode(void) | size: 518 =====
+
+void __cdecl country_core::resources::toolbar::Toolbar::switch_mode(void)
+
+{
+  char cVar1;
+  char cVar2;
+  uint uVar3;
+  uint uVar4;
+  longlong lVar5;
+  char extraout_AL;
+  longlong in_RCX;
+  longlong lVar6;
+  byte bVar7;
+  uint *in_RDX;
+  longlong lVar8;
+  longlong lVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  byte bVar15;
+  undefined1 local_80 [8];
+  code *local_78;
+  undefined **local_70;
+  undefined8 local_68;
+  undefined1 *local_60;
+  undefined8 local_58;
+  undefined8 local_50;
+  
+  lVar10 = *(longlong *)(in_RCX + 0x10) << 5;
+  lVar9 = 1;
+  lVar5 = *(longlong *)(in_RCX + 8);
+  do {
+    lVar6 = lVar5;
+    if (lVar10 == 0) {
+      local_78 = systems::mode_manager::impl$28::fmt;
+      local_70 = &PTR_s_Error__Switched_to_mode_but_no_t_142ae56f0;
+      local_68 = 2;
+      local_50 = 0;
+      local_60 = local_80;
+      local_58 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    ToolbarCategoryModes::contains();
+    lVar10 = lVar10 + -0x20;
+    lVar9 = lVar9 + -1;
+    lVar5 = lVar6 + 0x20;
+  } while (extraout_AL == '\0');
+  if (10 < (ulonglong)-lVar9) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  lVar5 = *(longlong *)(lVar6 + 0x10);
+  if (lVar5 != 0) {
+    lVar10 = *(longlong *)(lVar6 + 8);
+    uVar3 = *in_RDX;
+    uVar13 = (ulonglong)uVar3;
+    lVar14 = 0;
+    if (5 < uVar13) {
+      lVar14 = uVar13 - 5;
+    }
+    cVar1 = (char)in_RDX[1];
+    bVar7 = cVar1 - 0x38;
+    if (7 < bVar7) {
+      bVar7 = 6;
+    }
+    if (uVar13 < 6) {
+      lVar12 = 0;
+      lVar8 = 0;
+      do {
+        uVar4 = *(uint *)(lVar10 + lVar12);
+        lVar11 = (ulonglong)uVar4 - 5;
+        if (0xe < uVar4 - 6) {
+          lVar11 = 0;
+        }
+        if (lVar11 == lVar14) {
+          switch(lVar14) {
+          case 0:
+            if (uVar4 == uVar3) {
+                    // WARNING: Could not recover jumptable at 0x000140af9993. Too many branches
+                    // WARNING: Treating indirect jump as call
+              (*(code *)(&UNK_142ae5f38 + *(int *)(&UNK_142ae5f38 + uVar13 * 4)))();
+              return;
+            }
+            break;
+          case 1:
+          case 4:
+            if (*(char *)(lVar10 + 4 + lVar12) == cVar1) goto LAB_140af9b15;
+            break;
+          default:
+            goto LAB_140af9b15;
+          case 3:
+            if (*(longlong *)(lVar10 + 8 + lVar12) == *(longlong *)(in_RDX + 2)) goto LAB_140af9b15;
+            break;
+          case 6:
+            cVar2 = *(char *)(lVar10 + 4 + lVar12);
+            bVar15 = cVar2 - 0x38;
+            if (7 < bVar15) {
+              bVar15 = 6;
+            }
+            if ((bVar15 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) goto LAB_140af9b15;
+          }
+        }
+        lVar8 = lVar8 + 1;
+        lVar12 = lVar12 + 0x10;
+      } while (lVar5 << 4 != lVar12);
+    }
+    else {
+      switch(uVar3) {
+      case 6:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 6) && (*(char *)(lVar10 + 4 + lVar14) == cVar1)) {
+LAB_140af9b15:
+            *(longlong *)(lVar6 + 0x18) = lVar8;
+            *(char *)(in_RCX + 0x18) = -(char)lVar9;
+            return;
+          }
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      default:
+        lVar12 = 0;
+        lVar8 = 0;
+        do {
+          lVar11 = (ulonglong)*(uint *)(lVar10 + lVar12) - 5;
+          if (0xe < *(uint *)(lVar10 + lVar12) - 6) {
+            lVar11 = 0;
+          }
+          if (lVar11 == lVar14) goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar12 = lVar12 + 0x10;
+        } while (lVar5 << 4 != lVar12);
+        break;
+      case 8:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 8) &&
+             (*(longlong *)(lVar10 + 8 + lVar14) == *(longlong *)(in_RDX + 2))) goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      case 9:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 9) && (*(char *)(lVar10 + 4 + lVar14) == cVar1))
+          goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      case 0xb:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if (*(int *)(lVar10 + lVar14) == 0xb) {
+            cVar2 = *(char *)(lVar10 + 4 + lVar14);
+            bVar15 = cVar2 - 0x38;
+            if (7 < bVar15) {
+              bVar15 = 6;
+            }
+            if ((bVar15 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) goto LAB_140af9b15;
+          }
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+      }
+    }
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+
+
+
+// ===== 0x140b0e070 is_horizontal | sig: void __cdecl is_horizontal(void) | size: 16 =====
+
+void __cdecl country_core::resources::ui_settings::ToolbarAlignment::is_horizontal(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x140b0e080 fmt | sig: void __cdecl fmt(void) | size: 27 =====
+
+void __cdecl country_core::resources::ui_settings::impl$1::fmt(void)
+
+{
+  code *UNRECOVERED_JUMPTABLE;
+  undefined8 extraout_RAX;
+  undefined1 *in_RCX;
+  longlong in_RDX;
+  undefined8 uVar1;
+  
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+  switch(*in_RCX) {
+  case 0:
+    uVar1 = 0x28;
+    break;
+  case 1:
+    uVar1 = 0x26;
+    break;
+  case 2:
+    uVar1 = 0x27;
+    break;
+  case 3:
+    uVar1 = 0x25;
+  }
+  lang_lib::lookup();
+  UNRECOVERED_JUMPTABLE = *(code **)(*(longlong *)(in_RDX + 0x38) + 0x18);
+                    // WARNING: Could not recover jumptable at 0x000140d86ba4. Too many branches
+                    // WARNING: Treating indirect jump as call
+  (*UNRECOVERED_JUMPTABLE)(*(undefined8 *)(in_RDX + 0x30),extraout_RAX,uVar1,UNRECOVERED_JUMPTABLE);
+  return;
+}
+
+
+
+// ===== 0x140b12f10 default | sig: void __cdecl default(void) | size: 27 =====
+
+void __cdecl country_core::resources::ui_settings::impl$4::default(void)
+
+{
+  undefined8 *in_RCX;
+  
+  *(undefined4 *)(in_RCX + 1) = 0x1010000;
+  *(undefined1 *)((longlong)in_RCX + 0xc) = 0;
+  *in_RCX = 0x41c000003f800000;
+  return;
+}
+
+
+
+// ===== 0x140b06770 to_f32 | sig: void __cdecl to_f32(void) | size: 16 =====
+
+void __cdecl country_core::resources::color_icon::ColorMenuBrightnessValue::to_f32(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x140b06780 default_f32 | sig: void __cdecl default_f32(void) | size: 9 =====
+
+void __cdecl country_core::resources::color_icon::ColorMenuBrightnessValue::default_f32(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x140ae4620 draw_garden | sig: void __cdecl draw_garden(void) | size: 1446 =====
+
+void __cdecl country_core::systems::garden::draw_garden::draw_garden(void)
+
+{
+  undefined8 *puVar1;
+  ulonglong *puVar2;
+  uint uVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  undefined4 *puVar6;
+  undefined4 *puVar7;
+  byte *pbVar8;
+  longlong lVar9;
+  undefined8 uVar10;
+  longlong lVar11;
+  bool bVar12;
+  char extraout_AL;
+  char cVar13;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  byte bVar14;
+  undefined8 *in_RCX;
+  longlong lVar15;
+  byte bVar16;
+  longlong lVar17;
+  char *pcVar18;
+  longlong in_R9;
+  float extraout_XMM0_Da;
+  float fVar19;
+  undefined8 *in_stack_00000040;
+  longlong in_stack_00000048;
+  char *in_stack_00000050;
+  longlong in_stack_00000058;
+  longlong *in_stack_00000060;
+  undefined4 uStack_b4;
+  undefined8 uStack_b0;
+  uint local_a8;
+  undefined4 uStack_9c;
+  undefined8 uStack_90;
+  uint uStack_84;
+  
+  uVar3 = *(uint *)*in_RCX;
+  lVar17 = 0;
+  if (uVar3 - 6 < 0xf) {
+    lVar17 = (ulonglong)uVar3 - 5;
+  }
+  if (lVar17 != 0xc) {
+    if (lVar17 != 4) {
+      return;
+    }
+    cVar13 = (char)((uint *)*in_RCX)[1];
+    if ((cVar13 != '\0') && (cVar13 != '\x05')) {
+      return;
+    }
+    ::utils::inverse_lerp();
+    if (0x7f7fffff < (uint)ABS(extraout_XMM0_Da * 4.0 + (1.0 - extraout_XMM0_Da))) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+    pcVar18 = "eraser";
+    systems::ui::resources::ui_state::UiState::clearing_canvas_w_layer_and_sound();
+    cVar13 = '\x01';
+    bVar12 = false;
+    bVar14 = *(byte *)(extraout_RAX + 0x18);
+    lVar17 = extraout_RAX;
+    goto joined_r0x000140ae4741;
+  }
+  if (0x7f7fffff < (*(uint *)(*(longlong *)(in_stack_00000058 + 0x20) + 8) & 0x7fffffff)) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  lVar9 = *(longlong *)(in_stack_00000048 + 0x20);
+  puVar6 = *(undefined4 **)(in_stack_00000048 + 0x30);
+  uVar4 = *(undefined4 *)(in_stack_00000048 + 0x3c);
+  lVar11 = *(longlong *)(in_stack_00000048 + 0x40);
+  puVar7 = *(undefined4 **)(in_stack_00000048 + 0x50);
+  uVar5 = *(undefined4 *)(in_stack_00000048 + 0x5c);
+  pcVar18 = &DAT_142ae2ea0;
+  systems::ui::resources::ui_state::UiState::clearing_canvas_w_layer_and_sound();
+  ::utils::geometry::circle::Circle2d::new();
+  resources::glade_border::GladeBorder::is_shape_inside();
+  lVar17 = extraout_RAX_00;
+  if (extraout_AL == '\0') {
+    *puVar6 = uVar4;
+    lVar15 = *(longlong *)(lVar9 + 0x30);
+    uVar10 = *(undefined8 *)(lVar9 + 0x40);
+    if (lVar15 == *(longlong *)(lVar9 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    bVar12 = true;
+    *(undefined8 *)(*(longlong *)(lVar9 + 0x28) + lVar15 * 8) = uVar10;
+    *(longlong *)(lVar9 + 0x30) = lVar15 + 1;
+    *(longlong *)(lVar9 + 0x40) = *(longlong *)(lVar9 + 0x40) + 1;
+    if (*(byte *)(extraout_RAX_00 + 0x18) < 2) {
+      cVar13 = '\0';
+      goto LAB_140ae48a1;
+    }
+    if (*(char **)(extraout_RAX_00 + 0x38) != pcVar18) {
+      cVar13 = '\0';
+      bVar14 = *(byte *)(extraout_RAX_00 + 0x18);
+      goto joined_r0x000140ae4741;
+    }
+    if (*(char *)(extraout_RAX_00 + 0x19) != '\x02') {
+      *puVar7 = uVar5;
+      lVar9 = *(longlong *)(lVar11 + 0x30);
+      uVar10 = *(undefined8 *)(lVar11 + 0x40);
+      if (lVar9 == *(longlong *)(lVar11 + 0x20)) {
+        alloc::raw_vec::RawVec::
+        grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                  ();
+      }
+      bVar12 = true;
+      *(undefined8 *)(*(longlong *)(lVar11 + 0x28) + lVar9 * 8) = uVar10;
+      *(longlong *)(lVar11 + 0x30) = lVar9 + 1;
+      *(longlong *)(lVar11 + 0x40) = *(longlong *)(lVar11 + 0x40) + 1;
+      cVar13 = '\0';
+      bVar14 = *(byte *)(extraout_RAX_00 + 0x18);
+      goto joined_r0x000140ae4741;
+    }
+    cVar13 = '\0';
+    bVar14 = *(byte *)(extraout_RAX_00 + 0x18);
+  }
+  else {
+    cVar13 = '\x01';
+LAB_140ae48a1:
+    bVar14 = *(byte *)(extraout_RAX_00 + 0x18);
+  }
+  bVar12 = true;
+joined_r0x000140ae4741:
+  if ((bVar14 < 2) || (*(char **)(lVar17 + 0x38) != pcVar18)) {
+    bVar14 = 0;
+  }
+  else {
+    bVar14 = *(char *)(lVar17 + 0x19) - 2;
+  }
+  bVar16 = 3;
+  if (bVar14 < 3) {
+    bVar16 = bVar14;
+  }
+  if (bVar16 - 1 < 2) {
+    if ((byte)(*in_stack_00000050 - 1U) < 2) {
+      *in_stack_00000050 = '\x02';
+      if (cVar13 == '\0') {
+        return;
+      }
+      if (bVar12) {
+        pbVar8 = (byte *)*in_stack_00000040;
+        ::utils::geometry::circle::Circle2d::new();
+        if ((*pbVar8 & 1) == 0) {
+          fVar19 = 1.5;
+        }
+        else {
+          fVar19 = *(float *)(pbVar8 + 8) + 1.5;
+        }
+        *(undefined4 *)in_stack_00000060[2] = *(undefined4 *)((longlong)in_stack_00000060 + 0x1c);
+        lVar17 = *in_stack_00000060;
+        lVar9 = *(longlong *)(lVar17 + 0x30);
+        uVar10 = *(undefined8 *)(lVar17 + 0x40);
+        if (lVar9 == *(longlong *)(lVar17 + 0x20)) {
+          alloc::raw_vec::RawVec::
+          grow_one<country_core::resources::window::AvailableMonitor,alloc::alloc::Global>();
+        }
+        lVar11 = *(longlong *)(lVar17 + 0x28);
+        lVar15 = lVar9 * 0x40;
+        *(ulonglong *)(lVar11 + 0x30 + lVar15) = (ulonglong)uStack_84 << 0x20;
+        puVar1 = (undefined8 *)(lVar11 + 0x20 + lVar15);
+        *puVar1 = 0;
+        puVar1[1] = uStack_90;
+        puVar2 = (ulonglong *)(lVar11 + 0x10 + lVar15);
+        *puVar2 = (ulonglong)local_a8;
+        puVar2[1] = CONCAT44(uStack_9c,fVar19);
+        *(undefined8 *)(lVar11 + lVar15) = CONCAT44(uStack_b4,0x100);
+        ((undefined8 *)(lVar11 + lVar15))[1] = uStack_b0;
+        *(undefined8 *)(lVar11 + 0x38 + lVar15) = uVar10;
+        *(longlong *)(lVar17 + 0x30) = lVar9 + 1;
+        *(longlong *)(lVar17 + 0x40) = *(longlong *)(lVar17 + 0x40) + 1;
+      }
+    }
+    else {
+      *in_stack_00000050 = cVar13;
+      if (cVar13 == '\0') {
+        return;
+      }
+    }
+  }
+  else {
+    if ((bVar16 == 0) || (1 < (byte)(*in_stack_00000050 - 1U))) {
+      *in_stack_00000050 = '\0';
+      return;
+    }
+    *in_stack_00000050 = '\x03';
+  }
+  **(undefined4 **)(in_R9 + 0x10) = *(undefined4 *)(in_R9 + 0x1c);
+  world_raster::
+  draw_raster<country_core::resources::world_raster_defs::GardenRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::garden::draw_garden::draw_garden::closure_env_0,country_core::systems::garden::draw_garden::draw_garden::closure_env_1,country_core::systems::garden::draw_garden::draw_garden::closure_env_2>
+            ();
+  return;
+}
+
+
+
+// ===== 0x141695e10 record_garden_history | sig: void __cdecl record_garden_history(void) | size: 593 =====
+
+void __cdecl country_core::systems::garden::record_garden_history::record_garden_history(void)
+
+{
+  undefined4 uVar1;
+  undefined1 uVar2;
+  ulonglong *puVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  longlong lVar7;
+  void *_Src;
+  longlong lVar8;
+  size_t _Size;
+  undefined8 uVar9;
+  undefined8 *puVar10;
+  undefined8 *extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  longlong *in_RCX;
+  undefined8 *in_RDX;
+  size_t sVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  ulonglong uVar16;
+  undefined4 uStack_84;
+  
+  puVar3 = (ulonglong *)*in_RDX;
+  lVar4 = in_RDX[1];
+  uVar5 = *puVar3;
+  uVar14 = 0;
+  uVar15 = uVar5 - *(ulonglong *)(lVar4 + 0x18);
+  if (uVar5 < *(ulonglong *)(lVar4 + 0x18)) {
+    uVar15 = uVar14;
+  }
+  uVar13 = uVar5 - *(ulonglong *)(lVar4 + 0x38);
+  if (uVar5 < *(ulonglong *)(lVar4 + 0x38)) {
+    uVar13 = uVar14;
+  }
+  uVar5 = *(ulonglong *)(lVar4 + 0x30);
+  uVar16 = uVar5 - uVar13;
+  if (uVar5 < uVar13) {
+    uVar16 = uVar14;
+  }
+  uVar6 = *(ulonglong *)(lVar4 + 0x10);
+  uVar12 = uVar6 - uVar15;
+  if (uVar6 < uVar15) {
+    uVar12 = uVar14;
+  }
+  uVar14 = *(ulonglong *)(lVar4 + 0x40);
+  *puVar3 = uVar14 - (uVar12 + uVar16);
+  if (uVar6 >= uVar15 && uVar6 - uVar15 != 0 || uVar5 >= uVar13 && uVar5 - uVar13 != 0) {
+    *puVar3 = uVar14;
+    lVar4 = *in_RCX;
+    uVar9 = *(undefined8 *)(lVar4 + 0x1698);
+    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);
+    lVar7 = *(longlong *)(lVar4 + 0x1678);
+    _Src = *(void **)(lVar4 + 0x1680);
+    lVar8 = *(longlong *)(lVar4 + 0x1688);
+    uVar1 = *(undefined4 *)(lVar4 + 0x1690);
+    uVar2 = *(undefined1 *)(lVar4 + 0x1694);
+    *(undefined8 *)(lVar4 + 0x1678) = 0;
+    *(undefined8 *)(lVar4 + 0x1680) = 4;
+    *(undefined8 *)(lVar4 + 0x1688) = 0;
+    *(undefined4 *)(lVar4 + 0x1690) = 0;
+    *(undefined1 *)(lVar4 + 0x1694) = 0;
+    *(undefined4 *)in_RCX[6] = *(undefined4 *)((longlong)in_RCX + 0x3c);
+    _Size = lVar8 * 0xc;
+    sVar11 = _Size;
+    alloc::sync::arcinner_layout_for_value_layout();
+    puVar10 = extraout_RAX;
+    if (sVar11 != 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      puVar10 = extraout_RAX_00;
+    }
+    if (puVar10 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *puVar10 = 1;
+    puVar10[1] = 1;
+    memcpy(puVar10 + 2,_Src,_Size);
+    if (lVar7 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    uStack_84 = CONCAT31(uStack_84._1_3_,uVar2);
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_01 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    extraout_RAX_01[4] = lVar8;
+    extraout_RAX_01[5] = CONCAT44(uStack_84,uVar1);
+    extraout_RAX_01[2] = uVar9;
+    extraout_RAX_01[3] = puVar10;
+    *extraout_RAX_01 = 1;
+    extraout_RAX_01[1] = 1;
+    resources::history::History::add();
+  }
+  return;
+}
+
+
+
+// ===== 0x1409e6280 get_action_origin_glyphs | sig: void __cdecl get_action_origin_glyphs(void) | size: 1164 =====
+
+void __cdecl country_core::resources::steam::SteamInput::get_action_origin_glyphs(void)
+
+{
+  size_t *psVar1;
+  int iVar2;
+  undefined8 uVar3;
+  longlong *plVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 *puVar7;
+  code *pcVar8;
+  uint uVar9;
+  undefined8 uVar10;
+  int *extraout_RAX;
+  ulonglong extraout_RAX_00;
+  ulonglong uVar11;
+  char *_Str;
+  void *extraout_RAX_01;
+  size_t sVar12;
+  ulonglong *in_RCX;
+  byte *pbVar13;
+  ulonglong uVar14;
+  longlong lVar15;
+  byte *in_RDX;
+  int *piVar16;
+  ulonglong uVar17;
+  undefined8 *in_R8;
+  ulonglong in_R9;
+  void *_Dst;
+  byte *pbVar18;
+  bool bVar19;
+  size_t local_118;
+  void *pvStack_110;
+  size_t local_108;
+  undefined7 uStack_a7;
+  ulonglong local_70;
+  
+  if ((*in_RDX & 1) == 0) {
+    *(undefined1 *)(in_RCX + 1) = 0;
+    *in_RCX = 0x8000000000000000;
+    return;
+  }
+  uVar3 = *(undefined8 *)(in_RDX + 8);
+  uVar10 = SteamAPI_SteamInput_v006();
+  plVar4 = (longlong *)*in_R8;
+  LOCK();
+  lVar15 = *plVar4;
+  *plVar4 = *plVar4 + 1;
+  UNLOCK();
+  if (*plVar4 == 0 || SCARRY8(lVar15,1) != *plVar4 < 0) {
+                    // WARNING: Does not return
+    pcVar8 = (code *)invalidInstructionException();
+    (*pcVar8)();
+  }
+  uVar14 = in_R9 & 0xffff;
+  bVar19 = (char)uVar14 == '\0';
+  if ((char)uVar14 == '\x02') {
+    if (*(int *)(in_RDX + 0x100) == 1) {
+      pbVar18 = in_RDX + 0x108;
+      pbVar13 = pbVar18 + *(longlong *)(&DAT_142ac4c58 + (longlong)(char)(uVar14 >> 8) * 8);
+      bVar19 = (short)(uVar14 >> 8) == 9;
+      goto LAB_1409e6370;
+    }
+  }
+  else if (*(int *)(in_RDX + 0x10) == 1) {
+    pbVar18 = in_RDX + 0x18;
+    pbVar13 = in_RDX + 0x38;
+    if ((in_R9 & 1) == 0) {
+      pbVar13 = in_RDX + 0x20;
+    }
+    pbVar13 = pbVar13 + (uVar14 >> 8) * 8;
+LAB_1409e6370:
+    uVar5 = *(undefined8 *)pbVar18;
+    uVar6 = *(undefined8 *)pbVar13;
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (bVar19) {
+      if (extraout_RAX == (int *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      uVar9 = SteamAPI_ISteamInput_GetAnalogActionOrigins(uVar10,uVar3,uVar5,uVar6,extraout_RAX);
+      uVar17 = (ulonglong)uVar9;
+      uVar14 = uVar17;
+      if (uVar9 != 0) goto LAB_1409e63c2;
+LAB_1409e644f:
+      uVar11 = 8;
+      uVar14 = 0;
+    }
+    else {
+      if (extraout_RAX == (int *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      uVar9 = SteamAPI_ISteamInput_GetDigitalActionOrigins(uVar10,uVar3,uVar5,uVar6,extraout_RAX);
+      uVar17 = (ulonglong)uVar9;
+      uVar14 = uVar17;
+      if (uVar9 == 0) goto LAB_1409e644f;
+LAB_1409e63c2:
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      uVar11 = extraout_RAX_00;
+      uVar17 = uVar14;
+      if (extraout_RAX_00 == 0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+    }
+    local_70 = 0;
+    piVar16 = extraout_RAX;
+    while (piVar16 != extraout_RAX + uVar17) {
+      iVar2 = *piVar16;
+      piVar16 = piVar16 + 1;
+      if (iVar2 != 0) {
+        _Str = (char *)SteamAPI_ISteamInput_GetGlyphForActionOrigin_Legacy(uVar10);
+        strlen(_Str);
+        core::ffi::c_str::CStr::to_string_lossy();
+        sVar12 = local_118;
+        _Dst = pvStack_110;
+        if (SBORROW8(0,local_118)) {
+          if ((longlong)local_108 < 0) {
+LAB_1409e66ca:
+                    // WARNING: Subroutine does not return
+            alloc::raw_vec::handle_error();
+          }
+          if (local_108 == 0) {
+            _Dst = (void *)0x1;
+          }
+          else {
+            std::alloc::__default_lib_allocator::__rust_alloc();
+            _Dst = extraout_RAX_01;
+            if (extraout_RAX_01 == (void *)0x0) goto LAB_1409e66ca;
+          }
+          memcpy(_Dst,pvStack_110,local_108);
+          sVar12 = local_108;
+        }
+        std::sys::os_str::wtf8::Buf::as_mut_slice();
+        std::sys::pal::windows::fs::stat();
+        if ((int)local_118 == 2) {
+          if (((uint)pvStack_110 & 3) == 1) {
+            puVar7 = *(undefined8 **)((longlong)pvStack_110 + 7);
+            pcVar8 = (code *)*puVar7;
+            if (pcVar8 != (code *)0x0) {
+              (*pcVar8)(*(undefined8 *)((longlong)pvStack_110 + -1));
+            }
+            if (puVar7[1] != 0) {
+              std::alloc::__default_lib_allocator::__rust_dealloc();
+            }
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          if (sVar12 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+        }
+        else {
+          pvStack_110 = (void *)CONCAT71(uStack_a7,1);
+          if (local_70 == uVar14) {
+            alloc::raw_vec::RawVec::
+            grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                      ();
+          }
+          local_118 = local_108;
+          lVar15 = local_70 * 0x20;
+          *(size_t *)(uVar11 + lVar15) = sVar12;
+          *(void **)(uVar11 + 8 + lVar15) = _Dst;
+          psVar1 = (size_t *)(uVar11 + 0x10 + lVar15);
+          *psVar1 = local_108;
+          psVar1[1] = (size_t)pvStack_110;
+          local_70 = local_70 + 1;
+        }
+      }
+    }
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+    if (local_70 == 0) {
+      *(undefined1 *)(in_RCX + 1) = 2;
+      *in_RCX = 0x8000000000000000;
+      if (uVar14 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+    else {
+      in_RCX[2] = local_70;
+      *in_RCX = uVar14;
+      in_RCX[1] = uVar11;
+    }
+    LOCK();
+    *plVar4 = *plVar4 + -1;
+    lVar15 = *plVar4;
+    UNLOCK();
+    goto joined_r0x0001409e66b7;
+  }
+  *(undefined1 *)(in_RCX + 1) = 1;
+  *in_RCX = 0x8000000000000000;
+  LOCK();
+  *plVar4 = *plVar4 + -1;
+  lVar15 = *plVar4;
+  UNLOCK();
+joined_r0x0001409e66b7:
+  if (lVar15 == 0) {
+    alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>()
+    ;
+  }
+  return;
+}
+
+
+
+// ===== 0x1409e86b0 read_state | sig: void __cdecl read_state(void) | size: 1006 =====
+
+void __cdecl country_core::resources::steam::SteamMainActionSet::read_state(void)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  byte bVar7;
+  byte bVar8;
+  byte bVar9;
+  byte bVar10;
+  byte bVar11;
+  byte bVar12;
+  byte bVar13;
+  byte bVar14;
+  byte bVar15;
+  byte bVar16;
+  byte bVar17;
+  byte bVar18;
+  byte bVar19;
+  byte bVar20;
+  byte bVar21;
+  byte bVar22;
+  byte bVar23;
+  byte bVar24;
+  byte bVar25;
+  byte bVar26;
+  byte bVar27;
+  byte bVar28;
+  byte bVar29;
+  byte bVar30;
+  byte bVar31;
+  undefined8 uVar32;
+  undefined4 *in_RCX;
+  undefined8 *in_R9;
+  undefined1 local_85 [4];
+  undefined4 local_81;
+  undefined4 uStack_7d;
+  longlong *local_78;
+  undefined8 local_70;
+  
+  uVar32 = SteamAPI_SteamInput_v006();
+  local_78 = (longlong *)*in_R9;
+  LOCK();
+  lVar1 = *local_78;
+  *local_78 = *local_78 + 1;
+  UNLOCK();
+  if (*local_78 != 0 && SCARRY8(lVar1,1) == *local_78 < 0) {
+    local_70 = uVar32;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    uVar5 = uStack_7d;
+    uVar3 = local_81;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    uVar6 = uStack_7d;
+    uVar4 = local_81;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    bVar7 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar8 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar9 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar10 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar11 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar12 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar13 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar14 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar15 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar16 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar17 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar18 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar19 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar20 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    uVar32 = local_70;
+    bVar21 = SteamAPI_ISteamInput_GetDigitalActionData(local_70);
+    bVar22 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar23 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar24 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar25 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar26 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar27 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar28 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar29 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar30 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar31 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    *in_RCX = uVar3;
+    in_RCX[1] = uVar5;
+    in_RCX[2] = uVar4;
+    in_RCX[3] = uVar6;
+    *(ulonglong *)(in_RCX + 4) = CONCAT44(uStack_7d,local_81);
+    *(byte *)(in_RCX + 6) = bVar7 & 1;
+    *(byte *)((longlong)in_RCX + 0x19) = bVar8 & 1;
+    *(byte *)((longlong)in_RCX + 0x1a) = bVar9 & 1;
+    *(byte *)((longlong)in_RCX + 0x1b) = bVar10 & 1;
+    *(byte *)(in_RCX + 7) = bVar11 & 1;
+    *(byte *)((longlong)in_RCX + 0x1d) = bVar12 & 1;
+    *(byte *)((longlong)in_RCX + 0x1e) = bVar13 & 1;
+    *(byte *)((longlong)in_RCX + 0x1f) = bVar14 & 1;
+    *(byte *)(in_RCX + 8) = bVar15 & 1;
+    *(byte *)((longlong)in_RCX + 0x21) = bVar16 & 1;
+    *(byte *)((longlong)in_RCX + 0x22) = bVar17 & 1;
+    *(byte *)((longlong)in_RCX + 0x23) = bVar18 & 1;
+    *(byte *)(in_RCX + 9) = bVar19 & 1;
+    *(byte *)((longlong)in_RCX + 0x25) = bVar20 & 1;
+    *(byte *)((longlong)in_RCX + 0x26) = bVar21 & 1;
+    *(byte *)((longlong)in_RCX + 0x27) = bVar22 & 1;
+    *(byte *)(in_RCX + 10) = bVar23 & 1;
+    *(byte *)((longlong)in_RCX + 0x29) = bVar24 & 1;
+    *(byte *)((longlong)in_RCX + 0x2a) = bVar25 & 1;
+    *(byte *)((longlong)in_RCX + 0x2b) = bVar26 & 1;
+    *(byte *)(in_RCX + 0xb) = bVar27 & 1;
+    *(byte *)((longlong)in_RCX + 0x2d) = bVar28 & 1;
+    *(byte *)((longlong)in_RCX + 0x2e) = bVar29 & 1;
+    *(byte *)((longlong)in_RCX + 0x2f) = bVar30 & 1;
+    *(byte *)(in_RCX + 0xc) = bVar31 & 1;
+    LOCK();
+    *local_78 = *local_78 + -1;
+    UNLOCK();
+    if (*local_78 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+
+
+
+// ===== 0x1409e8aa0 is_any_active | sig: void __cdecl is_any_active(void) | size: 328 =====
+
+void __cdecl country_core::resources::steam::SteamMainActionSetState::is_any_active(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x1409e8bf0 read_state | sig: void __cdecl read_state(void) | size: 394 =====
+
+void __cdecl country_core::resources::steam::SteamMenuActionSet::read_state(void)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  byte bVar4;
+  byte bVar5;
+  byte bVar6;
+  byte bVar7;
+  byte bVar8;
+  byte bVar9;
+  byte bVar10;
+  byte bVar11;
+  byte bVar12;
+  undefined8 uVar13;
+  undefined8 *in_RCX;
+  undefined8 *in_R9;
+  undefined1 local_65 [4];
+  undefined8 local_61;
+  
+  uVar13 = SteamAPI_SteamInput_v006();
+  plVar2 = (longlong *)*in_R9;
+  LOCK();
+  lVar1 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {
+    SteamAPI_ISteamInput_GetAnalogActionData(local_65,uVar13);
+    bVar4 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar5 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar6 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar7 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar8 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar9 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar10 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar11 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar12 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    *in_RCX = local_61;
+    *(byte *)(in_RCX + 1) = bVar4 & 1;
+    *(byte *)((longlong)in_RCX + 9) = bVar5 & 1;
+    *(byte *)((longlong)in_RCX + 10) = bVar6 & 1;
+    *(byte *)((longlong)in_RCX + 0xb) = bVar7 & 1;
+    *(byte *)((longlong)in_RCX + 0xc) = bVar8 & 1;
+    *(byte *)((longlong)in_RCX + 0xd) = bVar9 & 1;
+    *(byte *)((longlong)in_RCX + 0xe) = bVar10 & 1;
+    *(byte *)((longlong)in_RCX + 0xf) = bVar11 & 1;
+    *(byte *)(in_RCX + 2) = bVar12 & 1;
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (*plVar2 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+
+
+
+// ===== 0x1409e8d80 from | sig: void __cdecl from(void) | size: 7 =====
+
+void __cdecl country_core::resources::steam::impl$30::from(void)
+
+{
+  return;
+}
+
+

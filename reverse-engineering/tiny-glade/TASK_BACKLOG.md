@@ -18,6 +18,10 @@
 
 接下来按 **真实sequence生产接口适配 → 多队列真实调用/并行录制/完整queue前段 → sparse layout/descriptor writes/完整pipeline → country-core最小pass接线** 推进。模块状态、报告范围和下一步验收目标详见 [RHAPSODY_PROGRESS.md](evidence/render-recovery/RHAPSODY_PROGRESS.md)。xref缺少记录不等于无caller，跳表伪码需限定反汇编核对；缓存缺provider/数据库revision输入默认禁用。墙体、屋顶与历史任务保留在下表，当前优先恢复渲染框架。
 
+2026-10-13 已完成 country-core 渲染域第一批并行重写（业务逻辑→整理→骨架实现）：5 个工作包（pass 声明层/GPU buffer 原语/nani GPU-driven/mesh·资产接线/render_loop 帧 passes）交付合同 + 骨架对齐 Rust，组装为独立 crate `reconstruction/country-core/`（111 .rs），offline cargo check + all-targets clippy 复验通过（0 错误）。边界统一为 `rhapsody_contract`；`nani/systems.rs`（20 个 ECS 系统）依赖全游戏 components/resources 图而暂缓。整合报告 `reconstruction/country-core-render/_integration/INTEGRATION_REPORT.md`；全部 implemented_unverified，GPU/画面验收未开展。
+
+2026-10-13 country-core 全量恢复完成（21 个工作包，WP1–21）：渲染域（WP1–6）+ 内容域（WP7–10 水/地形/屋顶/植被生物）+ 墙/存档/音频/UI 等（WP11–16）+ 回放/draw_shaders/风格化/相机·UI·时间/资源余量（WP17–21）。终局 crate `reconstruction/country-core/` 570 个 .rs，offline cargo check 0 错误、all-targets clippy 0 错误（亲自复验）；覆盖审计 skeleton 539 源路径实质全量覆盖（仅 3 个 mod.rs 路径名差异）。全部 implemented_unverified，typed gap 登记于各 `wp*/contracts/`；整合报告 `_integration/INTEGRATION_FINAL.md`。GPU 运行时/画面验收仍后置。
+
 优先级为基于现有证据的工程判断，不是准确工时预测：P0立即进行；P1核心后续；P2在状态/几何基础后；P3当前后置。每项必须交付游戏自有Rust源码、输入输出/类型证据和必要的原码校验，不能以调用了反编译工具或写了提取脚本代替交付。
 
 | ID | 游戏自有任务 | 优先级 / 收益 | 明确逆向内容 | 直接复用/排除 | 交付与现状 |

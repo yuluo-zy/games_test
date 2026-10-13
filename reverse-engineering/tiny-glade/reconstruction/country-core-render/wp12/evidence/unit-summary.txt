@@ -1,0 +1,1547 @@
+#### adjust_wall_height/adjust_wall_height_impl.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems
+  LINEBLOCK: va=5379989280 size=2235 nlines=34
+  PROC: adjust_wall_height::adjust_wall_height_impl::adjust_wall_height_impl size=2235 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallState::is_premade_shape
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_height
+  CALL: adjust_wall_height::adjust_wall_height_impl::adjust_wall_height_impl::closure$0
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::impl$0::lerp
+#### adjust_wall_height/adjust_wall_ui_mode.rs.enriched
+  LINEBLOCK: va=5378500304 size=1531 nlines=26
+  LINEBLOCK: va=5378501840 size=1713 nlines=35
+  LINEBLOCK: va=5378503568 size=823 nlines=14
+  LINEBLOCK: va=5378504400 size=698 nlines=15
+  PROC: adjust_wall_height::adjust_wall_ui_mode::UiWallHeight::widget size=1531 flags=129 
+  PROC: adjust_wall_height::adjust_wall_ui_mode::UiWallHeight::signifier size=1713 flags=129 
+  PROC: adjust_wall_height::adjust_wall_ui_mode::impl$0::signifier::closure$0 size=823 flags=129 
+  PROC: adjust_wall_height::adjust_wall_ui_mode::impl$0::signifier::closure$1 size=698 flags=129 
+  USE: country_core
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::disable_default_animation
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: adjust_wall_height::adjust_wall_ui_mode::adjust_wall_height_curve
+  CALL: adjust_wall_height::adjust_wall_ui_mode::adjust_wall_height_curve::closure$0
+  CALL: adjust_wall_height::signifier_animation::WallHeightSignifier::new
+#### adjust_wall_height/signifier_animation.rs.enriched
+  SYS sig: bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::adjust_wall_height::signifier_animation::WallHeightSignifier>,ref$<country_core::systems::ui::signifiers::SignifierAnimation>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,enum2$<core::option::Option<ref$<country_core::systems::ui::signifiers::SignifierMarkedForDeletion> > > >,tuple$<> >,be
+  LINEBLOCK: va=5377473360 size=3919 nlines=47
+  LINEBLOCK: va=5377480960 size=110 nlines=2
+  PROC: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation size=3919 flags=129 
+  PROC: adjust_wall_height::signifier_animation::impl$1::register_required_components size=110 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat_w_no_rim
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::ui::resources::ui_state::UiState::current_intersection
+  CALL: country_core::systems::ui::signifiers::SignifierAnimation::t
+  CALL: adjust_wall_height::adjust_wall_ui_mode::adjust_wall_height_curve
+  CALL: adjust_wall_height::adjust_wall_ui_mode::adjust_wall_height_curve::closure$0
+  CALL: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation::closure$0
+  CALL: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation::closure$1
+  CALL: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation::closure$2
+  CALL: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation::closure$3
+  CALL: adjust_wall_height::signifier_animation::ui_adjust_wall_height_signifier_animation::closure$4
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::Curve::crashy_slice
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+#### adjust_wall_height/ui_adjust_wall_height.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::event::writer::EventWriter
+  LINEBLOCK: va=5380439040 size=3588 nlines=32
+  LINEBLOCK: va=5380439040 size=3588 nlines=2
+  LINEBLOCK: va=5380439040 size=3588 nlines=12
+  PROC: adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height size=3588 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::roofs::roof_animation::RoofAnimation::is_being_animated
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat_w_no_rim
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: adjust_wall_height::adjust_wall_ui_mode::UiWallHeight::new
+  CALL: adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height::closure$0
+  CALL: utils::curve::Curve::is_valid
+#### adjust_wall_height/ui_adjust_wall_height_mode.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,country_core::resources::walls::decorator_archivist::De
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>,bevy_ecs::event::reader::EventReader<country_core::resources::events::FinishAdjWallHeightMode>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::TestCube>,ref_mut$<utils::components::transform::Transform> >,tuple$<> >,bevy_ecs::change_detection:
+  LINEBLOCK: va=5380009312 size=1681 nlines=41
+  LINEBLOCK: va=5380011008 size=1502 nlines=30
+  LINEBLOCK: va=5380012512 size=1349 nlines=16
+  LINEBLOCK: va=5380013872 size=422 nlines=13
+  PROC: adjust_wall_height::ui_adjust_wall_height_mode::ui_adjust_wall_height_mode size=1681 flags=128 
+  PROC: adjust_wall_height::ui_adjust_wall_height_mode::get_closest_point_u_to_cursor size=1502 flags=128 
+  PROC: adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height size=1349 flags=128 
+  PROC: adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height size=422 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_history::impl$0::ev_height_changed
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_terrain
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators
+  CALL: country_core::resources::walls::decorator_storage::impl$16::from
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height
+  CALL: adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height::closure$0
+  CALL: adjust_wall_height::ui_adjust_wall_height_mode::init_mode
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpace::from_window_size
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpace::transform_screen_space
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpaceCoord::from_screen_space
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::points_with_u
+  CALL: utils::curve::Curve::segments_with_u
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::curve_u::CurveU::u
+  CALL: utils::impl$0::dot
+  CALL: utils::impl$1::lerp
+  CALL: utils::perspective_lerp
+  CALL: utils::t_of_point_projection_onto_segment
+#### calc_wall_bend.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::calc_wall_bend::WallBendChangedEvent>
+  LINEBLOCK: va=5379761936 size=2466 nlines=59
+  PROC: calc_wall_bend::calc_wall_bend size=2466 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: calc_wall_bend::calc_wall_bend::closure$0
+  CALL: utils::curve::Curve::is_valid
+#### deferred_wall_history.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>
+  LINEBLOCK: va=5378001392 size=753 nlines=25
+  LINEBLOCK: va=5378002160 size=1208 nlines=24
+  LINEBLOCK: va=5378003376 size=2129 nlines=31
+  PROC: deferred_wall_history::PendingWallChanged::try_new size=753 flags=129 
+  PROC: deferred_wall_history::history_record_wall_changed size=1208 flags=129 
+  PROC: deferred_wall_history::history_record_merge_walls size=2129 flags=129 
+  LINEBLOCK: va=5379749536 size=718 nlines=9
+  PROC: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::wall_deleted size=718 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::end_pos
+  CALL: utils::curve::Curve::is_empty
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::curve::curve_u::impl$13::partial_cmp
+  CALL: utils::curve::impl$42::clone
+#### delete_wall.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallPlasters>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallEntiti
+  LINEBLOCK: va=5379899872 size=1095 nlines=16
+  PROC: delete_wall::delete_wall size=1095 flags=129 
+  USE: country_core
+  CALL: delete_wall::delete_wall::closure$0
+#### draw_wall.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,tuple$<bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_d
+  LINEBLOCK: va=5379705760 size=13557 nlines=233
+  PROC: draw_wall::draw_wall size=13557 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::drawing_input_smoother::RawInputSmoothed::is_empty
+  CALL: country_core::resources::drawing_input_smoother::RawInputSmoothed::point_count
+  CALL: country_core::resources::drawing_input_smoother::RawInputSmoothed::points
+  CALL: country_core::resources::in_progress_curve::InProgressCurve::add_weight_to_the_last_point
+  CALL: country_core::resources::in_progress_curve::InProgressCurve::is_raw_input_curve_valid
+  CALL: country_core::resources::in_progress_curve::InProgressCurve::last_raw_input_point
+  CALL: country_core::resources::in_progress_curve::impl$3::clone
+  CALL: country_core::resources::walls::WallId::get_inner
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::in_progress_wall::InProgressWall::new
+  CALL: country_core::resources::walls::inner_wall_state::impl$38::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_freehand_ty
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_curve
+  CALL: snapping::SnappingMode::is_active
+  CALL: snapping::SnappingMode::position_to_snap_to
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::Curve::end_pos
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::curve_u::CurveUBoundless::is_within_01_range
+  CALL: utils::curve::impl$42::clone
+  CALL: utils::rdp::impl$1::clone
+#### eraser/animate_wall_bulldoze.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >
+  LINEBLOCK: va=5379730208 size=27 nlines=3
+  LINEBLOCK: va=5379991520 size=1314 nlines=33
+  PROC: eraser::animate_wall_bulldoze::impl$1::default size=27 flags=128 
+  PROC: eraser::animate_wall_bulldoze::animate_wall_bulldoze size=1314 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallStyle::convert_to_stone_version
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state
+  CALL: eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer::new
+  CALL: eraser::animate_wall_bulldoze::impl$2::contains::closure$0
+  CALL: utils::curve::curve_u::CurveU::new
+#### eraser/archivist.rs.enriched
+  LINEBLOCK: va=5378336480 size=504 nlines=10
+  LINEBLOCK: va=5378336992 size=366 nlines=6
+  LINEBLOCK: va=5378337360 size=1431 nlines=20
+  LINEBLOCK: va=5378338800 size=655 nlines=13
+  LINEBLOCK: va=5378339456 size=941 nlines=18
+  LINEBLOCK: va=5378340400 size=862 nlines=17
+  LINEBLOCK: va=5378341264 size=21197 nlines=52
+  PROC: eraser::archivist::WallEraserArchivist::new size=504 flags=129 
+  PROC: eraser::archivist::WallEraserArchivist::record_rewiring_event size=366 flags=128 
+  PROC: eraser::archivist::WallEraserArchivist::cache_if_original_wall size=1431 flags=129 
+  PROC: eraser::archivist::WallEraserArchivist::shrink_wall size=655 flags=128 
+  PROC: eraser::archivist::WallEraserArchivist::add_split_event size=941 flags=129 
+  PROC: eraser::archivist::WallEraserArchivist::add_fully_erased_event size=862 flags=128 
+  PROC: eraser::archivist::WallEraserArchivist::finish size=21197 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::next_empty
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::with_concurrent
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::impl$6::hash
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallStyle::convert_to_stone_version
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: eraser::archivist::ChildWalls::extend
+  CALL: eraser::archivist::ChildWalls::is_empty
+  CALL: eraser::archivist::ChildWalls::remove
+  CALL: eraser::archivist::WallEraserArchivist::finish_erase_event
+  CALL: eraser::archivist::WallEraserArchivist::finish_shrink_or_split_event
+  CALL: eraser::archivist::WallEraserArchivist::record_erase_original_wall
+  CALL: eraser::archivist::WallHistoryEdits::compile_history_edit
+  CALL: eraser::archivist::impl$17::default
+  CALL: eraser::archivist::impl$1::remove::closure$0
+  CALL: eraser::archivist::impl$3::add_split_event::closure$0
+  CALL: eraser::archivist::impl$3::finish_shrink_or_split_event::closure$1
+  CALL: eraser::archivist::impl$9::eq
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::is_empty
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::curve_u::CurveU::u
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::curve::curve_u::CurveUBoundless::new
+  CALL: utils::curve::impl$42::clone
+#### eraser/ui_bulldozer.rs.enriched
+  SYS sig: bool (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::roofs::roof_shape::Roof>,ref$<country_core::resources::roofs::roof_trigger_volume::RoofTriggerVolume> >,tuple$<> >,tuple$
+  LINEBLOCK: va=5379055984 size=19 nlines=2
+  LINEBLOCK: va=5379056016 size=20909 nlines=23
+  LINEBLOCK: va=5379056016 size=20909 nlines=4
+  LINEBLOCK: va=5379056016 size=20909 nlines=17
+  LINEBLOCK: va=5379056016 size=20909 nlines=2
+  LINEBLOCK: va=5379056016 size=20909 nlines=329
+  LINEBLOCK: va=5379076928 size=607 nlines=13
+  LINEBLOCK: va=5379045920 size=211 nlines=8
+  LINEBLOCK: va=5379077536 size=778 nlines=14
+  PROC: core::ops::function::FnOnce::call_once<eraser::ui_bulldozer::wall_eraser_bulldoze::closure_env$9,tuple$<ref$<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,ref$<country_core::asset_libraries::shader_library::AssetShaderLibrary>,ref_mut$<bevy_ecs::system::commands::Commands> > > size=211 flags=129 
+  PROC: eraser::ui_bulldozer::wall_eraser_bulldoze_condition size=19 flags=128 
+  PROC: eraser::ui_bulldozer::wall_eraser_bulldoze size=20909 flags=129 
+  PROC: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$1 size=607 flags=129 
+  PROC: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$9 size=211 flags=129 
+  PROC: eraser::ui_bulldozer::hammer_cursor_icon size=778 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::components::impl$8::eq
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::stairs::stairs_state::StairGraphEdge::new
+  CALL: country_core::resources::stairs::stairs_state::StairsState::disconnect_edge
+  CALL: country_core::resources::stairs::stairs_state::StairsState::graph
+  CALL: country_core::resources::stairs::stairs_state::impl$16::eq
+  CALL: country_core::resources::stairs::stairs_state::impl$5::disconnect_edge::closure$0
+  CALL: country_core::resources::tree_storage::TreeStorage::get
+  CALL: country_core::resources::tree_storage::TreeStorage::iter
+  CALL: country_core::resources::walls::WallId::get_inner
+  CALL: country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms::try_position
+  CALL: country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms::try_transform
+  CALL: country_core::resources::walls::decorator::DecoratorExtraInfo::try_as_stair
+  CALL: country_core::resources::walls::decorator::impl$29::eq
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_stairs
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_terrain
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::decorator_info
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_stair_decorators
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorageAddr::as_wall
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::collision::world::RaycastWorld::raycast_simple
+  CALL: country_core::systems::ui::resources::ui_state::UiState::clicked
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::clicked
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::sounds
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::parent_to_widget
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::position
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer::contains
+  CALL: eraser::animate_wall_bulldoze::AnimateWallBulldozeCmd::new
+  CALL: eraser::animate_wall_bulldoze::impl$2::contains::closure$0
+  CALL: eraser::ui_bulldozer::can_reconnect_stairs_if_midpoint_deleted
+  CALL: eraser::ui_bulldozer::handle_decorators
+  CALL: eraser::ui_bulldozer::handle_decorators::closure$0
+  CALL: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$0
+  CALL: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$3
+  CALL: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$4
+  CALL: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$7
+  CALL: eraser::ui_bulldozer::wall_eraser_bulldoze::closure$9
+  CALL: valid_enclosure::impl$3::clone
+  CALL: country_core::utils::debug_viz::DebugLine::color
+  CALL: country_core::utils::debug_viz::DebugSphere::radius
+  CALL: utils::components::transform::Transform::compute_affine
+  CALL: utils::curve::Curve::bounding_box_2d
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::curve::impl$42::clone
+  CALL: utils::geometry::aabb::Aabb2::from_points
+#### eraser/wall_eraser.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::c
+  LINEBLOCK: va=5380033200 size=20675 nlines=290
+  PROC: eraser::wall_eraser::wall_eraser size=20675 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat_w_no_rim
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::walls::decorator::ClutterVersion::latest
+  CALL: country_core::resources::walls::decorator_storage::impl$19::default
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::StructureType::is_fence
+  CALL: country_core::resources::walls::inner_wall_state::WallState::height
+  CALL: country_core::resources::walls::inner_wall_state::WallState::is_premade_shape
+  CALL: country_core::resources::walls::inner_wall_state::WallStyle::convert_to_stone_version
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::new_wall
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_curve
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::wall_ids
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::ui::resources::ui_state::UiState::clearing_canvas
+  CALL: country_core::systems::ui::resources::ui_state::UiState::clearing_canvas_w_layer
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::UiSounds::empty
+  CALL: eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer::contains
+  CALL: eraser::animate_wall_bulldoze::impl$2::contains::closure$0
+  CALL: eraser::archivist::WallEraserArchivist::affected_walls
+  CALL: eraser::archivist::WallEraserArchivist::has_anything_been_affected
+  CALL: eraser::wall_eraser::adjust_wall_height_if_erased_flat_roof_w_no_rims
+  CALL: eraser::wall_eraser::adjust_wall_height_if_erased_flat_roof_w_no_rims::closure$0
+  CALL: eraser::wall_eraser::determine_freehand_height_ty
+  CALL: eraser::wall_eraser::determine_freehand_height_ty::closure$0
+  CALL: eraser::wall_eraser::wall_eraser::closure$0
+  CALL: eraser::wall_eraser::wall_eraser::closure$1
+  CALL: eraser::wall_eraser::wall_eraser::closure$3
+  CALL: eraser::wall_eraser::wall_height_based_on_length
+  CALL: valid_enclosure::impl$3::clone
+  CALL: country_core::utils::child_wall::ChildWall::new
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_u_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::Curve::points_with_u
+  CALL: utils::curve::Curve::segments_with_u
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::lerp
+  CALL: utils::curve::curve_u::CurveU::max
+  CALL: utils::curve::curve_u::CurveU::u
+  CALL: utils::curve::curve_u::impl$12::eq
+  CALL: utils::curve::curve_u::impl$13::partial_cmp
+  CALL: utils::curve::impl$42::clone
+  CALL: utils::impl$0::lerp
+#### finish_wall.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::event::reader::EventReader<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Re
+  LINEBLOCK: va=5379719328 size=8114 nlines=122
+  LINEBLOCK: va=5379727456 size=705 nlines=25
+  PROC: finish_wall::finish_wall size=8114 flags=129 
+  PROC: finish_wall::finish_wall::closure$0 size=705 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallState::is_premade_shape
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_wall_state::impl$38::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::mark_as_non_enclosed
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::impl$42::clone
+#### merge_walls.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources
+  LINEBLOCK: va=5378775328 size=6006 nlines=109
+  PROC: merge_walls::merge_walls size=6006 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::WallId::get_inner
+  CALL: country_core::resources::walls::decorator::ClutterVersion::latest
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::new_wall
+  CALL: utils::curve::Curve::crashy_new_from_points
+#### set_wall_style.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::set_wall_style::SetWallStyleCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::set_wall_style::SetFreehandHeightTypeCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::set_wall_style::SetPlasterPeelAmountCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerW
+  LINEBLOCK: va=5378810512 size=3587 nlines=55
+  PROC: set_wall_style::set_wall_style size=3587 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_arch_type
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_freehand_ty
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_plaster_peel
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_style
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: set_wall_style::set_wall_style::closure$0
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::impl$1::lerp
+#### shapes/calc_shape_height.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::rectangle::ui_create_rectangle::PreviewRectangle>,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_create_circle::PreviewCircle>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeig
+  LINEBLOCK: va=5380014304 size=827 nlines=44
+  PROC: shapes::calc_shape_height::calc_shape_height size=827 flags=129 
+  USE: utils
+#### shapes/circle/create_circle.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::shapes::circle::create_circle::CreateCircleCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::write
+  LINEBLOCK: va=5378663776 size=4275 nlines=52
+  PROC: shapes::circle::create_circle::create_circle size=4275 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::roofs::roof_shape::RoofShapeParams::from_wall_shape
+  CALL: country_core::resources::roofs::roof_shape::roof_height_01_from_wall_shape
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_elevation
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_style
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: shapes::circle::create_circle::create_circle::closure$0
+  CALL: shapes::circle::create_circle::create_circle::closure$0::closure$0
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::impl$42::clone
+#### shapes/circle/signifiers/edit_arrow.rs.enriched
+  SYS sig: bevy_ecs::system::query::Query<tuple$<ref$<country_core::systems::wall::shapes::circle::signifiers::edit_arrow::EditCircleSignifier>,ref_mut$<utils::components::transform::Transform> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifi
+  LINEBLOCK: va=5380460832 size=1321 nlines=42
+  LINEBLOCK: va=5380462160 size=735 nlines=17
+  LINEBLOCK: va=5380463520 size=1776 nlines=2
+  LINEBLOCK: va=5368718192 size=3 nlines=1
+  PROC: country_core::resources::walls::impl$1::default size=3 flags=128 
+  PROC: shapes::circle::signifiers::edit_arrow::signifier_edit_circle_arrow size=1321 flags=129 
+  PROC: shapes::circle::signifiers::edit_arrow::signifier_edit_circle_arrow::closure$0 size=735 flags=129 
+  PROC: shapes::circle::signifiers::edit_arrow::impl$0::register_required_components size=1776 flags=129 
+  PROC: shapes::circle::signifiers::edit_arrow::impl$0::clone_behavior size=3 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+#### shapes/circle/signifiers/edit_line.rs.enriched
+  SYS sig: bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::shapes::circle::signifiers::edit_line::SignifierEditCircleShapeLine>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref$<country_core::systems::ui::signifiers::SignifierAnimation> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::circle::ui_edit_circle::Animat
+  LINEBLOCK: va=5379607104 size=2760 nlines=40
+  LINEBLOCK: va=5379609872 size=898 nlines=13
+  LINEBLOCK: va=5379615888 size=1776 nlines=2
+  PROC: shapes::circle::signifiers::edit_line::signifier_edit_circle_line size=2760 flags=129 
+  PROC: shapes::circle::signifiers::edit_line::signifier_edit_circle_line::closure$0 size=898 flags=129 
+  PROC: shapes::circle::signifiers::edit_line::impl$0::register_required_components size=1776 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::systems::ui::signifiers::SignifierAnimation::t
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::disable_default_animation
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: utils::curve::curve_u::CurveU::new
+#### shapes/circle/ui_create_circle.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>,bevy_ecs::change_detection::Res<coun
+  LINEBLOCK: va=5392154320 size=3695 nlines=102
+  LINEBLOCK: va=5392158016 size=561 nlines=12
+  LINEBLOCK: va=5392158592 size=1248 nlines=20
+  LINEBLOCK: va=5392151344 size=85 nlines=3
+  PROC: core::ops::function::FnOnce::call_once<shapes::circle::ui_create_circle::circle_signifier::closure$0::closure_env$0,tuple$<> > size=85 flags=128 
+  PROC: shapes::circle::ui_create_circle::ui_create_circle size=3695 flags=128 
+  PROC: shapes::circle::ui_create_circle::circle_signifier size=561 flags=129 
+  PROC: shapes::circle::ui_create_circle::circle_signifier::closure$0 size=1248 flags=129 
+  PROC: shapes::circle::ui_create_circle::circle_signifier::closure$0::closure$0 size=85 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::mouse_terrain_raycast::CameraCursorRay::intersect_with_xz_plane
+  CALL: country_core::systems::audio::building_audio::get_building_size_01
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: shapes::circle::ui_create_circle::circle_signifier::closure$0::closure$0
+#### shapes/circle/ui_edit_circle.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::WallEntities>,bevy_ecs::system::query::Query<
+  LINEBLOCK: va=5392159840 size=12691 nlines=179
+  LINEBLOCK: va=5392172544 size=639 nlines=16
+  LINEBLOCK: va=5392173184 size=675 nlines=13
+  LINEBLOCK: va=5392173872 size=744 nlines=15
+  LINEBLOCK: va=5378815520 size=87 nlines=2
+  PROC: core::ops::function::FnOnce::call_once<shapes::circle::ui_edit_circle::show_full_circle_signifier::closure$0::closure_env$0,tuple$<> > size=87 flags=128 
+  PROC: shapes::circle::ui_edit_circle::ui_edit_circle size=12691 flags=129 
+  PROC: shapes::circle::ui_edit_circle::ui_edit_circle::closure$2 size=639 flags=129 
+  PROC: shapes::circle::ui_edit_circle::show_full_circle_signifier size=675 flags=129 
+  PROC: shapes::circle::ui_edit_circle::show_full_circle_signifier::closure$0 size=744 flags=129 
+  PROC: shapes::circle::ui_edit_circle::show_full_circle_signifier::closure$0::closure$0 size=87 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::decorator::DecoratorDst::as_wall_mut
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_terrain
+  CALL: country_core::resources::walls::decorator_storage::DecoratorMaybeMut::get_mut
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators
+  CALL: country_core::resources::walls::decorator_storage::Decorators::iter_maybe_mut
+  CALL: country_core::resources::walls::decorator_storage::impl$3::next
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_curve
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::get_wall_shape
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_circle
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::try_get_wall_shape
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: country_core::resources::walls::wall_trigger_volume::WallTriggerVolume::is_valid
+  CALL: country_core::resources::walls::wall_trigger_volume::WallTriggerVolumeParams::edit_shape_default
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: shapes::circle::ui_edit_circle::finish_circle_edit
+  CALL: shapes::circle::ui_edit_circle::get_trigger_vol
+  CALL: shapes::circle::ui_edit_circle::show_full_circle_signifier::closure$0::closure$0
+  CALL: shapes::circle::ui_edit_circle::ui_edit_circle::closure$0
+  CALL: shapes::circle::ui_edit_circle::ui_edit_circle::closure$1
+  CALL: shapes::circle::ui_edit_circle::update_circle_radius
+  CALL: valid_enclosure::ShapeParameters::as_circle
+  CALL: country_core::utils::debug_viz::DebugLine::line_width
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpace::from_window_size
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpace::transform_screen_space
+  CALL: country_core::utils::project_cursor_onto_ray::ProportionalScreenSpaceCoord::from_screen_space
+  CALL: utils::curve::Curve::is_valid
+#### shapes/circle/ui_rotate_circle.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,tuple$<country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_
+  LINEBLOCK: va=5378853136 size=6847 nlines=154
+  LINEBLOCK: va=5378859984 size=690 nlines=18
+  PROC: shapes::circle::ui_rotate_circle::ui_rotate_circle size=6847 flags=129 
+  PROC: shapes::circle::ui_rotate_circle::ui_rotate_circle::closure$0 size=690 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::mouse_terrain_raycast::CameraCursorRay::intersect_with_xz_plane
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_curve
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_circle
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::new
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::position
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: country_core::utils::debug_viz::DebugLine::new
+  CALL: country_core::utils::world_space_to_screen_space
+  CALL: utils::circular_f32::impl$6::eq
+  CALL: utils::curve::Curve::is_valid
+#### shapes/mod.rs.enriched
+  LINEBLOCK: va=5378432848 size=1736 nlines=27
+  PROC: shapes::impl$0::add_wall_shape_ux size=1736 flags=129 
+  USE: country_core
+  CALL: shapes::calc_shape_height::impl$1::default
+  CALL: shapes::circle::ui_create_circle::PreviewCircle::new
+  CALL: shapes::rectangle::ui_create_rectangle::PreviewRectangle::new
+  CALL: shapes::rectangle::ui_create_rectangle::impl$3::default
+  CALL: shapes::shape_placement::impl$8::default
+#### shapes/rectangle/create_rectangle.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::shapes::rectangle::CreateRectangleCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::writer::EventW
+  LINEBLOCK: va=5379798928 size=4322 nlines=54
+  LINEBLOCK: va=5379803264 size=1102 nlines=26
+  PROC: shapes::rectangle::create_rectangle::create_rectangle size=4322 flags=129 
+  PROC: shapes::rectangle::create_rectangle::get_building_and_roof_colors size=1102 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::roofs::roof_shape::RoofShapeParams::from_wall_shape
+  CALL: country_core::resources::roofs::roof_shape::ridge_length_01_from_rectangle_ratio
+  CALL: country_core::resources::roofs::roof_shape::roof_height_01_from_wall_shape
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_elevation
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_style
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: shapes::rectangle::create_rectangle::create_rectangle::closure$0
+  CALL: shapes::rectangle::create_rectangle::create_rectangle::closure$0::closure$0
+  CALL: shapes::rectangle::create_rectangle::get_building_and_roof_colors::closure$0
+  CALL: shapes::rectangle::create_rectangle::get_building_and_roof_colors::closure$1
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::impl$42::clone
+  CALL: utils::smoothstep
+#### shapes/rectangle/edit_rectangle.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::shapes::rectangle::EditRectangleCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::building_audio::Play
+  LINEBLOCK: va=5378668064 size=834 nlines=21
+  PROC: shapes::rectangle::edit_rectangle::edit_rectangle size=834 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_curve
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::update_wall_state_enclosure
+#### shapes/rectangle/finish_edit_rectangle.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::wall::shapes::rectangle::WipRectangle> >,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detect
+  LINEBLOCK: va=5390092896 size=2014 nlines=36
+  PROC: shapes::rectangle::finish_edit_rectangle::finish_edit_rectangle size=2014 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build
+  CALL: country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence
+  CALL: country_core::resources::history::wall_compound_edit::WallHistoryCompoundEdit::new
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: shapes::rectangle::impl$1::clone
+  CALL: utils::geometry::rectangle::impl$6::clone
+#### shapes/rectangle/mod.rs.enriched
+  USE: country_core
+  USE: utils
+  CALL: shapes::rectangle::get_rectangle_orientation::closure$0
+  CALL: utils::geometry::rectangle::impl$6::clone
+#### shapes/rectangle/signifier_edit_dims_line.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_dims::UiEditRectangleActiveWidgetResource>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::systems::wall::shapes::rectangle::signifier_edit_dims_line::EditRectangleLinePreview>,ref$<cou
+  LINEBLOCK: va=5378005520 size=3525 nlines=35
+  LINEBLOCK: va=5378009056 size=1157 nlines=18
+  LINEBLOCK: va=5378018944 size=1776 nlines=2
+  PROC: shapes::rectangle::signifier_edit_dims_line::signifier_edit_dims size=3525 flags=129 
+  PROC: shapes::rectangle::signifier_edit_dims_line::signifier_edit_dims::closure$0 size=1157 flags=129 
+  PROC: shapes::rectangle::signifier_edit_dims_line::impl$0::register_required_components size=1776 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::systems::ui::signifiers::SignifierAnimation::t
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::position
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::impl$42::clone
+#### shapes/rectangle/ui_create_rectangle.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,tuple$<bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::shape_placement::ShapePlacement>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::shapes::rectangle::ui_create_rectangle::PreviewRect
+  LINEBLOCK: va=5391111184 size=4168 nlines=116
+  LINEBLOCK: va=5391115360 size=577 nlines=12
+  LINEBLOCK: va=5391115952 size=1264 nlines=20
+  LINEBLOCK: va=5391096336 size=213 nlines=6
+  PROC: core::ops::function::FnOnce::call_once<shapes::rectangle::ui_create_rectangle::rectangle_signifier::closure$0::closure_env$0,tuple$<> > size=213 flags=129 
+  PROC: shapes::rectangle::ui_create_rectangle::ui_create_rectangle size=4168 flags=128 
+  PROC: shapes::rectangle::ui_create_rectangle::rectangle_signifier size=577 flags=129 
+  PROC: shapes::rectangle::ui_create_rectangle::rectangle_signifier::closure$0 size=1264 flags=129 
+  PROC: shapes::rectangle::ui_create_rectangle::rectangle_signifier::closure$0::closure$0 size=213 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::mouse_terrain_raycast::CameraCursorRay::intersect_with_xz_plane
+  CALL: country_core::systems::audio::building_audio::get_building_size_01
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: shapes::rectangle::get_rectangle_orientation
+  CALL: shapes::rectangle::get_rectangle_orientation::closure$0
+  CALL: shapes::rectangle::ui_create_rectangle::rectangle_dims_from_cursor_pos
+  CALL: shapes::rectangle::ui_create_rectangle::rectangle_signifier::closure$0::closure$0
+  CALL: shapes::rectangle::ui_create_rectangle::ui_create_rectangle::closure$1
+#### shapes/rectangle/ui_edit_rectangle_dims.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>,tuple$<bevy_ecs::ch
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::wall::shapes::rectangle::WipRectangle> >,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::shapes::rectangle::EditRectan
+  LINEBLOCK: va=5380072016 size=2977 nlines=51
+  LINEBLOCK: va=5380075008 size=4605 nlines=68
+  PROC: shapes::rectangle::ui_edit_rectangle_dims::ui_edit_rectangle_dims size=2977 flags=129 
+  PROC: shapes::rectangle::ui_edit_rectangle_dims::do_ui_edit_rectangle_dims size=4605 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_any
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_rectangle
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_widget_name_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: shapes::rectangle::ui_edit_rectangle_dims::get_distance_to_edge
+  CALL: shapes::rectangle::ui_edit_rectangle_dims::impl$2::clone
+  CALL: shapes::rectangle::ui_modes::edit_dims::UiRectangleDimsEdit::new
+  CALL: shapes::rectangle::ui_modes::edit_dims::impl$0::to_widget_name_hash
+  CALL: valid_enclosure::ShapeParameters::as_rectangle
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::impl$0::dot
+  CALL: utils::impl$0::lerp
+  CALL: utils::project_point_onto_line
+  CALL: utils::t_of_point_projection_onto_segment
+#### shapes/rectangle/ui_edit_rectangle_orientation.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detectio
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::wall::shapes::rectangle::WipRectangle> >,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::shapes::rectangle::EditRectangleCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::shapes::rectangle::FinishEditRecta
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::stairs_walls::StairsPillarProposals>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::ResMut<country_core::systems::collision::world::RaycastWorld>,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_collider::StairColliderRegistr
+  LINEBLOCK: va=5380079616 size=3035 nlines=72
+  LINEBLOCK: va=5380082656 size=4905 nlines=82
+  LINEBLOCK: va=5380087568 size=450 nlines=11
+  LINEBLOCK: va=5380088032 size=1302 nlines=8
+  PROC: shapes::rectangle::ui_edit_rectangle_orientation::ui_edit_rectangle_rotate size=3035 flags=129 
+  PROC: shapes::rectangle::ui_edit_rectangle_orientation::do_ui_edit_rectangle_rotate size=4905 flags=129 
+  PROC: shapes::rectangle::ui_edit_rectangle_orientation::skewed_box_trigger_vol size=450 flags=128 
+  PROC: shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume size=1302 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::mouse_terrain_raycast::CameraCursorRay::intersect_with_xz_plane
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_rectangle
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::camera_rig::MainCamera::eye_position
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_widget_name_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: shapes::rectangle::ui_modes::edit_orientation::UiRectangleOrientationEdit::new
+  CALL: shapes::rectangle::ui_modes::edit_orientation::impl$0::to_widget_name_hash
+  CALL: shapes::utils::shape_signifier_lerp::ShapeSignifierLerp::lerp_radius
+  CALL: shapes::utils::shape_signifier_lerp::ShapeVal::get_radius
+  CALL: utils::components::transform::Transform::compute_affine
+  CALL: utils::curve::Curve::is_valid
+#### shapes/rectangle/ui_modes/edit_dims.rs.enriched
+  LINEBLOCK: va=5391117216 size=2676 nlines=54
+  LINEBLOCK: va=5391119904 size=911 nlines=18
+  LINEBLOCK: va=5391120816 size=690 nlines=18
+  LINEBLOCK: va=5391121520 size=2528 nlines=8
+  PROC: shapes::rectangle::ui_modes::edit_dims::UiRectangleDimsEdit::signifier size=2676 flags=129 
+  PROC: shapes::rectangle::ui_modes::edit_dims::impl$1::signifier::closure$0 size=911 flags=129 
+  PROC: shapes::rectangle::ui_modes::edit_dims::impl$1::signifier::closure$1 size=690 flags=129 
+  PROC: shapes::rectangle::ui_modes::edit_dims::UiRectangleDimsEdit::widget size=2528 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::wall_trigger_volume::WallTriggerVolume::is_valid
+  CALL: country_core::resources::walls::wall_trigger_volume::WallTriggerVolumeParams::u_range
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::position
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: shapes::rectangle::ui_modes::edit_dims::UiRectangleDimsEdit::trigger_volume
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::impl$12::sample_at_coord
+#### shapes/rectangle/ui_modes/edit_orientation.rs.enriched
+  LINEBLOCK: va=5377348592 size=1561 nlines=41
+  LINEBLOCK: va=5377350160 size=1335 nlines=31
+  LINEBLOCK: va=5377351504 size=690 nlines=18
+  PROC: shapes::rectangle::ui_modes::edit_orientation::UiRectangleOrientationEdit::widget size=1561 flags=128 
+  PROC: shapes::rectangle::ui_modes::edit_orientation::UiRectangleOrientationEdit::signifier size=1335 flags=129 
+  PROC: shapes::rectangle::ui_modes::edit_orientation::impl$1::signifier::closure$0 size=690 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::position
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::impl$12::sample_at_coord
+  CALL: utils::impl$1::lerp
+#### shapes/shape_placement.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::
+  LINEBLOCK: va=5378668912 size=5171 nlines=32
+  LINEBLOCK: va=5378668912 size=5171 nlines=92
+  LINEBLOCK: va=5378674096 size=1495 nlines=40
+  PROC: shapes::shape_placement::shape_placement_params size=5171 flags=129 
+  PROC: shapes::shape_placement::snap_to_roof_ridge size=1495 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::roofs::roof_ridge::RoofRidgeDims::calc
+  CALL: country_core::resources::roofs::roof_ridge::RoofRidgeDims::from
+  CALL: country_core::resources::roofs::roof_shape::Roof::height
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat
+  CALL: country_core::resources::roofs::roof_shape::Roof::pivot_3d
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::roofs::roof_shape::RoofShapeParams::height_ws
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::get_wall_shape
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_rectangle
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::try_get_wall_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: country_core::systems::collision::world::Rapier::legacy_raycast
+  CALL: country_core::systems::collision::world::RaycastWorld::legacy_raycast
+  CALL: country_core::systems::collision::world::impl$11::from
+  CALL: shapes::shape_placement::ShapePlacement::new_unsnapped
+  CALL: shapes::shape_placement::closest_segment_to_snap_to
+  CALL: shapes::shape_placement::closest_segment_to_snap_to::closure$2
+  CALL: shapes::shape_placement::closest_segment_to_snap_to::closure$3
+  CALL: shapes::shape_placement::shape_placement_params::closure$0
+  CALL: shapes::shape_placement::shape_placement_params::closure$2
+  CALL: country_core::utils::debug_viz::DebugLine::dashed
+  CALL: country_core::utils::debug_viz::DebugSphere::radius
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_u_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::lerp
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::distance_segment_point
+  CALL: utils::impl$1::dot
+  CALL: utils::impl$1::length
+  CALL: utils::impl$1::lerp
+  CALL: utils::project_point_onto_segment
+  CALL: utils::smoothstep
+  CALL: utils::t_of_point_projection_onto_segment
+#### shapes/shape_placement_signifiers.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::wall::shapes::shape_placement::ShapePlacement>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::ch
+  LINEBLOCK: va=5378010224 size=2628 nlines=68
+  LINEBLOCK: va=5378012864 size=823 nlines=14
+  LINEBLOCK: va=5378013696 size=607 nlines=13
+  LINEBLOCK: va=5378014304 size=2670 nlines=62
+  PROC: shapes::shape_placement_signifiers::shape_placement_signifiers size=2628 flags=129 
+  PROC: shapes::shape_placement_signifiers::shape_placement_signifiers::closure$1 size=823 flags=129 
+  PROC: shapes::shape_placement_signifiers::shape_placement_signifiers::closure$2 size=607 flags=129 
+  PROC: shapes::shape_placement_signifiers::preview_snapping_line size=2670 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_enclosed
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::scale
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: shapes::shape_placement_signifiers::preview_snapping_line::closure$0
+  CALL: valid_enclosure::ShapeParameters::expand
+  CALL: utils::comparative_space::impl$3::project_unbounded
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::get_tangent_at_coord
+  CALL: utils::curve::Curve::get_unnormalized_tangent_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::Curve::try_slice
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::curve::curve_u::CurveUBoundless::new
+  CALL: utils::curve::curve_u_circular::CurveUCircular::new
+  CALL: utils::curve::curve_u_circular::CurveUCircular::wrap_around
+  CALL: utils::impl$0::normalize
+  CALL: utils::impl$1::lerp
+#### shapes/utils/shape_signifier_lerp.rs.enriched
+  LINEBLOCK: va=5379125264 size=510 nlines=26
+  PROC: shapes::utils::shape_signifier_lerp::ShapeVal::interpolate size=510 flags=128 
+  USE: country_core
+  CALL: shapes::utils::shape_signifier_lerp::ShapeVal::get_radius
+#### snapping/mod.rs.enriched
+  LINEBLOCK: va=5380105744 size=11 nlines=3
+  PROC: snapping::SnappingMode::new size=11 flags=128 
+#### snapping/snapping_audio.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>
+  LINEBLOCK: va=5379630208 size=223 nlines=17
+  PROC: snapping::snapping_audio::snapping_audio size=223 flags=128 
+#### snapping/snapping_init.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>
+  LINEBLOCK: va=5380089344 size=680 nlines=21
+  PROC: snapping::snapping_init::snapping_init size=680 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: snapping::snapping_init::snapping_init::closure$0
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::Curve::segments
+  CALL: utils::distance_line_point
+  CALL: utils::impl$0::dot
+  CALL: utils::impl$0::length
+  CALL: utils::impl$0::lerp
+  CALL: utils::project_point_onto_line
+  CALL: utils::t_of_point_projection_onto_segment
+#### snapping/snapping_maintain.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSnapping>
+  SYS sig: bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToSegmentPreview>,ref_mut$<utils::components::transform::Transform> >,bevy_ecs::query::filter::Without<country_core::components::SnappingToEndPreview> >,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToEndPre
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>
+  LINEBLOCK: va=5379630432 size=230 nlines=13
+  LINEBLOCK: va=5379630672 size=1698 nlines=27
+  LINEBLOCK: va=5379632384 size=117 nlines=4
+  PROC: snapping::snapping_maintain::check_for_disable_snapping size=230 flags=128 
+  PROC: snapping::snapping_maintain::snapping_signifiers size=1698 flags=128 
+  PROC: snapping::snapping_maintain::snapping_maintain size=117 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: snapping::impl$3::clone
+  CALL: country_core::utils::debug_viz::DebugLine::line_width
+  CALL: country_core::utils::debug_viz::DebugSphere::radius
+  CALL: utils::curve::Curve::is_valid
+#### snapping/snapping_to_ends.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>
+  LINEBLOCK: va=5379632512 size=2137 nlines=16
+  PROC: snapping::snapping_to_ends::snapping_to_ends size=2137 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::in_progress_curve::InProgressCurve::first_raw_input_point
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_enclosed
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: snapping::snapping_to_ends::find_closest_end_to_snap_to
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::start_pos
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::impl$1::lerp
+#### snapping/snapping_to_segments.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::ch
+  LINEBLOCK: va=5379634656 size=1127 nlines=27
+  PROC: snapping::snapping_to_segments::snapping_to_segments size=1127 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::in_progress_curve::InProgressCurve::raw_input_curve_length_ws
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: snapping::snapping_to_segments::closest_segment_to_snap_to
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::Curve::get_curve_segment_from_u
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::get_tangent_at_u
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::impl$0::normalize
+  CALL: utils::impl$1::lerp
+#### snapping/telegraph_walls_are_merged.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::systems::wall::snapping::telegraph_walls_are_merged::LineAcrossWallSignifier>,ref$<country_core::as
+  LINEBLOCK: va=5377535344 size=5713 nlines=62
+  LINEBLOCK: va=5377544624 size=110 nlines=2
+  PROC: snapping::telegraph_walls_are_merged::telegraph_walls_are_merged size=5713 flags=129 
+  PROC: snapping::telegraph_walls_are_merged::impl$0::register_required_components size=110 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: snapping::telegraph_walls_are_merged::telegraph_walls_are_merged::closure$0
+  CALL: utils::curve::Curve::crashy_new_from_points
+  CALL: utils::curve::Curve::crashy_slice
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::curve_u::CurveU::new
+#### structure_outline.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::structure_outline::OutlineWallCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::structure_outline::OutlineStairsCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs
+  LINEBLOCK: va=5378514880 size=23774 nlines=290
+  LINEBLOCK: va=5378538656 size=2474 nlines=53
+  LINEBLOCK: va=5378541136 size=1125 nlines=19
+  LINEBLOCK: va=5378544048 size=1504 nlines=21
+  LINEBLOCK: va=5378545552 size=1232 nlines=15
+  LINEBLOCK: va=5378546784 size=1488 nlines=21
+  LINEBLOCK: va=5378548272 size=1376 nlines=18
+  LINEBLOCK: va=5378549648 size=1762 nlines=22
+  PROC: structure_outline::structure_outline size=23774 flags=129 
+  PROC: structure_outline::structure_outline::closure$1 size=2474 flags=129 
+  PROC: structure_outline::structure_outline::closure$2 size=1125 flags=128 
+  PROC: structure_outline::structure_outline::closure$12 size=1504 flags=129 
+  PROC: structure_outline::structure_outline::closure$13 size=1232 flags=129 
+  PROC: structure_outline::structure_outline::closure$14 size=1488 flags=129 
+  PROC: structure_outline::structure_outline::closure$15 size=1376 flags=129 
+  PROC: structure_outline::structure_outline::closure$19 size=1762 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::gui::EscMenuState::is_closed
+  CALL: country_core::resources::gui::EscMenuState::is_open
+  CALL: country_core::resources::roofs::roof_shape::Roof::height
+  CALL: country_core::resources::roofs::roof_shape::Roof::is_flat_w_no_rim
+  CALL: country_core::resources::roofs::roof_shape::Roof::pivot_3d
+  CALL: country_core::resources::roofs::roof_shape::Roof::ty
+  CALL: country_core::resources::roofs::roof_shape::RoofShapeParams::height_ws
+  CALL: country_core::resources::roofs::roof_visual_shape::RoofBoundsDims::as_rectangle
+  CALL: country_core::resources::stairs::stairs_state::impl$16::eq
+  CALL: country_core::resources::walls::decorator::impl$29::eq
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::roof_entity
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: structure_outline::structure_outline::closure$0
+  CALL: structure_outline::structure_outline::closure$5
+  CALL: structure_outline::structure_outline::closure$7
+  CALL: structure_outline::structure_outline::closure$9
+  CALL: valid_enclosure::ShapeParameters::as_curve2
+  CALL: valid_enclosure::ShapeParameters::center
+  CALL: valid_enclosure::ShapeParameters::expand
+  CALL: valid_enclosure::ShapeParameters::perimeter
+  CALL: country_core::utils::debug_viz::DebugLine::dashed
+  CALL: country_core::utils::world_space_to_screen_space
+  CALL: utils::curve::Curve::get_curve_segment_from_u
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::get_tangent_at_u
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::Curve::point_count
+  CALL: utils::curve::Curve::points_with_u
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::impl$0::lerp
+  CALL: utils::impl$1::lerp
+  CALL: utils::impl$1::normalize
+  CALL: utils::smoothstep
+#### ui_continue_wall.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<country_core::resources::window::CursorMovedScreenSpace>
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls> >,bevy_ecs::change_detection::ResMut<
+  LINEBLOCK: va=5379906480 size=375 nlines=17
+  LINEBLOCK: va=5379906864 size=7834 nlines=123
+  LINEBLOCK: va=5379914704 size=623 nlines=16
+  PROC: ui_continue_wall::suppress_continue_wall size=375 flags=128 
+  PROC: ui_continue_wall::ui_continue_wall size=7834 flags=129 
+  PROC: ui_continue_wall::ui_continue_wall::closure$1 size=623 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::glade_border::GladeBorder::is_pos_inside
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_terrain
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::in_progress_wall::InProgressWall::new
+  CALL: country_core::resources::walls::inner_wall_state::StructureType::is_fence
+  CALL: country_core::resources::walls::inner_wall_state::impl$25::clone
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_enclosed
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: ui_continue_wall::WallContinueState::display_signifier
+  CALL: ui_continue_wall::WallContinueState::finish
+  CALL: ui_continue_wall::ui_continue_wall::closure$0
+  CALL: valid_enclosure::ShapeParameters::contains_point
+  CALL: valid_enclosure::impl$3::clone
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::impl$42::clone
+#### ui_draw_wall.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_draw_wall::WallDrawState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWrite
+  LINEBLOCK: va=5379915328 size=3041 nlines=87
+  LINEBLOCK: va=5379918384 size=1248 nlines=18
+  PROC: ui_draw_wall::ui_draw_wall size=3041 flags=129 
+  PROC: ui_draw_wall::ui_draw_wall::closure$0 size=1248 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position
+  CALL: country_core::resources::glade_border::GladeBorder::is_pos_inside
+  CALL: country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_terrain
+  CALL: country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators
+  CALL: country_core::systems::ui::resources::ui_state::UiState::clearing_canvas
+  CALL: country_core::systems::ui::resources::ui_state::UiState::clearing_canvas_w_layer
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiState::is_active
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::UiSounds::empty
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: ui_draw_wall::WallDrawState::finish
+  CALL: valid_enclosure::ShapeParameters::contains_point
+#### upload_instanced_wall_ssbo.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::system::query::Query<ref_mut$<country_core::geometry::instanced_wall::InstancedWall>,tuple$<> >
+  LINEBLOCK: va=5377278320 size=594 nlines=17
+  PROC: upload_instanced_wall_ssbo::gpu_flush_brick_buffers size=594 flags=128 
+  USE: country_core
+  CALL: country_core::render::impl$0::deref
+#### valid_enclosure/mod.rs.enriched
+  PROC: valid_enclosure::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > > size=585 flags=128 
+  PROC: valid_enclosure::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > > size=518 flags=128 
+  LINEBLOCK: va=5379750768 size=156 nlines=4
+  LINEBLOCK: va=5379750928 size=102 nlines=6
+  PROC: valid_enclosure::impl$4::fmt size=156 flags=128 
+  PROC: valid_enclosure::impl$6::fmt size=102 flags=128 
+  LINEBLOCK: va=5387580064 size=15 nlines=2
+  LINEBLOCK: va=5387580080 size=55 nlines=5
+  LINEBLOCK: va=5387580144 size=61 nlines=5
+  LINEBLOCK: va=5380057424 size=21 nlines=3
+  LINEBLOCK: va=5387580208 size=720 nlines=28
+  LINEBLOCK: va=5387580928 size=21 nlines=3
+  LINEBLOCK: va=5387580960 size=21 nlines=3
+  LINEBLOCK: va=5387580992 size=21 nlines=3
+  LINEBLOCK: va=5387581024 size=21 nlines=3
+  LINEBLOCK: va=5387581056 size=105 nlines=8
+  LINEBLOCK: va=5387581168 size=77 nlines=6
+  LINEBLOCK: va=5387581248 size=77 nlines=6
+  PROC: valid_enclosure::ShapeParameters::center size=15 flags=128 
+  PROC: valid_enclosure::ShapeParameters::as_curve2 size=55 flags=128 
+  PROC: valid_enclosure::ShapeParameters::as_curve3 size=61 flags=128 
+  PROC: valid_enclosure::ShapeParameters::contains_point size=21 flags=128 
+  PROC: valid_enclosure::ShapeParameters::contains_shape size=720 flags=128 
+  PROC: valid_enclosure::ShapeParameters::get_normal_at_u size=21 flags=128 
+  PROC: valid_enclosure::ShapeParameters::get_pos_at_u size=21 flags=128 
+  PROC: valid_enclosure::ShapeParameters::perimeter size=21 flags=128 
+  PROC: valid_enclosure::ShapeParameters::get_closest_u_from_pos size=21 flags=128 
+  PROC: valid_enclosure::ShapeParameters::expand size=105 flags=128 
+  PROC: valid_enclosure::ShapeParameters::as_circle size=77 flags=128 
+  PROC: valid_enclosure::ShapeParameters::as_rectangle size=77 flags=128 
+  LINEBLOCK: va=5392741952 size=604 nlines=11
+  LINEBLOCK: va=5392742560 size=585 nlines=4
+  LINEBLOCK: va=5392743152 size=882 nlines=2
+  LINEBLOCK: va=5392744048 size=38 nlines=2
+  LINEBLOCK: va=5392744096 size=197 nlines=4
+  LINEBLOCK: va=5392744304 size=455 nlines=4
+  LINEBLOCK: va=5392744768 size=162 nlines=5
+  LINEBLOCK: va=5392744944 size=231 nlines=4
+  LINEBLOCK: va=5392745184 size=823 nlines=7
+  LINEBLOCK: va=5392746016 size=1026 nlines=3
+  LINEBLOCK: va=5392747056 size=866 nlines=3
+  LINEBLOCK: va=5392747936 size=328 nlines=6
+  LINEBLOCK: va=5392748272 size=295 nlines=4
+  LINEBLOCK: va=5392748576 size=239 nlines=6
+  PROC: valid_enclosure::_::impl$0::serialize<serde_json::value::ser::Serializer> size=604 flags=129 
+  PROC: valid_enclosure::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > > size=585 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize<enum2$<serde_json::value::Value> > size=882 flags=129 
+  PROC: valid_enclosure::_::impl$0::deserialize<serde::__private::de::missing_field::MissingFieldDeserializer<serde_json::error::Error> > size=38 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$0::visit_str<serde_json::error::Error> size=197 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$0::visit_bytes<serde_json::error::Error> size=455 flags=129 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum<serde::__private::de::content::EnumRefDeserializer<serde_json::error::Error> > size=162 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$0::visit_bytes<serde_json::error::Error> size=231 flags=129 
+  PROC: valid_enclosure::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > > size=823 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize<enum2$<serde_json::value::Value> > size=1026 flags=129 
+  PROC: valid_enclosure::_::impl$0::deserialize<serde::__private::de::content::ContentRefDeserializer<serde_json::error::Error> > size=866 flags=129 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum<serde::__private::de::content::EnumRefDeserializer<serde_json::error::Error> > size=328 flags=128 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$0::visit_bytes<serde_json::error::Error> size=295 flags=129 
+  PROC: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum<serde::__private::de::content::EnumRefDeserializer<serde_json::error::Error> > size=239 flags=128 
+  PROC: valid_enclosure::impl$4::fmt size=156 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: valid_enclosure::_::impl$0::deserialize
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$0::visit_bytes
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$0::visit_str
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$0::visit_u64
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$1::deserialize
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum::impl$0::visit_bytes
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum::impl$0::visit_str
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum::impl$0::visit_u64
+  CALL: valid_enclosure::_::impl$0::deserialize::impl$2::visit_enum::impl$1::deserialize
+  CALL: valid_enclosure::impl$0::from
+  CALL: valid_enclosure::impl$2::from
+  CALL: utils::circular_f32::impl$6::eq
+  CALL: utils::geometry::circle::_::impl$0::deserialize
+  CALL: utils::geometry::circle::_::impl$0::serialize
+  CALL: utils::geometry::circle::impl$6::eq
+  CALL: utils::geometry::circle::is_default
+  CALL: utils::geometry::rectangle::_::impl$0::deserialize
+  CALL: utils::geometry::rectangle::impl$10::eq
+#### wall_highlight.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::walls::WallHighlight>,bevy_ecs::change_detection::ResMut<country_core::resources::editing_highlight::EditingHighlight>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_highlight::HighlightWallCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::WallEntities>
+  LINEBLOCK: va=5378675600 size=572 nlines=12
+  PROC: wall_highlight::wall_highlight size=572 flags=128 
+  USE: country_core
+  CALL: country_core::resources::walls::HighlightColor::to_rgb
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::WallEntities::wall_entity
+#### wall_splitter.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems
+  LINEBLOCK: va=5379673120 size=11988 nlines=183
+  LINEBLOCK: va=5379685120 size=719 nlines=15
+  LINEBLOCK: va=5379685840 size=607 nlines=18
+  PROC: wall_splitter::wall_splitter size=11988 flags=129 
+  PROC: wall_splitter::wall_splitter::closure$0 size=719 flags=129 
+  PROC: wall_splitter::wall_splitter::closure$1 size=607 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::WallId::get_inner
+  CALL: country_core::resources::walls::decorator::ClutterVersion::latest
+  CALL: country_core::resources::walls::decorator_storage::impl$19::default
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallState::is_premade_shape
+  CALL: country_core::resources::walls::inner_wall_state::WallStyle::convert_to_stone_version
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::new_wall
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::max_y
+  CALL: country_core::resources::walls::public_wall_state::impl$0::max_y::closure$0
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: country_core::systems::ui::resources::ui_state::UiState::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiState::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged
+  CALL: country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting
+  CALL: country_core::systems::ui::resources::ui_state::impl$13::eq
+  CALL: country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::new
+  CALL: country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation
+  CALL: country_core::systems::ui::signifiers::SignifierFactory::new
+  CALL: country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write
+  CALL: country_core::utils::child_wall::ChildWall::new
+  CALL: utils::curve::Curve::get_curve_segment_from_u
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::get_pos_at_u
+  CALL: utils::curve::Curve::get_tangent_at_u
+  CALL: utils::curve::Curve::get_u_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::Curve::point_count
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::curve_u::CurveU::lerp
+  CALL: utils::curve::curve_u::CurveU::max
+  CALL: utils::curve::curve_u::CurveU::min
+  CALL: utils::curve::curve_u::CurveU::new
+  CALL: utils::curve::curve_u::CurveUBoundless::clamp
+  CALL: utils::curve::curve_u::impl$13::partial_cmp
+  CALL: utils::curve::impl$12::sample_at_coord
+  CALL: utils::impl$1::lerp
+  CALL: utils::impl$1::normalize
+#### wall_state/debug_viz_threshold_curve.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>
+  LINEBLOCK: va=5379764416 size=1129 nlines=26
+  PROC: wall_state::debug_viz_threshold_curve::debug_viz_threshold_curve size=1129 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: country_core::utils::debug_viz::DebugSphere::line_width
+  CALL: country_core::utils::debug_viz::DebugSphere::new
+  CALL: utils::curve::Curve::is_valid
+#### wall_state/publish_public_wall_state.rs.enriched
+  SYS sig: bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core:
+  LINEBLOCK: va=5379765552 size=18515 nlines=91
+  PROC: wall_state::publish_public_wall_state::publish_public_wall_state size=18515 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::asset_libraries::ssbo_library::AssetSsboLibrary::get
+  CALL: country_core::asset_libraries::ssbo_library::AssetSsboLibrary::get_dyn
+  CALL: country_core::render::sparse_instance_buffer::SparseInstanceBuffer::allocate
+  CALL: country_core::resources::walls::impl$6::hash
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::inner_wall_state::WallStyle::is_halftimbered
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::contains
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get
+  CALL: country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped
+  CALL: country_core::resources::walls::material_stats::impl$1::default
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer::contains
+  CALL: eraser::animate_wall_bulldoze::impl$2::contains::closure$0
+  CALL: valid_enclosure::impl$3::clone
+  CALL: wall_state::publish_public_wall_state::gather_lazy_update_sources
+  CALL: wall_state::publish_public_wall_state::gather_lazy_update_sources::closure$0::closure$0
+  CALL: wall_state::publish_public_wall_state::process
+  CALL: wall_state::publish_public_wall_state::process::closure$1
+  CALL: wall_state::publish_public_wall_state::process::closure$2
+  CALL: wall_state::publish_public_wall_state::process::closure$3
+  CALL: wall_state::publish_public_wall_state::process::closure$4
+  CALL: wall_state::wall_spatial_hash::GridCell::walls
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::get_cell_at_index
+  CALL: country_core::utils::debug_viz::DebugLine::line_width
+  CALL: country_core::utils::debug_viz::DebugLine::new
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::length_ws
+  CALL: utils::curve::impl$42::clone
+#### wall_state/spatial_hash_debug.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::read_mouse_depth_value::MouseDepthValue>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>
+  LINEBLOCK: va=5378064608 size=3178 nlines=82
+  PROC: wall_state::spatial_hash_debug::spatial_hash_debug size=3178 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::cell_index_to_grid_coord
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::cell_size
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::dims
+  CALL: country_core::utils::debug_viz::DebugLine::color
+  CALL: country_core::utils::debug_viz::DebugLine::new
+  CALL: country_core::utils::debug_viz::DebugRectangle2d::color
+  CALL: country_core::utils::debug_viz::DebugRectangle2d::new
+#### wall_state/spatial_hash_update.rs.enriched
+  SYS sig: bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::wall_
+  LINEBLOCK: va=5379784080 size=4187 nlines=56
+  PROC: wall_state::spatial_hash_update::spatial_hash_update size=4187 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: utils::curve::Curve::get_approx_coord_from_pos
+  CALL: utils::curve::Curve::get_pos_at_coord
+  CALL: utils::curve::Curve::is_valid
+  CALL: utils::curve::Curve::point_count
+  CALL: utils::curve::Curve::point_u
+  CALL: utils::curve::CurveInternalCoord::i0
+  CALL: utils::curve::CurveInternalCoord::i1
+  CALL: utils::curve::CurveInternalCoord::new
+  CALL: utils::curve::impl$12::sample_at_coord
+  CALL: utils::impl$1::lerp
+#### wall_state/wall_roof_hashmap.rs.enriched
+  SYS sig: bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallEntities>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<country_core::resources::roofs::roof_shape::Roof>,enum2$
+  LINEBLOCK: va=5379804368 size=5476 nlines=61
+  PROC: wall_state::wall_roof_hashmap::wall_roof_hashmap size=5476 flags=129 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: country_core::resources::walls::public_wall_state::PublicWallState::is_premade_shape
+  CALL: country_core::resources::walls::public_walls::PublicWalls::get
+  CALL: country_core::resources::walls::public_walls::PublicWalls::wall_ids
+  CALL: wall_state::wall_roof_hashmap::wall_roof_hashmap::closure$0
+  CALL: utils::curve::Curve::is_valid
+#### wall_state/wall_spatial_hash.rs.enriched
+  LINEBLOCK: va=5379125776 size=1617 nlines=14
+  LINEBLOCK: va=5379127408 size=1805 nlines=19
+  LINEBLOCK: va=5379129216 size=2404 nlines=24
+  LINEBLOCK: va=5379131632 size=1409 nlines=9
+  LINEBLOCK: va=5379133056 size=1109 nlines=9
+  LINEBLOCK: va=5379134176 size=1192 nlines=25
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_rectangle2d<wall_state::wall_spatial_hash::impl$4::query_with_rectangle2d::closure_env$0> size=1617 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_segment<wall_state::wall_spatial_hash::impl$4::add_segment::closure_env$0> size=1805 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_segment<wall_state::wall_spatial_hash::impl$4::query_with_segment::closure_env$0> size=2404 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_circle<wall_state::wall_spatial_hash::impl$4::query_with_circle::closure_env$0> size=1409 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_circle<wall_state::spatial_hash_debug::spatial_hash_debug::closure_env$2> size=1109 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_aabb<wall_state::wall_spatial_hash::impl$4::query_with_aabb_clamped::closure_env$0> size=1192 flags=128 
+  LINEBLOCK: va=5379870944 size=98 nlines=6
+  LINEBLOCK: va=5379871056 size=517 nlines=8
+  LINEBLOCK: va=5379871584 size=973 nlines=17
+  LINEBLOCK: va=5379872560 size=273 nlines=7
+  LINEBLOCK: va=5379872848 size=229 nlines=9
+  LINEBLOCK: va=5379873088 size=194 nlines=9
+  LINEBLOCK: va=5379873296 size=394 nlines=11
+  LINEBLOCK: va=5379873696 size=194 nlines=9
+  LINEBLOCK: va=5379873904 size=345 nlines=17
+  LINEBLOCK: va=5379874256 size=1869 nlines=27
+  LINEBLOCK: va=5379876128 size=166 nlines=9
+  LINEBLOCK: va=5379876304 size=12 nlines=3
+  LINEBLOCK: va=5379876320 size=29 nlines=3
+  LINEBLOCK: va=5379876352 size=19 nlines=4
+  PROC: wall_state::wall_spatial_hash::WallSegment::terrain_height_closest_to_ws_pos size=98 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::new size=517 flags=129 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::remove_wall_id size=973 flags=129 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query size=273 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_segment size=229 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle size=194 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_aabb_clamped size=394 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_rectangle2d size=194 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::cell_center size=345 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::add_segment size=1869 flags=129 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::world_space_to_grid_coord_unclamped size=166 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::grid_coord_to_cell_index size=12 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::cell_size size=29 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws size=19 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<forest::manage_tree_prefabs::manage_tree_prefabs::closure_env$0> size=837 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::convert_preplaced_trees::convert_preplaced_trees::closure_env$0> size=837 flags=128 
+  PROC: wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::hide_trees::hide_trees::closure_env$0> size=1079 flags=128 
+  USE: country_core
+  USE: utils
+  CALL: country_core::resources::walls::impl$9::eq
+  CALL: wall_state::spatial_hash_debug::spatial_hash_debug::closure$2
+  CALL: wall_state::wall_spatial_hash::GridCell::add
+  CALL: wall_state::wall_spatial_hash::GridCell::new
+  CALL: wall_state::wall_spatial_hash::GridCell::remove_segments
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::cell_center
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::cell_index_to_grid_coord
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::cell_size
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::dims
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_aabb
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::get_cells_from_circle
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::grid_coord_to_cell_index
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::world_space_to_grid_coord
+  CALL: wall_state::wall_spatial_hash::WallSpatialHash::world_space_to_grid_coord_unclamped
+  CALL: wall_state::wall_spatial_hash::impl$2::remove_segments::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$2::remove_segments::closure$1
+  CALL: wall_state::wall_spatial_hash::impl$4::add_segment::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::get_cells_from_circle::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::get_cells_from_rectangle2d::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::get_cells_from_segment::closure$1
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_aabb_clamped::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_aabb_clamped::closure$2
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_circle::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_circle::closure$2
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_circle_callback::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_rectangle2d::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_rectangle2d::closure$2
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_segment::closure$0
+  CALL: wall_state::wall_spatial_hash::impl$4::query_with_segment::closure$2
+  CALL: wall_state::wall_spatial_hash::impl$5::clone
+  CALL: country_core::utils::is_inside_map_bounds
+  CALL: forest::manage_tree_prefabs::manage_tree_prefabs::closure$0
+  CALL: system_tree::convert_preplaced_trees::convert_preplaced_trees::closure$0
+  CALL: system_tree::hide_trees::hide_trees::closure$0
+  CALL: utils::distance_segment_point
+  CALL: utils::impl$0::dot
+  CALL: utils::impl$0::length
+  CALL: utils::impl$0::lerp
+  CALL: utils::project_point_onto_segment
+  CALL: utils::t_of_point_projection_onto_segment

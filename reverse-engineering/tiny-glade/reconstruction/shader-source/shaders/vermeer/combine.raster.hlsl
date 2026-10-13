@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/vermeer/combine.raster.hlsl | evidence: _vermeer_combine.raster.hlsl_{b903,f0ad}.bin — fullscreen vs + ps: reveal sweep over progress (lerp(1,alpha,smoothstep(.28,.49,progress)), color*min(2,reveal/alpha)) + vignette (exp(remap*dist^4)) in the non-photomode branch; photomode passes output_tex through; caps Shader+RuntimeDescriptorArray | status: O (reveal + vignette from inlined SPIR-V); I (ps input signature)
 //
 // Vermeer thumbnail chain: final combine. In non-photomode the accumulated
@@ -55,3 +58,22 @@ float4 ps_main(float4 position : SV_Position) : SV_Target0
 
     return out_color;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _vermeer_combine.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

@@ -1,0 +1,55 @@
+ADDR: 0x140a8a5d0
+SIG: void __cdecl cleanup_timelapse(void)
+
+
+void __cdecl country_core::systems::timelapse_replay::cleanup_timelapse(void)
+
+{
+  ulonglong *puVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  
+  puVar1 = (ulonglong *)*in_RDX;
+  lVar2 = in_RDX[1];
+  uVar3 = *puVar1;
+  uVar7 = 0;
+  uVar8 = uVar3 - *(ulonglong *)(lVar2 + 0x18);
+  if (uVar3 < *(ulonglong *)(lVar2 + 0x18)) {
+    uVar8 = uVar7;
+  }
+  uVar6 = uVar3 - *(ulonglong *)(lVar2 + 0x38);
+  if (uVar3 < *(ulonglong *)(lVar2 + 0x38)) {
+    uVar6 = uVar7;
+  }
+  uVar3 = *(ulonglong *)(lVar2 + 0x30);
+  uVar9 = uVar3 - uVar6;
+  if (uVar3 < uVar6) {
+    uVar9 = uVar7;
+  }
+  uVar4 = *(ulonglong *)(lVar2 + 0x10);
+  uVar5 = uVar4 - uVar8;
+  if (uVar4 < uVar8) {
+    uVar5 = uVar7;
+  }
+  uVar7 = *(ulonglong *)(lVar2 + 0x40);
+  *puVar1 = uVar7 - (uVar5 + uVar9);
+  if (uVar4 >= uVar8 && uVar4 - uVar8 != 0 || uVar3 >= uVar6 && uVar3 - uVar6 != 0) {
+    *puVar1 = uVar7;
+    if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      ::log::__private_api::impl$2::log();
+    }
+    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);
+    *(undefined1 *)*in_RCX = 2;
+  }
+  return;
+}
+

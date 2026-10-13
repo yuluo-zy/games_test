@@ -1,0 +1,22 @@
+// addr=0x140948800 name=as_analog
+// signature=void __cdecl as_analog(void)
+
+
+void __cdecl country_core::input::action_set::ActionSetAction::as_analog(void)
+
+{
+  undefined4 uVar1;
+  undefined4 *in_RCX;
+  char *in_RDX;
+  char in_R8B;
+  
+  uVar1 = 0;
+  if ((*in_RDX == '\0') && (in_RDX[1] == in_R8B)) {
+    *(undefined8 *)(in_RCX + 1) = *(undefined8 *)(in_RDX + 4);
+    uVar1 = 1;
+  }
+  *in_RCX = uVar1;
+  return;
+}
+
+

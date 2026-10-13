@@ -1,3 +1,6 @@
+// PATCHED: modules ty.cs.hlsl_cs_main_0.bin:cs_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)))
 // ==RECONSTRUCTED== shaders/roof_tiles_gravity.cs.hlsl | F-V | bin: _roof_tiles_gravity.cs.hlsl_cs_main_0.bin | entry cs:cs_main | LocalSize 64,1,1
 // Roof tile gravity/placement simulation. Each thread updates one RoofShingle record
 // (in RWStructuredBuffer<RoofShingle> __alias_instanced_data at set0/u13): it computes a
@@ -155,3 +158,212 @@ void cs_main(uint3 gl_GlobalInvocationID : SV_DispatchThreadID)
     out_s.is_main_roof_body = s.is_main_roof_body;
     __alias_instanced_data[index] = out_s;
 }
+
+#endif
+
+#if defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)
+// lifted from _roof_tiles_gravity.cs.hlsl_cs_main_0.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct FrameConstants
+{
+    float4 sun_color;
+    float4 sky_low_color;
+    float4 sky_high_color;
+    float4 fog_tint_thickness;
+    float4 fake_light_color;
+    float4 fake_light_dir;
+    float4 fake_light2_color;
+    float4 fake_light2_dir;
+    uint frame_index;
+    float delta_time_seconds;
+    float ev_mult;
+    uint glade_theme_id;
+    uint2 inner_rendering_resolution;
+    uint game_time_sec;
+    float game_time_frac;
+    float3 editing_highlight_color;
+    float time_of_day;
+    float3 dir_to_sun;
+    uint camera_idx;
+    float3 dir_to_moon;
+    uint render_overrides;
+    float global_mip_bias;
+    uint highlighted_transient_stair_edge_id;
+    uint pad1;
+    uint pad2;
+    float4 debug_tweakers;
+    ViewConstants view_constants[5];
+};
+
+struct RoofShingle
+{
+    float3 base_position;
+    float current_height;
+    uint2 clipping_plane_;
+    uint2 scale_t;
+    uint2 rotation_quat_;
+    uint roof_id;
+    uint velocity_rotation;
+    float animation_t;
+    int seed;
+    int is_circle;
+    int is_main_roof_body;
+};
+
+ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
+RWByteAddressBuffer __alias_instanced_data : register(u13, space0);
+struct PushConstants
+{
+    uint first_instance;
+    uint instance_count;
+    float wall_height_delta;
+    float roof_pivot_y;
+    float animation_t;
+};
+[[vk::push_constant]]
+PushConstants push_constants;
+
+
+static uint3 gl_GlobalInvocationID;
+struct SPIRV_Cross_Input
+{
+    uint3 gl_GlobalInvocationID : SV_DispatchThreadID;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void comp_main()
+{
+    do
+    {
+        if (gl_GlobalInvocationID.x >= push_constants.instance_count)
+        {
+            break;
+        }
+        uint _97 = push_constants.first_instance + gl_GlobalInvocationID.x;
+        RoofShingle _105;
+        _105.base_position = __alias_instanced_data.Load<float3>(_97 * 64 + 0);
+        _105.current_height = __alias_instanced_data.Load<float>(_97 * 64 + 12);
+        _105.clipping_plane_ = __alias_instanced_data.Load<uint2>(_97 * 64 + 16);
+        _105.scale_t = __alias_instanced_data.Load<uint2>(_97 * 64 + 24);
+        _105.rotation_quat_ = __alias_instanced_data.Load<uint2>(_97 * 64 + 32);
+        _105.roof_id = __alias_instanced_data.Load<uint>(_97 * 64 + 40);
+        _105.velocity_rotation = __alias_instanced_data.Load<uint>(_97 * 64 + 44);
+        _105.animation_t = __alias_instanced_data.Load<float>(_97 * 64 + 48);
+        _105.seed = __alias_instanced_data.Load<int>(_97 * 64 + 52);
+        _105.is_circle = __alias_instanced_data.Load<int>(_97 * 64 + 56);
+        _105.is_main_roof_body = __alias_instanced_data.Load<int>(_97 * 64 + 60);
+        bool _121;
+        if (push_constants.wall_height_delta < 0.0f)
+        {
+            _121 = (push_constants.wall_height_delta / frame_constants_storage_buffer.Load<float>(132)) > (-120.0f);
+        }
+        else
+        {
+            _121 = false;
+        }
+        bool _126;
+        if (_121)
+        {
+            _126 = _105.current_height <= (push_constants.roof_pivot_y - push_constants.wall_height_delta);
+        }
+        else
+        {
+            _126 = false;
+        }
+        float _135 = floor(spvUnpackHalf2x16((_105.scale_t.y >> 16u) & 65535u).x * 50.0f) * 0.0199999995529651641845703125f;
+        uint _138 = _105.velocity_rotation & 65535u;
+        float _142 = spvUnpackHalf2x16(_138).x + (((-98.09999847412109375f) * lerp(1.0f, 0.4000000059604644775390625f, _135)) * frame_constants_storage_buffer.Load<float>(132));
+        float _144 = (_126 ? push_constants.roof_pivot_y : _105.current_height) + (_142 * frame_constants_storage_buffer.Load<float>(132));
+        float _153;
+        float _154;
+        if (_144 <= push_constants.roof_pivot_y)
+        {
+            _153 = min(15.0f, max((push_constants.wall_height_delta / frame_constants_storage_buffer.Load<float>(132)) * 0.16599999368190765380859375f, _142));
+            _154 = max(_144, push_constants.roof_pivot_y);
+        }
+        else
+        {
+            _153 = _142;
+            _154 = _144;
+        }
+        uint _155 = uint(_105.seed);
+        uint _157 = _155 + (_155 << 10u);
+        uint _159 = _157 ^ (_157 >> 6u);
+        uint _161 = _159 + (_159 << 3u);
+        uint _163 = _161 ^ (_161 >> 11u);
+        float _189;
+        if (_135 > 0.89999997615814208984375f)
+        {
+            _189 = push_constants.roof_pivot_y;
+        }
+        else
+        {
+            _189 = lerp(_154, push_constants.roof_pivot_y, 1.0f - exp((-frame_constants_storage_buffer.Load<float>(132)) * ((5.0f * lerp(0.0f, 2.0f, 1.0f - (((_135 * _135) * _135) * _135))) * ((((asfloat(((_163 + (_163 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _135) > 0.300000011920928955078125f) ? 1.0f : 1000.0f))));
+        }
+        float _191 = abs(push_constants.roof_pivot_y - _189);
+        float _201;
+        if (_153 > 0.0f)
+        {
+            _201 = (1.0f - exp(((-_191) * _191) * _191)) * (-1.57000005245208740234375f);
+        }
+        else
+        {
+            _201 = 0.0f;
+        }
+        RoofShingle _212 = { _105.base_position, _189, _105.clipping_plane_, _105.scale_t, _105.rotation_quat_, _105.roof_id, ((_138 | (spvPackHalf2x16(float2(_201, 0.0f)) << 16u)) & 4294901760u) | spvPackHalf2x16(float2(_153, 0.0f)), push_constants.animation_t, _105.seed, _105.is_circle, _105.is_main_roof_body };
+        __alias_instanced_data.Store<float3>(_97 * 64 + 0, _212.base_position);
+        __alias_instanced_data.Store<float>(_97 * 64 + 12, _212.current_height);
+        __alias_instanced_data.Store<uint2>(_97 * 64 + 16, _212.clipping_plane_);
+        __alias_instanced_data.Store<uint2>(_97 * 64 + 24, _212.scale_t);
+        __alias_instanced_data.Store<uint2>(_97 * 64 + 32, _212.rotation_quat_);
+        __alias_instanced_data.Store<uint>(_97 * 64 + 40, _212.roof_id);
+        __alias_instanced_data.Store<uint>(_97 * 64 + 44, _212.velocity_rotation);
+        __alias_instanced_data.Store<float>(_97 * 64 + 48, _212.animation_t);
+        __alias_instanced_data.Store<int>(_97 * 64 + 52, _212.seed);
+        __alias_instanced_data.Store<int>(_97 * 64 + 56, _212.is_circle);
+        __alias_instanced_data.Store<int>(_97 * 64 + 60, _212.is_main_roof_body);
+        break;
+    } while(false);
+}
+
+[numthreads(64, 1, 1)]
+void cs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_GlobalInvocationID = stage_input.gl_GlobalInvocationID;
+    comp_main();
+}
+#pragma dxc diagnostic pop
+#endif

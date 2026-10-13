@@ -1,0 +1,1855 @@
+// ===== 0x1408fe5c0 from | sig: void __cdecl from(void) | size: 21 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::impl$1::from(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x1408fe5e0 get_or_allocate | sig: void __cdecl get_or_allocate(void) | size: 459 =====
+
+void __cdecl
+country_core::resources::stairs::stairs_state::TransientStairEdgeIdAllocator::get_or_allocate(void)
+
+{
+  char *pcVar1;
+  undefined8 uVar2;
+  uint uVar3;
+  uint uVar4;
+  uint uVar5;
+  ulonglong extraout_RAX;
+  undefined8 *in_RCX;
+  undefined1 (*pauVar6) [16];
+  int in_EDX;
+  ulonglong uVar7;
+  ushort uVar8;
+  int in_R8D;
+  ulonglong uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  ulonglong uVar12;
+  byte bVar13;
+  ulonglong uVar14;
+  byte bVar15;
+  char cVar16;
+  char cVar18;
+  char cVar19;
+  char cVar20;
+  undefined1 auVar17 [16];
+  undefined1 auVar21 [16];
+  undefined1 auVar22 [16];
+  
+  uVar2 = in_RCX[3];
+  core::hash::BuildHasher::
+  hash_one<std::hash::random::RandomState,ref_<country_core::resources::stairs::stairs_state::StairGraphEdge>_>
+            ();
+  pauVar6 = (undefined1 (*) [16])*in_RCX;
+  uVar7 = in_RCX[1];
+  uVar9 = uVar7 & extraout_RAX;
+  bVar13 = (byte)(extraout_RAX >> 0x38);
+  bVar15 = bVar13 >> 1;
+  auVar17 = ZEXT216(CONCAT11(bVar15,bVar15));
+  auVar17 = pshuflw(auVar17,auVar17,0);
+  lVar10 = 0;
+  uVar12 = uVar9;
+  while( true ) {
+    pcVar1 = *pauVar6 + uVar12;
+    cVar16 = auVar17[0];
+    auVar22[0] = -(*pcVar1 == cVar16);
+    cVar18 = auVar17[1];
+    auVar22[1] = -(pcVar1[1] == cVar18);
+    cVar19 = auVar17[2];
+    auVar22[2] = -(pcVar1[2] == cVar19);
+    cVar20 = auVar17[3];
+    auVar22[3] = -(pcVar1[3] == cVar20);
+    auVar22[4] = -(pcVar1[4] == cVar16);
+    auVar22[5] = -(pcVar1[5] == cVar18);
+    auVar22[6] = -(pcVar1[6] == cVar19);
+    auVar22[7] = -(pcVar1[7] == cVar20);
+    auVar22[8] = -(pcVar1[8] == cVar16);
+    auVar22[9] = -(pcVar1[9] == cVar18);
+    auVar22[10] = -(pcVar1[10] == cVar19);
+    auVar22[0xb] = -(pcVar1[0xb] == cVar20);
+    auVar22[0xc] = -(pcVar1[0xc] == cVar16);
+    auVar22[0xd] = -(pcVar1[0xd] == cVar18);
+    auVar22[0xe] = -(pcVar1[0xe] == cVar19);
+    auVar22[0xf] = -(pcVar1[0xf] == cVar20);
+    uVar8 = (ushort)(SUB161(auVar22 >> 7,0) & 1) | (ushort)(SUB161(auVar22 >> 0xf,0) & 1) << 1 |
+            (ushort)(SUB161(auVar22 >> 0x17,0) & 1) << 2 |
+            (ushort)(SUB161(auVar22 >> 0x1f,0) & 1) << 3 |
+            (ushort)(SUB161(auVar22 >> 0x27,0) & 1) << 4 |
+            (ushort)(SUB161(auVar22 >> 0x2f,0) & 1) << 5 |
+            (ushort)(SUB161(auVar22 >> 0x37,0) & 1) << 6 |
+            (ushort)(SUB161(auVar22 >> 0x3f,0) & 1) << 7 |
+            (ushort)(SUB161(auVar22 >> 0x47,0) & 1) << 8 |
+            (ushort)(SUB161(auVar22 >> 0x4f,0) & 1) << 9 |
+            (ushort)(SUB161(auVar22 >> 0x57,0) & 1) << 10 |
+            (ushort)(SUB161(auVar22 >> 0x5f,0) & 1) << 0xb |
+            (ushort)(SUB161(auVar22 >> 0x67,0) & 1) << 0xc |
+            (ushort)(SUB161(auVar22 >> 0x6f,0) & 1) << 0xd |
+            (ushort)(SUB161(auVar22 >> 0x77,0) & 1) << 0xe | (ushort)(auVar22[0xf] >> 7) << 0xf;
+    uVar4 = (uint)uVar8;
+    while (uVar8 != 0) {
+      uVar5 = 0;
+      for (uVar3 = uVar4; (uVar3 & 1) == 0; uVar3 = uVar3 >> 1 | 0x80000000) {
+        uVar5 = uVar5 + 1;
+      }
+      uVar14 = uVar5 + uVar12 & uVar7;
+      if ((*(int *)((longlong)pauVar6 + uVar14 * -0xc + -0xc) == in_EDX) &&
+         (*(int *)((longlong)pauVar6 + uVar14 * -0xc + -8) == in_R8D)) {
+        return;
+      }
+      uVar8 = (ushort)(uVar4 - 1) & (ushort)uVar4;
+      uVar4 = CONCAT22((short)(uVar4 - 1 >> 0x10),uVar8);
+    }
+    auVar21[0] = -(*pcVar1 == -1);
+    auVar21[1] = -(pcVar1[1] == -1);
+    auVar21[2] = -(pcVar1[2] == -1);
+    auVar21[3] = -(pcVar1[3] == -1);
+    auVar21[4] = -(pcVar1[4] == -1);
+    auVar21[5] = -(pcVar1[5] == -1);
+    auVar21[6] = -(pcVar1[6] == -1);
+    auVar21[7] = -(pcVar1[7] == -1);
+    auVar21[8] = -(pcVar1[8] == -1);
+    auVar21[9] = -(pcVar1[9] == -1);
+    auVar21[10] = -(pcVar1[10] == -1);
+    auVar21[0xb] = -(pcVar1[0xb] == -1);
+    auVar21[0xc] = -(pcVar1[0xc] == -1);
+    auVar21[0xd] = -(pcVar1[0xd] == -1);
+    auVar21[0xe] = -(pcVar1[0xe] == -1);
+    auVar21[0xf] = -(pcVar1[0xf] == -1);
+    if ((((((((((((((((SUB161(auVar21 >> 7,0) & 1) != 0 || (SUB161(auVar21 >> 0xf,0) & 1) != 0) ||
+                    (SUB161(auVar21 >> 0x17,0) & 1) != 0) || (SUB161(auVar21 >> 0x1f,0) & 1) != 0)
+                  || (SUB161(auVar21 >> 0x27,0) & 1) != 0) || (SUB161(auVar21 >> 0x2f,0) & 1) != 0)
+                || (SUB161(auVar21 >> 0x37,0) & 1) != 0) || (SUB161(auVar21 >> 0x3f,0) & 1) != 0) ||
+              (SUB161(auVar21 >> 0x47,0) & 1) != 0) || (SUB161(auVar21 >> 0x4f,0) & 1) != 0) ||
+            (SUB161(auVar21 >> 0x57,0) & 1) != 0) || (SUB161(auVar21 >> 0x5f,0) & 1) != 0) ||
+          (SUB161(auVar21 >> 0x67,0) & 1) != 0) || (SUB161(auVar21 >> 0x6f,0) & 1) != 0) ||
+        (SUB161(auVar21 >> 0x77,0) & 1) != 0) || auVar21[0xf] < '\0') break;
+    lVar11 = uVar12 + lVar10;
+    lVar10 = lVar10 + 0x10;
+    uVar12 = lVar11 + 0x10U & uVar7;
+  }
+  if (in_RCX[2] == 0) {
+    hashbrown::raw::RawTable::
+    reserve_rehash<tuple_<country_core::resources::stairs::stairs_state::StairGraphEdge,country_core::resources::stairs::stairs_state::TransientStairEdgeId>,alloc::alloc::Global,hashbrown::map::make_hasher::closure_env_0<country_core::resources::stairs::stairs_state::StairGraphEdge,country_core::resources::stairs::stairs_state::TransientStairEdgeId,std::hash::random::RandomState>_>
+              ();
+    pauVar6 = (undefined1 (*) [16])*in_RCX;
+    uVar7 = in_RCX[1];
+    uVar9 = extraout_RAX & uVar7;
+    auVar17 = *(undefined1 (*) [16])(*pauVar6 + uVar9);
+    uVar4 = (uint)(ushort)((ushort)(SUB161(auVar17 >> 7,0) & 1) |
+                           (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+                           (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+                           (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+                           (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+                           (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+                           (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+                           (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+                           (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+                           (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+                           (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+                           (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+                           (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+                           (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+                           (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+                          (ushort)(byte)(auVar17[0xf] >> 7) << 0xf);
+    if (uVar4 != 0) goto LAB_1408fe6cd;
+  }
+  else {
+    auVar17 = *(undefined1 (*) [16])(*pauVar6 + uVar9);
+    uVar8 = (ushort)(SUB161(auVar17 >> 7,0) & 1) | (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+            (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+            (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+            (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+            (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+            (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+            (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+            (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+            (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+            (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+            (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+            (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+            (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+            (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+            (ushort)(byte)(auVar17[0xf] >> 7) << 0xf;
+    uVar4 = (uint)uVar8;
+    if (uVar8 != 0) goto LAB_1408fe6cd;
+  }
+  lVar10 = 0x10;
+  do {
+    uVar9 = uVar9 + lVar10 & uVar7;
+    auVar17 = *(undefined1 (*) [16])(*pauVar6 + uVar9);
+    lVar10 = lVar10 + 0x10;
+    uVar4 = (uint)(ushort)((ushort)(SUB161(auVar17 >> 7,0) & 1) |
+                           (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+                           (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+                           (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+                           (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+                           (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+                           (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+                           (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+                           (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+                           (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+                           (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+                           (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+                           (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+                           (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+                           (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+                          (ushort)(byte)(auVar17[0xf] >> 7) << 0xf);
+  } while (uVar4 == 0);
+LAB_1408fe6cd:
+  uVar5 = 0;
+  for (; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+    uVar5 = uVar5 + 1;
+  }
+  uVar12 = uVar5 + uVar9 & uVar7;
+  bVar15 = (*pauVar6)[uVar12];
+  if (-1 < (char)bVar15) {
+    auVar17 = *pauVar6;
+    uVar4 = 0;
+    for (uVar5 = (uint)(ushort)((ushort)(SUB161(auVar17 >> 7,0) & 1) |
+                                (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+                                (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+                                (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+                                (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+                                (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+                                (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+                                (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+                                (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+                                (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+                                (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+                                (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+                                (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+                                (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+                                (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+                               (ushort)(byte)(auVar17[0xf] >> 7) << 0xf); (uVar5 & 1) == 0;
+        uVar5 = uVar5 >> 1 | 0x80000000) {
+      uVar4 = uVar4 + 1;
+    }
+    uVar12 = (ulonglong)uVar4;
+    bVar15 = (*pauVar6)[uVar12];
+  }
+  bVar13 = bVar13 >> 1;
+  (*pauVar6)[uVar12] = bVar13;
+  pauVar6[1][uVar12 - 0x10 & uVar7] = bVar13;
+  in_RCX[2] = in_RCX[2] - (ulonglong)(bVar15 & 1);
+  *(int *)((longlong)pauVar6 + uVar12 * -0xc + -0xc) = in_EDX;
+  *(int *)((longlong)pauVar6 + uVar12 * -0xc + -8) = in_R8D;
+  *(int *)((longlong)pauVar6 + uVar12 * -0xc + -4) = (int)uVar2 + 1;
+  in_RCX[3] = in_RCX[3] + 1;
+  return;
+}
+
+
+
+// ===== 0x1408fe7b0 try_set_endpoint | sig: void __cdecl try_set_endpoint(void) | size: 203 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::try_set_endpoint(void)
+
+{
+  ulonglong uVar1;
+  undefined8 uVar2;
+  ulonglong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong lVar3;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  ulonglong uVar4;
+  
+  uVar1 = *(ulonglong *)(in_RCX + 0x38);
+  if (uVar1 == 0) goto LAB_1408fe846;
+  if (uVar1 == 1) {
+    lVar3 = *(longlong *)(in_RCX + 0x30);
+    if (*(int *)(lVar3 + 0x20) != *(int *)(in_RDX + 2)) goto LAB_1408fe846;
+    uVar4 = 0;
+  }
+  else {
+    indexmap::map::IndexMap::
+    hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+              ();
+    uVar4 = extraout_RAX;
+    indexmap::map::core::IndexMapCore::
+    get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+              ();
+    if (extraout_RAX_00 != 1) goto LAB_1408fe846;
+    if (uVar1 <= uVar4) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    lVar3 = *(longlong *)(in_RCX + 0x30);
+    if (lVar3 == 0) goto LAB_1408fe846;
+  }
+  lVar3 = *(longlong *)(lVar3 + 0x10 + uVar4 * 0x28);
+  if ((lVar3 != 0) && (7 < lVar3 * 8 - 8U)) {
+    *(undefined8 *)(in_RCX + 0x10) = 3;
+    return;
+  }
+LAB_1408fe846:
+  *(undefined8 *)(in_RCX + 0x20) = in_RDX[2];
+  uVar2 = in_RDX[1];
+  *(undefined8 *)(in_RCX + 0x10) = *in_RDX;
+  *(undefined8 *)(in_RCX + 0x18) = uVar2;
+  return;
+}
+
+
+
+// ===== 0x1408fe880 unset_endpoint | sig: void __cdecl unset_endpoint(void) | size: 9 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::unset_endpoint(void)
+
+{
+  longlong in_RCX;
+  
+  *(undefined8 *)(in_RCX + 0x10) = 3;
+  return;
+}
+
+
+
+// ===== 0x1408fe890 endpoint | sig: void __cdecl endpoint(void) | size: 19 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::endpoint(void)
+
+{
+  undefined8 uVar1;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  
+  in_RCX[2] = *(undefined8 *)(in_RDX + 0x20);
+  uVar1 = *(undefined8 *)(in_RDX + 0x18);
+  *in_RCX = *(undefined8 *)(in_RDX + 0x10);
+  in_RCX[1] = uVar1;
+  return;
+}
+
+
+
+// ===== 0x1408fe8b0 graph | sig: void __cdecl graph(void) | size: 5 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::graph(void)
+
+{
+  return;
+}
+
+
+
+// ===== 0x1408fe8c0 get_all_connected_nodes | sig: void __cdecl get_all_connected_nodes(void) | size: 1466 =====
+
+// WARNING: Removing unreachable block (ram,0x0001408fed04)
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl
+country_core::resources::stairs::stairs_state::StairsState::get_all_connected_nodes(void)
+
+{
+  char *pcVar1;
+  uint uVar2;
+  ulonglong uVar3;
+  undefined1 auVar4 [16];
+  uint uVar5;
+  uint uVar6;
+  int iVar7;
+  int iVar8;
+  int iVar9;
+  int iVar10;
+  undefined *puVar11;
+  char extraout_AL;
+  char extraout_AL_00;
+  uint *extraout_RAX;
+  ulonglong extraout_RAX_00;
+  ulonglong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  ulonglong uVar12;
+  longlong lVar13;
+  uint in_R8D;
+  longlong lVar14;
+  ulonglong uVar15;
+  uint uVar16;
+  ushort uVar17;
+  uint *puVar18;
+  uint *puVar19;
+  byte bVar20;
+  char cVar21;
+  char cVar23;
+  char cVar24;
+  char cVar25;
+  undefined1 auVar22 [16];
+  undefined1 auVar26 [16];
+  undefined1 auVar27 [16];
+  undefined1 unaff_XMM6_Ba;
+  undefined1 unaff_XMM6_Bb;
+  undefined1 unaff_XMM6_Bc;
+  undefined1 unaff_XMM6_Bd;
+  undefined1 unaff_XMM6_Be;
+  undefined1 unaff_XMM6_Bf;
+  undefined1 unaff_XMM6_Bg;
+  undefined1 unaff_XMM6_Bh;
+  undefined1 unaff_XMM6_Bi;
+  undefined1 unaff_XMM6_Bj;
+  undefined1 unaff_XMM6_Bk;
+  undefined1 unaff_XMM6_Bl;
+  undefined1 unaff_XMM6_Bm;
+  undefined1 unaff_XMM6_Bn;
+  undefined1 unaff_XMM6_Bo;
+  undefined1 unaff_XMM6_Bp;
+  longlong lStack_190;
+  longlong local_160;
+  ulonglong uStack_158;
+  longlong lStack_148;
+  longlong local_e8;
+  ulonglong local_68;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (uint *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX = in_R8D;
+  local_68 = 1;
+  foldhash::seed::fast::impl$0::default();
+  hashbrown::raw::RawTableInner::
+  fallible_with_capacity<allocator_api2::stable::alloc::global::Global>();
+  foldhash::seed::fast::impl$0::default();
+  hashbrown::raw::RawTableInner::
+  fallible_with_capacity<allocator_api2::stable::alloc::global::Global>();
+  alloc::raw_vec::RawVec::
+  grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>();
+  puVar11 = __imp__ZN8foldhash4seed6global19GLOBAL_SEED_STORAGE17h1d31b2cef4f74946E;
+  local_e8 = 1;
+  lVar14 = *(longlong *)(in_RDX + 0x30);
+  uVar3 = *(ulonglong *)(in_RDX + 0x38);
+  iVar7 = -(uint)(CONCAT13(unaff_XMM6_Bd,
+                           CONCAT12(unaff_XMM6_Bc,CONCAT11(unaff_XMM6_Bb,unaff_XMM6_Ba))) ==
+                 CONCAT13(unaff_XMM6_Bd,
+                          CONCAT12(unaff_XMM6_Bc,CONCAT11(unaff_XMM6_Bb,unaff_XMM6_Ba))));
+  iVar8 = -(uint)(CONCAT13(unaff_XMM6_Bh,
+                           CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be))) ==
+                 CONCAT13(unaff_XMM6_Bh,
+                          CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be))));
+  iVar9 = -(uint)(CONCAT13(unaff_XMM6_Bl,
+                           CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))) ==
+                 CONCAT13(unaff_XMM6_Bl,
+                          CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))));
+  iVar10 = -(uint)(CONCAT13(unaff_XMM6_Bp,
+                            CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))) ==
+                  CONCAT13(unaff_XMM6_Bp,
+                           CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))));
+  _DAT_00000004 = in_R8D;
+  while (local_e8 != 0) {
+    uVar2 = *(uint *)(local_e8 * 4);
+    petgraph::visit::impl$5::
+    visit<country_core::resources::walls::decorator::DecoratorId,foldhash::seed::fast::RandomState>
+              ();
+    if (extraout_AL == '\0') {
+      if (local_e8 != 0) {
+        local_e8 = local_e8 + -1;
+      }
+      petgraph::visit::impl$5::
+      visit<country_core::resources::walls::decorator::DecoratorId,foldhash::seed::fast::RandomState>
+                ();
+      if (extraout_AL_00 != '\0') {
+        if (local_68 == 1) {
+          alloc::raw_vec::RawVec::
+          grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>();
+        }
+        extraout_RAX[local_68] = uVar2;
+        local_68 = local_68 + 1;
+      }
+    }
+    else {
+      puVar19 = (uint *)&DAT_00000004;
+      if (uVar3 == 0) {
+        puVar18 = (uint *)&DAT_00000004;
+      }
+      else if (uVar3 == 1) {
+        puVar18 = (uint *)&DAT_00000004;
+        if (*(uint *)(lVar14 + 0x20) == uVar2) {
+          uVar12 = 0;
+LAB_1408febb2:
+          puVar18 = *(uint **)(lVar14 + 8 + uVar12 * 0x28);
+          puVar19 = puVar18 + *(longlong *)(lVar14 + 0x10 + uVar12 * 0x28) * 2;
+        }
+      }
+      else {
+        indexmap::map::IndexMap::
+        hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        uVar12 = extraout_RAX_01;
+        indexmap::map::core::IndexMapCore::
+        get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        if (extraout_RAX_02 == 1) {
+          if (uVar3 <= uVar12) {
+                    // WARNING: Subroutine does not return
+            core::panicking::panic_bounds_check();
+          }
+          puVar18 = (uint *)&DAT_00000004;
+          if (lVar14 != 0) goto LAB_1408febb2;
+        }
+        else {
+          puVar18 = (uint *)&DAT_00000004;
+        }
+      }
+LAB_1408febef:
+      if (puVar18 != puVar19) {
+        uVar2 = *puVar18;
+        puVar18 = puVar18 + 2;
+        if (lStack_148 != 0) {
+          auVar22._8_8_ = 0;
+          auVar22._0_8_ = extraout_RAX_00 ^ uVar2;
+          auVar4._8_8_ = 0;
+          auVar4._0_8_ = *(ulonglong *)puVar11;
+          uVar12 = SUB168(auVar22 * auVar4,8) ^ SUB168(auVar22 * auVar4,0);
+          bVar20 = (byte)(uVar12 >> 0x39);
+          auVar22 = ZEXT216(CONCAT11(bVar20,bVar20));
+          auVar22 = pshuflw(auVar22,auVar22,0);
+          lVar13 = 0;
+          while( true ) {
+            uVar12 = uStack_158 & uVar12;
+            pcVar1 = (char *)(local_160 + uVar12);
+            cVar21 = auVar22[0];
+            auVar27[0] = -(*pcVar1 == cVar21);
+            cVar23 = auVar22[1];
+            auVar27[1] = -(pcVar1[1] == cVar23);
+            cVar24 = auVar22[2];
+            auVar27[2] = -(pcVar1[2] == cVar24);
+            cVar25 = auVar22[3];
+            auVar27[3] = -(pcVar1[3] == cVar25);
+            auVar27[4] = -(pcVar1[4] == cVar21);
+            auVar27[5] = -(pcVar1[5] == cVar23);
+            auVar27[6] = -(pcVar1[6] == cVar24);
+            auVar27[7] = -(pcVar1[7] == cVar25);
+            auVar27[8] = -(pcVar1[8] == cVar21);
+            auVar27[9] = -(pcVar1[9] == cVar23);
+            auVar27[10] = -(pcVar1[10] == cVar24);
+            auVar27[0xb] = -(pcVar1[0xb] == cVar25);
+            auVar27[0xc] = -(pcVar1[0xc] == cVar21);
+            auVar27[0xd] = -(pcVar1[0xd] == cVar23);
+            auVar27[0xe] = -(pcVar1[0xe] == cVar24);
+            auVar27[0xf] = -(pcVar1[0xf] == cVar25);
+            uVar17 = (ushort)(SUB161(auVar27 >> 7,0) & 1) |
+                     (ushort)(SUB161(auVar27 >> 0xf,0) & 1) << 1 |
+                     (ushort)(SUB161(auVar27 >> 0x17,0) & 1) << 2 |
+                     (ushort)(SUB161(auVar27 >> 0x1f,0) & 1) << 3 |
+                     (ushort)(SUB161(auVar27 >> 0x27,0) & 1) << 4 |
+                     (ushort)(SUB161(auVar27 >> 0x2f,0) & 1) << 5 |
+                     (ushort)(SUB161(auVar27 >> 0x37,0) & 1) << 6 |
+                     (ushort)(SUB161(auVar27 >> 0x3f,0) & 1) << 7 |
+                     (ushort)(SUB161(auVar27 >> 0x47,0) & 1) << 8 |
+                     (ushort)(SUB161(auVar27 >> 0x4f,0) & 1) << 9 |
+                     (ushort)(SUB161(auVar27 >> 0x57,0) & 1) << 10 |
+                     (ushort)(SUB161(auVar27 >> 0x5f,0) & 1) << 0xb |
+                     (ushort)(SUB161(auVar27 >> 0x67,0) & 1) << 0xc |
+                     (ushort)(SUB161(auVar27 >> 0x6f,0) & 1) << 0xd |
+                     (ushort)(SUB161(auVar27 >> 0x77,0) & 1) << 0xe |
+                     (ushort)(auVar27[0xf] >> 7) << 0xf;
+            uVar16 = (uint)uVar17;
+            while (uVar17 != 0) {
+              uVar5 = 0;
+              for (uVar6 = uVar16; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {
+                uVar5 = uVar5 + 1;
+              }
+              if (*(uint *)(local_160 + (uVar5 + uVar12 & uStack_158) * -4 + -4) == uVar2)
+              goto LAB_1408febef;
+              uVar17 = (ushort)(uVar16 - 1) & (ushort)uVar16;
+              uVar16 = CONCAT22((short)(uVar16 - 1 >> 0x10),uVar17);
+            }
+            auVar26[0] = -(*pcVar1 == (char)iVar7);
+            auVar26[1] = -(pcVar1[1] == (char)((uint)iVar7 >> 8));
+            auVar26[2] = -(pcVar1[2] == (char)((uint)iVar7 >> 0x10));
+            auVar26[3] = -(pcVar1[3] == (char)((uint)iVar7 >> 0x18));
+            auVar26[4] = -(pcVar1[4] == (char)iVar8);
+            auVar26[5] = -(pcVar1[5] == (char)((uint)iVar8 >> 8));
+            auVar26[6] = -(pcVar1[6] == (char)((uint)iVar8 >> 0x10));
+            auVar26[7] = -(pcVar1[7] == (char)((uint)iVar8 >> 0x18));
+            auVar26[8] = -(pcVar1[8] == (char)iVar9);
+            auVar26[9] = -(pcVar1[9] == (char)((uint)iVar9 >> 8));
+            auVar26[10] = -(pcVar1[10] == (char)((uint)iVar9 >> 0x10));
+            auVar26[0xb] = -(pcVar1[0xb] == (char)((uint)iVar9 >> 0x18));
+            auVar26[0xc] = -(pcVar1[0xc] == (char)iVar10);
+            auVar26[0xd] = -(pcVar1[0xd] == (char)((uint)iVar10 >> 8));
+            auVar26[0xe] = -(pcVar1[0xe] == (char)((uint)iVar10 >> 0x10));
+            auVar26[0xf] = -(pcVar1[0xf] == (char)((uint)iVar10 >> 0x18));
+            if ((((((((((((((((SUB161(auVar26 >> 7,0) & 1) != 0 ||
+                             (SUB161(auVar26 >> 0xf,0) & 1) != 0) ||
+                            (SUB161(auVar26 >> 0x17,0) & 1) != 0) ||
+                           (SUB161(auVar26 >> 0x1f,0) & 1) != 0) ||
+                          (SUB161(auVar26 >> 0x27,0) & 1) != 0) ||
+                         (SUB161(auVar26 >> 0x2f,0) & 1) != 0) ||
+                        (SUB161(auVar26 >> 0x37,0) & 1) != 0) ||
+                       (SUB161(auVar26 >> 0x3f,0) & 1) != 0) || (SUB161(auVar26 >> 0x47,0) & 1) != 0
+                      ) || (SUB161(auVar26 >> 0x4f,0) & 1) != 0) ||
+                    (SUB161(auVar26 >> 0x57,0) & 1) != 0) || (SUB161(auVar26 >> 0x5f,0) & 1) != 0)
+                  || (SUB161(auVar26 >> 0x67,0) & 1) != 0) || (SUB161(auVar26 >> 0x6f,0) & 1) != 0)
+                || (SUB161(auVar26 >> 0x77,0) & 1) != 0) || auVar26[0xf] < '\0') break;
+            uVar12 = uVar12 + lVar13 + 0x10;
+            lVar13 = lVar13 + 0x10;
+          }
+        }
+        if (local_e8 == 0) {
+          alloc::raw_vec::RawVec::
+          grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>();
+        }
+        *(uint *)(local_e8 * 4 + 4) = uVar2;
+        local_e8 = local_e8 + 1;
+        goto LAB_1408febef;
+      }
+    }
+  }
+  uVar3 = local_68;
+  if (1 < local_68) {
+    if (local_68 < 0x15) {
+      puVar19 = extraout_RAX + 1;
+      lVar14 = 4;
+      do {
+        uVar16 = puVar19[-1];
+        uVar2 = *puVar19;
+        lVar13 = lVar14;
+        if (uVar2 < uVar16) {
+          do {
+            *(uint *)((longlong)extraout_RAX + lVar13) = uVar16;
+            puVar18 = extraout_RAX;
+            if (lVar13 == 4) goto LAB_1408fedbf;
+            uVar16 = *(uint *)((longlong)extraout_RAX + lVar13 + -8);
+            lVar13 = lVar13 + -4;
+          } while (uVar2 < uVar16);
+          puVar18 = (uint *)(lVar13 + (longlong)extraout_RAX);
+LAB_1408fedbf:
+          *puVar18 = uVar2;
+        }
+        puVar19 = puVar19 + 1;
+        lVar14 = lVar14 + 4;
+      } while (puVar19 != extraout_RAX + local_68);
+    }
+    else {
+      core::slice::sort::unstable::
+      ipnsort<country_core::resources::walls::decorator::DecoratorId,bool_(*)(ref_<country_core::resources::walls::decorator::DecoratorId>,ref_<country_core::resources::walls::decorator::DecoratorId>)>
+                ();
+    }
+    if (1 < local_68) {
+      uVar12 = 1;
+      do {
+        uVar15 = uVar12;
+        if (extraout_RAX[uVar12] == extraout_RAX[uVar12 - 1]) goto LAB_1408fee69;
+        uVar12 = uVar12 + 1;
+      } while (local_68 != uVar12);
+    }
+  }
+LAB_1408fecdf:
+  local_68 = uVar3;
+  in_RCX[2] = local_68;
+  *in_RCX = 1;
+  in_RCX[1] = extraout_RAX;
+  if ((uStack_158 != 0) && (uStack_158 + (uStack_158 * 4 + 0x13 & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((lStack_190 != 0) && (lStack_190 + (lStack_190 * 4 + 0x13U & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+LAB_1408fee69:
+  while (uVar15 = uVar15 + 1, uVar3 = uVar12, uVar15 < local_68) {
+    if (extraout_RAX[uVar15] != extraout_RAX[uVar12 - 1]) {
+      extraout_RAX[uVar12] = extraout_RAX[uVar15];
+      uVar12 = uVar12 + 1;
+    }
+  }
+  goto LAB_1408fecdf;
+}
+
+
+
+// ===== 0x1408fefe0 make_backup | sig: void __cdecl make_backup(void) | size: 375 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::make_backup(void)
+
+{
+  longlong lVar1;
+  void *_Dst;
+  longlong in_RCX;
+  undefined8 local_158;
+  undefined8 uStack_150;
+  undefined8 local_148;
+  undefined8 uStack_140;
+  undefined8 local_138;
+  undefined8 uStack_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  undefined8 local_110;
+  undefined8 uStack_108;
+  undefined8 local_100;
+  undefined8 uStack_f8;
+  undefined8 local_f0;
+  undefined8 uStack_e8;
+  undefined8 local_e0;
+  undefined8 uStack_d8;
+  undefined8 local_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  undefined8 uStack_88;
+  undefined8 local_80;
+  undefined8 uStack_78;
+  undefined8 local_70;
+  undefined8 uStack_68;
+  undefined8 local_60;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  void *local_38;
+  longlong local_30;
+  undefined8 local_28;
+  
+  local_28 = 0xfffffffffffffffe;
+  if (*(char *)(in_RCX + 0x178) == '\0') {
+    iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::restore_backup::closure_env_0>
+              ();
+    indexmap::map::core::impl$0::
+    clone<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>
+              ();
+    local_48 = *(undefined8 *)(in_RCX + 0x60);
+    uStack_40 = *(undefined8 *)(in_RCX + 0x68);
+    indexmap::map::core::impl$0::
+    clone<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>_>
+              ();
+    uStack_d8 = *(undefined8 *)(in_RCX + 0xa8);
+    local_d0 = *(undefined8 *)(in_RCX + 0xb0);
+    local_158 = local_80;
+    uStack_150 = uStack_78;
+    local_148 = local_70;
+    uStack_140 = uStack_68;
+    local_138 = local_60;
+    uStack_130 = uStack_58;
+    local_128 = uStack_50;
+    uStack_120 = local_48;
+    local_118 = uStack_40;
+    local_110 = local_c8;
+    uStack_108 = uStack_c0;
+    local_100 = local_b8;
+    uStack_f8 = uStack_b0;
+    local_f0 = local_a8;
+    uStack_e8 = uStack_a0;
+    local_e0 = uStack_98;
+    local_90 = uStack_d8;
+    uStack_88 = local_d0;
+    local_38 = (void *)(in_RCX + 0xb8);
+    local_30 = in_RCX;
+    core::ptr::
+    drop_in_place<indexmap::map::core::IndexMapCore<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>_>
+              ();
+    lVar1 = *(longlong *)(local_30 + 0x120);
+    if ((lVar1 != 0) && (lVar1 + (lVar1 * 8 + 0x17U & 0xfffffffffffffff0) != -0x11)) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    _Dst = local_38;
+    if (*(longlong *)(local_30 + 0x100) != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    memcpy(_Dst,&local_158,0x90);
+    *(undefined1 *)(local_30 + 0x178) = 1;
+  }
+  return;
+}
+
+
+
+// ===== 0x1408ff210 restore_backup | sig: void __cdecl restore_backup(void) | size: 369 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::restore_backup(void)
+
+{
+  longlong lVar1;
+  undefined8 *_Dst;
+  undefined8 *in_RCX;
+  undefined8 local_158;
+  undefined8 uStack_150;
+  undefined8 local_148;
+  undefined8 uStack_140;
+  undefined8 local_138;
+  undefined8 uStack_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  undefined8 local_110;
+  undefined8 uStack_108;
+  undefined8 local_100;
+  undefined8 uStack_f8;
+  undefined8 local_f0;
+  undefined8 uStack_e8;
+  undefined8 local_e0;
+  undefined8 uStack_d8;
+  undefined8 local_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  undefined8 uStack_88;
+  undefined8 local_80;
+  undefined8 uStack_78;
+  undefined8 local_70;
+  undefined8 uStack_68;
+  undefined8 local_60;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  undefined8 *local_38;
+  undefined8 *local_30;
+  undefined8 local_28;
+  
+  local_28 = 0xfffffffffffffffe;
+  *in_RCX = 0;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::restore_backup::closure_env_0>
+            ();
+  indexmap::map::core::impl$0::
+  clone<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>
+            ();
+  local_48 = in_RCX[0x1e];
+  uStack_40 = in_RCX[0x1f];
+  indexmap::map::core::impl$0::
+  clone<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>_>
+            ();
+  uStack_d8 = in_RCX[0x27];
+  local_d0 = in_RCX[0x28];
+  local_158 = local_80;
+  uStack_150 = uStack_78;
+  local_148 = local_70;
+  uStack_140 = uStack_68;
+  local_138 = local_60;
+  uStack_130 = uStack_58;
+  local_128 = uStack_50;
+  uStack_120 = local_48;
+  local_118 = uStack_40;
+  local_110 = local_c8;
+  uStack_108 = uStack_c0;
+  local_100 = local_b8;
+  uStack_f8 = uStack_b0;
+  local_f0 = local_a8;
+  uStack_e8 = uStack_a0;
+  local_e0 = uStack_98;
+  local_90 = uStack_d8;
+  uStack_88 = local_d0;
+  local_38 = in_RCX + 5;
+  local_30 = in_RCX;
+  core::ptr::
+  drop_in_place<indexmap::map::core::IndexMapCore<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>_>
+            ();
+  lVar1 = local_30[0x12];
+  if ((lVar1 != 0) && (lVar1 + (lVar1 * 8 + 0x17U & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  _Dst = local_38;
+  if (local_30[0xe] != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  memcpy(_Dst,&local_158,0x90);
+  *(undefined1 *)(local_30 + 0x2f) = 1;
+  return;
+}
+
+
+
+// ===== 0x1408ff430 compute_checksum | sig: void __cdecl compute_checksum(void) | size: 215 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::compute_checksum(void)
+
+{
+  undefined8 extraout_RAX;
+  byte *in_RCX;
+  ulonglong local_68;
+  undefined8 local_60;
+  longlong local_58;
+  
+  if ((*in_RCX & 1) == 0) {
+    iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::take_snapshot_impl::closure_env_0>
+              ();
+    StairsSnapshot::new();
+    if ((local_68 & 1) == 0) {
+      ::utils::calculate_hash<country_core::resources::stairs::stairs_state::StairsSnapshot>();
+      local_60 = extraout_RAX;
+    }
+    if (local_58 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    in_RCX[0] = 1;
+    in_RCX[1] = 0;
+    in_RCX[2] = 0;
+    in_RCX[3] = 0;
+    in_RCX[4] = 0;
+    in_RCX[5] = 0;
+    in_RCX[6] = 0;
+    in_RCX[7] = 0;
+    *(undefined8 *)(in_RCX + 8) = local_60;
+  }
+  return;
+}
+
+
+
+// ===== 0x1408ff590 restore_snapshot | sig: void __cdecl restore_snapshot(void) | size: 1311 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::restore_snapshot(void)
+
+{
+  ulonglong uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined *puVar4;
+  undefined8 uVar5;
+  undefined **ppuVar6;
+  void *_Dst;
+  undefined8 extraout_RAX;
+  longlong *extraout_RAX_00;
+  byte *extraout_RAX_01;
+  longlong extraout_RAX_02;
+  ulonglong uVar7;
+  longlong in_RCX;
+  byte *in_RDX;
+  undefined **ppuVar8;
+  longlong lVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong local_220;
+  longlong local_208;
+  undefined *local_f8;
+  undefined8 uStack_f0;
+  undefined8 local_e8;
+  undefined8 uStack_e0;
+  longlong local_d8;
+  undefined **ppuStack_d0;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_78;
+  undefined8 local_70;
+  void *local_68;
+  longlong local_60;
+  byte *local_58;
+  undefined1 local_49;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  local_58 = in_RDX;
+  compute_checksum();
+  if ((*local_58 & 1) == 0) {
+    ::utils::calculate_hash<country_core::resources::stairs::stairs_state::StairsSnapshot>();
+    local_58[0] = 1;
+    local_58[1] = 0;
+    local_58[2] = 0;
+    local_58[3] = 0;
+    local_58[4] = 0;
+    local_58[5] = 0;
+    local_58[6] = 0;
+    local_58[7] = 0;
+    *(undefined8 *)(local_58 + 8) = extraout_RAX;
+  }
+  core::ops::function::FnOnce::
+  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+            ();
+  if (extraout_RAX_00 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+    std::thread::local::panic_access_error();
+  }
+  lVar9 = in_RCX + 0x28;
+  local_d8 = *extraout_RAX_00;
+  ppuStack_d0 = (undefined **)extraout_RAX_00[1];
+  *extraout_RAX_00 = *extraout_RAX_00 + 1;
+  local_f8 = &anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;
+  uStack_f0 = 0;
+  local_e8 = 0;
+  uStack_e0 = 0;
+  ppuVar8 = &local_f8;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::collect_edges::closure_env_0>
+            ();
+  ppuVar6 = ppuStack_d0;
+  lVar10 = local_d8;
+  uVar5 = uStack_e0;
+  uVar3 = local_e8;
+  uVar2 = uStack_f0;
+  puVar4 = local_f8;
+  lVar11 = *(longlong *)(local_58 + 0x20);
+  std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();
+  if ((*extraout_RAX_01 & 1) == 0) {
+    local_49 = 1;
+    std::sys::random::hashmap_random_keys();
+    extraout_RAX_01[0] = 1;
+    extraout_RAX_01[1] = 0;
+    extraout_RAX_01[2] = 0;
+    extraout_RAX_01[3] = 0;
+    extraout_RAX_01[4] = 0;
+    extraout_RAX_01[5] = 0;
+    extraout_RAX_01[6] = 0;
+    extraout_RAX_01[7] = 0;
+    *(longlong *)(extraout_RAX_01 + 8) = extraout_RAX_02;
+    *(undefined ***)(extraout_RAX_01 + 0x10) = ppuVar8;
+    local_d8 = extraout_RAX_02;
+  }
+  else {
+    local_d8 = *(longlong *)(extraout_RAX_01 + 8);
+    ppuVar8 = *(undefined ***)(extraout_RAX_01 + 0x10);
+  }
+  *(longlong *)(extraout_RAX_01 + 8) = local_d8 + 1;
+  local_e8 = 0;
+  uStack_e0 = 0;
+  local_f8 = &anon_c925c76b833903a453982b6800d1a02b_0_llvm_8881321364459548795;
+  uStack_f0 = 0;
+  if (lVar11 != 0) {
+    ppuStack_d0 = ppuVar8;
+    hashbrown::raw::RawTable::
+    reserve_rehash<tuple_<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>_>,alloc::alloc::Global,hashbrown::map::make_hasher::closure_env_0<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState>_>
+              ();
+    lVar12 = 0;
+    do {
+      hashbrown::map::HashMap::
+      insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                ();
+      lVar12 = lVar12 + 1;
+    } while (lVar12 != lVar11);
+  }
+  local_49 = 0;
+  local_f8 = puVar4;
+  uStack_f0 = uVar2;
+  local_e8 = uVar3;
+  uStack_e0 = uVar5;
+  local_d8 = lVar10;
+  ppuStack_d0 = ppuVar6;
+  reduce_diff();
+  apply_diff();
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::restore_backup::closure_env_0>
+            ();
+  if (*(longlong *)(in_RCX + 0xe8) != 0) {
+    uVar1 = *(ulonglong *)(in_RCX + 0xd8);
+    if (uVar1 == 0) {
+      uVar7 = 0;
+    }
+    else {
+      lVar9 = CONCAT71((int7)((ulonglong)lVar9 >> 8),0xff);
+      memset(*(void **)(in_RCX + 0xd0),(int)lVar9,uVar1 + 0x11);
+      uVar7 = (uVar1 + 1 & 0xfffffffffffffff8) - (uVar1 + 1 >> 3);
+      if (uVar1 < 8) {
+        uVar7 = uVar1;
+      }
+    }
+    *(undefined8 *)(in_RCX + 0xe8) = 0;
+    *(ulonglong *)(in_RCX + 0xe0) = uVar7;
+  }
+  lVar11 = *(longlong *)(in_RCX + 200);
+  *(undefined8 *)(in_RCX + 200) = 0;
+  if (lVar11 != 0) {
+    lVar10 = *(longlong *)(in_RCX + 0xc0) + 8;
+    do {
+      lVar9 = 0;
+      if (*(longlong *)(lVar10 + -8) != 0) {
+        lVar9 = *(longlong *)(lVar10 + -8) << 3;
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      lVar10 = lVar10 + 0x28;
+      lVar11 = lVar11 + -1;
+    } while (lVar11 != 0);
+  }
+  if (*(longlong *)(in_RCX + 0x130) != 0) {
+    uVar1 = *(ulonglong *)(in_RCX + 0x120);
+    if (uVar1 == 0) {
+      uVar7 = 0;
+    }
+    else {
+      memset(*(void **)(in_RCX + 0x118),(int)CONCAT71((int7)((ulonglong)lVar9 >> 8),0xff),
+             uVar1 + 0x11);
+      uVar7 = (uVar1 + 1 & 0xfffffffffffffff8) - (uVar1 + 1 >> 3);
+      if (uVar1 < 8) {
+        uVar7 = uVar1;
+      }
+    }
+    *(undefined8 *)(in_RCX + 0x130) = 0;
+    *(ulonglong *)(in_RCX + 0x128) = uVar7;
+  }
+  *(undefined8 *)(in_RCX + 0x110) = 0;
+  *(undefined1 *)(in_RCX + 0x178) = 0;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::restore_backup::closure_env_0>
+            ();
+  indexmap::map::core::impl$0::
+  clone<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>
+            ();
+  uVar2 = *(undefined8 *)(in_RCX + 0x60);
+  uVar3 = *(undefined8 *)(in_RCX + 0x68);
+  indexmap::map::core::impl$0::
+  clone<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>_>
+            ();
+  uStack_78 = *(undefined8 *)(in_RCX + 0xa8);
+  local_70 = *(undefined8 *)(in_RCX + 0xb0);
+  uStack_c0 = uVar2;
+  local_b8 = uVar3;
+  local_68 = (void *)(in_RCX + 0xb8);
+  local_60 = in_RCX;
+  core::ptr::
+  drop_in_place<indexmap::map::core::IndexMapCore<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>_>
+            ();
+  lVar9 = *(longlong *)(local_60 + 0x120);
+  if ((lVar9 != 0) && (lVar9 + (lVar9 * 8 + 0x17U & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  _Dst = local_68;
+  if (*(longlong *)(local_60 + 0x100) != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  memcpy(_Dst,&local_f8,0x90);
+  *(undefined1 *)(local_60 + 0x178) = 1;
+  if (local_220 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (local_208 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (*(longlong *)(local_58 + 0x10) != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+
+
+// ===== 0x1408ffd30 add_node | sig: void __cdecl add_node(void) | size: 60 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::add_node(void)
+
+{
+  undefined8 *in_RCX;
+  
+  *in_RCX = 0;
+  *(undefined1 *)(in_RCX + 0x2f) = 0;
+  petgraph::graphmap::GraphMap::
+  add_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+            ();
+  hashbrown::map::HashMap::
+  insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+            ();
+  return;
+}
+
+
+
+// ===== 0x1408ffd70 add_edge | sig: void __cdecl add_edge(void) | size: 260 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::add_edge(void)
+
+{
+  longlong extraout_RAX;
+  undefined8 *in_RCX;
+  uint in_EDX;
+  uint uVar1;
+  uint in_R8D;
+  
+  if (in_EDX == in_R8D) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  uVar1 = in_R8D;
+  if (in_EDX < in_R8D) {
+    uVar1 = in_EDX;
+  }
+  if (in_R8D < in_EDX) {
+    in_R8D = in_EDX;
+  }
+  if (in_RCX[0x10] == 1) {
+    if ((uVar1 == *(uint *)(in_RCX[0xf] + 8)) && (in_R8D == *(uint *)(in_RCX[0xf] + 0xc))) {
+      return;
+    }
+  }
+  else if (in_RCX[0x10] != 0) {
+    indexmap::map::IndexMap::
+    hash<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,country_core::resources::stairs::stairs_assembly_params::AdjustedStairEdge,std::hash::random::RandomState,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+    indexmap::map::core::IndexMapCore::
+    get_index_of<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+    if (extraout_RAX == 1) {
+      return;
+    }
+  }
+  *in_RCX = 0;
+  *(undefined1 *)(in_RCX + 0x2f) = 0;
+  petgraph::graphmap::GraphMap::
+  add_edge<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+            ();
+  hashbrown::map::HashMap::
+  insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+            ();
+  hashbrown::map::HashMap::
+  insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+            ();
+  hashbrown::map::HashMap::
+  insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+            ();
+  return;
+}
+
+
+
+// ===== 0x1408ffe80 disconnect_edge | sig: void __cdecl disconnect_edge(void) | size: 108 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::disconnect_edge(void)
+
+{
+  char extraout_AL;
+  char extraout_AL_00;
+  char cVar1;
+  undefined8 *in_RCX;
+  int in_EDX;
+  int in_R8D;
+  
+  *in_RCX = 0;
+  if (in_EDX == in_R8D) {
+    petgraph::graphmap::GraphMap::
+    remove_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+              ();
+    cVar1 = extraout_AL;
+  }
+  else {
+    petgraph::graphmap::GraphMap::
+    remove_edge<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+              ();
+    cVar1 = extraout_AL_00;
+  }
+  if (cVar1 != '\0') {
+    hashbrown::map::HashMap::
+    insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+    *(undefined1 *)(in_RCX + 0x2f) = 0;
+  }
+  return;
+}
+
+
+
+// ===== 0x1408ffef0 remove_node | sig: void __cdecl remove_node(void) | size: 275 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::remove_node(void)
+
+{
+  ulonglong uVar1;
+  ulonglong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong lVar2;
+  undefined8 *in_RCX;
+  int in_EDX;
+  ulonglong uVar3;
+  longlong lVar4;
+  
+  *in_RCX = 0;
+  *(undefined1 *)(in_RCX + 0x2f) = 0;
+  uVar1 = in_RCX[7];
+  if (uVar1 != 0) {
+    if (uVar1 == 1) {
+      lVar2 = in_RCX[6];
+      if (*(int *)(lVar2 + 0x20) == in_EDX) {
+        uVar3 = 0;
+LAB_1408fff74:
+        lVar2 = *(longlong *)(lVar2 + 0x10 + uVar3 * 0x28);
+        if (lVar2 != 0) {
+          lVar4 = 0;
+          do {
+            hashbrown::map::HashMap::
+            insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                      ();
+            lVar4 = lVar4 + 8;
+          } while (lVar2 << 3 != lVar4);
+          goto LAB_1408fffd8;
+        }
+      }
+    }
+    else {
+      indexmap::map::IndexMap::
+      hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      uVar3 = extraout_RAX;
+      indexmap::map::core::IndexMapCore::
+      get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      if (extraout_RAX_00 == 1) {
+        if (uVar1 <= uVar3) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+        lVar2 = in_RCX[6];
+        if (lVar2 != 0) goto LAB_1408fff74;
+      }
+    }
+  }
+  hashbrown::map::HashMap::
+  insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+            ();
+LAB_1408fffd8:
+  petgraph::graphmap::GraphMap::
+  remove_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+            ();
+  return;
+}
+
+
+
+// ===== 0x140900010 extract_diff_and_make_backup | sig: void __cdecl extract_diff_and_make_backup(void) | size: 1084 =====
+
+void __cdecl
+country_core::resources::stairs::stairs_state::StairsState::extract_diff_and_make_backup(void)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  undefined *puVar3;
+  longlong lVar4;
+  longlong lVar5;
+  void *_Dst;
+  longlong *extraout_RAX;
+  longlong *extraout_RAX_00;
+  longlong lVar6;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  undefined8 uStack_1a0;
+  undefined8 local_198;
+  longlong lStack_190;
+  longlong local_188;
+  undefined8 uStack_180;
+  undefined8 local_178;
+  undefined8 uStack_170;
+  undefined *local_118;
+  undefined8 uStack_110;
+  longlong local_108;
+  undefined8 uStack_100;
+  longlong local_f8;
+  longlong lStack_f0;
+  undefined8 uStack_e0;
+  undefined8 local_d8;
+  undefined8 local_d0;
+  undefined8 uStack_c8;
+  undefined8 local_c0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  void *local_88;
+  longlong local_80;
+  undefined1 local_72;
+  undefined1 local_71;
+  undefined8 local_70;
+  
+  local_70 = 0xfffffffffffffffe;
+  local_72 = 1;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::take_snapshot_impl::closure_env_0>
+            ();
+  local_72 = 0;
+  StairsSnapshot::new();
+  if (((ulonglong)local_118 & 1) == 0) {
+    ::utils::calculate_hash<country_core::resources::stairs::stairs_state::StairsSnapshot>();
+    local_118 = (undefined *)0x1;
+  }
+  if (local_108 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  core::ops::function::FnOnce::
+  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+            ();
+  if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+    std::thread::local::panic_access_error();
+  }
+  local_f8 = *extraout_RAX;
+  lStack_f0 = extraout_RAX[1];
+  *extraout_RAX = *extraout_RAX + 1;
+  local_118 = &anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;
+  uStack_110 = 0;
+  local_108 = 0;
+  uStack_100 = 0;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::collect_edges::closure_env_0>
+            ();
+  lVar5 = lStack_f0;
+  lVar4 = local_f8;
+  uVar2 = uStack_100;
+  lVar6 = local_108;
+  uVar1 = uStack_110;
+  puVar3 = local_118;
+  local_71 = 1;
+  compute_checksum();
+  local_71 = 1;
+  core::ops::function::FnOnce::
+  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+            ();
+  if (extraout_RAX_00 == (longlong *)0x0) {
+    local_71 = 1;
+                    // WARNING: Subroutine does not return
+    std::thread::local::panic_access_error();
+  }
+  local_f8 = *extraout_RAX_00;
+  lStack_f0 = extraout_RAX_00[1];
+  *extraout_RAX_00 = *extraout_RAX_00 + 1;
+  local_118 = &anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;
+  uStack_110 = 0;
+  local_108 = 0;
+  uStack_100 = 0;
+  iter_edges_and_stubs<country_core::resources::stairs::stairs_state::impl_5::collect_edges::closure_env_0>
+            ();
+  local_71 = 0;
+  local_118 = puVar3;
+  uStack_110 = uVar1;
+  local_108 = lVar6;
+  uStack_100 = uVar2;
+  local_f8 = lVar4;
+  lStack_f0 = lVar5;
+  reduce_diff();
+  for (lVar6 = lStack_190; lVar6 != lStack_190 + local_188 * 8; lVar6 = lVar6 + 8) {
+    hashbrown::map::HashMap::
+    insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+  }
+  indexmap::map::core::impl$0::
+  clone<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>
+            ();
+  uVar1 = *(undefined8 *)(in_RDX + 0x60);
+  uVar2 = *(undefined8 *)(in_RDX + 0x68);
+  indexmap::map::core::impl$0::
+  clone<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>_>
+            ();
+  uStack_98 = *(undefined8 *)(in_RDX + 0xa8);
+  local_90 = *(undefined8 *)(in_RDX + 0xb0);
+  local_d0 = 0;
+  uStack_c8 = 4;
+  local_c0 = 0;
+  uStack_e0 = uVar1;
+  local_d8 = uVar2;
+  local_88 = (void *)(in_RDX + 0xb8);
+  local_80 = in_RDX;
+  core::ptr::
+  drop_in_place<indexmap::map::core::IndexMapCore<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>_>_>
+            ();
+  lVar6 = *(longlong *)(local_80 + 0x120);
+  if ((lVar6 != 0) && (lVar6 + (lVar6 * 8 + 0x17U & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  _Dst = local_88;
+  if (*(longlong *)(local_80 + 0x100) != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  memcpy(_Dst,&local_118,0x90);
+  *(undefined1 *)(local_80 + 0x178) = 1;
+  in_RCX[8] = local_178;
+  in_RCX[9] = uStack_170;
+  in_RCX[6] = local_188;
+  in_RCX[7] = uStack_180;
+  in_RCX[4] = local_198;
+  in_RCX[5] = lStack_190;
+  in_RCX[2] = 0;
+  in_RCX[3] = uStack_1a0;
+  *in_RCX = 0;
+  in_RCX[1] = 4;
+  return;
+}
+
+
+
+// ===== 0x1409007b0 reduce_diff | sig: void __cdecl reduce_diff(void) | size: 715 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::reduce_diff(void)
+
+{
+  undefined1 auVar1 [16];
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  undefined1 (*pauVar2) [16];
+  undefined8 in_R8;
+  longlong lVar3;
+  uint uVar4;
+  uint uVar5;
+  undefined8 in_stack_00000028;
+  undefined8 local_d0;
+  undefined8 uStack_c8;
+  ulonglong local_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  ulonglong local_a8;
+  int local_a0;
+  
+  lVar3 = in_RDX[3];
+  if (lVar3 != 0) {
+    pauVar2 = (undefined1 (*) [16])*in_RDX + 1;
+    auVar1 = *(undefined1 (*) [16])*in_RDX;
+    uVar4 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                            (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                            (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                            (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                            (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                            (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                            (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                            (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                            (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                            (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                            (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                            (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                            (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                            (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                            (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                           (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+    do {
+      uVar5 = uVar4;
+      if ((short)uVar4 == 0) {
+        do {
+          auVar1 = *pauVar2;
+          pauVar2 = pauVar2 + 1;
+          uVar4 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                 (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                 (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                 (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                 (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                 (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                 (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                 (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                 (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                 (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                 (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                 (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                 (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                 (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                 (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+        } while (uVar4 == 0xffff);
+        uVar4 = ~uVar4;
+        uVar5 = uVar4;
+      }
+      for (; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+      }
+      core::hash::BuildHasher::
+      hash_one<std::hash::random::RandomState,ref_<country_core::resources::stairs::stairs_state::StairGraphEdge>_>
+                ();
+      hashbrown::raw::RawTable::
+      remove_entry<tuple_<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<country_core::resources::stairs::stairs_state::StairGraphEdge,country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>_>_>
+                ();
+      if (local_a0 == 1) {
+        hashbrown::raw::RawTable::
+        erase<tuple_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>_>,alloc::alloc::Global>
+                  ();
+      }
+      uVar4 = uVar5 - 1 & uVar5;
+      lVar3 = lVar3 + -1;
+    } while (lVar3 != 0);
+  }
+  alloc::vec::spec_from_iter::impl$0::
+  from_iter<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,std::collections::hash::set::IntoIter<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>_>
+            ();
+  alloc::vec::spec_from_iter::impl$0::
+  from_iter<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,std::collections::hash::set::IntoIter<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>_>
+            ();
+  if (1 < local_a8) {
+    if (local_a8 < 0x15) {
+      core::slice::sort::shared::smallsort::
+      insertion_sort_shift_left<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,bool_(*)(ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>,ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>)>
+                ();
+    }
+    else {
+      core::slice::sort::unstable::
+      ipnsort<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,bool_(*)(ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>,ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>)>
+                ();
+    }
+  }
+  if (1 < local_c0) {
+    if (local_c0 < 0x15) {
+      core::slice::sort::shared::smallsort::
+      insertion_sort_shift_left<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,bool_(*)(ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>,ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>)>
+                ();
+    }
+    else {
+      core::slice::sort::unstable::
+      ipnsort<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,bool_(*)(ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>,ref_<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>)>
+                ();
+    }
+  }
+  in_RCX[6] = local_a8;
+  in_RCX[4] = local_b8;
+  in_RCX[5] = uStack_b0;
+  in_RCX[9] = local_c0;
+  in_RCX[7] = local_d0;
+  in_RCX[8] = uStack_c8;
+  *in_RCX = 1;
+  in_RCX[1] = in_R8;
+  in_RCX[2] = 1;
+  in_RCX[3] = in_stack_00000028;
+  return;
+}
+
+
+
+// ===== 0x140900ba0 apply_diff | sig: void __cdecl apply_diff(void) | size: 677 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::apply_diff(void)
+
+{
+  int *piVar1;
+  int iVar2;
+  int iVar3;
+  ulonglong uVar4;
+  char extraout_AL;
+  char extraout_AL_00;
+  char cVar5;
+  ulonglong extraout_RAX;
+  longlong extraout_RAX_00;
+  ulonglong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong lVar6;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  longlong lVar7;
+  ulonglong uVar8;
+  int *piVar9;
+  char in_R8B;
+  int *piVar10;
+  
+  compute_checksum();
+  lVar6 = in_RDX + 0x20;
+  if (in_R8B != '\0') {
+    lVar6 = in_RDX + 0x38;
+  }
+  lVar7 = 0x38;
+  if (in_R8B != '\0') {
+    lVar7 = 0x20;
+  }
+  if (*(longlong *)(lVar6 + 0x10) != 0) {
+    piVar9 = *(int **)(lVar6 + 8);
+    piVar1 = piVar9 + *(longlong *)(lVar6 + 0x10) * 2;
+    piVar10 = piVar9;
+    do {
+      iVar2 = *piVar10;
+      iVar3 = piVar10[1];
+      *in_RCX = 0;
+      if (iVar2 == iVar3) {
+        petgraph::graphmap::GraphMap::
+        remove_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+                  ();
+        cVar5 = extraout_AL;
+      }
+      else {
+        petgraph::graphmap::GraphMap::
+        remove_edge<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+                  ();
+        cVar5 = extraout_AL_00;
+      }
+      if (cVar5 != '\0') {
+        hashbrown::map::HashMap::
+        insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        *(undefined1 *)(in_RCX + 0x2f) = 0;
+      }
+      piVar10 = piVar10 + 2;
+    } while (piVar10 != piVar1);
+    do {
+      iVar2 = piVar9[1];
+      uVar4 = in_RCX[7];
+      if (uVar4 == 0) {
+LAB_140900d20:
+        petgraph::graphmap::GraphMap::
+        remove_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+                  ();
+      }
+      else {
+        if (uVar4 != 1) {
+          indexmap::map::IndexMap::
+          hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                    ();
+          uVar8 = extraout_RAX;
+          indexmap::map::core::IndexMapCore::
+          get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                    ();
+          if (extraout_RAX_00 == 1) {
+            if (uVar4 <= uVar8) {
+                    // WARNING: Subroutine does not return
+              core::panicking::panic_bounds_check();
+            }
+            lVar6 = in_RCX[6];
+            if (lVar6 != 0) goto LAB_140900d06;
+          }
+          goto LAB_140900d20;
+        }
+        lVar6 = in_RCX[6];
+        if (*(int *)(lVar6 + 0x20) != *piVar9) goto LAB_140900d20;
+        uVar8 = 0;
+LAB_140900d06:
+        if (*(longlong *)(lVar6 + 0x10 + uVar8 * 0x28) == 0) goto LAB_140900d20;
+      }
+      uVar4 = in_RCX[7];
+      if (uVar4 == 0) {
+LAB_140900c90:
+        petgraph::graphmap::GraphMap::
+        remove_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+                  ();
+      }
+      else {
+        if (uVar4 != 1) {
+          indexmap::map::IndexMap::
+          hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                    ();
+          uVar8 = extraout_RAX_01;
+          indexmap::map::core::IndexMapCore::
+          get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                    ();
+          if (extraout_RAX_02 == 1) {
+            if (uVar4 <= uVar8) {
+                    // WARNING: Subroutine does not return
+              core::panicking::panic_bounds_check();
+            }
+            lVar6 = in_RCX[6];
+            if (lVar6 != 0) goto LAB_140900da0;
+          }
+          goto LAB_140900c90;
+        }
+        lVar6 = in_RCX[6];
+        if (*(int *)(lVar6 + 0x20) != iVar2) goto LAB_140900c90;
+        uVar8 = 0;
+LAB_140900da0:
+        if (*(longlong *)(lVar6 + 0x10 + uVar8 * 0x28) == 0) goto LAB_140900c90;
+      }
+      piVar9 = piVar9 + 2;
+    } while (piVar9 != piVar1);
+  }
+  lVar6 = *(longlong *)(in_RDX + 0x10 + lVar7);
+  if (lVar6 != 0) {
+    piVar9 = *(int **)(in_RDX + 8 + lVar7);
+    piVar1 = piVar9 + lVar6 * 2;
+    do {
+      while (*piVar9 == piVar9[1]) {
+        *in_RCX = 0;
+        *(undefined1 *)(in_RCX + 0x2f) = 0;
+        petgraph::graphmap::GraphMap::
+        add_node<country_core::resources::walls::decorator::DecoratorId,tuple_<>,enum2_<petgraph::Undirected>,std::hash::random::RandomState>
+                  ();
+        hashbrown::map::HashMap::
+        insert<country_core::resources::stairs::stairs_state::StairGraphEdge,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        piVar9 = piVar9 + 2;
+        if (piVar9 == piVar1) goto LAB_140900e2d;
+      }
+      add_edge();
+      piVar9 = piVar9 + 2;
+    } while (piVar9 != piVar1);
+  }
+LAB_140900e2d:
+  *in_RCX = 0;
+  compute_checksum();
+  return;
+}
+
+
+
+// ===== 0x140900e80 contains_edge_or_stub | sig: void __cdecl contains_edge_or_stub(void) | size: 334 =====
+
+void __cdecl country_core::resources::stairs::stairs_state::StairsState::contains_edge_or_stub(void)
+
+{
+  ulonglong uVar1;
+  longlong extraout_RAX;
+  ulonglong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong in_RCX;
+  int in_EDX;
+  ulonglong uVar2;
+  int in_R8D;
+  
+  if (in_EDX == in_R8D) {
+    uVar1 = *(ulonglong *)(in_RCX + 0x38);
+    if ((uVar1 != 1) && (uVar1 != 0)) {
+      indexmap::map::IndexMap::
+      hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      indexmap::map::core::IndexMapCore::
+      get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      if (extraout_RAX == 1) {
+        indexmap::map::IndexMap::
+        hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        uVar2 = extraout_RAX_00;
+        indexmap::map::core::IndexMapCore::
+        get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        if ((extraout_RAX_01 == 1) && (uVar1 <= uVar2)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+      }
+    }
+  }
+  else if ((*(longlong *)(in_RCX + 0x80) != 0) && (*(longlong *)(in_RCX + 0x80) != 1)) {
+    indexmap::map::IndexMap::
+    hash<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,country_core::resources::stairs::stairs_assembly_params::AdjustedStairEdge,std::hash::random::RandomState,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+    indexmap::map::core::IndexMapCore::
+    get_index_of<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+  }
+  return;
+}
+
+
+
+// ===== 0x140900fd0 contains_edge_or_stub_impl | sig: void __cdecl contains_edge_or_stub_impl(void) | size: 330 =====
+
+void __cdecl
+country_core::resources::stairs::stairs_state::StairsState::contains_edge_or_stub_impl(void)
+
+{
+  ulonglong uVar1;
+  longlong extraout_RAX;
+  ulonglong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong in_RCX;
+  int in_EDX;
+  ulonglong uVar2;
+  int in_R8D;
+  
+  if (in_EDX == in_R8D) {
+    uVar1 = *(ulonglong *)(in_RCX + 0x10);
+    if ((uVar1 != 1) && (uVar1 != 0)) {
+      indexmap::map::IndexMap::
+      hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      indexmap::map::core::IndexMapCore::
+      get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                ();
+      if (extraout_RAX == 1) {
+        indexmap::map::IndexMap::
+        hash<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,std::hash::random::RandomState,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        uVar2 = extraout_RAX_00;
+        indexmap::map::core::IndexMapCore::
+        get_index_of<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<tuple_<country_core::resources::walls::decorator::DecoratorId,petgraph::graphmap::CompactDirection>,alloc::alloc::Global>,country_core::resources::walls::decorator::DecoratorId>
+                  ();
+        if ((extraout_RAX_01 == 1) && (uVar1 <= uVar2)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+      }
+    }
+  }
+  else if ((*(longlong *)(in_RCX + 0x58) != 0) && (*(longlong *)(in_RCX + 0x58) != 1)) {
+    indexmap::map::IndexMap::
+    hash<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,country_core::resources::stairs::stairs_assembly_params::AdjustedStairEdge,std::hash::random::RandomState,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+    indexmap::map::core::IndexMapCore::
+    get_index_of<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,tuple_<>,tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>_>
+              ();
+  }
+  return;
+}
+
+

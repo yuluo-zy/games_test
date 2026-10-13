@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/critters/firefly_glow.raster.hlsl | target: _critters_firefly_glow.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main | evidence: spirv-cross + SPIR-V access/type inspection (instance StructuredBuffer<Firefly> + float visibility + DofFocus autofocus; NaN discard when invisible; CoC-driven billboard scale; radial falloff glow) | bindings: sampler_default s9, $Globals b13, terrain_heightmap t16, firefly_buffer t18, firefly_visibility_buffer t19, autofocus_buf t20, frame_constants set1/b0 | status: R (reconstruction)
 
 #include "inc/common.hlsl"
@@ -124,3 +127,22 @@ PsOut ps_main(PsIn pin)
     o.color = col;
     return o;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _critters_firefly_glow.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif
