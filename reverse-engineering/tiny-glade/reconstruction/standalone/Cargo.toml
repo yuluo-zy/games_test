@@ -1,0 +1,27 @@
+# 依赖版本取自 skeleton/B/Cargo.lock 与各 crate Cargo.toml（B 主基线：Bevy family 0.16.0）。
+# A 无 Cargo.lock（bevy git checkout 0dd724d，URL/版本未证实）；C 为 bevy 0.17.3 / glam 0.30.10，
+# 事件 API 不同（需独立移植），本 workspace 仅覆盖 B。
+[workspace]
+members = ["tg-tree", "tg-audio", "tg-critters-water"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.86"
+publish = false
+
+[workspace.dependencies]
+bevy_app = { version = "=0.16.0", default-features = false, features = ["std"] }
+bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std", "bevy_reflect"] }
+bevy_state = { version = "=0.16.0", default-features = false }
+glam = "=0.29.3"
+fastrand = "=1.8.0"
+perchance = "=0.4.0"
+lerp = "=0.4.0"
+itertools = "=0.14.0"
+log = "=0.4.27"
+smart-default = "=0.7.1"
+hashbrown = "=0.15.2"
+
+[profile.dev]
+debug = "line-tables-only"
