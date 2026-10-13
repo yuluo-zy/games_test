@@ -12,10 +12,14 @@ pub struct CurveUCircular<S = super::CurveCoordSemantic2D> {
 }
 impl<S> Copy for CurveUCircular<S> {}
 impl<S> Clone for CurveUCircular<S> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 impl<S> PartialEq for CurveUCircular<S> {
-    fn eq(&self, other: &Self) -> bool { self.value == other.value }
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
 }
 impl<S> CurveUCircular<S> {
     /// The original checks NaN before projection; infinity projects to NaN.
@@ -29,16 +33,26 @@ impl<S> CurveUCircular<S> {
             semantic: PhantomData,
         }
     }
-    pub fn get(self) -> f32 { self.value }
+    pub fn get(self) -> f32 {
+        self.value
+    }
     #[allow(clippy::should_implement_trait)] // Preserve the original scalar-delta method surface.
-    pub fn add(self, delta: f32) -> Self { Self::wrap_around(self.value + delta) }
-    pub fn subtract(self, delta: f32) -> Self { Self::wrap_around(self.value - delta) }
+    pub fn add(self, delta: f32) -> Self {
+        Self::wrap_around(self.value + delta)
+    }
+    pub fn subtract(self, delta: f32) -> Self {
+        Self::wrap_around(self.value - delta)
+    }
     /// Distance from this parameter to `end` along increasing parameters.
     pub fn distance(self, end: Self) -> f32 {
         self.forward_end(end) - self.value
     }
     fn forward_end(self, end: Self) -> f32 {
-        if self.value <= end.value { end.value } else { end.value + 1.0 }
+        if self.value <= end.value {
+            end.value
+        } else {
+            end.value + 1.0
+        }
     }
     /// `t` is deliberately unbounded, as in the original lerp dependency.
     pub fn wrapping_lerp(self, end: Self, t: f32) -> Self {
@@ -57,7 +71,9 @@ impl<S> CurveUCircular<S> {
     }
 }
 impl<S> From<CurveUCircular<S>> for CurveU<S> {
-    fn from(value: CurveUCircular<S>) -> Self { Self::new(value.value) }
+    fn from(value: CurveUCircular<S>) -> Self {
+        Self::new(value.value)
+    }
 }
 
 #[cfg(test)]

@@ -26,7 +26,12 @@ pub enum CurveError {
 }
 /// Point arithmetic uses glam; explicit metric sums preserve game operation order.
 pub trait CurvePoint:
-    Copy + PartialEq + Add<Output = Self> + Sub<Output = Self> + Mul<f32, Output = Self> + Div<f32, Output = Self>
+    Copy
+    + PartialEq
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<f32, Output = Self>
+    + Div<f32, Output = Self>
 {
     fn metric_squared(self) -> f32;
     fn normalized(self) -> Self;
@@ -37,7 +42,13 @@ impl CurvePoint for Vec2 {
         self.length_squared()
     }
     fn normalized(self) -> Self {
-        self.normalize()
+        // Repeated points are permitted. Construct the undefined tangent
+        // directly: arithmetic-generated NaN signs depend on the hardware.
+        if self == Self::ZERO {
+            Self::splat(f32::from_bits(0xffc0_0000))
+        } else {
+            self.normalize()
+        }
     }
     fn projected(self) -> Vec2 {
         self
@@ -48,7 +59,13 @@ impl CurvePoint for Vec3 {
         self.length_squared()
     }
     fn normalized(self) -> Self {
-        self.normalize()
+        // Repeated points are permitted. Construct the undefined tangent
+        // directly: arithmetic-generated NaN signs depend on the hardware.
+        if self == Self::ZERO {
+            Self::splat(f32::from_bits(0xffc0_0000))
+        } else {
+            self.normalize()
+        }
     }
     fn projected(self) -> Vec2 {
         Vec2::new(self.x, self.z)
@@ -69,7 +86,9 @@ impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic3D {
     }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemanticThresholded3D {
-    fn segment_length(delta: T) -> f32 { delta.metric_squared().sqrt() }
+    fn segment_length(delta: T) -> f32 {
+        delta.metric_squared().sqrt()
+    }
 }
 #[derive(Clone, Debug)]
 pub struct Curve<T: CurvePoint, S = CurveCoordSemantic2D> {
@@ -106,11 +125,7 @@ impl CurveInternalCoord {
 }
 fn clamp01(value: f32) -> f32 {
     let lo = if 0.0 <= value { value } else { 0.0 };
-    if lo <= 1.0 {
-        lo
-    } else {
-        1.0
-    }
+    if lo <= 1.0 { lo } else { 1.0 }
 }
 impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     /// B 0x141469430 / 0x141269ce0 / 0x1412699d0.
@@ -118,10 +133,18 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         points: Vec<T>,
         reject_duplicates: bool,
     ) -> Result<Self, CurveError> {
-        let (points_u,length) = Self::parameters_for_points(&points,reject_duplicates)?;
-        Ok(Self { points,points_u,length,semantic:PhantomData })
+        let (points_u, length) = Self::parameters_for_points(&points, reject_duplicates)?;
+        Ok(Self {
+            points,
+            points_u,
+            length,
+            semantic: PhantomData,
+        })
     }
-    fn parameters_for_points(points: &[T], reject_duplicates: bool) -> Result<(Vec<f32>,f32),CurveError> {
+    fn parameters_for_points(
+        points: &[T],
+        reject_duplicates: bool,
+    ) -> Result<(Vec<f32>, f32), CurveError> {
         if points.len() < 2 {
             return Err(CurveError::TooFewPoints(points.len() as u8));
         }
@@ -149,7 +172,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
                 }
             }
         }
-        Ok((points_u,length))
+        Ok((points_u, length))
     }
     pub fn try_new(points: Vec<T>, reject_duplicates: bool) -> Result<Self, CurveError> {
         Self::try_new_from_points(points, reject_duplicates)
@@ -204,7 +227,8 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     }
     /// B caller inline uses saturating_sub(i0,1) and min(i0+2,last).
     pub fn get_unnormalized_central_tangent_at_coord(&self, c: CurveInternalCoord) -> T {
-        self.points[(c.segment + 2).min(self.points.len() - 1)] - self.points[c.segment.saturating_sub(1)]
+        self.points[(c.segment + 2).min(self.points.len() - 1)]
+            - self.points[c.segment.saturating_sub(1)]
     }
     pub fn get_pos_at_u(&self, u: f32) -> T {
         self.get_pos_at_coord(self.get_coord_at_u(u))
@@ -253,7 +277,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     /// B reverse rebuilds the cumulative lengths instead of subtracting from 1.
     pub fn reverse(&mut self) {
         self.points.reverse();
-        let (points_u,length) = Self::parameters_for_points(&self.points,false).unwrap();
+        let (points_u, length) = Self::parameters_for_points(&self.points, false).unwrap();
         self.points_u = points_u;
         self.length = length;
     }
@@ -261,18 +285,25 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     /// in the donor while its old parameter cache remains unchanged.
     pub fn try_extend(&mut self, points: &[T]) -> Result<(), CurveError> {
         self.points.extend_from_slice(points);
-        let (points_u,length) = Self::parameters_for_points(&self.points,true)?;
+        let (points_u, length) = Self::parameters_for_points(&self.points, true)?;
         self.points_u = points_u;
         self.length = length;
         Ok(())
     }
     pub fn translate(&mut self, delta: T) {
-        for point in &mut self.points { *point = *point + delta; }
+        for point in &mut self.points {
+            *point = *point + delta;
+        }
     }
     pub fn crashy_lerp(&self, other: &Self, t: f32) -> Self {
-        assert_eq!(self.points.len(),other.points.len());
-        let points = self.points.iter().zip(&other.points).map(|(&a,&b)| a * (1.0 - t) + b * t).collect();
-        Self::try_new_from_points(points,false).unwrap()
+        assert_eq!(self.points.len(), other.points.len());
+        let points = self
+            .points
+            .iter()
+            .zip(&other.points)
+            .map(|(&a, &b)| a * (1.0 - t) + b * t)
+            .collect();
+        Self::try_new_from_points(points, false).unwrap()
     }
     pub fn smooth(mut self, iterations: usize) -> Result<Self, CurveError> {
         smooth_in_place(&mut self.points, iterations, false);
@@ -280,15 +311,25 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     }
     /// Weighted B smoothing gives each neighbor weight 0.5 and the center its
     /// supplied integer weight, with unchanged open endpoints.
-    pub fn smooth_weighted(mut self, iterations: usize, weights: &[usize]) -> Result<Self, CurveError> {
+    pub fn smooth_weighted(
+        mut self,
+        iterations: usize,
+        weights: &[usize],
+    ) -> Result<Self, CurveError> {
         assert_eq!(self.points.len(), weights.len());
         if self.points.len() > 2 {
             for _ in 0..iterations {
                 let mut previous = self.points[0];
-                for (i, &weight) in weights.iter().enumerate().take(self.points.len() - 1).skip(1) {
+                for (i, &weight) in weights
+                    .iter()
+                    .enumerate()
+                    .take(self.points.len() - 1)
+                    .skip(1)
+                {
                     let current = self.points[i];
                     let weight = weight as f32;
-                    self.points[i] = (current * weight + previous * 0.5 + self.points[i + 1] * 0.5) / (weight + 1.0);
+                    self.points[i] = (current * weight + previous * 0.5 + self.points[i + 1] * 0.5)
+                        / (weight + 1.0);
                     previous = current;
                 }
             }
@@ -297,7 +338,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     }
     pub fn smooth_in_place(&mut self, iterations: usize, closed: bool) -> Result<(), CurveError> {
         smooth_in_place(&mut self.points, iterations, closed);
-        let (points_u,length) = Self::parameters_for_points(&self.points,false)?;
+        let (points_u, length) = Self::parameters_for_points(&self.points, false)?;
         self.points_u = points_u;
         self.length = length;
         Ok(())
@@ -325,7 +366,9 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
 /// B free smoother: previous values are carried to prevent Gauss-Seidel bias.
 /// For a closed donor the last point duplicates the first; update it each pass.
 pub fn smooth_in_place<T: CurvePoint>(points: &mut [T], iterations: usize, closed: bool) {
-    if points.len() <= 2 { return; }
+    if points.len() <= 2 {
+        return;
+    }
     for _ in 0..iterations {
         let begin = if closed { 0 } else { 1 };
         let end = points.len() - 1;
@@ -335,25 +378,41 @@ pub fn smooth_in_place<T: CurvePoint>(points: &mut [T], iterations: usize, close
             points[i] = ((previous + points[i + 1]) * 0.5 - current) * 0.5 + current;
             previous = current;
         }
-        if closed { points[end] = points[0]; }
+        if closed {
+            points[end] = points[0];
+        }
     }
 }
 impl<S: CurveMetric<Vec3>> Curve<Vec3, S> {
     /// B inline projects point coordinates and copies parameter/length caches.
     /// This differs from try_to_curve2, which recalculates projected lengths.
     pub fn reinterpret_as_curve2(&self) -> Curve2 {
-        Curve2 { points:self.points.iter().map(|p| Vec2::new(p.x,p.z)).collect(),
-            points_u:self.points_u.clone(),length:self.length,semantic:PhantomData }
+        Curve2 {
+            points: self.points.iter().map(|p| Vec2::new(p.x, p.z)).collect(),
+            points_u: self.points_u.clone(),
+            length: self.length,
+            semantic: PhantomData,
+        }
     }
     pub fn try_to_curve2(&self) -> Result<Curve2, CurveError> {
-        Curve2::try_new_from_points(self.points.iter().map(|p| Vec2::new(p.x, p.z)).collect(), false)
+        Curve2::try_new_from_points(
+            self.points.iter().map(|p| Vec2::new(p.x, p.z)).collect(),
+            false,
+        )
     }
-    pub fn crashy_to_curve2(&self) -> Curve2 { self.try_to_curve2().unwrap() }
+    pub fn crashy_to_curve2(&self) -> Curve2 {
+        self.try_to_curve2().unwrap()
+    }
 }
 impl Curve3XZ {
     /// B 0x140c9cc60 moves caches unchanged; it does not rebuild XYZ lengths.
     pub fn into_curve3(self) -> Curve3 {
-        Curve3 { points:self.points, points_u:self.points_u, length:self.length, semantic:PhantomData }
+        Curve3 {
+            points: self.points,
+            points_u: self.points_u,
+            length: self.length,
+            semantic: PhantomData,
+        }
     }
 }
 impl Curve2 {
@@ -399,9 +458,15 @@ mod native_oracle {
 }
 #[cfg(test)]
 mod completion_oracle {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../evidence/foundation-completion-2026-10-13/curves/sampling_tests.rs"));
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../evidence/foundation-completion-2026-10-13/curves/sampling_tests.rs"
+    ));
 }
 #[cfg(test)]
 mod completion_query_oracle {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../evidence/foundation-completion-2026-10-13/curves/query_tests.rs"));
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../evidence/foundation-completion-2026-10-13/curves/query_tests.rs"
+    ));
 }

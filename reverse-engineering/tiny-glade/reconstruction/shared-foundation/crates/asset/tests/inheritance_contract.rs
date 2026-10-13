@@ -153,3 +153,16 @@ fn concrete_texture_defaults_resolve_missing_fields_without_replacing_explicit_n
     assert_eq!(child.gamma, defaults.gamma);
     assert_eq!(child.mips, defaults.mips);
 }
+
+#[test]
+fn prefab_render_some_keeps_missing_required_fields_unresolved() {
+    use asset::inheritable::Inheritable;
+    use asset::prefab::config::PrefabConfig;
+    let mut config: PrefabConfig = ron::from_str(r#"(parts:{"p":(render:(mesh:"m"))})"#).unwrap();
+    config.inherit_from(&PrefabConfig::default());
+    let part = &config.parts["p"];
+    let render = part.render.as_concrete();
+    assert_eq!(render.mesh.as_concrete(), "m");
+    assert!(matches!(render.shader, Inheritable::MissingDefault));
+    assert!(matches!(render.mesh_processor, Inheritable::Value(None)));
+}

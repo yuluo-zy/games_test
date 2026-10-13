@@ -1,5 +1,15 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-14 数值测试合同后续修复
+
+零切线直接构造固定负 quiet NaN；圆形/Elastic 的原样例含 Windows UCRT 舍入，跨平台测试分别采用有界误差，Windows 分支保留逐位。utils debug/release 均 93 项通过、无忽略；这不是 Windows 原版逐位验收，也不升级完整业务恢复。详见 `evidence/foundation-review-fixes-2026-10-14/numeric-followup/REPORT.md`。此前 87/3 为历史断点。
+
+
+## 2026-10-14 三库产品修复与完成度纠偏
+
+已修复数组纹理所有叶文件的内容缓存失效、旧 metadata 迁移、零 mip/零尺寸/对齐溢出错误，以及独立法线选轴和 directed local-edge 距离中错误的 abs。utils 当前 87 通过/3 失败（圆形 4 ULP、越界切线 NaN 符号、缓动 1 ULP）；asset 15、asset-pipe 15 通过，三库严格 Clippy 通过。仍为候选/限定验证，不能说所有 B 业务实现基本完成或三库全部测试绿色。libm 根因待同平台/中间值证实；三个墙符号改为 compiled_body_not_located，未证明未编译。新增缓存和参数处理属于产品策略变化，旧原版等价报告不覆盖。详见 `evidence/foundation-review-fixes-2026-10-14/REPORT.md`。以下历史记录中的更强完成度/未编译/全绿表述由本断点纠正。
+
+
 ## 2026-10-13 B未开始基础库并行实现
 
 用户明确要求C暂不处理，集中B库和依赖。本轮3 agent已把 tg-iced、tg-integrity-report、crash-reporter-gui、tg-gpu-selector、feedback-reporter、geforcenow、theme-fetcher、theme-server-proto 接进共享workspace并按原源目录恢复。协议包只记录字段契约，serde/Clone/Drop等派生不算手写算法；其余记录手写状态/HTTP/CAS/ZIP/SDK调用组合策略。真实iced、winit、cosmic-text使用原fork commit，公共依赖闭包414项version/source/checksum均匹配原B锁；已有tg-text可选GPU路径的gpu-allocator0.27候选不在本8库闭包内，不能据此宣称全workspace分叉等价。共享locked/offline测试32项、严格all-targets Clippy通过，本地GFN fixture额外1项/14组；UI原叶131案例与GFN/反馈66原指令案例各保持限定范围。真实窗口与视觉验证以[本轮交付](evidence/foundation-unstarted-2026-10-13/REPORT.md)的最终报告为准。原全GUI像素、完整主题/反馈oracle及真实游戏producer/consumer仍未验收，8库为candidate_partial，不升级完整模块。专属worker仅保存独立B副本；C后置库存不算实现。

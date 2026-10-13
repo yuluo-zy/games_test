@@ -241,6 +241,35 @@ impl Spline2D {
             periodic: true,
         }
     }
+    fn segment_at_t(&self, t: f32) -> (SplineSegment2D, f32) {
+        let t = t.clamp(self.min_t, self.max_t);
+        let index = self
+            .segments
+            .partition_point(|s| s.start_t <= t)
+            .saturating_sub(1);
+        let segment = self.segments[index];
+        (segment, t - segment.start_t)
+    }
+    pub fn position_at_t(&self, t: f32) -> Vec2 {
+        let (segment, t) = self.segment_at_t(t);
+        segment.position_at_local_t(t)
+    }
+    pub fn tangent_at_t(&self, t: f32) -> Vec2 {
+        let (segment, t) = self.segment_at_t(t);
+        segment.tangent_at_local_t(t)
+    }
+    /// Segment index and local parameter at global `t`. The original
+    /// `Spline2D::find_segment_and_dt` is an inline-only IPI declaration with
+    /// no compiled body observed in B; this mirrors the evidenced Spline3D
+    /// selection path and is a candidate ABI.
+    pub fn find_segment_and_dt(&self, t: f32) -> (usize, f32) {
+        let t = t.clamp(self.min_t, self.max_t);
+        let index = self
+            .segments
+            .partition_point(|s| s.start_t <= t)
+            .saturating_sub(1);
+        (index, t - self.segments[index].start_t)
+    }
 }
 impl Spline3D {
     pub fn from_control_points_with_tangents(
@@ -3189,5 +3218,93 @@ mod native_oracle {
             "spline_max_tangent_error={}",
             f32::from_bits(MAX_TANGENT.load(Ordering::Relaxed))
         );
+    }
+}
+
+#[cfg(test)]
+mod spline2d_queries {
+    use super::*;
+    fn sample_2d() -> Spline2D {
+        Spline2D::from_control_points_with_tangents(
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(3.0, 4.0),
+                Vec2::new(8.0, 1.0),
+                Vec2::new(10.0, 6.0),
+            ],
+            None,
+            None,
+        )
+    }
+    #[test]
+    fn position_and_tangent_match_selected_segment_local_eval() {
+        let spline = sample_2d();
+        for t in [0.0, 0.1, 0.5, 0.9, 1.0] {
+            let (index, dt) = spline.find_segment_and_dt(t);
+            assert!(index < spline.segments.len());
+            let segment = spline.segments[index];
+            let clamped = t.clamp(spline.min_t, spline.max_t);
+            assert!((clamped - (segment.start_t + dt)).abs() < 1e-6);
+            assert!(spline.position_at_t(t) - segment.position_at_local_t(dt) == Vec2::ZERO);
+            assert!(spline.tangent_at_t(t) - segment.tangent_at_local_t(dt) == Vec2::ZERO);
+        }
+    }
+    #[test]
+    fn segment_selection_covers_whole_parameter_domain() {
+        let spline = sample_2d();
+        let n = spline.segments.len();
+        let mut last_index = None;
+        for t in [
+            spline.min_t,
+            spline.max_t * 0.25,
+            spline.max_t * 0.5,
+            spline.max_t * 0.75,
+            spline.max_t,
+        ] {
+            let (index, _) = spline.find_segment_and_dt(t);
+            assert!(index < n);
+            if let Some(previous) = last_index {
+                assert!(index >= previous);
+            }
+            last_index = Some(index);
+        }
+        assert_eq!(spline.find_segment_and_dt(-10.0).0, 0);
+        assert_eq!(spline.find_segment_and_dt(f32::INFINITY).0, n - 1);
+    }
+    #[test]
+    fn closed_loop_spline_selects_periodic_segments() {
+        let spline = Spline2D::from_periodic_loop(&[
+            Vec2::new(0.0, 0.0),
+            Vec2::new(3.0, 4.0),
+            Vec2::new(8.0, 1.0),
+            Vec2::new(10.0, 6.0),
+        ]);
+        assert_eq!(spline.find_segment_and_dt(0.0).0, 0);
+        let (last, dt) = spline.find_segment_and_dt(spline.max_t);
+        assert_eq!(last, spline.segments.len() - 1);
+        assert!((dt - (spline.max_t - spline.segments[last].start_t)).abs() < 1e-6);
+    }
+    #[test]
+    fn two_d_queries_match_three_d_plane() {
+        let pts = [
+            Vec3::new(0.0, 5.0, 0.0),
+            Vec3::new(3.0, 5.0, 4.0),
+            Vec3::new(8.0, 5.0, 1.0),
+            Vec3::new(10.0, 5.0, 6.0),
+        ];
+        let spline3 = Spline3D::from_control_points_with_tangents(&pts, None, None);
+        let spline2 = Spline2D::from_control_points_with_tangents(
+            &[Vec2::new(0.0, 0.0), Vec2::new(3.0, 4.0), Vec2::new(8.0, 1.0), Vec2::new(10.0, 6.0)],
+            None,
+            None,
+        );
+        for t in [0.0, 0.33, 0.67, 1.0] {
+            let p3 = spline3.position_at_t(t);
+            let p2 = spline2.position_at_t(t);
+            assert!(p2.x - p3.x == 0.0 && p2.y - p3.z == 0.0);
+            let t3 = spline3.tangent_at_t(t);
+            let t2 = spline2.tangent_at_t(t);
+            assert!(t2.x - t3.x == 0.0 && t2.y - t3.z == 0.0);
+        }
     }
 }

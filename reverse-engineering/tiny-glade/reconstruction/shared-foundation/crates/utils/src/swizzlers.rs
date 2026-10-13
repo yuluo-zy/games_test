@@ -59,6 +59,27 @@ impl<'a> Vec3SliceView2<'a> {
     pub fn as_source(self) -> &'a [Vec3] {
         self.source
     }
+    pub fn len(self) -> usize {
+        self.source.len()
+    }
+    pub fn is_empty(self) -> bool {
+        self.source.is_empty()
+    }
+    /// Element access projecting the game's XZ plane. The original projected
+    /// axis/stride was not recoverable (the view adapter has no compiled body
+    /// in B); the x/z choice follows this module's XZ swizzle family.
+    pub fn get(self, index: usize) -> Option<Vec2> {
+        self.source
+            .get(index)
+            .map(|v| Vec2::new(v.x, v.z))
+    }
+    pub fn get_unchecked(self, index: usize) -> Vec2 {
+        let v = self.source[index];
+        Vec2::new(v.x, v.z)
+    }
+    pub fn iter(self) -> impl DoubleEndedIterator<Item = Vec2> + ExactSizeIterator + 'a {
+        self.source.iter().map(|v| Vec2::new(v.x, v.z))
+    }
 }
 pub trait Vec3SliceAs2 {
     fn as_vec2(&self) -> Vec3SliceView2<'_>;
@@ -72,3 +93,49 @@ impl Vec3SliceAs2 for [Vec3] {
 #[cfg(test)]
 #[path = "../../../../../evidence/shared-foundation-2026-10-13/utils-base/interface-batch-02/swizzler_tests.rs"]
 mod native_oracle;
+
+#[cfg(test)]
+mod vec3_slice_view2_tests {
+    use super::*;
+    fn sample() -> Vec3SliceView2<'static> {
+        static PTS: [Vec3; 4] = [
+            Vec3::new(1.0, 9.0, 2.0),
+            Vec3::new(3.0, 8.0, 4.0),
+            Vec3::new(5.0, 7.0, 6.0),
+            Vec3::new(7.0, 6.0, 8.0),
+        ];
+        PTS.as_vec2()
+    }
+    #[test]
+    fn projected_elements_drop_y() {
+        let view = sample();
+        assert_eq!(view.len(), 4);
+        assert!(!view.is_empty());
+        assert_eq!(view.get(0), Some(Vec2::new(1.0, 2.0)));
+        assert_eq!(view.get(3), Some(Vec2::new(7.0, 8.0)));
+        assert_eq!(view.get(4), None);
+        assert_eq!(view.get_unchecked(1), Vec2::new(3.0, 4.0));
+    }
+    #[test]
+    fn iterators_yield_xz_projection() {
+        let view = sample();
+        let collected: Vec<_> = view.iter().collect();
+        assert_eq!(
+            collected,
+            vec![
+                Vec2::new(1.0, 2.0),
+                Vec2::new(3.0, 4.0),
+                Vec2::new(5.0, 6.0),
+                Vec2::new(7.0, 8.0),
+            ]
+        );
+        let rev: Vec<_> = view.iter().rev().collect();
+        assert_eq!(rev[0], Vec2::new(7.0, 8.0));
+        assert_eq!(view.iter().len(), 4);
+    }
+    #[test]
+    fn source_borrow_is_preserved() {
+        let view = sample();
+        assert_eq!(view.as_source()[2], Vec3::new(5.0, 7.0, 6.0));
+    }
+}

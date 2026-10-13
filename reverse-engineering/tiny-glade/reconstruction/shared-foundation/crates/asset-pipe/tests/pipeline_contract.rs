@@ -5,7 +5,7 @@ use asset::texture::{
 use asset_pipe::texture::*;
 use image::{DynamicImage, Rgba, RgbaImage};
 use relative_path::{RelativePath, RelativePathBuf};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 struct Fixture(PathBuf);
 impl Fixture {
@@ -110,8 +110,8 @@ fn transfer_preserves_alpha_and_gamma_selects_wire_format() {
     .unwrap();
     assert_eq!(srgb.format, 43);
     assert_eq!(srgb.data, rgba.into_raw());
-    assert_eq!(mip_count([8, 2], MipChain::Limited(0)), 0);
-    assert_eq!(mip_count([8, 2], MipChain::Limited(12)), 4);
+    assert!(mip_count([8, 2], MipChain::Limited(0)).is_err());
+    assert_eq!(mip_count([8, 2], MipChain::Limited(12)).unwrap(), 4);
     let padding = pad_edges(
         &RgbaImage::from_fn(2, 2, |x, y| Rgba([x as u8, y as u8, 0, 255])),
         [4, 4],
@@ -119,12 +119,13 @@ fn transfer_preserves_alpha_and_gamma_selects_wire_format() {
     assert_eq!(*padding.get_pixel(3, 3), Rgba([1, 1, 0, 255]));
 }
 #[test]
-fn srgb_grayscale_is_rejected_at_the_original_boundary() {
+fn srgb_grayscale_returns_an_error_without_unwinding() {
     assert!(
         std::panic::catch_unwind(|| process_decoded_image(
             image(4, 4),
             &opts(Gamma::Srgb, MipChain::None, CompressionMethod::Grayscale)
         ))
+        .expect("unsupported options must not panic")
         .is_err()
     );
     assert_eq!(
@@ -283,10 +284,12 @@ fn scanner_arrays_require_consecutive_indices_and_name_normalization() {
     .unwrap();
     assert!(asset::texture::scan::scan_asset_tree(&fixture.0).is_err());
 }
+mod _shipped_root;
+
 #[test]
 fn shipped_read_only_index_is_available_without_source_images() {
-    let root = Path::new("D:/game/ljxsj_92385/Tiny Glade");
-    let names = compile_or_load_texture_assets(root, false).unwrap();
+    let root = _shipped_root::root();
+    let names = compile_or_load_texture_assets(&root, false).unwrap();
     assert_eq!(names.len(), 388);
     assert!(names.windows(2).all(|n| n[0] < n[1]));
 }
@@ -321,7 +324,7 @@ fn failed_job_joins_other_tasks_and_leaves_metadata_and_list_unchanged() {
 }
 
 #[test]
-fn panicking_job_joins_other_tasks_before_unwinding_and_does_not_persist_indices() {
+fn unsupported_job_joins_other_tasks_and_does_not_persist_indices() {
     let fixture = Fixture::new();
     fixture.write(
         "assets-src/textures/assets.ron",
@@ -334,7 +337,7 @@ fn panicking_job_joins_other_tasks_before_unwinding_and_does_not_persist_indices
         .save(fixture.0.join("assets-src/textures/panic.png"))
         .unwrap();
     fixture.write("compiled-assets/textures/list.ron", "[\"old\"]");
-    assert!(std::panic::catch_unwind(|| compile_texture_assets(&fixture.0)).is_err());
+    assert!(compile_texture_assets(&fixture.0).is_err());
     let good = std::fs::read(fixture.0.join("compiled-assets/textures/good.texture")).unwrap();
     assert_eq!(TextureAssetBlob::load(&good).unwrap().dimensions, [4, 4, 1]);
     assert!(!fixture.0.join("tmp/textures.meta.ron").exists());
@@ -342,4 +345,146 @@ fn panicking_job_joins_other_tasks_before_unwinding_and_does_not_persist_indices
         std::fs::read_to_string(fixture.0.join("compiled-assets/textures/list.ron")).unwrap(),
         "[\"old\"]"
     );
+}
+
+#[test]
+fn block_bytes_match_compressed_surface_length() {
+    assert_eq!(block_bytes(0).unwrap(), 16); // BC5
+    assert_eq!(block_bytes(1).unwrap(), 8); // BC4
+    assert_eq!(block_bytes(2).unwrap(), 16); // BC7
+    assert!(block_bytes(3).is_err());
+    assert!(block_bytes(255).is_err());
+    for (mode, expected) in [(0usize, 16usize), (1, 8), (2, 16)] {
+        let img = RgbaImage::from_fn(8, 4, |x, y| Rgba([(x * 13) as u8, (y * 17) as u8, 63, 255]));
+        let compressed = compress(&img, mode as u8).unwrap();
+        let blocks = (img.width() / 4) as usize * (img.height() / 4) as usize;
+        assert_eq!(compressed.len(), blocks * expected);
+    }
+}
+
+#[test]
+fn invalid_texture_parameters_return_errors_before_encoding() {
+    let default = opts(Gamma::Linear, MipChain::None, CompressionMethod::Color);
+    for invalid in [
+        TextureOpts {
+            resize: Some([0, 4]),
+            ..default.clone()
+        },
+        TextureOpts {
+            resize: Some([4, 0]),
+            ..default.clone()
+        },
+        TextureOpts {
+            resize: Some([u32::MAX, 4]),
+            ..default.clone()
+        },
+        TextureOpts {
+            mips: MipChain::Limited(0),
+            ..default.clone()
+        },
+    ] {
+        assert!(process_decoded_image(image(4, 4), &invalid).is_err());
+    }
+    assert!(process_decoded_image(image(0, 4), &default).is_err());
+    assert!(compress(&RgbaImage::new(0, 4), 2).is_err());
+    assert!(mip_count([0, 4], MipChain::None).is_err());
+    let valid = process_decoded_image(
+        image(4, 4),
+        &TextureOpts {
+            mips: MipChain::Limited(1),
+            ..default
+        },
+    )
+    .unwrap();
+    assert_eq!(valid.mips, 1);
+    assert!(!valid.data.is_empty());
+}
+
+#[test]
+fn array_leaf_content_changes_invalidate_cache_with_preserved_metadata() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "assets-src/textures/assets.ron",
+        "(default:(compression:None))",
+    );
+    let directory = fixture.0.join("assets-src/textures/array_color");
+    std::fs::create_dir_all(&directory).unwrap();
+    let first = directory.join("0.png");
+    let second = directory.join("1.png");
+    RgbaImage::from_pixel(4, 4, Rgba([255, 0, 0, 255]))
+        .save(&first)
+        .unwrap();
+    RgbaImage::from_pixel(4, 4, Rgba([0, 255, 0, 255]))
+        .save(&second)
+        .unwrap();
+    let (_, meta) = compile_texture_assets(&fixture.0).unwrap();
+    let original = &meta.assets[RelativePath::new("color")];
+    assert_eq!(original.sources.len(), 2);
+    let directory_mtime = std::fs::metadata(&directory).unwrap().modified().unwrap();
+    let file_mtime = std::fs::metadata(&first).unwrap().modified().unwrap();
+    let file_len = std::fs::metadata(&first).unwrap().len();
+    let output = fixture.0.join("compiled-assets/textures/color.texture");
+    let before = std::fs::read(&output).unwrap();
+    RgbaImage::from_pixel(4, 4, Rgba([0, 0, 255, 255]))
+        .save(&first)
+        .unwrap();
+    std::fs::File::open(&first)
+        .unwrap()
+        .set_modified(file_mtime)
+        .unwrap();
+    assert_eq!(
+        std::fs::metadata(&directory).unwrap().modified().unwrap(),
+        directory_mtime
+    );
+    assert_eq!(std::fs::metadata(&first).unwrap().len(), file_len);
+    let (_, updated) = compile_texture_assets(&fixture.0).unwrap();
+    let updated = &updated.assets[RelativePath::new("color")];
+    assert_ne!(
+        updated.sources[0].content_hash,
+        original.sources[0].content_hash
+    );
+    assert_eq!(updated.sources[1], original.sources[1]);
+    let after = std::fs::read(&output).unwrap();
+    assert_ne!(after, before);
+    let decoded = TextureAssetBlob::load(&after).unwrap();
+    assert_eq!(&decoded.data[..4], &[0, 0, 255, 255]);
+    let second_layer_offset = 4 * 4 * 4;
+    assert_eq!(
+        &decoded.data[second_layer_offset..second_layer_offset + 4],
+        &[0, 255, 0, 255]
+    );
+    let (_, unchanged) = compile_texture_assets(&fixture.0).unwrap();
+    assert_eq!(
+        unchanged.assets[RelativePath::new("color")].sources,
+        updated.sources
+    );
+    assert_eq!(std::fs::read(output).unwrap(), after);
+}
+
+#[test]
+fn legacy_metadata_without_source_stamps_is_rebuilt_once() {
+    let fixture = Fixture::new();
+    let source = fixture.0.join("source.png");
+    image(4, 4).save(&source).unwrap();
+    let desc = TextureAssetDesc {
+        path: source,
+        opts: opts(Gamma::Linear, MipChain::None, CompressionMethod::None),
+        layers: vec![],
+    };
+    let meta =
+        compile_texture_asset(RelativePath::new("a"), desc.clone(), &fixture.0, None).unwrap();
+    let legacy: TextureAssetMeta = ron::from_str(&format!(
+        "(desc:{},src_mtime:{})",
+        ron::to_string(&desc).unwrap(),
+        ron::to_string(&meta.src_mtime).unwrap()
+    ))
+    .unwrap();
+    assert!(legacy.sources.is_empty());
+    let mut header = TEXTURE_MAGIC.to_le_bytes().to_vec();
+    header.extend(TEXTURE_VERSION.to_le_bytes());
+    std::fs::write(fixture.0.join("a.texture"), &header).unwrap();
+    let refreshed =
+        compile_texture_asset(RelativePath::new("a"), desc, &fixture.0, Some(&legacy)).unwrap();
+    assert_eq!(refreshed.sources.len(), 1);
+    assert!(TextureAssetBlob::load(&std::fs::read(fixture.0.join("a.texture")).unwrap()).is_ok());
 }

@@ -1,5 +1,15 @@
 # 游戏自有源码逆向任务与收益排序
 
+## 2026-10-14 数值测试合同后续修复
+
+零切线直接构造固定负 quiet NaN；圆形/Elastic 的原样例含 Windows UCRT 舍入，跨平台测试分别采用有界误差，Windows 分支保留逐位。utils debug/release 均 93 项通过、无忽略；这不是 Windows 原版逐位验收，也不升级完整业务恢复。详见 `evidence/foundation-review-fixes-2026-10-14/numeric-followup/REPORT.md`。此前 87/3 为历史断点。
+
+
+## 2026-10-14 三库修复当前断点
+
+已修复数组纹理所有叶文件的内容缓存失效、旧 metadata 迁移、零 mip/零尺寸/对齐溢出错误，以及独立法线选轴和 directed local-edge 距离中错误的 abs。utils 当前 87 通过/3 失败（圆形 4 ULP、越界切线 NaN 符号、缓动 1 ULP）；asset 15、asset-pipe 15 通过，三库严格 Clippy 通过。仍为候选/限定验证，不能说所有 B 业务实现基本完成或三库全部测试绿色。libm 根因待同平台/中间值证实；三个墙符号改为 compiled_body_not_located，未证明未编译。新增缓存和参数处理属于产品策略变化，旧原版等价报告不覆盖。详见 `evidence/foundation-review-fixes-2026-10-14/REPORT.md`。以下历史记录中的更强完成度/未编译/全绿表述由本断点纠正。
+
+
 2026-10-13 最新B基础库批次：用户要求C先不管，集中B。3 agent已交付8库到[共享workspace](reconstruction/shared-foundation/Cargo.toml)，32普通Rust tests与严格Clippy通过，414项公共依赖身份完全匹配原B锁。主题/cache、报告/GUI、反馈插件/GFN为候选实现，协议schema不计手写算法；详见[交付及剩余边界](evidence/foundation-unstarted-2026-10-13/REPORT.md)。下一闭包是原tiny-glade每日主题插件→fetcher、country-core/UI反馈producer→reporter、rhapsody真实设备/driver_support→选择结果消费及启动完整性/crash回调接线；先恢复真实字段/类型再接入，不重复派生visitor或公共依赖。完整原oracle与A/C适配保留，C本轮不推进。
 
 基础库的详细功能拆分见[基础库业务功能清单](FOUNDATION_BUSINESS_FUNCTIONS.md)。推进单位为游戏侧手写规则与生产消费闭包；自动派生、宏展开、通用库实现不列功能任务。未解释的入口、归属待确认和纯数据契约保持各自标记，原系统验收状态不变。

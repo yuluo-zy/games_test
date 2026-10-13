@@ -27,6 +27,7 @@ pub fn ws_to_ss(distance: f32, projection: glam::Mat4, screen_height: f32) -> f3
     ws_to_cs(distance, projection) * screen_height
 }
 #[cfg(test)]
+#[allow(clippy::bool_assert_comparison)]
 mod completion {
     include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../evidence/foundation-completion-2026-10-13/geometry/native_tests.rs"));
 }

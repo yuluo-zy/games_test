@@ -22,11 +22,19 @@ pub struct RectangleSliceState {
     pub join_pending: bool,
 }
 impl RectangleSliceState {
-    fn emit(&mut self, mut point: RectangleSlicePoint, receiver: &mut impl FnMut(RectangleSlicePoint)) {
+    fn emit(
+        &mut self,
+        mut point: RectangleSlicePoint,
+        receiver: &mut impl FnMut(RectangleSlicePoint),
+    ) {
         if let Some(previous) = self.pending_normal.take() {
             point.tag = 5;
             if self.join_pending {
-                receiver(RectangleSlicePoint { normal: previous + point.normal, tag: 4, ..point });
+                receiver(RectangleSlicePoint {
+                    normal: previous + point.normal,
+                    tag: 4,
+                    ..point
+                });
                 point.tag = 4;
             }
             receiver(point);
@@ -49,7 +57,10 @@ impl Rectangle2d {
     }
     /// B 0x140c995c0 returns orientation + translation separately from size.
     pub fn as_transformation_and_size(self) -> (Affine2, Vec2) {
-        (Affine2::from_mat2_translation(self.orientation_mat2(), self.center), self.size)
+        (
+            Affine2::from_mat2_translation(self.orientation_mat2(), self.center),
+            self.size,
+        )
     }
     pub fn new_centered_axis_aligned(size: Vec2) -> Self {
         Self::new_axis_aligned(Vec2::ZERO, size)
@@ -166,7 +177,11 @@ impl Rectangle2d {
     }
     fn normal_at_u(self, u: f32, corner_length: f32) -> Vec2 {
         let corners = self.corner_us();
-        assert!(corners.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v)));
+        assert!(
+            corners
+                .iter()
+                .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+        );
         if u == 0.0 || u == 1.0 {
             return self.get_corner_normal(0) * corner_length;
         }
@@ -186,29 +201,78 @@ impl Rectangle2d {
     }
     pub fn get_edge_id_at_u(self, u: f32) -> usize {
         let corners = self.corner_us();
-        assert!(corners.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v)));
+        assert!(
+            corners
+                .iter()
+                .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+        );
         // An exact corner belongs to its incoming edge; u=1 belongs to edge 3.
-        if 0.0 <= u && u <= corners[1] { 0 }
-        else if corners[1] <= u && u <= corners[2] { 1 }
-        else if corners[2] <= u && u <= corners[3] { 2 }
-        else { 3 }
+        if 0.0 <= u && u <= corners[1] {
+            0
+        } else if corners[1] <= u && u <= corners[2] {
+            1
+        } else if corners[2] <= u && u <= corners[3] {
+            2
+        } else {
+            3
+        }
     }
     /// B chooses the dominant size-normalized local component. Ties choose Y,
     /// including the rectangle center, whose selected normal points down.
     pub fn closest_edge_normal(self, point: Vec2) -> Vec2 {
-        self.get_edge_normal(self.get_closest_edge_id(point))
+        let local = self.world_to_local(point);
+        let relative = local.abs() / self.size;
+        if relative.x > relative.y {
+            if local.x > 0.0 { self.axis } else { -self.axis }
+        } else if local.y > 0.0 {
+            Vec2::new(-self.axis.y, self.axis.x)
+        } else {
+            Vec2::new(self.axis.y, -self.axis.x)
+        }
     }
     pub fn get_closest_edge_id(self, point: Vec2) -> usize {
-        let point = self.perimeter_local_point(point);
-        let relative = point / self.size;
-        if relative.x.abs() <= relative.y.abs() {
-            if point.y <= 0.0 { 3 } else { 1 }
-        } else if point.x <= 0.0 { 0 } else { 2 }
+        // B 0x140c9acb0: for each edge, clamp the point's projection onto the
+        // segment, take the sqrt distance, and keep the first edge that is
+        // strictly closest. Ties retain the earlier edge index.
+        let hx = self.size.x * 0.5;
+        let hy = self.size.y * 0.5;
+        let corners = [
+            Vec2::new(-hx, -hy),
+            Vec2::new(-hx, hy),
+            Vec2::new(hx, hy),
+            Vec2::new(hx, -hy),
+        ]
+        .map(|p| self.local_to_world(p));
+        let mut best = 0;
+        let mut best_d = f32::INFINITY;
+        for i in 0..4 {
+            let e1 = corners[i];
+            let e2 = corners[(i + 1) % 4];
+            let edge = e2 - e1;
+            let mut len2 = edge.length_squared();
+            if len2 <= 1e-20 {
+                len2 = 1e-20;
+            }
+            let t = (((point - e1).dot(edge)) / len2).clamp(0.0, 1.0);
+            let closest = e2 * t + e1 * (1.0 - t);
+            let d = (point - closest).length();
+            if d < best_d {
+                best_d = d;
+                best = i;
+            }
+        }
+        best
     }
-    /// B signed box distance; zero/degenerate axes preserve dependency IEEE results.
+    /// B's directed local-edge query, not a symmetric box SDF: negative local
+    /// coordinates are not folded with abs. The 80 existing snapshots cover
+    /// both sides of the origin; zero/degenerate axes retain IEEE results.
     pub fn signed_distance_to_closest_edge(self, point: Vec2) -> f32 {
-        let q = self.perimeter_local_point(point).abs() - self.size * 0.5;
-        if q.x < 0.0 || q.y < 0.0 { q.x.max(q.y) } else { q.x.hypot(q.y) }
+        let q = self.perimeter_local_point(point) - self.size * 0.5;
+        if q.x < 0.0 || q.y < 0.0 {
+            q.x.max(q.y)
+        } else {
+            q.x.hypot(q.y)
+        }
     }
     pub fn distance_to_closest_edge(self, point: Vec2) -> f32 {
         self.signed_distance_to_closest_edge(point).max(0.0)
@@ -250,7 +314,11 @@ impl Rectangle2d {
         let _ = crate::curve::CurveU::<crate::curve::CurveCoordSemantic2D>::new(start);
         let _ = crate::curve::CurveU::<crate::curve::CurveCoordSemantic2D>::new(end);
         let corners = self.corner_us();
-        assert!(corners.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v)));
+        assert!(
+            corners
+                .iter()
+                .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+        );
         let stop = if end < start { end + 1.0 } else { end };
         let mut result = Vec::with_capacity(7);
         result.push(start);
@@ -285,34 +353,67 @@ impl Rectangle2d {
         let mut started = false;
         for index in 1..9 {
             let unwrapped = corners[index % 4] + (index / 4) as f32;
-            if start >= unwrapped { continue; }
+            if start >= unwrapped {
+                continue;
+            }
             let normal = self.get_edge_normal((index - 1) % 4);
             if !started {
-                state.emit(RectangleSlicePoint {
-                    position: self.get_pos_at_u(start), normal, relative_u: 0.0, tag: 5,
-                }, &mut receiver);
+                state.emit(
+                    RectangleSlicePoint {
+                        position: self.get_pos_at_u(start),
+                        normal,
+                        relative_u: 0.0,
+                        tag: 5,
+                    },
+                    &mut receiver,
+                );
                 started = true;
             }
             if stop < unwrapped {
-                state.emit(RectangleSlicePoint {
-                    position: self.get_pos_at_u(end), normal, relative_u: 1.0, tag: 5,
-                }, &mut receiver);
+                state.emit(
+                    RectangleSlicePoint {
+                        position: self.get_pos_at_u(end),
+                        normal,
+                        relative_u: 1.0,
+                        tag: 5,
+                    },
+                    &mut receiver,
+                );
                 return;
             }
-            if stop == unwrapped { continue; }
+            if stop == unwrapped {
+                continue;
+            }
             let position = points[index % 4];
             let relative_u = unwrapped * reciprocal - reciprocal * start;
-            state.emit(RectangleSlicePoint { position, normal, relative_u, tag: 5 }, &mut receiver);
-            state.emit(RectangleSlicePoint {
-                position, normal: self.get_edge_normal(index % 4), relative_u, tag: 5,
-            }, &mut receiver);
+            state.emit(
+                RectangleSlicePoint {
+                    position,
+                    normal,
+                    relative_u,
+                    tag: 5,
+                },
+                &mut receiver,
+            );
+            state.emit(
+                RectangleSlicePoint {
+                    position,
+                    normal: self.get_edge_normal(index % 4),
+                    relative_u,
+                    tag: 5,
+                },
+                &mut receiver,
+            );
         }
     }
     /// Boundary intersections differ from overlap: contained contours return false.
     pub fn intersects_circle(self, circle: Circle2d) -> bool {
         let points = self.as_points2();
         (0..4).any(|index| {
-            let ray = Ray2 { origin: points[index], direction: points[(index + 1) % 4] - points[index] };
+            let ray = Ray2 {
+                origin: points[index],
+                direction: points[(index + 1) % 4] - points[index],
+            };
             circle.intersect_ray(ray).is_some_and(|(near, far)| {
                 (0.0..=1.0).contains(&near) || (0.0..=1.0).contains(&far)
             })
@@ -324,8 +425,13 @@ impl Rectangle2d {
         let relative_axis = inverse * other.axis;
         let relative_y = inverse * Vec2::new(-other.axis.y, other.axis.x);
         let relative_center = inverse * other.center - inverse * self.center;
-        let transform = Affine2::from_mat2_translation(Mat2::from_cols(relative_axis, relative_y), relative_center);
-        let points = other.as_points2_centered_aligned().map(|p| transform.transform_point2(p));
+        let transform = Affine2::from_mat2_translation(
+            Mat2::from_cols(relative_axis, relative_y),
+            relative_center,
+        );
+        let points = other
+            .as_points2_centered_aligned()
+            .map(|p| transform.transform_point2(p));
         let half = self.size * 0.5;
         (0..4).any(|i| {
             let start = points[i];
@@ -334,15 +440,17 @@ impl Rectangle2d {
             let b = (-half - start) / direction;
             let near = a.min(b).max_element();
             let far = a.max(b).min_element();
-            near <= far && far >= 0.0 && (far <= 1.0 || (near <= 1.0 && near >= 0.0))
+            near <= far && far >= 0.0 && (far <= 1.0 || (0.0..=1.0).contains(&near))
         })
     }
     /// Clamp the selected dimension and move its named edge while retaining the
     /// opposite edge. The raw delta is a full-size change, not a per-side offset.
-    pub fn expand_along_edge(&mut self, edge: usize, delta: f32, min: f32, max: f32) {
+    /// B 0x140c9c620 clamps the new size to [0, max]; the leading bound argument
+    /// is not the clamp lower bound in the observed behavior.
+    pub fn expand_along_edge(&mut self, edge: usize, delta: f32, _min: f32, max: f32) {
         let dimension = if edge == 1 || edge == 3 { 1 } else { 0 };
         let old = self.size[dimension];
-        let new = (old + delta).clamp(min, max);
+        let new = (old + delta).clamp(0.0, max);
         self.size[dimension] = new;
         let normal = self.get_edge_normal(edge);
         self.center += normal * ((new - old) * 0.5);
@@ -464,5 +572,58 @@ impl Rectangle3d {
             Vec3::new(p[2].x, self.top, p[2].y),
             Vec3::new(p[3].x, self.top, p[3].y),
         ]
+    }
+}
+
+#[cfg(test)]
+mod normal_regressions {
+    use super::*;
+    #[test]
+    fn size_normalized_normal_is_independent_of_nearest_segment() {
+        let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::new(10.0, 2.0));
+        let point = Vec2::new(4.0, 0.5);
+        assert_eq!(rectangle.get_closest_edge_id(point), 1);
+        assert_eq!(rectangle.closest_edge_normal(point), Vec2::X);
+        assert_eq!(rectangle.closest_edge_normal(-point), -Vec2::X);
+        assert_eq!(rectangle.closest_edge_normal(Vec2::ZERO), -Vec2::Y);
+        // Equal normalized components select the Y axis.
+        assert_eq!(rectangle.closest_edge_normal(Vec2::new(2.5, 0.5)), Vec2::Y);
+    }
+    #[test]
+    fn rotated_normals_keep_world_orientation() {
+        let axis = Vec2::new(0.6, 0.8);
+        let rectangle = Rectangle2d::new(Vec2::new(2.0, 3.0), Vec2::new(10.0, 2.0), axis);
+        assert_eq!(
+            rectangle.closest_edge_normal(rectangle.local_to_world(Vec2::new(4.0, 0.1))),
+            axis
+        );
+        assert_eq!(
+            rectangle.closest_edge_normal(rectangle.local_to_world(Vec2::new(-4.0, 0.1))),
+            -axis
+        );
+        assert_eq!(
+            rectangle.closest_edge_normal(rectangle.local_to_world(Vec2::new(0.1, 0.8))),
+            Vec2::new(-0.8, 0.6)
+        );
+        assert_eq!(
+            rectangle.closest_edge_normal(rectangle.center),
+            Vec2::new(0.8, -0.6)
+        );
+    }
+    #[test]
+    fn directed_edge_distance_preserves_negative_local_coordinates() {
+        let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::splat(2.0));
+        assert_eq!(
+            rectangle.signed_distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
+            -3.0
+        );
+        assert_eq!(
+            rectangle.distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
+            0.0
+        );
+        assert_eq!(
+            rectangle.signed_distance_to_closest_edge(Vec2::new(3.0, 2.0)),
+            2.0f32.hypot(1.0)
+        );
     }
 }

@@ -1,0 +1,573 @@
+{
+  "date": "2026-10-14",
+  "created_at": "2026-10-13T17:28:43.463367+00:00",
+  "platform": "macOS aarch64",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "scope": "identified product defects and existing B fixture regression; no complete original acceptance",
+  "checks": {
+    "utils": {
+      "command": "cargo test --locked --offline -p utils --lib",
+      "exit_code": 101,
+      "passed": 87,
+      "failed": 3,
+      "ignored": 0,
+      "log": "utils-tests.log"
+    },
+    "asset_and_asset_pipe": {
+      "command": "cargo test --locked --offline -p asset -p asset-pipe --all-targets",
+      "exit_code": 0,
+      "asset_passed": 15,
+      "asset_pipe_passed": 15,
+      "log": "asset-tests.log"
+    },
+    "clippy": {
+      "command": "cargo clippy --locked --offline -p utils -p asset -p asset-pipe --all-targets -- -D warnings",
+      "exit_code": 0
+    },
+    "format": {
+      "command": "rustfmt --edition 2024 --check (three modified Rust files); git diff --check",
+      "exit_code": 0
+    }
+  },
+  "remaining_failures": [
+    {
+      "test": "geometry::boundary_oracle::original_b_circle_boundary",
+      "kind": "finite 4 ULP difference",
+      "expected_bits": 1050289188,
+      "actual_bits": 1050289184
+    },
+    {
+      "test": "curve::native_oracle::original_b_curve2_rules",
+      "kind": "out-of-range tangent NaN sign bits",
+      "expected_bits": [
+        4290772992,
+        4290772992
+      ],
+      "actual_bits": [
+        2143289344,
+        2143289344
+      ]
+    },
+    {
+      "test": "easing_functions::native_oracle::original_b_instructions",
+      "kind": "elastic easing 1 ULP difference",
+      "expected_bits": 3148161200,
+      "actual_bits": 3148161199
+    }
+  ],
+  "new_product_policy": {
+    "source_stamps": "every leaf path/mtime/length/XXH3 content hash",
+    "metadata_migration": "missing stamps deserialize to empty and invalidate cache",
+    "parameter_errors": [
+      "empty image",
+      "zero resize",
+      "zero mip limit",
+      "u32 alignment overflow",
+      "compressed sRGB grayscale"
+    ],
+    "native_equivalence_claimed": false
+  },
+  "geometry_fixture_scope": {
+    "existing_cases": 80,
+    "comparison": "preexisting 2e-5 relative/absolute tolerance; unchanged",
+    "extra_regression_tests": 3
+  },
+  "inventory": {
+    "count": 185,
+    "denominator_complete": false,
+    "unlocated_bodies": 3,
+    "uncompiled_in_b_proven": false
+  },
+  "inputs": [
+    {
+      "path": "evidence/foundation-completion-2026-10-13/base-assets/comparative_tests.rs",
+      "sha256": "41f64c1f4f1a46d1c39ffd2b3a9f416894bc135d8ce30bf9162e2e6f739b72f4",
+      "bytes": 610
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/base-assets/loop_slice_tests.rs",
+      "sha256": "ad2c665dd88768de894239343dccdefcda771f8127e538cbfe08e20d26882b7c",
+      "bytes": 49678
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/base-assets/prefab_default_tests.rs",
+      "sha256": "3fa90c711683bd0434aacb962b77f1f6d10aa6b155aaef7b2ff1170c81ef4dbb",
+      "bytes": 2213
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/base-assets/prefab_native_tests.rs",
+      "sha256": "25a6b032dd72e5286efa822cedc14937ddcfcdd8e73502a082edf4f2daeb90d1",
+      "bytes": 187608
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/base-assets/rdp_tests.rs",
+      "sha256": "90d2e58063a6ba93a2feef8e533b7b88281226a83d9a32fed4c90334e0d12c60",
+      "bytes": 12130
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/curves/query_tests.rs",
+      "sha256": "170351cd1d88c7d7ed5fbe0b9836e87041689fe012d91e75a37b0447ee12d8ad",
+      "bytes": 3133
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/curves/sampling_tests.rs",
+      "sha256": "b9553e5076a1197182d60cc32f89721e042209883171c8b4e291e2ae17424c10",
+      "bytes": 1516
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/curves/test_harness.rs",
+      "sha256": "d237c629ec445ef6e8488f20737c1e1ed4cfead3e449d7c1bf6c23fc415de7d8",
+      "bytes": 101
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/geometry/native_tests.rs",
+      "sha256": "497528a3f21184aaaf45424db122d268f254c9be844bc8d5cb14949cfe25e0b5",
+      "bytes": 539617
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/wall-heightmap/heightmap_tests.rs",
+      "sha256": "7a0ff7767408fd0331d12d5e5e566e8c783e0d55b2bdb3d9527448c53d346a62",
+      "bytes": 118856
+    },
+    {
+      "path": "evidence/foundation-completion-2026-10-13/wall-heightmap/wall_tests.rs",
+      "sha256": "1afb7fd3f495d045ee5d6494e51003e8e240b3e8ac9678b42a75e8d497bea99a",
+      "bytes": 28495
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary_tests.rs",
+      "sha256": "88564cc2395b65accb26e84717ce020b4aa3d39fa32ea4ff5076d395b330d13a",
+      "bytes": 65752
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/edge_tests.rs",
+      "sha256": "f9524d99b5fa88f4daf67c935642f6578c52d8fd5b7641cfd46c718cf27b7a6b",
+      "bytes": 48054
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry_tests.rs",
+      "sha256": "c962e53f6fccdbbecf2e5f1832f30fa762db7b0239b800c5cfd9dc7f71291084",
+      "bytes": 151392
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-tests.rs",
+      "sha256": "dd65c924fbf87520389acb6560452640839a4b0f79a107fed73ea3e4484c10c4",
+      "bytes": 49928
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/slice-native-tests.rs",
+      "sha256": "37382a790ca3c025e4a6912f20eac8ccbde59740dd226259cdc5f0915839faab",
+      "bytes": 257231
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/linear_tests.rs",
+      "sha256": "7fe81ec81f23daf6a0a036637a14dab6e2ac8ee130c9b4cf1b0adfe94261733c",
+      "bytes": 92013
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/native_tests.rs",
+      "sha256": "02c10c75508569f81a37883c3ab6fc5a44ee89f63a20b9e596e5f0914ea34a54",
+      "bytes": 258926
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/triangle_tests.rs",
+      "sha256": "3522ce4667641352edc3c626eb8baa14b401ed2d2ac66768b214370a770e13d5",
+      "bytes": 110776
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/lang-small/var_result_layout.rs",
+      "sha256": "c7ae31e4a42c547e5e94122daeec2e130a9ec02a13550fce2da1b74a0f332ad6",
+      "bytes": 182
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-base/interface-batch-02/index_tests.rs",
+      "sha256": "871aeaf9c9f6b15a351281790597f664cd46ea14c18be6ff53e1f61eb015d993",
+      "bytes": 7328
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-base/interface-batch-02/swizzler_tests.rs",
+      "sha256": "d7f0226ff43f345e0d0b364be4d89f5bf88bcab493302c3162d70f455e31ddf9",
+      "bytes": 24767
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-base/validate_selective.rs",
+      "sha256": "19b36ed160b0499271215a1815a19a0dc96a529ff16bfdd24094dc9bf7d6e1da",
+      "bytes": 1537
+    },
+    {
+      "path": "evidence/shared-foundation-review-2026-10-13/geometry-curves/extra_triangle_tests.rs",
+      "sha256": "c18769bb9868d0084e8d9dc7df9fe5899adf38f822fdc42bf58349a08c3e0c08",
+      "bytes": 205604
+    },
+    {
+      "path": "evidence/shared-foundation-review-2026-10-13/utils-base/selective-before.rs",
+      "sha256": "f91c7e8beb8f02d01c02f6b24f18ae0c8ccb5a1bac718acce039bfba98beddbb",
+      "bytes": 2895
+    },
+    {
+      "path": "evidence/shared-foundation-review-2026-10-13/utils-base/selector-allocation-probe.rs",
+      "sha256": "71e25af75a3d8ce729d226370a52bb98acc25138396cff73802305eb6aa247ea",
+      "bytes": 2038
+    },
+    {
+      "path": "reconstruction/shared-foundation/Cargo.lock",
+      "sha256": "e2cd04e21edbb2dc6b409c93e878b1ec05c593e36356bf66ce04ae047051a603",
+      "bytes": 24512
+    },
+    {
+      "path": "reconstruction/shared-foundation/Cargo.toml",
+      "sha256": "f93d7ec5004c84cf91f7257cc36264cf7e9e3bdb19bb8c8949e34ee4af66d630",
+      "bytes": 853
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/Cargo.toml",
+      "sha256": "c62512eb86d9e1f95331d468c359491a118ffc2f8ffe00c013228c633053faca",
+      "bytes": 586
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/examples/shallow_runner.rs",
+      "sha256": "f75105ccd24a7bcb1390d7ae9d8d1b7257b749ac773f49b761cf5ba4b38e45ee",
+      "bytes": 3030
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "sha256": "2f64c818ae1126a90e7814240e6eed694bab413bece4328fed8354fd098a42a9",
+      "bytes": 4788
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/lib.rs",
+      "sha256": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+      "bytes": 215
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+      "sha256": "6c6067d4ff1bcdce14e8c636de1ad52717d4a66fc5b65b08c2592bdee734ea70",
+      "bytes": 6957
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "sha256": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+      "bytes": 3358
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "bytes": 1806
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs",
+      "sha256": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+      "bytes": 1866
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+      "sha256": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+      "bytes": 2175
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+      "sha256": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+      "bytes": 1539
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+      "sha256": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
+      "bytes": 3584
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture.rs",
+      "sha256": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+      "bytes": 141
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/tests/_shipped_root.rs",
+      "sha256": "4b0de8740bf2c1089736be15f56fdddb31220da8d9431b27715e1fd2cf0f2dc0",
+      "bytes": 436
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/tests/inheritance_contract.rs",
+      "sha256": "c15c0c494d63d1fb51c6693df24931342462c25ff523e60070bd088e586a81c7",
+      "bytes": 6620
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/tests/prefab_name_contract.rs",
+      "sha256": "74fe702a9d8be68e25322176568d3125c5d6ec51a66604b9614938446aa2163b",
+      "bytes": 1483
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/tests/shipped_prefabs.rs",
+      "sha256": "6aee913086268b916279336a387232919af953d8f926b93c05f2ef13fa26dbe9",
+      "bytes": 452
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/tests/shipped_textures.rs",
+      "sha256": "dd83c74cc5e3a431e41cdf0d906690513eafef0707d58d8c2b72d85ab7b8bf00",
+      "bytes": 992
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/Cargo.toml",
+      "sha256": "a9344edad0995533fe79a8eb5b145d66e0b74c0f0d44cc41b8bc2de57f78ceed",
+      "bytes": 768
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/examples/gamma_runner.rs",
+      "sha256": "a426fc1ad06d304c0dee59fb1c934dfbe17ceb27cbff76fc7770fe36d25b5baf",
+      "bytes": 290
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs",
+      "sha256": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+      "bytes": 109
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "sha256": "1e5a064a7c11c87f684ebebae6939ace67a1c33923b58c51cf460ef5b2bd361f",
+      "bytes": 18376
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/tests/_shipped_root.rs",
+      "sha256": "4b0de8740bf2c1089736be15f56fdddb31220da8d9431b27715e1fd2cf0f2dc0",
+      "bytes": 436
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/tests/allocation_review.rs",
+      "sha256": "8124413b74429733a3f4fb632278948577ecdadb151a7812f9583d238e530052",
+      "bytes": 2378
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/asset-pipe/tests/pipeline_contract.rs",
+      "sha256": "9ccae9fc4acb0dd60d0044db1156ed1f94490516d1890aa70950e0ccced6a0c1",
+      "bytes": 17313
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/Cargo.toml",
+      "sha256": "06ad362176ad630d2f4f12c6d0ac07a25a1742918bfa438b5a37577c41ee8cfb",
+      "bytes": 500
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/angle_range.rs",
+      "sha256": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+      "bytes": 3587
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+      "sha256": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+      "bytes": 77635
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+      "sha256": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+      "bytes": 3584
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs",
+      "sha256": "a287977adb195a0dcd7dd2c2889b6f10a405d7c936aad7752405a2e919fccd22",
+      "bytes": 2577
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/components/mod.rs",
+      "sha256": "e05ce78b275d81473d160c16b611657b805dc793e81ff228ac6486e550ba33a0",
+      "bytes": 19
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+      "sha256": "61f43e4ef4d54c3b8b6218d633af017aeffdd0df76898a0d35664938eb21321d",
+      "bytes": 1635
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+      "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c",
+      "bytes": 9818
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs",
+      "sha256": "c6494ac34a52b9b457b51ad2931e894f067f3cbe809a7fff31325dd8e90d3410",
+      "bytes": 2221
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs",
+      "sha256": "28d2222378fc125db45cf5537f23fe255bb398daf9c223ff15e5c11b3c9b38db",
+      "bytes": 2686
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+      "sha256": "7da79af864a1ae9d6b5b153c2ac757db3ecb21da38d92984147b48c3f55cba68",
+      "bytes": 16043
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/resample.rs",
+      "sha256": "1186901e2a4b2b8cb069fb92139e2f29efdc8983b99f81311ce64c3f3846d46a",
+      "bytes": 6748
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs",
+      "sha256": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+      "bytes": 6614
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+      "sha256": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+      "bytes": 1390
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/float_grid.rs",
+      "sha256": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+      "bytes": 1883
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs",
+      "sha256": "f7e18427827e01ca22ba9a0284ed8dd7534f03578b000a885463aa6352172786",
+      "bytes": 7217
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs",
+      "sha256": "d1b270395fd590228e3080cd09dd59b656731750988744d544307020f888a8b7",
+      "bytes": 956
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+      "sha256": "112f403d1fbe35385cb54e6072cd1af86115bf40d3849bd48ded7c3289e578b8",
+      "bytes": 7870
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+      "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e",
+      "bytes": 3617
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/line_relation.rs",
+      "sha256": "fe50d4b1a589e41095e0009e4698a5e3b98ef3be8b7a28be9487a30596938496",
+      "bytes": 1482
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs",
+      "sha256": "8cb7d94d27f8946a650ebd9ac6e8a91a548f48308b28f70d27c90c9c10cf5259",
+      "bytes": 2437
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs",
+      "sha256": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502",
+      "bytes": 606
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "sha256": "49488a85b8bce34cd7602257f5a3434a87b8fe30d2bd003e1eb39598553ba9b1",
+      "bytes": 1073
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs",
+      "sha256": "65953e42979151bccbc8a9ce7ed9dad00d3a36d8c455ee4153440818dbc6a149",
+      "bytes": 1404
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "5015e7da80640061d0b3a42a614b7c307b51c8b35ccf36a3e29e47afc21cff5d",
+      "bytes": 23216
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+      "sha256": "4f6b6a57d00ac1b533e2ec573d4b9bbe123c36cdb64a77dce3ca7e7f0b798593",
+      "bytes": 4480
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "sha256": "59ed8b31b4d0a705431329ea907c534e40fc2abeed878c46ae07b2e4cd06d991",
+      "bytes": 1642
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/mod.rs",
+      "sha256": "6fc65e0892a4ca9ca60602fe1ea3e2a09d284717addc4729781ba1c9907a7890",
+      "bytes": 471
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+      "sha256": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce",
+      "bytes": 762
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs",
+      "sha256": "b725f0bd3e30cdb73e99b2ac431344283a055acbe470c6b983bc8fe141ec2f15",
+      "bytes": 1887
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+      "sha256": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+      "bytes": 747
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+      "sha256": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+      "bytes": 3465
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/lib.rs",
+      "sha256": "2fac701e3f0f91646f431e6cfd6eec0d4bb2234532bab284770cc10153fe2b50",
+      "bytes": 680
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/local_time.rs",
+      "sha256": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+      "bytes": 734
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+      "sha256": "0df4ac3afa385b8397314408d997b79d33cb9bb34564cc6f3c1e4e4f6637c0de",
+      "bytes": 5643
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/name_hash.rs",
+      "sha256": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+      "bytes": 317
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+      "sha256": "7d6e5ea2b9a7f67704fc240eee15ab64f81f1aaac1650b04060e2c33de385739",
+      "bytes": 149236
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/rdp.rs",
+      "sha256": "98e7acef73ed3e64dfe29ef3c97ec5f43f6163289a446f9e423a8212bd8b1cc5",
+      "bytes": 69098
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs",
+      "sha256": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+      "bytes": 3619
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/rng.rs",
+      "sha256": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+      "bytes": 2830
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs",
+      "sha256": "4da495878b1fb10e356a40565d956c6926b1fb6efeb917f3630a226e779beec4",
+      "bytes": 5231
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+      "sha256": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+      "bytes": 31717
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+      "sha256": "226f8130787b2fa956fc3f0fcd080f3f96884c305d949c764715ffa864031da2",
+      "bytes": 3975
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs",
+      "sha256": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+      "bytes": 677
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+      "sha256": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+      "bytes": 32945
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+      "sha256": "f12760634a7163c022f5efbf36c90834d9447ab3f5b321308023a3dc675cc619",
+      "bytes": 7692
+    }
+  ]
+}

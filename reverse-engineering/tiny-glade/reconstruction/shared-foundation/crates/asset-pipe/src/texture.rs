@@ -6,12 +6,31 @@ use asset::texture::{
 use image::{DynamicImage, RgbaImage, imageops::FilterType};
 use relative_path::RelativePathBuf;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, collections::HashMap, io::Read, path::Path, time::SystemTime};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::Read,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
+
+/// Ordered leaf dependencies, including content hashes so edits that preserve
+/// timestamps or file sizes cannot silently reuse an old texture.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TextureSourceStamp {
+    pub path: PathBuf,
+    pub modified: SystemTime,
+    pub len: u64,
+    pub content_hash: u64,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TextureAssetMeta {
     pub desc: TextureAssetDesc,
     pub src_mtime: SystemTime,
+    /// Old metadata has no stamps and is rebuilt once rather than trusted.
+    #[serde(default)]
+    pub sources: Vec<TextureSourceStamp>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TextureAssetLibraryMeta {
@@ -34,14 +53,20 @@ pub fn srgb_eotf(x: f32) -> f32 {
     }
 }
 
-pub fn mip_count(dims: [u32; 2], chain: MipChain) -> u32 {
-    assert!(dims[0] > 0 && dims[1] > 0, "dims[0] > 0 && dims[1] > 0");
+pub fn mip_count(dims: [u32; 2], chain: MipChain) -> Result<u32> {
+    anyhow::ensure!(
+        dims[0] > 0 && dims[1] > 0,
+        "Texture dimensions must be nonzero"
+    );
     let full = 32 - dims[0].max(dims[1]).leading_zeros();
-    match chain {
+    Ok(match chain {
         MipChain::None => 1,
         MipChain::Full => full,
-        MipChain::Limited(n) => n.min(full),
-    }
+        MipChain::Limited(n) => {
+            anyhow::ensure!(n > 0, "Texture mip limit must be nonzero");
+            n.min(full)
+        }
+    })
 }
 pub fn pad_edges(image: &RgbaImage, dims: [u32; 2]) -> RgbaImage {
     assert!(dims[0] >= image.width() && dims[1] >= image.height());
@@ -51,6 +76,10 @@ pub fn pad_edges(image: &RgbaImage, dims: [u32; 2]) -> RgbaImage {
 }
 /// Discriminants are private compression modes: BC5=0, BC4=1, BC7=2.
 pub fn compress(image: &RgbaImage, mode: u8) -> Result<Vec<u8>> {
+    anyhow::ensure!(
+        image.width() > 0 && image.height() > 0,
+        "Compression dimensions must be nonzero"
+    );
     anyhow::ensure!(
         image.width() & 3 == 0 && image.height() & 3 == 0,
         "Compression dimensions must be block aligned"
@@ -88,6 +117,15 @@ pub fn compress(image: &RgbaImage, mode: u8) -> Result<Vec<u8>> {
         }
         _ => anyhow::bail!("Unsupported compression mode {mode}"),
     }
+}
+/// Byte size of one 4x4 block for the private compression modes
+/// (BC5=0, BC4=1, BC7=2). DDS/BC format constants, not a game algorithm.
+pub fn block_bytes(mode: u8) -> Result<usize> {
+    Ok(match mode {
+        0 | 2 => 16, // BC5 and BC7 use 16-byte blocks.
+        1 => 8,      // BC4 uses 8-byte blocks.
+        _ => anyhow::bail!("Unsupported compression mode {mode}"),
+    })
 }
 /// Original constants at B 0x1417bcff1..0x1417bd076 select the dependency's basic preset.
 pub fn bc7_settings(opaque: bool) -> intel_tex_2::bc7::EncodeSettings {
@@ -130,19 +168,26 @@ fn encode_level(image: &DynamicImage, gamma: Gamma, compressed: bool, mode: u8) 
 
 /// B 0x1417bc930. Each mip samples the base image; padded texels repeat the right/bottom edge.
 /// The original deliberately materializes this helper's result as RGBA8 even for sRGB input.
-fn next_level(base: &DynamicImage, dimensions: [u32; 2], level: u32, block: u32) -> DynamicImage {
+fn next_level(
+    base: &DynamicImage,
+    dimensions: [u32; 2],
+    level: u32,
+    block: u32,
+) -> Result<DynamicImage> {
     let width = (dimensions[0] >> level).max(1);
     let height = (dimensions[1] >> level).max(1);
     let resized = base
         .resize_exact(width, height, FilterType::CatmullRom)
         .into_rgba8();
-    DynamicImage::ImageRgba8(pad_edges(
+    Ok(DynamicImage::ImageRgba8(pad_edges(
         &resized,
-        [align(width, block), align(height, block)],
-    ))
+        [align(width, block)?, align(height, block)?],
+    )))
 }
-fn align(value: u32, block: u32) -> u32 {
-    value + (block - value % block) % block
+fn align(value: u32, block: u32) -> Result<u32> {
+    value
+        .checked_add((block - value % block) % block)
+        .context("Texture block alignment overflows u32")
 }
 
 /// Private regular-image producer, B 0x1417bbc10. Public `image` and Intel compressors
@@ -159,9 +204,27 @@ pub fn process_decoded_image(
     decoded: DynamicImage,
     opts: &TextureOpts,
 ) -> Result<TextureAssetBlob> {
+    anyhow::ensure!(
+        decoded.width() > 0 && decoded.height() > 0,
+        "Source image dimensions must be nonzero"
+    );
     let compressed =
         opts.compression != CompressionMethod::None && decoded.width() > 3 && decoded.height() > 3;
     let block = if compressed { 4 } else { 1 };
+    let dims = opts.resize.unwrap_or([decoded.width(), decoded.height()]);
+    anyhow::ensure!(
+        dims[0] > 0 && dims[1] > 0,
+        "Texture dimensions must be nonzero"
+    );
+    let dims = [align(dims[0], block)?, align(dims[1], block)?];
+    // Alignment can increase the full mip chain, so use the final dimensions.
+    let count = mip_count(dims, opts.mips)?;
+    anyhow::ensure!(
+        !(compressed
+            && opts.compression == CompressionMethod::Grayscale
+            && opts.gamma == Gamma::Srgb),
+        "sRGB grayscale compression is not supported"
+    );
     let mode = match opts.compression {
         CompressionMethod::Color => 2,
         CompressionMethod::Grayscale => 1,
@@ -179,15 +242,12 @@ pub fn process_decoded_image(
             DynamicImage::ImageRgba32F(rgba)
         }
     };
-    let dims = opts.resize.unwrap_or([base.width(), base.height()]);
-    let dims = [align(dims[0], block), align(dims[1], block)];
     if opts.resize.is_some() || dims != [base.width(), base.height()] {
         base = base.resize_exact(dims[0], dims[1], FilterType::CatmullRom);
     }
-    let count = mip_count(dims, opts.mips);
     let mut data = encode_level(&base, opts.gamma, compressed, mode)?;
     for level in 1..count {
-        let mip = next_level(&base, dims, level, block);
+        let mip = next_level(&base, dims, level, block)?;
         data.extend(encode_level(&mip, opts.gamma, compressed, mode)?);
     }
     let format = match (compressed, opts.compression, opts.gamma) {
@@ -197,7 +257,7 @@ pub fn process_decoded_image(
         (true, CompressionMethod::Color, Gamma::Srgb) => 146,
         (true, CompressionMethod::Grayscale, Gamma::Linear) => 139,
         (true, CompressionMethod::Grayscale, Gamma::Srgb) => {
-            panic!("sRGB grayscale compression is not implemented")
+            unreachable!("validated before encoding")
         }
         (true, CompressionMethod::None, _) => unreachable!(),
     };
@@ -303,18 +363,48 @@ pub fn process_texture_asset(desc: &TextureAssetDesc) -> Result<TextureAssetBlob
     }
 }
 
-/// B cache gate compares the whole descriptor, source path mtime and eight-byte file header.
-/// It intentionally does not validate the archived payload on a cache hit.
+/// Cache gate compares the descriptor, all source-file stamps, and file header.
+/// Payload validation is a separate policy; this predicate checks the header only.
 pub fn cache_is_current(
     desc: &TextureAssetDesc,
     mtime: SystemTime,
+    sources: &[TextureSourceStamp],
     previous: Option<&TextureAssetMeta>,
     header: &[u8],
 ) -> bool {
-    previous.is_some_and(|p| p.desc == *desc && p.src_mtime == mtime)
+    !sources.is_empty()
+        && previous.is_some_and(|p| p.desc == *desc && p.src_mtime == mtime && p.sources == sources)
         && header.len() >= 8
         && header[..4] == TEXTURE_MAGIC.to_le_bytes()
         && header[4..8] == TEXTURE_VERSION.to_le_bytes()
+}
+
+fn source_stamps(desc: &TextureAssetDesc) -> Result<Vec<TextureSourceStamp>> {
+    desc.source_files()
+        .into_iter()
+        .map(|path| {
+            let mut file =
+                std::fs::File::open(path).with_context(|| format!("Opening source {path:?}"))?;
+            let metadata = file.metadata()?;
+            let mut hash = xxhash_rust::xxh3::Xxh3::new();
+            let mut buffer = [0u8; 16 * 1024];
+            loop {
+                let read = file
+                    .read(&mut buffer)
+                    .with_context(|| format!("Hashing source {path:?}"))?;
+                if read == 0 {
+                    break;
+                }
+                hash.update(&buffer[..read]);
+            }
+            Ok(TextureSourceStamp {
+                path: path.to_owned(),
+                modified: metadata.modified()?,
+                len: metadata.len(),
+                content_hash: hash.digest(),
+            })
+        })
+        .collect()
 }
 
 /// Behavioral port of the per-asset entry; destination is explicit instead of changing cwd.
@@ -324,6 +414,7 @@ pub fn compile_texture_asset(
     output_root: &Path,
     previous: Option<&TextureAssetMeta>,
 ) -> Result<TextureAssetMeta> {
+    let sources = source_stamps(&desc)?;
     let mtime = std::fs::metadata(&desc.path)
         .with_context(|| format!("Metadata {:?}", desc.path))?
         .modified()?;
@@ -333,10 +424,11 @@ pub fn compile_texture_asset(
         std::fs::File::open(&path)?
             .read_exact(&mut header)
             .context("Reading magic and version")?;
-        if cache_is_current(&desc, mtime, previous, &header) {
+        if cache_is_current(&desc, mtime, &sources, previous, &header) {
             return Ok(TextureAssetMeta {
                 desc,
                 src_mtime: mtime,
+                sources,
             });
         }
     }
@@ -348,6 +440,7 @@ pub fn compile_texture_asset(
     Ok(TextureAssetMeta {
         desc,
         src_mtime: mtime,
+        sources,
     })
 }
 
