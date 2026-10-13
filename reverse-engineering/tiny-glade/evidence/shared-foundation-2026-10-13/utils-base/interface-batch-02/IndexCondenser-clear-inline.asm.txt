@@ -1,0 +1,26 @@
+0x140a7a690: mov qword ptr [rsi + rdi + 0x38], 0
+0x140a7a699: lea rax, [r14 + 1]
+0x140a7a69d: mov rcx, rax
+0x140a7a6a0: shr rcx, 3
+0x140a7a6a4: and rax, 0xfffffffffffffff8
+0x140a7a6a8: sub rax, rcx
+0x140a7a6ab: cmp r14, 8
+0x140a7a6af: cmovb rax, r14
+0x140a7a6b3: mov qword ptr [rsi + rdi + 0x30], rax
+0x140a7a6b8: mov qword ptr [rsi + rdi + 0xa8], 0
+0x140a7a6c4: add rdi, 0xc0
+0x140a7a6cb: cmp rdi, 0x1440
+0x140a7a6d2: je 0x140a7a708
+0x140a7a6d4: cmp qword ptr [rsi + rdi + 8], rbx
+0x140a7a6d9: jl 0x140a7a6c4
+0x140a7a6db: mov qword ptr [rsi + rdi + 0x18], 0
+0x140a7a6e4: cmp qword ptr [rsi + rdi + 0x38], 0
+0x140a7a6ea: je 0x140a7a6b8
+0x140a7a6ec: mov r14, qword ptr [rsi + rdi + 0x28]
+0x140a7a6f1: test r14, r14
+0x140a7a6f4: je 0x140a7a690
+0x140a7a6f6: mov rcx, qword ptr [rsi + rdi + 0x20]
+0x140a7a6fb: lea r8, [r14 + 0x11]
+0x140a7a6ff: mov dl, 0xff
+0x140a7a701: call 0x142923c20
+0x140a7a706: jmp 0x140a7a690

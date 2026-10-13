@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "scope": [
+    "paths",
+    "lang-lib",
+    "tabloid",
+    "theme-defs"
+  ],
+  "baseline": "B",
+  "review_complete_for_present_code": true,
+  "full_original_functionality_accepted": false,
+  "original_consumer_chain_accepted": false,
+  "findings": [
+    {
+      "id": "SM-001",
+      "severity": "P2",
+      "category": "performance",
+      "status": "fixed",
+      "interfaces": [
+        "lang_lib::language_library::LanguageLibrary::get"
+      ],
+      "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "line": 59,
+      "title": "Repeated cache hits allocated an owned key",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/language-library.asm.txt"
+      ],
+      "reproduction": {
+        "cached_lookups": 10000,
+        "before_allocations": 10000,
+        "after_allocations": 0
+      },
+      "fix": "Use std HashMap borrowed lookup before allocating on first miss",
+      "validation": "validation.json"
+    },
+    {
+      "id": "SM-002",
+      "severity": "P2",
+      "category": "inherited_performance_risk",
+      "status": "retained_original_behavior",
+      "interfaces": [
+        "tabloid::Publisher::subscribe",
+        "tabloid::Publisher::publish"
+      ],
+      "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "line": 58,
+      "title": "Strong subscriptions persist after consumers drop; publish walks all subscriptions",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/141cf6500.asm.txt",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/141247b10.asm.txt"
+      ],
+      "measured_whole_game_performance": false
+    },
+    {
+      "id": "SM-003",
+      "severity": "P2",
+      "category": "inherited_lifetime_risk",
+      "status": "retained_original_behavior",
+      "interfaces": [
+        "lang_lib::language_library::LanguageLibrary::try_from_yml",
+        "lang_lib::language_library::LanguageLibrary::new"
+      ],
+      "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "line": 14,
+      "title": "Reloaded language text remains allocated for static reference lifetime",
+      "measured_whole_game_performance": false
+    },
+    {
+      "id": "SM-004",
+      "severity": "P2",
+      "category": "functional_gap",
+      "status": "open",
+      "interfaces": [
+        "tabloid::impl$0::default",
+        "tabloid::impl$2::drop",
+        "tabloid::impl$3::deref"
+      ],
+      "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "line": 34,
+      "title": "Private inline interface ownership/comparison and original consumer chain remain partial"
+    },
+    {
+      "id": "SM-005",
+      "severity": "P2",
+      "category": "dependency_configuration_gap",
+      "status": "open",
+      "interfaces": [
+        "tabloid::Publisher::publish",
+        "tabloid::Subscriber::take"
+      ],
+      "file": "reconstruction/shared-foundation/crates/tabloid/Cargo.toml",
+      "line": 9,
+      "title": "Original deadlock tracking feature and full generic bounds are not established; not a replacement lock implementation"
+    },
+    {
+      "id": "SM-006",
+      "severity": "P2",
+      "category": "functional_gap",
+      "status": "open",
+      "interfaces": [
+        "theme_defs::impl$0::clone",
+        "theme_defs::impl$2::eq"
+      ],
+      "file": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+      "line": 20,
+      "title": "Error Display names/wording and original protocol/consumer behavior remain inferred"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "sha256": "e6d4f87783c1b879e52ad0385a4fc48a331871340e77447258b989b169251103"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/review_missing_cache.rs",
+      "sha256": "8dfe2b910cdbd2d6d9c60949f383379d18df7be3afd496099436bb17fd209376"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_locale_policy.rs",
+      "sha256": "39db4293227d68fb9209aea017a8c92f1f2e7ae36418b0cdaeb513a3b0f375f3"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_original_assets.rs",
+      "sha256": "b8335a52519d1bb3b086d517f8b1264425295d7398f7688bba83e9294c1cf93c"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "sha256": "152f10cdbd909d0642693c72d0c429dcf981e609fc4887272fec980336851c78"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "sha256": "c97f7e0429a273fd4c1ee1feb0892df59fa4e34c8b4f7c332740e772fe6fb2a6"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "sha256": "3e1896ae4b45a7d252f5f6702d7daf659f711675e1537dbeb8a232cd644db3d2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+      "sha256": "542b22e4403dfe5b86e86bea1a6f79ed7a4086a7d908188a89d1322c44146216"
+    }
+  ],
+  "validation": "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+  "candidate_tests_passed": 9,
+  "dependency_wheels_confirmed": 0,
+  "inputs": [
+    {
+      "path": "evidence/shared-foundation-2026-10-13/paths-language/language-library.asm.txt",
+      "sha256": "306de527fe57367d11cebe6a2d2b6fdd26269fd464eee4dcdf43199589498380"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/paths-language/module-1825.txt",
+      "sha256": "b9cec8136a9342ca0570722f8d9754f6a009ff670afb0c0095157ae760e60029"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-tabloid/141cf6500.asm.txt",
+      "sha256": "bd26253130171fe35a5173e57907e8f797dd717ccc73fb4bacb5839bd88371d5"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-tabloid/141247b10.asm.txt",
+      "sha256": "e3f60b62700d0092b31a19da0966812627e90142e75b21f46c821412c3a2d380"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-tabloid/141247c90.asm.txt",
+      "sha256": "70886d04948a34932cdf303e30eeddaeaeb0e0b04a3f9c83eeb76a0f3f113e68"
+    }
+  ],
+  "constructor_review": {
+    "interface_id": "lang_lib::language_library::LanguageLibrary::new",
+    "static_business_compared": true,
+    "candidate_constructor_test_passed": true,
+    "source_sha256": "152f10cdbd909d0642693c72d0c429dcf981e609fc4887272fec980336851c78",
+    "historical_evidence": "evidence/shared-foundation-2026-10-13/small-interfaces/interface-batch-02/language-constructor.json",
+    "comparison_kind": "Static original inline payload policy re-reviewed; supplied locale/map preserving constructor regression passed; no original entry execution"
+  }
+}

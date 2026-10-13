@@ -1,0 +1,24 @@
+0x14268a759: movabs rdi, 0x8000000000000004
+0x14268a763: cmp rdx, rdi
+0x14268a766: setne r9b
+0x14268a76a: cmp r8, rdi
+0x14268a76d: setne r8b
+0x14268a771: test r9b, r8b
+0x14268a774: je 0x14268a787
+0x14268a776: mov rsi, rcx
+0x14268a779: mov rdx, rax
+0x14268a77c: call 0x142689b90
+0x14268a781: mov rcx, rsi
+0x14268a784: mov rdx, qword ptr [rsi]
+0x14268a787: cmp rdx, rdi
+0x14268a78a: je 0x14268a91f
+0x14268a790: mov byte ptr [rsp + 0x58], 1
+0x14268a795: mov dword ptr [rsp + 0x48], 2
+0x14268a79d: movsd xmm0, qword ptr [rip + 0x2a3f0b]
+0x14268a7a5: movsd qword ptr [rsp + 0x4c], xmm0
+0x14268a7ab: mov dword ptr [rsp + 0x54], 0x3f800000
+0x14268a7b3: movabs rax, 0x8000000000000001
+0x14268a7bd: mov qword ptr [rsp + 0x30], rax
+0x14268a7c2: lea rdx, [rsp + 0x30]
+0x14268a7c7: call 0x142689b90
+0x14268a7cc: jmp 0x14268a91f

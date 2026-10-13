@@ -1,0 +1,106 @@
+0x141237cbc: add rdx, 0x68
+0x141237cc0: lea rcx, [rsp + 0x38]
+0x141237cc5: call 0x141200320
+0x141237cca: cmp dword ptr [rsp + 0x38], 1
+0x141237ccf: jne 0x141237d04
+0x141237cd1: mov r12, qword ptr [r15 + 0x58]
+0x141237cd5: mov rdi, qword ptr [r15 + 0x60]
+0x141237cd9: mov ecx, dword ptr [rsp + 0x3c]
+0x141237cdd: mov edx, dword ptr [rsp + 0x40]
+0x141237ce1: call 0x141200280
+0x141237ce6: cmp rax, rdi
+0x141237ce9: jae 0x141237e7f
+0x141237cef: lea rax, [rax + rax*2]
+0x141237cf3: lea r8, [r12 + rax*4]
+0x141237cf7: mov rcx, r15
+0x141237cfa: test r8, r8
+0x141237cfd: jne 0x141237d13
+0x141237cff: jmp 0x141237e63
+0x141237d04: xor r8d, r8d
+0x141237d07: mov rcx, r15
+0x141237d0a: test r8, r8
+0x141237d0d: je 0x141237e63
+0x141237d13: lea rdi, [rsp + 0x78]
+0x141237d18: mov rax, qword ptr [rcx + 0x38]
+0x141237d1c: lea rcx, [rsp + 0x80]
+0x141237d24: mov rdx, rsi
+0x141237d27: call qword ptr [rax]
+0x141237d29: mov qword ptr [rsp + 0x78], rsi
+0x141237d2e: cmp dword ptr [r15], 1
+0x141237d32: jne 0x141237d9a
+0x141237d34: mov rax, qword ptr [r15 + 0x30]
+0x141237d38: mov qword ptr [rsp + 0x30], rax
+0x141237d3d: movups xmm0, xmmword ptr [r15 + 0x20]
+0x141237d42: movaps xmmword ptr [rsp + 0x20], xmm0
+0x141237d47: movups xmm0, xmmword ptr [rdi]
+0x141237d4a: movups xmmword ptr [r15 + 0x20], xmm0
+0x141237d4f: mov rax, qword ptr [rdi + 0x10]
+0x141237d53: mov qword ptr [r15 + 0x30], rax
+0x141237d57: movaps xmm0, xmmword ptr [rsp + 0x20]
+0x141237d5c: movups xmmword ptr [r15 + 8], xmm0
+0x141237d61: mov r8, qword ptr [rsp + 0x30]
+0x141237d66: mov qword ptr [r15 + 0x18], r8
+0x141237d6a: mov rax, qword ptr [r15 + 8]
+0x141237d6e: mov r9, qword ptr [r15 + 0x10]
+0x141237d72: mov rcx, rbx
+0x141237d75: mov dword ptr [rbx + 0x18], r8d
+0x141237d79: mov qword ptr [rbx + 0x10], r9
+0x141237d7d: mov rdx, qword ptr [r15 + 0x20]
+0x141237d81: mov r8d, dword ptr [rsp + 0x88]
+0x141237d89: mov dword ptr [rbx + 0x30], r8d
+0x141237d8d: mov r8, qword ptr [rsp + 0x80]
+0x141237d95: jmp 0x141237e2a
+0x141237d9a: mov rax, qword ptr [rdi + 0x10]
+0x141237d9e: mov qword ptr [rsp + 0xa8], rax
+0x141237da6: movups xmm0, xmmword ptr [rdi]
+0x141237da9: movups xmmword ptr [rsp + 0x98], xmm0
+0x141237db1: mov qword ptr [rsp + 0x90], 1
+0x141237dbd: mov qword ptr [rsp + 0xb0], r14
+0x141237dc5: lea rcx, [rsp + 0x38]
+0x141237dca: lea rdx, [rsp + 0x90]
+0x141237dd2: call 0x14123a500
+0x141237dd7: mov rax, qword ptr [rsp + 0x68]
+0x141237ddc: mov qword ptr [r15 + 0x30], rax
+0x141237de0: movups xmm0, xmmword ptr [rsp + 0x38]
+0x141237de5: movups xmm1, xmmword ptr [rsp + 0x48]
+0x141237dea: movups xmm2, xmmword ptr [rsp + 0x58]
+0x141237def: movups xmmword ptr [r15 + 0x20], xmm2
+0x141237df4: movups xmmword ptr [r15 + 0x10], xmm1
+0x141237df9: movups xmmword ptr [r15], xmm0
+0x141237dfd: cmp dword ptr [r15], 1
+0x141237e01: jne 0x141237e63
+0x141237e03: mov rax, qword ptr [r15 + 8]
+0x141237e07: mov rdx, qword ptr [r15 + 0x10]
+0x141237e0b: mov r8d, dword ptr [r15 + 0x18]
+0x141237e0f: mov rcx, rbx
+0x141237e12: mov dword ptr [rbx + 0x18], r8d
+0x141237e16: mov qword ptr [rbx + 0x10], rdx
+0x141237e1a: mov rdx, qword ptr [r15 + 0x20]
+0x141237e1e: mov r8, qword ptr [r15 + 0x28]
+0x141237e22: mov r9d, dword ptr [r15 + 0x30]
+0x141237e26: mov dword ptr [rbx + 0x30], r9d
+0x141237e2a: mov qword ptr [rbx + 0x28], r8
+0x141237e2e: mov qword ptr [rcx + 8], rax
+0x141237e32: mov qword ptr [rcx + 0x20], rdx
+0x141237e36: mov eax, 1
+0x141237e3b: jmp 0x141237c58
+0x141237e40: lea rcx, [rdx + 0x58]
+0x141237e44: mov qword ptr [rdx + 0x78], 0
+0x141237e4c: mov rdx, rax
+0x141237e4f: call 0x141238400
+0x141237e54: mov rcx, r15
+0x141237e57: mov r8, rax
+0x141237e5a: test r8, r8
+0x141237e5d: jne 0x141237d13
+0x141237e63: xor eax, eax
+0x141237e65: mov rcx, rbx
+0x141237e68: jmp 0x141237c58
+0x141237e6d: lea r8, [rip + 0x1d91ed4]
+0x141237e74: mov rcx, rsi
+0x141237e77: mov rdx, rax
+0x141237e7a: call 0x1428d9518
+0x141237e7f: lea r8, [rip + 0x19e2882]
+0x141237e86: mov rcx, rax
+0x141237e89: mov rdx, rdi
+0x141237e8c: call 0x1428d9518
+0x141237e91: int3 

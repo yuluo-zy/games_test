@@ -1,0 +1,146 @@
+{
+  "baseline": "B",
+  "scope": "22 utils top-level source files excluding lib.rs; full crate also includes peer geometry/curve work",
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "log": "utils-test.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "utils-clippy.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--message-format=json"
+      ],
+      "exit_code": 0,
+      "log": "selected-artifacts.log"
+    },
+    {
+      "command": [
+        "rustc",
+        "--edition",
+        "2021",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\selector-allocation-probe.rs",
+        "-L",
+        "dependency=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps",
+        "-o",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\selector-allocation.exe",
+        "--extern",
+        "serde=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde-3d4b2625f0859818.rlib",
+        "--extern",
+        "serde_json=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde_json-05ea332a1ba86ad8.rlib",
+        "--extern",
+        "utils=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\libutils.rlib"
+      ],
+      "exit_code": 0,
+      "log": "selector-allocation-compile.log"
+    },
+    {
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\selector-allocation.exe"
+      ],
+      "exit_code": 0,
+      "log": "selector-allocation.log"
+    },
+    {
+      "command": [
+        "rustc",
+        "--edition",
+        "2021",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\..\\..\\shared-foundation-2026-10-13\\utils-base\\validate_selective.rs",
+        "-L",
+        "dependency=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps",
+        "-o",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\selector-policy.exe",
+        "--extern",
+        "serde=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde-3d4b2625f0859818.rlib",
+        "--extern",
+        "serde_json=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde_json-05ea332a1ba86ad8.rlib",
+        "--extern",
+        "utils=D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\libutils.rlib"
+      ],
+      "exit_code": 0,
+      "log": "selector-policy-compile.log"
+    },
+    {
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-review-2026-10-13\\utils-base\\selector-policy.exe"
+      ],
+      "exit_code": 0,
+      "log": "selector-policy.log"
+    }
+  ],
+  "all_commands_passed": true,
+  "source_sha256": {
+    "angle_range.rs": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+    "camera.rs": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+    "circular_f32.rs": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+    "comparative_space.rs": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+    "easing_functions.rs": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+    "file.rs": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+    "float_grid.rs": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+    "halver.rs": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+    "index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+    "local_time.rs": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+    "loop_range.rs": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+    "name_hash.rs": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+    "natural_cubic.rs": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+    "rdp.rs": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+    "rgb9e5.rs": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+    "rng.rs": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+    "selective_deserialize.rs": "4da495878b1fb10e356a40565d956c6926b1fb6efeb917f3630a226e779beec4",
+    "subtractive_1d_boolean.rs": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+    "swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "threshold_range.rs": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+    "timer.rs": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+    "wall_space.rs": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218"
+  },
+  "workspace_manifest_sha256": "013621f4ec70141a03f5f0b491368df49e0ee3ba17071cb36e4502e6e616ab8a",
+  "workspace_lock_sha256": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+  "artifacts": {
+    "serde": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde-3d4b2625f0859818.rlib",
+      "sha256": "eadf200f0eaa3bcffd05cc2867a6de52ba3f5a54950da9dc775ecca527e1c640"
+    },
+    "serde_json": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\deps\\libserde_json-05ea332a1ba86ad8.rlib",
+      "sha256": "10535d92b7370ee3eeac57a5c0fb7cf9e3a95151c9c4e87e9317415c04ae5a30"
+    },
+    "utils": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\target\\debug\\libutils.rlib",
+      "sha256": "0bbe28539d2bd1884b28aa05d97027176e328883720211517ab209b663ecdaba"
+    }
+  },
+  "full_crate_failures": [],
+  "whole_original_game_verified": false,
+  "new_original_differential_proofs": "Only bounded RDP boundary probe. Retained original fixture outputs rerun against current source; no original consumers/entire runtime validation."
+}

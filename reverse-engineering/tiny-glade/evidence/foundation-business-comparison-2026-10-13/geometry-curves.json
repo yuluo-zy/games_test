@@ -1,0 +1,2915 @@
+{
+  "schema_version": 1,
+  "scope": "utils:28..utils:58; current shared-foundation components/curve/geometry source comparison only",
+  "recorded_utc": "2026-10-13T10:20:15.124418+00:00",
+  "baseline": "B; utils:58 kept as C-only cross-version task",
+  "policy": "Current code vs business feature, not source-level 1:1 function replication. Macro/derive/library algorithms and pure getters are not independent business tasks. Existing historical evidence reused; no test reruns or new reverse work.",
+  "features": [
+    {
+      "id": "utils:28",
+      "feature_id": "utils:28",
+      "name": "曲线合法化",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve::try_new_from_points",
+            "CurveMetric::segment_length"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::try_new_from_points",
+        "CurveMetric::segment_length"
+      ],
+      "missing_logic": [
+        "专用remove_duplicates合法化流程未实现；CurveCoordSemanticThresholded3D合法化/长度策略未实现。"
+      ],
+      "verification_gaps": [
+        "已有Curve2错误/重复点入口和Curve3 XYZ/XZ构造对照；不能替代阈值3D及其余合法化策略。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::is_valid",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_new_from_points",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140153640",
+            "0x140153900",
+            "0x1411f9920",
+            "0x1411f9be0",
+            "0x1412699d0",
+            "0x141269ce0",
+            "0x141469230",
+            "0x141469430",
+            "0x1414696f0",
+            "0x1419401b0",
+            "0x141940470",
+            "0x141cd6240"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_new_from_points_remove_duplicates",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:28"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:29",
+      "feature_id": "utils:29",
+      "name": "曲线长度与分段",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve::try_new_from_points",
+            "Curve::get_coord_at_u",
+            "CurveInternalCoord::new_for_point_count"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::try_new_from_points",
+        "Curve::get_coord_at_u",
+        "CurveInternalCoord::new_for_point_count"
+      ],
+      "missing_logic": [
+        "阈值3D累计度量策略未实现；墙空间/二维世界距离到内部区段的专用策略入口尚无恢复。"
+      ],
+      "verification_gaps": [
+        "XY查询逐位对照；XYZ/XZ构造有对照，其他策略与全部段边界仍未验证。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::calculate_points_u_and_length",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_coord_at_2d_ws_distance",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_coord_at_u",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140153380",
+            "0x1411f8c10",
+            "0x141269710",
+            "0x141467ce0",
+            "0x141940780",
+            "0x141cd5f80",
+            "0x142197610"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_coord_at_wall_space",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_curve_segment_from_u",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_u_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::CurveInternalCoord<CSem>::new_for_point_count",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411fb2b0",
+            "0x14126af00",
+            "0x14261ef90"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:29"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:30",
+      "feature_id": "utils:30",
+      "name": "曲线位置和方向",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve::get_pos_at_coord",
+            "Curve::get_pos_at_u",
+            "Curve::get_tangent_at_coord",
+            "Curve::get_tangent_at_u"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::get_pos_at_coord",
+        "Curve::get_pos_at_u",
+        "Curve::get_tangent_at_coord",
+        "Curve::get_tangent_at_u"
+      ],
+      "missing_logic": [
+        "未归一切线及中心切线策略未实现；专门unchecked采样路径尚无对应恢复。"
+      ],
+      "verification_gaps": [
+        "当前generic候选存在；原Curve2对照不能证明Vec3/Thresholded3D全部采样政策。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_pos_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_pos_at_coord_unchecked",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_pos_at_u",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1414671d0",
+            "0x141467270",
+            "0x142289c40"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_tangent_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141269fa0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_tangent_at_u",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141468ee0",
+            "0x141468f90"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_unnormalized_central_tangent_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_unnormalized_tangent_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:30"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:31",
+      "feature_id": "utils:31",
+      "name": "曲线最近点",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve::get_approx_coord_from_pos",
+            "Curve::get_approx_u_from_pos",
+            "Curve2::project_point"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::get_approx_coord_from_pos",
+        "Curve::get_approx_u_from_pos",
+        "Curve2::project_point"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "已实现观察到的XY/XZ近点投影、首段平局及1e-8分母规则；Vec3各策略和project_point全入口仍缺原对照。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve2<CSem>::project_point",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x14146c3c0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_approx_coord_from_pos",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140153bc0",
+            "0x1411fa450",
+            "0x14126a450",
+            "0x14126a6b0",
+            "0x141469e00",
+            "0x14146a060",
+            "0x141cd64a0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::get_approx_u_from_pos",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411f9ea0",
+            "0x14126a040",
+            "0x14126a110",
+            "0x141469950",
+            "0x141469a20",
+            "0x141469af0",
+            "0x141940a40"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:31"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:32",
+      "feature_id": "utils:32",
+      "name": "曲线侧向判断",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "is_on_right_side的最近段/叉积和维度选择策略没有候选实现。"
+      ],
+      "verification_gaps": [
+        "虽有14146afe0原伪码，业务实现与原入口对照尚无。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::is_on_right_side",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141469000"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:32"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:33",
+      "feature_id": "utils:33",
+      "name": "曲线裁切",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+          "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c",
+          "key_functions": [
+            "Curve::slice_into",
+            "Curve::try_slice",
+            "Curve::crashy_slice",
+            "Curve::circular_slice"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::slice_into",
+        "Curve::try_slice",
+        "Curve::crashy_slice",
+        "Curve::circular_slice"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "已有Curve2裁切/循环裁切原入口对照；其余泛型、全部接缝和错误组合未验收。未验收不等于这些方法没代码。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::circular_slice",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411f8750",
+            "0x141467300",
+            "0x1414677f0",
+            "0x141cd5a90"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_slice",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411f8640",
+            "0x141466bb0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::slice_into",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411f8130",
+            "0x141465da0",
+            "0x141466300",
+            "0x141cd5530"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_slice",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140154b60",
+            "0x14126a8f0"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:33"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:34",
+      "feature_id": "utils:34",
+      "name": "曲线区段视图",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+          "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c",
+          "key_functions": [
+            "CurveSlice::from_point_range",
+            "CurveSlice::from_coord_range",
+            "CurveSlice::from_curve_range",
+            "CurveSlice::iter_coords",
+            "CurveSlice::measure_length",
+            "CurveSlice::extend_left_until",
+            "CurveSlice::extend_right_until",
+            "LoopCurvePoints"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "CurveSlice::from_point_range",
+        "CurveSlice::from_coord_range",
+        "CurveSlice::from_curve_range",
+        "CurveSlice::iter_coords",
+        "CurveSlice::measure_length",
+        "CurveSlice::extend_left_until",
+        "CurveSlice::extend_right_until",
+        "LoopCurvePoints"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "已有520个普通/loop Vec3→XZ延伸、28个坐标区间、23个point-center原片段对照；所有RangeBounds/remap/stop具体闭包与原Thresholded3D坐标源仍未验收，不能自动接受原17API。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": [
+            "0x141206c50",
+            "0x141206ed0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left_until",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": [
+            "0x141207310"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right_until",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": [
+            "0x1412075e0",
+            "0x141207a10",
+            "0x141207c10",
+            "0x1412898e0",
+            "0x1422e1e40"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_coord_range",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_curve_range",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_point_range",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::iter_coords",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::measure_length",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:34"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/slice-native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/slice-inline-ranges.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-review-2026-10-13/geometry-curves/REVIEW.md"
+        }
+      ],
+      "documentation_correction": "原scope_only/17接口未触及叙述已过时：当前状态化视图、迭代、测長和双侧延伸均已有候选与限定原比较，应写为限定实现，保留泛型/stop协议验收。",
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:35",
+      "feature_id": "utils:35",
+      "name": "曲线重映射",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+          "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c",
+          "key_functions": [
+            "CurveSlice::remap",
+            "CurveSlice::remap_2d",
+            "CurveSlice::sample_at_coord"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "CurveSlice::remap",
+        "CurveSlice::remap_2d",
+        "CurveSlice::sample_at_coord"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "remap保存原first/last/points并替换映射闭包，remap_2d投影XZ；现有XZ延伸fixture间接使用它。任意映射闭包、映射前后采样语义及具体游戏调用方尚未全对照。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap_2d",
+          "original_source": "crates/utils/src/curve/curve_slice.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::impl$12::sample_at_coord",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141208d10"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:35"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/slice-native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/slice-inline-ranges.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-review-2026-10-13/geometry-curves/REVIEW.md"
+        }
+      ],
+      "documentation_correction": "原scope_only描述已过时：remap/remap_2d及其采样代码存在；缺口主要是具体映射策略/游戏消费者和全变体对照。",
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:36",
+      "feature_id": "utils:36",
+      "name": "曲线反向与延长",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve::reverse"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve::reverse"
+      ],
+      "missing_logic": [
+        "Curve::try_extend追加点并更新累计参数/错误处理尚无候选。"
+      ],
+      "verification_gaps": [
+        "反向源码存在，原14146c190仅静态对照；不要将其称无代码，也未有完整反向原入口验收。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::reverse",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x14146c190"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_extend",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141466860"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:36"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:37",
+      "feature_id": "utils:37",
+      "name": "按间距重采样",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "按间距resample、remap和per-segment采样的点生成/特征点保留策略未实现。"
+      ],
+      "verification_gaps": [
+        "原入口已定位，不能把已有曲线采样函数当成重采样实现。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411f8ed0",
+            "0x1411f97b0",
+            "0x141467fa0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_per_segment",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411fa6b0",
+            "0x14146a2a0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap_per_segment",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x14146afe0",
+            "0x14146b5f0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap_per_segment_2",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x14146bb70"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_resample",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140152b00",
+            "0x141268e90"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_resample_remap",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_resample_remap_per_segment_2",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:37"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:38",
+      "feature_id": "utils:38",
+      "name": "按点数重采样",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "近似目标点数→间距/点列策略以及对应remap变体未实现。"
+      ],
+      "verification_gaps": [
+        "原点数重采样伪码/入口可用，尚无候选或差分。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_approx_pt_count",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x14146a830"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_approx_pt_count_remap",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140153de0"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count_remap",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x1411fac00"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:38"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:39",
+      "feature_id": "utils:39",
+      "name": "曲线平滑与移动",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "平滑/带权平滑/原位平滑/translate点列更新和闭合端点处理未实现。"
+      ],
+      "verification_gaps": [
+        "PDB手写trait smooth(source1635/1654)并非宏；尚无算法实现和原对照。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::smooth",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140154490"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::smooth_in_place",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::smooth_weighted",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141468880"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::translate",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::smooth_in_place",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x141465260"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:39"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:40",
+      "feature_id": "utils:40",
+      "name": "曲线维度投影",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+          "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+          "key_functions": [
+            "Curve2::to_curve3"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Curve2::to_curve3"
+      ],
+      "missing_logic": [
+        "只实现Curve2→固定高度Curve3XZ；Curve3XZ→XYZ累计长度转换、try_to_curve2及reinterpret的策略未恢复。"
+      ],
+      "verification_gaps": [
+        "现有to_curve3静态候选；对应原转换与阈值3D规则没有完整原比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::Curve2<CSem>::to_curve3",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140155120",
+            "0x14146c470"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve3XZ::into_curve3",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": [
+            "0x140c9cc60"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::crashy_to_curve2",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::reinterpret_as_curve2",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::Curve<T,CSem>::try_to_curve2",
+          "original_source": "crates/utils/src/curve/mod.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:40"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": "“转换规则待分析”过宽：to_curve3固定高度投影已实现；其余转换与Thresholded策略仍缺。",
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:41",
+      "feature_id": "utils:41",
+      "name": "曲线循环参数",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs",
+          "sha256": "28d2222378fc125db45cf5537f23fe255bb398daf9c223ff15e5c11b3c9b38db",
+          "key_functions": [
+            "CurveUCircular::new",
+            "CurveUCircular::add",
+            "CurveUCircular::subtract",
+            "CurveUCircular::distance",
+            "CurveUCircular::wrapping_lerp",
+            "CurveUCircular::wrapping_contains",
+            "CurveU::new"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs",
+          "sha256": "840b5bcc9323b08ef3de677afdfa242dbd90607ecce21bc9095bf6c9ce8bf4c2",
+          "key_functions": [
+            "CurveUCircular::new",
+            "CurveUCircular::add",
+            "CurveUCircular::subtract",
+            "CurveUCircular::distance",
+            "CurveUCircular::wrapping_lerp",
+            "CurveUCircular::wrapping_contains",
+            "CurveU::new"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "CurveUCircular::new",
+        "CurveUCircular::add",
+        "CurveUCircular::subtract",
+        "CurveUCircular::distance",
+        "CurveUCircular::wrapping_lerp",
+        "CurveUCircular::wrapping_contains",
+        "CurveU::new"
+      ],
+      "missing_logic": [
+        "循环标量规则已经实现；普通CurveUBoundless的有限值/夹紧策略及手写Deserialize数值归一化尚未实现。纯get/min/max不另计业务任务。"
+      ],
+      "verification_gaps": [
+        "九组circular原inline投影已有对照；特殊NaN payload/全部原调用实例未验收。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::curve::curve_u::CurveU<CSem>::clamp",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u::CurveU<CSem>::new",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": [
+            "0x1408e1630",
+            "0x141208a00"
+          ]
+        },
+        {
+          "interface_id": "utils::curve::curve_u::CurveUBoundless::clamp",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u::CurveUBoundless::new",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u::impl$2::visit_f64",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u::impl$3::deserialize",
+          "original_source": "crates/utils/src/curve/curve_u.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::add",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::distance",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::new",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::subtract",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::wrapping_contains",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::curve::curve_u_circular::CurveUCircular::wrapping_lerp",
+          "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:41"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/circular-native-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:42",
+      "feature_id": "utils:42",
+      "name": "变换朝向与比较",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+          "sha256": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d",
+          "key_functions": [
+            "Transform::look_at",
+            "Transform::abs_diff_eq"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Transform::look_at",
+        "Transform::abs_diff_eq"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "100个look_at和90个容差/NaN原入口对照已有；完整组件消费者未验证。Eq/Clone/Component宏不单列缺失逻辑。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::components::transform::Transform::abs_diff_eq",
+          "original_source": "crates/utils/src/components/transform.rs",
+          "addresses": [
+            "0x140c9d0d0"
+          ]
+        },
+        {
+          "interface_id": "utils::components::transform::Transform::look_at",
+          "original_source": "crates/utils/src/components/transform.rs",
+          "addresses": [
+            "0x140c9ce00"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:42"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/native-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/edge-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:43",
+      "feature_id": "utils:43",
+      "name": "变换矩阵组装",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+          "sha256": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "Transform字段到Mat4/Affine的游戏组装策略和前方向用途尚无对应函数；glam矩阵/四元数算法复用。"
+      ],
+      "verification_gaps": [
+        "compute_affine/compute_matrix/forward入口已定位；无候选或原入口对照。Bevy注册宏不是另一个逆向算法任务。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::components::transform::Transform::compute_affine",
+          "original_source": "crates/utils/src/components/transform.rs",
+          "addresses": [
+            "0x1407a45b0"
+          ]
+        },
+        {
+          "interface_id": "utils::components::transform::Transform::compute_matrix",
+          "original_source": "crates/utils/src/components/transform.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::components::transform::Transform::forward",
+          "original_source": "crates/utils/src/components/transform.rs",
+          "addresses": [
+            "0x1407a4700"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:43"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:44",
+      "feature_id": "utils:44",
+      "name": "包围盒查询",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs",
+          "sha256": "3042d689b2e91e3c444e5dda0bd34ce7f8f0d9d88345865e3868cdc4955187b2",
+          "key_functions": [
+            "Aabb2::contains",
+            "Aabb2::intersects",
+            "Aabb2::intersect_ray",
+            "Aabb3::expand_to_contain_point",
+            "Aabb3::intersect_segment",
+            "Aabb3::classify_ray_intersection"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Aabb2::contains",
+        "Aabb2::intersects",
+        "Aabb2::intersect_ray",
+        "Aabb3::expand_to_contain_point",
+        "Aabb3::intersect_segment",
+        "Aabb3::classify_ray_intersection"
+      ],
+      "missing_logic": [
+        "任意点列from_points空输入/边界策略及2D overlaps_segment/专门aabb-segment入口组合尚无恢复；Aabb3已有线段命中，不能全部说未实现。"
+      ],
+      "verification_gaps": [
+        "已有3D射线/线段边界对照；其他构造/2D段组合仅静态或尚未比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::aabb::Aabb2::contains",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x141240140"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb2::from_points",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb2::intersect_ray",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x1412401c0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb2::intersects",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x141240170"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb2::overlaps_segment",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb3::classify_ray_intersection",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x141240860"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb3::from_points",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::geometry::aabb::Aabb3::intersect_segment",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x141240570"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::intersection_aabb_segment2",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": [
+            "0x141240b30"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::aabb::intersection_aabb_segment3",
+          "original_source": "crates/utils/src/geometry/aabb.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:44"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:45",
+      "feature_id": "utils:45",
+      "name": "圆形轮廓采样",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+          "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5",
+          "key_functions": [
+            "Circle2d::new_rotated",
+            "Circle2d::get_pos_at_u",
+            "Circle2d::get_tangent_at_u",
+            "Circle2d::get_normal_at_u",
+            "Circle2d::as_points2_ptcount",
+            "Circle2d::as_points2",
+            "Circle2d::as_points3"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Circle2d::new_rotated",
+        "Circle2d::get_pos_at_u",
+        "Circle2d::get_tangent_at_u",
+        "Circle2d::get_normal_at_u",
+        "Circle2d::as_points2_ptcount",
+        "Circle2d::as_points2",
+        "Circle2d::as_points3"
+      ],
+      "missing_logic": [
+        "Circle2d::lerp组合参数/旋转插值尚无实现；已有rotation字段、角度wrap和带旋转采样，不能说旋转整体缺失。"
+      ],
+      "verification_gaps": [
+        "正常/边界圆采样原对照已有；count/max_step及全部极端输入仍未全比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_points2",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97bc0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_points2_ptcount",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97ba0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_points3",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97c50"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::get_normal_at_u",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c978e0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::get_pos_at_u",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c975a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::get_tangent_at_u",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97660"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::lerp",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c98170"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::new_rotated",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97560"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:45"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": "“旋转缺口”需限定为lerp/未比较边界：rotation字段、new_rotated和旋转采样已经存在。",
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:46",
+      "feature_id": "utils:46",
+      "name": "圆形几何查询",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+          "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5",
+          "key_functions": [
+            "Circle2d::contains_point",
+            "Circle2d::is_point_inside",
+            "Circle2d::signed_distance",
+            "Circle2d::get_closest_u_from_pos",
+            "Circle2d::closest_point_on_perimeter",
+            "Circle2d::intersect_ray",
+            "Circle2d::intersect_circle"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Circle2d::contains_point",
+        "Circle2d::is_point_inside",
+        "Circle2d::signed_distance",
+        "Circle2d::get_closest_u_from_pos",
+        "Circle2d::closest_point_on_perimeter",
+        "Circle2d::intersect_ray",
+        "Circle2d::intersect_circle"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "观察到的边界/退化规则已有局部原对照；全部非有限/尺度组合及真正几何消费者未验收。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::closest_point_on_perimeter",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97b40"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::contains_point",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c980f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::get_closest_u_from_pos",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c976f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::intersect_circle",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97a40"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::intersect_ray",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97980"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::is_point_inside",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97b10"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::signed_distance",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c98120"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:46"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:47",
+      "feature_id": "utils:47",
+      "name": "圆形转曲线",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+          "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "as_curve2/as_curve2_range/as_curve3把离散圆/弧点列接为曲线、闭合末段及错误策略尚无候选；as_points已有但不是该生产闭包。"
+      ],
+      "verification_gaps": [
+        "原as_curve2伪码可用，实际曲线生产的原入口比较尚无。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_curve2",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97cf0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_curve2_range",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97f50"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::circle::Circle2d::as_curve3",
+          "original_source": "crates/utils/src/geometry/circle.rs",
+          "addresses": [
+            "0x140c97e10"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:47"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:48",
+      "feature_id": "utils:48",
+      "name": "矩形轮廓采样",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+          "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+          "key_functions": [
+            "Rectangle2d::as_points2",
+            "Rectangle2d::get_pos_at_u",
+            "Rectangle2d::try_as_curve2",
+            "Rectangle2d::as_curve2",
+            "Rectangle3d::points"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Rectangle2d::as_points2",
+        "Rectangle2d::get_pos_at_u",
+        "Rectangle2d::try_as_curve2",
+        "Rectangle2d::as_curve2",
+        "Rectangle3d::points"
+      ],
+      "missing_logic": [
+        "矩形circular_slice/circular_slice_segment_points、as_curve3与as_transformation_and_size业务组合未实现。"
+      ],
+      "verification_gaps": [
+        "已有周界/角点原对照；3D采样/裁切全变体未验证。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::as_curve2",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98cf0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::as_curve3",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c991f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::as_points2",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98ab0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::as_transformation_and_size",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c995c0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::circular_slice",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9bd90"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::circular_slice_segment_points",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x1412b1b60"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_pos_at_u",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c99800"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::try_as_curve2",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98fa0"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:48"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:49",
+      "feature_id": "utils:49",
+      "name": "矩形内外与交叠",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+          "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+          "key_functions": [
+            "Rectangle2d::contains_point_padding",
+            "Rectangle2d::overlaps_rectangle2d",
+            "Rectangle3d::contains_point",
+            "Rectangle3d::overlaps_rectangle3d"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Rectangle2d::contains_point_padding",
+        "Rectangle2d::overlaps_rectangle2d",
+        "Rectangle3d::contains_point",
+        "Rectangle3d::overlaps_rectangle3d"
+      ],
+      "missing_logic": [
+        "矩形/圆混合intersects_circle及与overlap不同的交点/相交接口组合尚未恢复。"
+      ],
+      "verification_gaps": [
+        "已有2D/3D边界和接触规则对照；混合几何和其余退化输入未比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::contains_point",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a630"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::contains_point_padding",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a6a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::intersects",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9b990"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::intersects_circle",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9b6e0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::overlaps_rectangle2d",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9b420"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::contains_point",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c985a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::overlaps_rectangle3d",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98580"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:49"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:50",
+      "feature_id": "utils:50",
+      "name": "矩形边缘距离",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+          "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "distance_to_closest_edge与signed_distance_to_closest_edge边缘距离/内外符号策略未实现。"
+      ],
+      "verification_gaps": [
+        "原矩形距离伪码已有，候选和原入口比较没有。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a750"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a820"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:50"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:51",
+      "feature_id": "utils:51",
+      "name": "矩形边角法线",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+          "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+          "key_functions": [
+            "Rectangle2d::get_edge_normal",
+            "Rectangle2d::get_corner_normal"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Rectangle2d::get_edge_normal",
+        "Rectangle2d::get_corner_normal"
+      ],
+      "missing_logic": [
+        "get_normal_at_u_non_normalized_corners的未归一角点法线和、按u选边法线及最近边法线选择策略未实现。"
+      ],
+      "verification_gaps": [
+        "已有一般边/角法线原对照；特殊角点及最近边原入口没有完整候选/对照。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::_get_normal_at_u",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c99e30"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::closest_edge_normal",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a8f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_corner_normal",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a140"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_corner_unnormal",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_edge_normal",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a5a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_normal_at_u",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c99e10"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c99e20"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:51"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:52",
+      "feature_id": "utils:52",
+      "name": "矩形变形",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+          "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+          "key_functions": [
+            "Rectangle2d::with_expanded_size",
+            "Rectangle3d::expand",
+            "Rectangle3d::set_size",
+            "Rectangle3d::translate",
+            "Rectangle3d::set_orientation_xz"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "Rectangle2d::with_expanded_size",
+        "Rectangle3d::expand",
+        "Rectangle3d::set_size",
+        "Rectangle3d::translate",
+        "Rectangle3d::set_orientation_xz"
+      ],
+      "missing_logic": [
+        "expand_along_edge的中心/尺寸联动和rotate_projective_xz投影旋转策略未实现。"
+      ],
+      "verification_gaps": [
+        "已有普通变形字段及3D比较；沿边扩展/投影旋转缺候选与原比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::expand_along_edge",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9c620"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle2d::with_expanded_size",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c9a730"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::expand",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98620"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::rotate_projective_xz",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c984f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::set_orientation_xz",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98520"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::set_size",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c98530"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::rectangle::Rectangle3d::translate",
+          "original_source": "crates/utils/src/geometry/rectangle.rs",
+          "addresses": [
+            "0x140c984c0"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:52"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:53",
+      "feature_id": "utils:53",
+      "name": "射线和曲面拾取",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+          "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e",
+          "key_functions": [
+            "ray_triangle_intersection",
+            "ray_sphere_intersection",
+            "Plane::intersect_ray",
+            "SphereIntersection::closest_intersection_distance"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs",
+          "sha256": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502",
+          "key_functions": [
+            "ray_triangle_intersection",
+            "ray_sphere_intersection",
+            "Plane::intersect_ray",
+            "SphereIntersection::closest_intersection_distance"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs",
+          "sha256": "f9b854034c69bcf4e9e3c1dff2248498faa22c3c1b5c300f71033bc8c5cfc95b",
+          "key_functions": [
+            "ray_triangle_intersection",
+            "ray_sphere_intersection",
+            "Plane::intersect_ray",
+            "SphereIntersection::closest_intersection_distance"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "ray_triangle_intersection",
+        "ray_sphere_intersection",
+        "Plane::intersect_ray",
+        "SphereIntersection::closest_intersection_distance"
+      ],
+      "missing_logic": [
+        "Ray::from_mouse_ss屏幕鼠标+相机到世界射线生产者尚未实现。已有球/三角/平面求交算法，不要把缺输入生产者说成求交没代码。"
+      ],
+      "verification_gaps": [
+        "局部求交原入口对照已有；完整鼠标输入/拾取消费者未闭合。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::intersect::SphereIntersection::closest_intersection_distance",
+          "original_source": "crates/utils/src/geometry/intersect.rs",
+          "addresses": [
+            "0x14123b200"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::intersect::ray_sphere_intersection",
+          "original_source": "crates/utils/src/geometry/intersect.rs",
+          "addresses": [
+            "0x14123b230"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::intersect::ray_triangle_intersection",
+          "original_source": "crates/utils/src/geometry/intersect.rs",
+          "addresses": [
+            "0x14123afa0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::plane::Plane::intersect_ray",
+          "original_source": "crates/utils/src/geometry/plane.rs",
+          "addresses": [
+            "0x1412803f0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::ray::Ray::from_mouse_ss",
+          "original_source": "crates/utils/src/geometry/ray.rs",
+          "addresses": [
+            "0x14127cab0"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:53"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:54",
+      "feature_id": "utils:54",
+      "name": "三角形交叠",
+      "comparison_status": "implemented_scoped",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+          "sha256": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce",
+          "key_functions": [
+            "triangles_intersect",
+            "cross_intersect",
+            "canonicalize",
+            "orient",
+            "determinant",
+            "edge_plane_intersection",
+            "Triangle::intersect_triangle"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+          "sha256": "59ed8b31b4d0a705431329ea907c534e40fc2abeed878c46ae07b2e4cd06d991",
+          "key_functions": [
+            "triangles_intersect",
+            "cross_intersect",
+            "canonicalize",
+            "orient",
+            "determinant",
+            "edge_plane_intersection",
+            "Triangle::intersect_triangle"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs",
+          "sha256": "b725f0bd3e30cdb73e99b2ac431344283a055acbe470c6b983bc8fe141ec2f15",
+          "key_functions": [
+            "triangles_intersect",
+            "cross_intersect",
+            "canonicalize",
+            "orient",
+            "determinant",
+            "edge_plane_intersection",
+            "Triangle::intersect_triangle"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+          "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e",
+          "key_functions": [
+            "triangles_intersect",
+            "cross_intersect",
+            "canonicalize",
+            "orient",
+            "determinant",
+            "edge_plane_intersection",
+            "Triangle::intersect_triangle"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "triangles_intersect",
+        "cross_intersect",
+        "canonicalize",
+        "orient",
+        "determinant",
+        "edge_plane_intersection",
+        "Triangle::intersect_triangle"
+      ],
+      "missing_logic": [],
+      "verification_gaps": [
+        "561个真实原入口分类与有序端点比较通过，含小尺度/NaN/Inf；数值残差有明确界限，不宣称全输入逐位相同。原消费链仍缺。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::intersect::Triangle::intersect_triangle",
+          "original_source": "crates/utils/src/geometry/intersect.rs",
+          "addresses": [
+            "0x14123af40"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::triangle_triangle::cross_intersect::cross_intersect",
+          "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+          "addresses": [
+            "0x1424181a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::triangle_triangle::triangles_intersect::triangles_intersect",
+          "original_source": "crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+          "addresses": [
+            "0x141fdfd80"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:54"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-review-2026-10-13/geometry-curves/validation.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-review-2026-10-13/geometry-curves/extra-triangle-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/1424181a0.c"
+        }
+      ],
+      "documentation_correction": "三角内部主要选边/端点业务已修复并完成561组原入口局部对照；不要因原函数名不同将相同业务helper列为没实现。",
+      "baseline": "B primary",
+      "reused_validation_source_hash_check": {
+        "all_triangle_sources_match_prior_validation": true,
+        "tests_rerun_this_comparison": false
+      }
+    },
+    {
+      "id": "utils:55",
+      "feature_id": "utils:55",
+      "name": "网格UV位置",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs",
+          "sha256": "83566b0cb078427626dafd6c436589508cc32f8dc87c580573f57cb7588bc213",
+          "key_functions": [
+            "get_position_from_mesh_uv",
+            "barycentric"
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs",
+          "sha256": "681ee2c1fc95232336d9af710ccca87d4ce45019a83f77f4e14bcb7930c2476a",
+          "key_functions": [
+            "get_position_from_mesh_uv",
+            "barycentric"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "get_position_from_mesh_uv",
+        "barycentric"
+      ],
+      "missing_logic": [
+        "get_triangle_coords_from_mesh_uv返回三角索引/局部坐标的生产接口和barycentric2的二维策略未实现。已有空间位置映射不能说整个UV功能没有。"
+      ],
+      "verification_gaps": [
+        "UV空间位置/3D重心局部原对照已有；其余输出策略尚无比较。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::barycentric::barycentric",
+          "original_source": "crates/utils/src/geometry/barycentric.rs",
+          "addresses": [
+            "0x1416c2f20"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::barycentric::barycentric2",
+          "original_source": "crates/utils/src/geometry/barycentric.rs",
+          "addresses": []
+        },
+        {
+          "interface_id": "utils::geometry::position_from_mesh_uvs::get_position_from_mesh_uv",
+          "original_source": "crates/utils/src/geometry/position_from_mesh_uvs.rs",
+          "addresses": [
+            "0x1416f34a0"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::position_from_mesh_uvs::get_triangle_coords_from_mesh_uv",
+          "original_source": "crates/utils/src/geometry/position_from_mesh_uvs.rs",
+          "addresses": []
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:55"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:56",
+      "feature_id": "utils:56",
+      "name": "高度图阈值切分",
+      "comparison_status": "partial_missing_logic",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+          "sha256": "4b09386aeaeb389970be08d9182cb43a24379115ef0c54926e302acfe8f4b5e6",
+          "key_functions": [
+            "split_heightmap_by_threshold"
+          ]
+        }
+      ],
+      "implementation_present": true,
+      "implemented_scope": [
+        "split_heightmap_by_threshold"
+      ],
+      "missing_logic": [
+        "当前只有阈值交叉事件Vec；原B入口还在首样本位于阈值上方时建立/更新区段，在连续上方样本时更新末区段端参数，并调用SplitReceiver的进入/离开回调。候选没有这个状态化区段输出协议。没有据反编译占位参数编造Rust ABI。"
+      ],
+      "verification_gaps": [
+        "现有阈值交叉片段对照只验证上下跨阈值和插值t，不能验收完整区段输出。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::split_heightmap::split_heightmap_by_threshold",
+          "original_source": "crates/utils/src/geometry/split_heightmap.rs",
+          "addresses": [
+            "0x141fe0750"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:56"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/141fe0750.c"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/edge-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/edge_oracle.py",
+          "observed_scope": "Hooks original 0x14123fab0 and 0x14123fb70, records crossing and returns immediately. Does not validate either callback body nor span writes."
+        },
+        {
+          "artifact": "evidence/render-architecture/public-symbols.json",
+          "addresses": [
+            "0x14123fab0",
+            "0x14123fb70"
+          ],
+          "observed_scope": "Original public symbol ownership identifies RowTrimmerSink/SplitReceiver crossing callbacks."
+        }
+      ],
+      "documentation_correction": "现有实现只覆盖阈值事件投影，不等于完整原splitter；缺sink区段写入协议应列逻辑缺口，与原消费者接线分开。",
+      "baseline": "B primary",
+      "original_sink_observations": {
+        "private_entry": "0x141fe0750",
+        "crossing_callees": [
+          {
+            "address": "0x14123fb70",
+            "pdb_owner": "system_wall_constructor::utils::trim_rows::RowTrimmerSink as utils::geometry::split_heightmap::SplitReceiver",
+            "method": "below_to_above"
+          },
+          {
+            "address": "0x14123fab0",
+            "pdb_owner": "system_wall_constructor::utils::trim_rows::RowTrimmerSink as utils::geometry::split_heightmap::SplitReceiver",
+            "method": "above_to_below"
+          }
+        ],
+        "observed_updates": [
+          "首样本在上方时：输出序列无当前区段则建立，已有当前区段则更新其末端参数。",
+          "连续上方样本：从sink关联的原参数序列读取该点参数；新增区段或覆盖已有末端参数。",
+          "上下穿越：向对应回调传入 segment=i-1 与 t=(threshold-a)/(b-a)。"
+        ],
+        "abi_claim": "Only retained raw instruction/decompilation behavior and PDB callee ownership; source receiver layout and full typed Rust signature are not reconstructed."
+      }
+    },
+    {
+      "id": "utils:57",
+      "feature_id": "utils:57",
+      "name": "屏幕坐标转换",
+      "comparison_status": "not_implemented",
+      "existing_implementation": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs",
+          "sha256": "62cef87c502ed353756b483d62cc8c2fd32f78334172f750ac341886200a62a8",
+          "key_functions": []
+        }
+      ],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "ws_to_cs/ws_to_ss的世界→裁剪→屏幕变换、除w及坐标约定尚无候选实现。"
+      ],
+      "verification_gaps": [
+        "原入口/文件已定位；仅注释骨架不是实现。"
+      ],
+      "consumer_wiring_gaps": [
+        "原游戏生产者到消费者闭包未验收；此项不自动解释为上述源码函数缺失。"
+      ],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [
+        {
+          "interface_id": "utils::geometry::ws_to_cs",
+          "original_source": "crates/utils/src/geometry/mod.rs",
+          "addresses": [
+            "0x14127c970"
+          ]
+        },
+        {
+          "interface_id": "utils::geometry::ws_to_ss",
+          "original_source": "crates/utils/src/geometry/mod.rs",
+          "addresses": [
+            "0x14127c950"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:57"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/geometry-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/boundary-fixtures.json"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/linear-fixtures.json"
+        }
+      ],
+      "documentation_correction": null,
+      "baseline": "B primary"
+    },
+    {
+      "id": "utils:58",
+      "feature_id": "utils:58",
+      "name": "几何支撑辅助",
+      "comparison_status": "out_of_baseline",
+      "existing_implementation": [],
+      "implementation_present": false,
+      "implemented_scope": [],
+      "missing_logic": [
+        "C版brace.rs仅源码定义身份；具体规则尚未定位且没有恢复源码。B没有此文件，不能计入B未实现业务。"
+      ],
+      "verification_gaps": [
+        "需在C版本身份/地址基线下独立分析与比较；不借用B地址。"
+      ],
+      "consumer_wiring_gaps": [],
+      "unverified_is_not_unimplemented": true,
+      "full_feature_accepted": false,
+      "original_interfaces": [],
+      "evidence": [
+        {
+          "artifact": "tracking/foundation-business-functions.json",
+          "feature_id": "utils:58"
+        },
+        {
+          "artifact": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+          "scope": "Original B methods and strategies; statuses not auto-promoted from source existence."
+        },
+        {
+          "artifact": "skeleton/C/crates/utils/src/geometry/brace.rs",
+          "baseline": "C-only"
+        }
+      ],
+      "documentation_correction": "brace是C-only，应从B缺口主线排除并保留C独立任务，不按文件名推断其支撑算法。",
+      "baseline": "C-only; excluded from B workload",
+      "baseline_evidence": {
+        "C_skeleton": "skeleton/C/crates/utils/src/geometry/brace.rs",
+        "C_skeleton_sha256": "2375a44a33f698fff8d5387c588d19630c79ebea3dfc7e80925d10f9d5fface3",
+        "B_skeleton_exists": false,
+        "C_source_is_metadata_only": true
+      }
+    }
+  ],
+  "counts": {
+    "partial_missing_logic": 15,
+    "implemented_scoped": 7,
+    "not_implemented": 8,
+    "out_of_baseline": 1
+  },
+  "inputs": [
+    {
+      "path": "tracking/foundation-business-functions.json",
+      "sha256": "0705e75827c05452defb70297053676e4c4ec177f575e78380dee7f59e85f1c6"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+      "sha256": "c2586aac3a42128d078dda95b9583468c38d08b3eb9bbdde11db7544e97cbff3"
+    }
+  ],
+  "source_hashes": [
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+      "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+      "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs",
+      "sha256": "28d2222378fc125db45cf5537f23fe255bb398daf9c223ff15e5c11b3c9b38db"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs",
+      "sha256": "840b5bcc9323b08ef3de677afdfa242dbd90607ecce21bc9095bf6c9ce8bf4c2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+      "sha256": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs",
+      "sha256": "3042d689b2e91e3c444e5dda0bd34ce7f8f0d9d88345865e3868cdc4955187b2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+      "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+      "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs",
+      "sha256": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs",
+      "sha256": "f9b854034c69bcf4e9e3c1dff2248498faa22c3c1b5c300f71033bc8c5cfc95b"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+      "sha256": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "sha256": "59ed8b31b4d0a705431329ea907c534e40fc2abeed878c46ae07b2e4cd06d991"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs",
+      "sha256": "b725f0bd3e30cdb73e99b2ac431344283a055acbe470c6b983bc8fe141ec2f15"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "sha256": "83566b0cb078427626dafd6c436589508cc32f8dc87c580573f57cb7588bc213"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs",
+      "sha256": "681ee2c1fc95232336d9af710ccca87d4ce45019a83f77f4e14bcb7930c2476a"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+      "sha256": "4b09386aeaeb389970be08d9182cb43a24379115ef0c54926e302acfe8f4b5e6"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs",
+      "sha256": "62cef87c502ed353756b483d62cc8c2fd32f78334172f750ac341886200a62a8"
+    }
+  ]
+}

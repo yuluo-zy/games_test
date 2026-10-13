@@ -1,0 +1,80 @@
+utils::natural_cubic::Spline3D::position_at_t::h7ec0ddb3ddad631c
+0x140c946a0: push rsi
+0x140c946a1: sub rsp, 0x30
+0x140c946a5: movaps xmmword ptr [rsp + 0x20], xmm6
+0x140c946aa: movss xmm0, dword ptr [rdx + 0x18]
+0x140c946af: movss xmm1, dword ptr [rdx + 0x1c]
+0x140c946b4: ucomiss xmm1, xmm0
+0x140c946b7: jb 0x140c947d8
+0x140c946bd: maxss xmm0, xmm2
+0x140c946c1: minss xmm1, xmm0
+0x140c946c5: mov r8, qword ptr [rdx + 8]
+0x140c946c9: mov rdx, qword ptr [rdx + 0x10]
+0x140c946cd: mov r9, rdx
+0x140c946d0: test rdx, rdx
+0x140c946d3: je 0x140c94723
+0x140c946d5: xor r9d, r9d
+0x140c946d8: cmp rdx, 1
+0x140c946dc: je 0x140c94713
+0x140c946de: mov rax, rdx
+0x140c946e1: nop word ptr cs:[rax + rax]
+0x140c946f0: mov r10, rax
+0x140c946f3: shr r10, 1
+0x140c946f6: lea r11, [r10 + r9]
+0x140c946fa: mov rsi, r11
+0x140c946fd: shl rsi, 6
+0x140c94701: ucomiss xmm1, dword ptr [r8 + rsi]
+0x140c94706: cmovae r9, r11
+0x140c9470a: sub rax, r10
+0x140c9470d: cmp rax, 1
+0x140c94711: ja 0x140c946f0
+0x140c94713: mov rax, r9
+0x140c94716: shl rax, 6
+0x140c9471a: ucomiss xmm1, dword ptr [r8 + rax]
+0x140c9471f: sbb r9, -1
+0x140c94723: xor eax, eax
+0x140c94725: sub r9, 1
+0x140c94729: cmovae rax, r9
+0x140c9472d: cmp rax, rdx
+0x140c94730: jae 0x140c947e4
+0x140c94736: shl rax, 6
+0x140c9473a: subss xmm1, dword ptr [r8 + rax]
+0x140c94740: movss xmm0, dword ptr [r8 + rax + 0x38]
+0x140c94747: mulss xmm0, xmm1
+0x140c9474b: addss xmm0, dword ptr [r8 + rax + 0x34]
+0x140c94752: mulss xmm0, xmm1
+0x140c94756: addss xmm0, dword ptr [r8 + rax + 0x30]
+0x140c9475d: mulss xmm0, xmm1
+0x140c94761: addss xmm0, dword ptr [r8 + rax + 0x2c]
+0x140c94768: movsldup xmm1, xmm1
+0x140c9476c: movss xmm2, dword ptr [r8 + rax + 0x24]
+0x140c94773: movss xmm3, dword ptr [r8 + rax + 4]
+0x140c9477a: movss xmm4, dword ptr [r8 + rax + 8]
+0x140c94781: movss xmm5, dword ptr [r8 + rax + 0xc]
+0x140c94788: movss xmm6, dword ptr [r8 + rax + 0x10]
+0x140c9478f: unpcklps xmm6, xmm2
+0x140c94792: mulps xmm6, xmm1
+0x140c94795: movss xmm2, dword ptr [r8 + rax + 0x20]
+0x140c9479c: unpcklps xmm5, xmm2
+0x140c9479f: addps xmm5, xmm6
+0x140c947a2: mulps xmm5, xmm1
+0x140c947a5: movss xmm2, dword ptr [r8 + rax + 0x1c]
+0x140c947ac: unpcklps xmm4, xmm2
+0x140c947af: addps xmm4, xmm5
+0x140c947b2: mulps xmm4, xmm1
+0x140c947b5: movss xmm1, dword ptr [r8 + rax + 0x18]
+0x140c947bc: unpcklps xmm3, xmm1
+0x140c947bf: addps xmm3, xmm4
+0x140c947c2: movlps qword ptr [rcx], xmm3
+0x140c947c5: movss dword ptr [rcx + 8], xmm0
+0x140c947ca: mov rax, rcx
+0x140c947cd: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c947d2: add rsp, 0x30
+0x140c947d6: pop rsi
+0x140c947d7: ret 
+0x140c947d8: lea r8, [rip + 0x1e992e1] ; [0x142b2dac0]=70dab242 f32=89.4266357421875
+0x140c947df: call 0x140d8b480
+0x140c947e4: lea r8, [rip + 0x1e99505] ; [0x142b2dcf0]=fbdbb242 f32=89.42964935302734
+0x140c947eb: mov rcx, rax
+0x140c947ee: call 0x1428d9518
+0x140c947f3: int3 

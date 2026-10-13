@@ -1,0 +1,33 @@
+utils::camera::CameraMatrices::eye_direction::hdd8c9098532097c3
+0x140c96d80: mov rax, rcx
+0x140c96d83: xorps xmm0, xmm0
+0x140c96d86: movaps xmm1, xmmword ptr [rdx + 0xc0]
+0x140c96d8d: mulps xmm1, xmm0
+0x140c96d90: movaps xmm2, xmmword ptr [rdx + 0xd0]
+0x140c96d97: mulps xmm2, xmm0
+0x140c96d9a: addps xmm2, xmm1
+0x140c96d9d: subps xmm2, xmmword ptr [rdx + 0xe0]
+0x140c96da4: mulps xmm0, xmmword ptr [rdx + 0xf0]
+0x140c96dab: addps xmm0, xmm2
+0x140c96dae: movaps xmm1, xmm0
+0x140c96db1: mulps xmm1, xmm0
+0x140c96db4: movshdup xmm2, xmm1
+0x140c96db8: addss xmm2, xmm1
+0x140c96dbc: movhlps xmm1, xmm1
+0x140c96dbf: addss xmm1, xmm2
+0x140c96dc3: sqrtss xmm1, xmm1
+0x140c96dc7: movss xmm2, dword ptr [rip + 0x1c8eb35] ; [0x142925904]=0000803f f32=1.0
+0x140c96dcf: divss xmm2, xmm1
+0x140c96dd3: movsldup xmm1, xmm2
+0x140c96dd7: mulps xmm1, xmm0
+0x140c96dda: movhlps xmm0, xmm0
+0x140c96ddd: mulss xmm0, xmm2
+0x140c96de1: movlps qword ptr [rcx], xmm1
+0x140c96de4: movss dword ptr [rcx + 8], xmm0
+0x140c96de9: ret 
+0x140c96dea: int3 
+0x140c96deb: int3 
+0x140c96dec: int3 
+0x140c96ded: int3 
+0x140c96dee: int3 
+0x140c96def: int3 

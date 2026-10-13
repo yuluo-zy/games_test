@@ -1,0 +1,30 @@
+{
+  "baseline": "B",
+  "interface_id": "lang_lib::language_library::LanguageLibrary::new",
+  "analysis": "LLVM IPI0x14041 inline constructor in try_from_yml, code offsets0x1be..0x1df and0x214..0x239 plus shared tail0x1418489a9: locale pointer/length preserved and collected/empty map moved into result; no locale normalization/fallback branch in constructor. Allocator/hash/container internals delegated to std.",
+  "comparison_kind": "static original inline payload policy + candidate constructor test, not original entry execution",
+  "restoration": "LanguageLibrary::new(locale, entries); parse_yml delegates to constructor",
+  "representation_limit": "Own safe lifetime/storage API; original typed signature/ownership identity not proven, not required source identity; full caller/lifecycle behavior remains partial",
+  "source_sha256": "0a883869240b18cf5d0a5aa0bfe5ba3784ffed5c592371ccf6c71d9c7e8c052a",
+  "inputs": [
+    {
+      "path": "evidence/shared-foundation-2026-10-13/paths-language/language-library.asm.txt",
+      "sha256": "306de527fe57367d11cebe6a2d2b6fdd26269fd464eee4dcdf43199589498380"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/paths-language/module-1825.txt",
+      "sha256": "b9cec8136a9342ca0570722f8d9754f6a009ff670afb0c0095157ae760e60029"
+    }
+  ],
+  "verification": {
+    "cargo_test_lang_lib": {
+      "exit_code": 0,
+      "passed": 3
+    },
+    "clippy_all_targets_D_warnings": {
+      "exit_code": 0
+    },
+    "native_entry_compared": false
+  },
+  "difference_fixed": "Missing independent original constructor interface: now explicit supplied-locale/map-preserving API, no loader fallback in constructor"
+}

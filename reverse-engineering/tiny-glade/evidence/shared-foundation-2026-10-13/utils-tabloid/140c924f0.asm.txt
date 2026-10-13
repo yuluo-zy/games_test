@@ -1,0 +1,54 @@
+utils::wall_space::WallSpaceCoord::get_tangent::h651bf111d4d6fc73
+0x140c924f0: push rsi
+0x140c924f1: sub rsp, 0x30
+0x140c924f5: movaps xmmword ptr [rsp + 0x20], xmm6
+0x140c924fa: movss xmm0, dword ptr [rcx]
+0x140c924fe: divss xmm0, dword ptr [rdx + 0x30]
+0x140c92503: ucomiss xmm0, xmm0
+0x140c92506: jp 0x140c92592
+0x140c9250c: movd eax, xmm0
+0x140c92510: and eax, 0x7fffffff
+0x140c92515: cmp eax, 0x7f800000
+0x140c9251a: je 0x140c925aa
+0x140c92520: mov rsi, rdx
+0x140c92523: xorps xmm2, xmm2
+0x140c92526: maxss xmm2, xmm0
+0x140c9252a: movss xmm6, dword ptr [rip + 0x1c933d2] ; [0x142925904]=0000803f f32=1.0
+0x140c92532: movaps xmm1, xmm6
+0x140c92535: minss xmm1, xmm2
+0x140c92539: mov rcx, rdx
+0x140c9253c: call 0x141940780
+0x140c92541: mov rdx, qword ptr [rsi + 0x10]
+0x140c92545: mov eax, eax
+0x140c92547: lea rcx, [rax + 1]
+0x140c9254b: cmp rcx, rdx
+0x140c9254e: jae 0x140c925c2
+0x140c92550: mov rcx, qword ptr [rsi + 8]
+0x140c92554: movsd xmm1, qword ptr [rcx + rax*8]
+0x140c92559: movsd xmm0, qword ptr [rcx + rax*8 + 8]
+0x140c9255f: subps xmm0, xmm1
+0x140c92562: movaps xmm1, xmm0
+0x140c92565: mulps xmm1, xmm0
+0x140c92568: movshdup xmm2, xmm1
+0x140c9256c: addss xmm2, xmm1
+0x140c92570: xorps xmm1, xmm1
+0x140c92573: sqrtss xmm1, xmm2
+0x140c92577: divss xmm6, xmm1
+0x140c9257b: movshdup xmm1, xmm0
+0x140c9257f: mulss xmm0, xmm6
+0x140c92583: mulss xmm1, xmm6
+0x140c92587: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c9258c: add rsp, 0x30
+0x140c92590: pop rsi
+0x140c92591: ret 
+0x140c92592: lea rcx, [rip + 0x21df22f] ; [0x142e717c8]=61737365 f32=7.185396378077638e+22
+0x140c92599: lea r8, [rip + 0x1e9b458] ; [0x142b2d9f8]=78d9b242 f32=89.42474365234375
+0x140c925a0: mov edx, 0x1d
+0x140c925a5: call 0x1428d9430
+0x140c925aa: lea rcx, [rip + 0x21df297] ; [0x142e71848]=61737365 f32=7.185396378077638e+22
+0x140c925b1: lea r8, [rip + 0x1e9b440] ; [0x142b2d9f8]=78d9b242 f32=89.42474365234375
+0x140c925b8: mov edx, 0x22
+0x140c925bd: call 0x1428d9430
+0x140c925c2: lea r8, [rip + 0x21df0bf] ; [0x142e71688]=db14e742 f32=115.54073333740234
+0x140c925c9: call 0x1428d9518
+0x140c925ce: int3 

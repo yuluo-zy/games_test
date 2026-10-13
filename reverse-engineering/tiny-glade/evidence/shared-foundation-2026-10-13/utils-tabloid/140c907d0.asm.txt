@@ -1,0 +1,41 @@
+utils::uniform_sample_sphere::hd82457697c3de452
+0x140c907d0: push rsi
+0x140c907d1: sub rsp, 0x60
+0x140c907d5: movaps xmmword ptr [rsp + 0x50], xmm9
+0x140c907db: movaps xmmword ptr [rsp + 0x40], xmm8
+0x140c907e1: movaps xmmword ptr [rsp + 0x30], xmm7
+0x140c907e6: movaps xmmword ptr [rsp + 0x20], xmm6
+0x140c907eb: mov rsi, rcx
+0x140c907ee: movd xmm0, edx
+0x140c907f2: shr rdx, 0x20
+0x140c907f6: movd xmm6, edx
+0x140c907fa: addss xmm0, xmm0
+0x140c907fe: movss xmm1, dword ptr [rip + 0x1c950fe] ; [0x142925904]=0000803f f32=1.0
+0x140c90806: movaps xmm8, xmm1
+0x140c9080a: subss xmm8, xmm0
+0x140c9080f: movaps xmm0, xmm8
+0x140c90813: mulss xmm0, xmm8
+0x140c90818: subss xmm1, xmm0
+0x140c9081c: xorps xmm0, xmm0
+0x140c9081f: maxss xmm1, xmm0
+0x140c90823: xorps xmm9, xmm9
+0x140c90827: sqrtss xmm9, xmm1
+0x140c9082c: mulss xmm6, dword ptr [rip + 0x1ca3e40] ; [0x142934674]=db0fc940 f32=6.2831854820251465
+0x140c90834: movaps xmm0, xmm6
+0x140c90837: call 0x142923fd0
+0x140c9083c: movaps xmm7, xmm0
+0x140c9083f: movaps xmm0, xmm6
+0x140c90842: call 0x142923e80
+0x140c90847: unpcklps xmm0, xmm7
+0x140c9084a: movsldup xmm1, xmm9
+0x140c9084f: mulps xmm1, xmm0
+0x140c90852: movlps qword ptr [rsi], xmm1
+0x140c90855: movss dword ptr [rsi + 8], xmm8
+0x140c9085b: mov rax, rsi
+0x140c9085e: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c90863: movaps xmm7, xmmword ptr [rsp + 0x30]
+0x140c90868: movaps xmm8, xmmword ptr [rsp + 0x40]
+0x140c9086e: movaps xmm9, xmmword ptr [rsp + 0x50]
+0x140c90874: add rsp, 0x60
+0x140c90878: pop rsi
+0x140c90879: ret 

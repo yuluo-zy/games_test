@@ -1,0 +1,56 @@
+14123fab0 push rsi
+14123fab1 sub rsp, 0x20
+14123fab5 xorps xmm0, xmm0
+14123fab8 ucomiss xmm2, xmm0
+14123fabb jb 0x14123fb28
+14123fabd movss xmm0, dword ptr [rip + 0x16e5e3f]
+14123fac5 ucomiss xmm0, xmm2
+14123fac8 jb 0x14123fb28
+14123faca mov rsi, rcx
+14123facd mov r8, qword ptr [rcx]
+14123fad0 mov ecx, edx
+14123fad2 mov rdx, qword ptr [r8 + 0x28]
+14123fad6 cmp rdx, rcx
+14123fad9 jbe 0x14123fb40
+14123fadb lea rax, [rcx + 1]
+14123fadf cmp rax, rdx
+14123fae2 jae 0x14123fb4c
+14123fae4 mov rax, qword ptr [r8 + 0x20]
+14123fae8 movss xmm0, dword ptr [rax + rcx*4]
+14123faed movss xmm1, dword ptr [rax + rcx*4 + 4]
+14123faf3 call 0x140c904d0
+14123faf8 mov rcx, qword ptr [rsi + 8]
+14123fafc mov rax, qword ptr [rcx + 0x10]
+14123fb00 test rax, rax
+14123fb03 je 0x14123fb5b
+14123fb05 mov rcx, qword ptr [rcx + 8]
+14123fb09 shl rax, 5
+14123fb0d lea rdx, [rcx + rax]
+14123fb11 add rdx, -0x20
+14123fb15 test rdx, rdx
+14123fb18 je 0x14123fb5b
+14123fb1a add rcx, rax
+14123fb1d movss dword ptr [rcx - 4], xmm0
+14123fb22 add rsp, 0x20
+14123fb26 pop rsi
+14123fb27 ret 
+14123fb28 lea rcx, [rip + 0x19d9751]
+14123fb2f lea r8, [rip + 0x19d977a]
+14123fb36 mov edx, 0x2a
+14123fb3b call 0x1428d9430
+14123fb40 lea r8, [rip + 0x19d92d1]
+14123fb47 call 0x1428d9518
+14123fb4c lea r8, [rip + 0x19d92dd]
+14123fb53 mov rcx, rax
+14123fb56 call 0x1428d9518
+14123fb5b lea rcx, [rip + 0x19df916]
+14123fb62 call 0x1428d9310
+14123fb67 int3 
+14123fb68 int3 
+14123fb69 int3 
+14123fb6a int3 
+14123fb6b int3 
+14123fb6c int3 
+14123fb6d int3 
+14123fb6e int3 
+14123fb6f int3 

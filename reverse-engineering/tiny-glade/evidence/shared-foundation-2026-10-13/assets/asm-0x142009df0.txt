@@ -1,0 +1,276 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+142009df0:     	pushq	%rbp
+142009df1:     	pushq	%r15
+142009df3:     	pushq	%r14
+142009df5:     	pushq	%r13
+142009df7:     	pushq	%r12
+142009df9:     	pushq	%rsi
+142009dfa:     	pushq	%rdi
+142009dfb:     	pushq	%rbx
+142009dfc:     	subq	$0xe8, %rsp
+142009e03:     	leaq	0x80(%rsp), %rbp
+142009e0b:     	movdqa	%xmm8, 0x50(%rbp)
+142009e11:     	movdqa	%xmm7, 0x40(%rbp)
+142009e16:     	movdqa	%xmm6, 0x30(%rbp)
+142009e1b:     	movq	$-0x2, 0x28(%rbp)
+142009e23:     	movq	%rcx, %rsi
+142009e26:     	movq	0xd0(%rbp), %rax
+142009e2d:     	movq	%r9, 0x10(%rbp)
+142009e31:     	movq	%r9, -0x10(%rbp)
+142009e35:     	movq	%rax, -0x8(%rbp)
+142009e39:     	cmpq	$0x0, 0x18(%rcx)
+142009e3e:     	je	0x142009f21 <.text+0x2008f21>
+142009e44:     	leaq	0x20(%rsi), %rcx
+142009e48:     	movb	$0x1, 0x27(%rbp)
+142009e4c:     	movq	%rdx, 0x8(%rbp)
+142009e50:     	movq	%r8, 0x18(%rbp)
+142009e54:     	callq	0x142422010 <.text+0x2421010> ; core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref$<std::path::Path> >
+142009e59:     	movq	(%rsi), %r15
+142009e5c:     	movq	0x8(%rsi), %rcx
+142009e60:     	movq	%rcx, %r13
+142009e63:     	andq	%rax, %r13
+142009e66:     	shrq	$0x39, %rax
+142009e6a:     	movd	%eax, %xmm0
+142009e6e:     	punpcklbw	%xmm0, %xmm0    # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+142009e72:     	pshuflw	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+142009e77:     	pshufd	$0x0, %xmm0, %xmm6      # xmm6 = xmm0[0,0,0,0]
+142009e7c:     	leaq	-0x38(%r15), %r9
+142009e80:     	xorl	%r10d, %r10d
+142009e83:     	pcmpeqd	%xmm7, %xmm7
+142009e87:     	movq	0x18(%rbp), %r8
+142009e8b:     	movq	0x8(%rbp), %rdx
+142009e8f:     	movdqu	(%r15,%r13), %xmm8
+142009e95:     	movdqa	%xmm8, %xmm0
+142009e9a:     	pcmpeqb	%xmm6, %xmm0
+142009e9e:     	pmovmskb	%xmm0, %r14d
+142009ea3:     	testl	%r14d, %r14d
+142009ea6:     	je	0x142009f00 <.text+0x2008f00>
+142009ea8:     	movq	%r10, (%rbp)
+142009eac:     	tzcntl	%r14d, %eax
+142009eb1:     	addq	%r13, %rax
+142009eb4:     	movq	%rcx, %rdi
+142009eb7:     	andq	%rcx, %rax
+142009eba:     	negq	%rax
+142009ebd:     	imulq	$0x38, %rax, %r12
+142009ec1:     	movq	%rdx, %rcx
+142009ec4:     	movq	%r8, %rdx
+142009ec7:     	movq	%r9, %rbx
+142009eca:     	leaq	(%r9,%r12), %r8
+142009ece:     	movb	$0x1, 0x27(%rbp)
+142009ed2:     	callq	0x1424222b0 <.text+0x24212b0> ; hashbrown::impl$0::equivalent<std::path::Path,std::path::PathBuf>
+142009ed7:     	testb	%al, %al
+142009ed9:     	jne	0x142009fa5 <.text+0x2008fa5>
+142009edf:     	leal	-0x1(%r14), %eax
+142009ee3:     	andw	%r14w, %ax
+142009ee7:     	movl	%eax, %r14d
+142009eea:     	movq	%rdi, %rcx
+142009eed:     	movq	0x18(%rbp), %r8
+142009ef1:     	movq	%rbx, %r9
+142009ef4:     	movq	0x8(%rbp), %rdx
+142009ef8:     	movq	(%rbp), %r10
+142009efc:     	jne	0x142009eac <.text+0x2008eac>
+142009efe:     	nop
+142009f00:     	pcmpeqb	%xmm7, %xmm8
+142009f05:     	pmovmskb	%xmm8, %eax
+142009f0a:     	testl	%eax, %eax
+142009f0c:     	jne	0x142009f21 <.text+0x2008f21>
+142009f0e:     	addq	%r10, %r13
+142009f11:     	addq	$0x10, %r13
+142009f15:     	addq	$0x10, %r10
+142009f19:     	andq	%rcx, %r13
+142009f1c:     	jmp	0x142009e8f <.text+0x2008e8f>
+142009f21:     	movb	$0x1, 0x27(%rbp)
+142009f25:     	leaq	-0x30(%rbp), %rcx
+142009f29:     	callq	0x140d61b00 <.text+0xd60b00>
+142009f2e:     	movzbl	0x162acd4(%rip), %eax   # 0x143634c09
+142009f35:     	movl	$0x10, %ecx
+142009f3a:     	movl	$0x8, %edx
+142009f3f:     	callq	0x140613c10 <.text+0x612c10>
+142009f44:     	testq	%rax, %rax
+142009f47:     	movq	%rax, 0x18(%rbp)
+142009f4b:     	je	0x14200a01b <.text+0x200901b>
+142009f51:     	movq	%rax, %r10
+142009f54:     	movq	0x10(%rbp), %rax
+142009f58:     	movq	%rax, (%r10)
+142009f5b:     	movq	0xd0(%rbp), %rax
+142009f62:     	movq	%rax, 0x8(%r10)
+142009f66:     	movq	$0x1, -0x48(%rbp)
+142009f6e:     	movq	%r10, -0x40(%rbp)
+142009f72:     	movq	$0x1, -0x38(%rbp)
+142009f7a:     	leaq	-0x60(%rbp), %rcx
+142009f7e:     	leaq	-0x30(%rbp), %r8
+142009f82:     	leaq	-0x48(%rbp), %r9
+142009f86:     	movq	%rsi, %rdx
+142009f89:     	callq	0x1424239f0 <.text+0x24229f0> ; hashbrown::map::HashMap::insert<std::path::PathBuf,alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>
+142009f8e:     	xorl	%eax, %eax
+142009f90:     	cmpq	-0x60(%rbp), %rax
+142009f94:     	jo	0x142009ffa <.text+0x2008ffa>
+142009f96:     	movb	$0x0, 0x27(%rbp)
+142009f9a:     	leaq	-0x60(%rbp), %rcx
+142009f9e:     	callq	0x14088d2c0 <.text+0x88c2c0> ; core::ptr::drop_in_place<alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global> >
+142009fa3:     	jmp	0x142009ffa <.text+0x2008ffa>
+142009fa5:     	movq	0x10(%rbp), %rax
+142009fa9:     	movq	%rax, -0x30(%rbp)
+142009fad:     	movq	0xd0(%rbp), %rdi
+142009fb4:     	movq	%rdi, -0x28(%rbp)
+142009fb8:     	movq	-0x8(%r15,%r12), %rsi
+142009fbd:     	cmpq	-0x18(%r15,%r12), %rsi
+142009fc2:     	jne	0x142009fd8 <.text+0x2008fd8>
+142009fc4:     	leaq	(%r15,%r12), %rcx
+142009fc8:     	addq	$-0x18, %rcx
+142009fcc:     	leaq	0xfc466d(%rip), %rdx    # 0x142fce640
+142009fd3:     	callq	0x140562630 <.text+0x561630> ; alloc::raw_vec::RawVec::grow_one<std::sync::mpsc::Receiver<tuple$<relative_path::RelativePathBuf,enum2$<core::result::Result<asset_pipe::texture::TextureAssetMeta,anyhow::Error> > > >,alloc::alloc::Global>
+142009fd8:     	addq	%r12, %r15
+142009fdb:     	movq	-0x10(%r15), %rax
+142009fdf:     	movq	%rsi, %rcx
+142009fe2:     	shlq	$0x4, %rcx
+142009fe6:     	movq	0x10(%rbp), %rdx
+142009fea:     	movq	%rdx, (%rax,%rcx)
+142009fee:     	movq	%rdi, 0x8(%rax,%rcx)
+142009ff3:     	incq	%rsi
+142009ff6:     	movq	%rsi, -0x8(%r15)
+142009ffa:     	movaps	0x30(%rbp), %xmm6
+142009ffe:     	movaps	0x40(%rbp), %xmm7
+14200a002:     	movaps	0x50(%rbp), %xmm8
+14200a007:     	addq	$0xe8, %rsp
+14200a00e:     	popq	%rbx
+14200a00f:     	popq	%rdi
+14200a010:     	popq	%rsi
+14200a011:     	popq	%r12
+14200a013:     	popq	%r13
+14200a015:     	popq	%r14
+14200a017:     	popq	%r15
+14200a019:     	popq	%rbp
+14200a01a:     	retq
+14200a01b:     	movl	$0x8, %ecx
+14200a020:     	movl	$0x10, %edx
+14200a025:     	callq	0x1428d9000 <.text+0x28d8000>
+14200a02a:     	ud2
+14200a02c:     	nopl	(%rax)
+14200a030:     	movq	%rdx, 0x10(%rsp)
+14200a035:     	pushq	%rbp
+14200a036:     	pushq	%r15
+14200a038:     	pushq	%r14
+14200a03a:     	pushq	%r13
+14200a03c:     	pushq	%r12
+14200a03e:     	pushq	%rsi
+14200a03f:     	pushq	%rdi
+14200a040:     	pushq	%rbx
+14200a041:     	subq	$0x58, %rsp
+14200a045:     	leaq	0x80(%rdx), %rbp
+14200a04c:     	movdqa	%xmm8, 0x20(%rsp)
+14200a053:     	movdqa	%xmm7, 0x30(%rsp)
+14200a059:     	movdqa	%xmm6, 0x40(%rsp)
+14200a05f:     	movq	0x10(%rbp), %rax
+14200a063:     	lock
+14200a064:     	decq	(%rax)
+14200a067:     	jne	0x14200a076 <.text+0x2009076>
+14200a069:     	movb	$0x0, 0x27(%rbp)
+14200a06d:     	leaq	-0x30(%rbp), %rcx
+14200a071:     	callq	0x14064eb30 <.text+0x64db30> ; alloc::sync::Arc::drop_slow<str$,alloc::alloc::Global>
+14200a076:     	movb	$0x0, 0x27(%rbp)
+14200a07a:     	movaps	0x40(%rsp), %xmm6
+14200a07f:     	movaps	0x30(%rsp), %xmm7
+14200a084:     	movaps	0x20(%rsp), %xmm8
+14200a08a:     	addq	$0x58, %rsp
+14200a08e:     	popq	%rbx
+14200a08f:     	popq	%rdi
+14200a090:     	popq	%rsi
+14200a091:     	popq	%r12
+14200a093:     	popq	%r13
+14200a095:     	popq	%r14
+14200a097:     	popq	%r15
+14200a099:     	popq	%rbp
+14200a09a:     	retq
+14200a09b:     	nopl	(%rax,%rax)
+14200a0a0:     	movq	%rdx, 0x10(%rsp)
+14200a0a5:     	pushq	%rbp
+14200a0a6:     	pushq	%r15
+14200a0a8:     	pushq	%r14
+14200a0aa:     	pushq	%r13
+14200a0ac:     	pushq	%r12
+14200a0ae:     	pushq	%rsi
+14200a0af:     	pushq	%rdi
+14200a0b0:     	pushq	%rbx
+14200a0b1:     	subq	$0x58, %rsp
+14200a0b5:     	leaq	0x80(%rdx), %rbp
+14200a0bc:     	movdqa	%xmm8, 0x20(%rsp)
+14200a0c3:     	movdqa	%xmm7, 0x30(%rsp)
+14200a0c9:     	movdqa	%xmm6, 0x40(%rsp)
+14200a0cf:     	cmpq	$0x0, 0x18(%rbp)
+14200a0d4:     	jne	0x14200a116 <.text+0x2009116>
+14200a0d6:     	movq	-0x30(%rbp), %rdx
+14200a0da:     	testq	%rdx, %rdx
+14200a0dd:     	je	0x14200a0ee <.text+0x20090ee>
+14200a0df:     	movq	-0x28(%rbp), %rcx
+14200a0e3:     	movl	$0x1, %r8d
+14200a0e9:     	callq	0x140613c20 <.text+0x612c20>
+14200a0ee:     	movb	$0x1, 0x27(%rbp)
+14200a0f2:     	movdqa	0x40(%rsp), %xmm6
+14200a0f8:     	movdqa	0x30(%rsp), %xmm7
+14200a0fe:     	movdqa	0x20(%rsp), %xmm8
+14200a105:     	addq	$0x58, %rsp
+14200a109:     	popq	%rbx
+14200a10a:     	popq	%rdi
+14200a10b:     	popq	%rsi
+14200a10c:     	popq	%r12
+14200a10e:     	popq	%r13
+14200a110:     	popq	%r14
+14200a112:     	popq	%r15
+14200a114:     	popq	%rbp
+14200a115:     	retq
+14200a116:     	movb	$0x0, 0x27(%rbp)
+14200a11a:     	movdqa	0x40(%rsp), %xmm6
+14200a120:     	movdqa	0x30(%rsp), %xmm7
+14200a126:     	movdqa	0x20(%rsp), %xmm8
+14200a12d:     	addq	$0x58, %rsp
+14200a131:     	popq	%rbx
+14200a132:     	popq	%rdi
+14200a133:     	popq	%rsi
+14200a134:     	popq	%r12
+14200a136:     	popq	%r13
+14200a138:     	popq	%r14
+14200a13a:     	popq	%r15
+14200a13c:     	popq	%rbp
+14200a13d:     	retq
+14200a13e:     	nop
+14200a140:     	movq	%rdx, 0x10(%rsp)
+14200a145:     	pushq	%rbp
+14200a146:     	pushq	%r15
+14200a148:     	pushq	%r14
+14200a14a:     	pushq	%r13
+14200a14c:     	pushq	%r12
+14200a14e:     	pushq	%rsi
+14200a14f:     	pushq	%rdi
+14200a150:     	pushq	%rbx
+14200a151:     	subq	$0x58, %rsp
+14200a155:     	leaq	0x80(%rdx), %rbp
+14200a15c:     	movdqa	%xmm8, 0x20(%rsp)
+14200a163:     	movdqa	%xmm7, 0x30(%rsp)
+14200a169:     	movdqa	%xmm6, 0x40(%rsp)
+14200a16f:     	cmpb	$0x0, 0x27(%rbp)
+14200a173:     	je	0x14200a188 <.text+0x2009188>
+14200a175:     	movq	-0x10(%rbp), %rax
+14200a179:     	lock
+14200a17a:     	decq	(%rax)
+14200a17d:     	jne	0x14200a188 <.text+0x2009188>
+14200a17f:     	leaq	-0x10(%rbp), %rcx
+14200a183:     	callq	0x14064eb30 <.text+0x64db30> ; alloc::sync::Arc::drop_slow<str$,alloc::alloc::Global>
+14200a188:     	movaps	0x40(%rsp), %xmm6
+14200a18d:     	movaps	0x30(%rsp), %xmm7
+14200a192:     	movaps	0x20(%rsp), %xmm8
+14200a198:     	addq	$0x58, %rsp
+14200a19c:     	popq	%rbx
+14200a19d:     	popq	%rdi
+14200a19e:     	popq	%rsi
+14200a19f:     	popq	%r12
+14200a1a1:     	popq	%r13
+14200a1a3:     	popq	%r14
+14200a1a5:     	popq	%r15
+14200a1a7:     	popq	%rbp
+14200a1a8:     	retq

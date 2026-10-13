@@ -1,0 +1,190 @@
+{
+  "baseline": "B",
+  "baseline_interface_count": 191,
+  "baseline_sha256": "52545a1fafb491cde8fd1282b35d39b9dfb2ad837e4ecdd796a245b195fcf23c",
+  "updates": [
+    {
+      "canonical_key": "utils::index_condenser::Condex::last_known_index",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+        "method": "utils::index_condenser::Condex::last_known_index"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/inline-bindings.json",
+        "interface-batch-02/B-module-540.txt",
+        "interface-batch-02/B-module-523.txt",
+        "interface-batch-02/B-module-554.txt",
+        "interface-batch-02/index-get-native-fixtures.json",
+        "interface-batch-02/index_tests.rs"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": false,
+      "original_inline_differential": false,
+      "original_inline_differential_scope": null,
+      "consumer_wired": false,
+      "gaps": [
+        "Original IPI0x74F0 exposes last cached index in producer register; safe Cell getter restores value policy, no independent native method entry/ABI."
+      ]
+    },
+    {
+      "canonical_key": "utils::index_condenser::IndexCondenser::clear",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+        "method": "utils::index_condenser::IndexCondenser::clear"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/inline-bindings.json",
+        "interface-batch-02/B-module-540.txt",
+        "interface-batch-02/B-module-523.txt",
+        "interface-batch-02/B-module-554.txt",
+        "interface-batch-02/index-get-native-fixtures.json",
+        "interface-batch-02/index_tests.rs"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": false,
+      "original_inline_differential": false,
+      "original_inline_differential_scope": null,
+      "consumer_wired": false,
+      "gaps": [
+        "Original clear confirmed inside uninit_clearing, calling original Vec/HashMap clear; candidate capacity/reset tests only, full original startup consumer not executed."
+      ]
+    },
+    {
+      "canonical_key": "utils::index_condenser::IndexCondenser::get",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+        "method": "utils::index_condenser::IndexCondenser::get"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/inline-bindings.json",
+        "interface-batch-02/B-module-540.txt",
+        "interface-batch-02/B-module-523.txt",
+        "interface-batch-02/B-module-554.txt",
+        "interface-batch-02/index-get-native-fixtures.json",
+        "interface-batch-02/index_tests.rs"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": false,
+      "original_inline_differential": true,
+      "original_inline_differential_scope": "72 exact original get-prefix success/missing branches, cache updates; std hash/probe original instructions execute",
+      "consumer_wired": true,
+      "gaps": [
+        "No standalone original get entry: original inlined code compared at precise IPI0x74E3 boundaries. Recovered remove now calls get; full GPUWorld update consumer remains unwired."
+      ]
+    },
+    {
+      "canonical_key": "<[glam::f32::vec3::Vec3] as utils::swizzlers::Vec3SliceAs2>::as_vec2",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+        "method": "utils::swizzlers::Vec3SliceAs2::as_vec2",
+        "scope": "borrowed pointer/length transport only; projected consumer API remains unknown"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/targets.json",
+        "interface-batch-02/query-bounded.json",
+        "interface-batch-02/B-module-757.txt",
+        "interface-batch-02/swizzler-native-fixtures.json"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": true,
+      "original_instruction_differential_scope": "6 pointer/length identity cases, not element projection",
+      "consumer_wired": false,
+      "gaps": [
+        "Original return wrapper type, projected axis/element stride/borrow aliases and actual consumer interpretation unresolved; safe borrowed transport does not cast &[Vec3] to packed &[Vec2]."
+      ]
+    },
+    {
+      "canonical_key": "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerX0Y>::x0y",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+        "method": "utils::swizzlers::SwizzlerX0Y::x0y",
+        "scope": "original coordinate lane policy"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/targets.json",
+        "interface-batch-02/query-bounded.json",
+        "interface-batch-02/B-module-757.txt",
+        "interface-batch-02/swizzler-native-fixtures.json"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": true,
+      "original_instruction_differential_scope": "64 payload-bit patterns per original coordinate method",
+      "consumer_wired": false,
+      "gaps": [
+        "Original Rust receiver-by-value/reference ABI and full game consumer wiring unverified; coordinate values/lane rules verified."
+      ]
+    },
+    {
+      "canonical_key": "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerXVY>::xvy",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+        "method": "utils::swizzlers::SwizzlerXVY::xvy",
+        "scope": "original coordinate lane policy"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/targets.json",
+        "interface-batch-02/query-bounded.json",
+        "interface-batch-02/B-module-757.txt",
+        "interface-batch-02/swizzler-native-fixtures.json"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": true,
+      "original_instruction_differential_scope": "64 payload-bit patterns per original coordinate method",
+      "consumer_wired": false,
+      "gaps": [
+        "Original Rust receiver-by-value/reference ABI and full game consumer wiring unverified; coordinate values/lane rules verified."
+      ]
+    },
+    {
+      "canonical_key": "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerX0Z>::x0z",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+        "method": "utils::swizzlers::SwizzlerX0Z::x0z",
+        "scope": "original coordinate lane policy"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/targets.json",
+        "interface-batch-02/query-bounded.json",
+        "interface-batch-02/B-module-757.txt",
+        "interface-batch-02/swizzler-native-fixtures.json"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": true,
+      "original_instruction_differential_scope": "64 payload-bit patterns per original coordinate method",
+      "consumer_wired": false,
+      "gaps": [
+        "Original Rust receiver-by-value/reference ABI and full game consumer wiring unverified; coordinate values/lane rules verified."
+      ]
+    },
+    {
+      "canonical_key": "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerXVZ>::xvz",
+      "analysis_status": "analyzed_partial",
+      "candidate_implementation": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+        "method": "utils::swizzlers::SwizzlerXVZ::xvz",
+        "scope": "original coordinate lane policy"
+      },
+      "business_analysis_evidence": [
+        "interface-batch-02/targets.json",
+        "interface-batch-02/query-bounded.json",
+        "interface-batch-02/B-module-757.txt",
+        "interface-batch-02/swizzler-native-fixtures.json"
+      ],
+      "static_comparison": true,
+      "original_instruction_differential": true,
+      "original_instruction_differential_scope": "64 payload-bit patterns per original coordinate method",
+      "consumer_wired": false,
+      "gaps": [
+        "Original Rust receiver-by-value/reference ABI and full game consumer wiring unverified; coordinate values/lane rules verified."
+      ]
+    }
+  ],
+  "states_are_partial_not_complete": true
+}

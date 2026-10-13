@@ -1,0 +1,67 @@
+14123fb70 push rsi
+14123fb71 push rdi
+14123fb72 sub rsp, 0x48
+14123fb76 movaps xmmword ptr [rsp + 0x30], xmm7
+14123fb7b movaps xmmword ptr [rsp + 0x20], xmm6
+14123fb80 xorps xmm0, xmm0
+14123fb83 ucomiss xmm2, xmm0
+14123fb86 jb 0x14123fc34
+14123fb8c movss xmm0, dword ptr [rip + 0x16e5d70]
+14123fb94 ucomiss xmm0, xmm2
+14123fb97 jb 0x14123fc34
+14123fb9d mov rsi, rcx
+14123fba0 mov r8, qword ptr [rcx]
+14123fba3 mov ecx, edx
+14123fba5 mov rdx, qword ptr [r8 + 0x28]
+14123fba9 cmp rdx, rcx
+14123fbac jbe 0x14123fc4c
+14123fbb2 lea rax, [rcx + 1]
+14123fbb6 cmp rax, rdx
+14123fbb9 jae 0x14123fc58
+14123fbbf mov rax, qword ptr [r8 + 0x20]
+14123fbc3 movss xmm0, dword ptr [rax + rcx*4]
+14123fbc8 movss xmm1, dword ptr [rax + rcx*4 + 4]
+14123fbce call 0x140c904d0
+14123fbd3 movaps xmm6, xmm0
+14123fbd6 mov rdi, qword ptr [rsi + 8]
+14123fbda movsd xmm7, qword ptr [rsi + 0x18]
+14123fbdf mov rsi, qword ptr [rdi + 0x10]
+14123fbe3 cmp rsi, qword ptr [rdi]
+14123fbe6 jne 0x14123fbf7
+14123fbe8 lea rdx, [rip + 0x19df8a1]
+14123fbef mov rcx, rdi
+14123fbf2 call 0x140562c30
+14123fbf7 mov rax, qword ptr [rdi + 8]
+14123fbfb mov rcx, rsi
+14123fbfe shl rcx, 5
+14123fc02 xorps xmm0, xmm0
+14123fc05 movups xmmword ptr [rax + rcx], xmm0
+14123fc09 movlps qword ptr [rax + rcx + 0x10], xmm7
+14123fc0e movss dword ptr [rax + rcx + 0x18], xmm6
+14123fc14 mov dword ptr [rax + rcx + 0x1c], 0x3f800000
+14123fc1c inc rsi
+14123fc1f mov qword ptr [rdi + 0x10], rsi
+14123fc23 movaps xmm6, xmmword ptr [rsp + 0x20]
+14123fc28 movaps xmm7, xmmword ptr [rsp + 0x30]
+14123fc2d add rsp, 0x48
+14123fc31 pop rdi
+14123fc32 pop rsi
+14123fc33 ret 
+14123fc34 lea rcx, [rip + 0x19d9645]
+14123fc3b lea r8, [rip + 0x19d966e]
+14123fc42 mov edx, 0x2a
+14123fc47 call 0x1428d9430
+14123fc4c lea r8, [rip + 0x19d91c5]
+14123fc53 call 0x1428d9518
+14123fc58 lea r8, [rip + 0x19d91d1]
+14123fc5f mov rcx, rax
+14123fc62 call 0x1428d9518
+14123fc67 int3 
+14123fc68 int3 
+14123fc69 int3 
+14123fc6a int3 
+14123fc6b int3 
+14123fc6c int3 
+14123fc6d int3 
+14123fc6e int3 
+14123fc6f int3 

@@ -1,0 +1,685 @@
+{
+  "scope": "Four small libraries; B Windows",
+  "features": [
+    {
+      "feature_id": "paths:01",
+      "library": "paths",
+      "name": "用户数据根目录",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "Windows KnownFolder优先、USERPROFILE Unicode fallback及Tiny Glade后缀已有。",
+      "source_mapping": [
+        {
+          "function": "find_standard_app_root_path",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 104
+        },
+        {
+          "function": "choose_standard_app_root",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 112
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "本轮只核B Windows；其他平台不凭本实现推广。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "paths:02",
+      "library": "paths",
+      "name": "覆盖目录与账号隔离",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "override加Tiny Glade，Steam/u64账号目录已有。",
+      "source_mapping": [
+        {
+          "function": "initialize_paths",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 129
+        },
+        {
+          "function": "Paths::initialize_at",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 22
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "本轮只核B Windows；其他平台不凭本实现推广。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "paths:03",
+      "library": "paths",
+      "name": "存档目录布局",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "saves/beta-saves/tmp/deleted-saves/backup-saves和config目录均创建。",
+      "source_mapping": [
+        {
+          "function": "Paths::initialize_at",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 22
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "本轮只核B Windows；其他平台不凭本实现推广。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "paths:04",
+      "library": "paths",
+      "name": "启动目录初始化",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "保留逐次创建顺序、失败前已创建目录和IO错误上下文。",
+      "source_mapping": [
+        {
+          "function": "Paths::initialize_at",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 22
+        },
+        {
+          "function": "ensure_path",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 95
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "本轮只核B Windows；其他平台不凭本实现推广。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "paths:05",
+      "library": "paths",
+      "name": "安装位置与初始化限制",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "先创建目录再current_dir，OnceLock限制重复初始化及未初始化访问。",
+      "source_mapping": [
+        {
+          "function": "initialize_paths",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 129
+        },
+        {
+          "function": "paths",
+          "file": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+          "line": 70
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "本轮只核B Windows；其他平台不凭本实现推广。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:01",
+      "library": "lang-lib",
+      "name": "语言包加载",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "使用原YAML库，首文档平面string map、空文档规则已有。",
+      "source_mapping": [
+        {
+          "function": "try_from_yml",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+          "line": 28
+        },
+        {
+          "function": "parse_yml",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+          "line": 33
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:02",
+      "library": "lang-lib",
+      "name": "语言切换",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "ArcSwap替换与静态文本保留已实现。",
+      "source_mapping": [
+        {
+          "function": "load_locale_impl",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 17
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:03",
+      "library": "lang-lib",
+      "name": "默认语言回退",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "请求加载失败使用en-US；var错误/非Unicode启用fallback，任意Unicode值禁用更新；已有fallback不被清除。",
+      "source_mapping": [
+        {
+          "function": "load_locale_impl",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 17
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:04",
+      "library": "lang-lib",
+      "name": "文案查找",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "当前语言try_get→fallback get；未初始化返key/en-US规则已有。",
+      "source_mapping": [
+        {
+          "function": "lookup",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 63
+        },
+        {
+          "function": "game_locale",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 81
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:05",
+      "library": "lang-lib",
+      "name": "缺失文案缓存",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "全局缺失key缓存、首次日志和稳定?_{key}文本已有；命中无额外分配。",
+      "source_mapping": [
+        {
+          "function": "get",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+          "line": 59
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:06",
+      "library": "lang-lib",
+      "name": "语言偏好保存",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "请求locale原样持久化；读取失败用en-US、文件文本不trim；写入走已初始化根，读取重新查询标准根。",
+      "source_mapping": [
+        {
+          "function": "load_locale",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 44
+        },
+        {
+          "function": "load_last_used_locale",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+          "line": 55
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [
+        "非trim、requested fallback locale与override写路径策略已有；不能列为未实现。"
+      ],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "lang-lib:07",
+      "library": "lang-lib",
+      "name": "加载失败分类",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "文件/扫描错误Result、map/string schema mismatch panic、默认fallback失败panic分别有代码。",
+      "source_mapping": [
+        {
+          "function": "try_from_yml",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+          "line": 28
+        },
+        {
+          "function": "parse_yml",
+          "file": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+          "line": 33
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:01",
+      "library": "tabloid",
+      "name": "发布增量",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "wrapping序号推进、仍共享publication接受delta、仅publisher独占批次回收已有。",
+      "source_mapping": [
+        {
+          "function": "Publisher::publish",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 80
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:02",
+      "library": "tabloid",
+      "name": "慢消费者累积",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "已有pending保持原Arc累积delta，不替换为最新单值。",
+      "source_mapping": [
+        {
+          "function": "Publisher::publish",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 80
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:03",
+      "library": "tabloid",
+      "name": "新订阅起点",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "last_sequence=0/pending=None；新订阅不补历史。",
+      "source_mapping": [
+        {
+          "function": "Publisher::subscribe",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 68
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:04",
+      "library": "tabloid",
+      "name": "取走待处理批次",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "Mutex下取pending并清空，记录publication序号，返回owning read guard。",
+      "source_mapping": [
+        {
+          "function": "Subscriber::take",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 113
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:05",
+      "library": "tabloid",
+      "name": "读写同步策略",
+      "reference_status": "partial",
+      "current_status": "implemented_scoped",
+      "implemented_behavior": "parking_lot owning读锁、writer等待reader释放、strong-count回收规则均实现。",
+      "source_mapping": [
+        {
+          "function": "Publisher::publish",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 80
+        },
+        {
+          "function": "PublicationReader",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 33
+        },
+        {
+          "function": "Subscriber::take",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 113
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "原游戏启动/系统消费者未接线；这在库外闭包范围。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "tabloid:06",
+      "library": "tabloid",
+      "name": "游戏状态接入",
+      "reference_status": "partial",
+      "current_status": "integration_pending",
+      "implemented_behavior": "已有通用State::empty/StateDelta::apply_to边界；测试仅Changes类型，未接真实DirtyTiles/ColliderDiff。",
+      "source_mapping": [
+        {
+          "function": "State",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 7
+        },
+        {
+          "function": "StateDelta",
+          "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+          "line": 10
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+      ],
+      "consumer_gaps": [
+        "真实DirtyTiles/ColliderDiff empty/apply_to及其producer→publication→consumer没有联接；本条作为独立集成缺口。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "theme-defs:01",
+      "library": "theme-defs",
+      "name": "活动可用数据",
+      "reference_status": "contract_only",
+      "current_status": "contract_only",
+      "implemented_behavior": "PathBuf和两个SystemTime载荷已有；Clone/Eq复用derive。",
+      "source_mapping": [
+        {
+          "function": "ActiveEvent",
+          "file": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+          "line": 10
+        }
+      ],
+      "missing_logic": [],
+      "validation_gaps": [
+        "类型合同只有限定原IPI/producer/caller证据，完整交换未验收。"
+      ],
+      "consumer_gaps": [
+        "theme-fetcher/游戏插件生产和消费；活动选择、下载不在theme-defs包内，不新造独立算法。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    },
+    {
+      "feature_id": "theme-defs:02",
+      "library": "theme-defs",
+      "name": "数据准备状态",
+      "reference_status": "contract_only",
+      "current_status": "contract_only",
+      "implemented_behavior": "Pending/Error(String)/NoActiveEvent的语义状态已有；作者变体名、Display文案和全部交换规则未证实。",
+      "source_mapping": [
+        {
+          "function": "EventDataError",
+          "file": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+          "line": 20
+        }
+      ],
+      "missing_logic": [
+        "原状态与字段边界还需从生产/消费者确认；文案不作为已恢复原协议。"
+      ],
+      "validation_gaps": [
+        "类型合同只有限定原IPI/producer/caller证据，完整交换未验收。"
+      ],
+      "consumer_gaps": [
+        "theme-fetcher/游戏插件生产和消费；活动选择、下载不在theme-defs包内，不新造独立算法。"
+      ],
+      "notes": [],
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
+        "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_feature_accepted": false
+    }
+  ],
+  "current_sources": [
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "sha256": "152f10cdbd909d0642693c72d0c429dcf981e609fc4887272fec980336851c78"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "sha256": "c97f7e0429a273fd4c1ee1feb0892df59fa4e34c8b4f7c332740e772fe6fb2a6"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "sha256": "e6d4f87783c1b879e52ad0385a4fc48a331871340e77447258b989b169251103"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "sha256": "3e1896ae4b45a7d252f5f6702d7daf659f711675e1537dbeb8a232cd644db3d2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+      "sha256": "542b22e4403dfe5b86e86bea1a6f79ed7a4086a7d908188a89d1322c44146216"
+    }
+  ],
+  "source_changes": false,
+  "tests_rerun": false
+}

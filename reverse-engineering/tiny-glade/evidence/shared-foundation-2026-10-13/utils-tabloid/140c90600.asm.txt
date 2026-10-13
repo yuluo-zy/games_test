@@ -1,0 +1,33 @@
+utils::time_continuous_lerp_vec3::hc2ad896c3a1b0b96
+0x140c90600: push rsi
+0x140c90601: push rdi
+0x140c90602: push rbx
+0x140c90603: sub rsp, 0x20
+0x140c90607: movaps xmm0, xmm3
+0x140c9060a: mov rdi, r8
+0x140c9060d: mov rbx, rdx
+0x140c90610: mov rsi, rcx
+0x140c90613: xorps xmm0, xmmword ptr [rip + 0x1c952d6] ; [0x1429258f0]=00000080 f32=-0.0
+0x140c9061a: mulss xmm0, dword ptr [rsp + 0x60]
+0x140c90620: call 0x142923ec0
+0x140c90625: movss xmm1, dword ptr [rip + 0x1c952d7] ; [0x142925904]=0000803f f32=1.0
+0x140c9062d: subss xmm1, xmm0
+0x140c90631: movss xmm0, dword ptr [rbx + 8]
+0x140c90636: movss xmm2, dword ptr [rdi + 8]
+0x140c9063b: subss xmm2, xmm0
+0x140c9063f: mulss xmm2, xmm1
+0x140c90643: addss xmm2, xmm0
+0x140c90647: movsd xmm0, qword ptr [rbx]
+0x140c9064b: movsd xmm3, qword ptr [rdi]
+0x140c9064f: subps xmm3, xmm0
+0x140c90652: movsldup xmm1, xmm1
+0x140c90656: mulps xmm1, xmm3
+0x140c90659: addps xmm1, xmm0
+0x140c9065c: movlps qword ptr [rsi], xmm1
+0x140c9065f: movss dword ptr [rsi + 8], xmm2
+0x140c90664: mov rax, rsi
+0x140c90667: add rsp, 0x20
+0x140c9066b: pop rbx
+0x140c9066c: pop rdi
+0x140c9066d: pop rsi
+0x140c9066e: ret 

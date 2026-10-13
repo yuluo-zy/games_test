@@ -1,0 +1,14 @@
+0x140c91ee8: movss xmm1, dword ptr [rcx + 4]
+0x140c91eed: xorps xmm2, xmm2
+0x140c91ef0: ucomiss xmm1, xmm2
+0x140c91ef3: jb 0x140c91f0a
+0x140c91ef5: maxss xmm2, xmm0
+0x140c91ef9: minss xmm1, xmm2
+0x140c91efd: movaps xmm0, xmm1
+0x140c91f00: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c91f05: add rsp, 0x38
+0x140c91f09: ret 
+0x140c91f0a: lea r8, [rip + 0x1e9ba4f]
+0x140c91f11: xorps xmm0, xmm0
+0x140c91f14: call 0x140d8b480
+0x140c91f19: int3 

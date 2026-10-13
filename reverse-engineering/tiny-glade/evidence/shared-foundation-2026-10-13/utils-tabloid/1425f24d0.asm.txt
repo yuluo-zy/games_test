@@ -1,0 +1,58 @@
+utils::angle_range::AngleRange::clamp::h1e38e505b21716f7
+0x1425f24d0: sub rsp, 0x58
+0x1425f24d4: movaps xmmword ptr [rsp + 0x40], xmm8
+0x1425f24da: movaps xmmword ptr [rsp + 0x30], xmm7
+0x1425f24df: movaps xmmword ptr [rsp + 0x20], xmm6
+0x1425f24e4: movaps xmm8, xmm1
+0x1425f24e8: movaps xmm7, xmm0
+0x1425f24eb: movss xmm6, dword ptr [rip + 0x342181] ; [0x142934674]=db0fc940 f32=6.2831854820251465
+0x1425f24f3: movaps xmm0, xmm2
+0x1425f24f6: movaps xmm1, xmm6
+0x1425f24f9: call 0x142923f10
+0x1425f24fe: movaps xmm1, xmm0
+0x1425f2501: movaps xmm3, xmm0
+0x1425f2504: addss xmm3, xmm6
+0x1425f2508: xorps xmm2, xmm2
+0x1425f250b: cmpltss xmm0, xmm2
+0x1425f2510: andps xmm3, xmm0
+0x1425f2513: andnps xmm0, xmm1
+0x1425f2516: orps xmm0, xmm3
+0x1425f2519: movaps xmm1, xmm7
+0x1425f251c: addss xmm1, xmm8
+0x1425f2521: ucomiss xmm0, xmm7
+0x1425f2524: jae 0x1425f2548
+0x1425f2526: movaps xmm3, xmm6
+0x1425f2529: subss xmm3, xmm8
+0x1425f252e: movaps xmm4, xmm7
+0x1425f2531: subss xmm4, xmm0
+0x1425f2535: subss xmm3, xmm4
+0x1425f2539: ucomiss xmm2, xmm3
+0x1425f253c: jae 0x1425f2588
+0x1425f253e: ucomiss xmm4, xmm3
+0x1425f2541: movaps xmm0, xmm7
+0x1425f2544: ja 0x1425f2565
+0x1425f2546: jmp 0x1425f2588
+0x1425f2548: ucomiss xmm1, xmm0
+0x1425f254b: jae 0x1425f2588
+0x1425f254d: movaps xmm2, xmm6
+0x1425f2550: subss xmm2, xmm8
+0x1425f2555: subss xmm0, xmm1
+0x1425f2559: subss xmm2, xmm0
+0x1425f255d: ucomiss xmm2, xmm0
+0x1425f2560: movaps xmm0, xmm7
+0x1425f2563: jbe 0x1425f2588
+0x1425f2565: movaps xmm0, xmm1
+0x1425f2568: movaps xmm1, xmm6
+0x1425f256b: call 0x142923f10
+0x1425f2570: movaps xmm1, xmm0
+0x1425f2573: addss xmm6, xmm0
+0x1425f2577: xorps xmm2, xmm2
+0x1425f257a: cmpltss xmm0, xmm2
+0x1425f257f: andps xmm6, xmm0
+0x1425f2582: andnps xmm0, xmm1
+0x1425f2585: orps xmm0, xmm6
+0x1425f2588: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1425f258d: movaps xmm7, xmmword ptr [rsp + 0x30]
+0x1425f2592: movaps xmm8, xmmword ptr [rsp + 0x40]
+0x1425f2598: add rsp, 0x58
+0x1425f259c: ret 

@@ -1,0 +1,65 @@
+utils::wall_space::WallSpaceCoord::get_pos_xz::h8fb9935763211cd2
+0x140c923b0: push rsi
+0x140c923b1: sub rsp, 0x80
+0x140c923b8: movaps xmmword ptr [rsp + 0x70], xmm6
+0x140c923bd: movss xmm1, dword ptr [rcx]
+0x140c923c1: divss xmm1, dword ptr [rdx + 0x30]
+0x140c923c6: movss dword ptr [rsp + 0x2c], xmm1
+0x140c923cc: xorps xmm0, xmm0
+0x140c923cf: ucomiss xmm1, xmm0
+0x140c923d2: jb 0x140c92459
+0x140c923d8: movss xmm6, dword ptr [rip + 0x1c93524] ; [0x142925904]=0000803f f32=1.0
+0x140c923e0: ucomiss xmm6, xmm1
+0x140c923e3: jb 0x140c92459
+0x140c923e5: ucomiss xmm1, xmm1
+0x140c923e8: jp 0x140c924b1
+0x140c923ee: mov rsi, rdx
+0x140c923f1: mov rcx, rdx
+0x140c923f4: call 0x141940780
+0x140c923f9: mov ecx, eax
+0x140c923fb: mov rdx, qword ptr [rsi + 0x10]
+0x140c923ff: cmp rdx, rcx
+0x140c92402: jbe 0x140c924c9
+0x140c92408: lea rax, [rcx + 1]
+0x140c9240c: cmp rax, rdx
+0x140c9240f: jae 0x140c924d5
+0x140c92415: mov rax, qword ptr [rsi + 8]
+0x140c92419: subss xmm6, xmm0
+0x140c9241d: movss xmm1, dword ptr [rax + rcx*8]
+0x140c92422: mulss xmm1, xmm6
+0x140c92426: mulss xmm6, dword ptr [rax + rcx*8 + 4]
+0x140c9242c: movss xmm2, dword ptr [rax + rcx*8 + 8]
+0x140c92432: mulss xmm2, xmm0
+0x140c92436: addss xmm2, xmm1
+0x140c9243a: movss xmm1, dword ptr [rax + rcx*8 + 0xc]
+0x140c92440: mulss xmm1, xmm0
+0x140c92444: addss xmm1, xmm6
+0x140c92448: movaps xmm0, xmm2
+0x140c9244b: movaps xmm6, xmmword ptr [rsp + 0x70]
+0x140c92450: add rsp, 0x80
+0x140c92457: pop rsi
+0x140c92458: ret 
+0x140c92459: lea rax, [rsp + 0x2c]
+0x140c9245e: mov qword ptr [rsp + 0x30], rax
+0x140c92463: lea rax, [rip + 0xfa4a6] ; [0x140d8c910]=554889e5 f32=-8.103731232774271e+22
+0x140c9246a: mov qword ptr [rsp + 0x38], rax
+0x140c9246f: lea rax, [rip + 0x21df342] ; [0x142e717b8]=8c17e742 f32=115.54598999023438
+0x140c92476: mov qword ptr [rsp + 0x40], rax
+0x140c9247b: mov qword ptr [rsp + 0x48], 1
+0x140c92484: mov qword ptr [rsp + 0x60], 0
+0x140c9248d: lea rax, [rsp + 0x30]
+0x140c92492: mov qword ptr [rsp + 0x50], rax
+0x140c92497: mov qword ptr [rsp + 0x58], 1
+0x140c924a0: lea rdx, [rip + 0x1e9b539] ; [0x142b2d9e0]=78d9b242 f32=89.42474365234375
+0x140c924a7: lea rcx, [rsp + 0x40]
+0x140c924ac: call 0x1428d9390
+0x140c924b1: lea rcx, [rip + 0x21df310] ; [0x142e717c8]=61737365 f32=7.185396378077638e+22
+0x140c924b8: lea r8, [rip + 0x1e9b521] ; [0x142b2d9e0]=78d9b242 f32=89.42474365234375
+0x140c924bf: mov edx, 0x1d
+0x140c924c4: call 0x1428d9430
+0x140c924c9: lea r8, [rip + 0x21df188] ; [0x142e71658]=db14e742 f32=115.54073333740234
+0x140c924d0: call 0x1428d9518
+0x140c924d5: lea r8, [rip + 0x21df194] ; [0x142e71670]=db14e742 f32=115.54073333740234
+0x140c924dc: mov rcx, rax
+0x140c924df: call 0x1428d9518
+0x140c924e4: int3 

@@ -1,0 +1,57 @@
+0x140991da4: lea rbx, [rcx + rax]
+0x140991da8: add rbx, 8
+0x140991dac: mov ecx, dword ptr [rdi + 4]
+0x140991daf: cmp qword ptr [rbx + 0x10], rcx
+0x140991db3: jbe 0x140991dc4
+0x140991db5: mov rax, qword ptr [rbx + 8]
+0x140991db9: mov eax, dword ptr [rax + rcx*4]
+0x140991dbc: cmp eax, dword ptr [rdi]
+0x140991dbe: je 0x140991e79
+0x140991dc4: cmp qword ptr [rbx + 0x30], 0
+0x140991dc9: je 0x140991ed8
+0x140991dcf: lea rcx, [rbx + 0x38]
+0x140991dd3: mov rdx, rdi
+0x140991dd6: call 0x1405b0ed0
+0x140991ddb: mov rcx, qword ptr [rbx + 0x18]
+0x140991ddf: mov rdx, qword ptr [rbx + 0x20]
+0x140991de3: mov r8, rdx
+0x140991de6: and r8, rax
+0x140991de9: shr rax, 0x39
+0x140991ded: movd xmm0, eax
+0x140991df1: punpcklbw xmm0, xmm0
+0x140991df5: pshuflw xmm0, xmm0, 0
+0x140991dfa: pshufd xmm0, xmm0, 0
+0x140991dff: xor eax, eax
+0x140991e01: pcmpeqd xmm1, xmm1
+0x140991e05: movdqu xmm2, xmmword ptr [rcx + r8]
+0x140991e0b: movdqa xmm3, xmm2
+0x140991e0f: pcmpeqb xmm3, xmm0
+0x140991e13: pmovmskb r9d, xmm3
+0x140991e18: test r9d, r9d
+0x140991e1b: je 0x140991e50
+0x140991e1d: mov r10d, dword ptr [rdi]
+0x140991e20: tzcnt r11d, r9d
+0x140991e25: add r11, r8
+0x140991e28: and r11, rdx
+0x140991e2b: lea r14, [r11*8]
+0x140991e33: mov r15, rcx
+0x140991e36: sub r15, r14
+0x140991e39: cmp r10d, dword ptr [r15 - 8]
+0x140991e3d: je 0x140991e6e
+0x140991e3f: lea r11d, [r9 - 1]
+0x140991e43: and r11w, r9w
+0x140991e47: mov r9d, r11d
+0x140991e4a: jne 0x140991e20
+0x140991e4c: nop dword ptr [rax]
+0x140991e50: pcmpeqb xmm2, xmm1
+0x140991e54: pmovmskb r9d, xmm2
+0x140991e59: test r9d, r9d
+0x140991e5c: jne 0x140991ed8
+0x140991e5e: add r8, rax
+0x140991e61: add r8, 0x10
+0x140991e65: add rax, 0x10
+0x140991e69: and r8, rdx
+0x140991e6c: jmp 0x140991e05
+0x140991e6e: neg r11
+0x140991e71: mov ecx, dword ptr [rcx + r11*8 - 4]
+0x140991e76: mov dword ptr [rdi + 4], ecx

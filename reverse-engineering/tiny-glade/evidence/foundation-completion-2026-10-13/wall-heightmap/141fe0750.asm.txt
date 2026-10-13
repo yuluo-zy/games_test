@@ -1,0 +1,153 @@
+141fe0750 push r15
+141fe0752 push r14
+141fe0754 push r13
+141fe0756 push r12
+141fe0758 push rsi
+141fe0759 push rdi
+141fe075a push rbp
+141fe075b push rbx
+141fe075c sub rsp, 0x88
+141fe0763 movaps xmmword ptr [rsp + 0x70], xmm10
+141fe0769 movaps xmmword ptr [rsp + 0x60], xmm9
+141fe076f movaps xmmword ptr [rsp + 0x50], xmm8
+141fe0775 movaps xmmword ptr [rsp + 0x40], xmm7
+141fe077a movaps xmmword ptr [rsp + 0x30], xmm6
+141fe077f test rdx, rdx
+141fe0782 je 0x141fe09a0
+141fe0788 mov rsi, r9
+141fe078b movaps xmm6, xmm2
+141fe078e mov rdi, rdx
+141fe0791 mov rbx, rcx
+141fe0794 movss xmm7, dword ptr [rcx]
+141fe0798 mov r12, qword ptr [r9]
+141fe079b mov r14, qword ptr [r9 + 8]
+141fe079f mov rbp, qword ptr [r9 + 0x10]
+141fe07a3 movsd xmm8, qword ptr [r9 + 0x18]
+141fe07a9 ucomiss xmm2, xmm7
+141fe07ac jae 0x141fe0810
+141fe07ae cmp qword ptr [r12 + 0x28], 0
+141fe07b4 je 0x141fe0988
+141fe07ba mov rax, qword ptr [r12 + 0x20]
+141fe07bf movss xmm9, dword ptr [rax]
+141fe07c4 mov rax, qword ptr [r14 + 0x10]
+141fe07c8 cmp rax, rbp
+141fe07cb jne 0x141fe0846
+141fe07cd cmp rbp, qword ptr [r14]
+141fe07d0 jne 0x141fe07e1
+141fe07d2 lea rdx, [rip + 0xc3ec87]
+141fe07d9 mov rcx, r14
+141fe07dc call 0x140562c30
+141fe07e1 mov rax, qword ptr [r14 + 8]
+141fe07e5 mov rcx, rbp
+141fe07e8 shl rcx, 5
+141fe07ec xorps xmm0, xmm0
+141fe07ef movups xmmword ptr [rax + rcx], xmm0
+141fe07f3 movlps qword ptr [rax + rcx + 0x10], xmm8
+141fe07f9 movss dword ptr [rax + rcx + 0x18], xmm9
+141fe0800 mov dword ptr [rax + rcx + 0x1c], 0x3f800000
+141fe0808 lea rax, [rbp + 1]
+141fe080c mov qword ptr [r14 + 0x10], rax
+141fe0810 cmp rdi, 1
+141fe0814 jne 0x141fe0877
+141fe0816 movaps xmm6, xmmword ptr [rsp + 0x30]
+141fe081b movaps xmm7, xmmword ptr [rsp + 0x40]
+141fe0820 movaps xmm8, xmmword ptr [rsp + 0x50]
+141fe0826 movaps xmm9, xmmword ptr [rsp + 0x60]
+141fe082c movaps xmm10, xmmword ptr [rsp + 0x70]
+141fe0832 add rsp, 0x88
+141fe0839 pop rbx
+141fe083a pop rbp
+141fe083b pop rdi
+141fe083c pop rsi
+141fe083d pop r12
+141fe083f pop r13
+141fe0841 pop r14
+141fe0843 pop r15
+141fe0845 ret 
+141fe0846 test rax, rax
+141fe0849 je 0x141fe0994
+141fe084f mov rcx, qword ptr [r14 + 8]
+141fe0853 shl rax, 5
+141fe0857 lea rdx, [rcx + rax]
+141fe085b add rdx, -0x20
+141fe085f test rdx, rdx
+141fe0862 je 0x141fe0994
+141fe0868 add rcx, rax
+141fe086b movss dword ptr [rcx - 4], xmm9
+141fe0871 cmp rdi, 1
+141fe0875 je 0x141fe0816
+141fe0877 shl rdi, 2
+141fe087b lea rax, [rbp + 1]
+141fe087f mov qword ptr [rsp + 0x28], rax
+141fe0884 add rdi, -4
+141fe0888 mov r15d, 1
+141fe088e mov r13, rbp
+141fe0891 shl r13, 5
+141fe0895 xorps xmm9, xmm9
+141fe0899 jmp 0x141fe08cb
+141fe089b nop dword ptr [rax + rax]
+141fe08a0 lea rdx, [r15 - 1]
+141fe08a4 movaps xmm2, xmm6
+141fe08a7 subss xmm2, xmm0
+141fe08ab movaps xmm1, xmm7
+141fe08ae subss xmm1, xmm0
+141fe08b2 divss xmm2, xmm1
+141fe08b6 mov rcx, rsi
+141fe08b9 call 0x14123fab0
+141fe08be inc r15
+141fe08c1 add rdi, -4
+141fe08c5 je 0x141fe0816
+141fe08cb movaps xmm0, xmm7
+141fe08ce movss xmm7, dword ptr [rbx + r15*4]
+141fe08d4 ucomiss xmm6, xmm0
+141fe08d7 jae 0x141fe08e0
+141fe08d9 ucomiss xmm6, xmm7
+141fe08dc jae 0x141fe08a0
+141fe08de jmp 0x141fe0903
+141fe08e0 ucomiss xmm6, xmm7
+141fe08e3 jae 0x141fe08be
+141fe08e5 lea rdx, [r15 - 1]
+141fe08e9 movaps xmm2, xmm6
+141fe08ec subss xmm2, xmm0
+141fe08f0 movaps xmm1, xmm7
+141fe08f3 subss xmm1, xmm0
+141fe08f7 divss xmm2, xmm1
+141fe08fb mov rcx, rsi
+141fe08fe call 0x14123fb70
+141fe0903 cmp qword ptr [r12 + 0x28], r15
+141fe0908 jbe 0x141fe0988
+141fe090a mov rax, qword ptr [r12 + 0x20]
+141fe090f movss xmm10, dword ptr [rax + r15*4]
+141fe0915 mov rax, qword ptr [r14 + 0x10]
+141fe0919 cmp rax, rbp
+141fe091c jne 0x141fe0960
+141fe091e cmp rbp, qword ptr [r14]
+141fe0921 jne 0x141fe0932
+141fe0923 mov rcx, r14
+141fe0926 lea rdx, [rip + 0xc3eb33]
+141fe092d call 0x140562c30
+141fe0932 mov rax, qword ptr [r14 + 8]
+141fe0936 movups xmmword ptr [rax + r13], xmm9
+141fe093b movlps qword ptr [rax + r13 + 0x10], xmm8
+141fe0941 movss dword ptr [rax + r13 + 0x18], xmm10
+141fe0948 mov dword ptr [rax + r13 + 0x1c], 0x3f800000
+141fe0951 mov rax, qword ptr [rsp + 0x28]
+141fe0956 mov qword ptr [r14 + 0x10], rax
+141fe095a jmp 0x141fe08be
+141fe095f nop 
+141fe0960 test rax, rax
+141fe0963 je 0x141fe0994
+141fe0965 mov rcx, qword ptr [r14 + 8]
+141fe0969 shl rax, 5
+141fe096d lea rdx, [rcx + rax]
+141fe0971 add rdx, -0x20
+141fe0975 test rdx, rdx
+141fe0978 je 0x141fe0994
+141fe097a add rcx, rax
+141fe097d movss dword ptr [rcx - 4], xmm10
+141fe0983 jmp 0x141fe08be
+141fe0988 lea rcx, [rip + 0xc3eaa1]
+141fe098f call 0x1428d9310
+141fe0994 lea rcx, [rip + 0xc3eaad]
+141fe099b call 0x1428d9310
+141fe09a0 lea r8, [rip + 0xfea919]

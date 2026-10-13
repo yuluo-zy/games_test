@@ -1,0 +1,586 @@
+{
+  "entries": [
+    {
+      "interface_id": "asset::inheritable::Inheritable::as_concrete",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::Inheritable::inherit_shallow",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::Inheritable::into_concrete",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::deserialize_inheritable",
+      "classification": "schema_policy",
+      "reason": "普通 typed serde Deserialize 后映射具体 Value，缺字段 marker 则由字段 default 产生。保留输入与状态 schema，通用解码直接委托原 serde/RON；不逆向其泛型展开。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::deserialize_inheritable_option",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::impl$1::inherit_from",
+      "classification": "custom_business",
+      "reason": "原 Inheritable 具体/未解析状态分支、HashMap 亲子 key 合并和递归调用策略属于私有业务；不能因方法名 inherit_from 或内部库 hashbrown 展开而排除。库容器直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs",
+        "evidence/shared-foundation-2026-10-13/assets/readable-0x142424d90.c",
+        "reconstruction/shared-foundation/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::impl$2::concrete_default",
+      "classification": "schema_policy",
+      "reason": "原 inheritable trait/helper 行 90，泛型/容器的默认与继承合同。精确 owner、字段与值仍待核实，应作为类型级默认/继承规则缺口保留，不能据 opaque impl 编号生成一个新的独立未恢复业务函数。生成方式未证实。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::impl$3::inherit_from",
+      "classification": "schema_policy",
+      "reason": "原 inheritable trait/helper 行 99，泛型/容器的默认与继承合同。精确 owner、字段与值仍待核实，应作为类型级默认/继承规则缺口保留，不能据 opaque impl 编号生成一个新的独立未恢复业务函数。生成方式未证实。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::impl$5::inherit_from",
+      "classification": "custom_business",
+      "reason": "原 Inheritable 具体/未解析状态分支、HashMap 亲子 key 合并和递归调用策略属于私有业务；不能因方法名 inherit_from 或内部库 hashbrown 展开而排除。库容器直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs",
+        "evidence/shared-foundation-2026-10-13/assets/readable-0x142424d90.c",
+        "reconstruction/shared-foundation/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::inheritable::impl$6::concrete_default",
+      "classification": "schema_policy",
+      "reason": "原 inheritable trait/helper 行 152，泛型/容器的默认与继承合同。精确 owner、字段与值仍待核实，应作为类型级默认/继承规则缺口保留，不能据 opaque impl 编号生成一个新的独立未恢复业务函数。生成方式未证实。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/inheritable.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::AsRef<str>::as_ref",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。 当前项是台账推定的适配 API，没有独立 PDB 方法记录，不应扩大原业务接口分母。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::Deref::deref",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。 当前项是台账推定的适配 API，没有独立 PDB 方法记录，不应扩大原业务接口分母。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::From<&str>::from",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。 当前项是台账推定的适配 API，没有独立 PDB 方法记录，不应扩大原业务接口分母。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::as_name_ref",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::as_str",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。 当前项是台账推定的适配 API，没有独立 PDB 方法记录，不应扩大原业务接口分母。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabName::new",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::PrefabNameRef::as_str",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。 当前项是台账推定的适配 API，没有独立 PDB 方法记录，不应扩大原业务接口分母。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$10::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 210。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$11::concrete_default",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 223。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$13::default",
+      "classification": "generated_reuse",
+      "reason": "Default 位于原源码行 6，与 serde 派生 deserialize 族共享类型声明行；零字段/容器默认应使用 derive/std。保留配置字段/default属性为类型 schema，不单列一个待逆向 Default 函数。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$1::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 21。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$2::concrete_default",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 44。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$3::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 55。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$4::concrete_default",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 84。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$5::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 94。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$6::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 136。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$8::inherit_from",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 182。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::config::impl$9::concrete_default",
+      "classification": "schema_policy",
+      "reason": "配置类型的 concrete_default/字段递归 inherit_from 位于原行 189。缺失的是字段、默认值、继承/覆盖规则及精确类型 owner；合并到类型级 schema/继承合同，不把每个 helper 当独立业务函数。是否宏生成尚未从作者源码证实，不能因名字猜测。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::impl$4::as_ref",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::impl$5::as_ref",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::impl$6::borrow",
+      "classification": "generated_reuse",
+      "reason": "名义 UTF-8/Arc 名字视图的 AsRef/Borrow/Deref/From/getter/constructor 薄适配，复用 std Arc/str 的借用、分配与比较；原 inline getter/借用及调用端检查为证，不含独立名字归一化算法。此分类表示可直接复用的 trait/类型胶水，不宣称原作者所有方法均由宏生成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/inline-sites.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::PrefabDependencies::add_file_to_prefab_dependency",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::PrefabScanResult::add_file_to_prefab_dependency",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::impl$2::default",
+      "classification": "generated_reuse",
+      "reason": "原源码行 14 的 inline body 注解直接委托 std HashMap::default；scan Result 默认再委托 Dependencies 默认。容器初始化复用 derive/std，无新增扫描业务策略；具体字段仍在 schema 中维护。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::impl$3::default",
+      "classification": "generated_reuse",
+      "reason": "原源码行 20 的 inline body 注解直接委托 std HashMap::default；scan Result 默认再委托 Dependencies 默认。容器初始化复用 derive/std，无新增扫描业务策略；具体字段仍在 schema 中维护。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::load_prefab_config",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::load_prefab_config::do_load",
+      "classification": "custom_business",
+      "reason": "实际配置 loader 内部 helper，缺失的是原加载/错误/默认处理；不是 derive getter。可与 load_prefab_config 业务合同合并验收，但不能因 helper 名字直接判派生实现。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::scan_asset_tree",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::prefab::scan::scan_asset_tree_walker",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/prefab/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::config::InheritableTextureOpts::concrete_default",
+      "classification": "custom_business",
+      "reason": "已核对原 caller 0x1420d8c24..38 的四个具体零标签：None/Linear/MipNone/Color。这是根纹理配置选择的手写初始化策略，必须保留；不能用 Default 名称或同名派生族排除。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/config.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "reconstruction/shared-foundation/crates/asset/src/texture/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::config::InheritableTextureOpts::inherit_from",
+      "classification": "custom_business",
+      "reason": "四字段浅继承只替换 Inherit，保留显式 None/具体值；原联合标签差分及 scanner 调用有证据。保留实际选择策略，不把 std Option/array glue 当业务。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/config.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/shallow-native-comparison.json"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::config::InheritableTextureOpts::into_concrete",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::config::impl$2::default",
+      "classification": "generated_reuse",
+      "reason": "原行 7 与 serde deserialize 派生族共享声明行，初始化 aggregate/default 字段；应按 derive/std 重建，不列独立缺失函数。根纹理已解析的具体默认选择属于另一个手写 concrete_default 入口，不能一并排除。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/config.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::scan::load_texture_group_config",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::scan::scan_asset_tree",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/texture/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset::texture::scan::scan_asset_tree_walker",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset/src/lib.rs",
+        "skeleton/B/crates/asset/src/texture/scan.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::BcMode::block_bytes",
+      "classification": "custom_business",
+      "reason": "原私有 compression-mode 到块字节数映射行 697，属于纹理格式/尺寸选择策略。尚未分析具体值，不凭枚举 helper 名字判宏生成；复用 Intel 压缩实现。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::apply_transfer_function",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::compile_or_load_texture_assets",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::compile_texture_asset",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::compile_texture_assets",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::compress",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::impl$1::default",
+      "classification": "generated_reuse",
+      "reason": "原源码行 38 的 inline body 注解直接委托 std HashMap::default；scan Result 默认再委托 Dependencies 默认。容器初始化复用 derive/std，无新增扫描业务策略；具体字段仍在 schema 中维护。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::pad_image",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::process_dds_image",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::process_image_array",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::process_regular_image",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::resize_image",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::srgb_eotf",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::srgb_oetf",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    },
+    {
+      "interface_id": "asset_pipe::texture::with_rgba8",
+      "classification": "custom_business",
+      "reason": "原私有入口具有扫描/加载/纹理策略或调用编排，应恢复其业务规则；外部库实现仍直接复用。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "skeleton/B/crates/asset-pipe/src/texture.rs"
+      ]
+    }
+  ]
+}

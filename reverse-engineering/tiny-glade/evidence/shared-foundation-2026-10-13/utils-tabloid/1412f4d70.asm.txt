@@ -1,0 +1,89 @@
+alloc::vec::Vec$LT$T$C$A$GT$::retain::h2f26ecfed5b1e395
+0x1412f4d70: push rbp
+0x1412f4d71: push r15
+0x1412f4d73: push r14
+0x1412f4d75: push rsi
+0x1412f4d76: push rdi
+0x1412f4d77: push rbx
+0x1412f4d78: sub rsp, 0x68
+0x1412f4d7c: lea rbp, [rsp + 0x60]
+0x1412f4d81: mov qword ptr [rbp], 0xfffffffffffffffe
+0x1412f4d89: mov qword ptr [rbp - 0x38], rdx
+0x1412f4d8d: mov qword ptr [rbp - 0x30], r8
+0x1412f4d91: lea rax, [rbp - 0x38]
+0x1412f4d95: mov qword ptr [rbp - 0x28], rax
+0x1412f4d99: mov rax, qword ptr [rcx + 0x10]
+0x1412f4d9d: mov qword ptr [rbp - 8], rax
+0x1412f4da1: test rax, rax
+0x1412f4da4: je 0x1412f4e22
+0x1412f4da6: mov qword ptr [rcx + 0x10], 0
+0x1412f4dae: mov qword ptr [rbp - 0x10], rcx
+0x1412f4db2: mov r15, qword ptr [rcx + 8]
+0x1412f4db6: xor r14d, r14d
+0x1412f4db9: lea rdi, [rbp - 0x28]
+0x1412f4dbd: xor ebx, ebx
+0x1412f4dbf: nop 
+0x1412f4dc0: lea rsi, [r15 + rbx*8]
+0x1412f4dc4: mov qword ptr [rbp - 0x18], 0
+0x1412f4dcc: mov qword ptr [rbp - 0x20], rbx
+0x1412f4dd0: mov rcx, rdi
+0x1412f4dd3: mov rdx, rsi
+0x1412f4dd6: call 0x1412f6ca0
+0x1412f4ddb: inc rbx
+0x1412f4dde: test al, al
+0x1412f4de0: je 0x1412f4dea
+0x1412f4de2: cmp rbx, qword ptr [rbp - 8]
+0x1412f4de6: jne 0x1412f4dc0
+0x1412f4de8: jmp 0x1412f4e13
+0x1412f4dea: mov rax, qword ptr [rsi]
+0x1412f4ded: lock dec qword ptr [rax]
+0x1412f4df1: jne 0x1412f4e07
+0x1412f4df3: mov qword ptr [rbp - 0x18], 1
+0x1412f4dfb: mov qword ptr [rbp - 0x20], rbx
+0x1412f4dff: mov rcx, rsi
+0x1412f4e02: call 0x140b5cc90
+0x1412f4e07: mov r14d, 1
+0x1412f4e0d: cmp rbx, qword ptr [rbp - 8]
+0x1412f4e11: jne 0x1412f4e2f
+0x1412f4e13: mov rcx, qword ptr [rbp - 8]
+0x1412f4e17: sub rcx, r14
+0x1412f4e1a: mov rax, qword ptr [rbp - 0x10]
+0x1412f4e1e: mov qword ptr [rax + 0x10], rcx
+0x1412f4e22: add rsp, 0x68
+0x1412f4e26: pop rbx
+0x1412f4e27: pop rdi
+0x1412f4e28: pop rsi
+0x1412f4e29: pop r14
+0x1412f4e2b: pop r15
+0x1412f4e2d: pop rbp
+0x1412f4e2e: ret 
+0x1412f4e2f: lea rsi, [rbp - 0x28]
+0x1412f4e33: jmp 0x1412f4e57
+0x1412f4e35: nop word ptr cs:[rax + rax]
+0x1412f4e40: mov rax, rbx
+0x1412f4e43: sub rax, r14
+0x1412f4e46: mov rcx, qword ptr [r15 + rbx*8]
+0x1412f4e4a: mov qword ptr [r15 + rax*8], rcx
+0x1412f4e4e: inc rbx
+0x1412f4e51: cmp rbx, qword ptr [rbp - 8]
+0x1412f4e55: je 0x1412f4e13
+0x1412f4e57: mov rax, qword ptr [rbp - 0x10]
+0x1412f4e5b: mov r15, qword ptr [rax + 8]
+0x1412f4e5f: lea rdi, [r15 + rbx*8]
+0x1412f4e63: mov qword ptr [rbp - 0x18], r14
+0x1412f4e67: mov qword ptr [rbp - 0x20], rbx
+0x1412f4e6b: mov rcx, rsi
+0x1412f4e6e: mov rdx, rdi
+0x1412f4e71: call 0x1412f6ca0
+0x1412f4e76: test al, al
+0x1412f4e78: jne 0x1412f4e40
+0x1412f4e7a: inc rbx
+0x1412f4e7d: inc r14
+0x1412f4e80: mov rax, qword ptr [rdi]
+0x1412f4e83: lock dec qword ptr [rax]
+0x1412f4e87: jne 0x1412f4e51
+0x1412f4e89: mov qword ptr [rbp - 0x18], r14
+0x1412f4e8d: mov qword ptr [rbp - 0x20], rbx
+0x1412f4e91: mov rcx, rdi
+0x1412f4e94: call 0x140b5cc90
+0x1412f4e99: jmp 0x1412f4e51
