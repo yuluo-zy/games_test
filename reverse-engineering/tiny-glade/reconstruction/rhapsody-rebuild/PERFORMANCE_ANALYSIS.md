@@ -1,5 +1,7 @@
 # 性能分析、已落地优化与后续提案
 
+真实 Intel UHD 630 的测量和与通用引擎的比较已单独记录在 [真实 GPU 性能分析](perf/HARDWARE_ANALYSIS.md)。下文的优化前后绝对耗时仍来自 lavapipe，不能与真 GPU 混比。
+
 - 日期：2026-10-13。对象：`rhapsody-rebuild` 候选实现（**不是**原作机制的镜像；见下文"与原作的关系"）。
 - 测量环境：Linux + **lavapipe（CPU 软件 Vulkan）**，`cargo bench`（release 优化）。
   **lavapipe 没有真实 GPU 的并行与带宽特性**，GPU 场景的耗时只反映"CPU 侧驱动调用与同步开销"，
