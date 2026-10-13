@@ -1,0 +1,118 @@
+// ADDRESS: 0x1412bc470
+// SIZE: 535
+// SIGNATURE: void __cdecl add_new<country_core::systems::render_loop::resources::critters::FireflyVisibilitySsbo>(void)
+
+void __cdecl
+country_core::asset_libraries::ssbo_library::AssetSsboLibrary::
+add_new<country_core::systems::render_loop::resources::critters::FireflyVisibilitySsbo>(void)
+
+{
+  int iVar1;
+  undefined **extraout_RAX;
+  longlong *extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong lVar2;
+  undefined *local_d0;
+  undefined *puStack_c8;
+  undefined *local_c0;
+  undefined *puStack_b8;
+  undefined *local_b0;
+  undefined *puStack_a8;
+  undefined *local_a0;
+  undefined **local_98;
+  code *local_90;
+  undefined ***local_88;
+  code *local_80;
+  undefined8 local_78;
+  undefined *local_68;
+  undefined8 local_60;
+  undefined **local_58;
+  undefined **ppuStack_50;
+  undefined ***local_48;
+  code *pcStack_40;
+  undefined **local_38;
+  code *pcStack_30;
+  undefined6 local_28;
+  undefined1 uStack_22;
+  undefined1 uStack_21;
+  longlong lStack_20;
+  undefined8 local_18;
+  
+  local_18 = 0xfffffffffffffffe;
+  country_core::render::ssbo::impl$4::
+  new_storage_buffer<country_core::systems::render_loop::resources::critters::FireflyVisibilitySsbo>
+            ();
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined **)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  extraout_RAX[6] = local_a0;
+  extraout_RAX[4] = local_b0;
+  extraout_RAX[5] = puStack_a8;
+  extraout_RAX[2] = local_c0;
+  extraout_RAX[3] = puStack_b8;
+  *extraout_RAX = local_d0;
+  extraout_RAX[1] = puStack_c8;
+  local_68 = &anon_107183261458dea85466985370debbb6_75_llvm_3641509820080252961;
+  local_60 = 0x4e;
+  ppuStack_50 = &
+                PTR_drop_in_place<country_core::render::ssbo::MappedStorageBuffer<country_core::resources::water_mask::WaterMaskSsbo>_>_142c2c5b8
+  ;
+  local_38 = (undefined **)0x0;
+  uStack_22 = 5;
+  local_48 = (undefined ***)&anon_107183261458dea85466985370debbb6_75_llvm_3641509820080252961;
+  pcStack_40 = (code *)0x4e;
+  local_58 = extraout_RAX;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_00 != (longlong *)0x0) {
+    extraout_RAX_00[6] = CONCAT17(uStack_21,CONCAT16(uStack_22,local_28));
+    extraout_RAX_00[7] = lStack_20;
+    extraout_RAX_00[4] = (longlong)local_38;
+    extraout_RAX_00[5] = (longlong)pcStack_30;
+    extraout_RAX_00[2] = (longlong)local_48;
+    extraout_RAX_00[3] = (longlong)pcStack_40;
+    *extraout_RAX_00 = (longlong)local_58;
+    extraout_RAX_00[1] = (longlong)ppuStack_50;
+    lVar2 = -0x6db7768cf615b016;
+    frozen::FrozenMap::
+    insert<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>_>
+              ();
+    if (extraout_RAX_01 != 1) {
+      return;
+    }
+    if (*(longlong *)(lVar2 + 0x18) == 0x4e) {
+      iVar1 = memcmp(&anon_107183261458dea85466985370debbb6_75_llvm_3641509820080252961,
+                     *(void **)(lVar2 + 0x10),0x4e);
+      if (iVar1 == 0) {
+        local_98 = &PTR_s_Firefly_Vis_Buffer_142c2dd10;
+        local_90 = core::fmt::impl$74::fmt<str_>;
+        local_88 = (undefined ***)&local_68;
+        local_80 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+        local_58 = &PTR_s_Tried_to_register_the_same_stora_142c2d628;
+        ppuStack_50 = (undefined **)0x3;
+        local_38 = (undefined **)0x0;
+        local_48 = &local_98;
+        pcStack_40 = (code *)0x2;
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_fmt();
+      }
+    }
+    local_58 = &PTR_s_Firefly_Vis_Buffer_142c2dd10;
+    ppuStack_50 = (undefined **)core::fmt::impl$74::fmt<str_>;
+    pcStack_40 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+    local_38 = &local_68;
+    pcStack_30 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+    local_98 = &PTR_s_Tried_to_register_two_storage_bu_142c2d568;
+    local_90 = (code *)0x3;
+    local_78 = 0;
+    local_88 = &local_58;
+    local_80 = (code *)0x3;
+    local_48 = (undefined ***)(lVar2 + 0x10);
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+                    // WARNING: Subroutine does not return
+  alloc::alloc::handle_alloc_error();
+}
+

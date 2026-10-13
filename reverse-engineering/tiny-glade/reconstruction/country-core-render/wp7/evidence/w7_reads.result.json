@@ -1,0 +1,777 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14098c680,0x14092e6c0,0x140a9fa70,0x14092e6a0,0x14090d9a0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x14098c680,0x14092e6c0,0x140a9fa70,0x14092e6a0,0x14090d9a0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x14098c680\":{\"name\":\"read_terrain_data\",\"size\":4998,\"address\":\"14098c680\",\"signature\":\"void __cdecl read_terrain_data(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::compute_passes::read_terrain_data::read_terrain_data(void)\\n\\n{\\n  undefined8 uVar1;\\n  undefined8 uVar2;\\n  longlong *plVar3;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  undefined8 *extraout_RAX_02;\\n  longlong extraout_RAX_03;\\n  undefined8 *extraout_RAX_04;\\n  longlong extraout_RAX_05;\\n  undefined8 *extraout_RAX_06;\\n  longlong extraout_RAX_07;\\n  undefined4 *extraout_RAX_08;\\n  longlong *extraout_RAX_09;\\n  ulonglong uVar4;\\n  longlong extraout_RAX_10;\\n  undefined8 *extraout_RAX_11;\\n  longlong extraout_RAX_12;\\n  undefined8 *extraout_RAX_13;\\n  longlong extraout_RAX_14;\\n  undefined8 *extraout_RAX_15;\\n  longlong extraout_RAX_16;\\n  undefined4 *extraout_RAX_17;\\n  longlong *extraout_RAX_18;\\n  longlong extraout_RAX_19;\\n  longlong lVar5;\\n  longlong in_RDX;\\n  ulonglong uVar6;\\n  undefined4 extraout_XMM0_Da;\\n  undefined4 extraout_XMM0_Da_00;\\n  undefined4 extraout_XMM0_Da_01;\\n  undefined4 extraout_XMM0_Da_02;\\n  ulonglong local_a58;\\n  undefined8 uStack_a50;\\n  undefined8 local_a48;\\n  undefined8 local_a40;\\n  undefined8 uStack_a38;\\n  undefined8 local_a30;\\n  undefined8 local_a28;\\n  undefined8 uStack_a20;\\n  undefined8 local_a18;\\n  undefined8 local_a10;\\n  undefined8 uStack_a08;\\n  undefined8 local_a00;\\n  undefined8 local_9f8;\\n  undefined8 uStack_9f0;\\n  undefined8 local_9e8;\\n  undefined8 uStack_9e0;\\n  undefined8 local_9d8;\\n  undefined8 uStack_9d0;\\n  undefined8 local_9c8;\\n  undefined8 uStack_9c0;\\n  undefined8 local_9b8;\\n  undefined8 uStack_9b0;\\n  undefined8 local_9a8;\\n  undefined8 uStack_9a0;\\n  undefined8 local_998;\\n  undefined8 uStack_990;\\n  undefined8 local_988;\\n  undefined8 uStack_980;\\n  undefined8 local_978;\\n  undefined8 uStack_970;\\n  undefined8 local_968;\\n  undefined8 uStack_960;\\n  undefined8 local_958;\\n  undefined8 uStack_950;\\n  char local_922;\\n  undefined8 local_920;\\n  undefined8 local_8d8;\\n  undefined1 local_66c [36];\\n  ulonglong local_648;\\n  undefined1 *puStack_640;\\n  undefined8 local_638;\\n  undefined8 local_630;\\n  undefined8 uStack_628;\\n  undefined8 local_620;\\n  undefined8 local_618;\\n  undefined8 uStack_610;\\n  undefined8 local_608;\\n  undefined8 local_600;\\n  undefined8 uStack_5f8;\\n  undefined8 local_5f0;\\n  undefined8 local_5e8;\\n  undefined8 uStack_5e0;\\n  undefined8 uStack_5d8;\\n  undefined8 local_5d0;\\n  undefined8 uStack_5c8;\\n  undefined8 local_5c0;\\n  undefined8 uStack_5b8;\\n  undefined8 local_5b0;\\n  undefined8 uStack_5a8;\\n  undefined8 local_5a0;\\n  undefined8 uStack_598;\\n  undefined8 local_590;\\n  undefined8 uStack_588;\\n  undefined8 local_580;\\n  undefined8 uStack_578;\\n  undefined8 local_570;\\n  undefined8 local_568;\\n  undefined8 uStack_560;\\n  undefined8 local_558;\\n  undefined8 uStack_550;\\n  undefined8 local_548;\\n  undefined8 uStack_540;\\n  char local_512;\\n  undefined8 local_510;\\n  undefined8 local_4c8;\\n  undefined8 local_258;\\n  ulonglong uStack_250;\\n  char *local_248;\\n  undefined8 uStack_240;\\n  undefined8 local_238;\\n  undefined8 uStack_230;\\n  undefined8 local_228;\\n  undefined8 uStack_220;\\n  undefined8 local_218;\\n  undefined8 uStack_210;\\n  undefined8 local_208;\\n  undefined8 local_200;\\n  undefined4 local_1f8;\\n  undefined1 local_1f4;\\n  undefined *local_1e8;\\n  undefined8 uStack_1e0;\\n  undefined8 local_1d8;\\n  undefined8 uStack_1d0;\\n  longlong local_1c8;\\n  longlong lStack_1c0;\\n  undefined8 local_1b8;\\n  undefined4 local_1ac;\\n  undefined2 local_1a8;\\n  ulonglong *local_c0;\\n  undefined4 local_b0;\\n  undefined4 uStack_ac;\\n  ulonglong uStack_a8;\\n  undefined4 local_a0;\\n  undefined4 uStack_9c;\\n  ulonglong uStack_98;\\n  undefined8 *local_90;\\n  ulonglong local_88;\\n  longlong local_80;\\n  undefined1 local_71;\\n  undefined8 local_70;\\n  \\n  local_70 = 0xfffffffffffffffe;\\n  local_80 = in_RDX + 0x38;\\n  uVar6 = 0xa68561b396784eaa;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_RDX + 0x218) <= uVar6)) ||\\n      (uVar6 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar6 * 8), uVar6 == 0)) ||\\n     (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + ~uVar6 * 0x60) == 0)) {\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  asset_libraries::texture_library::AssetTextureLibrary::get_rg_texture();\\n  rhapsody::raw::texture::TextureDesc::extent_2d();\\n  local_648 = 0;\\n  local_638 = 1;\\n  puStack_640 = local_66c;\\n  country_core::render::pass_builder::draw_stream::RasterPass::new_impl();\\n  local_71 = 1;\\n  uVar6 = 0xd3bda3878f7a9d01;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_00 != 0) && (uVar6 < *(ulonglong *)(in_RDX + 0x218))) &&\\n     (uVar6 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar6 * 8), uVar6 != 0)) {\\n    lVar5 = ~uVar6 * 0x60;\\n    if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + lVar5) != 0) {\\n      local_c0 = *(ulonglong **)(*(longlong *)(in_RDX + 0x1e0) + lVar5 + 0x10);\\n      local_88 = *local_c0;\\n      uVar6 = local_88 & 0xffffffff;\\n      if (((*(ulonglong *)(in_RDX + 0x10) <= uVar6) ||\\n          (*(int *)(*(longlong *)(in_RDX + 8) + uVar6 * 0x14) != (int)(local_88 >> 0x20))) ||\\n         (lVar5 = *(longlong *)(in_RDX + 8) + uVar6 * 0x14, *(int *)(lVar5 + 4) == -1)) {\\n        local_71 = 1;\\n        local_648 = local_88;\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n      uVar6 = (ulonglong)*(uint *)(lVar5 + 0xc);\\n      local_71 = 1;\\n      bevy_ecs::component::Components::get_id();\\n      if ((extraout_RAX_01 != 0) && (uVar6 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n        local_71 = 1;\\n        bevy_ecs::storage::table::Table::get_component();\\n        if (extraout_RAX_02 != (undefined8 *)0x0) {\\n          local_71 = 1;\\n          local_90 = extraout_RAX_02;\\n          bevy_ecs::component::Components::get_id();\\n          if ((extraout_RAX_03 != 0) && (uVar6 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n            local_71 = 1;\\n            bevy_ecs::storage::table::Table::get_component();\\n            if (extraout_RAX_04 != (undefined8 *)0x0) {\\n              local_71 = 1;\\n              bevy_ecs::component::Components::get_id();\\n              if ((extraout_RAX_05 != 0) && (uVar6 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n                local_71 = 1;\\n                bevy_ecs::storage::table::Table::get_component();\\n                if (extraout_RAX_06 != (undefined8 *)0x0) {\\n                  local_71 = 1;\\n                  bevy_ecs::component::Components::get_id();\\n                  local_a0 = 2;\\n                  uStack_9c = extraout_XMM0_Da;\\n                  if ((extraout_RAX_07 != 0) && (uVar6 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n                    local_71 = 1;\\n                    bevy_ecs::storage::table::Table::get_component();\\n                    uStack_9c = extraout_XMM0_Da_00;\\n                    if (extraout_RAX_08 != (undefined4 *)0x0) {\\n                      local_a0 = *extraout_RAX_08;\\n                      uStack_9c = extraout_RAX_08[1];\\n                    }\\n                  }\\n                  uStack_98 = local_88;\\n                  uVar1 = *extraout_RAX_04;\\n                  uVar2 = *local_90;\\n                  local_71 = 1;\\n                  rhapsody::raw::shader::impl$7::default();\\n                  local_71 = 1;\\n                  core::ops::function::FnOnce::\\n                  call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n                            ();\\n                  if (extraout_RAX_09 == (longlong *)0x0) {\\n                    local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n                    std::thread::local::panic_access_error();\\n                  }\\n                  local_1a8 = 0;\\n                  local_1ac = 0x3f800000;\\n                  local_258 = 1;\\n                  local_248 = (char *)0x0;\\n                  uStack_240 = 4;\\n                  local_238 = 0;\\n                  local_1c8 = *extraout_RAX_09;\\n                  lStack_1c0 = extraout_RAX_09[1];\\n                  *extraout_RAX_09 = *extraout_RAX_09 + 1;\\n                  local_1d8 = 0;\\n                  uStack_1d0 = 0;\\n                  local_1e8 = &anon_65ceffb69360efd323e48f4f8756afaa_2_llvm_13316938065337964131;\\n                  uStack_1e0 = 0;\\n                  local_218 = 0x100000003;\\n                  uStack_230 = 0;\\n                  local_228 = 1;\\n                  uStack_220 = 0;\\n                  local_71 = 1;\\n                  uStack_250 = uVar2;\\n                  local_1b8 = uVar1;\\n                  country_core::render::pass_builder::draw_builder::DrawBuilder::new();\\n                  local_208 = *local_90;\\n                  local_200 = *extraout_RAX_04;\\n                  local_238 = *extraout_RAX_06;\\n                  uStack_230 = extraout_RAX_06[1];\\n                  local_228 = extraout_RAX_06[2];\\n                  uStack_220 = extraout_RAX_06[3];\\n                  local_218 = extraout_RAX_06[4];\\n                  uStack_210 = extraout_RAX_06[5];\\n                  local_258 = CONCAT44(uStack_9c,local_a0);\\n                  uStack_250 = uStack_98;\\n                  local_1f4 = 0;\\n                  local_248 = \\\"terrain_shader\\\";\\n                  uStack_240 = 0xe;\\n                  local_1f8 = 0;\\n                  local_71 = 1;\\n                  country_core::render::pass_builder::draw_builder::DrawBuilder::bind_common();\\n                  local_71 = 1;\\n                  draw_passes::draw_shaders::floor_shader::draw_floor_shader();\\n                  uVar6 = local_c0[1];\\n                  uVar4 = uVar6 & 0xffffffff;\\n                  if (((*(ulonglong *)(in_RDX + 0x10) <= uVar4) ||\\n                      (*(int *)(*(longlong *)(in_RDX + 8) + uVar4 * 0x14) != (int)(uVar6 >> 0x20)))\\n                     || (lVar5 = *(longlong *)(in_RDX + 8) + uVar4 * 0x14, *(int *)(lVar5 + 4) == -1\\n                        )) {\\n                    local_71 = 1;\\n                    local_648 = uVar6;\\n                    // WARNING: Subroutine does not return\\n                    core::result::unwrap_failed();\\n                  }\\n                  uVar4 = (ulonglong)*(uint *)(lVar5 + 0xc);\\n                  local_71 = 1;\\n                  local_88 = uVar6;\\n                  bevy_ecs::component::Components::get_id();\\n                  if ((extraout_RAX_10 != 0) && (uVar4 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n                    local_71 = 1;\\n                    bevy_ecs::storage::table::Table::get_component();\\n                    if (extraout_RAX_11 != (undefined8 *)0x0) {\\n                      local_71 = 1;\\n                      local_90 = extraout_RAX_11;\\n                      bevy_ecs::component::Components::get_id();\\n                      if ((extraout_RAX_12 != 0) && (uVar4 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n                        local_71 = 1;\\n                        bevy_ecs::storage::table::Table::get_component();\\n                        if (extraout_RAX_13 != (undefined8 *)0x0) {\\n                          local_71 = 1;\\n                          bevy_ecs::component::Components::get_id();\\n                          if ((extraout_RAX_14 != 0) && (uVar4 < *(ulonglong *)(in_RDX + 0x1b0))) {\\n                            local_71 = 1;\\n                            bevy_ecs::storage::table::Table::get_component();\\n                            if (extraout_RAX_15 != (undefined8 *)0x0) {\\n                              local_71 = 1;\\n                              bevy_ecs::component::Components::get_id();\\n                              local_b0 = 2;\\n                              uStack_ac = extraout_XMM0_Da_01;\\n                              if ((extraout_RAX_16 != 0) && (uVar4 < *(ulonglong *)(in_RDX + 0x1b0))\\n                                 ) {\\n                                local_71 = 1;\\n                                bevy_ecs::storage::table::Table::get_component();\\n                                uStack_ac = extraout_XMM0_Da_02;\\n                                if (extraout_RAX_17 != (undefined4 *)0x0) {\\n                                  local_b0 = *extraout_RAX_17;\\n                                  uStack_ac = extraout_RAX_17[1];\\n                                }\\n                              }\\n                              uStack_a8 = local_88;\\n                              uVar1 = *extraout_RAX_13;\\n                              uVar2 = *local_90;\\n                              local_71 = 1;\\n                              rhapsody::raw::shader::impl$7::default();\\n                              local_71 = 1;\\n                              core::ops::function::FnOnce::\\n                              call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n                                        ();\\n                              if (extraout_RAX_18 == (longlong *)0x0) {\\n                                local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n                                std::thread::local::panic_access_error();\\n                              }\\n                              local_1a8 = 0;\\n                              local_1ac = 0x3f800000;\\n                              local_258 = 1;\\n                              local_248 = (char *)0x0;\\n                              uStack_240 = 4;\\n                              local_238 = 0;\\n                              local_1c8 = *extraout_RAX_18;\\n                              lStack_1c0 = extraout_RAX_18[1];\\n                              *extraout_RAX_18 = *extraout_RAX_18 + 1;\\n                              local_1d8 = 0;\\n                              uStack_1d0 = 0;\\n                              local_1e8 = &\\n                                          anon_65ceffb69360efd323e48f4f8756afaa_2_llvm_13316938065337964131\\n                              ;\\n                              uStack_1e0 = 0;\\n                              local_218 = 0x100000003;\\n                              uStack_230 = 0;\\n                              local_228 = 1;\\n                              uStack_220 = 0;\\n                              local_71 = 1;\\n                              uStack_250 = uVar2;\\n                              local_1b8 = uVar1;\\n                              country_core::render::pass_builder::draw_builder::DrawBuilder::new();\\n                              local_208 = *local_90;\\n                              local_200 = *extraout_RAX_13;\\n                              local_238 = *extraout_RAX_15;\\n                              uStack_230 = extraout_RAX_15[1];\\n                              local_228 = extraout_RAX_15[2];\\n                              uStack_220 = extraout_RAX_15[3];\\n                              local_218 = extraout_RAX_15[4];\\n                              uStack_210 = extraout_RAX_15[5];\\n                              local_258 = CONCAT44(uStack_ac,local_b0);\\n                              uStack_250 = uStack_a8;\\n                              local_1f4 = 0;\\n                              local_248 = \\\"rocky_terrain\\\";\\n                              uStack_240 = 0xd;\\n                              local_1f8 = 0;\\n                              local_71 = 1;\\n                              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n                              bind_common();\\n                              local_71 = 1;\\n                              draw_passes::draw_shaders::rocky_terrain_draw::rocky_terrain_shader();\\n                              memcpy(&local_648,&local_a58,1000);\\n                              local_71 = 0;\\n                              country_core::render::pass_builder::draw_stream::RasterPass::render();\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::new<ref_<str_>_>();\\n                              local_258 = CONCAT71(local_258._1_7_,9);\\n                              local_648 = CONCAT44(local_648._4_4_,2);\\n                              country_core::render::pass_builder::compute_pass_builder::impl$4::\\n                              bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\\n                                        ();\\n                              memcpy(&local_648,&local_a58,400);\\n                              local_66c[0] = 10;\\n                              local_258 = CONCAT44(local_258._4_4_,2);\\n                              country_core::render::pass_builder::compute_pass_builder::impl$4::\\n                              bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\\n                                        ();\\n                              memcpy(&local_258,&local_648,400);\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::\\n                              write_storage_buffer<country_core::resources::terrain_height::TerrainHeightSsbo>\\n                                        ();\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::\\n                              write_storage_buffer<country_core::resources::terrain_height::VisualTerrainHeightSsbo>\\n                                        ();\\n                              local_218 = local_9b8;\\n                              uStack_210 = uStack_9b0;\\n                              local_228 = local_9c8;\\n                              uStack_220 = uStack_9c0;\\n                              local_238 = local_9d8;\\n                              uStack_230 = uStack_9d0;\\n                              local_248 = (char *)local_9e8;\\n                              uStack_240 = uStack_9e0;\\n                              local_258 = local_9f8;\\n                              uStack_250 = uStack_9f0;\\n                              local_638 = local_a48;\\n                              local_648 = local_a58;\\n                              puStack_640 = (undefined1 *)uStack_a50;\\n                              local_618 = local_a40;\\n                              uStack_610 = uStack_a38;\\n                              local_608 = local_a30;\\n                              local_630 = local_a28;\\n                              uStack_628 = uStack_a20;\\n                              local_620 = local_a18;\\n                              local_5d0 = local_9a8;\\n                              uStack_5c8 = uStack_9a0;\\n                              local_5c0 = local_998;\\n                              uStack_5b8 = uStack_990;\\n                              local_5b0 = local_988;\\n                              uStack_5a8 = uStack_980;\\n                              local_5a0 = local_978;\\n                              uStack_598 = uStack_970;\\n                              local_590 = local_968;\\n                              uStack_588 = uStack_960;\\n                              local_580 = local_958;\\n                              uStack_578 = uStack_950;\\n                              local_5f0 = local_a00;\\n                              local_600 = local_a10;\\n                              uStack_5f8 = uStack_a08;\\n                              local_568 = local_8d8;\\n                              local_570 = local_920;\\n                              local_5e8 = 0x2000000000001;\\n                              uStack_5e0 = 0x100000001;\\n                              rhapsody::rg::pass_builder::PassBuilder::\\n                              render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>\\n                                        ();\\n                              if (local_922 != '\\\\b') {\\n                                rhapsody::raw::managed::handle::impl$6::drop();\\n                              }\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::new<ref_<str_>_>();\\n                              local_258 = CONCAT71(local_258._1_7_,0xe);\\n                              local_a58 = CONCAT44(local_a58._4_4_,2);\\n                              country_core::render::pass_builder::compute_pass_builder::impl$4::\\n                              bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\\n                                        ();\\n                              memcpy(&local_a58,&local_648,400);\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::\\n                              write_storage_buffer<country_core::resources::terrain_rock_mask::TerrainRockMaskSsbo>\\n                                        ();\\n                              local_218 = uStack_5a8;\\n                              uStack_210 = local_5a0;\\n                              local_228 = uStack_5b8;\\n                              uStack_220 = local_5b0;\\n                              local_238 = uStack_5c8;\\n                              uStack_230 = local_5c0;\\n                              local_248 = (char *)uStack_5d8;\\n                              uStack_240 = local_5d0;\\n                              local_258 = local_5e8;\\n                              uStack_250 = uStack_5e0;\\n                              local_a48 = local_638;\\n                              local_a58 = local_648;\\n                              uStack_a50 = puStack_640;\\n                              local_a28 = local_630;\\n                              uStack_a20 = uStack_628;\\n                              local_a18 = local_620;\\n                              local_a40 = local_618;\\n                              uStack_a38 = uStack_610;\\n                              local_a30 = local_608;\\n                              uStack_9e0 = uStack_598;\\n                              local_9d8 = local_590;\\n                              uStack_9d0 = uStack_588;\\n                              local_9c8 = local_580;\\n                              uStack_9c0 = uStack_578;\\n                              local_9b8 = local_570;\\n                              uStack_9b0 = local_568;\\n                              local_9a8 = uStack_560;\\n                              uStack_9a0 = local_558;\\n                              local_998 = uStack_550;\\n                              uStack_990 = local_548;\\n                              local_988 = uStack_540;\\n                              local_a00 = local_5f0;\\n                              local_a10 = local_600;\\n                              uStack_a08 = uStack_5f8;\\n                              local_978 = local_4c8;\\n                              uStack_980 = local_510;\\n                              local_9f8 = 0x200000000001;\\n                              uStack_9f0 = 0x100000001;\\n                              rhapsody::rg::pass_builder::PassBuilder::\\n                              render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>\\n                                        ();\\n                              if (local_512 != '\\\\b') {\\n                                rhapsody::raw::managed::handle::impl$6::drop();\\n                              }\\n                              if (_DEV_OVERRIDE_IS_DEMO_MODE == '\\\\0') {\\n                                country_core::render::pass_builder::compute_pass_builder::\\n                                ComputePass::new<ref_<str_>_>();\\n                                local_258 = CONCAT71(local_258._1_7_,0x13);\\n                                local_a58 = CONCAT44(local_a58._4_4_,2);\\n                                country_core::render::pass_builder::compute_pass_builder::impl$4::\\n                                bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\\n                                          ();\\n                                memcpy(&local_a58,&local_648,400);\\n                                country_core::render::pass_builder::compute_pass_builder::\\n                                ComputePass::\\n                                write_storage_buffer<country_core::resources::water_mask::WaterMaskSsbo>\\n                                          ();\\n                                country_core::render::pass_builder::compute_pass_builder::\\n                                ComputePass::\\n                                write_storage_buffer<country_core::resources::water_exclude_clutter_mask::WaterExcludeClutterMaskSsbo>\\n                                          ();\\n                                local_218 = local_9b8;\\n                                uStack_210 = uStack_9b0;\\n                                local_228 = local_9c8;\\n                                uStack_220 = uStack_9c0;\\n                                local_238 = local_9d8;\\n                                uStack_230 = uStack_9d0;\\n                                local_248 = (char *)local_9e8;\\n                                uStack_240 = uStack_9e0;\\n                                local_258 = local_9f8;\\n                                uStack_250 = uStack_9f0;\\n                                local_638 = local_a48;\\n                                local_648 = local_a58;\\n                                puStack_640 = (undefined1 *)uStack_a50;\\n                                local_618 = local_a40;\\n                                uStack_610 = uStack_a38;\\n                                local_608 = local_a30;\\n                                local_630 = local_a28;\\n                                uStack_628 = uStack_a20;\\n                                local_620 = local_a18;\\n                                local_5d0 = local_9a8;\\n                                uStack_5c8 = uStack_9a0;\\n                                local_5c0 = local_998;\\n                                uStack_5b8 = uStack_990;\\n                                local_5b0 = local_988;\\n                                uStack_5a8 = uStack_980;\\n                                local_5a0 = local_978;\\n                                uStack_598 = uStack_970;\\n                                local_590 = local_968;\\n                                uStack_588 = uStack_960;\\n                                local_580 = local_958;\\n                                uStack_578 = uStack_950;\\n                                local_5f0 = local_a00;\\n                                local_600 = local_a10;\\n                                uStack_5f8 = uStack_a08;\\n                                local_568 = local_8d8;\\n                                local_570 = local_920;\\n                                local_5e8 = 0x200000000001;\\n                                uStack_5e0 = 0x100000001;\\n                                rhapsody::rg::pass_builder::PassBuilder::\\n                                render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>\\n                                          ();\\n                                if (local_922 != '\\\\b') {\\n                                  rhapsody::raw::managed::handle::impl$6::drop();\\n                                }\\n                              }\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::new<ref_<str_>_>();\\n                              local_258 = CONCAT71(local_258._1_7_,0x14);\\n                              local_a58 = CONCAT44(local_a58._4_4_,2);\\n                              country_core::render::pass_builder::compute_pass_builder::impl$4::\\n                              bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\\n                                        ();\\n                              memcpy(&local_a58,&local_648,400);\\n                              country_core::render::pass_builder::compute_pass_builder::ComputePass\\n                              ::\\n                              write_storage_buffer<country_core::resources::garden_mask::GardenMaskSsbo>\\n                                        ();\\n                              local_218 = uStack_5a8;\\n                              uStack_210 = local_5a0;\\n                              local_228 = uStack_5b8;\\n                              uStack_220 = local_5b0;\\n                              local_238 = uStack_5c8;\\n                              uStack_230 = local_5c0;\\n                              local_248 = (char *)uStack_5d8;\\n                              uStack_240 = local_5d0;\\n                              local_258 = local_5e8;\\n                              uStack_250 = uStack_5e0;\\n                              local_a48 = local_638;\\n                              local_a58 = local_648;\\n                              uStack_a50 = puStack_640;\\n                              local_a28 = local_630;\\n                              uStack_a20 = uStack_628;\\n                              local_a18 = local_620;\\n                              local_a40 = local_618;\\n                              uStack_a38 = uStack_610;\\n                              local_a30 = local_608;\\n                              uStack_9e0 = uStack_598;\\n                              local_9d8 = local_590;\\n                              uStack_9d0 = uStack_588;\\n                              local_9c8 = local_580;\\n                              uStack_9c0 = uStack_578;\\n                              local_9b8 = local_570;\\n                              uStack_9b0 = local_568;\\n                              local_9a8 = uStack_560;\\n                              uStack_9a0 = local_558;\\n                              local_998 = uStack_550;\\n                              uStack_990 = local_548;\\n                              local_988 = uStack_540;\\n                              local_a00 = local_5f0;\\n                              local_a10 = local_600;\\n                              uStack_a08 = uStack_5f8;\\n                              local_978 = local_4c8;\\n                              uStack_980 = local_510;\\n                              local_9f8 = 0x200000000001;\\n                              uStack_9f0 = 0x100000001;\\n                              rhapsody::rg::pass_builder::PassBuilder::\\n                              render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>\\n                                        ();\\n                              if (local_512 != '\\\\b') {\\n                                rhapsody::raw::managed::handle::impl$6::drop();\\n                              }\\n                              uVar6 = 0xfc8691076ab4d826;\\n                              bevy_ecs::component::Components::get_resource_id();\\n                              if (((extraout_RAX_19 != 0) &&\\n                                  (uVar6 < *(ulonglong *)(in_RDX + 0x218))) &&\\n                                 (uVar6 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar6 * 8),\\n                                 uVar6 != 0)) {\\n                                lVar5 = ~uVar6 * 0x60;\\n                                if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + lVar5) != 0\\n                                   ) {\\n                                  lVar5 = *(longlong *)(in_RDX + 0x1e0) + lVar5;\\n                                  plVar3 = *(longlong **)(lVar5 + 0x10);\\n                                  *(undefined4 *)(lVar5 + 0x5c) = *(undefined4 *)(in_RDX + 0x5b0);\\n                                  lVar5 = *plVar3;\\n                                  LOCK();\\n                                  if (lVar5 == *plVar3) {\\n                                    *plVar3 = 0;\\n                                  }\\n                                  UNLOCK();\\n                                  *(byte *)(plVar3 + 1) = *(byte *)(plVar3 + 1) | lVar5 != 0;\\n                                  return;\\n                                }\\n                              }\\n                    // WARNING: Subroutine does not return\\n                              core::option::unwrap_failed();\\n                            }\\n                          }\\n                          local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n                          core::option::unwrap_failed();\\n                        }\\n                      }\\n                      local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n                      core::option::unwrap_failed();\\n                    }\\n                  }\\n                  local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n                  core::option::unwrap_failed();\\n                }\\n              }\\n              local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n              core::option::unwrap_failed();\\n            }\\n          }\\n          local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n          core::option::unwrap_failed();\\n        }\\n      }\\n      local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n  }\\n  local_71 = 1;\\n                    // WARNING: Subroutine does not return\\n  core::option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":27,\"callees\":[{\"name\":\"bind_common\",\"address\":\"14090b460\"},{\"name\":\"bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140905260\"},{\"name\":\"call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>\",\"address\":\"1400d9b20\"},{\"name\":\"default\",\"address\":\"140be6750\"},{\"name\":\"draw_floor_shader\",\"address\":\"1409cacb0\"},{\"name\":\"drop\",\"address\":\"140be24b0\"},{\"name\":\"extent_2d\",\"address\":\"140bd5790\"},{\"name\":\"get_component\",\"address\":\"140d00b50\"},{\"name\":\"get_id\",\"address\":\"1409871a0\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"get_rg_texture\",\"address\":\"14093cf30\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"new\",\"address\":\"140905be0\"},{\"name\":\"new<ref$<str$>_>\",\"address\":\"1416032a0\"},{\"name\":\"new_impl\",\"address\":\"140867970\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"render\",\"address\":\"140868370\"},{\"name\":\"render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>\",\"address\":\"1409dd4d0\"},{\"name\":\"rocky_terrain_shader\",\"address\":\"1409cb4e0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_storage_buffer<country_core::resources::garden_mask::GardenMaskSsbo>\",\"address\":\"141605340\"},{\"name\":\"write_storage_buffer<country_core::resources::terrain_height::TerrainHeightSsbo>\",\"address\":\"141604690\"},{\"name\":\"write_storage_buffer<country_core::resources::terrain_height::VisualTerrainHeightSsbo>\",\"address\":\"141607950\"},{\"name\":\"write_storage_buffer<country_core::resources::terrain_rock_mask::TerrainRockMaskSsbo>\",\"address\":\"141605510\"},{\"name\":\"write_storage_buffer<country_core::resources::water_exclude_clutter_mask::WaterExcludeClutterMaskSsbo>\",\"address\":\"1416044c0\"},{\"name\":\"write_storage_buffer<country_core::resources::water_mask::WaterMaskSsbo>\",\"address\":\"141607ec0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14092e6c0\":{\"name\":\"is_started\",\"size\":7,\"address\":\"14092e6c0\",\"signature\":\"void __cdecl is_started(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::ui::resources::ui_state::DragState::is_started(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a9fa70\":{\"name\":\"deny_load\",\"size\":7,\"address\":\"140a9fa70\",\"signature\":\"void __cdecl deny_load(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::save::load_completion_checker::SessionLoadReadiness::deny_load(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14092e6a0\":{\"name\":\"is_dragging\",\"size\":7,\"address\":\"14092e6a0\",\"signature\":\"void __cdecl is_dragging(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::ui::resources::ui_state::ActiveWidget::is_dragging(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14090d9a0\":{\"name\":\"rg_buffer_copy_from_slice<u32>\",\"size\":680,\"address\":\"14090d9a0\",\"signature\":\"void __cdecl rg_buffer_copy_from_slice<u32>(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::render_loop::rg_buffer_copy_from_slice<u32>(void)\\n\\n{\\n  char cVar1;\\n  char *pcVar2;\\n  longlong extraout_RAX;\\n  longlong lVar3;\\n  longlong in_RDX;\\n  ulonglong uVar4;\\n  ulonglong _Size;\\n  ulonglong *in_R8;\\n  void *in_R9;\\n  longlong in_stack_00000028;\\n  void *local_108;\\n  ulonglong uStack_100;\\n  \\n  _Size = in_stack_00000028 << 2;\\n  if (*in_R8 < _Size) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic();\\n  }\\n  uVar4 = 0x47c94cb78283a72e;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX != 0) && (uVar4 < *(ulonglong *)(in_RDX + 0x218))) &&\\n     (uVar4 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar4 * 8), uVar4 != 0)) {\\n    lVar3 = ~uVar4 * 0x60;\\n    if (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + lVar3) != 0) {\\n      pcVar2 = *(char **)(*(longlong *)(in_RDX + 0x1e0) + lVar3 + 0x10);\\n      rhapsody::rg::resource_info::impl$13::from();\\n      bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>();\\n      rhapsody::rg::pass_builder::PassBuilder::\\n      add_resource_access<country_core::render::pass_builder::pass_resources::PassResources>();\\n      LOCK();\\n      cVar1 = *pcVar2;\\n      if (cVar1 == '\\\\0') {\\n        *pcVar2 = '\\\\x01';\\n      }\\n      UNLOCK();\\n      if (cVar1 != '\\\\0') {\\n        parking_lot::raw_mutex::RawMutex::lock_slow();\\n      }\\n      parking_lot_core::parking_lot::deadlock_impl::acquire_resource();\\n      rhapsody::raw::dynamic_constants::DynamicConstants::allocate();\\n      if (uStack_100 != _Size) {\\n                    // WARNING: Subroutine does not return\\n        core::slice::impl$0::copy_from_slice::len_mismatch_fail();\\n      }\\n      memcpy(local_108,in_R9,_Size);\\n      parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n      LOCK();\\n      cVar1 = *pcVar2;\\n      if (cVar1 == '\\\\x01') {\\n        *pcVar2 = '\\\\0';\\n      }\\n      UNLOCK();\\n      if (cVar1 != '\\\\x01') {\\n        parking_lot::raw_mutex::RawMutex::unlock_slow();\\n      }\\n      rhapsody::rg::pass_builder::PassBuilder::\\n      render<country_core::render::pass_builder::pass_resources::PassResources,country_core::systems::render_loop::rg_buffer_copy_from_slice::closure_env_0<u32>_>\\n                ();\\n      return;\\n    }\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":14,\"callees\":[{\"name\":\"acquire_resource\",\"address\":\"140c81c70\"},{\"name\":\"add_resource_access<country_core::render::pass_builder::pass_resources::PassResources>\",\"address\":\"1409dca90\"},{\"name\":\"allocate\",\"address\":\"140c02740\"},{\"name\":\"finish<country_core::systems::main_camera::MainCameraPlugin>\",\"address\":\"14003bb80\"},{\"name\":\"from\",\"address\":\"140bd4b40\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"len_mismatch_fail\",\"address\":\"1428d98e0\"},{\"name\":\"lock_slow\",\"address\":\"1428cd210\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"panic\",\"address\":\"1428d9430\"},{\"name\":\"release_resource\",\"address\":\"140c81e10\"},{\"name\":\"render<country_core::render::pass_builder::pass_resources::PassResources,country_core::systems::render_loop::rg_buffer_copy_from_slice::closure_env$0<u32>_>\",\"address\":\"1409dd240\"},{\"name\":\"unlock_slow\",\"address\":\"1428cdb90\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":5,\"requested\":5}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -1,0 +1,20 @@
+// addr=0x1409487b0 name=just_pressed
+// signature=void __cdecl just_pressed(void)
+
+
+void __cdecl country_core::input::action_set::ActionSetAction::just_pressed(void)
+
+{
+  char *in_RCX;
+  char in_DL;
+  
+  if ((*in_RCX == '\x01') && (in_RCX[1] == in_DL)) {
+                    // WARNING: Could not recover jumptable at 0x0001409487cd. Too many branches
+                    // WARNING: Treating indirect jump as call
+    (*(code *)(&DAT_142ab30f0 + *(int *)(&DAT_142ab30f0 + (ulonglong)*(uint *)(in_RCX + 4) * 4)))();
+    return;
+  }
+  return;
+}
+
+

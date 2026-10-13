@@ -1,0 +1,40 @@
+
+void __cdecl country_core::systems::terrain::impl$0::insert_terrain_resources(void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  
+  bevy_app::app::App::
+  insert_resource<country_core::systems::terrain::ui_edit_terrain::MouseActivityTimer>();
+  bevy_app::app::App::
+  insert_resource<country_core::systems::terrain::ui_edit_terrain::TerrainStrokeParamsCache>();
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == 0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  alloc::vec::Vec::extend_with<country_core::resources::rt::RtTriangleMetaSsbo,alloc::alloc::Global>
+            ();
+  bevy_app::app::App::
+  insert_resource<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>
+            ();
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_00 != 0) {
+    alloc::vec::Vec::
+    extend_with<country_core::resources::rt::RtTriangleMetaSsbo,alloc::alloc::Global>();
+    bevy_app::app::App::
+    insert_resource<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::VisualTerrainHeightSsbo>_>
+              ();
+    bevy_app::app::App::
+    insert_resource<country_core::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId>();
+    bevy_app::app::App::
+    insert_resource<country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback>
+              ();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  alloc::raw_vec::handle_error();
+}
+
+

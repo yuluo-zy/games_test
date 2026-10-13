@@ -1,0 +1,86 @@
+{
+  "work_package": "wp11",
+  "domain": "country-core resources::walls (state types only)",
+  "target": "B (ljxsj_92385)",
+  "identity": {
+    "exe_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "pdb_path": "crates/country-core/src/resources/walls/*.rs",
+    "workers": ["ghidra --worker shared (read-only)"]
+  },
+  "skeleton_source_sha256": {
+    "mod.rs": "aeea50cd1cff26d3b75d4a9560ca19ebc752a75cb79b16a181806f34ee9e7eb6",
+    "public_wall_state.rs": "d7fe5e903d8bea9329457bf533459d645fc5bcb84fc078f16b15fb75ab49546b",
+    "inner_wall_state.rs": "180e8e17a1d9095dac08b98c96de2f5eef037375b7bc81aa222c311818d0879d",
+    "inner_walls.rs": "fffa8b74fad201efd25eea214e00b9debd09d7192c0c6f106b7411bbf81e4091",
+    "public_walls.rs": "f2b8d08dbc8583a32c331dc8c317850bad44dfd49a979f1dc06053f2ef9e9d62",
+    "wall_attachment.rs": "0d8a772b905af4e51e3256bbeaf2d4856bae5167ab0f0de0084cae457d7e4828",
+    "wall_path_segment.rs": "d40ae4b030fb5d2eac50a767cbe25adf95aff8ae8e4e46900913af3e95ca6569",
+    "in_progress_wall.rs": "4c1bb87cc1f1692eb86d841508826ce57d639d234ec60d6af6382e55632e87fb",
+    "decorator.rs": "c4dddf2e9244503f0b7d635e790690eaeb17b204d2078ac875699014d2617d8e"
+  },
+  "decompiled_functions_this_wp": {
+    "PublicWallState::get_wall_shape": {"rva": "0xb2a5d0", "va": "0x140b2a5d0", "file": "evidence/0x0x140b2a5d0-get_wall_shape.c"},
+    "PublicWallState::try_get_wall_shape": {"rva": "0xb2a600", "va": "0x140b2a600", "file": "evidence/0x0x140b2a600-try_get_wall_shape.c"},
+    "PublicWallState::max_y": {"rva": "0xb2a620", "va": "0x140b2a620", "file": "evidence/0x0x140b2a620-max_y.c"},
+    "PublicWallState::max_y_gable": {"rva": "0xb2a680", "va": "0x140b2a680", "file": "evidence/0x0x140b2a680-max_y_gable.c"},
+    "PublicWallState::flat_roof_y": {"rva": "0xb2a6e0", "va": "0x140b2a6e0", "file": "evidence/0x0x140b2a6e0-flat_roof_y.c"},
+    "PublicWallState::wall_space": {"rva": "0xb2a740", "va": "0x140b2a740", "file": "evidence/0x0x140b2a740-wall_space.c"},
+    "PublicWallState::wall_space_length": {"rva": "0xb2a760", "va": "0x140b2a760", "file": "evidence/0x0x140b2a760-wall_space_length.c"},
+    "PublicWallState::u_space": {"rva": "0xb2a770", "va": "0x140b2a770", "file": "evidence/0x0x140b2a770-u_space.c"},
+    "PublicWallState::is_rectangle": {"rva": "0xb2a790", "va": "0x140b2a790", "file": "evidence/0x0x140b2a790-is_rectangle.c"},
+    "PublicWallState::is_circle": {"rva": "0xb2a7d0", "va": "0x140b2a7d0", "file": "evidence/0x0x140b2a7d0-is_circle.c"},
+    "PublicWallState::corner_pos_and_normal_xz": {"rva": "0xb2a800", "va": "0x140b2a800", "file": "evidence/0x0x140b2a800-corner_pos_and_normal_xz.c"},
+    "PublicWallState::get_wall_attachment_height": {"rva": "0xb2a890", "va": "0x140b2a890", "file": "evidence/0x0x140b2a890-get_wall_attachment_height.c"},
+    "FreehandHeightType::toggle": {"rva": "0x8c5660", "va": "0x1408c5660", "file": "evidence/0x0x1408c5660-toggle.c"},
+    "WallStyle::is_halftimbered": {"rva": "0x8c5670", "va": "0x1408c5670", "file": "evidence/0x0x1408c5670-is_halftimbered.c", "machine_code": "80 39 02 / 0f 93 c0 / c3 = cmp byte[rcx],2; setae; ret"},
+    "StructureType::is_fence": {"rva": "0x8c5680", "va": "0x1408c5680", "file": "evidence/0x0x1408c5680-is_fence.c", "machine_code": "0f b6 01 / c3 = movzx eax,byte[rcx]; ret"},
+    "StructureType::is_wall (alias ClutterVersion::is_initial)": {"rva": "0x833230", "va": "0x140833230", "file": "evidence/0x0x140833230-is_initial.c", "machine_code": "80 39 00 / 0f 94 c0 / c3 = cmp byte[rcx],0; sete; ret"},
+    "is_default_arch_height": {"rva": "0x8c5690", "va": "0x1408c5690", "file": "evidence/0x0x1408c5690-is_default_arch_height.c", "machine_code": "movss xmm0,[rip+0x21c75c8]; cmpeqss xmm0,[rcx]; movd eax,xmm0; and eax,1; ret"},
+    "WallState::get_enclosure_params": {"rva": "0x8c56b0", "va": "0x1408c56b0", "file": "evidence/0x0x1408c56b0-get_enclosure_params.c"},
+    "deserialize_wall_style": {"rva": "0x85ebc0", "va": "0x14085ebc0", "file": "evidence/0x0x14085ebc0-deserialize_wall_style<enum2$<serde_json::value::Value>_>.c", "variants_verified": ["Stone", "StoneWithSkirts", "HalfTimbered"]},
+    "HighlightColor::to_rgb": {"rva": "0xb34f30", "va": "0x140b34f30", "file": "evidence/0x0x140b34f30-to_rgb.c"},
+    "split_height_into_skirts": {"rva": "0xb34f80", "va": "0x140b34f80", "file": "evidence/0x0x140b34f80-split_height_into_skirts.c"},
+    "WallId::get_inner": {"rva": "0x885d0", "va": "0x140885d0", "note": "void() placeholder; method surface from PDB (returns inner u64)"},
+    "WallId::is_valid": {"rva": "0xb34f20", "va": "0x140b34f20", "file": "evidence/0x0x140b34f20-is_valid.c"},
+    "WallId serde serialize": {"rva": "0xb35980", "va": "0x140b35980", "file": "evidence/0x0x140b35980-serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>.c"},
+    "WallPathSegment::pt_count": {"rva": "0x1234970", "va": "0x1401234970", "note": "empty void() placeholder; method surface from PDB"},
+    "WallPathSegment::length_ws": {"rva": "0x1234980", "va": "0x1401234980", "note": "void() placeholder"},
+    "WallPathSegment::length_ws_2d": {"rva": "0x1234ad0", "va": "0x1401234ad0", "note": "void() placeholder"},
+    "WallCornerAttachment::is_attached": {"rva": "0xb256b0", "va": "0x140b256b0", "file": "evidence/0x0x140b256b0-is_attached.c"},
+    "WallCornerAttachment::from_rectangle_corner_id": {"rva": "0xb256c0", "va": "0x140b256c0", "file": "evidence/0x0x140b256c0-from_rectangle_corner_id.c"},
+    "WallCornerAttachment::to_rectangle_corner_id": {"rva": "0xb256f0", "va": "0x140b256f0", "file": "evidence/0x0x140b256f0-to_rectangle_corner_id.c"},
+    "WallAttachmentAnchor serialize (in shared DB, empty)": {"rva": "0x16fa690/0x16fa3a0/0x16fa8d0/0x16fa9e0", "va": "0x14016fa690..", "note": "void() placeholder (empty decompiles); field names from prior decorator-info evidence (serializers 0x140a4b2a0/0x1416fa690)"},
+    "InProgressWall::fmt": {"rva": "0xabceb0", "va": "0x140abceb0", "file": "evidence/0x0x140abceb0-fmt.c"}
+  },
+  "read_memory_machine_code": {
+    "job": "evidence/g2-job.json", "result": "evidence/g2-result.json",
+    "targets": ["0x1408c5670 (is_halftimbered)", "0x1408c5680 (is_fence)", "0x140833230 (is_wall/is_initial)", "0x1408c5690 (is_default_arch_height)", "0x1408c56b0 (get_enclosure_params)"]
+  },
+  "ghidra_jobs": {
+    "g1": {"job": "evidence/g1-job.json", "result": "evidence/g1-result.json", "what": "public_wall_state + inner_wall_state method decompiles"},
+    "g3": {"job": "evidence/g3-job.json", "result": "evidence/g3-result.json", "what": "mod.rs / WallPathSegment / InProgressWall decompiles"},
+    "g4": {"job": "evidence/g4-job.json", "result": "evidence/g4-result.json", "what": "WallCornerAttachment + wall_attachment serialize"}
+  },
+  "prior_work_reused": {
+    "reconstruction/building/wall_state.rs": {"verdict": "PublicWallState 0x2a0 record projection; max_y/gable caches +0x108/+0x110; shape +0x258..0x274; style +0x299; reused, not re-derived"},
+    "reconstruction/building/wall_publication.rs": {"verdict": "publication metrics +0x274/+0x278/+0x27c/+0x284; reused"},
+    "reconstruction/building/wall_height_authority.rs": {"verdict": "InnerWallState source row +0x54 editable height, +0x58 terrain floor; reused"},
+    "reconstruction/building/wall_height_command.rs": {"verdict": "40B AdjustWallHeightCmd payload; reused"},
+    "reconstruction/wall/height_rules.rs": {"verdict": "clamp_wall_height / max_y / gable / flat_roof_y numeric rules (6624 cases); reused"},
+    "reconstruction/building/wall_cache.rs": {"verdict": "regular wall height cache 0x14078b865..0x14078bc96; reused"},
+    "reconstruction/building/wall_structures.rs": {"verdict": "u_space periodic semantics (shape!=2 / period); reused"},
+    "reconstruction/building/decorator_info.rs": {"verdict": "DecoratorInfo72 decode + wall_attachment_height + WallId::is_valid consumer; reused"},
+    "reconstruction/building/decorator_subtype.rs": {"verdict": "wall_opening_family/subtype; reused"},
+    "reconstruction/building/wall_rectangle_edit.rs / wall_construction_sources.rs": {"verdict": "shape tag 0 circle 4 floats / tag 1 rectangle 6 floats cross-check; reused"},
+    "evidence/building-decorator-info/findings.md": {"verdict": "anchor field names coord/platform/wall_height_relative_y/anchor_ws/corner/is_bottom_door/side (serializers 0x140a4b2a0/0x1416fa690); reused"},
+    "evidence/building-state/findings.md": {"verdict": "PublicWall+0x10 count / +0x30/+0x28c raw length; reused"}
+  },
+  "build_gate": {
+    "cargo_check_offline": "PASS (0 errors)",
+    "clippy_all_targets_offline": "PASS (0 warnings / 0 errors)",
+    "deps": "bevy_ecs =0.16.0, glam =0.29.3 (match original Cargo.lock baseline)"
+  },
+  "status": "implemented_unverified; no runtime/GPU acceptance. Contracts are the review basis."
+}

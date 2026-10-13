@@ -1,0 +1,75 @@
+{
+  "wp": "wp19",
+  "title": "country-core render_loop misc + stylized domains (B)",
+  "version": {
+    "binary": "tiny-glade.exe",
+    "binary_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb": "tiny_glade.pdb",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+    "age": 1
+  },
+  "method": "business logic -> contracts -> skeleton-aligned Rust (machine-code diff only for numeric/boundary adjudication)",
+  "skeleton_units_covered": 11,
+  "skeleton_bundles": {
+    "systems/render_loop/painterly/mod.rs": "6 funcs: has_target(0x1408a63d0), impl$1::build(0x1408a63e0), painterly_pass(0x1408a6410), startup_painterly(0x1408a7fe0); inline closure$0@123, raster_strokes@270",
+    "systems/render_loop/vermeer.rs": "13 funcs: activate(0x1408a8060), deactivate(0x1408a8140), into_disable_hold(0x1408a81e0), is_active(0x1408a8260), should_freeze_camera(0x1408a8270), impl$1::build(0x1408a8280), vermeer_pass(0x1408a82f0), vermeer_render_from_target(0x1408a8d70), startup_vermeer(0x1408aa720); inline max_stroke_count@254, raster_strokes@347, raster_combine@395",
+    "systems/render_loop/menu_background.rs": "impl$0::build(0x1408c99c0), render_menu_bg(0x1408c9a30); inline impl$1::default@29",
+    "systems/render_loop/session_selection/mod.rs": "impl$0::build(0x1408f68c0), thumbnails_startup(0x1408f6900), render_session_selection_previews(0x1408f6c00, 11245B, decompile-timeout); inline extract@72/find@127/assign@149/refresh@235",
+    "systems/render_loop/lut_gallery.rs": "impl$0::build(0x1408b04c0), render_photomode_lut_gallery(0x1408b0560); inline startup@41, closure$0@100",
+    "systems/render_loop/indirect_params.rs": "0 funcs, 6 types (AtomicCounterBuffer/DispatchIndirectBuffer/DrawIndirectBuffer/DrawIndexedIndirectBuffer/DrawIndirectBucket/DrawIndexedIndirectBucket)",
+    "systems/render_loop/resources/critters.rs": "0 funcs, 4 types (ButterflySsbo/FireflySsbo/FireflyVisibilitySsbo/SheepAnimationSsbo)",
+    "resources/gpu_lut.rs": "build(0x14090e080), render_luts(0x14090e280), compute_impl(0x14090e310), closures(0x140a716c0/0x140a71980); inline GpuLutDesc::new@80, impl$1::compute@63",
+    "resources/grading_lut.rs": "flattened(0x140b00b20), load_unwrapped(0x140b00bc0), load_cube(0x140b01050), parse_rgb(0x140b01cc0), GradingLuts::load(0x140b01df0); serde glue (generic)",
+    "resources/loading_screen.rs": "impl$0::build(0x140a1a190), startup_loading_screen(0x140a1a1e0); inline update_loading_screen@29",
+    "resources/logo_animation.rs": "impl$2::build(0x140b19d40), startup_animated_logo(0x140b19d90), animate_logo(0x140b1a6b0), play(0x140b19d00), is_waiting(0x140b19d10), is_finished(0x140b19d20), finish_wait(0x140b19d30)"
+  },
+  "ghidra_evidence": {
+    "job": "scripts/job-wp19.json",
+    "result": "scripts/result-wp19-v2.json (2 get_functions batches, 39 decompiled functions)",
+    "session_preview_retry": "scripts/job-session-preview.json -> empty decompiled_code (decompiler limit)",
+    "reva_attempt": "scripts/job-reva-session.json -> 'Decompilation timed out after 10 seconds'",
+    "string_reads": "scripts/job-strings.json -> session_selection_* shader names + blit_stretch_decode_srgb (O strings)",
+    "existing_decompile_reused": "evidence/render-recovery/producer-closure/g7-post-ui/decomp/0x1408F6C00.c (render_session_selection_previews raw body)"
+  },
+  "key_observations": {
+    "vermeer_chain": "vermeer_render_from_target(0x1408a8d70): GenerateStrokes compute (URI /vermeer/generate_strokes.cs.hlsl:cs_main, O) -> write strokes SSBO -> 'vermeer_raster_strokes' + 'vermeer_combine' raster passes (O shader names); stroke_count 0x8000/0xa00 toggle (O)",
+    "painterly_chain": "painterly_pass(0x1408a6410): acquire_target -> convolve_target compute pair on 'Acquiring painterly target', then progressive generate_strokes dispatch per floor(progress) crossing, progress 0..1024 (f64), raster_strokes draw",
+    "vermeer_state_layout": "VermeerState: frame@+0x00 u64, progress@+0x40 f32, timer@+0x44 f32, state@+0x48 u32 (0/1/2), handle@+0x4c u64, camera_released@+0x3e u8, hold@+0x54 u8 (O offsets)",
+    "reveal_completion": "vermeer_pass: progress>=1.0 -> finish<MainCameraPlugin> + state=2 + WriteSettingsFileCmd event + log 'Game reveal complete' (O)",
+    "lut_resources": "ColorGradingState::flattened(0x140b00b20) feeds final_post@50 + prepare_frame_constants@50 (O inline); GradingLut::load_cube = full .cube parser (TITLE/LUT_3D_SIZE/DOMAIN_MIN|MAX/data -> RGB9E5 -> 3D texture, O); load_unwrapped = PNG->RGBA8->3D texture",
+    "lut_gallery": "render_photomode_lut_gallery(0x1408b0560): demo-guard + AppMode==10 photography gate + 'lut_gallery_thumbnail' shader (O) + per-LUT grid draw",
+    "gpu_lut": "GpuLutTracker::render_luts(0x14090e280): 0x30-stride entries, vtable+0x28 call, +0x28 rendered flag; build inserts 2 entries (I: /lut/brdf_fg + /lut/water_noise)",
+    "menu_bg": "render_menu_bg(0x1408c9a30): AppMode gate + MenuBackgroundResources 7-handle copy + camera release + 'blit_stretch_decode_srgb' fullscreen blit (O string)",
+    "session_selection": "thumbnails_startup: 4 session shaders + 6-slot 0x68-stride texture pool; previews: PNG screenshot refresh + pool assign + draw (O names; body from callee list + PDB inline hosts)",
+    "logo_animation": "animate_logo(0x140b1a6b0): 5-stage logo reveal, per-stage audio 'event:/UI/Logo/Scribble'/'event:/UI/Logo/Branches' (O strings); startup spawns 'tiny_glade_logo' + 'logo_branches' meshes (O strings)"
+  },
+  "unknowns": {
+    "render_session_selection_previews": "full body not decompiled (Ghidra/ReVa time out); recovered via callee list + PDB inline hosts + g7-post-ui raw body",
+    "typed_gaps": "VermeerState 0x08..0x3d/0x56..0x57; PainterlyState 0x18..; MenuBackgroundResources full; ThumbnailTextures/PooledThumbnail 0x68-stride; ColorGradingState 4-value semantics; GradingLut 3D-handle layout; GpuLutApi full trait surface; control-resource hash 0xbe2e7c0aff5cc813 name; time-resource hash 0x109ca79d5cccc2d1 name; stroke_count 0x8000/0xa00 mapping; all indirect_params/critters SSBO field layouts"
+  },
+  "deliverables": {
+    "contracts": [
+      "contracts/painterly-vermeer.md",
+      "contracts/menu-session.md",
+      "contracts/lut.md",
+      "contracts/indirect-params.md"
+    ],
+    "src": [
+      "src/systems/render_loop/painterly.rs",
+      "src/systems/render_loop/vermeer.rs",
+      "src/systems/render_loop/menu_background.rs",
+      "src/systems/render_loop/session_selection/mod.rs",
+      "src/systems/render_loop/lut_gallery.rs",
+      "src/systems/render_loop/indirect_params.rs",
+      "src/systems/render_loop/resources/critters.rs",
+      "src/resources/gpu_lut.rs",
+      "src/resources/grading_lut.rs",
+      "src/resources/loading_screen.rs",
+      "src/resources/logo_animation.rs"
+    ],
+    "cargo_check": "offline cargo check: 0 errors, 0 warnings; clippy --all-targets --offline: clean"
+  },
+  "status": "implemented_unverified (no runtime/GPU acceptance); contracts are the review basis",
+  "integration_notes": "owner declares the 7 render_loop submodules in shared render_loop/mod.rs + 4 resources submodules in shared resources/mod.rs; consume stubs must be replaced by real wp1/wp4/wp15/wp13 types"
+}

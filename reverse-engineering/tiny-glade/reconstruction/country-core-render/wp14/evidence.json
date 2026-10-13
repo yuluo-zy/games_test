@@ -1,0 +1,59 @@
+{
+  "work_package": "WP14",
+  "domain": "country-core audio（资源 + 系统 + 启动）",
+  "version": "B (ljxsj_92385; EXE sha256 cf048e27…, PDB sha256 2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911)",
+  "method": "PDB 骨架（enriched/structures）+ Ghidra 反编译（worker wp14-audio，只读）+ 复用 evidence/multi-baseline/audio-events-analysis.md（wall/building/stairs/music 精读）+ RNE .data 事件串核查；机器码差分仅作裁决",
+  "date": "2026-10-13",
+  "skeleton_sources": {
+    "systems_audio_modules": 31,
+    "bundles_root": "skeleton/B/crates/country-core/src/systems/audio",
+    "resources": ["audio_resources.rs", "audio_settings.rs"],
+    "startup": ["load_audio.rs", "load_glade_audio.rs"],
+    "asset_libraries": ["audio_trigger_library.rs"],
+    "utils": ["audio_utils.rs"],
+    "wall_snapping": ["systems/wall/snapping/snapping_audio.rs"],
+    "music": ["systems/audio/music/music_player.rs", "music_system.rs", "music_debug_gui.rs"]
+  },
+  "ghidra_decompiles": {
+    "batch1": "evidence/audio1-result.json",
+    "batch2": "evidence/audio2-result.json",
+    "batch3": "evidence/audio3-result.json",
+    "functions": [
+      "load_audio", "trigger_audio_init_system", "trigger_audio_system", "AudioTriggerLibrary::get_triggers", "AudioTriggerCollection::boxes",
+      "AudioCore::new", "AudioCoreInner::update", "AudioCoreInner::instantiate_audio", "AudioCoreInner::set_parameter", "AudioCoreInner::set_vca_volume",
+      "AudioCore::instantiate_loop", "water_audio_system", "water_ambience_audio_system", "clutter_audio_system", "sheep_audio_system",
+      "timberframe_audio", "elevation_supports_audio", "snapping_audio", "path_audio_system", "firstperson_steps",
+      "AudioInstance::{start,stop,start_if_not_playing,is_playing}", "impl10::{set_volume,set_parameter,set_position}", "Bank::{load,load_sample_data}",
+      "AudioSamplesLoadedPromise::recv", "AudioLoop::{current,stop,start_if_not_playing}", "AudioCore::visualize_sounds",
+      "menu_audio(_init_system)", "replay_audio(_system,_init_system)", "loading_audio", "init_game_loading_audio",
+      "terrain_audio(_system,_init_system)", "tree_audio(_system,_init_system)", "forest_audio(_system,_init_system)",
+      "garden_audio(_system,_init_system)", "decorator_audio(_system,_init_system)", "signifier_audio(_system,_init_system)",
+      "ivy_audio_init_system", "weather_audio_system(wrapper)"
+    ]
+  },
+  "reconciliation": {
+    "wp7": "water_audio_system 消费 WaterRaster/WaterAudioGrid；update_water_audio_grid 契约（24B/格）一致；本 WP 实现 WaterAudioState/WaterDrawEvent/WaterEraseEvent",
+    "wp9": "roof_audio.rs 与 WP9 命名/函数一致（roof_audio_init_system、instantiate_audio_w_position[_and_volume]、roof_audio_system）；补充 3×instantiate_loop 事件串（RNE .data）",
+    "wp10": "critters FMOD（Duck::new Quack/TakeOff/Land、ButterflyAudio::set_position）在 audio_resources AudioInstance::set_position 侧一致（set_3d_attributes）；PlayTreeSoundCmd 由 tree-tool 写入、tree_audio 消费",
+    "wp4": "audio_trigger_library 已恢复（原 wp4 deferred 的 audio-trigger 库）"
+  },
+  "fmod_boundary": "libfmod 全部只标注不复原（get_event/create_instance/start/stop/set_paused/set_3d_attributes/set_parameter_by_name/get_parameter_by_name/set_volume/get_playback_state/get_timeline_position/load_bank_file/load_sample_data/set_listener_attributes/Studio::update）",
+  "deliverables": {
+    "contracts": [
+      "contracts/audio-state.md",
+      "contracts/audio-systems.md",
+      "contracts/audio-trigger.md"
+    ],
+    "src": "src/ (51 .rs：resources/startup/asset_libraries/utils/systems/audio+music+wall/snapping)",
+    "cargo_check_offline": "PASSES (0 errors, 0 warnings)"
+  },
+  "remaining_gaps": [
+    "AudioCoreInner 内部字段名/完整布局；Bank 完整字段",
+    "AudioInstance 判别 0（Disabled）精确语义；AudioLoop 尾部字段（+0x36…）",
+    "每域 kind→事件串 的逐条精确映射（跳表 case 对应；部分已录）",
+    "wall_audio_fmod 全量 8 参签名与音量源类型；stairs_audio_system arg3 元素表类型",
+    "weather_audio_system 全局参数名；firstperson_steps 地面类型参数名与 GroundType 变体",
+    "audio_trigger_library add/remove/update 精确输入与盒条目 28B 完整语义",
+    "AudioSettings @0..0xf8 字段；MusicPlayer 全量字段"
+  ]
+}

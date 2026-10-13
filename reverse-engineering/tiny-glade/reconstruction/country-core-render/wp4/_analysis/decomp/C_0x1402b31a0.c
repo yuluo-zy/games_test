@@ -1,0 +1,125 @@
+// ADDRESS: 0x1402b31a0
+// SIZE: 809
+// SIGNATURE: void __cdecl get_rg_buffer<country_core::resources::world_raster_defs::Cobblestone3RasterStagingSsbo>(void)
+
+void __cdecl
+country_core::asset_libraries::ssbo_library::AssetSsboLibrary::
+get_rg_buffer<country_core::resources::world_raster_defs::Cobblestone3RasterStagingSsbo>(void)
+
+{
+  ulonglong uVar1;
+  ulonglong uVar2;
+  undefined8 uVar3;
+  int iVar4;
+  longlong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  longlong extraout_RAX_01;
+  undefined8 *in_RCX;
+  ulonglong *puVar5;
+  bool bVar6;
+  undefined8 local_98;
+  undefined8 uStack_90;
+  undefined8 local_88;
+  
+  frozen::FrozenMap::
+  get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+            ();
+  if (extraout_RAX == 0) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  puVar5 = (ulonglong *)(extraout_RAX + 0x20);
+  uVar2 = *(ulonglong *)(extraout_RAX + 0x20);
+  if (uVar2 < 0xfffffffffffffff0 && (char)(((uint)uVar2 & 8) >> 3) == '\0') {
+    LOCK();
+    uVar1 = *puVar5;
+    if (uVar2 == uVar1) {
+      *puVar5 = uVar2 + 0x10;
+    }
+    UNLOCK();
+    if (uVar2 == uVar1) goto LAB_1402b321e;
+  }
+  parking_lot::raw_rwlock::RawRwLock::lock_shared_slow();
+LAB_1402b321e:
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  if (*(char *)(extraout_RAX + 0x36) == '\x05') {
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    LOCK();
+    uVar2 = *puVar5;
+    *puVar5 = *puVar5 - 0x10;
+    UNLOCK();
+    if ((uVar2 & 0xfffffffffffffff2) == 0x12) {
+      parking_lot::raw_rwlock::RawRwLock::unlock_shared_slow();
+    }
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX_00 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    if ((extraout_RAX_00[3] != 0x49) ||
+       (iVar4 = memcmp(&anon_5c92bc5c8d3c75d08c04de538de06c31_19_llvm_4411040535591931162,
+                       (void *)extraout_RAX_00[2],0x49), iVar4 != 0)) {
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+    }
+    (**(code **)(extraout_RAX_00[1] + 0x30))(*extraout_RAX_00);
+    rhapsody::rg::import_export::impl$1::import_unowned();
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX_01 == 0) {
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    LOCK();
+    bVar6 = *(longlong *)(extraout_RAX_01 + 0x20) == 0;
+    if (bVar6) {
+      *(longlong *)(extraout_RAX_01 + 0x20) = 8;
+    }
+    UNLOCK();
+    if (!bVar6) {
+      parking_lot::raw_rwlock::RawRwLock::lock_exclusive_slow();
+    }
+    parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+    parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+    *(undefined8 *)(extraout_RAX_01 + 0x28) = local_98;
+    *(undefined8 *)(extraout_RAX_01 + 0x30) = uStack_90;
+    *(undefined4 *)(extraout_RAX_01 + 0x38) = (undefined4)local_88;
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    LOCK();
+    bVar6 = *(longlong *)(extraout_RAX_01 + 0x20) == 8;
+    if (bVar6) {
+      *(longlong *)(extraout_RAX_01 + 0x20) = 0;
+    }
+    UNLOCK();
+    if (!bVar6) {
+      parking_lot::raw_rwlock::RawRwLock::unlock_exclusive_slow();
+    }
+    in_RCX[2] = local_88;
+    *in_RCX = local_98;
+    in_RCX[1] = uStack_90;
+  }
+  else {
+    *(undefined4 *)(in_RCX + 2) = *(undefined4 *)(extraout_RAX + 0x38);
+    uVar3 = *(undefined8 *)(extraout_RAX + 0x30);
+    *in_RCX = *(undefined8 *)(extraout_RAX + 0x28);
+    in_RCX[1] = uVar3;
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    LOCK();
+    puVar5 = (ulonglong *)(extraout_RAX + 0x20);
+    uVar2 = *puVar5;
+    *puVar5 = *puVar5 - 0x10;
+    UNLOCK();
+    if ((uVar2 & 0xfffffffffffffff2) == 0x12) {
+      parking_lot::raw_rwlock::RawRwLock::unlock_shared_slow();
+    }
+  }
+  return;
+}
+

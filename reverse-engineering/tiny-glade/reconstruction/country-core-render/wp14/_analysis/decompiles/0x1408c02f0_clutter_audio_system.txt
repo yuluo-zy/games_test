@@ -1,0 +1,521 @@
+
+void __cdecl country_core::systems::audio::clutter_audio::clutter_audio_system(void)
+
+{
+  byte *pbVar1;
+  undefined1 *puVar2;
+  byte bVar3;
+  byte bVar4;
+  byte bVar5;
+  ulonglong *puVar6;
+  longlong lVar7;
+  char extraout_AL;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  undefined *puVar8;
+  longlong *extraout_RAX_01;
+  void *_Dst;
+  longlong *extraout_RAX_02;
+  longlong *extraout_RAX_03;
+  longlong *extraout_RAX_04;
+  uint uVar9;
+  undefined8 *in_RCX;
+  ulonglong uVar10;
+  longlong lVar11;
+  longlong *plVar12;
+  undefined8 *in_RDX;
+  ulonglong uVar13;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  size_t _Size;
+  longlong lVar16;
+  longlong lVar17;
+  longlong lStack_b8;
+  size_t sStack_a8;
+  longlong local_50;
+  
+  puffin::are_scopes_on();
+  if (extraout_AL != '\0') {
+    uVar13 = 0x41;
+    core::str::impl$0::rfind<ref_<str_>_>();
+    if (extraout_RAX == 1) {
+      if (uVar13 != 0) {
+        if (uVar13 < 0x41) {
+          if ((char)(&DAT_142aa0586)[uVar13] < -0x40) {
+LAB_1408c0367:
+                    // WARNING: Subroutine does not return
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar13 != 0x41) goto LAB_1408c0367;
+      }
+      core::str::impl$0::rfind<ref_<str_>_>();
+      if ((extraout_RAX_00 == 1) && (uVar13 != 0xfffffffffffffffe)) {
+        if (uVar13 + 2 < 0x41) {
+          if ((char)(&UNK_142aa0588)[uVar13] < -0x40) {
+LAB_1408c03c5:
+                    // WARNING: Subroutine does not return
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar13 + 2 != 0x41) goto LAB_1408c03c5;
+      }
+    }
+    puVar8 = &DAT_142aa0e4c;
+    do {
+      bVar3 = puVar8[-1];
+      uVar9 = (uint)(char)bVar3;
+      if ((char)bVar3 < '\0') {
+        bVar4 = puVar8[-2];
+        if ((char)bVar4 < -0x40) {
+          bVar5 = puVar8[-3];
+          if ((char)bVar5 < -0x40) {
+            pbVar1 = puVar8 + -4;
+            puVar8 = puVar8 + -4;
+            uVar9 = bVar5 & 0x3f | (*pbVar1 & 7) << 6;
+          }
+          else {
+            puVar8 = puVar8 + -3;
+            uVar9 = bVar5 & 0xf;
+          }
+          uVar9 = bVar4 & 0x3f | uVar9 << 6;
+        }
+        else {
+          puVar8 = puVar8 + -2;
+          uVar9 = bVar4 & 0x1f;
+        }
+        uVar9 = (uint)(bVar3 & 0x3f) | uVar9 << 6;
+        if (uVar9 != 0x5c) goto LAB_1408c0489;
+LAB_1408c049f:
+        if (puVar8 == &UNK_142aa0e15) break;
+        if (puVar8 + -0x142aa0e15 < (undefined *)0x36) {
+          if (-0x41 < (char)puVar8[1]) break;
+        }
+        else if (puVar8 + -0x142aa0e15 == (undefined *)0x36) break;
+                    // WARNING: Subroutine does not return
+        core::str::slice_error_fail();
+      }
+      puVar8 = puVar8 + -1;
+      if (uVar9 == 0x5c) goto LAB_1408c049f;
+LAB_1408c0489:
+      if (uVar9 == 0x2f) goto LAB_1408c049f;
+    } while (puVar8 != &DAT_142aa0e16);
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_01 == 1) {
+      plVar12 = extraout_RAX_01 + 1;
+    }
+    else if ((*extraout_RAX_01 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar12 = extraout_RAX_03, extraout_RAX_03 == (longlong *)0x0))
+    goto LAB_1408c0b7b;
+    if (*plVar12 != 0) goto LAB_1408c0b87;
+    *plVar12 = -1;
+    puffin::ThreadProfiler::begin_scope();
+    *plVar12 = *plVar12 + 1;
+  }
+  puVar6 = (ulonglong *)*in_RCX;
+  lVar7 = in_RCX[1];
+  uVar13 = *puVar6;
+  uVar10 = 0;
+  uVar15 = uVar13 - *(ulonglong *)(lVar7 + 0x18);
+  if (uVar13 < *(ulonglong *)(lVar7 + 0x18)) {
+    uVar15 = uVar10;
+  }
+  uVar14 = uVar13 - *(ulonglong *)(lVar7 + 0x38);
+  if (uVar13 < *(ulonglong *)(lVar7 + 0x38)) {
+    uVar14 = uVar10;
+  }
+  lVar16 = uVar15 * 0x18 + *(longlong *)(lVar7 + 8);
+  uVar13 = *(ulonglong *)(lVar7 + 0x10) - uVar15;
+  if (*(ulonglong *)(lVar7 + 0x10) < uVar15) {
+    lVar16 = 8;
+    uVar13 = uVar10;
+  }
+  lVar17 = uVar14 * 0x18 + *(longlong *)(lVar7 + 0x28);
+  uVar15 = *(ulonglong *)(lVar7 + 0x30) - uVar14;
+  if (*(ulonglong *)(lVar7 + 0x30) < uVar14) {
+    lVar17 = 8;
+    uVar15 = uVar10;
+  }
+  *puVar6 = (*(longlong *)(lVar7 + 0x40) - uVar15) - uVar13;
+  lVar7 = lVar17 + uVar15 * 0x18;
+  plVar12 = (longlong *)*in_RDX;
+  local_50 = lVar16;
+code_r0x0001408c0600:
+  while( true ) {
+    if ((local_50 != 0) && (local_50 != lVar16 + uVar13 * 0x18)) goto code_r0x0001408c060e;
+    if ((lVar17 == 0) || (lVar17 == lVar7)) break;
+    *puVar6 = *puVar6 + 1;
+    puVar2 = (undefined1 *)(lVar17 + 0x14);
+    lVar17 = lVar17 + 0x18;
+    _Size = 0x1e;
+    local_50 = 0;
+    lVar11 = 0;
+    puVar8 = &DAT_142aa0e4c;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+    switch(*puVar2) {
+    case 0:
+      goto code_r0x0001408c0990;
+    case 1:
+      goto code_r0x0001408c0689;
+    case 2:
+      goto code_r0x0001408c07cd;
+    case 3:
+      goto code_r0x0001408c07f9;
+    case 4:
+      goto code_r0x0001408c0765;
+    case 5:
+      goto code_r0x0001408c0867;
+    case 6:
+      goto code_r0x0001408c08a9;
+    case 7:
+      goto code_r0x0001408c080f;
+    case 8:
+      goto code_r0x0001408c08eb;
+    case 9:
+      goto code_r0x0001408c078b;
+    case 10:
+      goto code_r0x0001408c08d5;
+    case 0xb:
+      goto code_r0x0001408c074f;
+    case 0xc:
+      goto code_r0x0001408c077b;
+    case 0xd:
+      goto code_r0x0001408c0893;
+    case 0xe:
+      goto code_r0x0001408c0723;
+    case 0xf:
+      goto code_r0x0001408c07e3;
+    case 0x10:
+      goto code_r0x0001408c070d;
+    case 0x11:
+      goto code_r0x0001408c083b;
+    case 0x13:
+      goto code_r0x0001408c08bf;
+    case 0x14:
+      goto code_r0x0001408c0937;
+    case 0x15:
+      goto code_r0x0001408c0851;
+    case 0x16:
+      goto code_r0x0001408c087d;
+    case 0x17:
+      goto code_r0x0001408c0924;
+    case 0x18:
+      goto code_r0x0001408c0944;
+    case 0x19:
+      goto code_r0x0001408c07b7;
+    case 0x1a:
+      goto code_r0x0001408c07a1;
+    case 0x1b:
+      goto code_r0x0001408c0977;
+    case 0x1c:
+      goto code_r0x0001408c06e1;
+    case 0x1d:
+      goto code_r0x0001408c0957;
+    case 0x1e:
+      goto code_r0x0001408c096a;
+    case 0x1f:
+      goto code_r0x0001408c08fb;
+    case 0x20:
+      goto code_r0x0001408c0825;
+    case 0x21:
+      goto code_r0x0001408c0911;
+    case 0x22:
+      goto code_r0x0001408c0739;
+    case 0x23:
+      goto code_r0x0001408c06f7;
+    case 0x24:
+      goto code_r0x0001408c06b5;
+    case 0x25:
+      goto code_r0x0001408c06cb;
+    case 0x26:
+      goto code_r0x0001408c069f;
+    }
+  }
+  if (extraout_AL != '\0') {
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_02 == 1) {
+      plVar12 = extraout_RAX_02 + 1;
+    }
+    else if ((*extraout_RAX_02 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar12 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0)) {
+LAB_1408c0b7b:
+                    // WARNING: Subroutine does not return
+      std::thread::local::panic_access_error();
+    }
+    if (*plVar12 != 0) {
+LAB_1408c0b87:
+                    // WARNING: Subroutine does not return
+      core::cell::panic_already_borrowed();
+    }
+    *plVar12 = -1;
+    puffin::ThreadProfiler::end_scope();
+    *plVar12 = *plVar12 + 1;
+  }
+  return;
+code_r0x0001408c060e:
+  *puVar6 = *puVar6 + 1;
+  lVar11 = local_50 + 0x18;
+  puVar2 = (undefined1 *)(local_50 + 0x14);
+  _Size = 0x1e;
+  puVar8 = &DAT_142aa0e4c;
+  local_50 = lVar11;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+  switch(*puVar2) {
+  case 1:
+code_r0x0001408c0689:
+    _Size = 0x18;
+    puVar8 = &UNK_142aa0e6a;
+    local_50 = lVar11;
+    break;
+  case 2:
+code_r0x0001408c07cd:
+    _Size = 0x1c;
+    puVar8 = &UNK_142aa0e82;
+    local_50 = lVar11;
+    break;
+  case 3:
+code_r0x0001408c07f9:
+    _Size = 0x20;
+    puVar8 = &UNK_142aa0e9e;
+    local_50 = lVar11;
+    break;
+  case 4:
+code_r0x0001408c0765:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa0ebe;
+    local_50 = lVar11;
+    break;
+  case 5:
+code_r0x0001408c0867:
+    _Size = 0x19;
+    puVar8 = &UNK_142aa0ed9;
+    local_50 = lVar11;
+    break;
+  case 6:
+code_r0x0001408c08a9:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa0ef2;
+    local_50 = lVar11;
+    break;
+  case 7:
+code_r0x0001408c080f:
+    _Size = 0x1c;
+    puVar8 = &UNK_142aa0f0d;
+    local_50 = lVar11;
+    break;
+  case 8:
+code_r0x0001408c08eb:
+    _Size = 0x1e;
+    puVar8 = &UNK_142aa0f29;
+    local_50 = lVar11;
+    break;
+  case 9:
+code_r0x0001408c078b:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa0f47;
+    local_50 = lVar11;
+    break;
+  case 10:
+code_r0x0001408c08d5:
+    _Size = 0x1a;
+    puVar8 = &UNK_142aa0f62;
+    local_50 = lVar11;
+    break;
+  case 0xb:
+code_r0x0001408c074f:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa0f7c;
+    local_50 = lVar11;
+    break;
+  case 0xc:
+code_r0x0001408c077b:
+    _Size = 0x1e;
+    puVar8 = &UNK_142aa0f99;
+    local_50 = lVar11;
+    break;
+  case 0xd:
+code_r0x0001408c0893:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa0fb7;
+    local_50 = lVar11;
+    break;
+  case 0xe:
+code_r0x0001408c0723:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa0fd2;
+    local_50 = lVar11;
+    break;
+  case 0xf:
+code_r0x0001408c07e3:
+    _Size = 0x24;
+    puVar8 = &UNK_142aa0fef;
+    local_50 = lVar11;
+    break;
+  case 0x10:
+code_r0x0001408c070d:
+    _Size = 0x2e;
+    puVar8 = &UNK_142aa1013;
+    local_50 = lVar11;
+    break;
+  case 0x11:
+code_r0x0001408c083b:
+    _Size = 0x1f;
+    puVar8 = &UNK_142aa1041;
+    local_50 = lVar11;
+    break;
+  case 0x12:
+    goto code_r0x0001408c0600;
+  case 0x13:
+code_r0x0001408c08bf:
+    _Size = 0x1a;
+    puVar8 = &UNK_142aa1060;
+    local_50 = lVar11;
+    break;
+  case 0x14:
+code_r0x0001408c0937:
+    _Size = 0x1e;
+    puVar8 = &UNK_142aa107a;
+    local_50 = lVar11;
+    break;
+  case 0x15:
+code_r0x0001408c0851:
+    _Size = 0x1f;
+    puVar8 = &UNK_142aa1098;
+    local_50 = lVar11;
+    break;
+  case 0x16:
+code_r0x0001408c087d:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa10b7;
+    local_50 = lVar11;
+    break;
+  case 0x17:
+code_r0x0001408c0924:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa10d4;
+    local_50 = lVar11;
+    break;
+  case 0x18:
+code_r0x0001408c0944:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa10ef;
+    local_50 = lVar11;
+    break;
+  case 0x19:
+code_r0x0001408c07b7:
+    _Size = 0x1b;
+    puVar8 = &UNK_142aa110c;
+    local_50 = lVar11;
+    break;
+  case 0x1a:
+code_r0x0001408c07a1:
+    _Size = 0x1c;
+    puVar8 = &UNK_142aa1127;
+    local_50 = lVar11;
+    break;
+  case 0x1b:
+code_r0x0001408c0977:
+    _Size = 0x24;
+    puVar8 = &UNK_142aa1143;
+    local_50 = lVar11;
+    break;
+  case 0x1c:
+code_r0x0001408c06e1:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa1167;
+    local_50 = lVar11;
+    break;
+  case 0x1d:
+code_r0x0001408c0957:
+    _Size = 0x1f;
+    puVar8 = &UNK_142aa1184;
+    local_50 = lVar11;
+    break;
+  case 0x1e:
+code_r0x0001408c096a:
+    _Size = 0x1e;
+    puVar8 = &UNK_142aa11a3;
+    local_50 = lVar11;
+    break;
+  case 0x1f:
+code_r0x0001408c08fb:
+    _Size = 0x24;
+    puVar8 = &UNK_142aa11c1;
+    local_50 = lVar11;
+    break;
+  case 0x20:
+code_r0x0001408c0825:
+    _Size = 0x1a;
+    puVar8 = &UNK_142aa11e5;
+    local_50 = lVar11;
+    break;
+  case 0x21:
+code_r0x0001408c0911:
+    _Size = 0x20;
+    puVar8 = &UNK_142aa11ff;
+    local_50 = lVar11;
+    break;
+  case 0x22:
+code_r0x0001408c0739:
+    _Size = 0x1f;
+    puVar8 = &UNK_142aa121f;
+    local_50 = lVar11;
+    break;
+  case 0x23:
+code_r0x0001408c06f7:
+    _Size = 0x20;
+    puVar8 = &UNK_142aa123e;
+    local_50 = lVar11;
+    break;
+  case 0x24:
+code_r0x0001408c06b5:
+    _Size = 0x1c;
+    puVar8 = &UNK_142aa125e;
+    local_50 = lVar11;
+    break;
+  case 0x25:
+code_r0x0001408c06cb:
+    _Size = 0x1f;
+    puVar8 = &UNK_142aa127a;
+    local_50 = lVar11;
+    break;
+  case 0x26:
+code_r0x0001408c069f:
+    _Size = 0x1d;
+    puVar8 = &UNK_142aa1299;
+    local_50 = lVar11;
+  }
+code_r0x0001408c0990:
+  if (*plVar12 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (_Dst == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    memcpy(_Dst,puVar8,_Size);
+    lStack_b8 = 0;
+    sStack_a8 = _Size;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (lStack_b8 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  resources::audio_resources::impl$10::set_position();
+  resources::audio_resources::impl$10::set_parameter();
+  resources::audio_resources::AudioInstance::start_if_not_playing();
+  resources::audio_resources::impl$13::drop();
+  if (sStack_a8 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  goto code_r0x0001408c0600;
+}
+

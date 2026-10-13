@@ -1,0 +1,30 @@
+[package]
+name = "country-core-wall"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP12 reconstruction of the Tiny Glade country_core::systems::wall ECS systems (version B skeleton-aligned)"
+publish = false
+
+# Standalone crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Versions respect the original release Cargo.lock baseline (reconstruction/Cargo.lock).
+glam = { version = "=0.29.3", features = ["serde"] }
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+hashbrown = "=0.14.5"
+log = "=0.4.27"
+
+# bevy_ecs 0.16.0 = the game's Bevy family; the wall systems call its real API
+# (EventReader / Res / Query / Commands ...). bevy_time 0.16 is absent from the
+# offline registry cache -> `crate::resources::time::Time` typed-gap facade.
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+
+# NOT declared (offline-cache gaps, served by typed-gap facades): puffin
+# (-> puffin_contract), bevy_time (-> resources::time::Time), half, fastrand,
+# parking_lot, bevy_app/bevy_state.

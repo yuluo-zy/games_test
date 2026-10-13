@@ -1,0 +1,83 @@
+{
+  "version": "B",
+  "executable_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "scope": "country_core::render::nani::systems.rs + consumed component/resource graph (WP6)",
+  "systems": {
+    "nani_maintain_instances": {"address": "0x14206f300", "source_line": 36, "decompile": "wp3/evidence/decompiled/0x14206f300.c (773 lines)"},
+    "nani_update_solid_vertex_color": {"address": "0x142070ac0", "source_line": 119},
+    "nani_update_solid_vertex_color_window": {"address": "0x142071590", "source_line": 152},
+    "nani_update_solid_albedo_map": {"address": "0x142072010", "source_line": 185},
+    "nani_update_solid_albedo_map_emissive": {"address": "0x142072b50", "source_line": 223},
+    "nani_update_preplaced_flower": {"address": "0x142073690", "source_line": 261},
+    "nani_update_plant": {"address": "0x142074740", "source_line": 313},
+    "nani_update_solid_vertex_color_window_glass": {"address": "0x142075070", "source_line": 337},
+    "nani_update_solid_vertex_color_bricks": {"address": "0x142076230", "source_line": 393},
+    "nani_update_gothic_window_bricks": {"address": "0x142076e40", "source_line": 425},
+    "nani_update_curved_halftimber": {"address": "0x142077d20", "source_line": 0},
+    "nani_update_stone_floor": {"address": "0x142078780", "source_line": 0},
+    "nani_update_wren": {"address": "0x1420797b0", "source_line": 671},
+    "nani_update_lantern_emissive": {"address": "0x14207a4f0", "source_line": 700},
+    "nani_update_plaster": {"address": "0x14207b290", "source_line": 750},
+    "nani_update_cloth": {"address": "0x14207c0a0", "source_line": 800},
+    "nani_update_smoke": {"address": "0x14207cd60", "source_line": 835},
+    "nani_update_balcony_door": {"address": "0x14207d770", "source_line": 868},
+    "nani_update_uber": {"address": "0x14207e1f0", "source_line": 903},
+    "nani_update_velocity_only": {"address": "0x14207f060", "source_line": 954},
+    "nani_update_stairs_floor": {"address": "0x14207fcc0", "source_line": 979},
+    "nani_flush_instance_updates": {"address": "0x142080640", "source_line": 1011, "status": "WP6 new discovery (not in wp3 list)", "decompile": "wp6/evidence/g1-result.json (fresh Ghidra query)"}
+  },
+  "ecs_signatures_source": "reconstruction/country-core-render/wp3/evidence/ecs-system-signatures.txt (24 FunctionSystem records, reused + verified)",
+  "fresh_ghidra_queries": [
+    {"program": "tiny-glade.exe", "worker": "shared", "job": "wp6/evidence/g1-job.json", "result": "wp6/evidence/g1-result.json", "functions": ["0x1407a45b0 (Transform::compute_affine)", "0x1407a4700 (Transform::forward)", "0x142080640 (nani_flush_instance_updates)", "0x140c9ce00 (look_at)", "0x140c9d0d0 (abs_diff_eq)", "0x140c9d180 (default)"], "findings": "Transform layout = {translation@0x0, rotation@0xC, scale@0x1C} 40B; flush = 30-slot dirty iteration + counter swap at GpuWorld+0x1440/+0x1448"}
+  ],
+  "skeleton_bundles": {
+    "render/nani/systems.rs": {"path": "skeleton/B/crates/country-core/src/render/nani/systems.rs", "source_sha256": "aa300bc4204c722243361b6615fb01789de07a3d0d1a0cffd6aa9c5e8b17bc51", "procedure_instances": 24, "modules": [1595, 1622, 3097, 3098]},
+    "utils/components/transform.rs": {"path": "skeleton/B/crates/utils/src/components/transform.rs", "source_sha256": "7959b9d16edcaa9383c750d608a23505c41e04fd3a8f6c1feaf6385f7873766e", "ownership": "utils crate (game-owned util)"},
+    "components/drawable.rs": {"source_sha256": "fd45c7807905dec2b04bec695a3f277dcb2b3cc418728ddf21965cf6c1be0bcf"},
+    "components/mod.rs": {"source_sha256": "cad76f2c0b1d43428154cdf03877ec3fb4e68e0f320d1845253786c7cd8b08be"},
+    "resources/color_id.rs": {"source_sha256": "17d43ae6cf46617cd58dec9cbc8261afcd57065682adbc467d8f56d150a5ba90"},
+    "resources/window_lights.rs": {"source_sha256": "e4c9eec8fe10c27afdf738a3de34504be0fe07eb771e91c3811a4268a2770133"},
+    "resources/critters.rs": {"source_sha256": "8b1cd9b872515fc1122502982bd58a6a42adeced693c8f8573a3cce710792942"},
+    "resources/walls/plaster.rs": {"source_sha256": "99ca938f825d05da20ae7026fa12331c823bfa1ec769c0cb3d9c83c8986cd034"},
+    "resources/walls/public_walls.rs": {"source_sha256": "f2b8d08dbc8583a32c331dc8c317850bad44dfd49a979f1dc06053f2ef9e9d62"},
+    "resources/walls/curved_halftimber.rs": {"source_sha256": "ea868d6403172e2fd333507b175d13465469406e566b50bcbcd95460548799b3"},
+    "resources/roofs/roof_shape.rs": {"source_sha256": "4172d60367c1433b065efaf35debfe80ff1423293d264cbdd4cb0e1ebb763804"},
+    "resources/roofs/roof_animation.rs": {"source_sha256": "59b51e3c1ac9fa619f28141f9d0ab7ed921ed6887368fbcd24342293a5b24e3a"},
+    "resources/stairs/visual.rs": {"source_sha256": "206665437edbbef2cb2dc086e38fa86144d0ded021f55487b1ce5fca05187380"},
+    "resources/render/mesh_atlas_library.rs": {"source_sha256": "6447535fb14e3f4c175f1355db09f1d0642ad9668ac92a94b6876d01d0cbc480"},
+    "systems/paths/draw_path.rs": {"source_sha256": "d06df2a309f21b21b317d49b5c23c190c172e2fef98cf19edaf109e79c6b8891"}
+  },
+  "candidate_reuse_verdicts": [
+    {
+      "candidate": "reconstruction/crates/tg-building-runtime/src/nani.rs",
+      "types": ["NaniInstanceDesc", "NaniInstanceMeshDesc", "SemiTransparent", "FlatLighting", "NaniSolidVertexColorBundle", "NaniStoneFloorBundle"],
+      "verdict": "PARTIAL REUSE (shape only)",
+      "detail": "NaniInstanceMeshDesc::Named(u64)/AtlasPart(u32) shape supported by B public-symbols `From<MeshAtlasPart>`; BUT candidate NaniInstanceDesc {mesh enum 16B, subset_kind u8}=24B conflicts with maintain row stride 0x18 evidence (16B) -> layout NOT reused (marked I); SemiTransparent/FlatLighting ZST markers reused as-is (O)."
+    },
+    {
+      "candidate": "task-index/work/* (session/walls/roofs/history)",
+      "types": ["session/walls/roofs/history resources"],
+      "verdict": "NONE found",
+      "detail": "task-index work dirs contain evidence bundles (abc-building-35, abc-tools-52, render-halfres-c); no reusable recovered resource/component types for the consumed set."
+    },
+    {
+      "candidate": "reconstruction/roof (roof_state.rs, parameters.rs), reconstruction/wall (height_rules.rs), reconstruction/critters",
+      "types": ["Roof/RoofAnimation/Floor/PublicWalls/Plaster/CurvedHalfTimber/Wren"],
+      "verdict": "NONE found",
+      "detail": "reconstruction sub-projects cover roof/wall CPU rule subsets, not the resource structs these systems consume."
+    }
+  ],
+  "deliverables": {
+    "src": "wp6/src/{render/nani/systems.rs, components/*, resources/*, utils/components/transform.rs, systems/paths/draw_path.rs}",
+    "contracts": "wp6/contracts/{systems,components,resources}.md",
+    "integration": "reconstruction/country-core/src (cargo check --offline 0 errors; clippy --all-targets 0 errors)"
+  },
+  "integration_patches": [
+    {"file": "reconstruction/country-core/src/render/nani/gpu_world.rs", "patch": "InstanceDataMarker<D> + #[derive(Component, Clone, Copy, Debug, Default)]; GpuWorld + #[derive(Resource)]; owned_subset_mut -> &RwLock<Option<GpuWorldSubset>> (was by-value RwLock, infeasible from &self)"},
+    {"file": "reconstruction/country-core/src/render/nani/instance_data.rs", "patch": "CurvedHalfTimberInstanceData + #[derive(Component)] (queried as &mut)"},
+    {"file": "reconstruction/country-core/src/asset_libraries/ssbo_library.rs", "patch": "BufferState + unsafe impl Send/Sync (AssetSsboLibrary is a Resource; raw pointers behind lock)"},
+    {"file": "reconstruction/country-core/src/asset_libraries/texture_library.rs", "patch": "AssetTextureLibrary + #[derive(Resource)]"}
+  ],
+  "remaining_gaps": "component->T field mappings (except preplaced_flower/curved_halftimber/stone_floor); per-system kind constants; NaniActiveInstance chunk_id width; flush 30-slot layout; PathRastersResources internals; NaniInstanceDesc exact size"
+}

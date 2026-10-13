@@ -1,0 +1,570 @@
+// name: save_game_to_file<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>,core::slice::iter::Iter<country_core::resources::history::MultiEdit>_> size: 2930
+// void __cdecl save_game_to_file<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>,core::slice::iter::Iter<country_core::resources::history::MultiEdit>_>(void)
+
+void __cdecl
+country_core::systems::save::save_game::
+save_game_to_file<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>,core::slice::iter::Iter<country_core::resources::history::MultiEdit>_>
+          (void)
+
+{
+  ulonglong uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined7 uVar6;
+  undefined7 uVar7;
+  undefined7 uVar8;
+  byte bVar9;
+  byte *extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong extraout_RAX_03;
+  longlong extraout_RAX_04;
+  void *extraout_RAX_05;
+  longlong extraout_RAX_06;
+  longlong extraout_RAX_07;
+  longlong extraout_RAX_08;
+  longlong lVar10;
+  longlong *in_RCX;
+  ulonglong *in_RDX;
+  ulonglong *puVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  longlong in_R8;
+  size_t sVar14;
+  ulonglong uVar15;
+  int in_R9D;
+  ulonglong uVar16;
+  int in_stack_00000038;
+  int in_stack_00000040;
+  longlong in_stack_00000048;
+  longlong in_stack_00000050;
+  longlong in_stack_00000068;
+  undefined7 uStack_2e7;
+  undefined7 uStack_2df;
+  undefined8 local_2c8;
+  uint7 uStack_2bf;
+  undefined7 uStack_2b7;
+  undefined8 local_2a0;
+  longlong local_298;
+  void *pvStack_290;
+  ulonglong local_288;
+  ulonglong uStack_280;
+  undefined8 local_278;
+  longlong *plStack_270;
+  undefined8 uStack_268;
+  undefined8 uStack_260;
+  longlong lStack_258;
+  undefined8 local_250;
+  undefined1 local_248;
+  undefined7 uStack_247;
+  char cStack_240;
+  undefined7 uStack_23f;
+  undefined1 local_238;
+  undefined7 uStack_237;
+  undefined1 uStack_230;
+  undefined7 uStack_22f;
+  undefined1 local_228;
+  undefined7 uStack_227;
+  undefined8 local_220;
+  undefined8 uStack_218;
+  undefined8 local_210;
+  undefined8 local_200;
+  longlong local_1f8;
+  void *pvStack_1f0;
+  ulonglong local_1e8;
+  ulonglong uStack_1e0;
+  undefined8 local_1d8;
+  longlong *local_1d0;
+  undefined8 uStack_1c8;
+  undefined8 local_1c0;
+  longlong lStack_1b8;
+  undefined8 local_1b0;
+  undefined1 local_1a8;
+  undefined8 local_1a7;
+  undefined8 uStack_19f;
+  undefined8 local_197;
+  undefined7 uStack_18f;
+  undefined1 uStack_188;
+  undefined7 uStack_187;
+  longlong *local_180;
+  undefined *local_178;
+  longlong lStack_170;
+  longlong local_168;
+  longlong lStack_160;
+  longlong local_158;
+  ulonglong *puStack_150;
+  undefined8 local_148;
+  char cStack_140;
+  undefined7 uStack_13f;
+  ulonglong local_138;
+  ulonglong uStack_130;
+  undefined8 local_128;
+  longlong local_118;
+  void *local_110;
+  char local_108;
+  undefined6 uStack_107;
+  char cStack_101;
+  undefined7 uStack_100;
+  undefined1 uStack_f9;
+  undefined7 uStack_f8;
+  undefined1 uStack_f1;
+  undefined7 uStack_f0;
+  undefined1 uStack_e9;
+  undefined7 uStack_e8;
+  undefined1 uStack_e1;
+  longlong local_e0;
+  char local_d8;
+  undefined6 uStack_d7;
+  char cStack_d1;
+  byte bStack_d0;
+  undefined4 uStack_cf;
+  undefined2 uStack_cb;
+  undefined1 uStack_c9;
+  undefined7 local_c8;
+  undefined1 uStack_c1;
+  undefined7 uStack_c0;
+  undefined1 uStack_b9;
+  undefined7 uStack_b8;
+  longlong local_b0;
+  void *pvStack_a8;
+  ulonglong uStack_a0;
+  ulonglong uStack_98;
+  undefined8 uStack_90;
+  longlong local_88;
+  longlong lStack_80;
+  longlong local_78;
+  longlong *local_70;
+  char cStack_68;
+  undefined7 uStack_67;
+  byte bStack_60;
+  undefined4 uStack_5f;
+  undefined2 uStack_5b;
+  undefined1 uStack_59;
+  longlong lStack_58;
+  undefined8 local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  puVar11 = in_RDX;
+  std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();
+  if ((*extraout_RAX & 1) == 0) {
+    std::sys::random::hashmap_random_keys();
+    extraout_RAX[0] = 1;
+    extraout_RAX[1] = 0;
+    extraout_RAX[2] = 0;
+    extraout_RAX[3] = 0;
+    extraout_RAX[4] = 0;
+    extraout_RAX[5] = 0;
+    extraout_RAX[6] = 0;
+    extraout_RAX[7] = 0;
+    *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;
+    *(ulonglong **)(extraout_RAX + 0x10) = puVar11;
+    local_158 = extraout_RAX_00;
+  }
+  else {
+    local_158 = *(longlong *)(extraout_RAX + 8);
+    puVar11 = *(ulonglong **)(extraout_RAX + 0x10);
+  }
+  *(longlong *)(extraout_RAX + 8) = local_158 + 1;
+  local_168 = 0;
+  lStack_160 = 0;
+  local_178 = &DAT_142cd3a70;
+  lStack_170 = 0;
+  local_88 = 0;
+  lStack_80 = 8;
+  uVar1 = in_RDX[3];
+  uVar12 = uVar1 + 1;
+  uVar15 = 0xffffffffffffffff;
+  if (uVar12 != 0) {
+    uVar15 = uVar12;
+  }
+  local_78 = 0;
+  uVar13 = in_RDX[2];
+  puStack_150 = puVar11;
+  if ((*in_RDX < uVar15) && (*in_RDX - uVar13 < uVar15 - uVar13)) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    uVar13 = in_RDX[2];
+    uVar15 = in_RDX[1];
+    sVar14 = uVar1 - uVar13;
+    if (uVar13 <= uVar1 && sVar14 != 0) {
+LAB_141750d89:
+      memset((void *)(uVar13 + uVar15),0,sVar14);
+      in_RDX[2] = uVar1;
+      uVar13 = uVar1;
+    }
+  }
+  else {
+    uVar15 = in_RDX[1];
+    sVar14 = uVar1 - uVar13;
+    if (uVar13 <= uVar1 && sVar14 != 0) goto LAB_141750d89;
+  }
+  *(undefined1 *)(uVar15 + uVar1) = 0x7b;
+  if (uVar13 < uVar12) {
+    in_RDX[2] = uVar12;
+  }
+  in_RDX[3] = uVar12;
+  uStack_130 = (ulonglong)in_R9D;
+  local_138 = uStack_130 >> 0x3f;
+  cStack_140 = '\x02';
+  local_148 = CONCAT71(local_148._1_7_,2);
+  camera_rig::_::impl$0::serialize<serde_json::value::ser::Serializer>();
+  if ((char)local_70 == '\x06') {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  uStack_f0 = CONCAT25(uStack_5b,CONCAT41(uStack_5f,bStack_60));
+  uStack_e9 = uStack_59;
+  uStack_e8 = (undefined7)lStack_58;
+  uStack_e1 = (undefined1)((ulonglong)lStack_58 >> 0x38);
+  uStack_100 = SUB87(local_70,0);
+  uStack_f9 = (undefined1)((ulonglong)local_70 >> 0x38);
+  uStack_f8 = (undefined7)CONCAT71(uStack_67,cStack_68);
+  uStack_f1 = (undefined1)((uint7)uStack_67 >> 0x30);
+  local_108 = '\x03';
+  resources::time_of_day::_::impl$0::serialize<serde_json::value::ser::Serializer>();
+  if ((char)local_70 == '\x06') {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  uStack_a0 = CONCAT71(uStack_67,cStack_68);
+  uStack_98 = CONCAT17(uStack_59,CONCAT25(uStack_5b,CONCAT41(uStack_5f,bStack_60)));
+  uStack_90 = lStack_58;
+  pvStack_a8 = local_70;
+  local_b0 = CONCAT71(local_b0._1_7_,4);
+  if (in_stack_00000068 == 0) {
+    local_d8 = '\0';
+  }
+  else {
+    resources::critters::sheep::control::_::impl$0::serialize<serde_json::value::ser::Serializer>();
+    if (local_d8 == '\x06') {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  uStack_67 = CONCAT16(cStack_d1,uStack_d7);
+  lStack_58 = CONCAT17(uStack_c1,local_c8);
+  local_50 = CONCAT17(uStack_b9,uStack_c0);
+  cStack_68 = local_d8;
+  bStack_60 = bStack_d0;
+  uStack_5f = uStack_cf;
+  uStack_5b = uStack_cb;
+  uStack_59 = uStack_c9;
+  local_70 = (longlong *)CONCAT71(local_70._1_7_,5);
+  resources::glade_color_customization::_::impl$0::serialize<serde_json::value::ser::Serializer>();
+  uVar8 = uStack_c0;
+  uVar7 = local_c8;
+  bVar9 = bStack_d0;
+  if (local_d8 == '\x06') {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  uVar2 = CONCAT17(cStack_d1,CONCAT61(uStack_d7,local_d8));
+  uVar6 = CONCAT25(uStack_cb,CONCAT41(uStack_cf,bStack_d0));
+  uVar3 = CONCAT17(uStack_c1,local_c8);
+  uVar4 = CONCAT17(uStack_b9,uStack_c0);
+  cStack_d1 = local_d8;
+  bStack_d0 = (byte)uStack_d7;
+  uStack_cf = (undefined4)((uint6)uStack_d7 >> 8);
+  uStack_cb = (undefined2)((ulonglong)uVar2 >> 0x30);
+  local_c8 = (undefined7)(CONCAT17(uStack_c9,uVar6) >> 8);
+  uStack_c1 = (undefined1)uVar7;
+  uStack_c0 = (undefined7)((ulonglong)uVar3 >> 8);
+  uStack_b9 = (undefined1)uVar8;
+  uStack_b8 = (undefined7)((ulonglong)uVar4 >> 8);
+  local_298 = (ulonglong)uStack_2bf << 8;
+  pvStack_290 = (void *)CONCAT71(uStack_2b7,2);
+  local_288 = 0;
+  uStack_280 = 0x1b;
+  local_278 = local_2a0;
+  local_250 = local_2c8;
+  plStack_270 = (longlong *)CONCAT71(uStack_2e7,1);
+  uStack_268 = CONCAT71(uStack_2df,2);
+  uStack_260 = 0;
+  local_228 = (undefined1)local_128;
+  uStack_227 = (undefined7)((ulonglong)local_128 >> 8);
+  local_238 = (undefined1)local_138;
+  uStack_237 = (undefined7)(local_138 >> 8);
+  uStack_230 = (undefined1)uStack_130;
+  uStack_22f = (undefined7)(uStack_130 >> 8);
+  local_248 = (undefined1)local_148;
+  uStack_247 = (undefined7)((ulonglong)local_148 >> 8);
+  cStack_240 = cStack_140;
+  uStack_23f = uStack_13f;
+  local_200 = CONCAT17(uStack_e1,uStack_e8);
+  local_220 = CONCAT17(cStack_101,CONCAT61(uStack_107,local_108));
+  uStack_218 = CONCAT17(uStack_f9,uStack_100);
+  local_210 = CONCAT17(uStack_f1,uStack_f8);
+  local_1d8 = uStack_90;
+  local_1e8 = uStack_a0;
+  uStack_1e0 = uStack_98;
+  local_1f8 = local_b0;
+  pvStack_1f0 = pvStack_a8;
+  local_1b0 = local_50;
+  uStack_1c8 = CONCAT71(uStack_67,cStack_68);
+  local_1c0 = CONCAT17(uStack_59,CONCAT25(uStack_5b,CONCAT41(uStack_5f,bStack_60)));
+  lStack_1b8 = lStack_58;
+  local_1d0 = local_70;
+  local_1a8 = 6;
+  uStack_187 = uStack_b8;
+  local_1a7 = CONCAT17(local_d8,CONCAT61(uStack_d7,local_d8));
+  uStack_19f = CONCAT17(bVar9,CONCAT25(uStack_cb,(int5)uStack_d7));
+  local_197 = CONCAT17(uStack_c1,local_c8);
+  uStack_18f = uStack_c0;
+  uStack_188 = uStack_b9;
+  lStack_258 = in_R8;
+  write_json_sections<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>();
+  if (extraout_RAX_01 != 0) {
+    in_RCX[1] = extraout_RAX_01;
+    *in_RCX = -0x8000000000000000;
+    core::ptr::
+    drop_in_place<array_<tuple_<country_core::systems::save::save_game::SaveFileSection,enum2_<serde_json::value::Value>_>,7>_>
+              ();
+    goto joined_r0x0001417515e7;
+  }
+  core::ptr::
+  drop_in_place<array_<tuple_<country_core::systems::save::save_game::SaveFileSection,enum2_<serde_json::value::Value>_>,7>_>
+            ();
+  uVar1 = in_RDX[3];
+  uVar12 = uVar1 + 0xc;
+  uVar15 = 0xffffffffffffffff;
+  if (uVar1 < 0xfffffffffffffff4) {
+    uVar15 = uVar12;
+  }
+  uVar13 = in_RDX[2];
+  if ((*in_RDX < uVar15) && (*in_RDX - uVar13 < uVar15 - uVar13)) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    uVar13 = in_RDX[2];
+    uVar15 = in_RDX[1];
+    sVar14 = uVar1 - uVar13;
+    if (uVar13 <= uVar1 && sVar14 != 0) {
+LAB_14175118b:
+      memset((void *)(uVar13 + uVar15),0,sVar14);
+      in_RDX[2] = uVar1;
+      uVar13 = uVar1;
+    }
+  }
+  else {
+    uVar15 = in_RDX[1];
+    sVar14 = uVar1 - uVar13;
+    if (uVar13 <= uVar1 && sVar14 != 0) goto LAB_14175118b;
+  }
+  *(undefined8 *)(uVar15 + uVar1) = 0x79726f7473694822;
+  *(undefined4 *)(uVar15 + 8 + uVar1) = 0xa7b3a22;
+  if (uVar13 < uVar12) {
+    in_RDX[2] = uVar12;
+  }
+  in_RDX[3] = uVar12;
+  uStack_98 = (ulonglong)in_stack_00000038;
+  uStack_a0 = uStack_98 >> 0x3f;
+  pvStack_a8 = (void *)CONCAT71(pvStack_a8._1_7_,2);
+  local_b0 = CONCAT71(local_b0._1_7_,7);
+  lStack_58 = (longlong)in_stack_00000040;
+  cStack_68 = '\x02';
+  bStack_60 = (byte)(in_stack_00000040 >> 0x1f) >> 7;
+  uStack_5f = 0;
+  uStack_5b = 0;
+  uStack_59 = 0;
+  local_70 = (longlong *)CONCAT71(local_70._1_7_,8);
+  serde::ser::Serializer::
+  collect_seq<serde_json::value::ser::Serializer,ref_<slice2_<country_core::resources::history::ResolvedHistoryChainSnapshot>_>_>
+            ();
+  uVar6 = uStack_f0;
+  uVar8 = uStack_f8;
+  uVar7 = uStack_100;
+  if (local_108 == '\x06') {
+    local_148 = CONCAT17(uStack_f9,uStack_100);
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  uVar2 = CONCAT17(cStack_101,CONCAT61(uStack_107,local_108));
+  uVar3 = CONCAT17(uStack_f9,uStack_100);
+  uVar4 = CONCAT17(uStack_f1,uStack_f8);
+  uVar5 = CONCAT17(uStack_e9,uStack_f0);
+  cStack_101 = local_108;
+  uStack_100 = (undefined7)((ulonglong)uVar2 >> 8);
+  uStack_f9 = (undefined1)uVar7;
+  uStack_f8 = (undefined7)((ulonglong)uVar3 >> 8);
+  uStack_f1 = (undefined1)uVar8;
+  uStack_f0 = (undefined7)((ulonglong)uVar4 >> 8);
+  uStack_e9 = (undefined1)uVar6;
+  uStack_e8 = (undefined7)((ulonglong)uVar5 >> 8);
+  local_298 = local_b0;
+  pvStack_290 = pvStack_a8;
+  local_288 = uStack_a0;
+  uStack_280 = uStack_98;
+  local_278 = uStack_90;
+  local_250 = local_50;
+  uStack_268 = CONCAT71(uStack_67,cStack_68);
+  uStack_260 = CONCAT17(uStack_59,CONCAT25(uStack_5b,CONCAT41(uStack_5f,bStack_60)));
+  lStack_258 = lStack_58;
+  plStack_270 = local_70;
+  local_248 = 9;
+  uStack_227 = uStack_e8;
+  uStack_247 = CONCAT61(uStack_107,local_108);
+  uStack_237 = uStack_f8;
+  uStack_230 = uStack_f1;
+  uStack_22f = uStack_f0;
+  local_228 = uStack_e9;
+  cStack_240 = local_108;
+  uStack_23f = uStack_100;
+  local_238 = uStack_f9;
+  write_json_sections<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>();
+  if (extraout_RAX_02 == 0) {
+    core::ptr::
+    drop_in_place<array_<tuple_<country_core::systems::save::save_game::SaveFileSection,enum2_<serde_json::value::Value>_>,3>_>
+              ();
+    std::io::Write::write_all<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>()
+    ;
+    if (extraout_RAX_03 == 0) {
+      local_118 = 0;
+      local_180 = in_RCX;
+      while (lVar10 = local_78, in_stack_00000048 != in_stack_00000050) {
+        uVar1 = in_RDX[3];
+        if (local_78 == local_88) {
+          alloc::raw_vec::RawVec::
+          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                    ();
+        }
+        *(ulonglong *)(lStack_80 + lVar10 * 8) = uVar1;
+        local_78 = lVar10 + 1;
+        if (local_118 != 0) {
+          uVar1 = in_RDX[3];
+          uVar12 = uVar1 + 2;
+          uVar15 = uVar12;
+          if (0xfffffffffffffffd < uVar1) {
+            uVar15 = 0xffffffffffffffff;
+          }
+          uVar13 = in_RDX[2];
+          if ((*in_RDX < uVar15) && (*in_RDX - uVar13 < uVar15 - uVar13)) {
+            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+            uVar13 = in_RDX[2];
+            uVar15 = in_RDX[1];
+            sVar14 = uVar1 - uVar13;
+            if (uVar13 <= uVar1 && sVar14 != 0) {
+LAB_1417513ec:
+              memset((void *)(uVar13 + uVar15),0,sVar14);
+              in_RDX[2] = uVar1;
+              uVar13 = uVar1;
+            }
+          }
+          else {
+            uVar15 = in_RDX[1];
+            sVar14 = uVar1 - uVar13;
+            if (uVar13 <= uVar1 && sVar14 != 0) goto LAB_1417513ec;
+          }
+          *(undefined2 *)(uVar15 + uVar1) = 0xa2c;
+          if (uVar13 < uVar12) {
+            in_RDX[2] = uVar12;
+          }
+          in_RDX[3] = uVar12;
+        }
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        if (extraout_RAX_05 == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+          alloc::raw_vec::handle_error();
+        }
+        local_298 = 0x80;
+        local_288 = 0;
+        local_70 = &local_298;
+        pvStack_290 = extraout_RAX_05;
+        resources::history::_::impl$0::
+        serialize<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>
+                  ();
+        uVar1 = local_288;
+        if (extraout_RAX_06 != 0) {
+          if (local_298 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+LAB_1417516fc:
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+        if (SBORROW8(0,local_298)) goto LAB_1417516fc;
+        lVar10 = local_298;
+        if (local_288 != 0) {
+          local_e0 = local_298;
+          local_110 = pvStack_290;
+          uVar15 = in_RDX[3];
+          uVar13 = uVar15 + local_288;
+          uVar12 = uVar13;
+          if (CARRY8(uVar15,local_288)) {
+            uVar12 = 0xffffffffffffffff;
+          }
+          uVar16 = in_RDX[2];
+          if ((*in_RDX < uVar12) && (*in_RDX - uVar16 < uVar12 - uVar16)) {
+            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+            uVar16 = in_RDX[2];
+            uVar12 = in_RDX[1];
+            sVar14 = uVar15 - uVar16;
+            if (uVar16 <= uVar15 && sVar14 != 0) {
+LAB_1417514d1:
+              memset((void *)(uVar16 + uVar12),0,sVar14);
+              in_RDX[2] = uVar15;
+              uVar16 = uVar15;
+            }
+          }
+          else {
+            uVar12 = in_RDX[1];
+            sVar14 = uVar15 - uVar16;
+            if (uVar16 <= uVar15 && sVar14 != 0) goto LAB_1417514d1;
+          }
+          memcpy((void *)(uVar12 + uVar15),local_110,uVar1);
+          if (uVar16 < uVar13) {
+            in_RDX[2] = uVar13;
+          }
+          in_RDX[3] = uVar13;
+          lVar10 = local_e0;
+          in_RCX = local_180;
+        }
+        in_stack_00000048 = in_stack_00000048 + 0x28;
+        local_118 = local_118 + 1;
+        if (lVar10 != 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+      }
+      std::io::Write::write_all<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>
+                ();
+      if (extraout_RAX_07 == 0) {
+        *in_RCX = local_88;
+        in_RCX[1] = lStack_80;
+        in_RCX[4] = lStack_170;
+        in_RCX[5] = local_168;
+        in_RCX[6] = lStack_160;
+        in_RCX[7] = local_158;
+        in_RCX[2] = local_78;
+        in_RCX[3] = (longlong)local_178;
+        in_RCX[8] = (longlong)puStack_150;
+        return;
+      }
+      anyhow::error::impl$1::from<std::io::error::Error>();
+      lVar10 = extraout_RAX_08;
+    }
+    else {
+      anyhow::error::impl$1::from<std::io::error::Error>();
+      lVar10 = extraout_RAX_04;
+    }
+    in_RCX[1] = lVar10;
+    *in_RCX = -0x8000000000000000;
+  }
+  else {
+    in_RCX[1] = extraout_RAX_02;
+    *in_RCX = -0x8000000000000000;
+    core::ptr::
+    drop_in_place<array_<tuple_<country_core::systems::save::save_game::SaveFileSection,enum2_<serde_json::value::Value>_>,3>_>
+              ();
+  }
+joined_r0x0001417515e7:
+  if (local_88 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((lStack_170 != 0) &&
+     (lStack_170 + ((lStack_170 + 1) * 0x18 + 0xfU & 0xfffffffffffffff0) != -0x11)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+

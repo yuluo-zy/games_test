@@ -1,0 +1,172 @@
+ADDR: 0x140922c30
+SIG: void __cdecl time_update(void)
+
+
+void __cdecl country_core::systems::time_update::time_update(void)
+
+{
+  longlong *plVar1;
+  undefined1 auVar2 [16];
+  int iVar3;
+  int iVar4;
+  uint uVar5;
+  longlong *in_RCX;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  uint uVar8;
+  undefined8 *in_RDX;
+  longlong lVar9;
+  ulonglong uVar10;
+  char cVar11;
+  longlong *in_R8;
+  ulonglong *puVar12;
+  undefined4 uVar13;
+  longlong *in_R9;
+  byte bVar14;
+  undefined4 *puVar15;
+  float fVar16;
+  float fVar17;
+  undefined8 *in_stack_00000028;
+  
+  if (*(int *)*in_RDX == 0) {
+    plVar1 = (longlong *)*in_R8;
+    if (*plVar1 == 10) {
+      puVar12 = (ulonglong *)*in_stack_00000028;
+      if ((char)plVar1[1] != '\0') goto LAB_140922c47;
+    }
+    else {
+      iVar4 = (int)*plVar1;
+      if (iVar4 == 7) {
+        puVar12 = (ulonglong *)*in_stack_00000028;
+        if ((char)plVar1[1] != '\x01') goto LAB_140922c47;
+      }
+      else {
+        if (iVar4 != 2) goto LAB_140922c44;
+        puVar12 = (ulonglong *)*in_stack_00000028;
+      }
+    }
+    bVar14 = *(byte *)((longlong)puVar12 + 0x31) ^ 1;
+    lVar9 = *in_R9;
+    if (*(undefined1 **)(lVar9 + 0x40) != &DAT_8000000000000002) goto LAB_140922d17;
+LAB_140922c61:
+    if (*(ulonglong *)(lVar9 + 0x38) <= *(ulonglong *)(lVar9 + 0x48)) {
+                    // WARNING: Subroutine does not return
+      core::option::expect_failed();
+    }
+    uVar6 = *(ulonglong *)(lVar9 + 0x48) + *(longlong *)(lVar9 + 0x30);
+    uVar10 = 0;
+    if (*(ulonglong *)(lVar9 + 0x20) <= uVar6) {
+      uVar10 = *(ulonglong *)(lVar9 + 0x20);
+    }
+    fVar16 = *(float *)(*(longlong *)(lVar9 + 0x28) + 200 + (uVar6 - uVar10) * 0xd0);
+    uVar13 = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+    puVar15 = (undefined4 *)in_stack_00000028[2];
+    *(float *)(puVar12 + 5) = fVar16;
+    *puVar15 = uVar13;
+    if (fVar16 < 0.0) goto LAB_140922f65;
+  }
+  else {
+LAB_140922c44:
+    puVar12 = (ulonglong *)*in_stack_00000028;
+LAB_140922c47:
+    bVar14 = 0;
+    lVar9 = *in_R9;
+    if (*(undefined1 **)(lVar9 + 0x40) == &DAT_8000000000000002) goto LAB_140922c61;
+LAB_140922d17:
+    uVar10 = *(ulonglong *)(*in_RCX + 0x10);
+    if ((longlong)uVar10 < 0) {
+      fVar16 = (float)uVar10;
+      uVar5 = *(uint *)((longlong)puVar12 + 0x2c);
+      if (bVar14 == 0) goto LAB_140922d67;
+LAB_140922d31:
+      fVar16 = (float)*(int *)(*in_RCX + 0x18) / 1e+09 + fVar16;
+    }
+    else {
+      fVar16 = (float)(longlong)uVar10;
+      uVar5 = *(uint *)((longlong)puVar12 + 0x2c);
+      if (bVar14 != 0) goto LAB_140922d31;
+LAB_140922d67:
+      fVar16 = 0.0;
+    }
+    if ((uVar5 < 2) && (0.016666668 <= fVar16)) {
+      fVar16 = 0.016666668;
+    }
+    uVar13 = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+    puVar15 = (undefined4 *)in_stack_00000028[2];
+    *(float *)(puVar12 + 5) = fVar16;
+    *puVar15 = uVar13;
+  }
+  uVar5 = (uint)fVar16 >> 0x17 & 0xff;
+  iVar3 = 0;
+  iVar4 = 0;
+  if ((ushort)uVar5 < 0x60) {
+LAB_140922de8:
+    uVar10 = 0;
+    iVar4 = iVar3;
+  }
+  else {
+    uVar8 = (uint)fVar16 & 0x7fffff | 0x800000;
+    cVar11 = (char)((uint)fVar16 >> 0x17);
+    if ((ushort)uVar5 < 0x7f) {
+      auVar2._8_8_ = 0;
+      auVar2._0_8_ = (ulonglong)uVar8 << (cVar11 + 0x2aU & 0x3f);
+      auVar2 = auVar2 * ZEXT816(1000000000);
+      iVar3 = (uint)(byte)((auVar2[8] | !SBORROW8(0,auVar2._0_8_)) & auVar2[7] >> 7) + auVar2._8_4_;
+      if (iVar3 == 1000000000) {
+LAB_140922f65:
+                    // WARNING: Subroutine does not return
+        core::time::impl$0::from_secs_f32::panic_cold_display<ref_<str_>_>();
+      }
+      goto LAB_140922de8;
+    }
+    if (uVar5 < 0x96) {
+      uVar10 = (ulonglong)(uVar8 >> (0x16U - cVar11 & 0x1f));
+      uVar6 = (ulonglong)((int)fVar16 << (cVar11 + 1U & 0x1f) & 0x7fffff) * 1000000000;
+      uVar7 = uVar6 >> 0x17;
+      uVar5 = (uint)uVar6;
+      iVar4 = (uint)(((byte)uVar7 | (uVar5 & 0x7ffe00) != 0x400000) & (byte)(uVar5 >> 0x16) & 1) +
+              (int)uVar7;
+    }
+    else {
+      if (0xbe < uVar5) goto LAB_140922f65;
+      uVar10 = (ulonglong)uVar8 << (cVar11 + 0x2aU & 0x3f);
+    }
+  }
+  uVar6 = uVar10 + *puVar12;
+  if (!CARRY8(uVar10,*puVar12)) {
+    uVar5 = iVar4 + (int)puVar12[1];
+    if (999999999 < uVar5) {
+      if (uVar6 == 0xffffffffffffffff) goto LAB_140922f41;
+      uVar5 = uVar5 + 0xc4653600;
+      uVar6 = uVar6 + 1;
+    }
+    *puVar12 = uVar6;
+    *(uint *)(puVar12 + 1) = uVar5;
+    *(byte *)(puVar12 + 6) = bVar14;
+    *puVar15 = uVar13;
+    *(int *)((longlong)puVar12 + 0x2c) = *(int *)((longlong)puVar12 + 0x2c) + 1;
+    *puVar15 = uVar13;
+    puVar12[2] = (ulonglong)((double)fVar16 + (double)puVar12[2]);
+    *puVar15 = uVar13;
+    fVar17 = (fVar16 + *(float *)(puVar12 + 4)) * 60.0;
+    uVar10 = 0;
+    if (0.0 <= fVar17) {
+      uVar10 = (longlong)(fVar17 - 9.223372e+18) & (longlong)fVar17 >> 0x3f | (longlong)fVar17;
+    }
+    uVar6 = 0xffffffffffffffff;
+    if (fVar17 <= 1.8446743e+19) {
+      uVar6 = uVar10;
+    }
+    puVar12[3] = uVar6;
+    fVar16 = (fVar16 + *(float *)(puVar12 + 4)) - (float)uVar6 / 60.0;
+    if (fVar16 <= 0.0) {
+      fVar16 = 0.0;
+    }
+    *(float *)(puVar12 + 4) = fVar16;
+    return;
+  }
+LAB_140922f41:
+                    // WARNING: Subroutine does not return
+  core::option::expect_failed();
+}
+

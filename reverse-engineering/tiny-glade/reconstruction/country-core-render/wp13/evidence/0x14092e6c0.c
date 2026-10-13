@@ -1,0 +1,10 @@
+// name: is_started size: 7
+// void __cdecl is_started(void)
+
+void __cdecl country_core::systems::ui::resources::ui_state::DragState::is_started(void)
+
+{
+  return;
+}
+
+

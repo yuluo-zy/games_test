@@ -1,0 +1,25 @@
+[package]
+name = "country-core-replay-wp17"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP17 — Tiny Glade country-core history replay domain (B skeleton-aligned)"
+publish = false
+
+# Standalone skeleton crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Versions respect the original release Cargo.lock baseline (reconstruction/Cargo.lock).
+serde = { version = "=1.0.200", features = ["derive"] }
+# glam = the game's math dependency (country-core 0.29.3); only needed for the
+# edit-record point fields (Vec3). serde feature for derive on edit records.
+glam = { version = "=0.29.3", features = ["serde"] }
+
+# NOT declared (reused dependencies / not needed offline for the replay gate):
+# bevy_ecs (system params are typed-gap boundaries), serde_json / ron / hashbrown
+# / fastrand (edit records keep Gap payloads; the authoritative History core lives
+# in the shared country-core crate and is not duplicated here).

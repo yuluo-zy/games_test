@@ -1,0 +1,62 @@
+
+void __cdecl country_core::systems::audio::game_loading_audio::init_game_loading_audio(void)
+
+{
+  longlong *plVar1;
+  char *extraout_RAX;
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  longlong local_d0;
+  int local_98;
+  longlong local_58;
+  longlong lStack_50;
+  longlong local_48;
+  char *pcStack_40;
+  longlong local_38;
+  longlong lStack_30;
+  
+  if (*(longlong *)*in_RCX == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX,"snapshot:/Loading",0x11);
+    local_58 = 0;
+    local_48 = 0x11;
+    local_38 = 0x11;
+    lStack_30 = CONCAT71(lStack_30._1_7_,2);
+    pcStack_40 = extraout_RAX;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_58 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  local_98 = (int)local_58;
+  if (local_98 == 1) {
+    libfmod::EventInstance::start();
+    if (local_d0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+  plVar1 = (longlong *)*in_RDX;
+  if ((int)*plVar1 != 2) {
+    resources::audio_resources::impl$13::drop();
+    if (plVar1[2] != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  plVar1[4] = local_38;
+  plVar1[5] = lStack_30;
+  plVar1[2] = local_48;
+  plVar1[3] = (longlong)pcStack_40;
+  *plVar1 = local_58;
+  plVar1[1] = lStack_50;
+  return;
+}
+

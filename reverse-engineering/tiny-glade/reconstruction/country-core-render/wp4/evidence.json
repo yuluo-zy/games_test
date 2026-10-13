@@ -1,0 +1,55 @@
+{
+  "deliverable": "WP4 mesh/shader/render-config/asset-library wiring",
+  "version": "B",
+  "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "skeleton_root": "skeleton/B/crates/country-core/src",
+  "decompile_method": "Ghidra --worker shared (read-only), reverse-operator.py",
+  "decompile_results": {
+    "_analysis/result_A.json": ["shader.rs (4)", "load_texture.rs (1)", "render_config.rs (2)", "frame_constants.rs (1)", "atmosphere.rs (1)", "directional_light.rs (2)", "view_constants.rs (2)", "render/mod.rs (1)"],
+    "_analysis/result_B.json": ["mesh.rs core (20)"],
+    "_analysis/result_C.json": ["shader_library (3)", "ssbo_library (7)", "mesh_library (4)", "color_library (2)", "texture_library (4)"],
+    "_analysis/result_D.json": ["texture_library (8)", "mesh_library (4)", "mesh transient system (1)"],
+    "_analysis/result_E.json": ["texture_library add (1)", "mesh_library reload (1)", "ssbo get_mut (1)", "texture get_rg_texture (1)"]
+  },
+  "reused_decompiles": {
+    "evidence/building-gates/B-mesh-helpers/14092c920.c": "AssetMeshLibrary::new",
+    "evidence/building-gates/B-mesh-helpers/14092cc60.c": "AssetMeshLibrary::add",
+    "evidence/building-gates/B-mesh-helpers/140936c60.c": "AssetShaderLibrary::new",
+    "evidence/building-gates/B-mesh-helpers/140936ef0.c": "AssetShaderLibrary::add_raster",
+    "evidence/building-gates/B-mesh-helpers/140937aa0.c": "AssetShaderLibrary::get_raster_handle_by_name",
+    "evidence/building-gates/B-mesh-extra/140a34c90.c": "Mesh::set_attribute<Vec<[f32;3]>>",
+    "evidence/building-integrate/B-core/140a07a70.c": "Mesh::collision_bbx",
+    "evidence/building-integrate/B-placement-more/140a07870.c": "Mesh::aabb_bounds",
+    "evidence/render-passes/pass-builder/dec1_0x1405876a0.c": "ComputePass::new (AssetShaderLibrary consumer)"
+  },
+  "skeleton_bundles": [
+    {"path": "render/mesh.rs", "source_sha256": "e8e64685a1bb26d130cea6d6ca6742ef9d6fa760ba5eedcd239c1d02ba89a91d"},
+    {"path": "render/shader.rs", "source_sha256": "d4da69a241c85fa5dcef8e0a86021341fd5bf80cef9323b6483fd4d4e180b469"},
+    {"path": "render/load_texture.rs", "source_sha256": "a31916cee3afc1ee8e8ba05deb577172cd1c12c56bab9561d0964d80b56600fc"},
+    {"path": "render/render_config.rs", "source_sha256": "2511e6da0fa5261626ca1ce12acf0b19198637eee196a35bd1533368bbfc95fc"},
+    {"path": "render/view_constants.rs", "source_sha256": "3c00f8e409ebfcc8084db638399df221d7ef5fec2df9c7277790ab183f67bd79"},
+    {"path": "render/frame_constants.rs", "source_sha256": "abf41da90d71adcb1349337e49768a7d92b1aabafbb95bf7c47b95e8ffb37706"},
+    {"path": "render/directional_light.rs", "source_sha256": "69166bac5e29e6970131d2cafa1cad29d109c789a5ea2d736545e7955571fd2c"},
+    {"path": "render/atmosphere.rs", "source_sha256": "8ba1e09ec325439564218a5c2fd2f25030bdbc7ee794eba16b717dc8d77dd879"},
+    {"path": "render/fsr_plugin.rs", "source_sha256": "50fdaace10c8cb6ea21fac309afe17850cc92c20e43e3df6388ff5be65aaf4ed"},
+    {"path": "render/mod.rs", "source_sha256": "825e8980b2ff70a4469944fbf1e0204ef77ae537d9fd4082e8b0a8a52ef07fd1"},
+    {"path": "render/debug_info_buffers.rs", "source_sha256": "2256d3b88e017f7022fc2e4dbebd090f6b7f8b56e954f0b70c6ce5f2da857f3c"},
+    {"path": "render/adaptive_render_state.rs", "source_sha256": "39a05efa664f1817d3a2edd4ee0535951a3330d23ca8e32e2a22bd15def37a81"},
+    {"path": "asset_libraries/shader_library.rs", "source_sha256": "16e9fe00fe943d312615dedb349ddd507f680665f191eb76817166a261b2a4e6"},
+    {"path": "asset_libraries/ssbo_library.rs", "source_sha256": "d783c195128803f8615a776ad351bada8df88a12a429f80ba5ff8add3f602525"},
+    {"path": "asset_libraries/mesh_library.rs", "source_sha256": "312b9e635f2be96c7b2b9c5e1656b1f4f9bf2010de4e8c6c4e13f119cca7d95a"},
+    {"path": "asset_libraries/texture_library.rs", "source_sha256": "c5db910cd68046b1ed590ba1d2ea2f830520267a8cc1574558e53b3bb1c47e27"},
+    {"path": "asset_libraries/color_library.rs", "source_sha256": "f8a54c0d0772b4639671ddef6883ef31bc3efc36ed6882989bfab1dccc5e057b"},
+    {"path": "asset_libraries/mod.rs", "source_sha256": "b86638afeedc5d6db2d3b887c0745c15f417075821ea7c7aaf4341fcd842ce2c"}
+  ],
+  "judgment_notes": [
+    "No oracles / case-count inflation used; machine-code diff not used as the implementation method (per project workflow).",
+    "PDB void() placeholders treated as unknown ABIs; fields not fabricated — typed Gap markers used.",
+    "reused deps (rhapsody, shader-pipeline/variants/compiler, frozen, parking_lot, hashbrown, glam, bevy) are NOT reimplemented; WP4 calls them via contract modules.",
+    "ssbo_library 336 procedures are monomorphized instances of ~8 generic methods; representative instances decompiled (get_rg_buffer/get_mut/add_new/add_new_with_data).",
+    "VertexAttributeValues exact variant list beyond discriminants 0-3 is a typed gap.",
+    "AssetTextureLibrary bindless table limit observed as 0x1fdf (8191) entries.",
+    "0x140949170 PDB aliases both `array_length` and `sync_point_count`; modeled as array_length (len getter)."
+  ]
+}

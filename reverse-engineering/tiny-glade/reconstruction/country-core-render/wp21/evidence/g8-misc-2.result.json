@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408bbbc0,0x1408c2240,0x140b17830,0x140a86b30,0x14090e500,0x140b59640,0x140b596b0,0x140b59720,0x140ad5020,0x140ad51a0,0x1408e2540,0x1408e5d10,0x140a97860,0x1409f1c90,0x140b31d10,0x140b1f210,0x140b2ba40,0x140a59890",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1408bbbc0,0x1408c2240,0x140b17830,0x140a86b30,0x14090e500,0x140b59640,0x140b596b0,0x140b59720,0x140ad5020,0x140ad51a0,0x1408e2540,0x1408e5d10,0x140a97860,0x1409f1c90,0x140b31d10,0x140b1f210,0x140b2ba40,0x140a59890",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x1408bbbc0\":{\"name\":\"load\",\"size\":592,\"address\":\"1408bbbc0\",\"signature\":\"void __cdecl load(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::glade_settings::GladeSettings::load(void)\\n\\n{\\n  undefined8 *puVar1;\\n  code *pcVar2;\\n  longlong lVar3;\\n  undefined8 *in_RCX;\\n  longlong *in_RDX;\\n  longlong *local_a0;\\n  undefined8 uStack_98;\\n  undefined8 local_90;\\n  undefined8 uStack_88;\\n  char local_80;\\n  undefined4 local_7f;\\n  undefined3 uStack_7b;\\n  longlong local_78;\\n  undefined4 local_58;\\n  undefined4 uStack_54;\\n  longlong local_50;\\n  \\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  std::path::Path::_join();\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  std::fs::read_to_string::inner();\\n  if (local_78 != 0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  lVar3 = CONCAT44(uStack_54,local_58);\\n  if (SBORROW8(0,lVar3)) {\\n    if (((uint)local_50 & 3) == 1) {\\n      puVar1 = *(undefined8 **)(local_50 + 7);\\n      pcVar2 = (code *)*puVar1;\\n      if (pcVar2 != (code *)0x0) {\\n        (*pcVar2)(*(undefined8 *)(local_50 + -1));\\n      }\\n      if (puVar1[1] != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\nLAB_1408bbdb4:\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  else {\\n    serde_json::de::\\n    from_str<enum2_<core::option::Option<country_core::resources::glade_settings::GladeSettings>_>_>\\n              ();\\n    if (local_80 != '\\\\x03') {\\n      if (lVar3 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (*in_RDX != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      if (local_80 != '\\\\x02') {\\n        in_RCX[2] = local_90;\\n        in_RCX[3] = uStack_88;\\n        *in_RCX = local_a0;\\n        in_RCX[1] = uStack_98;\\n        *(char *)(in_RCX + 4) = local_80;\\n        *(undefined4 *)((longlong)in_RCX + 0x21) = local_7f;\\n        *(uint *)((longlong)in_RCX + 0x24) = CONCAT31(uStack_7b,local_7f._3_1_);\\n        return;\\n      }\\n      goto LAB_1408bbdd4;\\n    }\\n    if (*local_a0 == 1) {\\n      core::ptr::drop_in_place<std::io::error::Error>();\\n    }\\n    else if ((*local_a0 == 0) && (local_a0[2] != 0)) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n    if (lVar3 != 0) goto LAB_1408bbdb4;\\n  }\\n  if (*in_RDX != 0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\nLAB_1408bbdd4:\\n  *in_RCX = 0;\\n  in_RCX[1] = 0x3f8000003c23d70a;\\n  *(undefined1 *)(in_RCX + 4) = 1;\\n  in_RCX[2] = 8;\\n  in_RCX[3] = 0x100000000;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408c2240\":{\"name\":\"default\",\"size\":50,\"address\":\"1408c2240\",\"signature\":\"void __cdecl default(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::glade_settings::impl$1::default(void)\\n\\n{\\n  undefined8 *in_RCX;\\n  \\n  *in_RCX = 0;\\n  in_RCX[1] = 0x3f8000003c23d70a;\\n  *(undefined1 *)(in_RCX + 4) = 1;\\n  in_RCX[2] = 8;\\n  in_RCX[3] = 0x100000000;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b17830\":{\"name\":\"mouse_capture\",\"size\":582,\"address\":\"140b17830\",\"signature\":\"void __cdecl mouse_capture(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::mouse_capture::mouse_capture(void)\\n\\n{\\n  ulonglong *puVar1;\\n  ulonglong uVar2;\\n  ulonglong uVar3;\\n  undefined8 *puVar4;\\n  undefined4 *puVar5;\\n  undefined8 *in_RCX;\\n  undefined8 *in_RDX;\\n  ulonglong uVar6;\\n  ulonglong uVar7;\\n  longlong lVar8;\\n  undefined8 uVar9;\\n  longlong *in_R8;\\n  longlong *in_R9;\\n  ulonglong uVar10;\\n  ulonglong uVar11;\\n  longlong lVar12;\\n  ulonglong uVar13;\\n  undefined8 uVar14;\\n  longlong lVar15;\\n  undefined8 *in_stack_00000028;\\n  \\n  puVar1 = (ulonglong *)*in_RDX;\\n  lVar15 = in_RDX[1];\\n  uVar2 = *puVar1;\\n  uVar7 = 0;\\n  uVar10 = uVar2 - *(ulonglong *)(lVar15 + 0x18);\\n  if (uVar2 < *(ulonglong *)(lVar15 + 0x18)) {\\n    uVar10 = uVar7;\\n  }\\n  uVar6 = uVar2 - *(ulonglong *)(lVar15 + 0x38);\\n  if (uVar2 < *(ulonglong *)(lVar15 + 0x38)) {\\n    uVar6 = uVar7;\\n  }\\n  uVar2 = *(ulonglong *)(lVar15 + 0x10);\\n  uVar3 = *(ulonglong *)(lVar15 + 0x30);\\n  uVar11 = uVar3 - uVar6;\\n  if (uVar3 < uVar6) {\\n    uVar11 = uVar7;\\n  }\\n  uVar13 = uVar2 - uVar10;\\n  if (uVar2 < uVar10) {\\n    uVar13 = uVar7;\\n  }\\n  uVar7 = *(ulonglong *)(lVar15 + 0x40);\\n  lVar12 = *(longlong *)(lVar15 + 8);\\n  lVar15 = *(longlong *)(lVar15 + 0x28);\\n  *puVar1 = (uVar7 - uVar11) - uVar13;\\n  if ((uVar2 < uVar10 || uVar2 - uVar10 == 0) && (uVar3 < uVar6 || uVar3 - uVar6 == 0)) {\\n    return;\\n  }\\n  lVar15 = lVar15 + uVar6 * 0x10;\\n  lVar12 = lVar12 + uVar10 * 0x10;\\n  if (uVar2 < uVar10) {\\n    lVar12 = 8;\\n  }\\n  lVar8 = 0;\\n  if (uVar10 < uVar2) {\\n    lVar8 = lVar12 + -0x10 + uVar13 * 0x10;\\n  }\\n  if (uVar3 < uVar6) {\\n    lVar15 = 8;\\n  }\\n  lVar15 = lVar15 + -0x10 + uVar11 * 0x10;\\n  if (uVar3 <= uVar6) {\\n    lVar15 = lVar8;\\n  }\\n  *puVar1 = uVar7;\\n  if (*(char *)(lVar15 + 8) == '\\\\0') {\\n    puVar4 = (undefined8 *)*in_stack_00000028;\\n    puVar5 = (undefined4 *)*in_RCX;\\n    uVar9 = *puVar4;\\n    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);\\n    *puVar5 = 1;\\n    *(undefined8 *)(puVar5 + 1) = uVar9;\\n    uVar9 = *puVar4;\\n    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);\\n    lVar15 = *in_R8;\\n    lVar12 = *(longlong *)(lVar15 + 0x30);\\n    uVar14 = *(undefined8 *)(lVar15 + 0x40);\\n    if (lVar12 == *(longlong *)(lVar15 + 0x20)) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>\\n                ();\\n    }\\n    lVar8 = *(longlong *)(lVar15 + 0x28);\\n    *(undefined8 *)(lVar8 + lVar12 * 0x18) = uVar14;\\n    *(undefined4 *)(lVar8 + 8 + lVar12 * 0x18) = 0;\\n    *(undefined8 *)(lVar8 + 0xc + lVar12 * 0x18) = uVar9;\\n    *(longlong *)(lVar15 + 0x30) = lVar12 + 1;\\n    *(longlong *)(lVar15 + 0x40) = *(longlong *)(lVar15 + 0x40) + 1;\\n    *(undefined4 *)in_R9[2] = *(undefined4 *)((longlong)in_R9 + 0x1c);\\n    lVar15 = *in_R9;\\n    lVar12 = *(longlong *)(lVar15 + 0x30);\\n    uVar9 = *(undefined8 *)(lVar15 + 0x40);\\n    uVar14 = 0x200000002;\\n    if (lVar12 != *(longlong *)(lVar15 + 0x20)) goto LAB_140b17a41;\\n  }\\n  else {\\n    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);\\n    *(undefined4 *)*in_RCX = 0;\\n    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);\\n    lVar15 = *in_R8;\\n    lVar12 = *(longlong *)(lVar15 + 0x30);\\n    uVar9 = *(undefined8 *)(lVar15 + 0x40);\\n    if (lVar12 == *(longlong *)(lVar15 + 0x20)) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>\\n                ();\\n    }\\n    lVar8 = *(longlong *)(lVar15 + 0x28);\\n    *(undefined8 *)(lVar8 + lVar12 * 0x18) = uVar9;\\n    *(undefined4 *)(lVar8 + 8 + lVar12 * 0x18) = 1;\\n    *(longlong *)(lVar15 + 0x30) = lVar12 + 1;\\n    *(longlong *)(lVar15 + 0x40) = *(longlong *)(lVar15 + 0x40) + 1;\\n    *(undefined4 *)in_R9[2] = *(undefined4 *)((longlong)in_R9 + 0x1c);\\n    lVar15 = *in_R9;\\n    lVar12 = *(longlong *)(lVar15 + 0x30);\\n    uVar9 = *(undefined8 *)(lVar15 + 0x40);\\n    uVar14 = 0x200000003;\\n    if (lVar12 != *(longlong *)(lVar15 + 0x20)) goto LAB_140b17a41;\\n  }\\n  alloc::raw_vec::RawVec::\\n  grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n            ();\\nLAB_140b17a41:\\n  lVar8 = *(longlong *)(lVar15 + 0x28);\\n  *(undefined8 *)(lVar8 + lVar12 * 0x10) = uVar14;\\n  *(undefined8 *)(lVar8 + 8 + lVar12 * 0x10) = uVar9;\\n  *(longlong *)(lVar15 + 0x30) = lVar12 + 1;\\n  *(longlong *)(lVar15 + 0x40) = *(longlong *)(lVar15 + 0x40) + 1;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a86b30\":{\"name\":\"default\",\"size\":10,\"address\":\"140a86b30\",\"signature\":\"void __cdecl default(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::mode_manager::impl$0::default(void)\\n\\n{\\n  undefined4 *in_RCX;\\n  \\n  *in_RCX = 0;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14090e500\":{\"name\":\"from\",\"size\":4,\"address\":\"14090e500\",\"signature\":\"void __cdecl from(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::photo_mode::impl$1::from(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b59640\":{\"name\":\"build\",\"size\":112,\"address\":\"140b59640\",\"signature\":\"void __cdecl build(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::photo_mode::impl$0::build(void)\\n\\n{\\n  longlong extraout_RAX;\\n  longlong in_RDX;\\n  ulonglong uVar1;\\n  \\n  uVar1 = 0x4f5755fd719ee8e;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX != 0) && (uVar1 < *(ulonglong *)(in_RDX + 0x218))) &&\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_RDX + 0x210) + uVar1 * 8), uVar1 != 0)) &&\\n     (*(longlong *)(*(longlong *)(in_RDX + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)) {\\n    return;\\n  }\\n  bevy_ecs::event::registry::EventRegistry::\\n  register_event<enum2_<country_core::resources::photo_mode::PhotoModeCmd>_>();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b596b0\":{\"name\":\"next_demo\",\"size\":23,\"address\":\"140b596b0\",\"signature\":\"void __cdecl next_demo(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::photo_mode::PhotoModeCameraMode::next_demo(void)\\n\\n{\\n  undefined1 *in_RCX;\\n  undefined1 auStack_38 [8];\\n  undefined *puStack_30;\\n  undefined8 uStack_28;\\n  undefined1 *puStack_20;\\n  undefined8 uStack_18;\\n  undefined8 uStack_10;\\n  \\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n  switch(*in_RCX) {\\n  case 0:\\n    return;\\n  case 1:\\n    return;\\n  case 2:\\n    return;\\n  case 3:\\n    puStack_30 = &UNK_142af1188;\\n    uStack_28 = 1;\\n    puStack_20 = auStack_38;\\n    uStack_18 = 0;\\n    uStack_10 = 0;\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic_fmt();\\n  }\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b59720\":{\"name\":\"next\",\"size\":14,\"address\":\"140b59720\",\"signature\":\"void __cdecl next(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::photo_mode::PhotoModeCameraMode::next(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ad5020\":{\"name\":\"to_affine3a\",\"size\":381,\"address\":\"140ad5020\",\"signature\":\"void __cdecl to_affine3a(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::placement_data::PlacementDataSsbo::to_affine3a(void)\\n\\n{\\n  float fVar1;\\n  float fVar2;\\n  float fVar3;\\n  float fVar4;\\n  float *in_RCX;\\n  float *in_RDX;\\n  float fVar5;\\n  float fVar6;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar14;\\n  \\n  fVar1 = in_RDX[4];\\n  fVar5 = sinf(fVar1 * 0.5);\\n  fVar6 = cosf(fVar1 * 0.5);\\n  fVar7 = fVar5 * 0.0;\\n  fVar1 = *in_RDX;\\n  fVar2 = in_RDX[1];\\n  fVar3 = in_RDX[2];\\n  fVar4 = in_RDX[3];\\n  fVar8 = fVar5 + fVar5;\\n  fVar9 = fVar7 + fVar7;\\n  fVar11 = fVar7 * fVar9;\\n  fVar10 = fVar9 * fVar6;\\n  fVar12 = 1.0 - (fVar5 * fVar8 + fVar11);\\n  fVar13 = fVar11 - fVar8 * fVar6;\\n  fVar14 = fVar5 * fVar9 + fVar10;\\n  *in_RCX = fVar4 * fVar12;\\n  in_RCX[1] = fVar4 * (fVar7 * fVar8 + fVar10);\\n  in_RCX[2] = fVar4 * fVar13;\\n  in_RCX[3] = fVar4 * fVar13;\\n  in_RCX[4] = fVar4 * (fVar7 * fVar8 - fVar10);\\n  in_RCX[5] = fVar4 * (1.0 - (fVar11 + fVar11));\\n  in_RCX[6] = fVar4 * fVar14;\\n  in_RCX[7] = fVar4 * fVar14;\\n  in_RCX[8] = fVar4 * (fVar8 * fVar6 + fVar11);\\n  in_RCX[9] = fVar4 * (fVar5 * fVar9 - fVar10);\\n  in_RCX[10] = fVar4 * fVar12;\\n  in_RCX[0xb] = fVar4 * fVar12;\\n  in_RCX[0xc] = fVar1;\\n  in_RCX[0xd] = fVar2;\\n  in_RCX[0xe] = fVar3;\\n  in_RCX[0xf] = fVar3;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ad51a0\":{\"name\":\"position\",\"size\":22,\"address\":\"140ad51a0\",\"signature\":\"void __cdecl position(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::placement_data::PlacementDataSsbo::position(void)\\n\\n{\\n  undefined4 uVar1;\\n  undefined8 *in_RCX;\\n  undefined8 *in_RDX;\\n  \\n  uVar1 = *(undefined4 *)(in_RDX + 1);\\n  *in_RCX = *in_RDX;\\n  *(undefined4 *)(in_RCX + 1) = uVar1;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408e2540\":{\"name\":\"add\",\"size\":179,\"address\":\"1408e2540\",\"signature\":\"void __cdecl add(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::prefab::PrefabLibrary::add(void)\\n\\n{\\n  undefined8 local_60;\\n  undefined8 local_50;\\n  undefined8 local_40;\\n  \\n  hashbrown::map::HashMap::\\n  insert<asset::prefab::PrefabName,country_core::resources::prefab::Prefab,std::hash::random::RandomState,alloc::alloc::Global>\\n            ();\\n  if (!SBORROW8(0,local_60)) {\\n    local_40 = 0;\\n    while (local_50 != local_40) {\\n      local_40 = local_40 + 1;\\n      core::ptr::drop_in_place<country_core::resources::prefab::PrefabPart>();\\n    }\\n    if (local_60 != 0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n      return;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408e5d10\":{\"name\":\"register_required_components\",\"size\":1340,\"address\":\"1408e5d10\",\"signature\":\"void __cdecl register_required_components(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::prefab::impl$7::register_required_components(void)\\n\\n{\\n  char *pcVar1;\\n  longlong lVar2;\\n  longlong lVar3;\\n  longlong lVar4;\\n  short sVar5;\\n  uint uVar6;\\n  uint uVar7;\\n  ulonglong extraout_RAX;\\n  longlong *in_RDX;\\n  ushort uVar8;\\n  undefined1 uVar9;\\n  uint uVar10;\\n  ulonglong uVar11;\\n  longlong lVar12;\\n  longlong lVar13;\\n  ulonglong uVar14;\\n  ushort uVar15;\\n  ulonglong uVar16;\\n  longlong lVar17;\\n  undefined1 auVar18 [16];\\n  undefined1 auVar19 [16];\\n  undefined1 auVar20 [16];\\n  undefined1 auVar21 [16];\\n  undefined1 auVar22 [16];\\n  undefined1 auVar23 [16];\\n  longlong *in_stack_00000028;\\n  undefined *local_2f8;\\n  undefined8 uStack_2f0;\\n  undefined8 local_2e8;\\n  undefined8 uStack_2e0;\\n  undefined *local_228;\\n  undefined8 uStack_220;\\n  undefined8 local_218;\\n  undefined8 uStack_210;\\n  longlong local_150;\\n  undefined8 local_148;\\n  undefined8 uStack_140;\\n  undefined8 local_138;\\n  undefined8 uStack_130;\\n  undefined8 local_128;\\n  undefined8 uStack_120;\\n  undefined8 local_118;\\n  undefined8 uStack_110;\\n  undefined8 local_108;\\n  undefined8 uStack_100;\\n  undefined8 local_f8;\\n  undefined8 uStack_f0;\\n  undefined8 local_e8;\\n  undefined8 uStack_e0;\\n  undefined8 local_d8;\\n  undefined8 local_d0;\\n  undefined8 local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b0;\\n  undefined8 local_a8;\\n  undefined8 local_a0;\\n  undefined *local_98;\\n  undefined8 local_90;\\n  code *local_88;\\n  undefined2 local_80;\\n  undefined1 local_7e;\\n  longlong local_78;\\n  undefined8 local_70;\\n  undefined8 local_68;\\n  longlong local_60;\\n  undefined8 *local_58;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  lVar2 = *in_RDX;\\n  lVar17 = in_stack_00000028[1];\\n  lVar3 = in_stack_00000028[2];\\n  bevy_ecs::component::enforce_no_required_components_recursion();\\n  local_78 = 0;\\n  local_70 = 8;\\n  local_68 = 0;\\n  if (*(longlong *)(lVar2 + 0x30) != 0) {\\n    lVar4 = *(longlong *)(lVar2 + 0x18);\\n    uVar14 = *(ulonglong *)(lVar2 + 0x20);\\n    uVar11 = uVar14 & 0xb830c03666b8fccf;\\n    lVar13 = 0;\\n    while( true ) {\\n      pcVar1 = (char *)(lVar4 + uVar11);\\n      auVar22[0] = -(*pcVar1 == '\\\\\\\\');\\n      auVar22[1] = -(pcVar1[1] == '\\\\\\\\');\\n      auVar22[2] = -(pcVar1[2] == '\\\\\\\\');\\n      auVar22[3] = -(pcVar1[3] == '\\\\\\\\');\\n      auVar22[4] = -(pcVar1[4] == '\\\\\\\\');\\n      auVar22[5] = -(pcVar1[5] == '\\\\\\\\');\\n      auVar22[6] = -(pcVar1[6] == '\\\\\\\\');\\n      auVar22[7] = -(pcVar1[7] == '\\\\\\\\');\\n      auVar22[8] = -(pcVar1[8] == '\\\\\\\\');\\n      auVar22[9] = -(pcVar1[9] == '\\\\\\\\');\\n      auVar22[10] = -(pcVar1[10] == '\\\\\\\\');\\n      auVar22[0xb] = -(pcVar1[0xb] == '\\\\\\\\');\\n      auVar22[0xc] = -(pcVar1[0xc] == '\\\\\\\\');\\n      auVar22[0xd] = -(pcVar1[0xd] == '\\\\\\\\');\\n      auVar22[0xe] = -(pcVar1[0xe] == '\\\\\\\\');\\n      auVar22[0xf] = -(pcVar1[0xf] == '\\\\\\\\');\\n      uVar8 = (ushort)(SUB161(auVar22 >> 7,0) & 1) | (ushort)(SUB161(auVar22 >> 0xf,0) & 1) << 1 |\\n              (ushort)(SUB161(auVar22 >> 0x17,0) & 1) << 2 |\\n              (ushort)(SUB161(auVar22 >> 0x1f,0) & 1) << 3 |\\n              (ushort)(SUB161(auVar22 >> 0x27,0) & 1) << 4 |\\n              (ushort)(SUB161(auVar22 >> 0x2f,0) & 1) << 5 |\\n              (ushort)(SUB161(auVar22 >> 0x37,0) & 1) << 6 |\\n              (ushort)(SUB161(auVar22 >> 0x3f,0) & 1) << 7 |\\n              (ushort)(SUB161(auVar22 >> 0x47,0) & 1) << 8 |\\n              (ushort)(SUB161(auVar22 >> 0x4f,0) & 1) << 9 |\\n              (ushort)(SUB161(auVar22 >> 0x57,0) & 1) << 10 |\\n              (ushort)(SUB161(auVar22 >> 0x5f,0) & 1) << 0xb |\\n              (ushort)(SUB161(auVar22 >> 0x67,0) & 1) << 0xc |\\n              (ushort)(SUB161(auVar22 >> 0x6f,0) & 1) << 0xd |\\n              (ushort)(SUB161(auVar22 >> 0x77,0) & 1) << 0xe | (ushort)(auVar22[0xf] >> 7) << 0xf;\\n      uVar10 = (uint)uVar8;\\n      while (uVar8 != 0) {\\n        uVar6 = 0;\\n        for (uVar7 = uVar10; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {\\n          uVar6 = uVar6 + 1;\\n        }\\n        uVar16 = uVar6 + uVar11 & uVar14;\\n        if ((*(longlong *)(lVar4 + -0x18 + uVar16 * -0x18) == -0x4d6baee718106f7b) &&\\n           (*(longlong *)(lVar4 + -0x10 + uVar16 * -0x18) == -0x47cf3fc999470331)) {\\n          uVar14 = *(ulonglong *)(lVar4 + uVar16 * -0x18 + -8);\\n          lVar2 = *in_stack_00000028;\\n          goto joined_r0x0001408e5e28;\\n        }\\n        uVar8 = (ushort)(uVar10 - 1) & (ushort)uVar10;\\n        uVar10 = CONCAT22((short)(uVar10 - 1 >> 0x10),uVar8);\\n      }\\n      auVar20[0] = -(*pcVar1 == -1);\\n      auVar20[1] = -(pcVar1[1] == -1);\\n      auVar20[2] = -(pcVar1[2] == -1);\\n      auVar20[3] = -(pcVar1[3] == -1);\\n      auVar20[4] = -(pcVar1[4] == -1);\\n      auVar20[5] = -(pcVar1[5] == -1);\\n      auVar20[6] = -(pcVar1[6] == -1);\\n      auVar20[7] = -(pcVar1[7] == -1);\\n      auVar20[8] = -(pcVar1[8] == -1);\\n      auVar20[9] = -(pcVar1[9] == -1);\\n      auVar20[10] = -(pcVar1[10] == -1);\\n      auVar20[0xb] = -(pcVar1[0xb] == -1);\\n      auVar20[0xc] = -(pcVar1[0xc] == -1);\\n      auVar20[0xd] = -(pcVar1[0xd] == -1);\\n      auVar20[0xe] = -(pcVar1[0xe] == -1);\\n      auVar20[0xf] = -(pcVar1[0xf] == -1);\\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\\n          auVar20[0xf] < '\\\\0') break;\\n      lVar12 = uVar11 + lVar13;\\n      lVar13 = lVar13 + 0x10;\\n      uVar11 = lVar12 + 0x10U & uVar14;\\n    }\\n  }\\n  lVar4 = *(longlong *)(lVar2 + 0x80);\\n  uVar14 = *(ulonglong *)(lVar2 + 0x88);\\n  uVar11 = uVar14 & 0xb830c03666b8fccf;\\n  lVar13 = 0;\\n  while( true ) {\\n    pcVar1 = (char *)(lVar4 + uVar11);\\n    auVar23[0] = -(*pcVar1 == '\\\\\\\\');\\n    auVar23[1] = -(pcVar1[1] == '\\\\\\\\');\\n    auVar23[2] = -(pcVar1[2] == '\\\\\\\\');\\n    auVar23[3] = -(pcVar1[3] == '\\\\\\\\');\\n    auVar23[4] = -(pcVar1[4] == '\\\\\\\\');\\n    auVar23[5] = -(pcVar1[5] == '\\\\\\\\');\\n    auVar23[6] = -(pcVar1[6] == '\\\\\\\\');\\n    auVar23[7] = -(pcVar1[7] == '\\\\\\\\');\\n    auVar23[8] = -(pcVar1[8] == '\\\\\\\\');\\n    auVar23[9] = -(pcVar1[9] == '\\\\\\\\');\\n    auVar23[10] = -(pcVar1[10] == '\\\\\\\\');\\n    auVar23[0xb] = -(pcVar1[0xb] == '\\\\\\\\');\\n    auVar23[0xc] = -(pcVar1[0xc] == '\\\\\\\\');\\n    auVar23[0xd] = -(pcVar1[0xd] == '\\\\\\\\');\\n    auVar23[0xe] = -(pcVar1[0xe] == '\\\\\\\\');\\n    auVar23[0xf] = -(pcVar1[0xf] == '\\\\\\\\');\\n    uVar8 = (ushort)(SUB161(auVar23 >> 7,0) & 1) | (ushort)(SUB161(auVar23 >> 0xf,0) & 1) << 1 |\\n            (ushort)(SUB161(auVar23 >> 0x17,0) & 1) << 2 |\\n            (ushort)(SUB161(auVar23 >> 0x1f,0) & 1) << 3 |\\n            (ushort)(SUB161(auVar23 >> 0x27,0) & 1) << 4 |\\n            (ushort)(SUB161(auVar23 >> 0x2f,0) & 1) << 5 |\\n            (ushort)(SUB161(auVar23 >> 0x37,0) & 1) << 6 |\\n            (ushort)(SUB161(auVar23 >> 0x3f,0) & 1) << 7 |\\n            (ushort)(SUB161(auVar23 >> 0x47,0) & 1) << 8 |\\n            (ushort)(SUB161(auVar23 >> 0x4f,0) & 1) << 9 |\\n            (ushort)(SUB161(auVar23 >> 0x57,0) & 1) << 10 |\\n            (ushort)(SUB161(auVar23 >> 0x5f,0) & 1) << 0xb |\\n            (ushort)(SUB161(auVar23 >> 0x67,0) & 1) << 0xc |\\n            (ushort)(SUB161(auVar23 >> 0x6f,0) & 1) << 0xd |\\n            (ushort)(SUB161(auVar23 >> 0x77,0) & 1) << 0xe | (ushort)(auVar23[0xf] >> 7) << 0xf;\\n    uVar10 = (uint)uVar8;\\n    local_60 = lVar17;\\n    if (uVar8 != 0) break;\\nLAB_1408e5e7a:\\n    auVar21[0] = -(*pcVar1 == -1);\\n    auVar21[1] = -(pcVar1[1] == -1);\\n    auVar21[2] = -(pcVar1[2] == -1);\\n    auVar21[3] = -(pcVar1[3] == -1);\\n    auVar21[4] = -(pcVar1[4] == -1);\\n    auVar21[5] = -(pcVar1[5] == -1);\\n    auVar21[6] = -(pcVar1[6] == -1);\\n    auVar21[7] = -(pcVar1[7] == -1);\\n    auVar21[8] = -(pcVar1[8] == -1);\\n    auVar21[9] = -(pcVar1[9] == -1);\\n    auVar21[10] = -(pcVar1[10] == -1);\\n    auVar21[0xb] = -(pcVar1[0xb] == -1);\\n    auVar21[0xc] = -(pcVar1[0xc] == -1);\\n    auVar21[0xd] = -(pcVar1[0xd] == -1);\\n    auVar21[0xe] = -(pcVar1[0xe] == -1);\\n    auVar21[0xf] = -(pcVar1[0xf] == -1);\\n    if ((((((((((((((((SUB161(auVar21 >> 7,0) & 1) != 0 || (SUB161(auVar21 >> 0xf,0) & 1) != 0) ||\\n                    (SUB161(auVar21 >> 0x17,0) & 1) != 0) || (SUB161(auVar21 >> 0x1f,0) & 1) != 0)\\n                  || (SUB161(auVar21 >> 0x27,0) & 1) != 0) || (SUB161(auVar21 >> 0x2f,0) & 1) != 0)\\n                || (SUB161(auVar21 >> 0x37,0) & 1) != 0) || (SUB161(auVar21 >> 0x3f,0) & 1) != 0) ||\\n              (SUB161(auVar21 >> 0x47,0) & 1) != 0) || (SUB161(auVar21 >> 0x4f,0) & 1) != 0) ||\\n            (SUB161(auVar21 >> 0x57,0) & 1) != 0) || (SUB161(auVar21 >> 0x5f,0) & 1) != 0) ||\\n          (SUB161(auVar21 >> 0x67,0) & 1) != 0) || (SUB161(auVar21 >> 0x6f,0) & 1) != 0) ||\\n        (SUB161(auVar21 >> 0x77,0) & 1) != 0) || auVar21[0xf] < '\\\\0') {\\nLAB_1408e5f7e:\\n      uVar14 = *(ulonglong *)in_RDX[1];\\n      *(ulonglong *)in_RDX[1] = uVar14 + 1;\\n      local_a0 = 0x8000000000000000;\\n      local_98 = &anon_1834adf1af4b432f557860cf2707f1d6_423_llvm_11645760488755644851;\\n      local_90 = 0x2f;\\n      local_80 = 0x100;\\n      local_d8 = 1;\\n      local_d0 = 0xb2945118e7ef9085;\\n      local_c8 = 0xb830c03666b8fccf;\\n      local_b0 = 8;\\n      local_a8 = 0x58;\\n      local_88 = bevy_ecs::component::ComponentDescriptor::\\n                 drop_ptr<country_core::resources::prefab::PrefabInstance>;\\n      local_7e = 1;\\n      local_c0 = 0;\\n      bevy_ecs::component::ComponentInfo::new();\\n      if (*(ulonglong *)(lVar2 + 0x10) < uVar14 + 1) {\\n        local_49 = 1;\\n        alloc::vec::Vec::\\n        resize_with<enum2_<core::option::Option<bevy_ecs::component::ComponentInfo>_>,alloc::alloc::Global,bevy_ecs::component::impl_19::register_component_inner::closure_env_0>\\n                  ();\\n      }\\n      lVar2 = *(longlong *)(lVar2 + 8);\\n      lVar17 = uVar14 * 0xd0;\\n      local_58 = (undefined8 *)(lVar2 + lVar17);\\n      memcpy(&local_2f8,&local_228,0xd0);\\n      if (*(int *)(lVar2 + lVar17) != 2) {\\n        core::ptr::drop_in_place<bevy_ecs::component::ComponentInfo>();\\n      }\\n      memcpy(local_58,&local_2f8,0xd0);\\n      hashbrown::map::HashMap::\\n      insert<core::any::TypeId,bevy_ecs::component::ComponentId,bevy_platform::hash::NoOpHash,allocator_api2::stable::alloc::global::Global>\\n                ();\\n      local_218 = 0;\\n      uStack_210 = 0;\\n      local_228 = &DAT_142aa54c0;\\n      uStack_220 = 0;\\n      local_4a = 1;\\n      register_required_components();\\n      local_2e8 = local_218;\\n      uStack_2e0 = uStack_210;\\n      local_2f8 = local_228;\\n      uStack_2f0 = uStack_220;\\n      local_58 = (undefined8 *)(*(longlong *)(*in_RDX + 8) + 0x60 + lVar17);\\n      hashbrown::raw::RawTableInner::\\n      drop_inner_table<tuple_<bevy_ecs::component::ComponentId,bevy_ecs::component::RequiredComponent>,allocator_api2::stable::alloc::global::Global>\\n                ();\\n      lVar17 = local_60;\\n      local_58[2] = local_2e8;\\n      local_58[3] = uStack_2e0;\\n      *local_58 = local_2f8;\\n      local_58[1] = uStack_2f0;\\n      if (local_78 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      lVar2 = *in_stack_00000028;\\njoined_r0x0001408e5e28:\\n      if (lVar3 == lVar2) {\\n        alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>();\\n        *(ulonglong *)(in_stack_00000028[1] + lVar3 * 8) = uVar14;\\n        in_stack_00000028[2] = lVar3 + 1;\\n      }\\n      else {\\n        *(ulonglong *)(lVar17 + lVar3 * 8) = uVar14;\\n        in_stack_00000028[2] = lVar3 + 1;\\n        if (lVar3 + 1 == 0) {\\n          return;\\n        }\\n      }\\n      in_stack_00000028[2] = lVar3;\\n      return;\\n    }\\n    lVar12 = uVar11 + lVar13;\\n    lVar13 = lVar13 + 0x10;\\n    uVar11 = lVar12 + 0x10U & uVar14;\\n  }\\nLAB_1408e5eae:\\n  uVar6 = 0;\\n  for (uVar7 = uVar10; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {\\n    uVar6 = uVar6 + 1;\\n  }\\n  uVar16 = uVar6 + uVar11 & uVar14;\\n  lVar12 = uVar16 * -0x88;\\n  if ((*(longlong *)(lVar4 + -0x88 + lVar12) != -0x4d6baee718106f7b) ||\\n     (*(longlong *)(lVar4 + -0x80 + lVar12) != -0x47cf3fc999470331)) goto LAB_1408e5ea0;\\n  lVar17 = ((longlong)(uVar16 * 0x88) >> 3) * -0xf0f0f0f0f0f0f0f;\\n  uVar14 = lVar17 - 0x10U & uVar14;\\n  pcVar1 = (char *)(lVar4 + uVar14);\\n  auVar18[0] = -(*pcVar1 == -1);\\n  auVar18[1] = -(pcVar1[1] == -1);\\n  auVar18[2] = -(pcVar1[2] == -1);\\n  auVar18[3] = -(pcVar1[3] == -1);\\n  auVar18[4] = -(pcVar1[4] == -1);\\n  auVar18[5] = -(pcVar1[5] == -1);\\n  auVar18[6] = -(pcVar1[6] == -1);\\n  auVar18[7] = -(pcVar1[7] == -1);\\n  auVar18[8] = -(pcVar1[8] == -1);\\n  auVar18[9] = -(pcVar1[9] == -1);\\n  auVar18[10] = -(pcVar1[10] == -1);\\n  auVar18[0xb] = -(pcVar1[0xb] == -1);\\n  auVar18[0xc] = -(pcVar1[0xc] == -1);\\n  auVar18[0xd] = -(pcVar1[0xd] == -1);\\n  auVar18[0xe] = -(pcVar1[0xe] == -1);\\n  auVar18[0xf] = -(pcVar1[0xf] == -1);\\n  uVar8 = (ushort)(SUB161(auVar18 >> 7,0) & 1) | (ushort)(SUB161(auVar18 >> 0xf,0) & 1) << 1 |\\n          (ushort)(SUB161(auVar18 >> 0x17,0) & 1) << 2 |\\n          (ushort)(SUB161(auVar18 >> 0x1f,0) & 1) << 3 |\\n          (ushort)(SUB161(auVar18 >> 0x27,0) & 1) << 4 |\\n          (ushort)(SUB161(auVar18 >> 0x2f,0) & 1) << 5 |\\n          (ushort)(SUB161(auVar18 >> 0x37,0) & 1) << 6 |\\n          (ushort)(SUB161(auVar18 >> 0x3f,0) & 1) << 7 |\\n          (ushort)(SUB161(auVar18 >> 0x47,0) & 1) << 8 |\\n          (ushort)(SUB161(auVar18 >> 0x4f,0) & 1) << 9 |\\n          (ushort)(SUB161(auVar18 >> 0x57,0) & 1) << 10 |\\n          (ushort)(SUB161(auVar18 >> 0x5f,0) & 1) << 0xb |\\n          (ushort)(SUB161(auVar18 >> 0x67,0) & 1) << 0xc |\\n          (ushort)(SUB161(auVar18 >> 0x6f,0) & 1) << 0xd |\\n          (ushort)(SUB161(auVar18 >> 0x77,0) & 1) << 0xe | (ushort)(auVar18[0xf] >> 7) << 0xf;\\n  pcVar1 = (char *)(lVar4 + lVar17);\\n  auVar19[0] = -(*pcVar1 == -1);\\n  auVar19[1] = -(pcVar1[1] == -1);\\n  auVar19[2] = -(pcVar1[2] == -1);\\n  auVar19[3] = -(pcVar1[3] == -1);\\n  auVar19[4] = -(pcVar1[4] == -1);\\n  auVar19[5] = -(pcVar1[5] == -1);\\n  auVar19[6] = -(pcVar1[6] == -1);\\n  auVar19[7] = -(pcVar1[7] == -1);\\n  auVar19[8] = -(pcVar1[8] == -1);\\n  auVar19[9] = -(pcVar1[9] == -1);\\n  auVar19[10] = -(pcVar1[10] == -1);\\n  auVar19[0xb] = -(pcVar1[0xb] == -1);\\n  auVar19[0xc] = -(pcVar1[0xc] == -1);\\n  auVar19[0xd] = -(pcVar1[0xd] == -1);\\n  auVar19[0xe] = -(pcVar1[0xe] == -1);\\n  auVar19[0xf] = -(pcVar1[0xf] == -1);\\n  if (uVar8 == 0) {\\n    uVar15 = 0x10;\\n  }\\n  else {\\n    uVar15 = 0xf;\\n    if (uVar8 != 0) {\\n      for (; uVar8 >> uVar15 == 0; uVar15 = uVar15 - 1) {\\n      }\\n    }\\n    uVar15 = uVar15 ^ 0xf;\\n  }\\n  lVar12 = lVar12 + lVar4;\\n  sVar5 = 0;\\n  for (uVar10 = (ushort)((ushort)(SUB161(auVar19 >> 7,0) & 1) |\\n                         (ushort)(SUB161(auVar19 >> 0xf,0) & 1) << 1 |\\n                         (ushort)(SUB161(auVar19 >> 0x17,0) & 1) << 2 |\\n                         (ushort)(SUB161(auVar19 >> 0x1f,0) & 1) << 3 |\\n                         (ushort)(SUB161(auVar19 >> 0x27,0) & 1) << 4 |\\n                         (ushort)(SUB161(auVar19 >> 0x2f,0) & 1) << 5 |\\n                         (ushort)(SUB161(auVar19 >> 0x37,0) & 1) << 6 |\\n                         (ushort)(SUB161(auVar19 >> 0x3f,0) & 1) << 7 |\\n                         (ushort)(SUB161(auVar19 >> 0x47,0) & 1) << 8 |\\n                         (ushort)(SUB161(auVar19 >> 0x4f,0) & 1) << 9 |\\n                         (ushort)(SUB161(auVar19 >> 0x57,0) & 1) << 10 |\\n                         (ushort)(SUB161(auVar19 >> 0x5f,0) & 1) << 0xb |\\n                         (ushort)(SUB161(auVar19 >> 0x67,0) & 1) << 0xc |\\n                         (ushort)(SUB161(auVar19 >> 0x6f,0) & 1) << 0xd |\\n                         (ushort)(SUB161(auVar19 >> 0x77,0) & 1) << 0xe |\\n                        (ushort)(auVar19[0xf] >> 7) << 0xf) | 0x10000; (uVar10 & 1) == 0;\\n      uVar10 = uVar10 >> 1 | 0x80000000) {\\n    sVar5 = sVar5 + 1;\\n  }\\n  uVar9 = 0x80;\\n  if ((ushort)(uVar15 + sVar5) < 0x10) {\\n    *(longlong *)(lVar2 + 0x90) = *(longlong *)(lVar2 + 0x90) + 1;\\n    uVar9 = 0xff;\\n  }\\n  *(undefined1 *)(lVar4 + lVar17) = uVar9;\\n  *(undefined1 *)(lVar4 + 0x10 + uVar14) = uVar9;\\n  *(longlong *)(lVar2 + 0x98) = *(longlong *)(lVar2 + 0x98) + -1;\\n  if (*(longlong *)(lVar12 + -0x78) != 2) {\\n    local_e8 = *(undefined8 *)(lVar12 + -0x10);\\n    uStack_e0 = *(undefined8 *)(lVar12 + -8);\\n    local_f8 = *(undefined8 *)(lVar12 + -0x20);\\n    uStack_f0 = *(undefined8 *)(lVar12 + -0x18);\\n    local_108 = *(undefined8 *)(lVar12 + -0x30);\\n    uStack_100 = *(undefined8 *)(lVar12 + -0x28);\\n    local_148 = *(undefined8 *)(lVar12 + -0x70);\\n    uStack_140 = *(undefined8 *)(lVar12 + -0x68);\\n    local_138 = *(undefined8 *)(lVar12 + -0x60);\\n    uStack_130 = *(undefined8 *)(lVar12 + -0x58);\\n    local_128 = *(undefined8 *)(lVar12 + -0x50);\\n    uStack_120 = *(undefined8 *)(lVar12 + -0x48);\\n    local_118 = *(undefined8 *)(lVar12 + -0x40);\\n    uStack_110 = *(undefined8 *)(lVar12 + -0x38);\\n    local_150 = *(longlong *)(lVar12 + -0x78);\\n    bevy_ecs::component::QueuedRegistration::register();\\n    lVar2 = *in_stack_00000028;\\n    lVar17 = local_60;\\n    uVar14 = extraout_RAX;\\n    goto joined_r0x0001408e5e28;\\n  }\\n  goto LAB_1408e5f7e;\\nLAB_1408e5ea0:\\n  uVar8 = (ushort)(uVar10 - 1) & (ushort)uVar10;\\n  uVar10 = CONCAT22((short)(uVar10 - 1 >> 0x10),uVar8);\\n  if (uVar8 == 0) goto LAB_1408e5e7a;\\n  goto LAB_1408e5eae;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a97860\":{\"name\":\"iter_points_xz\",\"size\":17,\"address\":\"140a97860\",\"signature\":\"void __cdecl iter_points_xz(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::raster_stroke::RasterStroke::iter_points_xz(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409f1c90\":{\"name\":\"fmt<alloc::sync::Arc<slice2$<glam::f32::vec3::Vec3>,alloc::alloc::Global>_>\",\"size\":91,\"address\":\"1409f1c90\",\"signature\":\"void __cdecl fmt<alloc::sync::Arc<slice2$<glam::f32::vec3::Vec3>,alloc::alloc::Global>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::resources::raster_stroke::impl$0::\\nfmt<alloc::sync::Arc<slice2_<glam::f32::vec3::Vec3>,alloc::alloc::Global>_>(void)\\n\\n{\\n  core::fmt::Formatter::debug_struct();\\n  core::fmt::builders::DebugStruct::field();\\n  core::fmt::builders::DebugStruct::finish();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b31d10\":{\"name\":\"default_value\",\"size\":7179,\"address\":\"140b31d10\",\"signature\":\"void __cdecl default_value(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::render::spatial_resolve_offsets::impl$0::default_value(void)\\n\\n{\\n  undefined4 *in_RCX;\\n  \\n  *(undefined8 *)(in_RCX + 1) = 0;\\n  *(undefined8 *)(in_RCX + 3) = 0;\\n  *(undefined8 *)(in_RCX + 5) = 0xffffffffffffffff;\\n  *(undefined8 *)(in_RCX + 7) = 0;\\n  *(undefined8 *)(in_RCX + 9) = 0xffffffff00000002;\\n  *(undefined8 *)(in_RCX + 0xb) = 0;\\n  *(undefined8 *)(in_RCX + 0xd) = 0xfffffffefffffffe;\\n  *(undefined8 *)(in_RCX + 0xf) = 0;\\n  *(undefined8 *)(in_RCX + 0x11) = 0x2fffffffe;\\n  *(undefined8 *)(in_RCX + 0x13) = 0;\\n  *(undefined8 *)(in_RCX + 0x15) = 0x200000002;\\n  *(undefined8 *)(in_RCX + 0x17) = 0;\\n  *(undefined8 *)(in_RCX + 0x19) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x1b) = 0;\\n  *(undefined8 *)(in_RCX + 0x1d) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x1f) = 0;\\n  *(undefined8 *)(in_RCX + 0x21) = 3;\\n  *(undefined8 *)(in_RCX + 0x23) = 0;\\n  *(undefined8 *)(in_RCX + 0x25) = 0x100000003;\\n  *(undefined8 *)(in_RCX + 0x27) = 0;\\n  *(undefined8 *)(in_RCX + 0x29) = 0x3ffffffff;\\n  *(undefined8 *)(in_RCX + 0x2b) = 0;\\n  *(undefined8 *)(in_RCX + 0x2d) = 0x300000001;\\n  *(undefined8 *)(in_RCX + 0x2f) = 0;\\n  *(undefined8 *)(in_RCX + 0x31) = 0xfffffffd00000002;\\n  *(undefined8 *)(in_RCX + 0x33) = 0;\\n  *(undefined8 *)(in_RCX + 0x35) = 0xfffffffefffffffd;\\n  *(undefined8 *)(in_RCX + 0x37) = 0;\\n  *(undefined8 *)(in_RCX + 0x39) = 0x400000001;\\n  *(undefined8 *)(in_RCX + 0x3b) = 0;\\n  *(undefined8 *)(in_RCX + 0x3d) = 0x3fffffffd;\\n  *(undefined8 *)(in_RCX + 0x3f) = 0;\\n  *(undefined8 *)(in_RCX + 0x41) = 0;\\n  *(undefined8 *)(in_RCX + 0x42) = 0;\\n  *(undefined8 *)(in_RCX + 0x44) = 0;\\n  *(undefined8 *)(in_RCX + 0x46) = 1;\\n  *(undefined8 *)(in_RCX + 0x48) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x4a) = 1;\\n  *(undefined8 *)(in_RCX + 0x4c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x4e) = 1;\\n  *(undefined8 *)(in_RCX + 0x50) = 0;\\n  *(undefined8 *)(in_RCX + 0x52) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x54) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x56) = 1;\\n  *(undefined8 *)(in_RCX + 0x58) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x5a) = 2;\\n  *(undefined8 *)(in_RCX + 0x5c) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x5e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x60) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x62) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 100) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x66) = 0;\\n  *(undefined8 *)(in_RCX + 0x68) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x6a) = 0;\\n  *(undefined8 *)(in_RCX + 0x6c) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x6e) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x70) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x72) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x74) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x76) = 1;\\n  *(undefined8 *)(in_RCX + 0x78) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x7a) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x7c) = 0x300000000;\\n  in_RCX[0x7e] = 3;\\n  *(undefined8 *)(in_RCX + 0x7f) = 0;\\n  *(undefined8 *)(in_RCX + 0x81) = 0;\\n  *(undefined8 *)(in_RCX + 0x82) = 0;\\n  *(undefined8 *)(in_RCX + 0x84) = 0;\\n  *(undefined8 *)(in_RCX + 0x86) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x88) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x8a) = 0;\\n  *(undefined8 *)(in_RCX + 0x8c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x8e) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x90) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x92) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x94) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x96) = 1;\\n  *(undefined8 *)(in_RCX + 0x98) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x9a) = 2;\\n  *(undefined8 *)(in_RCX + 0x9c) = 0;\\n  *(undefined8 *)(in_RCX + 0x9e) = 3;\\n  *(undefined8 *)(in_RCX + 0xa0) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0xa2) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0xa4) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0xa6) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0xa8) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0xaa) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0xac) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0xae) = 2;\\n  *(undefined8 *)(in_RCX + 0xb0) = 0;\\n  *(undefined8 *)(in_RCX + 0xb2) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0xb4) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0xb6) = 1;\\n  *(undefined8 *)(in_RCX + 0xb8) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0xba) = 4;\\n  *(undefined8 *)(in_RCX + 0xbc) = 0x300000000;\\n  in_RCX[0xbe] = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0xbf) = 0;\\n  *(undefined8 *)(in_RCX + 0xc1) = 0;\\n  *(undefined8 *)(in_RCX + 0xc3) = 0;\\n  *(undefined8 *)(in_RCX + 0xc5) = 1;\\n  *(undefined8 *)(in_RCX + 199) = 0;\\n  *(undefined8 *)(in_RCX + 0xc9) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0xcb) = 0;\\n  in_RCX[0xcd] = 2;\\n  *(undefined8 *)(in_RCX + 0xce) = 0;\\n  *(undefined8 *)(in_RCX + 0xd0) = 0;\\n  *(undefined8 *)(in_RCX + 0xd2) = 2;\\n  *(undefined8 *)(in_RCX + 0xd4) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0xd6) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0xd8) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0xda) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0xdc) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0xde) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0xe0) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0xe2) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0xe4) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0xe6) = 1;\\n  *(undefined8 *)(in_RCX + 0xe8) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0xea) = 2;\\n  *(undefined8 *)(in_RCX + 0xec) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0xee) = 3;\\n  *(undefined8 *)(in_RCX + 0xf0) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0xf2) = 3;\\n  *(undefined8 *)(in_RCX + 0xf4) = 0;\\n  *(undefined8 *)(in_RCX + 0xf6) = 4;\\n  *(undefined8 *)(in_RCX + 0xf8) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0xfa) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0xfc) = 0x400000000;\\n  in_RCX[0xfe] = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x102) = 0;\\n  *(undefined8 *)(in_RCX + 0x104) = 0;\\n  *(undefined8 *)(in_RCX + 0xff) = 0;\\n  *(undefined8 *)(in_RCX + 0x101) = 0;\\n  *(undefined8 *)(in_RCX + 0x106) = 1;\\n  *(undefined8 *)(in_RCX + 0x108) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x10a) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x10c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x10e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x110) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x112) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x114) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x116) = 0;\\n  *(undefined8 *)(in_RCX + 0x118) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x11a) = 3;\\n  *(undefined8 *)(in_RCX + 0x11c) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x11e) = 2;\\n  *(undefined8 *)(in_RCX + 0x120) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x122) = 0;\\n  *(undefined8 *)(in_RCX + 0x124) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x126) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x128) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x12a) = 4;\\n  *(undefined8 *)(in_RCX + 300) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x12e) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x130) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x132) = 2;\\n  *(undefined8 *)(in_RCX + 0x134) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x136) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x138) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x13a) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x13c) = 0x400000000;\\n  in_RCX[0x13e] = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x142) = 0;\\n  *(undefined8 *)(in_RCX + 0x144) = 0;\\n  *(undefined8 *)(in_RCX + 0x13f) = 0;\\n  *(undefined8 *)(in_RCX + 0x141) = 0;\\n  *(undefined8 *)(in_RCX + 0x146) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x148) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x14a) = 0;\\n  *(undefined8 *)(in_RCX + 0x14c) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x14e) = 1;\\n  *(undefined8 *)(in_RCX + 0x150) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x152) = 2;\\n  *(undefined8 *)(in_RCX + 0x154) = 0;\\n  *(undefined8 *)(in_RCX + 0x156) = 3;\\n  *(undefined8 *)(in_RCX + 0x158) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x15a) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x15c) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x15e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x160) = 0;\\n  *(undefined8 *)(in_RCX + 0x162) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x164) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x166) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x168) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x16a) = 3;\\n  *(undefined8 *)(in_RCX + 0x16c) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x16e) = 3;\\n  *(undefined8 *)(in_RCX + 0x170) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x172) = 4;\\n  *(undefined8 *)(in_RCX + 0x174) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x176) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x178) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x17a) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x17c) = 0xfffffffe00000000;\\n  in_RCX[0x17e] = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x17f) = 0;\\n  *(undefined8 *)(in_RCX + 0x181) = 0;\\n  *(undefined8 *)(in_RCX + 0x183) = 0;\\n  *(undefined8 *)(in_RCX + 0x185) = 0x1ffffffff;\\n  *(undefined8 *)(in_RCX + 0x187) = 0;\\n  *(undefined8 *)(in_RCX + 0x189) = 0xfffffffeffffffff;\\n  *(undefined8 *)(in_RCX + 0x18b) = 0;\\n  *(undefined8 *)(in_RCX + 0x18d) = 0x100000002;\\n  *(undefined8 *)(in_RCX + 399) = 0;\\n  *(undefined8 *)(in_RCX + 0x191) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x193) = 0;\\n  *(undefined8 *)(in_RCX + 0x195) = 0xffffffff00000003;\\n  *(undefined8 *)(in_RCX + 0x197) = 0;\\n  *(undefined8 *)(in_RCX + 0x199) = 0x1fffffffd;\\n  *(undefined8 *)(in_RCX + 0x19b) = 0;\\n  *(undefined8 *)(in_RCX + 0x19d) = 0x3ffffffff;\\n  *(undefined8 *)(in_RCX + 0x19f) = 0;\\n  *(undefined8 *)(in_RCX + 0x1a1) = 0xfffffffe00000003;\\n  *(undefined8 *)(in_RCX + 0x1a3) = 0;\\n  *(undefined8 *)(in_RCX + 0x1a5) = 0x400000001;\\n  *(undefined8 *)(in_RCX + 0x1a7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1a9) = 0xfffffffd00000003;\\n  *(undefined8 *)(in_RCX + 0x1ab) = 0;\\n  *(undefined8 *)(in_RCX + 0x1ad) = 0xfffffffefffffffc;\\n  *(undefined8 *)(in_RCX + 0x1af) = 0;\\n  *(undefined8 *)(in_RCX + 0x1b1) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x1b3) = 0;\\n  *(undefined8 *)(in_RCX + 0x1b5) = 0x300000004;\\n  *(undefined8 *)(in_RCX + 0x1b7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1b9) = 0xfffffffffffffffb;\\n  *(undefined8 *)(in_RCX + 0x1bb) = 0;\\n  *(undefined8 *)(in_RCX + 0x1bd) = 0x100000005;\\n  *(undefined8 *)(in_RCX + 0x1bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x1c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x1c3) = 0;\\n  *(undefined8 *)(in_RCX + 0x1c5) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x1c7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1c9) = 0x100000001;\\n  *(undefined8 *)(in_RCX + 0x1cb) = 0;\\n  *(undefined8 *)(in_RCX + 0x1cd) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x1cf) = 0;\\n  *(undefined8 *)(in_RCX + 0x1d1) = 0xffffffff00000002;\\n  *(undefined8 *)(in_RCX + 0x1d3) = 0;\\n  *(undefined8 *)(in_RCX + 0x1d5) = 0x200000001;\\n  *(undefined8 *)(in_RCX + 0x1d7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1d9) = 0xfffffffefffffffe;\\n  *(undefined8 *)(in_RCX + 0x1db) = 0;\\n  *(undefined8 *)(in_RCX + 0x1dd) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x1df) = 0;\\n  *(undefined8 *)(in_RCX + 0x1e1) = 0xfffffffc00000001;\\n  *(undefined8 *)(in_RCX + 0x1e3) = 0;\\n  *(undefined8 *)(in_RCX + 0x1e5) = 0x1fffffffc;\\n  *(undefined8 *)(in_RCX + 0x1e7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1e9) = 0x100000004;\\n  *(undefined8 *)(in_RCX + 0x1eb) = 0;\\n  *(undefined8 *)(in_RCX + 0x1ed) = 0xfffffffcfffffffe;\\n  *(undefined8 *)(in_RCX + 0x1ef) = 0;\\n  *(undefined8 *)(in_RCX + 0x1f1) = 0xfffffffc00000002;\\n  *(undefined8 *)(in_RCX + 499) = 0;\\n  *(undefined8 *)(in_RCX + 0x1f5) = 0x2fffffffc;\\n  *(undefined8 *)(in_RCX + 0x1f7) = 0;\\n  *(undefined8 *)(in_RCX + 0x1f9) = 0xfffffffdfffffffc;\\n  *(undefined8 *)(in_RCX + 0x1fb) = 0;\\n  *(undefined8 *)(in_RCX + 0x1fd) = 0x4fffffffd;\\n  *(undefined8 *)(in_RCX + 0x202) = 0;\\n  *(undefined8 *)(in_RCX + 0x204) = 0;\\n  *(undefined8 *)(in_RCX + 0x1ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x201) = 0;\\n  *(undefined8 *)(in_RCX + 0x206) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x208) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x20a) = 1;\\n  *(undefined8 *)(in_RCX + 0x20c) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x20e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x210) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x212) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x214) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x216) = 0;\\n  *(undefined8 *)(in_RCX + 0x218) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x21a) = 1;\\n  *(undefined8 *)(in_RCX + 0x21c) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x21e) = 3;\\n  *(undefined8 *)(in_RCX + 0x220) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x222) = 4;\\n  *(undefined8 *)(in_RCX + 0x224) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x226) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x228) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x22a) = 0;\\n  *(undefined8 *)(in_RCX + 0x22c) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x22e) = 3;\\n  *(undefined8 *)(in_RCX + 0x230) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x232) = 4;\\n  *(undefined8 *)(in_RCX + 0x234) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x236) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x238) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x23a) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x23c) = 0x400000000;\\n  in_RCX[0x23e] = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x23f) = 0;\\n  *(undefined8 *)(in_RCX + 0x241) = 0;\\n  *(undefined8 *)(in_RCX + 0x243) = 0;\\n  *(undefined8 *)(in_RCX + 0x245) = 0xffffffff00000001;\\n  *(undefined8 *)(in_RCX + 0x247) = 0;\\n  *(undefined8 *)(in_RCX + 0x249) = 0x1fffffffe;\\n  *(undefined8 *)(in_RCX + 0x24b) = 0;\\n  *(undefined8 *)(in_RCX + 0x24d) = 0x200000001;\\n  *(undefined8 *)(in_RCX + 0x24f) = 0;\\n  *(undefined8 *)(in_RCX + 0x251) = 0xfffffffd00000001;\\n  *(undefined8 *)(in_RCX + 0x253) = 0;\\n  *(undefined8 *)(in_RCX + 0x255) = 0xfffffffefffffffd;\\n  *(undefined8 *)(in_RCX + 599) = 0;\\n  *(undefined8 *)(in_RCX + 0x259) = 0x2fffffffd;\\n  *(undefined8 *)(in_RCX + 0x25b) = 0;\\n  *(undefined8 *)(in_RCX + 0x25d) = 4;\\n  *(undefined8 *)(in_RCX + 0x25f) = 0;\\n  *(undefined8 *)(in_RCX + 0x261) = 0x200000004;\\n  *(undefined8 *)(in_RCX + 0x263) = 0;\\n  *(undefined8 *)(in_RCX + 0x265) = 0x400000002;\\n  *(undefined8 *)(in_RCX + 0x267) = 0;\\n  *(undefined8 *)(in_RCX + 0x269) = 0xfffffffc00000003;\\n  *(undefined8 *)(in_RCX + 0x26b) = 0;\\n  *(undefined8 *)(in_RCX + 0x26d) = 0xfffffffbffffffff;\\n  *(undefined8 *)(in_RCX + 0x26f) = 0;\\n  *(undefined8 *)(in_RCX + 0x271) = 0xfffffffdfffffffb;\\n  *(undefined8 *)(in_RCX + 0x273) = 0;\\n  *(undefined8 *)(in_RCX + 0x275) = 0x5fffffffd;\\n  *(undefined8 *)(in_RCX + 0x277) = 0;\\n  *(undefined8 *)(in_RCX + 0x279) = 0xfffffffe00000006;\\n  *(undefined8 *)(in_RCX + 0x27b) = 0;\\n  *(undefined8 *)(in_RCX + 0x27d) = 0x2fffffffa;\\n  *(undefined8 *)(in_RCX + 0x282) = 0;\\n  *(undefined8 *)(in_RCX + 0x284) = 0;\\n  *(undefined8 *)(in_RCX + 0x27f) = 0;\\n  *(undefined8 *)(in_RCX + 0x281) = 0;\\n  *(undefined8 *)(in_RCX + 0x286) = 1;\\n  *(undefined8 *)(in_RCX + 0x288) = 0;\\n  *(undefined8 *)(in_RCX + 0x28a) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x28c) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x28e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x290) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x292) = 2;\\n  *(undefined8 *)(in_RCX + 0x294) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x296) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x298) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x29a) = 0;\\n  *(undefined8 *)(in_RCX + 0x29c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x29e) = 4;\\n  *(undefined8 *)(in_RCX + 0x2a0) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x2a2) = 3;\\n  *(undefined8 *)(in_RCX + 0x2a4) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x2a6) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x2a8) = 0;\\n  *(undefined8 *)(in_RCX + 0x2aa) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x2ac) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x2ae) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x2b0) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x2b2) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x2b4) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x2b6) = 1;\\n  *(undefined8 *)(in_RCX + 0x2b8) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x2ba) = 5;\\n  *(undefined8 *)(in_RCX + 700) = 0x100000000;\\n  in_RCX[0x2be] = 5;\\n  *(undefined8 *)(in_RCX + 0x2bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x2c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x2c3) = 0;\\n  in_RCX[0x2c5] = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x2c6) = 0;\\n  *(undefined8 *)(in_RCX + 0x2c8) = 0;\\n  *(undefined8 *)(in_RCX + 0x2ca) = 2;\\n  *(undefined8 *)(in_RCX + 0x2cc) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x2ce) = 1;\\n  *(undefined8 *)(in_RCX + 0x2d0) = 0;\\n  *(undefined8 *)(in_RCX + 0x2d2) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x2d4) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x2d6) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x2d8) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x2da) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x2dc) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x2de) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x2e0) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x2e2) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x2e4) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x2e6) = 2;\\n  *(undefined8 *)(in_RCX + 0x2e8) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x2ea) = 4;\\n  *(undefined8 *)(in_RCX + 0x2ec) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x2ee) = 2;\\n  *(undefined8 *)(in_RCX + 0x2f0) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x2f2) = 4;\\n  *(undefined8 *)(in_RCX + 0x2f4) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x2f6) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x2f8) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x2fa) = 3;\\n  *(undefined8 *)(in_RCX + 0x2fc) = 0x300000000;\\n  in_RCX[0x2fe] = 5;\\n  *(undefined8 *)(in_RCX + 0x302) = 0;\\n  *(undefined8 *)(in_RCX + 0x304) = 0;\\n  *(undefined8 *)(in_RCX + 0x2ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x301) = 0;\\n  *(undefined8 *)(in_RCX + 0x306) = 1;\\n  *(undefined8 *)(in_RCX + 0x308) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x30a) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x30c) = 0;\\n  *(undefined8 *)(in_RCX + 0x30e) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x310) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x312) = 0;\\n  *(undefined8 *)(in_RCX + 0x314) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x316) = 1;\\n  *(undefined8 *)(in_RCX + 0x318) = 0;\\n  *(undefined8 *)(in_RCX + 0x31a) = 4;\\n  *(undefined8 *)(in_RCX + 0x31c) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x31e) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 800) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x322) = 3;\\n  *(undefined8 *)(in_RCX + 0x324) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x326) = 3;\\n  *(undefined8 *)(in_RCX + 0x328) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x32a) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x32c) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x32e) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x330) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x332) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x334) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x336) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x338) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x33a) = 5;\\n  *(undefined8 *)(in_RCX + 0x33c) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x341) = 0;\\n  *(undefined8 *)(in_RCX + 0x343) = 0;\\n  *(undefined8 *)(in_RCX + 0x33e) = 0;\\n  *(undefined8 *)(in_RCX + 0x340) = 0;\\n  *(undefined8 *)(in_RCX + 0x345) = 0xfffffffffffffffe;\\n  *(undefined8 *)(in_RCX + 0x347) = 0;\\n  *(undefined8 *)(in_RCX + 0x349) = 0xffffffff00000002;\\n  *(undefined8 *)(in_RCX + 0x34b) = 0;\\n  *(undefined8 *)(in_RCX + 0x34d) = 0xfffffffefffffffe;\\n  *(undefined8 *)(in_RCX + 0x34f) = 0;\\n  *(undefined8 *)(in_RCX + 0x351) = 0x2fffffffe;\\n  *(undefined8 *)(in_RCX + 0x353) = 0;\\n  *(undefined8 *)(in_RCX + 0x355) = 0x300000001;\\n  *(undefined8 *)(in_RCX + 0x357) = 0;\\n  *(undefined8 *)(in_RCX + 0x359) = 0x1fffffffc;\\n  *(undefined8 *)(in_RCX + 0x35b) = 0;\\n  *(undefined8 *)(in_RCX + 0x35d) = 0x100000004;\\n  *(undefined8 *)(in_RCX + 0x35f) = 0;\\n  *(undefined8 *)(in_RCX + 0x361) = 0xfffffffd00000003;\\n  *(undefined8 *)(in_RCX + 0x363) = 0;\\n  *(undefined8 *)(in_RCX + 0x365) = 0xfffffffbffffffff;\\n  *(undefined8 *)(in_RCX + 0x367) = 0;\\n  *(undefined8 *)(in_RCX + 0x369) = 0xfffffffb00000002;\\n  *(undefined8 *)(in_RCX + 0x36b) = 0;\\n  *(undefined8 *)(in_RCX + 0x36d) = 0x5fffffffe;\\n  *(undefined8 *)(in_RCX + 0x36f) = 0;\\n  *(undefined8 *)(in_RCX + 0x371) = 0x500000002;\\n  *(undefined8 *)(in_RCX + 0x373) = 0;\\n  *(undefined8 *)(in_RCX + 0x375) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x377) = 0;\\n  *(undefined8 *)(in_RCX + 0x379) = 0xfffffffffffffffa;\\n  *(undefined8 *)(in_RCX + 0x37b) = 0;\\n  *(undefined8 *)(in_RCX + 0x37d) = 0x200000006;\\n  *(undefined8 *)(in_RCX + 0x382) = 0;\\n  *(undefined8 *)(in_RCX + 900) = 0;\\n  *(undefined8 *)(in_RCX + 0x37f) = 0;\\n  *(undefined8 *)(in_RCX + 0x381) = 0;\\n  *(undefined8 *)(in_RCX + 0x386) = 2;\\n  *(undefined8 *)(in_RCX + 0x388) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x38a) = 1;\\n  *(undefined8 *)(in_RCX + 0x38c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x38e) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x390) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x392) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x394) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x396) = 2;\\n  *(undefined8 *)(in_RCX + 0x398) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x39a) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x39c) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x39e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x3a0) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x3a2) = 4;\\n  *(undefined8 *)(in_RCX + 0x3a4) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x3a6) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x3a8) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x3aa) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x3ac) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x3ae) = 5;\\n  *(undefined8 *)(in_RCX + 0x3b0) = 0;\\n  *(undefined8 *)(in_RCX + 0x3b2) = 6;\\n  *(undefined8 *)(in_RCX + 0x3b4) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x3b6) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x3b8) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x3ba) = 2;\\n  *(undefined8 *)(in_RCX + 0x3bc) = 0x400000000;\\n  in_RCX[0x3be] = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x3c2) = 0;\\n  *(undefined8 *)(in_RCX + 0x3c4) = 0;\\n  *(undefined8 *)(in_RCX + 0x3bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x3c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x3c6) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x3c8) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x3ca) = 1;\\n  *(undefined8 *)(in_RCX + 0x3cc) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x3ce) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x3d0) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x3d2) = 3;\\n  *(undefined8 *)(in_RCX + 0x3d4) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x3d6) = 4;\\n  *(undefined8 *)(in_RCX + 0x3d8) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x3da) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x3dc) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x3de) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x3e0) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x3e2) = 0;\\n  *(undefined8 *)(in_RCX + 0x3e4) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x3e6) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 1000) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x3ea) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x3ec) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x3ee) = 2;\\n  *(undefined8 *)(in_RCX + 0x3f0) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x3f2) = 3;\\n  *(undefined8 *)(in_RCX + 0x3f4) = 0x600000000;\\n  *(undefined8 *)(in_RCX + 0x3f6) = 1;\\n  *(undefined8 *)(in_RCX + 0x3f8) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x3fa) = 6;\\n  *(undefined8 *)(in_RCX + 0x3fc) = 0xfffffffc00000000;\\n  in_RCX[0x3fe] = 6;\\n  *(undefined8 *)(in_RCX + 0x3ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x401) = 0;\\n  *(undefined8 *)(in_RCX + 0x403) = 0;\\n  *(undefined8 *)(in_RCX + 0x405) = 0xfffffffd00000001;\\n  *(undefined8 *)(in_RCX + 0x407) = 0;\\n  *(undefined8 *)(in_RCX + 0x409) = 0x300000001;\\n  *(undefined8 *)(in_RCX + 0x40b) = 0;\\n  *(undefined8 *)(in_RCX + 0x40d) = 0x2fffffffd;\\n  *(undefined8 *)(in_RCX + 0x40f) = 0;\\n  *(undefined8 *)(in_RCX + 0x411) = 0xffffffff00000004;\\n  *(undefined8 *)(in_RCX + 0x413) = 0;\\n  *(undefined8 *)(in_RCX + 0x415) = 0xfffffffc00000003;\\n  *(undefined8 *)(in_RCX + 0x417) = 0;\\n  *(undefined8 *)(in_RCX + 0x419) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x41b) = 0;\\n  *(undefined8 *)(in_RCX + 0x41d) = 0xfffffffbffffffff;\\n  *(undefined8 *)(in_RCX + 0x41f) = 0;\\n  *(undefined8 *)(in_RCX + 0x421) = 0x200000005;\\n  *(undefined8 *)(in_RCX + 0x423) = 0;\\n  *(undefined8 *)(in_RCX + 0x425) = 0x5fffffffe;\\n  *(undefined8 *)(in_RCX + 0x427) = 0;\\n  *(undefined8 *)(in_RCX + 0x429) = 0xfffffffcfffffffc;\\n  *(undefined8 *)(in_RCX + 0x42b) = 0;\\n  *(undefined1 **)(in_RCX + 0x42d) = &DAT_600000001;\\n  *(undefined8 *)(in_RCX + 0x42f) = 0;\\n  *(undefined8 *)(in_RCX + 0x431) = 0x5fffffffb;\\n  *(undefined8 *)(in_RCX + 0x433) = 0;\\n  *(undefined8 *)(in_RCX + 0x435) = 0x700000003;\\n  *(undefined8 *)(in_RCX + 0x437) = 0;\\n  *(undefined8 *)(in_RCX + 0x439) = 0x1fffffff8;\\n  *(undefined8 *)(in_RCX + 0x43b) = 0;\\n  *(undefined8 *)(in_RCX + 0x43d) = 0x400000007;\\n  *(undefined8 *)(in_RCX + 0x43f) = 0;\\n  *(undefined8 *)(in_RCX + 0x441) = 0;\\n  *(undefined8 *)(in_RCX + 0x443) = 0;\\n  *(undefined8 *)(in_RCX + 0x445) = 0xffffffffffffffff;\\n  *(undefined8 *)(in_RCX + 0x447) = 0;\\n  *(undefined8 *)(in_RCX + 0x449) = 0xffffffff00000002;\\n  *(undefined8 *)(in_RCX + 1099) = 0;\\n  *(undefined8 *)(in_RCX + 0x44d) = 0x2ffffffff;\\n  *(undefined8 *)(in_RCX + 0x44f) = 0;\\n  *(undefined8 *)(in_RCX + 0x451) = 0x100000003;\\n  *(undefined8 *)(in_RCX + 0x453) = 0;\\n  *(undefined8 *)(in_RCX + 0x455) = 0xfffffffefffffffc;\\n  *(undefined8 *)(in_RCX + 0x457) = 0;\\n  *(undefined8 *)(in_RCX + 0x459) = 0x400000002;\\n  *(undefined8 *)(in_RCX + 0x45b) = 0;\\n  *(undefined8 *)(in_RCX + 0x45d) = 0xfffffffbfffffffe;\\n  *(undefined8 *)(in_RCX + 0x45f) = 0;\\n  *(undefined8 *)(in_RCX + 0x461) = 0x2fffffffb;\\n  *(undefined8 *)(in_RCX + 0x463) = 0;\\n  *(undefined8 *)(in_RCX + 0x465) = 0xfffffffe00000006;\\n  *(undefined8 *)(in_RCX + 0x467) = 0;\\n  *(undefined8 *)(in_RCX + 0x469) = 0x6fffffffe;\\n  *(undefined8 *)(in_RCX + 0x46b) = 0;\\n  *(undefined8 *)(in_RCX + 0x46d) = 0xfffffffc00000005;\\n  *(undefined8 *)(in_RCX + 0x46f) = 0;\\n  *(undefined8 *)(in_RCX + 0x471) = 0x300000006;\\n  *(undefined8 *)(in_RCX + 0x473) = 0;\\n  *(undefined8 *)(in_RCX + 0x475) = 0xfffffff900000000;\\n  *(undefined8 *)(in_RCX + 0x477) = 0;\\n  *(undefined8 *)(in_RCX + 0x479) = 0x500000005;\\n  *(undefined8 *)(in_RCX + 0x47b) = 0;\\n  *(undefined8 *)(in_RCX + 0x47d) = 0xfffffffa00000004;\\n  *(undefined8 *)(in_RCX + 0x47f) = 0;\\n  *(undefined8 *)(in_RCX + 0x481) = 0;\\n  *(undefined8 *)(in_RCX + 0x483) = 0;\\n  *(undefined8 *)(in_RCX + 0x485) = 0x200000002;\\n  *(undefined8 *)(in_RCX + 0x487) = 0;\\n  *(undefined8 *)(in_RCX + 0x489) = 0xfffffffdffffffff;\\n  *(undefined8 *)(in_RCX + 0x48b) = 0;\\n  *(undefined8 *)(in_RCX + 0x48d) = 0xfffffffffffffffd;\\n  *(undefined8 *)(in_RCX + 0x48f) = 0;\\n  *(undefined8 *)(in_RCX + 0x491) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x493) = 0;\\n  *(undefined8 *)(in_RCX + 0x495) = 0x3fffffffd;\\n  *(undefined8 *)(in_RCX + 0x497) = 0;\\n  *(undefined8 *)(in_RCX + 0x499) = 0xfffffffe00000004;\\n  *(undefined8 *)(in_RCX + 0x49b) = 0;\\n  *(undefined8 *)(in_RCX + 0x49d) = 0xfffffffb00000001;\\n  *(undefined8 *)(in_RCX + 0x49f) = 0;\\n  *(undefined8 *)(in_RCX + 0x4a1) = 0xfffffffdfffffffb;\\n  *(undefined8 *)(in_RCX + 0x4a3) = 0;\\n  *(undefined8 *)(in_RCX + 0x4a5) = 6;\\n  *(undefined8 *)(in_RCX + 0x4a7) = 0;\\n  *(undefined8 *)(in_RCX + 0x4a9) = 0x1fffffffa;\\n  *(undefined8 *)(in_RCX + 0x4ab) = 0;\\n  *(undefined8 *)(in_RCX + 0x4ad) = 0xfffffffa00000003;\\n  *(undefined8 *)(in_RCX + 0x4af) = 0;\\n  *(undefined8 *)(in_RCX + 0x4b1) = 0x600000003;\\n  *(undefined8 *)(in_RCX + 0x4b3) = 0;\\n  *(undefined8 *)(in_RCX + 0x4b5) = 0x7ffffffff;\\n  *(undefined8 *)(in_RCX + 0x4b7) = 0;\\n  *(undefined8 *)(in_RCX + 0x4b9) = 0xfffffff9fffffffc;\\n  *(undefined8 *)(in_RCX + 0x4bb) = 0;\\n  *(undefined8 *)(in_RCX + 0x4bd) = 0xfffffffcfffffff9;\\n  *(undefined8 *)(in_RCX + 0x4bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x4c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x4c3) = 0;\\n  in_RCX[0x4c5] = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x4c6) = 0;\\n  *(undefined8 *)(in_RCX + 0x4c8) = 0;\\n  *(undefined8 *)(in_RCX + 0x4ca) = 2;\\n  *(undefined8 *)(in_RCX + 0x4cc) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x4ce) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x4d0) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x4d2) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x4d4) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x4d6) = 1;\\n  *(undefined8 *)(in_RCX + 0x4d8) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x4da) = 4;\\n  *(undefined8 *)(in_RCX + 0x4dc) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x4de) = 3;\\n  *(undefined8 *)(in_RCX + 0x4e0) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x4e2) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x4e4) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x4e6) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x4e8) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x4ea) = 0;\\n  *(undefined8 *)(in_RCX + 0x4ec) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x4ee) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x4f0) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x4f2) = 4;\\n  *(undefined8 *)(in_RCX + 0x4f4) = 0x700000000;\\n  *(undefined8 *)(in_RCX + 0x4f6) = 0;\\n  *(undefined8 *)(in_RCX + 0x4f8) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x4fa) = 7;\\n  *(undefined8 *)(in_RCX + 0x4fc) = 0xfffffffd00000000;\\n  in_RCX[0x4fe] = 0xfffffff9;\\n  *(undefined8 *)(in_RCX + 0x502) = 0;\\n  *(undefined8 *)(in_RCX + 0x504) = 0;\\n  *(undefined8 *)(in_RCX + 0x4ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x501) = 0;\\n  *(undefined8 *)(in_RCX + 0x506) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x508) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x50a) = 2;\\n  *(undefined8 *)(in_RCX + 0x50c) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x50e) = 2;\\n  *(undefined8 *)(in_RCX + 0x510) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x512) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x514) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x516) = 2;\\n  *(undefined8 *)(in_RCX + 0x518) = 0;\\n  *(undefined8 *)(in_RCX + 0x51a) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x51c) = 0x600000000;\\n  *(undefined8 *)(in_RCX + 0x51e) = 1;\\n  *(undefined8 *)(in_RCX + 0x520) = 0xffffffff00000000;\\n  *(undefined8 *)(in_RCX + 0x522) = 6;\\n  *(undefined8 *)(in_RCX + 0x524) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x526) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x528) = 0x600000000;\\n  *(undefined8 *)(in_RCX + 0x52a) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x52c) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x52e) = 6;\\n  *(undefined8 *)(in_RCX + 0x530) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x532) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x534) = 0xfffffffb00000000;\\n  *(undefined8 *)(in_RCX + 0x536) = 6;\\n  *(undefined8 *)(in_RCX + 0x538) = 0x700000000;\\n  *(undefined8 *)(in_RCX + 0x53a) = 4;\\n  *(undefined8 *)(in_RCX + 0x53c) = 0xfffffff800000000;\\n  in_RCX[0x53e] = 2;\\n  *(undefined8 *)(in_RCX + 0x53f) = 0;\\n  *(undefined8 *)(in_RCX + 0x541) = 0;\\n  *(undefined8 *)(in_RCX + 0x543) = 0;\\n  *(undefined8 *)(in_RCX + 0x545) = 0x200000001;\\n  *(undefined8 *)(in_RCX + 0x547) = 0;\\n  *(undefined8 *)(in_RCX + 0x549) = 0xfffffffd00000001;\\n  *(undefined8 *)(in_RCX + 0x54b) = 0;\\n  *(undefined8 *)(in_RCX + 0x54d) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x54f) = 0;\\n  *(undefined8 *)(in_RCX + 0x551) = 0xffffffff00000004;\\n  *(undefined8 *)(in_RCX + 0x553) = 0;\\n  *(undefined8 *)(in_RCX + 0x555) = 0x4fffffffd;\\n  *(undefined8 *)(in_RCX + 0x557) = 0;\\n  *(undefined8 *)(in_RCX + 0x559) = 0xfffffffb00000003;\\n  *(undefined8 *)(in_RCX + 0x55b) = 0;\\n  *(undefined1 **)(in_RCX + 0x55d) = &DAT_600000001;\\n  *(undefined8 *)(in_RCX + 0x55f) = 0;\\n  *(undefined8 *)(in_RCX + 0x561) = 0xfffffffafffffffe;\\n  *(undefined8 *)(in_RCX + 0x563) = 0;\\n  *(undefined8 *)(in_RCX + 0x565) = 0xfffffffbfffffffb;\\n  *(undefined8 *)(in_RCX + 0x567) = 0;\\n  *(undefined8 *)(in_RCX + 0x569) = 0xfffffff8;\\n  *(undefined8 *)(in_RCX + 0x56b) = 0;\\n  *(undefined8 *)(in_RCX + 0x56d) = 0xffffffff00000008;\\n  *(undefined8 *)(in_RCX + 0x56f) = 0;\\n  *(undefined8 *)(in_RCX + 0x571) = 0x700000004;\\n  *(undefined8 *)(in_RCX + 0x573) = 0;\\n  *(undefined8 *)(in_RCX + 0x575) = 0xfffffffb00000007;\\n  *(undefined8 *)(in_RCX + 0x577) = 0;\\n  *(undefined8 *)(in_RCX + 0x579) = 0xfffffff700000002;\\n  *(undefined8 *)(in_RCX + 0x57b) = 0;\\n  *(undefined8 *)(in_RCX + 0x57d) = 0xfffffffafffffff9;\\n  *(undefined8 *)(in_RCX + 0x57f) = 0;\\n  *(undefined8 *)(in_RCX + 0x581) = 0;\\n  *(undefined8 *)(in_RCX + 0x583) = 0;\\n  *(undefined8 *)(in_RCX + 0x585) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x587) = 0;\\n  *(undefined8 *)(in_RCX + 0x589) = 0xfffffffefffffffe;\\n  *(undefined8 *)(in_RCX + 0x58b) = 0;\\n  *(undefined8 *)(in_RCX + 0x58d) = 0x300000000;\\n  *(undefined8 *)(in_RCX + 0x58f) = 0;\\n  *(undefined8 *)(in_RCX + 0x591) = 0xfffffffe00000003;\\n  *(undefined8 *)(in_RCX + 0x593) = 0;\\n  *(undefined8 *)(in_RCX + 0x595) = 0xfffffffcffffffff;\\n  *(undefined8 *)(in_RCX + 0x597) = 0;\\n  *(undefined8 *)(in_RCX + 0x599) = 0x300000004;\\n  *(undefined8 *)(in_RCX + 0x59b) = 0;\\n  *(undefined8 *)(in_RCX + 0x59d) = 0xfffffffe00000005;\\n  *(undefined8 *)(in_RCX + 0x59f) = 0;\\n  *(undefined8 *)(in_RCX + 0x5a1) = 0xfffffffa00000001;\\n  *(undefined8 *)(in_RCX + 0x5a3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5a5) = 0x1fffffffa;\\n  *(undefined8 *)(in_RCX + 0x5a7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5a9) = 0x6fffffffe;\\n  *(undefined8 *)(in_RCX + 0x5ab) = 0;\\n  *(undefined8 *)(in_RCX + 0x5ad) = 0x400000005;\\n  *(undefined8 *)(in_RCX + 0x5af) = 0;\\n  *(undefined8 *)(in_RCX + 0x5b1) = 0xfffffffdfffffffa;\\n  *(undefined8 *)(in_RCX + 0x5b3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5b5) = 0x4fffffffa;\\n  *(undefined8 *)(in_RCX + 0x5b7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5b9) = 8;\\n  *(undefined8 *)(in_RCX + 0x5bb) = 0;\\n  *(undefined8 *)(in_RCX + 0x5bd) = 0xfffffff9fffffffc;\\n  *(undefined8 *)(in_RCX + 0x5bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x5c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x5c3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5c5) = 2;\\n  *(undefined8 *)(in_RCX + 0x5c7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5c9) = 0x1fffffffe;\\n  *(undefined8 *)(in_RCX + 0x5cb) = 0;\\n  *(undefined8 *)(in_RCX + 0x5cd) = 0xfffffffffffffffc;\\n  *(undefined8 *)(in_RCX + 0x5cf) = 0;\\n  *(undefined8 *)(in_RCX + 0x5d1) = 0x400000001;\\n  *(undefined8 *)(in_RCX + 0x5d3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5d5) = 0xfffffffc00000003;\\n  *(undefined8 *)(in_RCX + 0x5d7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5d9) = 0x100000005;\\n  *(undefined8 *)(in_RCX + 0x5db) = 0;\\n  *(undefined8 *)(in_RCX + 0x5dd) = 0x4fffffffc;\\n  *(undefined8 *)(in_RCX + 0x5df) = 0;\\n  *(undefined8 *)(in_RCX + 0x5e1) = 0x500000003;\\n  *(undefined8 *)(in_RCX + 0x5e3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5e5) = 0xfffffffbfffffffc;\\n  *(undefined8 *)(in_RCX + 0x5e7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5e9) = 0xfffffffefffffff9;\\n  *(undefined8 *)(in_RCX + 0x5eb) = 0;\\n  *(undefined8 *)(in_RCX + 0x5ed) = 0xfffffffe00000007;\\n  *(undefined8 *)(in_RCX + 0x5ef) = 0;\\n  *(undefined8 *)(in_RCX + 0x5f1) = 0xfffffff800000002;\\n  *(undefined8 *)(in_RCX + 0x5f3) = 0;\\n  *(undefined8 *)(in_RCX + 0x5f5) = 0x300000008;\\n  *(undefined8 *)(in_RCX + 0x5f7) = 0;\\n  *(undefined8 *)(in_RCX + 0x5f9) = 0x8fffffffd;\\n  *(undefined8 *)(in_RCX + 0x5fb) = 0;\\n  *(undefined8 *)(in_RCX + 0x5fd) = 0xfffffff900000005;\\n  *(undefined8 *)(in_RCX + 0x602) = 0;\\n  *(undefined8 *)(in_RCX + 0x604) = 0;\\n  *(undefined8 *)(in_RCX + 0x5ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x601) = 0;\\n  *(undefined8 *)(in_RCX + 0x606) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x608) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x60a) = 0xfffffffd;\\n  *(undefined8 *)(in_RCX + 0x60c) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x60e) = 3;\\n  *(undefined8 *)(in_RCX + 0x610) = 0;\\n  *(undefined8 *)(in_RCX + 0x612) = 5;\\n  *(undefined8 *)(in_RCX + 0x614) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x616) = 4;\\n  *(undefined8 *)(in_RCX + 0x618) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x61a) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x61c) = 0x100000000;\\n  *(undefined8 *)(in_RCX + 0x61e) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x620) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x622) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x624) = 0x700000000;\\n  *(undefined8 *)(in_RCX + 0x626) = 0xffffffff;\\n  *(undefined8 *)(in_RCX + 0x628) = 0;\\n  *(undefined8 *)(in_RCX + 0x62a) = 8;\\n  *(undefined8 *)(in_RCX + 0x62c) = 0xfffffff800000000;\\n  *(undefined8 *)(in_RCX + 0x62e) = 3;\\n  *(undefined8 *)(in_RCX + 0x630) = 0x800000000;\\n  *(undefined8 *)(in_RCX + 0x632) = 3;\\n  *(undefined8 *)(in_RCX + 0x634) = 0x500000000;\\n  *(undefined8 *)(in_RCX + 0x636) = 7;\\n  *(undefined8 *)(in_RCX + 0x638) = 0x700000000;\\n  *(undefined8 *)(in_RCX + 0x63a) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x63c) = 0xfffffffb00000000;\\n  in_RCX[0x63e] = 8;\\n  *(undefined8 *)(in_RCX + 0x63f) = 0;\\n  *(undefined8 *)(in_RCX + 0x641) = 0;\\n  *(undefined8 *)(in_RCX + 0x643) = 0;\\n  *(undefined8 *)(in_RCX + 0x645) = 0x200000002;\\n  *(undefined8 *)(in_RCX + 0x647) = 0;\\n  *(undefined8 *)(in_RCX + 0x649) = 0xfffffffd00000000;\\n  *(undefined8 *)(in_RCX + 0x64b) = 0;\\n  *(undefined8 *)(in_RCX + 0x64d) = 3;\\n  *(undefined8 *)(in_RCX + 0x64f) = 0;\\n  *(undefined8 *)(in_RCX + 0x651) = 0xfffffffffffffffd;\\n  *(undefined8 *)(in_RCX + 0x653) = 0;\\n  *(undefined8 *)(in_RCX + 0x655) = 0x3ffffffff;\\n  *(undefined8 *)(in_RCX + 0x657) = 0;\\n  *(undefined8 *)(in_RCX + 0x659) = 0x1fffffffa;\\n  *(undefined8 *)(in_RCX + 0x65b) = 0;\\n  *(undefined8 *)(in_RCX + 0x65d) = 0xfffffffb00000004;\\n  *(undefined8 *)(in_RCX + 0x65f) = 0;\\n  *(undefined8 *)(in_RCX + 0x661) = 0x300000006;\\n  *(undefined8 *)(in_RCX + 0x663) = 0;\\n  *(undefined8 *)(in_RCX + 0x665) = 0xfffffffbfffffffa;\\n  *(undefined8 *)(in_RCX + 0x667) = 0;\\n  *(undefined8 *)(in_RCX + 0x669) = 0x5fffffffa;\\n  *(undefined8 *)(in_RCX + 0x66b) = 0;\\n  *(undefined8 *)(in_RCX + 0x66d) = 0xfffffff800000000;\\n  *(undefined8 *)(in_RCX + 0x66f) = 0;\\n  *(undefined8 *)(in_RCX + 0x671) = 0xfffffffffffffff7;\\n  *(undefined8 *)(in_RCX + 0x673) = 0;\\n  *(undefined8 *)(in_RCX + 0x675) = 0x9fffffffe;\\n  *(undefined8 *)(in_RCX + 0x677) = 0;\\n  *(undefined8 *)(in_RCX + 0x679) = 0xfffffff800000005;\\n  *(undefined8 *)(in_RCX + 0x67b) = 0;\\n  *(undefined8 *)(in_RCX + 0x67d) = 0xfffffff7fffffffd;\\n  *(undefined8 *)(in_RCX + 0x67f) = 0;\\n  *(undefined8 *)(in_RCX + 0x681) = 0;\\n  *(undefined8 *)(in_RCX + 0x683) = 0;\\n  *(undefined8 *)(in_RCX + 0x685) = 0x1fffffffe;\\n  *(undefined8 *)(in_RCX + 0x687) = 0;\\n  *(undefined8 *)(in_RCX + 0x689) = 0xfffffffcffffffff;\\n  *(undefined8 *)(in_RCX + 0x68b) = 0;\\n  *(undefined8 *)(in_RCX + 0x68d) = 5;\\n  *(undefined8 *)(in_RCX + 0x68f) = 0;\\n  *(undefined8 *)(in_RCX + 0x691) = 0x600000002;\\n  *(undefined8 *)(in_RCX + 0x693) = 0;\\n  *(undefined8 *)(in_RCX + 0x695) = 0x6fffffffd;\\n  *(undefined8 *)(in_RCX + 0x697) = 0;\\n  *(undefined8 *)(in_RCX + 0x699) = 0xfffffffafffffffc;\\n  *(undefined8 *)(in_RCX + 0x69b) = 0;\\n  *(undefined8 *)(in_RCX + 0x69d) = 0xfffffff900000003;\\n  *(undefined8 *)(in_RCX + 0x69f) = 0;\\n  *(undefined8 *)(in_RCX + 0x6a1) = 0xfffffffdfffffff9;\\n  *(undefined8 *)(in_RCX + 0x6a3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6a5) = 0xfffffffd00000007;\\n  *(undefined8 *)(in_RCX + 0x6a7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6a9) = 0x100000008;\\n  *(undefined8 *)(in_RCX + 0x6ab) = 0;\\n  *(undefined8 *)(in_RCX + 0x6ad) = 0x600000008;\\n  *(undefined8 *)(in_RCX + 0x6af) = 0;\\n  *(undefined8 *)(in_RCX + 0x6b1) = 0x1fffffff6;\\n  *(undefined8 *)(in_RCX + 0x6b3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6b5) = 0x8fffffff9;\\n  *(undefined8 *)(in_RCX + 0x6b7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6b9) = 0x4fffffff6;\\n  *(undefined8 *)(in_RCX + 0x6bb) = 0;\\n  *(undefined8 *)(in_RCX + 0x6bd) = 0xb00000000;\\n  *(undefined8 *)(in_RCX + 0x6bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x6c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x6c3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6c5) = 0x200000001;\\n  *(undefined8 *)(in_RCX + 0x6c7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6c9) = 0xfffffffe00000002;\\n  *(undefined8 *)(in_RCX + 0x6cb) = 0;\\n  *(undefined8 *)(in_RCX + 0x6cd) = 0xfffffffdfffffffd;\\n  *(undefined8 *)(in_RCX + 0x6cf) = 0;\\n  *(undefined8 *)(in_RCX + 0x6d1) = 0x3fffffffd;\\n  *(undefined8 *)(in_RCX + 0x6d3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6d5) = 0xfffffffc00000003;\\n  *(undefined8 *)(in_RCX + 0x6d7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6d9) = 0xfffffffb;\\n  *(undefined8 *)(in_RCX + 0x6db) = 0;\\n  *(undefined8 *)(in_RCX + 0x6dd) = 0x400000003;\\n  *(undefined8 *)(in_RCX + 0x6df) = 0;\\n  *(undefined8 *)(in_RCX + 0x6e1) = 0x6fffffffe;\\n  *(undefined8 *)(in_RCX + 0x6e3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6e5) = 0xfffffff9ffffffff;\\n  *(undefined8 *)(in_RCX + 0x6e7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6e9) = 0x500000006;\\n  *(undefined8 *)(in_RCX + 0x6eb) = 0;\\n  *(undefined8 *)(in_RCX + 0x6ed) = 0x2fffffff8;\\n  *(undefined8 *)(in_RCX + 0x6ef) = 0;\\n  *(undefined8 *)(in_RCX + 0x6f1) = 0x800000002;\\n  *(undefined8 *)(in_RCX + 0x6f3) = 0;\\n  *(undefined8 *)(in_RCX + 0x6f5) = 0xfffffffb00000007;\\n  *(undefined8 *)(in_RCX + 0x6f7) = 0;\\n  *(undefined8 *)(in_RCX + 0x6f9) = 0x5fffffff9;\\n  *(undefined8 *)(in_RCX + 0x6fb) = 0;\\n  *(undefined8 *)(in_RCX + 0x6fd) = 0xfffffff700000002;\\n  *(undefined8 *)(in_RCX + 0x702) = 0;\\n  *(undefined8 *)(in_RCX + 0x704) = 0;\\n  *(undefined8 *)(in_RCX + 0x6ff) = 0;\\n  *(undefined8 *)(in_RCX + 0x701) = 0;\\n  *(undefined8 *)(in_RCX + 0x706) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x708) = 0x200000000;\\n  *(undefined8 *)(in_RCX + 0x70a) = 2;\\n  *(undefined8 *)(in_RCX + 0x70c) = 0xfffffffc00000000;\\n  *(undefined8 *)(in_RCX + 0x70e) = 0xfffffffe;\\n  *(undefined8 *)(in_RCX + 0x710) = 0xfffffffe00000000;\\n  *(undefined8 *)(in_RCX + 0x712) = 5;\\n  *(undefined8 *)(in_RCX + 0x714) = 0xfffffff900000000;\\n  *(undefined8 *)(in_RCX + 0x716) = 1;\\n  *(undefined8 *)(in_RCX + 0x718) = 0x400000000;\\n  *(undefined8 *)(in_RCX + 0x71a) = 0xfffffff9;\\n  *(undefined8 *)(in_RCX + 0x71c) = 0x700000000;\\n  *(undefined8 *)(in_RCX + 0x71e) = 0xfffffffc;\\n  *(undefined8 *)(in_RCX + 0x720) = 0x600000000;\\n  *(undefined8 *)(in_RCX + 0x722) = 7;\\n  *(undefined8 *)(in_RCX + 0x724) = 0x900000000;\\n  *(undefined8 *)(in_RCX + 0x726) = 3;\\n  *(undefined8 *)(in_RCX + 0x728) = 0xfffffffa00000000;\\n  *(undefined8 *)(in_RCX + 0x72a) = 0xfffffff7;\\n  *(undefined8 *)(in_RCX + 0x72c) = 0xfffffff700000000;\\n  *(undefined8 *)(in_RCX + 0x72e) = 6;\\n  *(undefined8 *)(in_RCX + 0x730) = 0;\\n  *(undefined8 *)(in_RCX + 0x732) = 0xfffffff5;\\n  *(undefined8 *)(in_RCX + 0x734) = 0;\\n  *(undefined8 *)(in_RCX + 0x736) = 0xb;\\n  *(undefined8 *)(in_RCX + 0x738) = 0xfffffff600000000;\\n  *(undefined8 *)(in_RCX + 0x73a) = 0xfffffffa;\\n  *(undefined8 *)(in_RCX + 0x73c) = 0xfffffff900000000;\\n  in_RCX[0x73e] = 10;\\n  *(undefined8 *)(in_RCX + 0x73f) = 0;\\n  *(undefined8 *)(in_RCX + 0x741) = 0;\\n  *(undefined8 *)(in_RCX + 0x743) = 0;\\n  *(undefined8 *)(in_RCX + 0x745) = 0x1fffffffd;\\n  *(undefined8 *)(in_RCX + 0x747) = 0;\\n  *(undefined8 *)(in_RCX + 0x749) = 0xfffffffe00000003;\\n  *(undefined8 *)(in_RCX + 0x74b) = 0;\\n  *(undefined8 *)(in_RCX + 0x74d) = 0xfffffff900000001;\\n  *(undefined8 *)(in_RCX + 0x74f) = 0;\\n  *(undefined8 *)(in_RCX + 0x751) = 0x4fffffffa;\\n  *(undefined8 *)(in_RCX + 0x753) = 0;\\n  *(undefined8 *)(in_RCX + 0x755) = 0x700000002;\\n  *(undefined8 *)(in_RCX + 0x757) = 0;\\n  *(undefined8 *)(in_RCX + 0x759) = 0xfffffffcfffffff9;\\n  *(undefined8 *)(in_RCX + 0x75b) = 0;\\n  *(undefined8 *)(in_RCX + 0x75d) = 0xffffffff00000008;\\n  *(undefined8 *)(in_RCX + 0x75f) = 0;\\n  *(undefined8 *)(in_RCX + 0x761) = 0xfffffff8fffffffe;\\n  *(undefined8 *)(in_RCX + 0x763) = 0;\\n  *(undefined8 *)(in_RCX + 0x765) = 0x3fffffff6;\\n  *(undefined8 *)(in_RCX + 0x767) = 0;\\n  *(undefined8 *)(in_RCX + 0x769) = 0xfffffffc0000000a;\\n  *(undefined8 *)(in_RCX + 0x76b) = 0;\\n  *(undefined8 *)(in_RCX + 0x76d) = 0xafffffffc;\\n  *(undefined8 *)(in_RCX + 0x76f) = 0;\\n  *(undefined8 *)(in_RCX + 0x771) = 0xa00000004;\\n  *(undefined8 *)(in_RCX + 0x773) = 0;\\n  *(undefined8 *)(in_RCX + 0x775) = 0xfffffffefffffff5;\\n  *(undefined8 *)(in_RCX + 0x777) = 0;\\n  *(undefined8 *)(in_RCX + 0x779) = 0x10000000c;\\n  *(undefined8 *)(in_RCX + 0x77b) = 0;\\n  *(undefined8 *)(in_RCX + 0x77d) = 0x70000000a;\\n  *(undefined8 *)(in_RCX + 0x77f) = 0;\\n  *(undefined8 *)(in_RCX + 0x781) = 0;\\n  *(undefined8 *)(in_RCX + 0x783) = 0;\\n  *(undefined8 *)(in_RCX + 0x785) = 0x2ffffffff;\\n  *(undefined8 *)(in_RCX + 0x787) = 0;\\n  *(undefined8 *)(in_RCX + 0x789) = 0xfffffffcffffffff;\\n  *(undefined8 *)(in_RCX + 0x78b) = 0;\\n  *(undefined8 *)(in_RCX + 0x78d) = 0x100000004;\\n  *(undefined8 *)(in_RCX + 0x78f) = 0;\\n  *(undefined8 *)(in_RCX + 0x791) = 0xfffffffc00000004;\\n  *(undefined8 *)(in_RCX + 0x793) = 0;\\n  *(undefined8 *)(in_RCX + 0x795) = 0x500000004;\\n  *(undefined8 *)(in_RCX + 0x797) = 0;\\n  *(undefined8 *)(in_RCX + 0x799) = 0xfffffffbfffffffb;\\n  *(undefined8 *)(in_RCX + 0x79b) = 0;\\n  *(undefined8 *)(in_RCX + 0x79d) = 0x300000007;\\n  *(undefined8 *)(in_RCX + 0x79f) = 0;\\n  *(undefined8 *)(in_RCX + 0x7a1) = 0x7fffffffd;\\n  *(undefined8 *)(in_RCX + 0x7a3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7a5) = 0xfffffffffffffff8;\\n  *(undefined8 *)(in_RCX + 0x7a7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7a9) = 0x6fffffffa;\\n  *(undefined8 *)(in_RCX + 0x7ab) = 0;\\n  *(undefined8 *)(in_RCX + 0x7ad) = 0x900000000;\\n  *(undefined8 *)(in_RCX + 0x7af) = 0;\\n  *(undefined8 *)(in_RCX + 0x7b1) = 0xfffffff600000003;\\n  *(undefined8 *)(in_RCX + 0x7b3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7b5) = 0xfffffff800000007;\\n  *(undefined8 *)(in_RCX + 0x7b7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7b9) = 0xfffffff8fffffff7;\\n  *(undefined8 *)(in_RCX + 0x7bb) = 0;\\n  *(undefined8 *)(in_RCX + 0x7bd) = 0x3fffffff4;\\n  *(undefined8 *)(in_RCX + 0x7bf) = 0;\\n  *(undefined8 *)(in_RCX + 0x7c1) = 0;\\n  *(undefined8 *)(in_RCX + 0x7c3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7c5) = 0xfffffffb00000001;\\n  *(undefined8 *)(in_RCX + 0x7c7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7c9) = 0x1fffffffb;\\n  *(undefined8 *)(in_RCX + 0x7cb) = 0;\\n  *(undefined8 *)(in_RCX + 0x7cd) = 0x500000001;\\n  *(undefined8 *)(in_RCX + 1999) = 0;\\n  *(undefined8 *)(in_RCX + 0x7d1) = 0xfffffffbfffffffd;\\n  *(undefined8 *)(in_RCX + 0x7d3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7d5) = 6;\\n  *(undefined8 *)(in_RCX + 0x7d7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7d9) = 0xfffffff8fffffffc;\\n  *(undefined8 *)(in_RCX + 0x7db) = 0;\\n  *(undefined8 *)(in_RCX + 0x7dd) = 0xfffffff6;\\n  *(undefined8 *)(in_RCX + 0x7df) = 0;\\n  *(undefined8 *)(in_RCX + 0x7e1) = 0xffffffff0000000a;\\n  *(undefined8 *)(in_RCX + 0x7e3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7e5) = 0x900000005;\\n  *(undefined8 *)(in_RCX + 0x7e7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7e9) = 0xfffffff900000008;\\n  *(undefined8 *)(in_RCX + 0x7eb) = 0;\\n  *(undefined1 **)(in_RCX + 0x7ed) = &DAT_600000009;\\n  *(undefined8 *)(in_RCX + 0x7ef) = 0;\\n  *(undefined8 *)(in_RCX + 0x7f1) = 0xfffffffcfffffff5;\\n  *(undefined8 *)(in_RCX + 0x7f3) = 0;\\n  *(undefined8 *)(in_RCX + 0x7f5) = 0xc00000002;\\n  *(undefined8 *)(in_RCX + 0x7f7) = 0;\\n  *(undefined8 *)(in_RCX + 0x7f9) = 0xfffffff6fffffff9;\\n  *(undefined8 *)(in_RCX + 0x7fb) = 0;\\n  *(undefined8 *)(in_RCX + 0x7fd) = 0xcfffffffc;\\n  *(undefined8 *)(in_RCX + 0x7ff) = 0;\\n  *in_RCX = 1;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b1f210\":{\"name\":\"disabled\",\"size\":7,\"address\":\"140b1f210\",\"signature\":\"void __cdecl disabled(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::resources::shader_refactoring_state::ShaderRefactoringState::disabled(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b2ba40\":{\"name\":\"initiate_game_shutdown\",\"size\":185,\"address\":\"140b2ba40\",\"signature\":\"void __cdecl initiate_game_shutdown(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::shutdown::initiate_game_shutdown(void)\\n\\n{\\n  ulonglong *puVar1;\\n  longlong lVar2;\\n  ulonglong uVar3;\\n  ulonglong uVar4;\\n  undefined8 *in_RCX;\\n  longlong in_RDX;\\n  ulonglong uVar5;\\n  longlong *plVar6;\\n  ulonglong uVar7;\\n  ulonglong uVar8;\\n  ulonglong uVar9;\\n  ulonglong uVar10;\\n  \\n  puVar1 = (ulonglong *)*in_RCX;\\n  lVar2 = in_RCX[1];\\n  uVar3 = *puVar1;\\n  uVar8 = 0;\\n  uVar9 = uVar3 - *(ulonglong *)(lVar2 + 0x18);\\n  if (uVar3 < *(ulonglong *)(lVar2 + 0x18)) {\\n    uVar9 = uVar8;\\n  }\\n  uVar7 = uVar3 - *(ulonglong *)(lVar2 + 0x38);\\n  if (uVar3 < *(ulonglong *)(lVar2 + 0x38)) {\\n    uVar7 = uVar8;\\n  }\\n  uVar3 = *(ulonglong *)(lVar2 + 0x30);\\n  uVar10 = uVar3 - uVar7;\\n  if (uVar3 < uVar7) {\\n    uVar10 = uVar8;\\n  }\\n  uVar4 = *(ulonglong *)(lVar2 + 0x10);\\n  uVar5 = uVar4 - uVar9;\\n  if (uVar4 < uVar9) {\\n    uVar5 = uVar8;\\n  }\\n  uVar8 = *(ulonglong *)(lVar2 + 0x40);\\n  *puVar1 = uVar8 - (uVar5 + uVar10);\\n  if (uVar4 >= uVar9 && uVar4 - uVar9 != 0 || uVar3 >= uVar7 && uVar3 - uVar7 != 0) {\\n    *puVar1 = uVar8;\\n    plVar6 = *(longlong **)(in_RDX + 8);\\n    if (plVar6 == (longlong *)0x0) {\\n      plVar6 = *(longlong **)(in_RDX + 0x10);\\n    }\\n    lVar2 = plVar6[2];\\n    if ((ulonglong)(*plVar6 - lVar2) < 8) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n    *(code **)(plVar6[1] + lVar2) =\\n         core::ops::function::FnOnce::\\n         call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::system::commands::command::insert_resource::closure_env_0<country_core::resources::shutdown::ShutdownGame>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n    ;\\n    plVar6[2] = lVar2 + 8;\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a59890\":{\"name\":\"from\",\"size\":32,\"address\":\"140a59890\",\"signature\":\"void __cdecl from(void)\",\"decompiled_code\":\"\\n// WARNING: Control flow encountered bad instruction data\\n// WARNING: Instruction at (ram,0x000140a5aba7) overlaps instruction at (ram,0x000140a5aba5)\\n// \\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl country_core::resources::texture_presets::impl$1::from(void)\\n\\n{\\n  byte bVar1;\\n  byte bVar2;\\n  undefined8 uVar3;\\n  undefined8 uVar4;\\n  char cVar5;\\n  ulonglong uVar6;\\n  char *pcVar7;\\n  undefined8 uVar8;\\n  undefined8 *in_RCX;\\n  undefined8 *puVar9;\\n  ulonglong in_RDX;\\n  longlong unaff_RBX;\\n  longlong unaff_RBP;\\n  byte *unaff_RDI;\\n  byte *unaff_R15;\\n  undefined4 uStack_78;\\n  undefined3 uStack_74;\\n  undefined8 uStack_58;\\n  undefined8 uStack_50;\\n  undefined8 uStack_48;\\n  undefined8 uStack_40;\\n  \\n  puVar9 = (undefined8 *)&DAT_142ad35b0;\\n  uVar6 = (ulonglong)*(int *)(&DAT_142ad35b0 + (in_RDX & 0xff) * 4);\\n  pcVar7 = &DAT_142ad35b0 + uVar6;\\n  cVar5 = (char)pcVar7;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n  switch(in_RDX & 0xff) {\\n  case 0:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xe3624a5fa0363c58;\\n    break;\\n  case 1:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xc2fc59b8a62a7bb9;\\n    break;\\n  case 2:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x50f50a6fd3a4462f;\\n    break;\\n  case 3:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xced8911eca0705eb;\\n    break;\\n  case 4:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xa25c046ba6c05bb4;\\n    break;\\n  case 5:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x240ea7ee12ea47f7;\\n    break;\\n  case 6:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x6749a66bcf038be9;\\n    break;\\n  case 7:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xa5be6bd038976cb3;\\n    break;\\n  case 8:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    rhapsody::raw::texture::TextureDesc::mip_levels();\\n    uVar8 = 0x9fa1678d41f0c18;\\n    break;\\n  case 9:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x4ed8767ebd4c321c;\\n    break;\\n  case 10:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::depth_stencil_attachment();\\n    uVar8 = 0xe673b662ce97671c;\\n    break;\\n  case 0xb:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x7efe10a2cce11c9f;\\n    break;\\n  case 0xc:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x1cac83c580b2d77b;\\n    break;\\n  case 0xd:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x3887a26d3181f0e2;\\n    break;\\n  case 0xe:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x84a037e697de0324;\\n    break;\\n  case 0xf:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::color_attachment();\\n    uVar8 = 0x35daf42788d4cb5b;\\n    break;\\n  case 0x10:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::color_attachment();\\n    uVar8 = 0x7abd76ee26e8d462;\\n    break;\\n  case 0x11:\\n    rhapsody::raw::texture::TextureDesc::new_2d_array();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::depth_stencil_attachment();\\n    uVar8 = 0x98c11fe95d7d3b89;\\n    break;\\n  case 0x12:\\n    rhapsody::raw::texture::TextureDesc::new_2d_array();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::depth_stencil_attachment();\\n    uVar8 = 0xe6dee57299866376;\\n    break;\\n  case 0x13:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xa73804971c10b016;\\n    break;\\n  case 0x14:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xc3f7d6e6c37cec9d;\\n    break;\\n  case 0x15:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x6759183d0a9c8971;\\n    break;\\n  case 0x16:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0xffb5ef44962bea4d;\\n    break;\\n  case 0x17:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    uVar8 = 0x354571e6bba69ded;\\n    break;\\n  case 0x18:\\n    rhapsody::raw::texture::TextureDesc::new_2d();\\n    rhapsody::raw::texture::TextureDesc::storage();\\n    rhapsody::raw::texture::TextureDesc::sampled();\\n    uVar8 = 0x70b01834b4b40879;\\n    break;\\n  case 0x19:\\n    *pcVar7 = *pcVar7 + cVar5;\\n    goto code_r0x000140a5ab88;\\n  case 0x1a:\\n    _DAT_142ad35b0 = 0xfdf86300;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x1b:\\n    goto code_r0x000140a5ab7d;\\n  case 0x1c:\\n  case 0x1d:\\n    goto code_r0x000140a5ab7d;\\n  case 0x1e:\\n    *pcVar7 = *pcVar7 + cVar5;\\ncode_r0x000140a5ab7d:\\n    rhapsody::raw::managed::handle::impl$6::drop();\\n    pcVar7 = (char *)(ulonglong)*(uint *)(unaff_RBP + 0x240);\\ncode_r0x000140a5ab88:\\n    puVar9 = *(undefined8 **)(unaff_RBP + 0x658);\\ncode_r0x000140a5ab8f:\\n    *(int *)(puVar9 + 4) = (int)pcVar7;\\n    uVar8 = *(undefined8 *)(unaff_RBP + 0x220);\\n    uVar3 = *(undefined8 *)(unaff_RBP + 0x228);\\n    uVar4 = *(undefined8 *)(unaff_RBP + 0x238);\\n    puVar9[2] = *(undefined8 *)(unaff_RBP + 0x230);\\n    puVar9[3] = uVar4;\\n    *puVar9 = uVar8;\\n    puVar9[1] = uVar3;\\n                    // WARNING: Read-only address (ram,0x000142ad35b0) is written\\n    return;\\n  case 0x1f:\\n    if ((longlong)pcVar7 < 0) {\\n      *(char *)(unaff_RBX + 0x24085) = *(char *)(unaff_RBX + 0x24085) + -0x50;\\n      (&UNK_142ad353b)[uVar6] = (&UNK_142ad353b)[uVar6] + -0x50;\\n      *pcVar7 = *pcVar7 + cVar5;\\n    }\\n    else {\\n      pcVar7 = (char *)CONCAT71((int7)((ulonglong)pcVar7 >> 8),cVar5 + *pcVar7);\\n      bVar2 = *unaff_RDI;\\n      *unaff_RDI = *unaff_RDI + 0xb0;\\n      *(char *)(unaff_RBP + 0x230) = *(char *)(unaff_RBP + 0x230) + -0x50 + (0x4f < bVar2);\\n    }\\n    goto code_r0x000140a5ab8f;\\n  case 0x20:\\n    bVar2 = *unaff_R15;\\n    bVar1 = *unaff_R15;\\n    *unaff_R15 = bVar1 + 0xb0 + (0xfffffffebd52ca4f < uVar6);\\n                    // WARNING: Read-only address (ram,0x000142ad35b0) is written\\n    _DAT_142ad35b0 =\\n         (int)pcVar7 + -0x2079d00 +\\n         (uint)(0x4f < bVar2 || CARRY1(bVar1 + 0xb0,0xfffffffebd52ca4f < uVar6));\\n    return;\\n  default:\\n    *(char *)(unaff_RBX + -8) = *(char *)(unaff_RBX + -8) + (char)((ulonglong)pcVar7 >> 8);\\n    goto code_r0x000142ad35b3;\\n  case 0x25:\\n  case 0x26:\\n  case 0x27:\\n    unaff_RDI = (byte *)((ulonglong)pcVar7 & 0xffffffff);\\ncode_r0x000142ad35b3:\\n    bVar2 = in((short)in_RDX);\\n    *unaff_RDI = bVar2;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  }\\n  in_RCX[2] = uStack_48;\\n  in_RCX[3] = uStack_40;\\n  *in_RCX = uStack_58;\\n  in_RCX[1] = uStack_50;\\n  in_RCX[4] = uVar8;\\n  *(undefined1 *)(in_RCX + 5) = 0;\\n  *(undefined4 *)((longlong)in_RCX + 0x29) = uStack_78;\\n  *(uint *)((longlong)in_RCX + 0x2c) = CONCAT31(uStack_74,uStack_78._3_1_);\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":18,\"requested\":18}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

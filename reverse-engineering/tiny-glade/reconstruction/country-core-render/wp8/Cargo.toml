@@ -1,0 +1,21 @@
+[package]
+name = "country-core-wp8"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP8 evidence bundle: terrain content-domain resources + terrain systems (skeleton-aligned)"
+publish = false
+
+# Standalone bundle crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+glam = { version = "=0.29.3", features = ["serde"] }
+serde = { version = "=1.0.200", features = ["derive"] }
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+
+[profile.dev]
+opt-level = 0

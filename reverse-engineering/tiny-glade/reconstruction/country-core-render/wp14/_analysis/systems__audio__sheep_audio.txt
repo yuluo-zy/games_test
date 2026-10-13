@@ -1,0 +1,91 @@
+==== systems/audio/sheep_audio.rs ====
+metadata_records=31 symbol_pairs=2 line_blocks=1 inline_sites=2 proc_instances=1
+-- named_symbol_entities --
+  country_core::systems::audio::sheep_audio::PlaySheepReactSound :: name_and_relations_only size=unknown align=unknown enum=unknown :: unknown
+  country_core::systems::audio::sheep_audio::SheepAudioState :: name_and_relations_only size=unknown align=unknown enum=unknown :: unknown
+-- definitions --
+-- FUNC country_core::systems::audio::sheep_audio::sheep_audio_system :: ret=3 nparams=0
+    compiled rva={'procedure_id': '532:28576', 'rva': 10313376, 'va': 5379022496, 'source_line': 49, 'mapping': 'pdb_line_table_overlap'}
+    called_by {'assembly': '\tcallq\t-1658230', 'bytes': 'e88ab2e6ff', 'caller_entry_rva': 11971200, 'event': 'reference', 'instruction_rva': 11971601, 'kind': 'direct_call', 'length': 5, 'llvm_opcode': 'CALL64pcrel32', 'soft_fail': False, 'target_rva': 10313376, 'caller_alias_group_rva': 11971200, 'evidence': 'original_binary_decoded_reachable_transfer', 'runtime_observed': False, 'target_alias_group_rva': 10313376}
+    called_by {'assembly': '\tcallq\t-11486984', 'bytes': 'e8f8b850ff', 'caller_entry_rva': 21799904, 'event': 'reference', 'instruction_rva': 21800355, 'kind': 'direct_call', 'length': 5, 'llvm_opcode': 'CALL64pcrel32', 'soft_fail': False, 'target_rva': 10313376, 'caller_alias_group_rva': 21799904, 'evidence': 'original_binary_decoded_reachable_transfer', 'runtime_observed': False, 'target_alias_group_rva': 10313376}
+    cand_iface_id 6e14525abf11b8369f422725
+-- FUNC country_core::systems::audio::sheep_audio::sheep_audio_init_system :: ret=3 nparams=0
+    inline_into bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void (*)(bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::system::commands::Commands),void (*)(bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::system::commands::Commands)> > rva=11970624 line=26
+    inline_into bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void (*)(bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::system::commands::Commands),void (*)(bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::system::commands::Commands)> > > rva=21863056 line=26
+    cand_iface_id 91ceb1718f806fece44659eb
+imports: alloc, anyhow, bevy_ecs, core, country_core
+-- DEPS country_core::systems::audio::sheep_audio::sheep_audio_system
+    [pdb_inline_direct] bevy_ecs::event::reader::EventReader::read  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/reader.rs)
+    [pdb_inline_transitive] bevy_ecs::system::system_param::impl$19::deref_mut  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/system/system_param.rs)
+    [pdb_inline_transitive] bevy_ecs::event::event_cursor::EventCursor::read_with_id  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/event_cursor.rs)
+    [pdb_inline_transitive] bevy_ecs::event::iterators::EventIteratorWithId::new  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/iterators.rs)
+    [pdb_inline_transitive] core::num::impl$11::saturating_sub  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\num\uint_macros.rs)
+    [pdb_inline_transitive] core::slice::impl$0::get  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\mod.rs)
+    [pdb_inline_transitive] core::slice::index::impl$7::get  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\index.rs)
+    [pdb_inline_transitive] core::slice::index::impl$4::get  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\index.rs)
+    [pdb_inline_transitive] core::num::impl$11::checked_sub  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\num\uint_macros.rs)
+    [pdb_inline_transitive] alloc::vec::impl$8::deref  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\vec\mod.rs)
+    [pdb_inline_transitive] alloc::vec::Vec::as_slice  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\vec\mod.rs)
+    [pdb_inline_transitive] core::slice::impl$0::iter  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\mod.rs)
+    [pdb_inline_transitive] core::slice::iter::Iter::new  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\iter.rs)
+    [pdb_inline_transitive] core::ptr::mut_ptr::impl$0::add  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\mut_ptr.rs)
+    [pdb_inline_direct] bevy_ecs::event::iterators::impl$0::next  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/iterators.rs)
+    [pdb_inline_transitive] bevy_ecs::event::iterators::impl$3::next  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/iterators.rs)
+    [pdb_inline_transitive] core::iter::adapters::chain::impl$1::next  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\iter\adapters\chain.rs)
+    [pdb_inline_transitive] core::iter::adapters::chain::and_then_or_clear  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\iter\adapters\chain.rs)
+    [pdb_inline_transitive] core::option::Option::as_mut  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\option.rs)
+    [pdb_inline_transitive] core::option::Option::or_else  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\option.rs)
+    [pdb_inline_transitive] core::iter::adapters::chain::impl$1::next::closure$0  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\iter\adapters\chain.rs)
+    [pdb_inline_transitive] core::slice::iter::impl$182::next  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\iter\macros.rs)
+    [pdb_inline_transitive] core::slice::iter::impl$186::next_unchecked  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\iter\macros.rs)
+    [pdb_inline_transitive] core::slice::iter::Iter::post_inc_start  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\slice\iter\macros.rs)
+    [pdb_inline_transitive] core::ptr::non_null::NonNull::add  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\non_null.rs)
+    [pdb_inline_transitive] core::option::Option::map  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\option.rs)
+    [pdb_inline_transitive] bevy_ecs::event::iterators::impl$3::next::closure$0  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/event/iterators.rs)
+    [pdb_inline_direct] country_core::resources::audio_resources::AudioCore::instantiate_audio  (/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/audio_resources.rs)
+    [pdb_inline_transitive] core::option::Option::as_ref  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\option.rs)
+    [pdb_inline_transitive] alloc::sync::impl$29::deref  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\sync.rs)
+    [pdb_inline_transitive] alloc::str::impl$4::to_owned  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\str.rs)
+    [pdb_inline_transitive] alloc::slice::impl$9::to_owned  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs)
+    [pdb_inline_transitive] alloc::slice::impl$0::to_vec  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs)
+    [pdb_inline_transitive] alloc::slice::impl$0::to_vec_in  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs)
+    [pdb_inline_transitive] alloc::slice::hack::to_vec  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs)
+    [pdb_inline_transitive] alloc::slice::hack::impl$1::to_vec  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\slice.rs)
+    [pdb_inline_transitive] alloc::vec::Vec::with_capacity_in  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\vec\mod.rs)
+    [pdb_inline_transitive] alloc::raw_vec::RawVec::with_capacity_in  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::raw_vec::RawVecInner::with_capacity_in  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::raw_vec::RawVecInner::try_allocate_in  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::alloc::impl$1::allocate  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\alloc.rs)
+    [pdb_inline_transitive] alloc::alloc::Global::alloc_impl  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\alloc.rs)
+    [pdb_inline_transitive] alloc::alloc::alloc  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\alloc.rs)
+    [pdb_inline_transitive] core::ptr::const_ptr::impl$0::copy_to_nonoverlapping  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\const_ptr.rs)
+    [pdb_inline_transitive] core::intrinsics::copy_nonoverlapping  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\intrinsics\mod.rs)
+    [pdb_inline_transitive] anyhow::Ok  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anyhow-1.0.86/src/lib.rs)
+    [pdb_inline_direct] core::result::Result::unwrap  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\result.rs)
+    [pdb_inline_transitive] core::ptr::drop_in_place  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\mod.rs)
+    [pdb_inline_direct] core::ptr::drop_in_place  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\mod.rs)
+    [pdb_inline_transitive] alloc::raw_vec::impl$3::drop  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::raw_vec::RawVecInner::deallocate  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::raw_vec::RawVecInner::current_memory  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\raw_vec.rs)
+    [pdb_inline_transitive] alloc::alloc::impl$1::deallocate  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\alloc.rs)
+    [pdb_inline_transitive] alloc::alloc::dealloc  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\alloc\src\alloc.rs)
+    [pdb_inline_direct] bevy_ecs::change_detection::impl$38::deref_mut  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/change_detection.rs)
+    [pdb_inline_transitive] bevy_ecs::change_detection::impl$37::set_changed  (/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/change_detection.rs)
+    [native_direct_call_in_physical_body] country_core::resources::audio_resources::AudioCoreInner::instantiate_audio  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x140613c10  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x142923c00  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x140a57da0  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x140a57670  (None)
+    [native_direct_call_in_physical_body] country_core::resources::audio_resources::AudioInstance::start_if_not_playing  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x14089a280  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x140613c20  (None)
+    [native_direct_call_in_physical_body] country_core::utils::audio_utils::AudioLoop::start_if_not_playing  (None)
+    [native_direct_call_in_physical_body] country_core::utils::audio_utils::AudioLoop::stop  (None)
+    [native_direct_call_in_physical_body] core::result::unwrap_failed  (None)
+    [native_direct_call_in_physical_body] alloc::raw_vec::handle_error  (None)
+    [native_direct_call_in_physical_body] alias_set_at_0x14014a680  (None)
+    [native_direct_call_in_physical_body] anyhow::error::_$LT$impl$u20$core..ops..drop..Drop$u20$for$u20$anyhow..Error$GT$::drop  (None)
+-- DEPS country_core::systems::audio::sheep_audio::sheep_audio_init_system
+    [pdb_inline_direct] country_core::utils::audio_utils::AudioLoopDesc::new  (/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/utils/audio_utils.rs)
+    [pdb_inline_direct] core::result::Result::unwrap  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\result.rs)
+    [pdb_inline_transitive] core::ptr::drop_in_place  (/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\mod.rs)

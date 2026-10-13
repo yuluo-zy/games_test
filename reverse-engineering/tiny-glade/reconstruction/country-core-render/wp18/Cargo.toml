@@ -1,0 +1,19 @@
+[package]
+name = "country-core-wp18-draw-shaders"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP18 evidence-bundle crate for the Tiny Glade draw_shaders domain (systems/render_loop/draw_passes/draw_shaders/*; mirrors reconstruction/country-core assembly layout)"
+publish = false
+
+# Standalone crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Reused assembled reconstruction crate (wp1 pass-declaration / wp2 buffers /
+# wp3 GpuWorld / wp4 asset libraries + frame constants). Offline-cached per the
+# original release Cargo.lock baseline. The owner integrates wp18 into it.
+country-core = { path = "../../country-core" }

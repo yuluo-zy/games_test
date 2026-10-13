@@ -1,0 +1,62 @@
+{
+  "workpackage": "wp15",
+  "domain": "country-core UI / input / startup / app-shell",
+  "target_version": "B",
+  "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8",
+  "method": "business-logic-first: decompile + PDB-skeleton evidence + call chain; machine-code diff only for numeric/boundary adjudication",
+  "sources": {
+    "skeleton": "skeleton/B/crates/country-core/src/{input,startup,systems/ui,geometry,utils,app_loading_state,game_config,game_profile,game_key_bindings,meta_commander,lib}.rs",
+    "enriched": "skeleton/B/crates/country-core/src/**/*.enriched.json.gz (functions/callers/inline hosts)",
+    "structures": "skeleton/B/crates/country-core/src/**/*.structures.json.gz (named symbol entities)",
+    "public_symbols": "evidence/render-architecture/public-symbols.json"
+  },
+  "ghidra_batches": {
+    "b1_input": "input (ActiveInputModeTracker, DigitalActionState, MainActionSet, ActionSetAction, InputStream)",
+    "b2_meta": "meta_commander + game_config (commander_update, MetaCommander, is_within_glade_shape, GameConfig::upgrade)",
+    "b3_profile": "game_profile + game_key_bindings (load/save profile, assign_key, keycode_to_str)",
+    "b4_startup": "startup order + terrain/water/walls/nani/clearing/themes/session",
+    "b5_ui_state": "ui_state + ui_update + hover_intersection",
+    "b6_widgets": "widget_params + signifier builder + UiSounds",
+    "b7_signifiers": "signifier_create + signifier_animation + debug_visualize_volumes",
+    "b8_geom": "geometry (cube/plane/sphere/instanced_wall) + dirty_tiles + world_space_to_screen_space",
+    "b9_utils": "utils (audio_loop, child_wall, geo, load_json, project_cursor_onto_ray, startup_* small)",
+    "b10_startup2": "remaining startup (load_* + startup_* small)",
+    "b11_startup3": "startup_deferred_raster, startup_blit, startup_sheep, startup_roof, garden_brush, critters, grass, ivy"
+  },
+  "key_numeric_findings": {
+    "glade_rounded_box_half_extent_f32": "0x42c28200 (~97.2538) release glade clamp",
+    "glade_demo_circle_radius": "65 (4225 = 65^2) demo-mode clamp",
+    "clearing_canvas_size": "130x130 (0x43020000,0x43020000)",
+    "default_key_binding_codes": "[7,8,9,10,0xb,0xc,0xd,0xe,0xf,0x23,0x27,0x2d,0x2b,0xc3,0x38,0xab,0xa5,0x1b,0x49,0x3a,0x51,0x52,0x50,0x53,0x4f,0x4e] + mouse {1,2,1} + 0xc3",
+    "boundary_wall_brick_sources": "[(7,5),(4,4),(6,7),(3,7),(6,6),(2,3),(1,5),(7,7),(3,1)]",
+    "boundary_wall_marker_kinds": "[0,0,0,1,1,0x100,0x100], subs [0,0,1,0,1,0,1]",
+    "water_surface_pass_selectors": "[0xf, 0xe] + winter ice",
+    "widget_params_size": "0xb0",
+    "meta_command_stride": "0x38 (56 B); empty sentinel 0x8000000000000014",
+    "game_profile_size": "0x208",
+    "input_frame_stride": "0xd0; sync point 0x60",
+    "dirty_tiles_size": "0x200 (64x64 bit grid)",
+    "audio_loop_cooldown_marker": "1000000000 ns",
+    "project_onto_ray_min_clamp": "1e-10"
+  },
+  "verification": {
+    "offline_cargo_check": "passed (0 errors)",
+    "rust_toolchain": "edition 2024, rust-version 1.86 (matches assembled country-core)",
+    "dep_versions": "glam =0.29.3, serde =1.0.200, serde_json =0.85, ron =0.8.1, bevy_ecs =0.16.0, anyhow =1.0.103, parking_lot =0.12.1, log =0.4.27 (original Cargo.lock baseline)",
+    "all_implemented_unverified": true,
+    "no_runtime_gpu_or_integration_acceptance": true
+  },
+  "contract_status": {
+    "input": "recovered-surface O; layouts typed-gap",
+    "startup": "plugin-order O-skeleton; numeric tables O; deep spawn wiring todo",
+    "ui": "UiState/WidgetParams/signifier builder layouts O; full ui_update machine U",
+    "app-shell": "GameConfig bounds + GameProfile size + key-bindings defaults + MetaCommand dispatch O; field layouts U",
+    "geometry-utils": "DirtyTiles/ChildWall/AudioLoop/instanced_wall layouts O; mesh vertex data I"
+  },
+  "reconciliation_notes": [
+    "Transform (40 B) owned by wp6; CameraCursorRay (32 B) owned by wp8 — not redefined.",
+    "wp8 systems/terrain carries a local typed-gap `UiState` facade; the real `systems::ui::resources::ui_state::UiState` is recovered here (integration owner resolves the alias).",
+    "rhapsody/puffin/egui/winit/bevy are reused deps — surfaces only."
+  ]
+}

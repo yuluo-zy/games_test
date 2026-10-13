@@ -1,0 +1,116 @@
+// addr=0x140949190 name=add_frame
+// signature=void __cdecl add_frame(void)
+
+
+void __cdecl country_core::input::input_stream::InputStream::add_frame(void)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  undefined8 *extraout_RAX;
+  longlong in_RCX;
+  ulonglong uVar4;
+  void *in_RDX;
+  ulonglong uVar5;
+  char in_R8B;
+  undefined8 local_120;
+  char *local_118;
+  undefined8 local_110;
+  undefined8 local_108;
+  undefined8 local_100;
+  undefined8 uStack_f8;
+  undefined8 local_f0;
+  char *local_e8;
+  undefined8 local_e0;
+  undefined4 local_d8;
+  undefined4 local_d4;
+  undefined **local_d0;
+  undefined8 local_c8;
+  undefined8 **local_c0;
+  undefined8 local_b8;
+  undefined8 local_b0;
+  longlong *local_50;
+  code *local_48;
+  longlong local_40;
+  void *local_38;
+  undefined1 local_29;
+  undefined8 local_28;
+  
+  local_28 = 0xfffffffffffffffe;
+  local_38 = in_RDX;
+  if ((in_R8B != '\0') && (lVar1 = *(longlong *)(in_RCX + 0x38), lVar1 - 9999U < 0xffffffffffffd8f0)
+     ) {
+    if (*(ulonglong *)(in_RCX + 0x18) < 2) {
+      if (lVar1 - 49999U < 0xffffffffffff3cb0) {
+        lVar2 = *(longlong *)(in_RCX + 0x30);
+        uVar4 = 0;
+        if (*(ulonglong *)(in_RCX + 0x20) <= lVar2 + 1U) {
+          uVar4 = *(ulonglong *)(in_RCX + 0x20);
+        }
+        *(ulonglong *)(in_RCX + 0x30) = (lVar2 - uVar4) + 1;
+        *(longlong *)(in_RCX + 0x38) = lVar1 + -1;
+        lVar1 = *(longlong *)(*(longlong *)(in_RCX + 0x28) + lVar2 * 0xd0);
+        if (!SBORROW8(0,lVar1)) {
+          lVar2 = *(longlong *)(*(longlong *)(in_RCX + 0x28) + 0x18 + lVar2 * 0xd0);
+          if (lVar1 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          if (lVar2 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+        }
+      }
+    }
+    else {
+      local_29 = 1;
+      drop_oldest_sync_point();
+    }
+  }
+  memcpy(&local_120,local_38,0xd0);
+  uVar4 = *(ulonglong *)(in_RCX + 0x20);
+  uVar3 = *(ulonglong *)(in_RCX + 0x38);
+  if (uVar3 == uVar4) {
+    alloc::collections::vec_deque::VecDeque::
+    grow<country_core::input::input_stream::InputFrame,alloc::alloc::Global>();
+    uVar4 = *(ulonglong *)(in_RCX + 0x20);
+    uVar3 = *(ulonglong *)(in_RCX + 0x38);
+  }
+  uVar3 = uVar3 + *(longlong *)(in_RCX + 0x30);
+  uVar5 = 0;
+  if (uVar4 <= uVar3) {
+    uVar5 = uVar4;
+  }
+  memmove((void *)((uVar3 - uVar5) * 0xd0 + *(longlong *)(in_RCX + 0x28)),&local_120,0xd0);
+  local_40 = *(longlong *)(in_RCX + 0x38) + 1;
+  *(longlong *)(in_RCX + 0x38) = local_40;
+  if ((((ulonglong)(local_40 * 0x5d4e8fb00bcbe61d) >> 4 | local_40 * 0x5d4e8fb00bcbe61d << 0x3c) <
+       0x14f8b588e3690) &&
+     (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E)) {
+    local_50 = &local_40;
+    local_48 = core::fmt::num::imp::impl$9::fmt;
+    local_29 = 0;
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    local_100 = *extraout_RAX;
+    uStack_f8 = extraout_RAX[1];
+    local_d4 = *(undefined4 *)(extraout_RAX + 2);
+    local_f0 = 3;
+    local_e8 = "country_core::input::input_stream";
+    local_e0 = 0x21;
+    local_d0 = &anon_a9f01d7c42a6b6ded4ee4033507219c5_21_llvm_1057620027058656075;
+    local_c8 = 1;
+    local_c0 = &local_50;
+    local_b8 = 1;
+    local_b0 = 0;
+    local_120 = 0;
+    local_118 = "country_core::input::input_stream";
+    local_110 = 0x21;
+    local_108 = 0;
+    local_d8 = 1;
+    local_29 = 0;
+    ::log::__private_api::impl$2::log();
+  }
+  return;
+}
+
+

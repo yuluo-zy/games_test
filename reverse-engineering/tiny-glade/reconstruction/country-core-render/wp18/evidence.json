@@ -1,0 +1,134 @@
+{
+  "wp": "wp18",
+  "domain": "country_core::systems::render_loop::draw_passes::draw_shaders",
+  "target_version": "B",
+  "target_exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "target_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "skeleton_dir": "skeleton-enriched/B/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders",
+  "skeleton_source_shas": {
+    "billboard_forest.rs": "15458ffd5114c44900c6cbbdb84b809a60e92cd5c4ca9779850b4ca6b5120d84",
+    "clearing_shaders.rs": "f9d1a001a1df56cc3a7d2b6e4ff65fc9527590bde80da8eafb7f9055387d80ca",
+    "clouds.rs": "f923312888a421381634f339e7bbeed301bab19ac22a50df6a1e719e0c2c08f1",
+    "common_includes.rs": "d999f7305979f05a28feed7ee633ddbd118b419bbfc13c6e01fcdec8fb30a11c",
+    "draw_bricks.rs": "492363e4c963855d9d61abaf9e1fa09e437b1b847e7e0fac3b21793e3f3efac7",
+    "floor_shader.rs": "0c5912765c5addb99fc52ec12e01b84b51af867fb1862ebe088fcad72e08b922",
+    "grass_shader.rs": "d88ae5e225bc1594db00646dc2ae74ddaa220bff6d159fdbf11db23eff80fe1b",
+    "instanced_critters.rs": "5732409f3407174df9d2466f0ebf01dfa40f907a646aae2bd608be3393e64fc6",
+    "instanced_ivy.rs": "9a91e851f2457b1bfe3543972009d766091185f54f24ce5477273d214a1f0598",
+    "leaf_particle_draw.rs": "0cd2595d9d1f3e12ae6c0789aa512c0caeb26eff61d64a80e965a209cf6135f0",
+    "path_pebble_shader.rs": "ac39234102041c0941ec4fe20201efe1671bc4c333f6f60472486715acddf911",
+    "rocky_terrain_draw.rs": "18552ec55c514fa05ae5c49bccac9b789c2a32dc29038eedbd9bcbf9efcc80ca",
+    "stairs_draw.rs": "6f43a28bb8491e195e107801ea16ab174980f5b6c9a6354b3ee9f80abe61f391",
+    "stars.rs": "a5c75386c6ba3cdb456d4998658d24dbcb62542b4f554e349192492800a349b5"
+  },
+  "method": {
+    "workflow": "business-logic → contract → skeleton-aligned Rust; machine-code diff only for numeric/boundary adjudication",
+    "decompile_backend": "ghidra read-only --worker shared",
+    "operator": "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
+    "jobs": [
+      "scripts/job_drawshaders_b1.json",
+      "scripts/job_drawshaders_b2.json",
+      "scripts/job_drawshaders_b3.json"
+    ],
+    "results": [
+      "scripts/result_drawshaders_b1.json",
+      "scripts/result_drawshaders_b2.json",
+      "scripts/result_drawshaders_b3.json"
+    ],
+    "note_common_includes_base": "common_includes RVAs are 0x160e330/0x1631f90/0x160e630 → VA = 0x140000000 + RVA (0x14160e330 etc.); critters RVAs 0x15547e0… → VA 0x1415547e0…"
+  },
+  "address_table": {
+    "billboard_forest.rs": {
+      "impl$0::build": "0x140ae8070 (size 8)",
+      "startup_billboard_forest": "0x140ae8080 (size 578)"
+    },
+    "clearing_shaders.rs": {
+      "tree_trunk": "0x1409c9830 (size 1643)",
+      "tree_canopy": "0x1409ca350 (size 1373)"
+    },
+    "clouds.rs": {
+      "impl$0::build": "0x14085b8a0 (size 8)",
+      "startup_clouds": "0x14085b8b0 (size 585)"
+    },
+    "common_includes.rs": {
+      "bind_terrain_heightmap": "inlined (line 13)",
+      "bind_terrain_lighting": "inlined (line 30)",
+      "bind_water_object_push<ComputePass>": "0x14160e330 (size 584)",
+      "bind_water_object_push<DrawBuilder>": "0x141631f90 (size 224)",
+      "bind_garden_exclusion<ComputePass>": "0x14160e630 (size 344)"
+    },
+    "draw_bricks.rs": {
+      "indirect_draw_bricks<0>": "0x1408a53d0 (size 1387)",
+      "indirect_draw_bricks<1>": "0x1408a4ca0 (size 1417)"
+    },
+    "floor_shader.rs": {
+      "draw_floor_shader": "0x1409cacb0 (size 1363)"
+    },
+    "grass_shader.rs": {
+      "draw_common": "inlined (line 18)",
+      "draw_grass_shader": "0x140b4af70 (size 412)",
+      "draw_grass_lod1_shader": "0x140b4b1d0 (size 410)"
+    },
+    "instanced_critters.rs": {
+      "draw_instanced_butterfly_shader": "0x1415547e0 (size 310)",
+      "draw_instanced_firefly_shader": "0x1415549b0 (size 569)",
+      "draw_instanced_firefly_glow_shader": "0x141554cf0 (size 642)",
+      "draw_duck_shader": "0x141555080 (size 1719)",
+      "draw_wren_shader": "0x141555ec0 (size 289)"
+    },
+    "instanced_ivy.rs": {
+      "draw_instanced_ivy_branch_shader": "0x1408dbc50 (size 855)",
+      "draw_instanced_ivy_leaf_shader": "0x1408dc180 (size 21)",
+      "draw_instanced_ivy_flower_shader": "0x1408dc1a0 (size 21)",
+      "ivy_leaf_shader": "0x1408dc1c0 (size 1555)"
+    },
+    "leaf_particle_draw.rs": {
+      "leaf_particle_draw": "0x140a8a090 (size 435)"
+    },
+    "path_pebble_shader.rs": {
+      "path_pebble_draw": "0x1408e5a10 (size 178)"
+    },
+    "rocky_terrain_draw.rs": {
+      "rocky_terrain_shader": "0x1409cb4e0 (size 501)"
+    },
+    "stairs_draw.rs": {
+      "stairs_draw": "0x14086a780 (size 1140)"
+    },
+    "stars.rs": {
+      "impl$0::build": "0x140903c90 (size 8)",
+      "startup_stars": "0x140903ca0 (size 585)"
+    }
+  },
+  "shader_uri_cross_check": {
+    "source": "evidence/render-passes/pass-builder/shader-uri-list.json (255 URIs, 254 matched) + compiled-shaders-full-list.txt (404 .bin)",
+    "status": "all 14 modules mapped to URIs with compiled .bin match (b903e43ffb3da915/f0adff76827e73ff raster twin-variant)",
+    "notes": [
+      "clearing_distant_billboard / clearing_instanced_background_tree / meadow_* : compiled artifacts present, wiring outside the two clearing functions (U)",
+      "ivy_ivy.raster.hlsl : compiled artifact present, no static URI match in binary (U: flower variant / runtime assembly)",
+      "catalog family refs: billboard_forest/billboard_plant, clearing_*, cloud, star, wall_wall_brick_lod{0,1}, terrain_editing_floor, grass{,_lod1}, critters_*, ivy_instanced_ivy_*, leaf_particle, path_pebble, rocky_terrain_rocky_terrain, rocky_terrain_stairs_stairs_indirect"
+    ]
+  },
+  "typed_gaps": [
+    "TextureFromDisk name-hash → texture asset name (only 0x579f39ab91a01865=water_noise_texture O)",
+    "ECS resource type-ids: 0xbba451ee6a08a3ff(camera O), 0xd2f519263066413b, 0x1b4e385d376c1cc0, 0x8226cc786e679355, 0x850dbd51eafef756, 0xfa44538b95ae76c6, 0x3dce36237fb50dff, 0xa2127765959c8b85, 0xdf356893cc4e98a8",
+    "bind_brick_erase_highlight/bind_wall_color_customization/bind_stone_floor_textures: O=DrawBuilder::bind_*, shared crate models on CommonDrawParams (integration adjudication)",
+    "duck 3-component reads + Mat4 uniform provenance; nani_draw kind selection (tree/wren)",
+    "TexturePreset numeric slots semantic table; stairs map keys 0x775c6361f3425a3a/0x3bad471c3be19d00; ivy_ivy.raster wiring",
+    "startup_* system params carried as typed gaps (ShaderWatch etc. not in shared crate)"
+  ],
+  "build_validation": {
+    "crate": "reconstruction/country-core-render/wp18",
+    "cargo_check_offline": "0 errors, 0 warnings (country-core dependency retains its pre-existing 176 skeleton warnings)",
+    "cargo_clippy_offline": "0 errors, 0 warnings for wp18",
+    "dependency": "country-core = { path = \"../../country-core\" } (offline-cached per original release Cargo.lock baseline)"
+  },
+  "deliverables": [
+    "contracts/draw-shaders.md (domain overview + cross-check + gap ledger)",
+    "contracts/{billboard-forest,clearing-shaders,clouds-stars,common-includes,draw-bricks,floor-grass,instanced-critters-ivy,leaf-pebble,rocky-stairs}.md",
+    "src/systems/render_loop/draw_passes/draw_shaders/{billboard_forest,clearing_shaders,clouds,common_includes,draw_bricks,floor_shader,grass_shader,instanced_critters,instanced_ivy,leaf_particle_draw,path_pebble_shader,rocky_terrain_draw,stairs_draw,stars}.rs",
+    "src/resources/{texture_presets,critters,color_id_roof}.rs (typed-gap carriers for types not in shared crate)",
+    "Cargo.toml + src/lib.rs (standalone offline cargo check gate)",
+    "README.md + evidence.json"
+  ],
+  "status": "implemented_unverified; no runtime/GPU acceptance; contracts are the current reviewable basis"
+}

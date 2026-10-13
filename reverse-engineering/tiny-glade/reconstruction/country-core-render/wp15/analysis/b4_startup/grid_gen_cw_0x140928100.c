@@ -1,0 +1,98 @@
+// addr=0x140928100 name=grid_gen_cw
+// signature=void __cdecl grid_gen_cw(void)
+
+
+void __cdecl country_core::startup::startup_terrain::grid_gen_cw(void)
+
+{
+  int iVar1;
+  int iVar2;
+  longlong *in_RCX;
+  uint in_EDX;
+  int iVar3;
+  int iVar4;
+  uint uVar5;
+  int iVar6;
+  int iVar7;
+  uint in_R8D;
+  int in_R9D;
+  longlong lVar8;
+  int iVar9;
+  int iVar10;
+  int iVar11;
+  longlong lVar12;
+  int in_stack_00000028;
+  
+  if (in_EDX <= in_R8D) {
+    while (5 < (in_R8D + 1) - in_EDX) {
+      in_EDX = in_EDX + 4;
+      if (in_R8D < in_EDX) {
+        in_EDX = in_R8D;
+      }
+      grid_gen_cw();
+    }
+    if ((in_R9D != 0) && (in_EDX < in_R8D)) {
+      iVar1 = in_stack_00000028 + 1;
+      lVar8 = in_RCX[2];
+      iVar9 = in_stack_00000028 + 2;
+      iVar2 = 0;
+      iVar3 = 0;
+      iVar4 = iVar1;
+      do {
+        iVar3 = iVar3 + 1;
+        iVar6 = iVar2;
+        iVar7 = iVar4;
+        uVar5 = in_R8D;
+        iVar10 = iVar9;
+        do {
+          lVar12 = lVar8;
+          if (lVar12 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          *(uint *)(in_RCX[1] + lVar12 * 4) = in_EDX + iVar6;
+          in_RCX[2] = lVar12 + 1;
+          if (lVar12 + 1 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          *(uint *)(in_RCX[1] + 4 + lVar12 * 4) = in_EDX + iVar7;
+          in_RCX[2] = lVar12 + 2;
+          if (lVar12 + 2 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          iVar11 = in_EDX + iVar6 + 1;
+          *(int *)(in_RCX[1] + 8 + lVar12 * 4) = iVar11;
+          in_RCX[2] = lVar12 + 3;
+          if (lVar12 + 3 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          *(int *)(in_RCX[1] + 0xc + lVar12 * 4) = iVar11;
+          in_RCX[2] = lVar12 + 4;
+          if (lVar12 + 4 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          *(uint *)(in_RCX[1] + 0x10 + lVar12 * 4) = in_EDX + iVar7;
+          in_RCX[2] = lVar12 + 5;
+          if (lVar12 + 5 == *in_RCX) {
+            alloc::raw_vec::RawVec::grow_one<u32,alloc::alloc::Global>();
+          }
+          *(uint *)(in_RCX[1] + 0x14 + lVar12 * 4) = in_EDX + iVar10;
+          in_RCX[2] = lVar12 + 6;
+          iVar7 = iVar7 + 1;
+          iVar6 = iVar6 + 1;
+          uVar5 = uVar5 - 1;
+          iVar10 = iVar10 + 1;
+          lVar8 = lVar12 + 6;
+        } while (in_EDX != uVar5);
+        lVar8 = lVar12 + 6;
+        iVar4 = iVar4 + iVar1;
+        iVar2 = iVar2 + iVar1;
+        iVar9 = iVar9 + iVar1;
+      } while (iVar3 != in_R9D);
+    }
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+
+

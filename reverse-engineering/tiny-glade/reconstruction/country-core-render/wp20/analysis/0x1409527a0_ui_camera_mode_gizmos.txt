@@ -1,0 +1,83 @@
+ADDR: 0x1409527a0
+SIG: void __cdecl ui_camera_mode_gizmos(void)
+
+
+void __cdecl country_core::systems::ui_camera_mode_gizmos::ui_camera_mode_gizmos(void)
+
+{
+  undefined4 uVar1;
+  undefined8 uVar2;
+  longlong lVar3;
+  uint uVar4;
+  undefined8 *extraout_RAX;
+  void *extraout_RAX_00;
+  uint uVar5;
+  longlong *in_RCX;
+  undefined8 *in_R9;
+  void *_Dst;
+  longlong *in_stack_00000028;
+  longlong *in_stack_00000030;
+  longlong *in_stack_00000038;
+  longlong *in_stack_00000040;
+  undefined8 *in_stack_00000048;
+  longlong local_98;
+  void *local_90;
+  size_t local_88;
+  
+  lVar3 = *(longlong *)*in_stack_00000038;
+  if (((lVar3 == 2) || (((int)lVar3 == 10 && ((char)((longlong *)*in_stack_00000038)[1] == '\0'))))
+     && ((*(byte *)(*in_stack_00000040 + 0x4d0) & 6) != 2)) {
+    lVar3 = *in_RCX;
+    uVar4 = *(uint *)(lVar3 + 0x10);
+    if ((uVar4 < 3) || (*(uint *)(lVar3 + 0x18) < 3)) {
+      if (*(int *)*in_stack_00000048 != 0x14) {
+        systems::ui::resources::ui_state::UiState::add<ref_<str_>_>();
+        uVar4 = *(uint *)(lVar3 + 0x10);
+      }
+      uVar2 = *(undefined8 *)*in_R9;
+      if (uVar4 < 3) {
+        uVar4 = *(uint *)(*in_stack_00000030 + 0x11c);
+        uVar5 = 0;
+        if ((char)uVar4 != '\x06') {
+          uVar5 = uVar4;
+        }
+        if (((byte)uVar5 < 5) && ((0x13U >> (uVar5 & 0x1f) & 1) != 0)) {
+          uVar4 = *(uint *)(*in_stack_00000028 + 4);
+          uVar1 = *(undefined4 *)(*in_stack_00000030 + 0xe8);
+          alloc::fmt::format::format_inner();
+          std::alloc::__default_lib_allocator::__rust_alloc();
+          if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+            alloc::alloc::handle_alloc_error();
+          }
+          *extraout_RAX = 1;
+          extraout_RAX[1] = 1;
+          extraout_RAX[2] = uVar2;
+          *(float *)(extraout_RAX + 3) = (float)uVar4;
+          *(undefined4 *)((longlong)extraout_RAX + 0x1c) = uVar1;
+          if ((longlong)local_88 < 0) {
+LAB_140952a79:
+                    // WARNING: Subroutine does not return
+            alloc::raw_vec::handle_error();
+          }
+          if (local_88 == 0) {
+            _Dst = (void *)0x1;
+          }
+          else {
+            std::alloc::__default_lib_allocator::__rust_alloc();
+            _Dst = extraout_RAX_00;
+            if (extraout_RAX_00 == (void *)0x0) goto LAB_140952a79;
+          }
+          memcpy(_Dst,local_90,local_88);
+          append_only_vec::AppendOnlyVec::
+          push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>();
+          if (local_98 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+

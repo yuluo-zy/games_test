@@ -1,0 +1,28 @@
+
+void __cdecl country_core::systems::audio::ivy_audio::ivy_audio_init_system(void)
+
+{
+  char *extraout_RAX;
+  undefined8 *in_RCX;
+  longlong local_48;
+  
+  if (*(longlong *)*in_RCX == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX,"event:/SFX/IvyGrow",0x12);
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_48 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  bevy_ecs::system::commands::Commands::
+  insert_resource<country_core::systems::audio::ivy_audio::IvyAudioState>();
+  return;
+}
+

@@ -1,0 +1,89 @@
+{
+  "workpackage": "wp12",
+  "scope": "country_core::systems::wall (version B)",
+  "target": {
+    "exe_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "oracle_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "skeleton_units": 57,
+  "system_signatures_source": "enriched file_interface_candidates (native_direct_generic_caller/candidate_only) -> evidence/inventory.json",
+  "address_map": "evidence/address-map.txt (VA->B EXE from pdb.jsonl.gz S_LINES)",
+  "decompiles": {
+    "batch1": "evidence/decompiles/b1/*.c (18 functions, ghidra read-only shared worker, result evidence/jobs/ghidra-wall-b1.result.json)"
+  },
+  "systems_by_group": {
+    "core_lifecycle": ["calc_wall_bend", "delete_wall", "draw_wall", "finish_wall", "merge_walls", "set_wall_style", "wall_splitter", "wall_highlight", "upload_instanced_wall_ssbo", "deferred_wall_history", "structure_outline", "ui_continue_wall", "ui_draw_wall"],
+    "adjust_wall_height": ["adjust_wall_height_impl", "ui_adjust_wall_height_mode", "ui_adjust_wall_height", "adjust_wall_ui_mode", "signifier_animation"],
+    "eraser": ["animate_wall_bulldoze", "ui_bulldozer", "wall_eraser", "archivist"],
+    "shapes": ["add_wall_shape_ux", "calc_shape_height", "shape_placement", "shape_placement_signifiers", "shape_signifier_lerp", "circle(create/ui_create/ui_edit/ui_rotate/edit_arrow/edit_line)", "rectangle(create/edit/finish/signifier_edit_dims/ui_create/ui_edit_dims/ui_edit_orientation/ui_modes/edit_dims/edit_orientation)"],
+    "snapping": ["SnappingMode", "snapping_init", "snapping_maintain(3)", "snapping_to_ends", "snapping_to_segments", "snapping_audio", "telegraph_walls_are_merged"],
+    "valid_enclosure": ["ShapeParameters"],
+    "wall_state": ["publish_public_wall_state", "spatial_hash_update", "wall_spatial_hash", "wall_roof_hashmap", "spatial_hash_debug", "debug_viz_threshold_curve"]
+  },
+  "key_addresses": {
+    "calc_wall_bend": "0x140a8a710",
+    "delete_wall": "0x140aac1e0",
+    "draw_wall": "0x140a7cba0",
+    "finish_wall": "0x140a800a0",
+    "merge_walls": "0x140999920",
+    "set_wall_style": "0x1409a2290",
+    "wall_splitter": "0x140a74c20",
+    "wall_highlight": "0x140981390",
+    "gpu_flush_brick_buffers": "0x14082c170",
+    "PendingWallChanged::try_new": "0x1408dc9f0",
+    "history_record_wall_changed": "0x1408dccf0",
+    "history_record_merge_walls": "0x1408dd1b0",
+    "CompoundEditBuilder::wall_deleted": "0x140a876a0",
+    "structure_outline": "0x140959fc0",
+    "ui_continue_wall": "0x140aadd30",
+    "suppress_continue_wall": "0x140aadbb0",
+    "ui_draw_wall": "0x140aafe40",
+    "adjust_wall_height_impl": "0x140ac1f20",
+    "clamp_wall_height": "0x140ac7f30",
+    "history_record_adjust_wall_height": "0x140ac79e0",
+    "calc_shape_height": "0x140ac80e0",
+    "animate_wall_bulldoze": "0x140ac27e0",
+    "wall_eraser_bulldoze": "0x1409de190",
+    "wall_eraser": "0x140accab0",
+    "WallEraserArchivist::finish": "0x14092f990",
+    "create_circle": "0x14097e560",
+    "create_rectangle": "0x140a93790",
+    "edit_rectangle": "0x14097f620",
+    "finish_edit_rectangle": "0x141464a60",
+    "shape_placement_params": "0x14097f970",
+    "snapping_init": "0x140ada600",
+    "snapping_to_ends": "0x140a6ad80",
+    "snapping_to_segments": "0x140a6b5e0",
+    "telegraph_walls_are_merged": "0x14086ad70",
+    "publish_public_wall_state": "0x140a8b530",
+    "spatial_hash_update": "0x140a8fd90",
+    "wall_roof_hashmap": "0x140a94cd0",
+    "spatial_hash_debug": "0x1408ec0e0",
+    "debug_viz_threshold_curve": "0x140a8b0c0"
+  },
+  "prior_work_reused": {
+    "reconstruction/building/wall_bulldoze.rs": "animate_wall_bulldoze business (128 scenes/768 full entry-RET verified; B-bulldoze-verification.json)",
+    "reconstruction/building/wall_pending_changed.rs": "PendingWallChanged.try_new / history_record_wall_changed (256+256 RETs; B-pending-wall-changed-verification.json)",
+    "reconstruction/building/wall_rectangle_edit.rs": "finish_edit_rectangle decision/history (192 calls; B-rectangle-finish-verification.json)",
+    "reconstruction/wall/height_rules.rs": "clamp_wall_height numeric policy (S02, 6624 machine cases)",
+    "reconstruction/building/wall_state.rs + wall_structures.rs": "WallId / WallShapeSnapshot / PublicWallState 0x2a0 projection; segment materialization",
+    "evidence/building-wall-history/findings.md + walls-audit.md": "wall history owners, delete/authority, 64x64 spatial-hash scope",
+    "reconstruction/country-core-render/wp6": "Transform layout O + resources/walls typed-gap wiring pattern"
+  },
+  "integration": {
+    "status": "standalone offline cargo check gate",
+    "cargo_check_offline": "0 errors",
+    "clippy_all_targets_offline": "0 errors",
+    "warnings": "~26 (skeleton markers / mut / unused; expected)",
+    "owner_integration": "src/systems/wall/* mirrors skeleton paths; state types resolve to crate::resources::walls (WP11 owner)"
+  },
+  "gaps": {
+    "state_types": "InnerWalls/PublicWalls/PublicWallState/WallState layouts are WP11 (typed-gap facades here)",
+    "brick_column_generation": "construct_brick_columns etc. are WP11/other WPs; upload_instanced_wall_ssbo wires the GPU flush only",
+    "ui_widget_internals": "signifier/widget/trigger-volume parameters U (UI layer)",
+    "spatial_hash_metadata": "segment u/terrain/normal metadata U",
+    "all_implemented_unverified": "no runtime/GPU acceptance; contracts are the reviewable basis"
+  }
+}

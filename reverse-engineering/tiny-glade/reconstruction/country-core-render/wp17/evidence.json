@@ -1,0 +1,71 @@
+{
+  "wp": 17,
+  "version": "B",
+  "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "scope": "country-core history replay domain (replay_* systems + per-domain edit-history resource types)",
+  "method": "PDB skeleton (enriched/structures) + Ghidra get_functions decompiles + prior observed-history schema + reconstruction/history + tg-history reconciliation",
+  "toolchain": {
+    "backend": "ghidra",
+    "worker": "shared",
+    "program": "tiny-glade.exe",
+    "read_only": true
+  },
+  "ghidra_jobs": [
+    "tools/jobs/wp17-b1-orchestration.json -> evidence/wp17-b1-orchestration.result.json",
+    "tools/jobs/wp17-b2-domain.json -> evidence/wp17-b2-domain.result.json",
+    "tools/jobs/wp17-b3-resources.json -> evidence/wp17-b3-resources.result.json"
+  ],
+  "key_recoveries": {
+    "replay_orchestration": {
+      "replay_mode": "0x140a7c550 (Res<AppMode>==Replay/0xd + RestoreAppTo set/get + HoldToFastReplay + HistoryCmd redo 0x03000100)",
+      "finish_replay": "0x1408b36a0 (pending==1 redo -> CmdUnfreezeSheep; pending+ReplayBuffer empty -> restore AppMode + Toolbar switch + MetaCommander sentinel log/pop)",
+      "replay_pop_bucket": "0x140b38250 (front bucket commands empty -> pop_front + DecoratorStorage::restore_decorators + StairsState restore_backup/apply_diff + RaycastWorld::flush_colliders)",
+      "signifier_replay_active": "0x140b1b860 (+register_required_components 0x140b1d680; ReplayModeElapsedTime active==1; ease_out_elastic_jiggle = 0.5*exp2(-10t)*sin(7.85t))",
+      "replay_edit": "0x140af6170 (expand MultiEdit.edits via generate_replay_cmds_from_edit, reverse on undo, group into ReplayBuckets, attach decorator/stairs diffs + cull allow-list, push to ReplayBuffer)"
+    },
+    "replay_cmd_buffer": {
+      "ReplayCmd": "0x30B enum; discriminant@+0x00; header instant@+0x08/duration@+0x0c/payload@+0x10/elapsed@+0x18/undo@+0x1c; discriminants 0/1/2 RasterEdit, 3 Terrain, 4 WallReplayCmd, 5 Roof, 6/7 Decorator, 8 Tree, 9 AutoClutter, 10 Stairs",
+      "ReplayBucket": "0x40B; commands + decorator_diff + decorator_cull_allow_list + stairs_diff; field offsets U",
+      "ReplayBuffer": "{head@+0x00,buf@+0x08,cap@+0x10,len@+0x18,counter@+0x20}; pop_front 0x1409f18f0 / front_mut_bucket 0x1409f1a80 / make_animations_instant 0x1409f1ab0"
+    },
+    "replay_systems": {
+      "replay_wall": "0x140951b80 (+WallReplayEditCmd::process 0x140abfb30; _deprecated_morph_curve 0x140952570; WallReplayCmd::new/is_single_adjust_height_cmd)",
+      "replay_terrain": "0x140995150 (+TerrainReplayCmd::forward 0x140994f30 / backward 0x140995040; TerrainEdit reapply/revert)",
+      "replay_auto_clutter": "0x140aa4a60 (discriminant 9; WallId insert / DeletedAutoClutter erase)",
+      "replay_stairs": "0x140af75b0 (discriminant 10; StairGraphEdge insert/remove_entry + DecoratorStorage lookup + PlayStairsAudioCmd)",
+      "replay_raster": "generic<T,R,F>; Path 0x1409febf0 / C1 0x1409fc290 / C2 0x1409f1cf0 / C3 0x1409f9930 / Garden 0x1409f6ff0 / Water 0x1409f4650; RasterReplayCmd forward 0x1401700430/backward 0x1401700620"
+    },
+    "edit_history_types": {
+      "wall_history": "ev_new_wall 0x140a83300 / ev_height_changed 0x140a83f80 / EditType::new_height_changed 0x140a83fb0 (EditType discrim 7)",
+      "wall_compound_edit": "CompoundEditBuilder new_edit_sequence 0x140a82b20 / next 0x140a82b40 / build 0x140a82d50 / panic_deprecated_operation 0x140a83120",
+      "terrain_edit": "TerrainEdit revert 0x140858d30 / reapply 0x1408592d0 / update_terrain_curve 0x140859740 / duration",
+      "decorator_edit": "send_state_diff_events 0x14017bdae0 / convert_before_after_states_to_changes 0x140b31220 / is_default_chimney_smoke 0x1408c5680 / is_default_stair_width 0x140b3d590",
+      "path_edit": "RasterEdit (points/brush_size/is_additive/blend_mode); impl$1::from 0x140a976b0",
+      "tree_edit": "TreeEdit (Place/Move); missing_prefab 0x1409e6210; TreeCanopyMaxCullDistance::get_dist",
+      "auto_clutter_edit/color_edit/stairs_history_edit": "serde types with observed JSON schema fields"
+    }
+  },
+  "reconciled_prior_work": [
+    "wp13 resources::history (History core: edit_chain/snapshots/pending/history_start/nonce/cursor; EditType; MultiEdit 40B; HistoryMutationToken; history_process HistoryCmd undo/redo/interrupt)",
+    "reconstruction/history/observed-history-schema.json + findings.md (2,120 edit_chain entries; 13 outer tags; per-command field schema)",
+    "reconstruction/history/transaction.rs + building_transactions.rs (HistoryTransactions observed model; undo command-list reversal)",
+    "reconstruction/crates/tg-history (prior history crate)",
+    "wp12 wall-domain WallHistoryCompoundEdit facade + wall_deleted 0x140a876a0"
+  ],
+  "verification_gate": {
+    "cargo_check_offline": "0 errors / 0 warnings",
+    "edition": "2024",
+    "rust_version": "1.86",
+    "skeleton_units_covered": "12 replay-system units (finish_replay/replay_mode/signifier_replay_active/replay_pop_bucket/replay_wall/replay_terrain/replay_auto_clutter/replay_stairs/replay_raster/replay_path/replay_water/replay_garden) + 10 resource units (replay_cmd_buffer + wall_history/wall_compound_edit/auto_clutter_edit/color_edit/decorator_edit/path_edit/stairs_history_edit/terrain_edit/tree_edit)"
+  },
+  "remaining_gaps": [
+    "ReplayCmd discriminants 9/10+ exact payload types (auto_clutter/stairs/snapshot; Ghidra mislabels Arc inner as CrashMiscInfo/PhysicalSize<u32>)",
+    "ReplayBucket exact field offsets (construction side +0x10/+0x18 commands; consumption side +0x8/+0x10; unresolved)",
+    "HistoryCmd command words 0x03000000/0x03000100/0x03000200 precise semantics",
+    "WallReplayEditCmd dispatch tables DAT_142adf408 / DAT_142adf44c sub-procedures (wall apply per operation)",
+    "Edit-record exact field layouts (open observed schema; not closed enums)",
+    "bevy SystemParam wiring (typed-gap boundaries; shared crate integration owner)",
+    "RasterReplayCmd forward/backward 0x1401700430/0x1401700620, generate_path_replay_cmds 0x14016286d0, send_state_diff_events 0x14017bdae0 have no Ghidra function bodies (unanalyzed DB regions) - inferred from callers"
+  ]
+}

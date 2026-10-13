@@ -1,0 +1,114 @@
+ADDR: 0x140a74790
+SIG: void __cdecl remap_hour_to_fmod_hour(void)
+
+
+// WARNING: Removing unreachable block (ram,0x000140a7494e)
+// WARNING: Removing unreachable block (ram,0x000140a748fb)
+// WARNING: Removing unreachable block (ram,0x000140a74b20)
+// WARNING: Removing unreachable block (ram,0x000140a74b0a)
+// WARNING: Removing unreachable block (ram,0x000140a74af4)
+
+void __cdecl country_core::systems::time_of_day::remap_hour_to_fmod_hour(void)
+
+{
+  float *pfVar1;
+  undefined8 *puVar2;
+  float fVar3;
+  float *pfVar4;
+  float *extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *puVar5;
+  longlong lVar6;
+  char in_DL;
+  float *pfVar7;
+  float *pfVar8;
+  longlong lVar9;
+  bool bVar10;
+  float *pfVar11;
+  float in_XMM0_Da;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (float *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  extraout_RAX[0] = 0.0;
+  extraout_RAX[1] = 3.5;
+  extraout_RAX[2] = 9.0;
+  extraout_RAX[3] = 17.0;
+  extraout_RAX[4] = 20.0;
+  extraout_RAX[5] = 24.0;
+  pfVar7 = (float *)&DAT_00000004;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_00 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX_00 = 0x4040000000000000;
+  extraout_RAX_00[1] = 0x4188000041300000;
+  extraout_RAX_00[2] = 0x41c0000041b00000;
+  lVar9 = 6;
+  lVar6 = 6;
+  if (in_DL != '\0') {
+    alloc::raw_vec::RawVec::grow_one<f32,alloc::alloc::Global>();
+    *(undefined8 *)(extraout_RAX + 3) = *(undefined8 *)(extraout_RAX + 2);
+    *(undefined8 *)(extraout_RAX + 5) = *(undefined8 *)(extraout_RAX + 4);
+    extraout_RAX[2] = 4.52;
+    alloc::raw_vec::RawVec::grow_one<f32,alloc::alloc::Global>();
+    memmove((void *)((longlong)extraout_RAX_00 + 0xc),extraout_RAX_00 + 1,0x10);
+    *(undefined4 *)(extraout_RAX_00 + 1) = 0x40a00000;
+    memmove(extraout_RAX + 4,extraout_RAX + 3,0x10);
+    extraout_RAX[3] = 6.2;
+    lVar6 = 8;
+    pfVar1 = (float *)((longlong)extraout_RAX_00 + 0xc);
+    pfVar7 = pfVar1;
+    memmove(extraout_RAX_00 + 2,pfVar1,0x10);
+    *pfVar1 = 9.0;
+    lVar9 = 8;
+  }
+  pfVar1 = extraout_RAX + lVar6;
+  puVar2 = (undefined8 *)((longlong)extraout_RAX_00 + lVar9 * 4);
+  bVar10 = true;
+  puVar5 = extraout_RAX_00;
+  pfVar8 = extraout_RAX;
+  while (pfVar8 != pfVar1) {
+    pfVar11 = pfVar8 + 1;
+    if (bVar10) {
+      if (((pfVar11 == pfVar1) || (puVar5 == puVar2)) ||
+         ((undefined8 *)((longlong)puVar5 + 4) == puVar2)) break;
+      puVar5 = puVar5 + 1;
+      fVar3 = *pfVar8;
+      pfVar4 = pfVar8 + 2;
+      pfVar7 = pfVar11;
+    }
+    else {
+      if (puVar5 == puVar2) break;
+      puVar5 = (undefined8 *)((longlong)puVar5 + 4);
+      fVar3 = *pfVar7;
+      pfVar4 = pfVar11;
+      pfVar7 = pfVar8;
+    }
+    pfVar8 = pfVar4;
+    if (in_XMM0_Da < fVar3) goto LAB_140a74a30;
+    fVar3 = *pfVar7;
+    while (fVar3 <= in_XMM0_Da) {
+LAB_140a74a30:
+      do {
+        pfVar11 = pfVar8;
+        if ((pfVar11 == pfVar1) || (puVar5 == puVar2)) goto code_r0x000140a74aa6;
+        pfVar8 = pfVar11 + 1;
+        puVar5 = (undefined8 *)((longlong)puVar5 + 4);
+        fVar3 = *pfVar7;
+        pfVar7 = pfVar11;
+      } while (in_XMM0_Da < fVar3);
+      fVar3 = *pfVar11;
+    }
+    bVar10 = false;
+    ::utils::fit();
+  }
+code_r0x000140a74aa6:
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  return;
+}
+

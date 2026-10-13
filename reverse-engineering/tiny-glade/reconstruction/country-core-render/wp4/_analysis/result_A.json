@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140937e10,0x140938240,0x1409383b0,0x140938b00,0x140917860,0x140968ad0,0x140968bb0,0x140976880,0x140a97650,0x140b18550,0x140b18830,0x140b18af0,0x140b18f60,0x140987cb0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140937e10,0x140938240,0x1409383b0,0x140938b00,0x140917860,0x140968ad0,0x140968bb0,0x140976880,0x140a97650,0x140b18550,0x140b18830,0x140b18af0,0x140b18f60,0x140987cb0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140937e10\":{\"name\":\"new\",\"size\":738,\"address\":\"140937e10\",\"signature\":\"void __cdecl new(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::shader::ComputeShaderProgram::new(void)\\n\\n{\\n  undefined8 uVar1;\\n  undefined8 uVar2;\\n  undefined8 uVar3;\\n  undefined8 uVar4;\\n  undefined8 uVar5;\\n  undefined8 uVar6;\\n  undefined8 uVar7;\\n  undefined8 *extraout_RAX;\\n  void *_Dst;\\n  undefined8 *in_RCX;\\n  undefined8 in_RDX;\\n  undefined8 in_R8;\\n  undefined8 *in_R9;\\n  char *local_330 [40];\\n  longlong local_1f0;\\n  char *local_1e8;\\n  undefined8 local_1e0;\\n  undefined8 local_1d8;\\n  undefined8 local_1d0;\\n  undefined8 uStack_1c8;\\n  undefined8 local_1c0;\\n  char *local_1b8;\\n  undefined8 local_1b0;\\n  undefined4 local_1a8;\\n  undefined4 local_1a4;\\n  undefined **local_1a0;\\n  undefined8 local_198;\\n  undefined8 **local_190;\\n  undefined8 local_188;\\n  undefined8 local_180;\\n  undefined8 local_a0;\\n  undefined8 uStack_98;\\n  undefined8 local_90;\\n  undefined8 uStack_88;\\n  undefined8 local_80;\\n  undefined8 uStack_78;\\n  undefined8 local_70;\\n  undefined8 uStack_68;\\n  undefined8 local_60;\\n  undefined8 *local_58;\\n  code *local_50;\\n  undefined8 local_48;\\n  undefined8 uStack_40;\\n  undefined8 *local_38;\\n  undefined1 local_22;\\n  undefined1 local_21;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  local_48 = in_RDX;\\n  uStack_40 = in_R8;\\n  local_38 = in_R9;\\n  shader_pipeline::compiled::ShaderCompilerArtifacts::\\n  load_compiled<shader_pipeline::pipeline_desc::ComputePipelineDesc>();\\n  if (SBORROW8(0,local_1f0)) {\\n    local_330[0] = local_1e8;\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  memcpy(local_330,&local_1f0,0x140);\\n  if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    local_58 = &local_48;\\n    local_50 = core::fmt::impl$74::fmt<str_>;\\n    local_21 = 1;\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    local_1d0 = *extraout_RAX;\\n    uStack_1c8 = extraout_RAX[1];\\n    local_1a4 = *(undefined4 *)(extraout_RAX + 2);\\n    local_1c0 = 5;\\n    local_1b8 = \\\"country_core::render::shader\\\";\\n    local_1b0 = 0x1c;\\n    local_1a0 = &PTR_s_Creating_pipeline_142ab1248;\\n    local_198 = 1;\\n    local_190 = &local_58;\\n    local_188 = 1;\\n    local_180 = 0;\\n    local_1f0 = 0;\\n    local_1e8 = \\\"country_core::render::shader\\\";\\n    local_1e0 = 0x1c;\\n    local_1d8 = 0;\\n    local_1a8 = 1;\\n    local_21 = 1;\\n    ::log::__private_api::impl$2::log();\\n  }\\n  memcpy(&local_1e0,local_330,0x140);\\n  local_1f0 = 1;\\n  local_1e8 = (char *)0x1;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (_Dst != (void *)0x0) {\\n    memcpy(_Dst,&local_1f0,0x150);\\n    local_22 = 1;\\n    bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>();\\n    local_22 = 0;\\n    rhapsody::raw::device::GraphicsDevice::\\n    create_compute_pipeline<alloc::sync::Arc<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>_>\\n              ();\\n    in_RCX[8] = local_38[8];\\n    uVar1 = *local_38;\\n    uVar2 = local_38[1];\\n    uVar3 = local_38[2];\\n    uVar4 = local_38[3];\\n    uVar5 = local_38[4];\\n    uVar6 = local_38[5];\\n    uVar7 = local_38[7];\\n    in_RCX[6] = local_38[6];\\n    in_RCX[7] = uVar7;\\n    in_RCX[4] = uVar5;\\n    in_RCX[5] = uVar6;\\n    in_RCX[2] = uVar3;\\n    in_RCX[3] = uVar4;\\n    *in_RCX = uVar1;\\n    in_RCX[1] = uVar2;\\n    in_RCX[0x12] = local_48;\\n    in_RCX[0x13] = uStack_40;\\n    in_RCX[0x11] = local_60;\\n    in_RCX[9] = local_a0;\\n    in_RCX[10] = uStack_98;\\n    in_RCX[0xb] = local_90;\\n    in_RCX[0xc] = uStack_88;\\n    in_RCX[0xd] = local_80;\\n    in_RCX[0xe] = uStack_78;\\n    in_RCX[0xf] = local_70;\\n    in_RCX[0x10] = uStack_68;\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  alloc::alloc::handle_alloc_error();\\n}\\n\\n\",\"callee_count\":9,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"create_compute_pipeline<alloc::sync::Arc<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>_>\",\"address\":\"1416a4b20\"},{\"name\":\"finish<country_core::systems::main_camera::MainCameraPlugin>\",\"address\":\"14003bb80\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"load_compiled<shader_pipeline::pipeline_desc::ComputePipelineDesc>\",\"address\":\"1409e3c50\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140938240\":{\"name\":\"new_draw\",\"size\":258,\"address\":\"140938240\",\"signature\":\"void __cdecl new_draw(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::shader::RasterShaderProgram::new_draw(void)\\n\\n{\\n  undefined8 uVar1;\\n  undefined8 uVar2;\\n  undefined8 uVar3;\\n  undefined8 uVar4;\\n  undefined8 uVar5;\\n  undefined8 uVar6;\\n  undefined8 uVar7;\\n  undefined8 *in_RCX;\\n  undefined8 in_R8;\\n  undefined8 in_R9;\\n  undefined8 *in_stack_00000028;\\n  longlong local_b0;\\n  undefined8 uStack_a8;\\n  undefined8 local_a0;\\n  undefined8 uStack_98;\\n  undefined8 local_90;\\n  undefined8 uStack_88;\\n  undefined8 local_80;\\n  undefined8 uStack_78;\\n  undefined8 local_70;\\n  undefined8 uStack_68;\\n  undefined8 local_60;\\n  undefined8 uStack_58;\\n  undefined8 local_50;\\n  undefined8 uStack_48;\\n  undefined8 local_40;\\n  undefined8 uStack_38;\\n  \\n  compile_shader_variants();\\n  if (local_b0 != 0) {\\n    in_RCX[0x19] = local_40;\\n    in_RCX[0x1a] = uStack_38;\\n    in_RCX[0x17] = local_50;\\n    in_RCX[0x18] = uStack_48;\\n    in_RCX[0x15] = local_60;\\n    in_RCX[0x16] = uStack_58;\\n    in_RCX[0x13] = local_70;\\n    in_RCX[0x14] = uStack_68;\\n    in_RCX[0x11] = local_80;\\n    in_RCX[0x12] = uStack_78;\\n    in_RCX[0xf] = local_90;\\n    in_RCX[0x10] = uStack_88;\\n    in_RCX[0xd] = local_a0;\\n    in_RCX[0xe] = uStack_98;\\n    in_RCX[0xb] = local_b0;\\n    in_RCX[0xc] = uStack_a8;\\n    in_RCX[8] = in_stack_00000028[8];\\n    uVar1 = *in_stack_00000028;\\n    uVar2 = in_stack_00000028[1];\\n    uVar3 = in_stack_00000028[2];\\n    uVar4 = in_stack_00000028[3];\\n    uVar5 = in_stack_00000028[4];\\n    uVar6 = in_stack_00000028[5];\\n    uVar7 = in_stack_00000028[7];\\n    in_RCX[6] = in_stack_00000028[6];\\n    in_RCX[7] = uVar7;\\n    in_RCX[4] = uVar5;\\n    in_RCX[5] = uVar6;\\n    in_RCX[2] = uVar3;\\n    in_RCX[3] = uVar4;\\n    *in_RCX = uVar1;\\n    in_RCX[1] = uVar2;\\n    in_RCX[9] = in_R8;\\n    in_RCX[10] = in_R9;\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"compile_shader_variants\",\"address\":\"1409383b0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409383b0\":{\"name\":\"compile_shader_variants\",\"size\":1054,\"address\":\"1409383b0\",\"signature\":\"void __cdecl compile_shader_variants(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::shader::compile_shader_variants(void)\\n\\n{\\n  longlong *_Dst;\\n  byte *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  void *_Dst_00;\\n  byte *extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  longlong lVar1;\\n  undefined8 *in_RCX;\\n  undefined8 *puVar2;\\n  longlong local_3d8;\\n  undefined8 local_3d0;\\n  undefined1 local_3c8 [304];\\n  undefined8 local_298;\\n  undefined8 uStack_290;\\n  undefined8 local_288;\\n  undefined8 uStack_280;\\n  undefined8 local_278;\\n  undefined8 uStack_270;\\n  undefined8 local_268;\\n  undefined8 uStack_260;\\n  undefined8 local_258;\\n  undefined8 local_250;\\n  undefined8 uStack_248;\\n  undefined8 local_240;\\n  undefined8 uStack_238;\\n  undefined8 local_230;\\n  undefined8 uStack_228;\\n  undefined8 local_220;\\n  undefined8 uStack_218;\\n  undefined8 local_210;\\n  undefined8 local_148;\\n  undefined8 uStack_140;\\n  undefined8 local_138;\\n  undefined8 uStack_130;\\n  undefined8 local_128;\\n  undefined8 uStack_120;\\n  undefined8 local_118;\\n  undefined8 uStack_110;\\n  undefined8 local_108;\\n  undefined8 local_f8;\\n  undefined8 uStack_f0;\\n  undefined8 local_e8;\\n  undefined8 uStack_e0;\\n  undefined8 local_d8;\\n  undefined8 uStack_d0;\\n  undefined8 local_c8;\\n  undefined8 uStack_c0;\\n  undefined8 local_b8;\\n  longlong *local_a8;\\n  undefined8 uStack_a0;\\n  undefined *local_98;\\n  undefined8 uStack_90;\\n  undefined8 local_88;\\n  undefined8 uStack_80;\\n  longlong local_78;\\n  undefined8 *puStack_70;\\n  longlong *local_60;\\n  undefined1 local_51;\\n  undefined8 local_50;\\n  \\n  local_50 = 0xfffffffffffffffe;\\n  shader_variants::get_raster_shader_variants();\\n  local_108 = local_258;\\n  local_118 = local_268;\\n  uStack_110 = uStack_260;\\n  local_128 = local_278;\\n  uStack_120 = uStack_270;\\n  local_138 = local_288;\\n  uStack_130 = uStack_280;\\n  local_148 = local_298;\\n  uStack_140 = uStack_290;\\n  local_b8 = local_210;\\n  local_c8 = local_220;\\n  uStack_c0 = uStack_218;\\n  local_d8 = local_230;\\n  uStack_d0 = uStack_228;\\n  local_e8 = local_240;\\n  uStack_e0 = uStack_238;\\n  local_f8 = local_250;\\n  uStack_f0 = uStack_248;\\n  shader_pipeline::compiled::ShaderCompilerArtifacts::\\n  load_compiled<shader_pipeline::pipeline_desc::RasterPipelineDesc>();\\n  local_51 = 1;\\n  core::ptr::drop_in_place<shader_pipeline::pipeline_desc::RasterPipelineDesc>();\\n  if (SBORROW8(0,local_3d8)) {\\n    in_RCX[1] = local_3d0;\\n    *in_RCX = 0;\\n    core::ptr::drop_in_place<shader_pipeline::pipeline_desc::RasterPipelineDesc>();\\n  }\\n  else {\\n    memcpy(&local_278,local_3c8,0x130);\\n    local_298 = 1;\\n    uStack_290 = 1;\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (_Dst == (longlong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    puVar2 = &local_298;\\n    memcpy(_Dst,puVar2,0x150);\\n    std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();\\n    local_60 = _Dst;\\n    if ((*extraout_RAX & 1) == 0) {\\n      std::sys::random::hashmap_random_keys();\\n      extraout_RAX[0] = 1;\\n      extraout_RAX[1] = 0;\\n      extraout_RAX[2] = 0;\\n      extraout_RAX[3] = 0;\\n      extraout_RAX[4] = 0;\\n      extraout_RAX[5] = 0;\\n      extraout_RAX[6] = 0;\\n      extraout_RAX[7] = 0;\\n      *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;\\n      *(undefined8 **)(extraout_RAX + 0x10) = puVar2;\\n      local_78 = extraout_RAX_00;\\n    }\\n    else {\\n      local_78 = *(longlong *)(extraout_RAX + 8);\\n      puVar2 = *(undefined8 **)(extraout_RAX + 0x10);\\n    }\\n    *(longlong *)(extraout_RAX + 8) = local_78 + 1;\\n    uStack_a0 = 0;\\n    local_98 = &anon_2d944acd27646b19de27e02456f85def_36_llvm_220559307296278160;\\n    uStack_90 = 0;\\n    local_88 = 0;\\n    uStack_80 = 0;\\n    local_258 = local_b8;\\n    local_268 = local_c8;\\n    uStack_260 = uStack_c0;\\n    local_278 = local_d8;\\n    uStack_270 = uStack_d0;\\n    local_288 = local_e8;\\n    uStack_280 = uStack_e0;\\n    local_298 = local_f8;\\n    uStack_290 = uStack_f0;\\n    local_a8 = local_60;\\n    puStack_70 = puVar2;\\n    shader_pipeline::compiled::ShaderCompilerArtifacts::\\n    load_compiled<shader_pipeline::pipeline_desc::RasterPipelineDesc>();\\n    core::ptr::drop_in_place<shader_pipeline::pipeline_desc::RasterPipelineDesc>();\\n    if (SBORROW8(0,local_3d8)) {\\n      in_RCX[1] = local_3d0;\\n      *in_RCX = 0;\\n      LOCK();\\n      *local_a8 = *local_a8 + -1;\\n      UNLOCK();\\n      if (*local_a8 == 0) {\\n        alloc::sync::Arc::\\n        drop_slow<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>();\\n      }\\n      local_51 = 0;\\n      hashbrown::raw::RawTableInner::\\n      drop_inner_table<tuple_<rhapsody::raw::shader::RasterPipelineDesc,alloc::boxed::Box<rhapsody::raw::shader::RasterPipeline,alloc::alloc::Global>_>,alloc::alloc::Global>\\n                ();\\n    }\\n    else {\\n      memcpy(&local_278,local_3c8,0x130);\\n      local_298 = 1;\\n      uStack_290 = 1;\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      if (_Dst_00 == (void *)0x0) {\\n                    // WARNING: Subroutine does not return\\n        alloc::alloc::handle_alloc_error();\\n      }\\n      puVar2 = &local_298;\\n      memcpy(_Dst_00,puVar2,0x150);\\n      std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();\\n      local_60 = _Dst_00;\\n      if ((*extraout_RAX_01 & 1) == 0) {\\n        std::sys::random::hashmap_random_keys();\\n        extraout_RAX_01[0] = 1;\\n        extraout_RAX_01[1] = 0;\\n        extraout_RAX_01[2] = 0;\\n        extraout_RAX_01[3] = 0;\\n        extraout_RAX_01[4] = 0;\\n        extraout_RAX_01[5] = 0;\\n        extraout_RAX_01[6] = 0;\\n        extraout_RAX_01[7] = 0;\\n        *(longlong *)(extraout_RAX_01 + 8) = extraout_RAX_02;\\n        *(undefined8 **)(extraout_RAX_01 + 0x10) = puVar2;\\n        lVar1 = extraout_RAX_02;\\n      }\\n      else {\\n        lVar1 = *(longlong *)(extraout_RAX_01 + 8);\\n        puVar2 = *(undefined8 **)(extraout_RAX_01 + 0x10);\\n      }\\n      *(longlong *)(extraout_RAX_01 + 8) = lVar1 + 1;\\n      in_RCX[6] = local_78;\\n      in_RCX[7] = puStack_70;\\n      in_RCX[4] = local_88;\\n      in_RCX[5] = uStack_80;\\n      in_RCX[2] = local_98;\\n      in_RCX[3] = uStack_90;\\n      *in_RCX = local_a8;\\n      in_RCX[1] = uStack_a0;\\n      in_RCX[8] = local_60;\\n      in_RCX[9] = 0;\\n      in_RCX[10] = &anon_2d944acd27646b19de27e02456f85def_36_llvm_220559307296278160;\\n      in_RCX[0xb] = 0;\\n      in_RCX[0xc] = 0;\\n      in_RCX[0xd] = 0;\\n      in_RCX[0xe] = lVar1;\\n      in_RCX[0xf] = puVar2;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"VAL\",\"address\":\"140d4d740\"},{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"drop_in_place<shader_pipeline::pipeline_desc::RasterPipelineDesc>\",\"address\":\"14088dec0\"},{\"name\":\"drop_inner_table<tuple$<rhapsody::raw::shader::RasterPipelineDesc,alloc::boxed::Box<rhapsody::raw::shader::RasterPipeline,alloc::alloc::Global>_>,alloc::alloc::Global>\",\"address\":\"14004d7b0\"},{\"name\":\"drop_slow<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>\",\"address\":\"140b5c530\"},{\"name\":\"get_raster_shader_variants\",\"address\":\"1417388a0\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"hashmap_random_keys\",\"address\":\"140d64e00\"},{\"name\":\"load_compiled<shader_pipeline::pipeline_desc::RasterPipelineDesc>\",\"address\":\"1409e4160\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140938b00\":{\"name\":\"get_or_generate\",\"size\":1395,\"address\":\"140938b00\",\"signature\":\"void __cdecl get_or_generate(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::shader::RasterShaderProgramVariant::get_or_generate(void)\\n\\n{\\n  ulonglong *puVar1;\\n  char *pcVar2;\\n  undefined8 *puVar3;\\n  ulonglong *puVar4;\\n  ulonglong uVar5;\\n  longlong *plVar6;\\n  undefined1 (*pauVar7) [16];\\n  code *pcVar8;\\n  uint uVar9;\\n  int iVar10;\\n  int iVar11;\\n  int iVar12;\\n  int iVar13;\\n  char cVar14;\\n  char cVar15;\\n  char cVar16;\\n  char cVar17;\\n  char cVar18;\\n  char cVar19;\\n  char cVar20;\\n  char cVar21;\\n  char cVar22;\\n  char cVar23;\\n  char cVar24;\\n  char cVar25;\\n  char cVar26;\\n  char cVar27;\\n  char cVar28;\\n  char cVar29;\\n  char extraout_AL;\\n  ushort uVar30;\\n  ulonglong extraout_RAX;\\n  ulonglong *extraout_RAX_00;\\n  undefined8 *in_RCX;\\n  uint uVar31;\\n  longlong lVar32;\\n  byte bVar33;\\n  longlong in_R8;\\n  longlong lVar34;\\n  uint uVar35;\\n  ulonglong uVar36;\\n  byte bVar37;\\n  undefined1 auVar38 [16];\\n  char cVar39;\\n  char cVar40;\\n  char cVar41;\\n  char cVar42;\\n  undefined1 unaff_XMM7_Ba;\\n  undefined1 unaff_XMM7_Bb;\\n  undefined1 unaff_XMM7_Bc;\\n  undefined1 unaff_XMM7_Bd;\\n  undefined1 unaff_XMM7_Be;\\n  undefined1 unaff_XMM7_Bf;\\n  undefined1 unaff_XMM7_Bg;\\n  undefined1 unaff_XMM7_Bh;\\n  undefined1 unaff_XMM7_Bi;\\n  undefined1 unaff_XMM7_Bj;\\n  undefined1 unaff_XMM7_Bk;\\n  undefined1 unaff_XMM7_Bl;\\n  undefined1 unaff_XMM7_Bm;\\n  undefined1 unaff_XMM7_Bn;\\n  undefined1 unaff_XMM7_Bo;\\n  undefined1 unaff_XMM7_Bp;\\n  undefined1 auVar43 [16];\\n  ulonglong local_d8;\\n  undefined8 *puStack_d0;\\n  ulonglong local_c8;\\n  undefined6 uStack_c0;\\n  undefined2 uStack_ba;\\n  undefined6 uStack_b8;\\n  char cStack_b2;\\n  undefined1 uStack_b1;\\n  undefined7 uStack_b0;\\n  undefined1 uStack_a9;\\n  ulonglong local_a8;\\n  \\n  puVar1 = in_RCX + 1;\\n  uVar5 = in_RCX[1];\\n  if (uVar5 < 0xfffffffffffffff0 && (char)(((uint)uVar5 & 8) >> 3) == '\\\\0') {\\n    LOCK();\\n    uVar36 = *puVar1;\\n    if (uVar5 == uVar36) {\\n      *puVar1 = uVar5 + 0x10;\\n    }\\n    UNLOCK();\\n    if (uVar5 == uVar36) goto LAB_140938b8c;\\n  }\\n  parking_lot::raw_rwlock::RawRwLock::lock_shared_slow();\\nLAB_140938b8c:\\n  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();\\n  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();\\n  if (in_RCX[5] != 0) {\\n    core::hash::BuildHasher::\\n    hash_one<std::hash::random::RandomState,ref_<rhapsody::raw::shader::RasterPipelineDesc>_>();\\n    lVar32 = in_RCX[2];\\n    uVar5 = in_RCX[3];\\n    bVar37 = (byte)(extraout_RAX >> 0x39);\\n    auVar38 = ZEXT216(CONCAT11(bVar37,bVar37));\\n    auVar38 = pshuflw(auVar38,auVar38,0);\\n    cVar39 = auVar38[0];\\n    cVar40 = auVar38[1];\\n    cVar41 = auVar38[2];\\n    cVar42 = auVar38[3];\\n    lVar34 = 0;\\n    iVar10 = -(uint)(CONCAT13(unaff_XMM7_Bd,\\n                              CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))) ==\\n                    CONCAT13(unaff_XMM7_Bd,\\n                             CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))));\\n    iVar11 = -(uint)(CONCAT13(unaff_XMM7_Bh,\\n                              CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))) ==\\n                    CONCAT13(unaff_XMM7_Bh,\\n                             CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))));\\n    iVar12 = -(uint)(CONCAT13(unaff_XMM7_Bl,\\n                              CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))) ==\\n                    CONCAT13(unaff_XMM7_Bl,\\n                             CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))));\\n    iVar13 = -(uint)(CONCAT13(unaff_XMM7_Bp,\\n                              CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))) ==\\n                    CONCAT13(unaff_XMM7_Bp,\\n                             CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))));\\n    uVar36 = extraout_RAX;\\n    while( true ) {\\n      uVar36 = uVar5 & uVar36;\\n      pcVar2 = (char *)(lVar32 + uVar36);\\n      cVar14 = *pcVar2;\\n      cVar15 = pcVar2[1];\\n      cVar16 = pcVar2[2];\\n      cVar17 = pcVar2[3];\\n      cVar18 = pcVar2[4];\\n      cVar19 = pcVar2[5];\\n      cVar20 = pcVar2[6];\\n      cVar21 = pcVar2[7];\\n      cVar22 = pcVar2[8];\\n      cVar23 = pcVar2[9];\\n      cVar24 = pcVar2[10];\\n      cVar25 = pcVar2[0xb];\\n      cVar26 = pcVar2[0xc];\\n      cVar27 = pcVar2[0xd];\\n      cVar28 = pcVar2[0xe];\\n      cVar29 = pcVar2[0xf];\\n      auVar38[0] = -(cVar14 == cVar39);\\n      auVar38[1] = -(cVar15 == cVar40);\\n      auVar38[2] = -(cVar16 == cVar41);\\n      auVar38[3] = -(cVar17 == cVar42);\\n      auVar38[4] = -(cVar18 == cVar39);\\n      auVar38[5] = -(cVar19 == cVar40);\\n      auVar38[6] = -(cVar20 == cVar41);\\n      auVar38[7] = -(cVar21 == cVar42);\\n      auVar38[8] = -(cVar22 == cVar39);\\n      auVar38[9] = -(cVar23 == cVar40);\\n      auVar38[10] = -(cVar24 == cVar41);\\n      auVar38[0xb] = -(cVar25 == cVar42);\\n      auVar38[0xc] = -(cVar26 == cVar39);\\n      auVar38[0xd] = -(cVar27 == cVar40);\\n      auVar38[0xe] = -(cVar28 == cVar41);\\n      auVar38[0xf] = -(cVar29 == cVar42);\\n      uVar30 = (ushort)(SUB161(auVar38 >> 7,0) & 1) | (ushort)(SUB161(auVar38 >> 0xf,0) & 1) << 1 |\\n               (ushort)(SUB161(auVar38 >> 0x17,0) & 1) << 2 |\\n               (ushort)(SUB161(auVar38 >> 0x1f,0) & 1) << 3 |\\n               (ushort)(SUB161(auVar38 >> 0x27,0) & 1) << 4 |\\n               (ushort)(SUB161(auVar38 >> 0x2f,0) & 1) << 5 |\\n               (ushort)(SUB161(auVar38 >> 0x37,0) & 1) << 6 |\\n               (ushort)(SUB161(auVar38 >> 0x3f,0) & 1) << 7 |\\n               (ushort)(SUB161(auVar38 >> 0x47,0) & 1) << 8 |\\n               (ushort)(SUB161(auVar38 >> 0x4f,0) & 1) << 9 |\\n               (ushort)(SUB161(auVar38 >> 0x57,0) & 1) << 10 |\\n               (ushort)(SUB161(auVar38 >> 0x5f,0) & 1) << 0xb |\\n               (ushort)(SUB161(auVar38 >> 0x67,0) & 1) << 0xc |\\n               (ushort)(SUB161(auVar38 >> 0x6f,0) & 1) << 0xd |\\n               (ushort)(SUB161(auVar38 >> 0x77,0) & 1) << 0xe | (ushort)(auVar38[0xf] >> 7) << 0xf;\\n      uVar31 = (uint)uVar30;\\n      while (uVar30 != 0) {\\n        uVar35 = 0;\\n        for (uVar9 = uVar31; (uVar9 & 1) == 0; uVar9 = uVar9 >> 1 | 0x80000000) {\\n          uVar35 = uVar35 + 1;\\n        }\\n        rhapsody::raw::managed::handle::impl$7::eq();\\n        if ((extraout_AL != '\\\\0') &&\\n           (*(int *)(in_R8 + 0x18) == *(int *)(lVar32 + (uVar35 + uVar36 & uVar5) * -0x28 + -0x10)))\\n        {\\n          parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n          parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n          LOCK();\\n          uVar5 = *puVar1;\\n          *puVar1 = *puVar1 - 0x10;\\n          UNLOCK();\\n          if ((uVar5 & 0xfffffffffffffff2) == 0x12) {\\n            parking_lot::raw_rwlock::RawRwLock::unlock_shared_slow();\\n          }\\n          rhapsody::raw::managed::handle::impl$6::drop();\\n          return;\\n        }\\n        uVar30 = (ushort)(uVar31 - 1) & (ushort)uVar31;\\n        uVar31 = CONCAT22((short)(uVar31 - 1 >> 0x10),uVar30);\\n      }\\n      auVar43[0] = -(cVar14 == (char)iVar10);\\n      auVar43[1] = -(cVar15 == (char)((uint)iVar10 >> 8));\\n      auVar43[2] = -(cVar16 == (char)((uint)iVar10 >> 0x10));\\n      auVar43[3] = -(cVar17 == (char)((uint)iVar10 >> 0x18));\\n      auVar43[4] = -(cVar18 == (char)iVar11);\\n      auVar43[5] = -(cVar19 == (char)((uint)iVar11 >> 8));\\n      auVar43[6] = -(cVar20 == (char)((uint)iVar11 >> 0x10));\\n      auVar43[7] = -(cVar21 == (char)((uint)iVar11 >> 0x18));\\n      auVar43[8] = -(cVar22 == (char)iVar12);\\n      auVar43[9] = -(cVar23 == (char)((uint)iVar12 >> 8));\\n      auVar43[10] = -(cVar24 == (char)((uint)iVar12 >> 0x10));\\n      auVar43[0xb] = -(cVar25 == (char)((uint)iVar12 >> 0x18));\\n      auVar43[0xc] = -(cVar26 == (char)iVar13);\\n      auVar43[0xd] = -(cVar27 == (char)((uint)iVar13 >> 8));\\n      auVar43[0xe] = -(cVar28 == (char)((uint)iVar13 >> 0x10));\\n      auVar43[0xf] = -(cVar29 == (char)((uint)iVar13 >> 0x18));\\n      if ((((((((((((((((SUB161(auVar43 >> 7,0) & 1) != 0 || (SUB161(auVar43 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar43 >> 0x17,0) & 1) != 0) || (SUB161(auVar43 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar43 >> 0x27,0) & 1) != 0) || (SUB161(auVar43 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar43 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar43 >> 0x3f,0) & 1) != 0) || (SUB161(auVar43 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar43 >> 0x4f,0) & 1) != 0) || (SUB161(auVar43 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar43 >> 0x5f,0) & 1) != 0) || (SUB161(auVar43 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar43 >> 0x6f,0) & 1) != 0) || (SUB161(auVar43 >> 0x77,0) & 1) != 0) ||\\n          auVar43[0xf] < '\\\\0') break;\\n      uVar36 = uVar36 + lVar34 + 0x10;\\n      lVar34 = lVar34 + 0x10;\\n    }\\n  }\\n  parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n  parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n  LOCK();\\n  uVar5 = *puVar1;\\n  *puVar1 = *puVar1 - 0x10;\\n  UNLOCK();\\n  if ((uVar5 & 0xfffffffffffffff2) == 0x12) {\\n    parking_lot::raw_rwlock::RawRwLock::unlock_shared_slow();\\n  }\\n  LOCK();\\n  uVar5 = *puVar1;\\n  if (uVar5 == 0) {\\n    *puVar1 = 8;\\n  }\\n  UNLOCK();\\n  if (uVar5 != 0) {\\n    parking_lot::raw_rwlock::RawRwLock::lock_exclusive_slow();\\n  }\\n  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();\\n  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();\\n  hashbrown::map::HashMap::\\n  rustc_entry<rhapsody::raw::shader::RasterPipelineDesc,alloc::boxed::Box<rhapsody::raw::shader::RasterPipeline,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\\n            ();\\n  if (cStack_b2 != '\\\\b') {\\n    plVar6 = (longlong *)*in_RCX;\\n    LOCK();\\n    lVar32 = *plVar6;\\n    *plVar6 = *plVar6 + 1;\\n    UNLOCK();\\n    if (*plVar6 == 0 || SCARRY8(lVar32,1) != *plVar6 < 0) {\\n                    // WARNING: Does not return\\n      pcVar8 = (code *)invalidInstructionException();\\n      (*pcVar8)();\\n    }\\n    rhapsody::raw::device::GraphicsDevice::\\n    create_raster_pipeline<alloc::sync::Arc<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>_>\\n              ();\\n    if (SBORROW8(0,local_d8)) {\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX_00 == (ulonglong *)0x0) {\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    extraout_RAX_00[6] = local_a8;\\n    extraout_RAX_00[4] = CONCAT17(uStack_b1,CONCAT16(cStack_b2,uStack_b8));\\n    extraout_RAX_00[5] = CONCAT17(uStack_a9,uStack_b0);\\n    extraout_RAX_00[2] = local_c8;\\n    extraout_RAX_00[3] = CONCAT26(uStack_ba,uStack_c0);\\n    *extraout_RAX_00 = local_d8;\\n    extraout_RAX_00[1] = (ulonglong)puStack_d0;\\n    pauVar7 = (undefined1 (*) [16])*puStack_d0;\\n    uVar5 = puStack_d0[1];\\n    uVar36 = uVar5 & local_d8;\\n    auVar38 = *(undefined1 (*) [16])(*pauVar7 + uVar36);\\n    uVar30 = (ushort)(SUB161(auVar38 >> 7,0) & 1) | (ushort)(SUB161(auVar38 >> 0xf,0) & 1) << 1 |\\n             (ushort)(SUB161(auVar38 >> 0x17,0) & 1) << 2 |\\n             (ushort)(SUB161(auVar38 >> 0x1f,0) & 1) << 3 |\\n             (ushort)(SUB161(auVar38 >> 0x27,0) & 1) << 4 |\\n             (ushort)(SUB161(auVar38 >> 0x2f,0) & 1) << 5 |\\n             (ushort)(SUB161(auVar38 >> 0x37,0) & 1) << 6 |\\n             (ushort)(SUB161(auVar38 >> 0x3f,0) & 1) << 7 |\\n             (ushort)(SUB161(auVar38 >> 0x47,0) & 1) << 8 |\\n             (ushort)(SUB161(auVar38 >> 0x4f,0) & 1) << 9 |\\n             (ushort)(SUB161(auVar38 >> 0x57,0) & 1) << 10 |\\n             (ushort)(SUB161(auVar38 >> 0x5f,0) & 1) << 0xb |\\n             (ushort)(SUB161(auVar38 >> 0x67,0) & 1) << 0xc |\\n             (ushort)(SUB161(auVar38 >> 0x6f,0) & 1) << 0xd |\\n             (ushort)(SUB161(auVar38 >> 0x77,0) & 1) << 0xe |\\n             (ushort)(byte)(auVar38[0xf] >> 7) << 0xf;\\n    uVar31 = (uint)uVar30;\\n    if (uVar30 == 0) {\\n      lVar32 = 0x10;\\n      do {\\n        uVar36 = uVar36 + lVar32 & uVar5;\\n        auVar38 = *(undefined1 (*) [16])(*pauVar7 + uVar36);\\n        lVar32 = lVar32 + 0x10;\\n        uVar31 = (uint)(ushort)((ushort)(SUB161(auVar38 >> 7,0) & 1) |\\n                                (ushort)(SUB161(auVar38 >> 0xf,0) & 1) << 1 |\\n                                (ushort)(SUB161(auVar38 >> 0x17,0) & 1) << 2 |\\n                                (ushort)(SUB161(auVar38 >> 0x1f,0) & 1) << 3 |\\n                                (ushort)(SUB161(auVar38 >> 0x27,0) & 1) << 4 |\\n                                (ushort)(SUB161(auVar38 >> 0x2f,0) & 1) << 5 |\\n                                (ushort)(SUB161(auVar38 >> 0x37,0) & 1) << 6 |\\n                                (ushort)(SUB161(auVar38 >> 0x3f,0) & 1) << 7 |\\n                                (ushort)(SUB161(auVar38 >> 0x47,0) & 1) << 8 |\\n                                (ushort)(SUB161(auVar38 >> 0x4f,0) & 1) << 9 |\\n                                (ushort)(SUB161(auVar38 >> 0x57,0) & 1) << 10 |\\n                                (ushort)(SUB161(auVar38 >> 0x5f,0) & 1) << 0xb |\\n                                (ushort)(SUB161(auVar38 >> 0x67,0) & 1) << 0xc |\\n                                (ushort)(SUB161(auVar38 >> 0x6f,0) & 1) << 0xd |\\n                                (ushort)(SUB161(auVar38 >> 0x77,0) & 1) << 0xe |\\n                               (ushort)(byte)(auVar38[0xf] >> 7) << 0xf);\\n      } while (uVar31 == 0);\\n    }\\n    uVar35 = 0;\\n    for (; (uVar31 & 1) == 0; uVar31 = uVar31 >> 1 | 0x80000000) {\\n      uVar35 = uVar35 + 1;\\n    }\\n    uVar36 = uVar35 + uVar36 & uVar5;\\n    bVar37 = (*pauVar7)[uVar36];\\n    if (-1 < (char)bVar37) {\\n      auVar38 = *pauVar7;\\n      uVar31 = 0;\\n      for (uVar35 = (uint)(ushort)((ushort)(SUB161(auVar38 >> 7,0) & 1) |\\n                                   (ushort)(SUB161(auVar38 >> 0xf,0) & 1) << 1 |\\n                                   (ushort)(SUB161(auVar38 >> 0x17,0) & 1) << 2 |\\n                                   (ushort)(SUB161(auVar38 >> 0x1f,0) & 1) << 3 |\\n                                   (ushort)(SUB161(auVar38 >> 0x27,0) & 1) << 4 |\\n                                   (ushort)(SUB161(auVar38 >> 0x2f,0) & 1) << 5 |\\n                                   (ushort)(SUB161(auVar38 >> 0x37,0) & 1) << 6 |\\n                                   (ushort)(SUB161(auVar38 >> 0x3f,0) & 1) << 7 |\\n                                   (ushort)(SUB161(auVar38 >> 0x47,0) & 1) << 8 |\\n                                   (ushort)(SUB161(auVar38 >> 0x4f,0) & 1) << 9 |\\n                                   (ushort)(SUB161(auVar38 >> 0x57,0) & 1) << 10 |\\n                                   (ushort)(SUB161(auVar38 >> 0x5f,0) & 1) << 0xb |\\n                                   (ushort)(SUB161(auVar38 >> 0x67,0) & 1) << 0xc |\\n                                   (ushort)(SUB161(auVar38 >> 0x6f,0) & 1) << 0xd |\\n                                   (ushort)(SUB161(auVar38 >> 0x77,0) & 1) << 0xe |\\n                                  (ushort)(byte)(auVar38[0xf] >> 7) << 0xf); (uVar35 & 1) == 0;\\n          uVar35 = uVar35 >> 1 | 0x80000000) {\\n        uVar31 = uVar31 + 1;\\n      }\\n      uVar36 = (ulonglong)uVar31;\\n      bVar37 = (*pauVar7)[uVar36];\\n    }\\n    bVar33 = (byte)(local_d8 >> 0x39);\\n    (*pauVar7)[uVar36] = bVar33;\\n    pauVar7[1][uVar36 - 0x10 & uVar5] = bVar33;\\n    puStack_d0[2] = puStack_d0[2] - (ulonglong)(bVar37 & 1);\\n    puVar3 = (undefined8 *)((longlong)pauVar7 + uVar36 * -0x28 + -0x18);\\n    *puVar3 = CONCAT17(uStack_b1,CONCAT16(cStack_b2,uStack_b8));\\n    puVar3[1] = CONCAT17(uStack_a9,uStack_b0);\\n    puVar4 = (ulonglong *)((longlong)pauVar7 + uVar36 * -0x28 + -0x28);\\n    *puVar4 = local_c8;\\n    puVar4[1] = CONCAT26(uStack_ba,uStack_c0);\\n    *(ulonglong **)((longlong)pauVar7 + uVar36 * -0x28 + -8) = extraout_RAX_00;\\n    puStack_d0[3] = puStack_d0[3] + 1;\\n  }\\n  parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n  parking_lot_core::parking_lot::deadlock_impl::release_resource();\\n  LOCK();\\n  uVar5 = *puVar1;\\n  if (uVar5 == 8) {\\n    *puVar1 = 0;\\n  }\\n  UNLOCK();\\n  if (uVar5 != 8) {\\n    parking_lot::raw_rwlock::RawRwLock::unlock_exclusive_slow();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":14,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"acquire_resource\",\"address\":\"140c81c70\"},{\"name\":\"create_raster_pipeline<alloc::sync::Arc<shader_pipeline::compiled::CompiledShaderPipeline,alloc::alloc::Global>_>\",\"address\":\"1416a3720\"},{\"name\":\"drop\",\"address\":\"140be24b0\"},{\"name\":\"eq\",\"address\":\"140bd6b30\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<rhapsody::raw::shader::RasterPipelineDesc>_>\",\"address\":\"1412e7930\"},{\"name\":\"lock_exclusive_slow\",\"address\":\"1428cb5f0\"},{\"name\":\"lock_shared_slow\",\"address\":\"1428cc4b0\"},{\"name\":\"release_resource\",\"address\":\"140c81e10\"},{\"name\":\"rustc_entry<rhapsody::raw::shader::RasterPipelineDesc,alloc::boxed::Box<rhapsody::raw::shader::RasterPipeline,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"141524df0\"},{\"name\":\"unlock_exclusive_slow\",\"address\":\"1428cbf60\"},{\"name\":\"unlock_shared_slow\",\"address\":\"1428ccf50\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140917860\":{\"name\":\"load_compiled_texture_image\",\"size\":2323,\"address\":\"140917860\",\"signature\":\"void __cdecl load_compiled_texture_image(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::load_texture::load_compiled_texture_image(void)\\n\\n{\\n  byte *pbVar1;\\n  byte bVar2;\\n  byte bVar3;\\n  byte bVar4;\\n  undefined8 uVar5;\\n  ulonglong uVar6;\\n  longlong **pplVar7;\\n  char extraout_AL;\\n  uint uVar8;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong *extraout_RAX_01;\\n  undefined8 *extraout_RAX_02;\\n  HANDLE extraout_RAX_03;\\n  ulonglong extraout_RAX_04;\\n  longlong extraout_RAX_05;\\n  longlong *extraout_RAX_06;\\n  longlong *extraout_RAX_07;\\n  longlong *extraout_RAX_08;\\n  undefined8 *in_RCX;\\n  longlong *plVar9;\\n  ulonglong in_RDX;\\n  code *pcVar10;\\n  undefined *puVar11;\\n  longlong local_1b0 [6];\\n  ulonglong local_180;\\n  HANDLE local_178;\\n  int *local_170;\\n  ulonglong uStack_168;\\n  undefined8 local_160;\\n  longlong local_158;\\n  longlong *local_148;\\n  longlong local_140 [2];\\n  longlong *local_130;\\n  code *pcStack_128;\\n  ulonglong *puStack_120;\\n  code *pcStack_118;\\n  undefined8 uStack_110;\\n  undefined8 local_108;\\n  undefined8 uStack_100;\\n  undefined8 local_f8;\\n  undefined8 local_f0;\\n  undefined8 uStack_e8;\\n  longlong local_e0;\\n  undefined **local_d8;\\n  code *pcStack_d0;\\n  longlong **pplStack_c8;\\n  undefined4 local_c0;\\n  undefined4 uStack_bc;\\n  undefined4 local_b8;\\n  undefined2 uStack_b4;\\n  undefined2 uStack_b2;\\n  undefined8 uStack_b0;\\n  undefined8 local_a8;\\n  undefined *puStack_a0;\\n  undefined8 local_98;\\n  undefined8 uStack_90;\\n  undefined *local_88;\\n  undefined8 local_80;\\n  longlong **local_78;\\n  undefined8 local_70;\\n  undefined8 local_68;\\n  longlong *local_58;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  puffin::are_scopes_on();\\n  if (extraout_AL == '\\\\0') {\\n    local_158 = 0;\\n  }\\n  else {\\n    core::str::impl$0::rfind<ref_<str_>_>();\\n    if (extraout_RAX == 1) {\\n      if (in_RDX != 0) {\\n        if (in_RDX < 0x3f) {\\n          if ((char)(&DAT_142aac740)[in_RDX] < -0x40) {\\nLAB_1409178e0:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (in_RDX != 0x3f) goto LAB_1409178e0;\\n      }\\n      core::str::impl$0::rfind<ref_<str_>_>();\\n      if ((extraout_RAX_00 == 1) && (in_RDX != 0xfffffffffffffffe)) {\\n        if (in_RDX + 2 < 0x3f) {\\n          if (\\\"untry_core::render::load_texture::load_compiled_texture_image::f\\\"[in_RDX] < -0x40) {\\nLAB_140917934:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (in_RDX + 2 != 0x3f) goto LAB_140917934;\\n      }\\n    }\\n    puVar11 = &DAT_142aacc4e;\\n    do {\\n      bVar2 = puVar11[-1];\\n      uVar8 = (uint)(char)bVar2;\\n      if ((char)bVar2 < '\\\\0') {\\n        bVar3 = puVar11[-2];\\n        if ((char)bVar3 < -0x40) {\\n          bVar4 = puVar11[-3];\\n          if ((char)bVar4 < -0x40) {\\n            pbVar1 = puVar11 + -4;\\n            puVar11 = puVar11 + -4;\\n            uVar8 = bVar4 & 0x3f | (*pbVar1 & 7) << 6;\\n          }\\n          else {\\n            puVar11 = puVar11 + -3;\\n            uVar8 = bVar4 & 0xf;\\n          }\\n          uVar8 = bVar3 & 0x3f | uVar8 << 6;\\n        }\\n        else {\\n          puVar11 = puVar11 + -2;\\n          uVar8 = bVar3 & 0x1f;\\n        }\\n        uVar8 = (uint)(bVar2 & 0x3f) | uVar8 << 6;\\n        if (uVar8 != 0x5c) goto LAB_140917a04;\\nLAB_140917a15:\\n        if (puVar11 == &UNK_142aacc1f) break;\\n        if (puVar11 + -0x142aacc1f < (undefined *)0x2e) {\\n          if (-0x41 < (char)puVar11[1]) break;\\n        }\\n        else if (puVar11 + -0x142aacc1f == (undefined *)0x2e) break;\\n                    // WARNING: Subroutine does not return\\n        core::str::slice_error_fail();\\n      }\\n      puVar11 = puVar11 + -1;\\n      if (uVar8 == 0x5c) goto LAB_140917a15;\\nLAB_140917a04:\\n      if (uVar8 == 0x2f) goto LAB_140917a15;\\n    } while (puVar11 != &DAT_142aacc20);\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_01 == 1) {\\n      plVar9 = extraout_RAX_01 + 1;\\n    }\\n    else if ((*extraout_RAX_01 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar9 = extraout_RAX_08, extraout_RAX_08 == (longlong *)0x0))\\n    goto LAB_140917f1a;\\n    if (*plVar9 != 0) goto LAB_140917f26;\\n    *plVar9 = -1;\\n    local_148 = plVar9;\\n    puffin::ThreadProfiler::begin_scope();\\n    *local_148 = *local_148 + 1;\\n    local_158 = 1;\\n  }\\n  local_e0 = local_158;\\n  local_58 = (longlong *)local_158;\\n  std::path::Path::to_path_buf();\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  std::path::Path::_join();\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  std::path::Path::_with_extension();\\n  if (local_130 != (longlong *)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (local_d8 != (undefined **)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    local_130 = local_140;\\n    pcStack_128 = core::fmt::impl$74::fmt<str_>;\\n    pcStack_118 = std::path::impl$44::fmt;\\n    puStack_120 = (ulonglong *)local_1b0;\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    uVar5 = *extraout_RAX_02;\\n    uStack_b0 = extraout_RAX_02[1];\\n    local_a8 = 5;\\n    puStack_a0 = &DAT_142aaccc8;\\n    local_98 = 0x22;\\n    local_88 = &DAT_142aacc90;\\n    local_80 = 2;\\n    local_70 = 2;\\n    local_68 = 0;\\n    local_d8 = (undefined **)0x0;\\n    pcStack_d0 = (code *)&DAT_142aaccc8;\\n    pplStack_c8 = (longlong **)0x22;\\n    local_c0 = 0;\\n    uStack_bc = 0;\\n    local_b8 = (undefined4)uVar5;\\n    uStack_b4 = (undefined2)((ulonglong)uVar5 >> 0x20);\\n    uStack_b2 = (undefined2)((ulonglong)uVar5 >> 0x30);\\n    uStack_90 = CONCAT44(*(undefined4 *)(extraout_RAX_02 + 2),1);\\n    local_78 = &local_130;\\n    ::log::__private_api::impl$2::log();\\n  }\\n  local_d8 = (undefined **)((ulonglong)local_d8 & 0xffffffff00000000);\\n  pcStack_d0 = (HANDLE)0x0;\\n  pplStack_c8 = (longlong **)0x0;\\n  local_c0 = 7;\\n  uStack_bc = 0;\\n  uStack_b4 = 0;\\n  local_b8 = 1;\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  pcVar10 = extraout_RAX_03;\\n  std::fs::OpenOptions::_open();\\n  if ((extraout_RAX_04 & 1) != 0) {\\n    pcStack_128 = std::path::impl$44::fmt;\\n    puStack_120 = &local_180;\\n    pcStack_118 = std::io::error::impl$0::fmt;\\n    local_d8 = &PTR_DAT_142aace28;\\n    pcStack_d0 = (code *)0x2;\\n    local_b8 = 0;\\n    uStack_b4 = 0;\\n    uStack_b2 = 0;\\n    local_c0 = 2;\\n    uStack_bc = 0;\\n    local_130 = local_1b0;\\n    pplStack_c8 = &local_130;\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic_fmt();\\n  }\\n  local_58 = (longlong *)pcVar10;\\n  memmap2::os::file_len();\\n  if ((extraout_RAX_05 != 0) ||\\n     (memmap2::os::MmapInner::map(), pplVar7 = pplStack_c8, pcVar10 = pcStack_d0,\\n     local_d8 == (undefined **)0x2)) {\\n    local_d8 = (undefined **)pcVar10;\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  local_160 = CONCAT26(uStack_b2,CONCAT24(uStack_b4,local_b8));\\n  uVar6 = CONCAT44(uStack_bc,local_c0);\\n  local_170 = (int *)pplStack_c8;\\n  local_180 = (ulonglong)local_d8;\\n  local_178 = pcStack_d0;\\n  uStack_168 = uVar6;\\n  if (uVar6 < 8) {\\n                    // WARNING: Subroutine does not return\\n    core::slice::index::slice_end_index_len_fail();\\n  }\\n  local_130 = (longlong *)((ulonglong)pplStack_c8 & 3);\\n  if (local_130 != (longlong *)0x0) {\\n    local_d8 = (undefined **)0x0;\\n                    // WARNING: Subroutine does not return\\n    core::panicking::assert_failed<usize,usize>();\\n  }\\n  if (*(int *)pplStack_c8 != 0x48502183) {\\n    pcStack_128 = std::path::impl$44::fmt;\\n    local_d8 = &PTR_s_Image_has_an_incorrect_magic_ide_142aacd58;\\n    pcStack_d0 = (code *)0x2;\\n    local_c0 = 1;\\n    uStack_bc = 0;\\n    local_b8 = 0;\\n    uStack_b4 = 0;\\n    uStack_b2 = 0;\\n    local_130 = local_1b0;\\n    pplStack_c8 = &local_130;\\n                    // WARNING: Subroutine does not return\\n    core::panicking::assert_failed<u32,u32>();\\n  }\\n  if (*(int *)((longlong)pplStack_c8 + 4) != 8) {\\n    pcStack_128 = std::path::impl$44::fmt;\\n    local_d8 = &PTR_s_Image_has_an_incorrect_magic_ide_142aacdb0;\\n    pcStack_d0 = (code *)0x2;\\n    local_c0 = 1;\\n    uStack_bc = 0;\\n    local_b8 = 0;\\n    uStack_b4 = 0;\\n    uStack_b2 = 0;\\n    local_130 = local_1b0;\\n    pplStack_c8 = &local_130;\\n                    // WARNING: Subroutine does not return\\n    core::panicking::assert_failed<u32,u32>();\\n  }\\n  pcStack_128 = (code *)CONCAT44(pcStack_128._4_4_,\\n                                 *(undefined4 *)((longlong)pplStack_c8 + (uVar6 - 0xc)));\\n  local_130 = *(longlong **)((longlong)pplStack_c8 + (uVar6 - 0x14));\\n  rhapsody::raw::texture::TextureDesc::new();\\n  rhapsody::raw::texture::TextureDesc::sampled();\\n  if (0xff < *(ushort *)((longlong)pplVar7 + (uVar6 - 8))) {\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  rhapsody::raw::texture::TextureDesc::mip_levels();\\n  rhapsody::raw::texture::TextureDesc::array_elements();\\n  ustr::Ustr::from();\\n  rhapsody::raw::device::GraphicsDevice::create_texture<ref_<slice2_<u8>_>_>();\\n  if ((int)local_130 != 0xb) {\\n    local_98 = local_f0;\\n    uStack_90 = uStack_e8;\\n    local_a8 = uStack_100;\\n    puStack_a0 = (undefined *)local_f8;\\n    local_b8 = (undefined4)uStack_110;\\n    uStack_b4 = (undefined2)((ulonglong)uStack_110 >> 0x20);\\n    uStack_b2 = (undefined2)((ulonglong)uStack_110 >> 0x30);\\n    uStack_b0 = local_108;\\n    pplStack_c8 = (longlong **)puStack_120;\\n    local_c0 = SUB84(pcStack_118,0);\\n    uStack_bc = (undefined4)((ulonglong)pcStack_118 >> 0x20);\\n    local_d8 = (undefined **)local_130;\\n    pcStack_d0 = pcStack_128;\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n  in_RCX[6] = local_f8;\\n  in_RCX[4] = local_108;\\n  in_RCX[5] = uStack_100;\\n  in_RCX[2] = pcStack_118;\\n  in_RCX[3] = uStack_110;\\n  *in_RCX = pcStack_128;\\n  in_RCX[1] = puStack_120;\\n  core::ptr::drop_in_place<memmap2::os::MmapInner>();\\n  CloseHandle(local_58);\\n  if (local_1b0[0] != 0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (local_158 != 0) {\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_06 == 1) {\\n      local_58 = extraout_RAX_06 + 1;\\n    }\\n    else if ((*extraout_RAX_06 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), local_58 = extraout_RAX_07, extraout_RAX_07 == (longlong *)0x0)) {\\nLAB_140917f1a:\\n                    // WARNING: Subroutine does not return\\n      std::thread::local::panic_access_error();\\n    }\\n    if (*local_58 != 0) {\\nLAB_140917f26:\\n                    // WARNING: Subroutine does not return\\n      core::cell::panic_already_borrowed();\\n    }\\n    *local_58 = -1;\\n    puffin::ThreadProfiler::end_scope();\\n    *local_58 = *local_58 + 1;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":32,\"callees\":[{\"name\":\"CloseHandle\",\"address\":\"EXTERNAL:00000003\",\"address_full\":\"EXTERNAL:00000003\",\"address_space\":\"EXTERNAL\"},{\"name\":\"VAL\",\"address\":\"140c18130\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"_join\",\"address\":\"140d62810\"},{\"name\":\"_open\",\"address\":\"140d59dc0\"},{\"name\":\"_with_extension\",\"address\":\"140d62a10\"},{\"name\":\"are_scopes_on\",\"address\":\"140c16a00\"},{\"name\":\"array_elements\",\"address\":\"140bd5540\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"as_mut_slice\",\"address\":\"140d76ed0\"},{\"name\":\"assert_failed<u32,u32>\",\"address\":\"1428fbfcf\"},{\"name\":\"assert_failed<usize,usize>\",\"address\":\"1428d9596\"},{\"name\":\"begin_scope\",\"address\":\"140c16d40\"},{\"name\":\"create_texture<ref$<slice2$<u8>_>_>\",\"address\":\"1416a6700\"},{\"name\":\"drop_in_place<memmap2::os::MmapInner>\",\"address\":\"14168c870\"},{\"name\":\"end_scope\",\"address\":\"140c170f0\"},{\"name\":\"file_len\",\"address\":\"140b92f10\"},{\"name\":\"from\",\"address\":\"140c0f3f0\"},{\"name\":\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\",\"address\":\"1428f87d0\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"map\",\"address\":\"14168caa0\"},{\"name\":\"mip_levels\",\"address\":\"140bd5460\"},{\"name\":\"new\",\"address\":\"140bd5270\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"panic_already_borrowed\",\"address\":\"1428d9250\"},{\"name\":\"panic_fmt\",\"address\":\"1428d9390\"},{\"name\":\"rfind<ref$<str$>_>\",\"address\":\"140914f30\"},{\"name\":\"sampled\",\"address\":\"140bd5370\"},{\"name\":\"slice_end_index_len_fail\",\"address\":\"1428d9840\"},{\"name\":\"slice_error_fail\",\"address\":\"1428d9940\"},{\"name\":\"to_path_buf\",\"address\":\"140d61b00\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140968ad0\":{\"name\":\"resolution\",\"size\":26,\"address\":\"140968ad0\",\"signature\":\"void __cdecl resolution(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::render_config::FullscreenConfig::resolution(void)\\n\\n{\\n  int iVar1;\\n  uint *in_RCX;\\n  int *in_RDX;\\n  \\n  iVar1 = *in_RDX;\\n  if (iVar1 == 1) {\\n    *(undefined8 *)(in_RCX + 1) = *(undefined8 *)(in_RDX + 1);\\n  }\\n  *in_RCX = (uint)(iVar1 == 1);\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140968bb0\":{\"name\":\"tgsr_resolution_scale\",\"size\":16,\"address\":\"140968bb0\",\"signature\":\"void __cdecl tgsr_resolution_scale(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::render_config::UpscalingPreset::tgsr_resolution_scale(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140976880\":{\"name\":\"should_reset_temporal\",\"size\":11,\"address\":\"140976880\",\"signature\":\"void __cdecl should_reset_temporal(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::frame_constants::FrameConstants::should_reset_temporal(void)\\n\\n{\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a97650\":{\"name\":\"lerp\",\"size\":87,\"address\":\"140a97650\",\"signature\":\"void __cdecl lerp(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::atmosphere::SunSkyColors::lerp(void)\\n\\n{\\n  float fVar1;\\n  float fVar2;\\n  float fVar3;\\n  float fVar4;\\n  float fVar5;\\n  float fVar6;\\n  float *in_RCX;\\n  float *in_RDX;\\n  float *in_R8;\\n  float fVar7;\\n  float in_XMM3_Da;\\n  \\n  fVar7 = 1.0 - in_XMM3_Da;\\n  fVar1 = in_RDX[1];\\n  fVar2 = in_RDX[2];\\n  fVar3 = in_RDX[3];\\n  fVar4 = in_R8[1];\\n  fVar5 = in_R8[2];\\n  fVar6 = in_R8[3];\\n  *in_RCX = *in_R8 * in_XMM3_Da + *in_RDX * fVar7;\\n  in_RCX[1] = fVar4 * in_XMM3_Da + fVar1 * fVar7;\\n  in_RCX[2] = fVar5 * in_XMM3_Da + fVar2 * fVar7;\\n  in_RCX[3] = fVar6 * in_XMM3_Da + fVar3 * fVar7;\\n  fVar1 = in_RDX[5];\\n  fVar2 = in_RDX[6];\\n  fVar3 = in_RDX[7];\\n  fVar4 = in_R8[5];\\n  fVar5 = in_R8[6];\\n  fVar6 = in_R8[7];\\n  in_RCX[4] = in_R8[4] * in_XMM3_Da + in_RDX[4] * fVar7;\\n  in_RCX[5] = fVar4 * in_XMM3_Da + fVar1 * fVar7;\\n  in_RCX[6] = fVar5 * in_XMM3_Da + fVar2 * fVar7;\\n  in_RCX[7] = fVar6 * in_XMM3_Da + fVar3 * fVar7;\\n  fVar1 = in_RDX[9];\\n  fVar2 = in_RDX[10];\\n  fVar3 = in_RDX[0xb];\\n  fVar4 = in_R8[9];\\n  fVar5 = in_R8[10];\\n  fVar6 = in_R8[0xb];\\n  in_RCX[8] = in_R8[8] * in_XMM3_Da + in_RDX[8] * fVar7;\\n  in_RCX[9] = fVar4 * in_XMM3_Da + fVar1 * fVar7;\\n  in_RCX[10] = fVar5 * in_XMM3_Da + fVar2 * fVar7;\\n  in_RCX[0xb] = fVar6 * in_XMM3_Da + fVar3 * fVar7;\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b18550\":{\"name\":\"look_at\",\"size\":725,\"address\":\"140b18550\",\"signature\":\"void __cdecl look_at(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::directional_light::DirectionalLight::look_at(void)\\n\\n{\\n  float fVar1;\\n  undefined1 auVar2 [16];\\n  undefined1 auVar3 [16];\\n  undefined1 auVar4 [16];\\n  undefined1 (*in_RCX) [16];\\n  undefined8 *in_RDX;\\n  undefined8 *in_R8;\\n  float fVar5;\\n  float fVar6;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar14;\\n  float fVar15;\\n  float fVar16;\\n  float fVar17;\\n  float fVar18;\\n  \\n  fVar1 = *(float *)(in_RDX + 1);\\n  fVar7 = fVar1 - *(float *)(in_R8 + 1);\\n  fVar11 = *(float *)(in_R8 + 1) - fVar1;\\n  fVar12 = (float)*in_R8;\\n  fVar14 = (float)((ulonglong)*in_R8 >> 0x20);\\n  fVar5 = (float)*in_RDX;\\n  fVar6 = (float)((ulonglong)*in_RDX >> 0x20);\\n  fVar9 = fVar5 - fVar12;\\n  fVar10 = fVar6 - fVar14;\\n  fVar12 = fVar12 - fVar5;\\n  fVar14 = fVar14 - fVar6;\\n  fVar8 = 1.0 / SQRT(fVar14 * fVar14 + fVar12 * fVar12 + fVar11 * fVar11);\\n  fVar12 = fVar8 * fVar12;\\n  fVar14 = fVar8 * fVar14;\\n  fVar8 = fVar8 * fVar11;\\n  fVar11 = fVar12 - fVar14 * 0.0;\\n  fVar15 = fVar14 * 0.0 - fVar8;\\n  fVar13 = fVar8 * 0.0 - fVar12 * 0.0;\\n  fVar17 = 1.0 / SQRT(fVar11 * fVar11 + fVar13 * fVar13 + fVar15 * fVar15);\\n  fVar15 = fVar15 * fVar17;\\n  fVar13 = fVar13 * fVar17;\\n  fVar11 = fVar11 * fVar17;\\n  fVar17 = fVar14 * fVar15 - fVar12 * fVar13;\\n  fVar16 = fVar8 * fVar13 - fVar14 * fVar11;\\n  fVar18 = fVar11 * fVar12 - fVar8 * fVar15;\\n  auVar4._4_4_ = fVar16;\\n  auVar4._0_4_ = fVar15;\\n  auVar4._8_4_ = -fVar12;\\n  auVar4._12_4_ = 0;\\n  *in_RCX = auVar4;\\n  auVar3._4_4_ = fVar18;\\n  auVar3._0_4_ = fVar13;\\n  auVar3._8_4_ = -fVar14;\\n  auVar3._12_4_ = 0;\\n  in_RCX[1] = auVar3;\\n  auVar2._4_4_ = fVar17;\\n  auVar2._0_4_ = fVar11;\\n  auVar2._8_4_ = -fVar8;\\n  auVar2._12_4_ = 0;\\n  in_RCX[2] = auVar2;\\n  *(float *)in_RCX[3] = -(fVar1 * fVar11 + fVar15 * fVar5 + fVar6 * fVar13);\\n  *(float *)(in_RCX[3] + 4) = -(fVar1 * fVar17 + fVar18 * fVar6 + fVar5 * fVar16);\\n  *(float *)(in_RCX[3] + 8) = fVar1 * fVar8 + fVar6 * fVar14 + fVar5 * fVar12;\\n  *(undefined4 *)(in_RCX[3] + 0xc) = 0x3f800000;\\n  *(ulonglong *)in_RCX[4] = CONCAT44(fVar14,fVar12);\\n  *(float *)(in_RCX[4] + 8) = fVar8;\\n  *(undefined8 *)(in_RCX[4] + 0xc) = *in_RDX;\\n  *(undefined4 *)(in_RCX[5] + 4) = *(undefined4 *)(in_RDX + 1);\\n  *(undefined8 *)(in_RCX[5] + 8) = 0x3f8000003f800000;\\n  *(undefined4 *)in_RCX[6] = 0x3f800000;\\n  *(undefined8 *)(in_RCX[6] + 4) = *in_R8;\\n  *(undefined4 *)(in_RCX[6] + 0xc) = *(undefined4 *)(in_R8 + 1);\\n  *(float *)in_RCX[7] = SQRT(fVar10 * fVar10 + fVar9 * fVar9 + fVar7 * fVar7);\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b18830\":{\"name\":\"set_direction_towards_light\",\"size\":695,\"address\":\"140b18830\",\"signature\":\"void __cdecl set_direction_towards_light(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::render::directional_light::DirectionalLight::set_direction_towards_light(void)\\n\\n{\\n  undefined1 auVar1 [16];\\n  undefined1 auVar2 [16];\\n  undefined1 auVar3 [16];\\n  undefined1 (*in_RCX) [16];\\n  undefined8 *in_RDX;\\n  float fVar4;\\n  float fVar5;\\n  float fVar6;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar14;\\n  float fVar15;\\n  \\n  fVar5 = *(float *)(in_RDX + 1);\\n  fVar8 = *(float *)in_RCX[7];\\n  fVar9 = (float)*(undefined8 *)(in_RCX[6] + 4);\\n  fVar11 = (float)((ulonglong)*(undefined8 *)(in_RCX[6] + 4) >> 0x20);\\n  fVar6 = (float)*in_RDX;\\n  fVar7 = (float)((ulonglong)*in_RDX >> 0x20);\\n  fVar4 = 1.0 / SQRT(fVar7 * fVar7 + fVar6 * fVar6 + fVar5 * fVar5);\\n  fVar6 = fVar8 * fVar4 * fVar6 + fVar9;\\n  fVar7 = fVar8 * fVar4 * fVar7 + fVar11;\\n  fVar5 = fVar4 * fVar5 * fVar8 + *(float *)(in_RCX[6] + 0xc);\\n  fVar9 = fVar9 - fVar6;\\n  fVar11 = fVar11 - fVar7;\\n  fVar4 = *(float *)(in_RCX[6] + 0xc) - fVar5;\\n  fVar8 = 1.0 / SQRT(fVar4 * fVar4 + fVar11 * fVar11 + fVar9 * fVar9);\\n  fVar9 = fVar8 * fVar9;\\n  fVar11 = fVar8 * fVar11;\\n  fVar8 = fVar8 * fVar4;\\n  fVar4 = fVar9 - fVar11 * 0.0;\\n  fVar12 = fVar11 * 0.0 - fVar8;\\n  fVar10 = fVar8 * 0.0 - fVar9 * 0.0;\\n  fVar14 = 1.0 / SQRT(fVar4 * fVar4 + fVar10 * fVar10 + fVar12 * fVar12);\\n  fVar12 = fVar12 * fVar14;\\n  fVar10 = fVar10 * fVar14;\\n  fVar4 = fVar4 * fVar14;\\n  fVar14 = fVar11 * fVar12 - fVar9 * fVar10;\\n  fVar13 = fVar8 * fVar10 - fVar11 * fVar4;\\n  fVar15 = fVar4 * fVar9 - fVar8 * fVar12;\\n  *(ulonglong *)(in_RCX[4] + 0xc) = CONCAT44(fVar7,fVar6);\\n  *(float *)(in_RCX[5] + 4) = fVar5;\\n  auVar3._4_4_ = fVar13;\\n  auVar3._0_4_ = fVar12;\\n  auVar3._8_4_ = -fVar9;\\n  auVar3._12_4_ = 0;\\n  *in_RCX = auVar3;\\n  auVar2._4_4_ = fVar15;\\n  auVar2._0_4_ = fVar10;\\n  auVar2._8_4_ = -fVar11;\\n  auVar2._12_4_ = 0;\\n  in_RCX[1] = auVar2;\\n  auVar1._4_4_ = fVar14;\\n  auVar1._0_4_ = fVar4;\\n  auVar1._8_4_ = -fVar8;\\n  auVar1._12_4_ = 0;\\n  in_RCX[2] = auVar1;\\n  *(float *)in_RCX[3] = -(fVar5 * fVar4 + fVar12 * fVar6 + fVar7 * fVar10);\\n  *(float *)(in_RCX[3] + 4) = -(fVar5 * fVar14 + fVar15 * fVar7 + fVar6 * fVar13);\\n  *(float *)(in_RCX[3] + 8) = fVar5 * fVar8 + fVar7 * fVar11 + fVar6 * fVar9;\\n  *(undefined4 *)(in_RCX[3] + 0xc) = 0x3f800000;\\n  *(ulonglong *)in_RCX[4] = CONCAT44(fVar11,fVar9);\\n  *(float *)(in_RCX[4] + 8) = fVar8;\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b18af0\":{\"name\":\"set_pixel_offset\",\"size\":1131,\"address\":\"140b18af0\",\"signature\":\"void __cdecl set_pixel_offset(void)\",\"decompiled_code\":\"\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl country_core::render::view_constants::ViewConstants::set_pixel_offset(void)\\n\\n{\\n  double dVar1;\\n  double dVar2;\\n  undefined1 auVar3 [16];\\n  float fVar4;\\n  float fVar5;\\n  float fVar6;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar14;\\n  float fVar15;\\n  float fVar16;\\n  float fVar17;\\n  float fVar18;\\n  float fVar19;\\n  float fVar20;\\n  float fVar21;\\n  float fVar22;\\n  float fVar23;\\n  float fVar24;\\n  float fVar25;\\n  float fVar26;\\n  float fVar27;\\n  float fVar28;\\n  float fVar29;\\n  float fVar30;\\n  float *in_RCX;\\n  float fVar31;\\n  float fVar32;\\n  float in_XMM1_Da;\\n  float fVar33;\\n  float in_XMM1_Db;\\n  float fVar35;\\n  float fVar36;\\n  undefined1 auVar34 [16];\\n  float fVar37;\\n  float fVar38;\\n  float fVar39;\\n  undefined8 in_XMM2_Qa;\\n  float fVar41;\\n  float fVar42;\\n  float fVar43;\\n  float fVar44;\\n  undefined1 auVar40 [16];\\n  float in_XMM3_Da;\\n  float in_XMM3_Db;\\n  float fVar45;\\n  float fVar46;\\n  float fVar47;\\n  float fVar48;\\n  float fVar49;\\n  float fVar50;\\n  float fVar51;\\n  float fVar52;\\n  float fVar53;\\n  float fVar54;\\n  float fVar55;\\n  float fVar56;\\n  float fVar57;\\n  float fVar60;\\n  undefined1 auVar58 [16];\\n  undefined1 auVar59 [16];\\n  float fVar61;\\n  float fVar62;\\n  float fVar63;\\n  float fVar64;\\n  float in_stack_00000028;\\n  uint in_stack_00000030;\\n  undefined4 in_stack_00000038;\\n  float local_c8;\\n  float fStack_c4;\\n  \\n  auVar34._4_4_ = 0;\\n  auVar34._0_4_ = in_stack_00000030;\\n  auVar34._8_4_ = in_stack_00000038;\\n  auVar34._12_4_ = 0;\\n  dVar1 = (double)__xmm_43300000000000004330000000000000;\\n  dVar2 = __xmm_43300000000000004330000000000000._8_8_;\\n  auVar34 = auVar34 | ___xmm_43300000000000004330000000000000;\\n  fVar39 = *in_RCX;\\n  fVar42 = in_RCX[1];\\n  fVar43 = in_RCX[2];\\n  fVar44 = in_RCX[3];\\n  fVar48 = in_RCX[4];\\n  fVar61 = in_RCX[5];\\n  fVar62 = in_RCX[6];\\n  fVar63 = in_RCX[7];\\n  fVar64 = in_RCX[8];\\n  fVar4 = in_RCX[9];\\n  fVar5 = in_RCX[10];\\n  fVar6 = in_RCX[0xb];\\n  fVar7 = in_RCX[0xc];\\n  fVar8 = in_RCX[0xd];\\n  fVar9 = in_RCX[0xe];\\n  fVar10 = in_RCX[0xf];\\n  fVar11 = in_RCX[0x10];\\n  fVar12 = in_RCX[0x11];\\n  fVar13 = in_RCX[0x12];\\n  fVar14 = in_RCX[0x13];\\n  fVar15 = in_RCX[0x14];\\n  fVar16 = in_RCX[0x15];\\n  fVar17 = in_RCX[0x16];\\n  fVar18 = in_RCX[0x17];\\n  fVar53 = in_RCX[0x18] * 0.0;\\n  fVar54 = in_RCX[0x19] * 0.0;\\n  fVar55 = in_RCX[0x1a] * 0.0;\\n  fVar56 = in_RCX[0x1b] * 0.0;\\n  fVar33 = in_RCX[0x1c] * 0.0;\\n  fVar35 = in_RCX[0x1d] * 0.0;\\n  fVar36 = in_RCX[0x1e] * 0.0;\\n  fVar37 = in_RCX[0x1f] * 0.0;\\n  in_RCX[0x30] = fVar11 + fVar15 * 0.0 + fVar53 + fVar33;\\n  in_RCX[0x31] = fVar12 + fVar16 * 0.0 + fVar54 + fVar35;\\n  in_RCX[0x32] = fVar13 + fVar17 * 0.0 + fVar55 + fVar36;\\n  in_RCX[0x33] = fVar14 + fVar18 * 0.0 + fVar56 + fVar37;\\n  in_RCX[0x34] = fVar11 * 0.0 + fVar15 + fVar53 + fVar33;\\n  in_RCX[0x35] = fVar12 * 0.0 + fVar16 + fVar54 + fVar35;\\n  in_RCX[0x36] = fVar13 * 0.0 + fVar17 + fVar55 + fVar36;\\n  in_RCX[0x37] = fVar14 * 0.0 + fVar18 + fVar56 + fVar37;\\n  in_RCX[0x38] = fVar11 * 0.0 + fVar15 * 0.0 + in_RCX[0x18] + fVar33;\\n  in_RCX[0x39] = fVar12 * 0.0 + fVar16 * 0.0 + in_RCX[0x19] + fVar35;\\n  in_RCX[0x3a] = fVar13 * 0.0 + fVar17 * 0.0 + in_RCX[0x1a] + fVar36;\\n  in_RCX[0x3b] = fVar14 * 0.0 + fVar18 * 0.0 + in_RCX[0x1b] + fVar37;\\n  fVar33 = in_RCX[0x40];\\n  fVar35 = in_RCX[0x41];\\n  fVar36 = in_RCX[0x42];\\n  fVar37 = in_RCX[0x43];\\n  fVar19 = in_RCX[0x44];\\n  fVar20 = in_RCX[0x45];\\n  fVar21 = in_RCX[0x46];\\n  fVar22 = in_RCX[0x47];\\n  fVar23 = in_RCX[0x48];\\n  fVar24 = in_RCX[0x49];\\n  fVar25 = in_RCX[0x4a];\\n  fVar26 = in_RCX[0x4b];\\n  fVar27 = in_RCX[0x4c];\\n  fVar28 = in_RCX[0x4d];\\n  fVar29 = in_RCX[0x4e];\\n  fVar30 = in_RCX[0x4f];\\n  in_RCX[0xc0] = in_XMM1_Da;\\n  local_c8 = (float)in_XMM2_Qa;\\n  fStack_c4 = (float)((ulonglong)in_XMM2_Qa >> 0x20);\\n  in_RCX[0xc1] = local_c8;\\n  auVar58._0_4_ = in_XMM1_Da + in_XMM1_Da;\\n  auVar58._4_4_ = local_c8 + local_c8;\\n  auVar58._8_4_ = in_XMM1_Db + in_XMM1_Db;\\n  auVar58._12_4_ = fStack_c4 + fStack_c4;\\n  fVar31 = (float)(auVar34._0_8_ - dVar1);\\n  fVar32 = (float)(auVar34._8_8_ - dVar2);\\n  auVar59._4_4_ = fVar32;\\n  auVar59._0_4_ = fVar31;\\n  auVar59._8_8_ = 0;\\n  auVar59 = divps(auVar58,auVar59);\\n  fVar57 = auVar59._0_4_;\\n  fVar38 = -fVar57;\\n  fVar60 = auVar59._4_4_;\\n  fVar41 = -fVar60;\\n  fVar49 = fVar44 * fVar38 + fVar43 * 0.0 + fVar42 * 0.0 + fVar39 * 1.0;\\n  fVar50 = fVar44 * fVar41 + fVar43 * 0.0 + fVar42 * 1.0 + fVar39 * 0.0;\\n  fVar51 = fVar44 * 0.0 + fVar43 * 1.0 + fVar42 * 0.0 + fVar39 * 0.0;\\n  fVar52 = fVar44 * 1.0 + fVar43 * 0.0 + fVar42 * 0.0 + fVar39 * 0.0;\\n  fVar45 = fVar63 * fVar38 + fVar62 * 0.0 + fVar61 * 0.0 + fVar48 * 1.0;\\n  fVar46 = fVar63 * fVar41 + fVar62 * 0.0 + fVar61 * 1.0 + fVar48 * 0.0;\\n  fVar47 = fVar63 * 0.0 + fVar62 * 1.0 + fVar61 * 0.0 + fVar48 * 0.0;\\n  fVar48 = fVar63 * 1.0 + fVar62 * 0.0 + fVar61 * 0.0 + fVar48 * 0.0;\\n  fVar61 = fVar6 * fVar38 + fVar5 * 0.0 + fVar4 * 0.0 + fVar64 * 1.0;\\n  fVar62 = fVar6 * fVar41 + fVar5 * 0.0 + fVar4 * 1.0 + fVar64 * 0.0;\\n  fVar63 = fVar6 * 0.0 + fVar5 * 1.0 + fVar4 * 0.0 + fVar64 * 0.0;\\n  fVar64 = fVar6 * 1.0 + fVar5 * 0.0 + fVar4 * 0.0 + fVar64 * 0.0;\\n  fVar39 = fVar38 * fVar10 + fVar9 * 0.0 + fVar8 * 0.0 + fVar7 * 1.0;\\n  fVar42 = fVar41 * fVar10 + fVar9 * 0.0 + fVar8 * 1.0 + fVar7 * 0.0;\\n  fVar43 = fVar10 * 0.0 + fVar9 * 1.0 + fVar8 * 0.0 + fVar7 * 0.0;\\n  fVar44 = fVar10 * 1.0 + fVar9 * 0.0 + fVar8 * 0.0 + fVar7 * 0.0;\\n  in_RCX[0x20] = fVar49;\\n  in_RCX[0x21] = fVar50;\\n  in_RCX[0x22] = fVar51;\\n  in_RCX[0x23] = fVar52;\\n  in_RCX[0x24] = fVar45;\\n  in_RCX[0x25] = fVar46;\\n  in_RCX[0x26] = fVar47;\\n  in_RCX[0x27] = fVar48;\\n  in_RCX[0x28] = fVar61;\\n  in_RCX[0x29] = fVar62;\\n  in_RCX[0x2a] = fVar63;\\n  in_RCX[0x2b] = fVar64;\\n  in_RCX[0x2c] = fVar39;\\n  in_RCX[0x2d] = fVar42;\\n  in_RCX[0x2e] = fVar43;\\n  in_RCX[0x2f] = fVar44;\\n  in_RCX[0x3c] = fVar60 * fVar15 + fVar57 * fVar11 + fVar53 + in_RCX[0x1c];\\n  in_RCX[0x3d] = fVar60 * fVar16 + fVar57 * fVar12 + fVar54 + in_RCX[0x1d];\\n  in_RCX[0x3e] = fVar60 * fVar17 + fVar57 * fVar13 + fVar55 + in_RCX[0x1e];\\n  in_RCX[0x3f] = fVar60 * fVar18 + fVar57 * fVar14 + fVar56 + in_RCX[0x1f];\\n  in_RCX[0x60] = fVar37 * fVar39 + fVar36 * fVar61 + fVar35 * fVar45 + fVar33 * fVar49;\\n  in_RCX[0x61] = fVar37 * fVar42 + fVar36 * fVar62 + fVar35 * fVar46 + fVar33 * fVar50;\\n  in_RCX[0x62] = fVar37 * fVar43 + fVar36 * fVar63 + fVar35 * fVar47 + fVar33 * fVar51;\\n  in_RCX[99] = fVar37 * fVar44 + fVar36 * fVar64 + fVar35 * fVar48 + fVar33 * fVar52;\\n  in_RCX[100] = fVar22 * fVar39 + fVar21 * fVar61 + fVar20 * fVar45 + fVar19 * fVar49;\\n  in_RCX[0x65] = fVar22 * fVar42 + fVar21 * fVar62 + fVar20 * fVar46 + fVar19 * fVar50;\\n  in_RCX[0x66] = fVar22 * fVar43 + fVar21 * fVar63 + fVar20 * fVar47 + fVar19 * fVar51;\\n  in_RCX[0x67] = fVar22 * fVar44 + fVar21 * fVar64 + fVar20 * fVar48 + fVar19 * fVar52;\\n  in_RCX[0x68] = fVar26 * fVar39 + fVar25 * fVar61 + fVar24 * fVar45 + fVar23 * fVar49;\\n  in_RCX[0x69] = fVar26 * fVar42 + fVar25 * fVar62 + fVar24 * fVar46 + fVar23 * fVar50;\\n  in_RCX[0x6a] = fVar26 * fVar43 + fVar25 * fVar63 + fVar24 * fVar47 + fVar23 * fVar51;\\n  in_RCX[0x6b] = fVar26 * fVar44 + fVar25 * fVar64 + fVar24 * fVar48 + fVar23 * fVar52;\\n  in_RCX[0x6c] = fVar39 * fVar30 + fVar61 * fVar29 + fVar45 * fVar28 + fVar49 * fVar27;\\n  in_RCX[0x6d] = fVar42 * fVar30 + fVar62 * fVar29 + fVar46 * fVar28 + fVar50 * fVar27;\\n  in_RCX[0x6e] = fVar43 * fVar30 + fVar63 * fVar29 + fVar47 * fVar28 + fVar51 * fVar27;\\n  in_RCX[0x6f] = fVar44 * fVar30 + fVar64 * fVar29 + fVar48 * fVar28 + fVar52 * fVar27;\\n  *(longlong *)(in_RCX + 0xc2) = auVar59._0_8_;\\n  in_RCX[0xc4] = in_XMM3_Da;\\n  in_RCX[0xc5] = in_stack_00000028;\\n  auVar40._0_4_ = in_XMM3_Da + in_XMM3_Da;\\n  auVar40._4_4_ = in_stack_00000028 + in_stack_00000028;\\n  auVar40._8_4_ = in_XMM3_Db + in_XMM3_Db;\\n  auVar40._12_4_ = 0;\\n  auVar3._4_4_ = fVar32;\\n  auVar3._0_4_ = fVar31;\\n  auVar3._8_8_ = 0;\\n  auVar59 = divps(auVar40,auVar3);\\n  *(longlong *)(in_RCX + 0xc6) = auVar59._0_8_;\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b18f60\":{\"name\":\"build\",\"size\":2339,\"address\":\"140b18f60\",\"signature\":\"void __cdecl build(void)\",\"decompiled_code\":\"\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl country_core::render::view_constants::ViewportConstantBuilder::build(void)\\n\\n{\\n  float fVar1;\\n  float fVar2;\\n  float fVar3;\\n  float fVar4;\\n  float fVar5;\\n  float fVar6;\\n  float fVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  undefined8 uVar13;\\n  undefined8 uVar14;\\n  undefined8 uVar15;\\n  undefined8 uVar16;\\n  undefined8 uVar17;\\n  undefined8 uVar18;\\n  undefined8 uVar19;\\n  undefined8 uVar20;\\n  undefined8 uVar21;\\n  undefined8 uVar22;\\n  undefined8 uVar23;\\n  undefined8 uVar24;\\n  undefined8 uVar25;\\n  undefined8 uVar26;\\n  undefined8 uVar27;\\n  undefined8 uVar28;\\n  undefined1 auVar29 [16];\\n  undefined8 uVar30;\\n  undefined8 uVar31;\\n  undefined8 uVar32;\\n  undefined8 uVar33;\\n  undefined8 uVar34;\\n  undefined8 uVar35;\\n  undefined8 uVar36;\\n  undefined8 uVar37;\\n  undefined8 uVar38;\\n  undefined8 uVar39;\\n  undefined8 uVar40;\\n  undefined8 uVar41;\\n  undefined8 uVar42;\\n  undefined8 uVar43;\\n  undefined8 uVar44;\\n  undefined8 uVar45;\\n  undefined8 uVar46;\\n  undefined8 *in_RCX;\\n  undefined8 *in_RDX;\\n  float fVar48;\\n  undefined1 auVar47 [16];\\n  float fVar49;\\n  float fVar50;\\n  float fVar51;\\n  float fVar52;\\n  float fVar53;\\n  float fVar54;\\n  float fVar57;\\n  undefined1 auVar55 [16];\\n  undefined1 auVar56 [16];\\n  float fVar58;\\n  float fVar60;\\n  float fVar61;\\n  float fVar62;\\n  undefined1 auVar59 [16];\\n  float fVar63;\\n  float fVar64;\\n  float fVar65;\\n  float fVar66;\\n  float fVar67;\\n  float fVar68;\\n  float fVar69;\\n  float fVar70;\\n  float fVar71;\\n  float fVar72;\\n  float fVar73;\\n  float fVar74;\\n  float fVar75;\\n  float fVar76;\\n  float fVar77;\\n  float fVar78;\\n  float fVar79;\\n  float fVar80;\\n  float fVar81;\\n  float fVar82;\\n  float fVar83;\\n  float fVar84;\\n  float fVar85;\\n  float fVar86;\\n  float fVar87;\\n  float fVar88;\\n  float fVar89;\\n  float fVar90;\\n  float fVar91;\\n  float local_1c8;\\n  float fStack_1c4;\\n  float fStack_1c0;\\n  float fStack_1bc;\\n  float local_1a8;\\n  float fStack_1a4;\\n  float fStack_1a0;\\n  float fStack_19c;\\n  float local_198;\\n  float fStack_194;\\n  float fStack_190;\\n  float fStack_18c;\\n  float local_188;\\n  float fStack_184;\\n  float fStack_180;\\n  float fStack_17c;\\n  float local_168;\\n  float fStack_164;\\n  float fStack_160;\\n  float fStack_15c;\\n  float local_158;\\n  float fStack_154;\\n  float fStack_150;\\n  float fStack_14c;\\n  float local_148;\\n  float fStack_144;\\n  float fStack_140;\\n  float fStack_13c;\\n  float local_138;\\n  float fStack_134;\\n  float fStack_130;\\n  float fStack_12c;\\n  \\n  fVar53 = *(float *)(in_RDX + 0x20);\\n  fVar54 = *(float *)((longlong)in_RDX + 0x104);\\n  uVar30 = in_RDX[0x20];\\n  fVar71 = *(float *)(in_RDX + 0x21);\\n  fVar48 = *(float *)((longlong)in_RDX + 0x10c);\\n  uVar31 = in_RDX[0x21];\\n  fVar1 = *(float *)(in_RDX + 0x22);\\n  fVar2 = *(float *)((longlong)in_RDX + 0x114);\\n  uVar32 = in_RDX[0x22];\\n  fVar3 = *(float *)(in_RDX + 0x23);\\n  fVar4 = *(float *)((longlong)in_RDX + 0x11c);\\n  uVar33 = in_RDX[0x23];\\n  fVar5 = *(float *)(in_RDX + 0x24);\\n  fVar6 = *(float *)((longlong)in_RDX + 0x124);\\n  uVar34 = in_RDX[0x24];\\n  fVar7 = *(float *)(in_RDX + 0x25);\\n  fVar8 = *(float *)((longlong)in_RDX + 300);\\n  uVar35 = in_RDX[0x25];\\n  fVar77 = *(float *)(in_RDX + 0x26);\\n  fVar79 = *(float *)((longlong)in_RDX + 0x134);\\n  uVar36 = in_RDX[0x26];\\n  fVar81 = *(float *)(in_RDX + 0x27);\\n  fVar83 = *(float *)((longlong)in_RDX + 0x13c);\\n  uVar37 = in_RDX[0x27];\\n  fVar9 = *(float *)(in_RDX + 0x30);\\n  fVar10 = *(float *)((longlong)in_RDX + 0x184);\\n  uVar38 = in_RDX[0x30];\\n  fVar11 = *(float *)(in_RDX + 0x31);\\n  fVar12 = *(float *)((longlong)in_RDX + 0x18c);\\n  uVar39 = in_RDX[0x31];\\n  fVar58 = *(float *)(in_RDX + 0x32);\\n  fVar60 = *(float *)((longlong)in_RDX + 0x194);\\n  uVar40 = in_RDX[0x32];\\n  fVar61 = *(float *)(in_RDX + 0x33);\\n  fVar62 = *(float *)((longlong)in_RDX + 0x19c);\\n  uVar41 = in_RDX[0x33];\\n  fVar49 = *(float *)(in_RDX + 0x34);\\n  fVar50 = *(float *)((longlong)in_RDX + 0x1a4);\\n  uVar42 = in_RDX[0x34];\\n  fVar51 = *(float *)(in_RDX + 0x35);\\n  fVar52 = *(float *)((longlong)in_RDX + 0x1ac);\\n  uVar43 = in_RDX[0x35];\\n  fVar87 = *(float *)(in_RDX + 0x36);\\n  fVar57 = *(float *)((longlong)in_RDX + 0x1b4);\\n  uVar44 = in_RDX[0x36];\\n  fVar63 = *(float *)(in_RDX + 0x37);\\n  fVar64 = *(float *)((longlong)in_RDX + 0x1bc);\\n  uVar45 = in_RDX[0x37];\\n  fVar67 = fVar12 * fVar77 + fVar11 * fVar5 + fVar10 * fVar1 + fVar9 * fVar53;\\n  fVar68 = fVar12 * fVar79 + fVar11 * fVar6 + fVar10 * fVar2 + fVar9 * fVar54;\\n  fVar69 = fVar12 * fVar81 + fVar11 * fVar7 + fVar10 * fVar3 + fVar9 * fVar71;\\n  fVar70 = fVar12 * fVar83 + fVar11 * fVar8 + fVar10 * fVar4 + fVar9 * fVar48;\\n  fVar72 = fVar62 * fVar77 + fVar61 * fVar5 + fVar60 * fVar1 + fVar58 * fVar53;\\n  fVar73 = fVar62 * fVar79 + fVar61 * fVar6 + fVar60 * fVar2 + fVar58 * fVar54;\\n  fVar74 = fVar62 * fVar81 + fVar61 * fVar7 + fVar60 * fVar3 + fVar58 * fVar71;\\n  fVar75 = fVar62 * fVar83 + fVar61 * fVar8 + fVar60 * fVar4 + fVar58 * fVar48;\\n  fVar76 = fVar52 * fVar77 + fVar51 * fVar5 + fVar50 * fVar1 + fVar49 * fVar53;\\n  fVar78 = fVar52 * fVar79 + fVar51 * fVar6 + fVar50 * fVar2 + fVar49 * fVar54;\\n  fVar80 = fVar52 * fVar81 + fVar51 * fVar7 + fVar50 * fVar3 + fVar49 * fVar71;\\n  fVar82 = fVar52 * fVar83 + fVar51 * fVar8 + fVar50 * fVar4 + fVar49 * fVar48;\\n  fVar84 = fVar64 * fVar77 + fVar63 * fVar5 + fVar57 * fVar1 + fVar87 * fVar53;\\n  fVar85 = fVar64 * fVar79 + fVar63 * fVar6 + fVar57 * fVar2 + fVar87 * fVar54;\\n  fVar86 = fVar64 * fVar81 + fVar63 * fVar7 + fVar57 * fVar3 + fVar87 * fVar71;\\n  fVar87 = fVar64 * fVar83 + fVar63 * fVar8 + fVar57 * fVar4 + fVar87 * fVar48;\\n  fVar53 = *(float *)(in_RDX + 0x18);\\n  fVar54 = *(float *)((longlong)in_RDX + 0xc4);\\n  fVar71 = *(float *)(in_RDX + 0x19);\\n  fVar48 = *(float *)((longlong)in_RDX + 0xcc);\\n  fVar1 = *(float *)(in_RDX + 10);\\n  fVar2 = *(float *)((longlong)in_RDX + 0x54);\\n  fVar3 = *(float *)(in_RDX + 0xb);\\n  fVar4 = *(float *)((longlong)in_RDX + 0x5c);\\n  uVar13 = in_RDX[0x2f];\\n  in_RCX[0x4e] = in_RDX[0x2e];\\n  in_RCX[0x4f] = uVar13;\\n  uVar13 = in_RDX[0x2d];\\n  in_RCX[0x4c] = in_RDX[0x2c];\\n  in_RCX[0x4d] = uVar13;\\n  uVar13 = in_RDX[0x2b];\\n  in_RCX[0x4a] = in_RDX[0x2a];\\n  in_RCX[0x4b] = uVar13;\\n  uVar13 = in_RDX[0x29];\\n  in_RCX[0x48] = in_RDX[0x28];\\n  in_RCX[0x49] = uVar13;\\n  uVar13 = in_RDX[0x39];\\n  in_RCX[0x58] = in_RDX[0x38];\\n  in_RCX[0x59] = uVar13;\\n  uVar13 = in_RDX[0x3b];\\n  in_RCX[0x5a] = in_RDX[0x3a];\\n  in_RCX[0x5b] = uVar13;\\n  uVar13 = in_RDX[0x3d];\\n  in_RCX[0x5c] = in_RDX[0x3c];\\n  in_RCX[0x5d] = uVar13;\\n  uVar13 = in_RDX[0x3f];\\n  in_RCX[0x5e] = in_RDX[0x3e];\\n  in_RCX[0x5f] = uVar13;\\n  fVar5 = *(float *)(in_RDX + 8);\\n  fVar6 = *(float *)((longlong)in_RDX + 0x44);\\n  fVar7 = *(float *)(in_RDX + 9);\\n  fVar8 = *(float *)((longlong)in_RDX + 0x4c);\\n  fVar77 = *(float *)(in_RDX + 0xc);\\n  fVar79 = *(float *)((longlong)in_RDX + 100);\\n  fVar81 = *(float *)(in_RDX + 0xd);\\n  fVar83 = *(float *)((longlong)in_RDX + 0x6c);\\n  fVar63 = fVar77 * 0.0;\\n  fVar64 = fVar79 * 0.0;\\n  fVar65 = fVar81 * 0.0;\\n  fVar66 = fVar83 * 0.0;\\n  fVar9 = *(float *)(in_RDX + 0xe);\\n  fVar10 = *(float *)((longlong)in_RDX + 0x74);\\n  fVar11 = *(float *)(in_RDX + 0xf);\\n  fVar12 = *(float *)((longlong)in_RDX + 0x7c);\\n  fVar58 = fVar9 * 0.0;\\n  fVar60 = fVar10 * 0.0;\\n  fVar61 = fVar11 * 0.0;\\n  fVar62 = fVar12 * 0.0;\\n  uVar13 = *in_RDX;\\n  uVar14 = in_RDX[1];\\n  *in_RCX = uVar13;\\n  in_RCX[1] = uVar14;\\n  uVar15 = in_RDX[2];\\n  uVar16 = in_RDX[3];\\n  in_RCX[2] = uVar15;\\n  in_RCX[3] = uVar16;\\n  uVar17 = in_RDX[4];\\n  uVar18 = in_RDX[5];\\n  in_RCX[4] = uVar17;\\n  in_RCX[5] = uVar18;\\n  uVar19 = in_RDX[6];\\n  uVar20 = in_RDX[7];\\n  in_RCX[6] = uVar19;\\n  in_RCX[7] = uVar20;\\n  *(float *)(in_RCX + 8) = fVar5;\\n  *(float *)((longlong)in_RCX + 0x44) = fVar6;\\n  *(float *)(in_RCX + 9) = fVar7;\\n  *(float *)((longlong)in_RCX + 0x4c) = fVar8;\\n  *(float *)(in_RCX + 10) = fVar1;\\n  *(float *)((longlong)in_RCX + 0x54) = fVar2;\\n  *(float *)(in_RCX + 0xb) = fVar3;\\n  *(float *)((longlong)in_RCX + 0x5c) = fVar4;\\n  *(float *)(in_RCX + 0xc) = fVar77;\\n  *(float *)((longlong)in_RCX + 100) = fVar79;\\n  *(float *)(in_RCX + 0xd) = fVar81;\\n  *(float *)((longlong)in_RCX + 0x6c) = fVar83;\\n  *(float *)(in_RCX + 0xe) = fVar9;\\n  *(float *)((longlong)in_RCX + 0x74) = fVar10;\\n  *(float *)(in_RCX + 0xf) = fVar11;\\n  *(float *)((longlong)in_RCX + 0x7c) = fVar12;\\n  *(float *)(in_RCX + 0x18) = fVar5 + fVar1 * 0.0 + fVar63 + fVar58;\\n  *(float *)((longlong)in_RCX + 0xc4) = fVar6 + fVar2 * 0.0 + fVar64 + fVar60;\\n  *(float *)(in_RCX + 0x19) = fVar7 + fVar3 * 0.0 + fVar65 + fVar61;\\n  *(float *)((longlong)in_RCX + 0xcc) = fVar8 + fVar4 * 0.0 + fVar66 + fVar62;\\n  *(float *)(in_RCX + 0x1a) = fVar5 * 0.0 + fVar1 + fVar63 + fVar58;\\n  *(float *)((longlong)in_RCX + 0xd4) = fVar6 * 0.0 + fVar2 + fVar64 + fVar60;\\n  *(float *)(in_RCX + 0x1b) = fVar7 * 0.0 + fVar3 + fVar65 + fVar61;\\n  *(float *)((longlong)in_RCX + 0xdc) = fVar8 * 0.0 + fVar4 + fVar66 + fVar62;\\n  *(float *)(in_RCX + 0x1c) = fVar5 * 0.0 + fVar1 * 0.0 + fVar77 + fVar58;\\n  *(float *)((longlong)in_RCX + 0xe4) = fVar6 * 0.0 + fVar2 * 0.0 + fVar79 + fVar60;\\n  *(float *)(in_RCX + 0x1d) = fVar7 * 0.0 + fVar3 * 0.0 + fVar81 + fVar61;\\n  *(float *)((longlong)in_RCX + 0xec) = fVar8 * 0.0 + fVar4 * 0.0 + fVar83 + fVar62;\\n  uVar21 = in_RDX[0x10];\\n  uVar22 = in_RDX[0x11];\\n  in_RCX[0x20] = uVar21;\\n  in_RCX[0x21] = uVar22;\\n  uVar23 = in_RDX[0x12];\\n  uVar24 = in_RDX[0x13];\\n  in_RCX[0x22] = uVar23;\\n  in_RCX[0x23] = uVar24;\\n  uVar25 = in_RDX[0x14];\\n  uVar26 = in_RDX[0x15];\\n  in_RCX[0x24] = uVar25;\\n  in_RCX[0x25] = uVar26;\\n  uVar27 = in_RDX[0x16];\\n  uVar28 = in_RDX[0x17];\\n  in_RCX[0x26] = uVar27;\\n  in_RCX[0x27] = uVar28;\\n  *(float *)(in_RCX + 0x28) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x144) = fVar54;\\n  *(float *)(in_RCX + 0x29) = fVar71;\\n  *(float *)((longlong)in_RCX + 0x14c) = fVar48;\\n  fVar49 = fVar48 * fVar84 + fVar71 * fVar76 + fVar54 * fVar72 + fVar53 * fVar67;\\n  fVar50 = fVar48 * fVar85 + fVar71 * fVar78 + fVar54 * fVar73 + fVar53 * fVar68;\\n  fVar51 = fVar48 * fVar86 + fVar71 * fVar80 + fVar54 * fVar74 + fVar53 * fVar69;\\n  fVar52 = fVar48 * fVar87 + fVar71 * fVar82 + fVar54 * fVar75 + fVar53 * fVar70;\\n  fVar53 = *(float *)(in_RDX + 0x1a);\\n  fVar54 = *(float *)((longlong)in_RDX + 0xd4);\\n  fVar71 = *(float *)(in_RDX + 0x1b);\\n  fVar48 = *(float *)((longlong)in_RDX + 0xdc);\\n  *(float *)(in_RCX + 0x2a) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x154) = fVar54;\\n  *(float *)(in_RCX + 0x2b) = fVar71;\\n  *(float *)((longlong)in_RCX + 0x15c) = fVar48;\\n  fVar88 = fVar48 * fVar84 + fVar71 * fVar76 + fVar54 * fVar72 + fVar53 * fVar67;\\n  fVar89 = fVar48 * fVar85 + fVar71 * fVar78 + fVar54 * fVar73 + fVar53 * fVar68;\\n  fVar90 = fVar48 * fVar86 + fVar71 * fVar80 + fVar54 * fVar74 + fVar53 * fVar69;\\n  fVar91 = fVar48 * fVar87 + fVar71 * fVar82 + fVar54 * fVar75 + fVar53 * fVar70;\\n  fVar53 = *(float *)(in_RDX + 0x1c);\\n  fVar54 = *(float *)((longlong)in_RDX + 0xe4);\\n  fVar71 = *(float *)(in_RDX + 0x1d);\\n  fVar48 = *(float *)((longlong)in_RDX + 0xec);\\n  *(float *)(in_RCX + 0x2c) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x164) = fVar54;\\n  *(float *)(in_RCX + 0x2d) = fVar71;\\n  *(float *)((longlong)in_RCX + 0x16c) = fVar48;\\n  fVar58 = fVar48 * fVar84 + fVar71 * fVar76 + fVar54 * fVar72 + fVar53 * fVar67;\\n  fVar60 = fVar48 * fVar85 + fVar71 * fVar78 + fVar54 * fVar73 + fVar53 * fVar68;\\n  fVar61 = fVar48 * fVar86 + fVar71 * fVar80 + fVar54 * fVar74 + fVar53 * fVar69;\\n  fVar62 = fVar48 * fVar87 + fVar71 * fVar82 + fVar54 * fVar75 + fVar53 * fVar70;\\n  fVar53 = *(float *)(in_RDX + 0x1e);\\n  fVar54 = *(float *)((longlong)in_RDX + 0xf4);\\n  fVar71 = *(float *)(in_RDX + 0x1f);\\n  fVar48 = *(float *)((longlong)in_RDX + 0xfc);\\n  *(float *)(in_RCX + 0x2e) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x174) = fVar54;\\n  *(float *)(in_RCX + 0x2f) = fVar71;\\n  *(float *)((longlong)in_RCX + 0x17c) = fVar48;\\n  fVar67 = fVar48 * fVar84 + fVar71 * fVar76 + fVar54 * fVar72 + fVar53 * fVar67;\\n  fVar68 = fVar48 * fVar85 + fVar71 * fVar78 + fVar54 * fVar73 + fVar53 * fVar68;\\n  fVar69 = fVar48 * fVar86 + fVar71 * fVar80 + fVar54 * fVar74 + fVar53 * fVar69;\\n  fVar71 = fVar48 * fVar87 + fVar71 * fVar82 + fVar54 * fVar75 + fVar53 * fVar70;\\n  auVar59._0_8_ = in_RDX[0x40] & 0xffffffff;\\n  auVar59._8_4_ = (int)((ulonglong)in_RDX[0x40] >> 0x20);\\n  auVar59._12_4_ = 0;\\n  fVar53 = *(float *)(in_RDX + 0x41);\\n  uVar46 = in_RDX[0x41];\\n  auVar55._0_4_ = fVar53 + fVar53;\\n  auVar55._4_4_ = *(float *)((longlong)in_RDX + 0x20c) + *(float *)((longlong)in_RDX + 0x20c);\\n  auVar55._8_8_ = 0;\\n  fVar53 = (float)(SUB168(auVar59 | ___xmm_43300000000000004330000000000000,0) -\\n                  (double)__xmm_43300000000000004330000000000000);\\n  fVar54 = (float)(SUB168(auVar59 | ___xmm_43300000000000004330000000000000,8) -\\n                  __xmm_43300000000000004330000000000000._8_8_);\\n  auVar29._4_4_ = fVar54;\\n  auVar29._0_4_ = fVar53;\\n  auVar56._4_4_ = fVar54;\\n  auVar56._0_4_ = fVar53;\\n  auVar56._8_8_ = 0;\\n  auVar56 = divps(auVar55,auVar56);\\n  fVar87 = auVar56._0_4_;\\n  fVar57 = auVar56._4_4_;\\n  fVar70 = -fVar87;\\n  fVar72 = -fVar57;\\n  local_1c8 = (float)uVar13;\\n  fStack_1c4 = (float)((ulonglong)uVar13 >> 0x20);\\n  fStack_1c0 = (float)uVar14;\\n  local_1a8 = (float)uVar15;\\n  fStack_1a4 = (float)((ulonglong)uVar15 >> 0x20);\\n  fStack_1a0 = (float)uVar16;\\n  fStack_19c = (float)((ulonglong)uVar16 >> 0x20);\\n  local_198 = (float)uVar17;\\n  fStack_194 = (float)((ulonglong)uVar17 >> 0x20);\\n  fStack_190 = (float)uVar18;\\n  fStack_18c = (float)((ulonglong)uVar18 >> 0x20);\\n  local_188 = (float)uVar19;\\n  fStack_184 = (float)((ulonglong)uVar19 >> 0x20);\\n  fStack_180 = (float)uVar20;\\n  fStack_17c = (float)((ulonglong)uVar20 >> 0x20);\\n  *(float *)(in_RCX + 0x38) = fVar8 * fVar67 + fVar7 * fVar58 + fVar6 * fVar88 + fVar5 * fVar49;\\n  *(float *)((longlong)in_RCX + 0x1c4) =\\n       fVar8 * fVar68 + fVar7 * fVar60 + fVar6 * fVar89 + fVar5 * fVar50;\\n  *(float *)(in_RCX + 0x39) = fVar8 * fVar69 + fVar7 * fVar61 + fVar6 * fVar90 + fVar5 * fVar51;\\n  *(float *)((longlong)in_RCX + 0x1cc) =\\n       fVar8 * fVar71 + fVar7 * fVar62 + fVar6 * fVar91 + fVar5 * fVar52;\\n  *(float *)(in_RCX + 0x3a) = fVar4 * fVar67 + fVar3 * fVar58 + fVar2 * fVar88 + fVar1 * fVar49;\\n  *(float *)((longlong)in_RCX + 0x1d4) =\\n       fVar4 * fVar68 + fVar3 * fVar60 + fVar2 * fVar89 + fVar1 * fVar50;\\n  *(float *)(in_RCX + 0x3b) = fVar4 * fVar69 + fVar3 * fVar61 + fVar2 * fVar90 + fVar1 * fVar51;\\n  *(float *)((longlong)in_RCX + 0x1dc) =\\n       fVar4 * fVar71 + fVar3 * fVar62 + fVar2 * fVar91 + fVar1 * fVar52;\\n  *(float *)(in_RCX + 0x3c) = fVar83 * fVar67 + fVar81 * fVar58 + fVar79 * fVar88 + fVar77 * fVar49;\\n  *(float *)((longlong)in_RCX + 0x1e4) =\\n       fVar83 * fVar68 + fVar81 * fVar60 + fVar79 * fVar89 + fVar77 * fVar50;\\n  *(float *)(in_RCX + 0x3d) = fVar83 * fVar69 + fVar81 * fVar61 + fVar79 * fVar90 + fVar77 * fVar51;\\n  *(float *)((longlong)in_RCX + 0x1ec) =\\n       fVar83 * fVar71 + fVar81 * fVar62 + fVar79 * fVar91 + fVar77 * fVar52;\\n  *(float *)(in_RCX + 0x3e) = fVar12 * fVar67 + fVar11 * fVar58 + fVar10 * fVar88 + fVar9 * fVar49;\\n  *(float *)((longlong)in_RCX + 500) =\\n       fVar12 * fVar68 + fVar11 * fVar60 + fVar10 * fVar89 + fVar9 * fVar50;\\n  *(float *)(in_RCX + 0x3f) = fVar12 * fVar69 + fVar11 * fVar61 + fVar10 * fVar90 + fVar9 * fVar51;\\n  *(float *)((longlong)in_RCX + 0x1fc) =\\n       fVar12 * fVar71 + fVar11 * fVar62 + fVar10 * fVar91 + fVar9 * fVar52;\\n  in_RCX[0x40] = uVar30;\\n  in_RCX[0x41] = uVar31;\\n  in_RCX[0x42] = uVar32;\\n  in_RCX[0x43] = uVar33;\\n  in_RCX[0x44] = uVar34;\\n  in_RCX[0x45] = uVar35;\\n  in_RCX[0x46] = uVar36;\\n  in_RCX[0x47] = uVar37;\\n  in_RCX[0x50] = uVar38;\\n  in_RCX[0x51] = uVar39;\\n  in_RCX[0x52] = uVar40;\\n  in_RCX[0x53] = uVar41;\\n  in_RCX[0x54] = uVar42;\\n  in_RCX[0x55] = uVar43;\\n  in_RCX[0x56] = uVar44;\\n  in_RCX[0x57] = uVar45;\\n  fStack_1bc = (float)((ulonglong)uVar14 >> 0x20);\\n  fVar53 = fStack_1bc * fVar70 + fStack_1c0 * 0.0 + fStack_1c4 * 0.0 + local_1c8 * 1.0;\\n  fVar54 = fStack_1bc * fVar72 + fStack_1c0 * 0.0 + fStack_1c4 * 1.0 + local_1c8 * 0.0;\\n  fVar71 = fStack_1bc * 0.0 + fStack_1c0 * 1.0 + fStack_1c4 * 0.0 + local_1c8 * 0.0;\\n  fVar48 = fStack_1bc * 1.0 + fStack_1c0 * 0.0 + fStack_1c4 * 0.0 + local_1c8 * 0.0;\\n  fVar49 = fStack_19c * fVar70 + fStack_1a0 * 0.0 + fStack_1a4 * 0.0 + local_1a8 * 1.0;\\n  fVar50 = fStack_19c * fVar72 + fStack_1a0 * 0.0 + fStack_1a4 * 1.0 + local_1a8 * 0.0;\\n  fVar51 = fStack_19c * 0.0 + fStack_1a0 * 1.0 + fStack_1a4 * 0.0 + local_1a8 * 0.0;\\n  fVar52 = fStack_19c * 1.0 + fStack_1a0 * 0.0 + fStack_1a4 * 0.0 + local_1a8 * 0.0;\\n  fVar58 = fStack_18c * fVar70 + fStack_190 * 0.0 + fStack_194 * 0.0 + local_198 * 1.0;\\n  fVar60 = fStack_18c * fVar72 + fStack_190 * 0.0 + fStack_194 * 1.0 + local_198 * 0.0;\\n  fVar61 = fStack_18c * 0.0 + fStack_190 * 1.0 + fStack_194 * 0.0 + local_198 * 0.0;\\n  fVar62 = fStack_18c * 1.0 + fStack_190 * 0.0 + fStack_194 * 0.0 + local_198 * 0.0;\\n  local_168 = (float)uVar21;\\n  fStack_164 = (float)((ulonglong)uVar21 >> 0x20);\\n  fStack_160 = (float)uVar22;\\n  fStack_15c = (float)((ulonglong)uVar22 >> 0x20);\\n  fVar77 = fVar70 * fStack_17c + fStack_180 * 0.0 + fStack_184 * 0.0 + local_188 * 1.0;\\n  fVar79 = fVar72 * fStack_17c + fStack_180 * 0.0 + fStack_184 * 1.0 + local_188 * 0.0;\\n  fVar81 = fStack_17c * 0.0 + fStack_180 * 1.0 + fStack_184 * 0.0 + local_188 * 0.0;\\n  fVar83 = fStack_17c * 1.0 + fStack_180 * 0.0 + fStack_184 * 0.0 + local_188 * 0.0;\\n  local_158 = (float)uVar23;\\n  fStack_154 = (float)((ulonglong)uVar23 >> 0x20);\\n  fStack_150 = (float)uVar24;\\n  fStack_14c = (float)((ulonglong)uVar24 >> 0x20);\\n  local_148 = (float)uVar25;\\n  fStack_144 = (float)((ulonglong)uVar25 >> 0x20);\\n  fStack_140 = (float)uVar26;\\n  fStack_13c = (float)((ulonglong)uVar26 >> 0x20);\\n  local_138 = (float)uVar27;\\n  fStack_134 = (float)((ulonglong)uVar27 >> 0x20);\\n  fStack_130 = (float)uVar28;\\n  fStack_12c = (float)((ulonglong)uVar28 >> 0x20);\\n  *(float *)(in_RCX + 0x10) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x84) = fVar54;\\n  *(float *)(in_RCX + 0x11) = fVar71;\\n  *(float *)((longlong)in_RCX + 0x8c) = fVar48;\\n  *(float *)(in_RCX + 0x12) = fVar49;\\n  *(float *)((longlong)in_RCX + 0x94) = fVar50;\\n  *(float *)(in_RCX + 0x13) = fVar51;\\n  *(float *)((longlong)in_RCX + 0x9c) = fVar52;\\n  *(float *)(in_RCX + 0x14) = fVar58;\\n  *(float *)((longlong)in_RCX + 0xa4) = fVar60;\\n  *(float *)(in_RCX + 0x15) = fVar61;\\n  *(float *)((longlong)in_RCX + 0xac) = fVar62;\\n  *(float *)(in_RCX + 0x16) = fVar77;\\n  *(float *)((longlong)in_RCX + 0xb4) = fVar79;\\n  *(float *)(in_RCX + 0x17) = fVar81;\\n  *(float *)((longlong)in_RCX + 0xbc) = fVar83;\\n  *(float *)(in_RCX + 0x1e) = fVar57 * fVar1 + fVar87 * fVar5 + fVar63 + fVar9;\\n  *(float *)((longlong)in_RCX + 0xf4) = fVar57 * fVar2 + fVar87 * fVar6 + fVar64 + fVar10;\\n  *(float *)(in_RCX + 0x1f) = fVar57 * fVar3 + fVar87 * fVar7 + fVar65 + fVar11;\\n  *(float *)((longlong)in_RCX + 0xfc) = fVar57 * fVar4 + fVar87 * fVar8 + fVar66 + fVar12;\\n  *(float *)(in_RCX + 0x30) =\\n       fStack_15c * fVar77 + fStack_160 * fVar58 + fStack_164 * fVar49 + local_168 * fVar53;\\n  *(float *)((longlong)in_RCX + 0x184) =\\n       fStack_15c * fVar79 + fStack_160 * fVar60 + fStack_164 * fVar50 + local_168 * fVar54;\\n  *(float *)(in_RCX + 0x31) =\\n       fStack_15c * fVar81 + fStack_160 * fVar61 + fStack_164 * fVar51 + local_168 * fVar71;\\n  *(float *)((longlong)in_RCX + 0x18c) =\\n       fStack_15c * fVar83 + fStack_160 * fVar62 + fStack_164 * fVar52 + local_168 * fVar48;\\n  *(float *)(in_RCX + 0x32) =\\n       fStack_14c * fVar77 + fStack_150 * fVar58 + fStack_154 * fVar49 + local_158 * fVar53;\\n  *(float *)((longlong)in_RCX + 0x194) =\\n       fStack_14c * fVar79 + fStack_150 * fVar60 + fStack_154 * fVar50 + local_158 * fVar54;\\n  *(float *)(in_RCX + 0x33) =\\n       fStack_14c * fVar81 + fStack_150 * fVar61 + fStack_154 * fVar51 + local_158 * fVar71;\\n  *(float *)((longlong)in_RCX + 0x19c) =\\n       fStack_14c * fVar83 + fStack_150 * fVar62 + fStack_154 * fVar52 + local_158 * fVar48;\\n  *(float *)(in_RCX + 0x34) =\\n       fStack_13c * fVar77 + fStack_140 * fVar58 + fStack_144 * fVar49 + local_148 * fVar53;\\n  *(float *)((longlong)in_RCX + 0x1a4) =\\n       fStack_13c * fVar79 + fStack_140 * fVar60 + fStack_144 * fVar50 + local_148 * fVar54;\\n  *(float *)(in_RCX + 0x35) =\\n       fStack_13c * fVar81 + fStack_140 * fVar61 + fStack_144 * fVar51 + local_148 * fVar71;\\n  *(float *)((longlong)in_RCX + 0x1ac) =\\n       fStack_13c * fVar83 + fStack_140 * fVar62 + fStack_144 * fVar52 + local_148 * fVar48;\\n  *(float *)(in_RCX + 0x36) =\\n       fStack_12c * fVar77 + fStack_130 * fVar58 + fStack_134 * fVar49 + local_138 * fVar53;\\n  *(float *)((longlong)in_RCX + 0x1b4) =\\n       fStack_12c * fVar79 + fStack_130 * fVar60 + fStack_134 * fVar50 + local_138 * fVar54;\\n  *(float *)(in_RCX + 0x37) =\\n       fStack_12c * fVar81 + fStack_130 * fVar61 + fStack_134 * fVar51 + local_138 * fVar71;\\n  *(float *)((longlong)in_RCX + 0x1bc) =\\n       fStack_12c * fVar83 + fStack_130 * fVar62 + fStack_134 * fVar52 + local_138 * fVar48;\\n  in_RCX[0x60] = uVar46;\\n  in_RCX[0x61] = auVar56._0_8_;\\n  fVar53 = *(float *)(in_RDX + 0x42);\\n  fVar54 = *(float *)((longlong)in_RDX + 0x214);\\n  auVar47._0_4_ = fVar53 + fVar53;\\n  auVar47._4_4_ = fVar54 + fVar54;\\n  auVar47._8_8_ = 0;\\n  auVar29._8_8_ = 0;\\n  auVar56 = divps(auVar47,auVar29);\\n  *(float *)(in_RCX + 0x62) = fVar53;\\n  *(float *)((longlong)in_RCX + 0x314) = fVar54;\\n  *(int *)(in_RCX + 99) = auVar56._0_4_;\\n  *(int *)((longlong)in_RCX + 0x31c) = auVar56._4_4_;\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140987cb0\":{\"name\":\"from_preference_order\",\"size\":280,\"address\":\"140987cb0\",\"signature\":\"void __cdecl from_preference_order(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::render::AvailableGraphicsDevices::from_preference_order(void)\\n\\n{\\n  undefined8 uVar1;\\n  undefined8 uVar2;\\n  undefined8 uVar3;\\n  longlong in_RCX;\\n  ulonglong uVar4;\\n  ulonglong in_RDX;\\n  undefined8 *puVar5;\\n  undefined8 *puVar6;\\n  \\n  if (1 < in_RDX) {\\n    uVar4 = in_RDX >> 1;\\n    puVar5 = (undefined8 *)(in_RCX + 0x90);\\n    puVar6 = (undefined8 *)(in_RDX * 0xa0 + in_RCX + -0x10);\\n    do {\\n      uVar1 = puVar5[-0x12];\\n      uVar2 = puVar5[-0x11];\\n      uVar3 = puVar6[-0x11];\\n      puVar5[-0x12] = puVar6[-0x12];\\n      puVar5[-0x11] = uVar3;\\n      puVar6[-0x12] = uVar1;\\n      puVar6[-0x11] = uVar2;\\n      uVar1 = puVar5[-0x10];\\n      uVar2 = puVar5[-0xf];\\n      uVar3 = puVar6[-0xf];\\n      puVar5[-0x10] = puVar6[-0x10];\\n      puVar5[-0xf] = uVar3;\\n      puVar6[-0x10] = uVar1;\\n      puVar6[-0xf] = uVar2;\\n      uVar1 = puVar5[-0xe];\\n      uVar2 = puVar5[-0xd];\\n      uVar3 = puVar6[-0xd];\\n      puVar5[-0xe] = puVar6[-0xe];\\n      puVar5[-0xd] = uVar3;\\n      puVar6[-0xe] = uVar1;\\n      puVar6[-0xd] = uVar2;\\n      uVar1 = puVar5[-0xc];\\n      uVar2 = puVar5[-0xb];\\n      uVar3 = puVar6[-0xb];\\n      puVar5[-0xc] = puVar6[-0xc];\\n      puVar5[-0xb] = uVar3;\\n      puVar6[-0xc] = uVar1;\\n      puVar6[-0xb] = uVar2;\\n      uVar1 = puVar5[-10];\\n      uVar2 = puVar5[-9];\\n      uVar3 = puVar6[-9];\\n      puVar5[-10] = puVar6[-10];\\n      puVar5[-9] = uVar3;\\n      puVar6[-10] = uVar1;\\n      puVar6[-9] = uVar2;\\n      uVar1 = puVar5[-8];\\n      uVar2 = puVar5[-7];\\n      uVar3 = puVar6[-7];\\n      puVar5[-8] = puVar6[-8];\\n      puVar5[-7] = uVar3;\\n      puVar6[-8] = uVar1;\\n      puVar6[-7] = uVar2;\\n      uVar1 = puVar5[-6];\\n      uVar2 = puVar5[-5];\\n      uVar3 = puVar6[-5];\\n      puVar5[-6] = puVar6[-6];\\n      puVar5[-5] = uVar3;\\n      puVar6[-6] = uVar1;\\n      puVar6[-5] = uVar2;\\n      uVar1 = puVar5[-4];\\n      uVar2 = puVar5[-3];\\n      uVar3 = puVar6[-3];\\n      puVar5[-4] = puVar6[-4];\\n      puVar5[-3] = uVar3;\\n      puVar6[-4] = uVar1;\\n      puVar6[-3] = uVar2;\\n      uVar1 = puVar5[-2];\\n      uVar2 = puVar5[-1];\\n      uVar3 = puVar6[-1];\\n      puVar5[-2] = puVar6[-2];\\n      puVar5[-1] = uVar3;\\n      puVar6[-2] = uVar1;\\n      puVar6[-1] = uVar2;\\n      uVar1 = *puVar5;\\n      uVar2 = puVar5[1];\\n      uVar3 = puVar6[1];\\n      *puVar5 = *puVar6;\\n      puVar5[1] = uVar3;\\n      *puVar6 = uVar1;\\n      puVar6[1] = uVar2;\\n      puVar5 = puVar5 + 0x14;\\n      puVar6 = puVar6 + -0x14;\\n      uVar4 = uVar4 - 1;\\n    } while (uVar4 != 0);\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":14,\"requested\":14}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

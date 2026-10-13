@@ -1,0 +1,129 @@
+ADDR: 0x140994320
+SIG: void __cdecl constrain_to_be_above_terrain(void)
+
+
+void __cdecl country_core::systems::camera_rig::walk::impl$2::constrain_to_be_above_terrain(void)
+
+{
+  float fVar1;
+  float fVar2;
+  float *pfVar3;
+  longlong lVar4;
+  longlong in_RCX;
+  undefined8 *puVar5;
+  longlong in_RDX;
+  longlong in_R8;
+  undefined8 *puVar6;
+  char in_R9B;
+  longlong lVar7;
+  float fVar8;
+  float fVar9;
+  float extraout_XMM0_Da;
+  float fVar10;
+  float fVar11;
+  undefined8 local_110;
+  float local_108;
+  undefined4 uStack_104;
+  undefined4 uStack_100;
+  undefined4 local_fc;
+  undefined8 *local_f8;
+  code *local_f0;
+  undefined *local_e8;
+  undefined8 uStack_e0;
+  undefined8 **local_d8;
+  undefined8 local_d0;
+  undefined8 local_c8;
+  float local_b8;
+  int local_b4;
+  
+  lVar7 = *(longlong *)(in_RCX + 0x10) << 4;
+  puVar6 = *(undefined8 **)(in_RCX + 8);
+  do {
+    if (lVar7 == 0) {
+      local_110 = "dolly::drivers::position::PositionNo  driver found in the CameraRig";
+      local_108 = 4.76441e-44;
+      uStack_104 = 0;
+      local_f8 = &local_110;
+      local_f0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+      local_e8 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;
+      uStack_e0 = 2;
+      local_c8 = 0;
+      local_d8 = &local_f8;
+      local_d0 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    puVar5 = puVar6 + 2;
+    pfVar3 = (float *)(**(code **)(puVar6[1] + 0x40))(*puVar6);
+    lVar4 = (**(code **)(in_RDX + 0x18))(pfVar3);
+    lVar7 = lVar7 + -0x10;
+    puVar6 = puVar5;
+  } while (((pfVar3 == (float *)0x0) || (lVar4 != 0x6b8463577afc1a66)) ||
+          (in_RDX != 0xe4b9f294168d7e3));
+  fVar1 = *pfVar3;
+  fVar11 = pfVar3[1] + -0.5;
+  fVar10 = pfVar3[1] + -1.9 + -1.4;
+  fVar2 = pfVar3[2];
+  *(undefined1 *)(in_RCX + 0x38) = 0x11;
+  fVar9 = -64.9;
+  if (-64.9 <= fVar1) {
+    fVar9 = fVar1;
+  }
+  fVar8 = 64.9;
+  if (fVar9 <= 64.9) {
+    fVar8 = fVar9;
+  }
+  fVar9 = -64.9;
+  if (-64.9 <= fVar2) {
+    fVar9 = fVar2;
+  }
+  local_108 = 64.9;
+  if (fVar9 <= 64.9) {
+    local_108 = fVar9;
+  }
+  local_110 = (char *)CONCAT44(fVar11,fVar8);
+  uStack_104 = 0x80000000;
+  uStack_100 = 0xbf800000;
+  local_fc = 0x80000000;
+  local_f8 = (undefined8 *)0x7f7fffff;
+  local_f0 = (code *)((ulonglong)local_f0 & 0xffffffffffff0000);
+  collision::world::Raycasting::spherecast();
+  if (local_b4 != 2) {
+    fVar8 = (fVar11 - local_b8) + -0.45;
+    fVar9 = fVar8;
+    if (fVar8 <= fVar10) {
+      fVar9 = fVar10;
+    }
+    fVar10 = (float)(~-(uint)NAN(fVar10) & (uint)fVar9 | -(uint)NAN(fVar10) & (uint)fVar8);
+    *(undefined1 *)(in_RCX + 0x38) = 0xb;
+  }
+  local_110 = (char *)CONCAT44(fVar11,fVar1);
+  uStack_104 = 0x80000000;
+  uStack_100 = 0xbf800000;
+  local_fc = 0x80000000;
+  local_f8 = (undefined8 *)0x7f7fffff;
+  local_f0 = (code *)((ulonglong)local_f0 & 0xffffffffffff0000);
+  local_108 = fVar2;
+  collision::world::Raycasting::spherecast();
+  if ((local_b4 != 2) && (fVar10 < (fVar11 - local_b8) + -0.45)) {
+    *(undefined8 ***)(in_RCX + 0x48) = local_d8;
+    *(undefined **)(in_RCX + 0x38) = local_e8;
+    *(undefined8 *)(in_RCX + 0x40) = uStack_e0;
+  }
+  puVar6 = (undefined8 *)(in_R8 + 0x20);
+  puVar5 = (undefined8 *)(in_R8 + 0x28);
+  if (*(char *)(in_R8 + 0x298) == '\0') {
+    puVar5 = (undefined8 *)(in_R8 + 0x10);
+    puVar6 = (undefined8 *)(in_R8 + 8);
+  }
+  uStack_e0 = *puVar5;
+  local_e8 = (undefined *)*puVar6;
+  if (in_R9B == '\0') {
+    ::utils::float_grid::impl$0::
+    bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>();
+  }
+  ::utils::time_continuous_lerp();
+  pfVar3[1] = extraout_XMM0_Da;
+  return;
+}
+

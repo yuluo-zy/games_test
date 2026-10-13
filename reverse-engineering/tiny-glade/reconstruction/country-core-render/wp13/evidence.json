@@ -1,0 +1,133 @@
+{
+  "wp": 13,
+  "version": "B",
+  "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "scope": "country-core session / prefab / history / save domain (resources + systems)",
+  "method": "PDB skeleton (enriched/structures) + Ghidra get_functions/read_memory + machine-code byte verification; machine diff only adjudicates key numeric ambiguity",
+  "toolchain": {
+    "operator": "/Users/yuluo/.codex/mcp-tools/reverse-operator.py ghidra ... --worker shared",
+    "program": "tiny-glade.exe",
+    "note": "read-only shared worker; no DB mutation"
+  },
+  "ghidra_jobs": [
+    {
+      "job": "evidence/j1-history-core.json",
+      "result": "evidence/j1-history-core.result.json",
+      "functions": 20,
+      "covered": [
+        "History::add 0x140a84ec0", "start_input_recording 0x140a86270",
+        "try_start_input_recording 0x140a86510", "finish_input_recording 0x140a86730",
+        "finish_potential_mutation 0x140a86980", "is_recording 0x140a86970",
+        "insert_starting_edit 0x140a844f0", "current_snapshot 0x140a84650",
+        "set_current_snapshot 0x140a84760", "iter_resolved_snapshots 0x140a84a40",
+        "closest_resolved_snapshot 0x140a84a50", "debug_display 0x140a84ba0",
+        "debug_set_history_start 0x140a84c40", "nuke_future_states 0x140a84c50",
+        "HistoryIdentity::generate 0x140a84220", "is_stairs_history_diff_empty 0x140a842a0",
+        "is_decorator_history_diff_empty 0x140a84290", "add_decorator_diff 0x140a854a0",
+        "HistoryChainIndex::new 0x140833250", "ResolvedHistoryChainSnapshot::try_from 0x140a84260"
+      ]
+    },
+    {
+      "job": "evidence/j2-save.json",
+      "result": "evidence/j2-save.result.json",
+      "functions": 18,
+      "covered": [
+        "save_game 0x140a3f470", "add_history_edit_to_save_file 0x140a439b0",
+        "load_game 0x14146d030", "parse_saved_game_data 0x141470d00",
+        "capture_game_snapshot 0x1417a1d00", "validate_and_load_closest_snapshot_data 0x1417a6e50",
+        "init_game_state_from_snapshot 0x1417a9c50", "try_chunk 0x1417a6d70",
+        "check_load_completion 0x140a9f810", "SaveFileSection::json_key 0x140a43810",
+        "SaveFileSection::padding_bytes 0x140a43830", "SaveBackupList::new_from_session 0x140ae8470",
+        "save_game_to_file 0x141750c90", "AutoSaveState::last_error_state 0x140a439a0",
+        "AutoSaveState::close_file 0x140a43840", "AutoSaveState::create_backup_of 0x141e59860",
+        "AutosaveErrorState::is_ok 0x140b92210", "capture_game_snapshot_save_data 0x1417a0430"
+      ]
+    },
+    {
+      "job": "evidence/j3-session-prefab.json",
+      "result": "evidence/j3-session-prefab.result.json",
+      "functions": 20,
+      "covered": [
+        "NextSession::load 0x140b46920", "NextSession::create 0x140b46960",
+        "NextSession::ignore_snapshot 0x140b46a20", "SessionId::new 0x140916420 (uuid v4)",
+        "SessionId::save_folder_path 0x140b46000", "SessionMeta::write_to_disk 0x140b463c0",
+        "SessionMeta::try_load_from_path 0x140b46480", "SessionMeta::assets_root 0x140b46370",
+        "delete_session 0x140b46d60", "refresh_session_list 0x140b46b00",
+        "SavedSession::loading_background_path 0x140b46a50",
+        "NextSession::append_on_load 0x1403b5150",
+        "PrefabLibrary::get 0x141552d70", "PrefabLibrary::has 0x141552ff0",
+        "PrefabLibrary::add 0x1408e2540",
+        "SessionMeta::is_halloween2024 0x140b46860", "is_xmas2024 0x140b468c0",
+        "is_halloween_any 0x140b46890", "GladeType::is_flowery 0x14092e6a0", "is_autumn 0x14092e6c0"
+      ]
+    },
+    {
+      "job": "evidence/j4-disasm.json",
+      "result": "evidence/j4-disasm.result.json",
+      "functions": 14,
+      "covered": "disassembly for json_key/padding_bytes/close_file/SessionLoadReadiness/SaveBackupList/backup_folder_path/session_file_list"
+    },
+    {
+      "job": "evidence/j5-mem.json",
+      "result": "evidence/j5-mem.result.json",
+      "reads": [
+        "0x142ace328 (json_key len table)", "0x142ace3c8 (padding_bytes table)",
+        "0x142ad80d0 (History debug_display format)"
+      ]
+    },
+    {
+      "job": "evidence/j6-mem.json",
+      "result": "evidence/j6-mem.result.json",
+      "reads": [
+        "0x142ace218 (SaveFileSection json_key string block)",
+        "0x142ad80b8 (History debug format string)",
+        "0x142ad8170 (History::add panic strings)"
+      ]
+    },
+    {
+      "job": "evidence/j7-gladetype.json",
+      "result": "evidence/j7-gladetype.result.json",
+      "reads": [
+        "0x14092e6a0 is_flowery = cmp byte[rcx],2 (80 39 02 0f94c0)",
+        "0x14092e6c0 is_autumn  = cmp byte[rcx],3 (80 39 03 0f94c0)",
+        "0x140a9fa70 is_olden   = cmp byte[rcx],1 (80 39 01 0f94c0)",
+        "0x140ae8320 is_winter  = cmp byte[rcx],4 (80 39 04 0f94c0)"
+      ]
+    }
+  ],
+  "key_recoveries": {
+    "glade_type_tags": "1=Olden 2=Flowery 3=Autumn 4=Winter (machine-code verified)",
+    "history_layout": "edit_chain Vec<MultiEdit>@+0x00 (elem 0x28) / snapshots Vec@+0x18 (elem 0x10) / pending 40B@+0x30 / count@+0x58 / nonce@+0x60 / cursor@+0x68 / history_start@+0x6c",
+    "undo_redo": "inlined into systems::history::history_process 0x140af5b30; HistoryCmd byte[1]==0 undo / ==1 redo / interrupt; cursor bounds [history_start, len)",
+    "save_section_keys": "10 SaveFileSection variants with json_key + padding_bytes recovered from .rdata tables",
+    "session_id": "uuid::Uuid::new_v4()",
+    "next_session": "0xa0 bytes; ignore_snapshot bool @+0x98",
+    "prefab_library": "HashMap<PrefabName, Prefab> (hashbrown RandomState)"
+  },
+  "reconciled_prior_work": [
+    "reconstruction/history/ (tg-history observed JSON model; transaction.rs ledger/cursor/nonce)",
+    "reconstruction/crates/tg-history/",
+    "task-index TG-3846e898cf43c29d09 history_chain::HistoryChainIndex (B=0x140833250)",
+    "task-index TG-c4cdc0aa5e62db9266 HistoryCmd::interrupt (B=0x140af5b20, 0x02000200)",
+    "task-index TG-a4422b4c9680d489d4 GladeType tags (flowery=2 autumn=3 olden=1; winter=4 added)",
+    "task-index TG-a3f23bd62617630cba asset::prefab::PrefabName projection",
+    "evidence/building-history/ history_process/finish_replay/history_finish_recording prior decompiles"
+  ],
+  "verification_gate": {
+    "cargo_check_offline": "0 errors",
+    "clippy_all_targets_offline": "0 errors, 0 warnings",
+    "cargo_test_offline": "8 passed / 0 failed",
+    "note": "offline gate proves structure closure; all Rust is skeleton-aligned with typed gaps, implemented_unverified, no runtime/game acceptance"
+  },
+  "remaining_gaps": [
+    "History full serde field order; snapshots payload T; +0x70 field",
+    "MultiEdit 3 auxiliary containers precise types",
+    "ActiveSession/SessionMeta/SavedSession layouts; SessionMeta season-byte semantics",
+    "NextSessionKind variants; SessionOnLoadCmd variants",
+    "Prefab/PrefabPart/PrefabInstance fields; watch plugin policy",
+    "save_game/load_game full resource lists + JSON field order",
+    "save_thread message protocol; shadow file naming; backup metronome cadence",
+    "domain replay systems (wall/roof/terrain/path/...) expansion algorithms"
+  ]
+}

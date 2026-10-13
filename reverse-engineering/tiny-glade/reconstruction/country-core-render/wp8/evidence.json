@@ -1,0 +1,92 @@
+{
+  "package": "wp8",
+  "scope": "country_core terrain content domain: resources::terrain_height / rocky_terrain / world_raster_defs + terrain systems (edit-stroke raster input, derivative/lighting, mouse raycast/read-back)",
+  "target": {
+    "version": "B",
+    "exe": "tiny-glade.exe",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb": "tiny_glade.pdb",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+  },
+  "skeleton_bundles": {
+    "root": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/",
+    "note": "world_raster_defs has NO standalone bundle; it is the inner submodule of resources/world_raster.rs (confirmed by ls).",
+    "key_sha256": {
+      "resources/terrain_height.rs.pdb.json": "b04c66d329a82dc386f6d5937e37b6a5beb123703e8d32b137dc6a0346d2484c",
+      "resources/terrain_height.rs.enriched.json.gz": "348a2279a5757e74ada1304c0cd13c65d0cbd34652d7ca19a21a7e41dd16a932",
+      "resources/rocky_terrain.rs.pdb.json": "9e7a1a084b1869552422c50bad861b1fa737c50d52d645fe6dcf3535ebaa42eb",
+      "resources/rocky_terrain.rs.enriched.json.gz": "29c91c8e917fea425eacc57a9e892236242d4d7cce2c798dac07d51ed0e79022",
+      "resources/world_raster.rs.pdb.json": "a85bae3dc7953349187afb5780b043117d51711a9be7366fbc10b03e05b34cfd",
+      "resources/world_raster.rs.enriched.json.gz": "64b14d5a4935c9ccc2c4831cb0ebedd091a40e9189874321132670eb3ef3c496",
+      "systems/terrain/mod.rs.pdb.json": "1886986db1e9a812d5735d4cedb245686ee575e6f65fc0e8e96818867d15ccd6",
+      "systems/terrain/edit_terrain_stroke.rs.pdb.json": "f46cf04985dc7bcff5ce30ee456690686b8678d401c22c64cadf72019a2be407",
+      "systems/terrain/delayed_terrain_changed_msg.rs.pdb.json": "60993bf912574246030dde9da6ef756c492585334e22463c3c9c1c9d287356d7",
+      "systems/render_loop/compute_passes/rasterize_terrain_stroke.rs.pdb.json": "a768c84929dedb9637fcad5539db898d9fce0927ac1b5c19925eba79ac2ad1c5"
+    },
+    "source_sha256_observed": {
+      "resources/terrain_height.rs": "1227dfdd52377b0b87ccca71619689560eb989c8c24bb01aa8c162d8795f2659",
+      "resources/world_raster.rs": "b9c53f5fd9ecd76a51caf24a3915c30c8eff06c6344e437b5370bca11ecd38bd"
+    }
+  },
+  "decompiled_addresses_used": {
+    "method": "skeleton enriched rva -> VA (base 0x140000000); resolved by Ghidra get_functions this package",
+    "resources": {
+      "rocky_terrain::RockyTerrainMesh::load": "0x1408bbf50 (line 34)",
+      "terrain_rock_mask::sample_at_world_xz": "0x1409ea800 (line 43)",
+      "terrain_stroke::insert_or_morph_last_point": "0x140a97880 (line 42)",
+      "terrain_editing::get_last_mut_stroke": "0x140924900 (line 83)",
+      "terrain_editing::new_stroke": "0x140924a10 (line 91)",
+      "mouse_terrain_raycast::intersect_with_xz_plane": "0x1408ef180 (line 27)",
+      "mouse_terrain_raycast::camera_mouse_ray": "0x1408ef1c0 (line 35)",
+      "mouse_terrain_raycast::mouse_terrain_raycast": "0x1408ef320 (line 63)",
+      "mouse_terrain_raycast::closure$0": "0x1408efa70 (line 77)",
+      "cursor_terrain_raycast::position": "0x140a12650 (line 35)"
+    },
+    "systems": {
+      "terrain::add_terrain_systems": "0x1409455f0 (line 37)",
+      "terrain::insert_terrain_resources": "0x1409457c0 (line 56)",
+      "terrain::add_terrain_events": "0x140945a20 (line 65)",
+      "terrain::edit_terrain_stroke": "0x14094e000 (line 0)",
+      "terrain::draw_terrain_stroke::terrain_stroke_changed": "0x140a03ba0 (line 17)",
+      "terrain::deferred_terrain_history::history_record_terrain": "0x140ac9770 (line 16)",
+      "terrain::delayed_terrain_changed_msg::on_terrain_modified": "0x140aabdc0 (line 40)",
+      "terrain::delayed_terrain_changed_msg::delayed_terrain_changed_msg": "0x140aabdd0 (line 66)",
+      "terrain::terrain_hover_idx": "0x140aff720 (line 17)",
+      "terrain::ui_draw_terrain": "0x140a9fdc0 (line 40)",
+      "terrain::ui_edit_terrain": "0x140aef1f0 (line 34)",
+      "terrain::ui_terrain_focus_mode": "0x1409a4fb0 (line 0)"
+    },
+    "compute_passes": {
+      "rasterize_terrain_stroke": "0x1408c7120 (line 65; closure$1 line 165)",
+      "displace_rocky_terrain": "0x140a3ee80 (line 14)",
+      "calc_terrain_lighting_texture": "0x140a51440 (line 19)",
+      "mouse_depth_compute": "0x140a01620 (line 15)",
+      "mouse_read_terrain_stroke_index": "0x1409768b0 (line 39)",
+      "read_terrain_data": "0x14098c680 (line 48)",
+      "highlight_active_terrain_stroke": "0x140a58450 (line 20)",
+      "upload_raster_staging_to_texture<PathRaster>": "0x1403d8bd0 (line 16)"
+    }
+  },
+  "fresh_ghidra_queries": {
+    "worker": "shared",
+    "jobs": "wp8/work/job-b1.json .. job-bb.json",
+    "results": "wp8/work/result-b1.json .. result-bb.json (parsed into wp8/work/decomp/*.c)"
+  },
+  "reused_prior_work": {
+    "reconstruction/terrain/crates/tg-terrain": {
+      "stroke.rs": "TerrainStroke::insert_or_morph_last_point rules + TerrainEditingData counter (O original machine-code cases) - VERIFIED against 0x140a97880 / 0x140924a10",
+      "schema.rs": "StrokeId(u32) / GRID_SIDE=512 / HeightReadback copy_from_gpu diff - reconciled with TerrainHeightsData::copy_from_gpu (0x140aabdd0)",
+      "edit.rs": "EditCommand falloff/height Adjustment apply - EditTerrainStrokeCmd consumer semantics (I)"
+    },
+    "wp6": "world_raster.rs / world_raster_defs.rs resource families - extended with new/AllWorldRasterRead/staging SSBO markers",
+    "wp5": "compute_passes terrain passes - upgraded from stubs with decompiled structure"
+  },
+  "candidate_verdicts": {
+    "TerrainHeightsData<T>": "recovered: generic resource, dual instantiation, method list+lines, intersect_ray/copy_from_gpu call sites. GAP: field layout.",
+    "RockyTerrainMesh": "recovered: load flow (file->JSON->2 SSBO) + displace pass. GAP: record layout.",
+    "world_raster_defs": "recovered: named rasters + staging SSBO family + AllWorldRasterRead. GAP: WorldRaster internals.",
+    "terrain systems": "recovered: ECS signatures (FunctionSystem), addresses, event register list. GAP: UI internals.",
+    "integration": "country-core cargo check --offline 0 errors (136 warnings, skeleton markers)"
+  },
+  "status": "implemented_unverified - no runtime/GPU acceptance; contracts are the reviewable basis"
+}

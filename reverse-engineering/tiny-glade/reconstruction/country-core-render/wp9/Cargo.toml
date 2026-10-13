@@ -1,0 +1,18 @@
+[package]
+name = "country-core-wp9-roof"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "WP9 evidence-bundle crate root for the Tiny Glade roof content domain (mirrors reconstruction/country-core assembly layout)"
+publish = false
+
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# versions respect the original release Cargo.lock baseline (see
+# reconstruction/Cargo.lock). Only what the roof domain sources call.
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+glam = { version = "=0.29.3" }

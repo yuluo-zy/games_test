@@ -1,0 +1,78 @@
+{
+  "work_package": "wp16",
+  "scope": "country-core misc resources + systems residual",
+  "target": {
+    "version": "B",
+    "release": "ljxsj_92385",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+    "image_base": "0x140000000"
+  },
+  "method": "per workflow: (1) bundle parse (structures/pdb/dependencies jsonl.gz), (2) business-logic decompile via ghidra shared worker, (3) skeleton-aligned Rust + contract; machine-code diff NOT used as implementation method",
+  "gate": {
+    "crate": "reconstruction/country-core-render/wp16",
+    "command": "cargo check --offline",
+    "status": "pass",
+    "errors": 0,
+    "warnings": 0,
+    "source_files": 55,
+    "rust_version": "1.86 (edition 2024)",
+    "date": "2026-10-13"
+  },
+  "ghidra_jobs": [
+    {"job": "job-ivy-rt-1.json", "result": "result-ivy-rt-1.json", "decomp": "decomp-ivy-rt-1.txt", "functions": 20},
+    {"job": "job-ivy-2.json", "result": "result-ivy-2.json", "decomp": "decomp-ivy-2.txt", "functions": 20},
+    {"job": "job-backend.json", "result": "result-backend.json", "decomp": "decomp-backend.txt", "functions": 20},
+    {"job": "job-collision.json", "result": "result-collision.json", "decomp": "decomp-collision.txt", "functions": 19},
+    {"job": "job-paths-steam.json", "result": "result-paths-steam.json", "decomp": "decomp-paths-steam.txt", "functions": 20},
+    {"job": "job-asset-libs.json", "result": "result-asset-libs.json", "decomp": "decomp-asset-libs.txt", "functions": 17},
+    {"job": "job-components-geometry.json", "result": "result-components-geometry.json", "decomp": "decomp-components-geometry.txt", "functions": 16},
+    {"job": "job-utils-1.json", "result": "result-utils-1.json", "decomp": "decomp-utils-1.txt", "functions": 20},
+    {"job": "job-utils-2.json", "result": "result-utils-2.json", "decomp": "decomp-utils-2.txt", "functions": 16}
+  ],
+  "bundle_summary": "bundle-summary.txt",
+  "key_decompiles": {
+    "0x140869460": "Ivy::add_point",
+    "0x1408696f0": "IvyStorage::spawn_ivy",
+    "0x140869540": "Ivy::last_segment_point_ids",
+    "0x141234590": "IvyDirectionProposer::get_direction",
+    "0x140b199e0": "WallCoord::into_world_space",
+    "0x140b0da50": "bvh::build_gpu_bvh",
+    "0x140b24d50": "bvh_builder_worker",
+    "0x1408bc650": "update_rt_world",
+    "0x1408bcff0": "upload_rt_world",
+    "0x1412259c0": "RtWorld::get_mut<WallId>",
+    "0x1408cee40": "RaycastMeshData::new_indexed",
+    "0x1408d0490": "update_rapier_colliders",
+    "0x1408646b0": "build_missing_vaos",
+    "0x140af40b0": "prepare_frame_constants",
+    "0x140ae4d00": "draw_path",
+    "0x140ae4bd0": "DrawState::update",
+    "0x140ae4c20": "PathRastersResources::as_float_grid",
+    "0x140924180": "AssetVAOLibrary::add",
+    "0x1408ba6e0": "MeshWatch::watch",
+    "0x140aa8070": "TransientMeshRegistry::deferred_delete_mesh",
+    "0x140858880": "InstancedWall::upload_to_storage_buffer",
+    "0x140960ac0": "DirtyTiles::new_clear"
+  },
+  "contracts": {
+    "ivy": "contracts/ivy.md",
+    "rt": "contracts/rt.md",
+    "window-lights": "contracts/window-lights.md",
+    "misc-systems": "contracts/misc-systems.md",
+    "asset-libs": "contracts/asset-libs.md",
+    "components": "contracts/components.md"
+  },
+  "reused_deps_not_reimplemented": [
+    "hotwatch+notify (watches)", "rapier3d/parry3d (collision glue target)",
+    "steamworks (steam)", "bracket-noise (ivy noise)", "perchance (ivy rng)",
+    "obvhs::cwbvh (GPU BVH builder)", "tabloid (pub/sub)",
+    "append-only-vec (debug_viz queue)", "conservative-line-raster (dirty tiles stroke)",
+    "frozen/nohash-hasher (registries)", "priority-queue (stairs overlaps)",
+    "glam/serde/serde_json/bevy_ecs/hashbrown/parking_lot/log/anyhow (direct deps)"
+  ],
+  "status": "implemented_unverified",
+  "notes": "Offline cargo check proves the skeleton-aligned surface closes; no runtime/GPU acceptance. Boundary to integrating country-core crate: src/boundary.rs (wp2/wp4/wp7 render types) and src/reused.rs (reused-dep surfaces) are swapped by the integration owner."
+}

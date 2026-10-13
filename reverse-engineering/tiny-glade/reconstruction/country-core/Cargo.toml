@@ -1,0 +1,60 @@
+[package]
+name = "country-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "Assembled reconstruction of the Tiny Glade country-core RENDER domain (wp1-5 integration)"
+publish = false
+
+# Standalone crate; keep out of the parent reconstruction workspace.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# --- versions respect the original release Cargo.lock baseline (see
+#     reconstruction/Cargo.lock and rhapsody-rebuild/Cargo.lock) ---
+# `mint` feature: dolly 0.6.0 (WP20 camera rig) converts via the mint interop.
+glam = { version = "=0.29.3", features = ["serde", "mint"] }
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+ron = "=0.8.1"
+parking_lot = "=0.12.1"
+log = "=0.4.27"
+hashbrown = "=0.14.5"
+itertools = "=0.13.0"
+bumpalo = "=3.18.1"
+ustr = "=1.0.0"
+anyhow = "=1.0.103"
+# wp13 session ids / history identity, wp14 slot-map audio instance pools.
+fastrand = "=1.8.0"
+uuid = { version = "=1.15.1", features = ["v4"] }
+slotmap = "=1.0.6"
+
+# WP20 camera rig (dolly 0.6.0 = the game's locked camera-rig dependency).
+dolly = "=0.6.0"
+
+# WP21 stairs structural graph + misc (graph/ordered-map containers the game
+# actually uses; pinned to the original-lock baseline).
+petgraph = "=0.8.3"
+indexmap = "=2.7.1"
+foldhash = "=0.1.4"
+
+# bevy_ecs + ash: the wp1/wp3 skeletons call the real crates' APIs
+# (`bevy_ecs::world::World`, `bevy_ecs::entity::Entity`, `ash::vk::CommandBuffer`).
+# Version 0.16.0 = the game's Bevy family; ash 0.38.0 = the locked rhapsody dep.
+bevy_ecs = { version = "=0.16.0", features = ["bevy_reflect"] }
+ash = "=0.38.0"
+
+# Reused render-graph boundary (declared; the game-facing surface recovered by
+# wp1-3 lives in `rhapsody_contract` — see INTEGRATION_REPORT boundary decision).
+rhapsody = { path = "../rhapsody-rebuild" }
+
+# NOT declared (unavailable in the offline registry cache → environment gaps,
+# handled by contract modules): puffin (→ `puffin_contract`), enum-iterator 1.2
+# (→ manual `GpuWorldSubsetKind::all()`), nohash-hasher (→ local no-op hasher),
+# frozen, shader-pipeline, shader-variants, shader-compiler (→ `*_contract`).
+
+[profile.dev]
+opt-level = 0
