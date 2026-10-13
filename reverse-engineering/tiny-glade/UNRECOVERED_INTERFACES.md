@@ -1,6 +1,6 @@
 # 未恢复接口与原因（共享基础，B 版）
 
-当前业务接口台账有 194 项没有已审查的映射实现。其中 7 项已有部分分析，另 187 项尚无接受的业务分析。
+当前业务接口台账有 185 项没有已审查的映射实现：140 项尚未业务分析、42 项有伪码未解释、3 项（`WallSpaceCoord::{bound,is_bounded,to_affine3}`）现有 B/PDB 记录未定位编译体或内联宿主。后者登记 `compiled_body_not_located`，不再宣称已证明未编译或语义不可恢复。原已有分析未实现的 9 项已补齐候选；库存分母不完整。当前修复与验证见 `evidence/foundation-review-fixes-2026-10-14/REPORT.md`。
 
 原先314项混入了自动实现/依赖转发、schema helper和待分类条目，已纠正。完整609项原库存不删除；自动实现/库转发62项、schema helper 46项和待分类33项见[分类表](INTERFACE_CLASSIFICATION.md)，不再当作尚未实现业务函数。此变化不表示新增功能恢复。
 
@@ -12,28 +12,31 @@
 | `crates/asset/src` | 2 |
 | `crates/utils/src` | 35 |
 | `crates/utils/src/components` | 9 |
-| `crates/utils/src/curve` | 89 |
-| `crates/utils/src/geometry` | 58 |
+| `crates/utils/src/curve` | 85 |
+| `crates/utils/src/geometry` | 53 |
 
 | 原因 | 数量 |
 |---|---:|
-| 尚未进行业务分析 | 143 |
-| 已有伪码，未解释业务 | 44 |
-| 已有分析，未实现 | 7 |
+| 尚未进行业务分析 | 140 |
+| 已有伪码，未解释业务 | 42 |
+| 编译体/内联宿主未定位，仍需补证 | 3 |
+| 已有分析，未实现 | 0 |
 
-## 已分析但尚未实现的7个接口
+## 已分析后补齐候选实现的9个接口（2026-10-13）
 
-- `utils::curve::Curve<T,CSem>::is_on_right_side`：Reviewed nearest-segment and normalized cross-side query; no implementation.；This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified.
-- `utils::curve::Curve<T,CSem>::try_extend`：Original mutates/appends the owned point vector then rebuilds with duplicate rejection; no recovered mutating API yet.；This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified.
-- `utils::curve::Curve<T,CSem>::try_resample_approx_pt_count`：Reviewed spacing/retained-feature and endpoint append paths; final algorithm not reconstructed.；This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified.
-- `utils::geometry::circle::Circle2d::as_curve2`：Reviewed collect→curve build call; whether collection closes the final segment remains unresolved.
-- `utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge`：Reviewed inverse footprint and hypot branch; not implemented.
-- `utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners`：Reviewed exact-corner/edge dispatch and transformed corner normal sums; no implementation.
-- `utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge`：Reviewed inverse footprint/hypot/inside branch; not implemented.
+以下接口原"已有分析，未实现"，现已落地候选实现（未完成原入口差分验收，不升格为已验证）：
+
+- `utils::curve::Curve<T,CSem>::is_on_right_side`：`curve/mod.rs` 已实现（nearest-segment + 投影叉积）；多泛型实例待对照。
+- `utils::curve::Curve<T,CSem>::try_extend`：`curve/mod.rs` 已实现（追加 + 重复拒绝重建）；原 mutating 策略待对照。
+- `utils::curve::Curve<T,CSem>::try_resample_approx_pt_count` / `_remap`：`curve/resample.rs` 已实现（间距/保留特征/端点路径）。
+- `utils::geometry::circle::Circle2d::as_curve2` / `as_curve2_range`：`geometry/circle.rs` 已实现（含 `as_curve3`）；闭合末段待对照。
+- `utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge`：`geometry/rectangle.rs` 已实现。
+- `utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners`：`geometry/rectangle.rs` 已实现。
+- `utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge`：`geometry/rectangle.rs` 已实现。
 
 ## 为什么有候选代码也不能算恢复完成
 
-以下1项虽有候选代码，但原业务分析仍未闭合，独立保留为未触及；不混入上述无映射实现的194项：
+以下1项虽有候选代码，但原业务分析仍未闭合，独立保留为未触及；不混入上述无映射实现的185项：
 
 - `utils::index_condenser::IndexCondenser::insert`
 
@@ -82,12 +85,12 @@
 | `utils::selective_deserialize::impl$4::visit_str` | `crates/utils/src/selective_deserialize.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::selective_deserialize::impl$5::deserialize` | `crates/utils/src/selective_deserialize.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::as_vec2` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
-| `utils::wall_space::WallSpaceCoord::bound` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
-| `utils::wall_space::WallSpaceCoord::is_bounded` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
+| `utils::wall_space::WallSpaceCoord::bound` | `crates/utils/src/wall_space.rs` | 编译体/内联宿主未定位；不能据此证明未编译或不可恢复。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
+| `utils::wall_space::WallSpaceCoord::is_bounded` | `crates/utils/src/wall_space.rs` | 编译体/内联宿主未定位；不能据此证明未编译或不可恢复。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::new` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::offset_x_clamped` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::subtract` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
-| `utils::wall_space::WallSpaceCoord::to_affine3` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
+| `utils::wall_space::WallSpaceCoord::to_affine3` | `crates/utils/src/wall_space.rs` | 编译体/内联宿主未定位；不能据此证明未编译或不可恢复。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::with_offset` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::with_offset_clamped` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |
 | `utils::wall_space::WallSpaceCoord::with_offset_unbounded` | `crates/utils/src/wall_space.rs` | 尚未进行业务分析：尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。 | No per-interface business analysis recorded; PDB name/location is inventory only. |

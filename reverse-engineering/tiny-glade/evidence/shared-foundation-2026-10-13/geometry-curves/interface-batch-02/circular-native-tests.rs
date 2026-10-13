@@ -1,683 +1,1594 @@
 use super::*;
-fn f(b:u32)->f32{f32::from_bits(b)}
-fn c(b:u32)->CurveUCircular{CurveUCircular{value:f(b),semantic:PhantomData}}
-fn eq_bits(a:f32,b:u32){if f(b).is_nan(){assert!(a.is_nan())}else{assert_eq!(a.to_bits(),b)}}
-#[test]fn original_b_circular_new(){
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2147483648)).get(),2147483648);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(0)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1065353216)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3212836864)).get(),2147483648);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1073741824)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3196059648)).get(),1061158912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1048576000)).get(),1048576000);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1061158912)).get(),1061158912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1)).get(),1);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2147483649)).get(),1065353216);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2139095040)).get(),4290772992);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(4286578688)).get(),4290772992);
-assert!(std::panic::catch_unwind(||{CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2143289344)).get()}).is_err());
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1110835592)).get(),1056989696);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3263303677)).get(),1064829312);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1112968292)).get(),1059264768);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115021656)).get(),1055960064);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1100065137)).get(),1045739648);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3255265175)).get(),1041787136);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3252900149)).get(),1058396512);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1084749516)).get(),1048500608);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1114463068)).get(),1051569664);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1118677328)).get(),1062512640);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3243011718)).get(),1046765184);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3256324902)).get(),1037677568);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3241589659)).get(),1058293328);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258432633)).get(),1032261120);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3266315758)).get(),1065158912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1116223682)).get(),1038288896);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1109661165)).get(),1018128384);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119753291)).get(),1025660928);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1059453445)).get(),1059453445);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1103641122)).get(),1021872128);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1103779876)).get(),1050020096);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3256116213)).get(),1063715520);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258785068)).get(),1060680960);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3245975718)).get(),1053485888);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3262078245)).get(),1042471680);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265936724)).get(),1063343616);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3255008135)).get(),1040480512);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264979179)).get(),1044261376);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265324913)).get(),1057769344);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1116564758)).get(),1060539136);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3266627402)).get(),1058822912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258085822)).get(),1053237504);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1118544406)).get(),1062275840);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1117707449)).get(),1054652672);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119634484)).get(),1040738304);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265530471)).get(),1065012352);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119185545)).get(),1060455552);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264139354)).get(),1058525952);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115016868)).get(),1055347200);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1120019823)).get(),1033223168);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1110900006)).get(),1061112192);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115625690)).get(),1061566080);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3252423947)).get(),1056750912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3251141141)).get(),1064353120);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1108932341)).get(),1047983360);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264377610)).get(),1061583616);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3261915844)).get(),1061637888);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119035289)).get(),1058000000);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1081294932)).get(),1062011216);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3267757843)).get(),1065121408);
+fn f(b: u32) -> f32 {
+    f32::from_bits(b)
 }
-#[test]fn original_b_circular_wrap(){
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2147483648)).get(),2147483648);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(0)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1065353216)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3212836864)).get(),2147483648);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1073741824)).get(),0);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3196059648)).get(),1061158912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1048576000)).get(),1048576000);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1061158912)).get(),1061158912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1)).get(),1);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2147483649)).get(),1065353216);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2139095040)).get(),4290772992);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(4286578688)).get(),4290772992);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2143289344)).get(),2143289344);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120231922)).get(),1060174080);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258511161)).get(),1061433792);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265586960)).get(),1057781760);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1090335648)).get(),1063886080);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113278827)).get(),1062361792);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3220034959)).get(),1041322888);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265320775)).get(),1058299008);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3252827985)).get(),1060705760);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258839184)).get(),1057217536);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3264929343)).get(),1058070656);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1098070723)).get(),1045344448);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1119166871)).get(),1058065280);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267430737)).get(),1056354048);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267626864)).get(),1065109504);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1111713232)).get(),1062827008);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261363993)).get(),1063401920);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3256042634)).get(),1044084224);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3260715541)).get(),1052177792);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120186863)).get(),1051848448);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3257764793)).get(),1058869696);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261397267)).get(),1061272384);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265370779)).get(),1045088768);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1110836637)).get(),1057056576);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1099560361)).get(),1048237184);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3259985343)).get(),1041383680);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1110120237)).get(),1061538624);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3252251921)).get(),1062362592);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1086881599)).get(),1049097200);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258974068)).get(),973864960);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3263951126)).get(),1022271488);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113777290)).get(),1060708992);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261165477)).get(),1059329728);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267283120)).get(),1058777088);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3239111571)).get(),1064388304);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1099744124)).get(),1058566016);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3232975805)).get(),1053508656);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1102284806)).get(),1054998912);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1107586975)).get(),1038040576);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1109452835)).get(),1047012096);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267677442)).get(),1058635520);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1117106392)).get(),1062759424);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120274843)).get(),1016705024);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1114188872)).get(),1050027008);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258730224)).get(),1064190976);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1116153678)).get(),1058252544);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1114812137)).get(),1059830336);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265884811)).get(),1049457920);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113884823)).get(),1040750336);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3217611589)).get(),1054642924);
-eq_bits(CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3251616198)).get(),1024226304);
+fn c(b: u32) -> CurveUCircular {
+    CurveUCircular {
+        value: f(b),
+        semantic: PhantomData,
+    }
 }
-#[test]fn original_b_circular_add(){
-eq_bits(c(0).add(f(0)).get(),0);
-eq_bits(c(0).add(f(1065353216)).get(),0);
-eq_bits(c(1065353216).add(f(0)).get(),0);
-eq_bits(c(1061158912).add(f(1048576000)).get(),0);
-eq_bits(c(1048576000).add(f(1061158912)).get(),0);
-eq_bits(c(2143289344).add(f(0)).get(),2143289344);
-eq_bits(c(0).add(f(2143289344)).get(),2143289344);
-eq_bits(c(1056964608).add(f(2139095040)).get(),4290772992);
-eq_bits(c(1058455765).add(f(1083983040)).get(),1056034224);
-eq_bits(c(1054172863).add(f(3221831689)).get(),1049323128);
-eq_bits(c(1056593863).add(f(3213097140)).get(),1055552760);
-eq_bits(c(1047523077).add(f(1083532151)).get(),1063720824);
-eq_bits(c(1050599450).add(f(3213567819)).get(),1046775260);
-eq_bits(c(1037651342).add(f(3224415853)).get(),1051779064);
-eq_bits(c(1058347642).add(f(1079194508)).get(),1063381160);
-eq_bits(c(1043377111).add(f(1076707125)).get(),1063331784);
-eq_bits(c(1053179787).add(f(1084157300)).get(),1052055248);
-eq_bits(c(1062843880).add(f(3219391264)).get(),1032682816);
-eq_bits(c(1049481615).add(f(3223925223)).get(),1059201324);
-eq_bits(c(1054766712).add(f(3230175465)).get(),1042993104);
-eq_bits(c(1057841990).add(f(3213978395)).get(),1054153248);
-eq_bits(c(1028835346).add(f(1077253346)).get(),1063485448);
-eq_bits(c(1043328106).add(f(3209441243)).get(),1052743296);
-eq_bits(c(1063627093).add(f(3221099340)).get(),1063879356);
-eq_bits(c(1046683919).add(f(3219351512)).get(),1055125800);
-eq_bits(c(1062808371).add(f(3229556937)).get(),1063036944);
-eq_bits(c(1048105233).add(f(3200474059)).get(),1063028319);
-eq_bits(c(1044343886).add(f(1082728104)).get(),1056022688);
-eq_bits(c(1058358566).add(f(3225515565)).get(),1057975408);
-eq_bits(c(1038574789).add(f(1062415718)).get(),1064311295);
-eq_bits(c(1058917616).add(f(1079548161)).get(),977518592);
-eq_bits(c(1059790625).add(f(3199800352)).get(),1050487330);
-eq_bits(c(1058537827).add(f(1075493695)).get(),1010538496);
-eq_bits(c(1063970205).add(f(3229704893)).get(),1063243700);
-eq_bits(c(1051740641).add(f(1059274904)).get(),1065051528);
-eq_bits(c(1043440003).add(f(3219386558)).get(),1053363656);
-eq_bits(c(1059156483).add(f(3225382674)).get(),1059304892);
-eq_bits(c(1059015306).add(f(3228958225)).get(),1061638728);
-eq_bits(c(1042357800).add(f(3219566430)).get(),1052103068);
-eq_bits(c(1057665583).add(f(3229614136)).get(),1057665136);
-eq_bits(c(1050278581).add(f(1075675033)).get(),1061354432);
-eq_bits(c(1059783728).add(f(1076198042)).get(),1048698160);
-eq_bits(c(1057892300).add(f(3230834559)).get(),1064905680);
-eq_bits(c(1054978309).add(f(1041586648)).get(),1058418424);
-eq_bits(c(1054053072).add(f(1084019010)).get(),1050715888);
-eq_bits(c(1059234308).add(f(3226264212)).get(),1054748520);
-eq_bits(c(1059064612).add(f(1033286792)).get(),1060299189);
-eq_bits(c(1053703641).add(f(1066731890)).get(),1058091472);
-eq_bits(c(1055189580).add(f(3220783122)).get(),1056958980);
-eq_bits(c(1049319304).add(f(3226603087)).get(),1065185928);
-eq_bits(c(1057351194).add(f(1031783520)).get(),1058398816);
-eq_bits(c(1037303767).add(f(1083770928)).get(),1063436664);
-eq_bits(c(1058437262).add(f(1067024048)).get(),1061778926);
-eq_bits(c(1051782053).add(f(1082589596)).get(),1058046640);
-eq_bits(c(1053680850).add(f(3218583528)).get(),1060606616);
-eq_bits(c(1064255651).add(f(1071624694)).get(),1060021392);
-eq_bits(c(1065200817).add(f(1083276655)).get(),1057593384);
-eq_bits(c(998213664).add(f(1078492148)).get(),1040956768);
-eq_bits(c(1045863541).add(f(1079137272)).get(),1056828920);
-eq_bits(c(1060634190).add(f(1070850904)).get(),1052740096);
-eq_bits(c(1059621602).add(f(1082185289)).get(),1060060456);
-eq_bits(c(1054151799).add(f(1049371015)).get(),1060150015);
-eq_bits(c(1065054816).add(f(1082682030)).get(),1048256320);
-eq_bits(c(1064327647).add(f(3231128404)).get(),1046347008);
-eq_bits(c(1059706438).add(f(3205126959)).get(),1039915192);
-eq_bits(c(1041318541).add(f(1045367541)).get(),1051731649);
-eq_bits(c(1042936349).add(f(3228550458)).get(),1054265152);
-eq_bits(c(1060084635).add(f(1062222800)).get(),1056943832);
+fn eq_bits(a: f32, b: u32) {
+    if f(b).is_nan() {
+        assert!(a.is_nan())
+    } else {
+        assert_eq!(a.to_bits(), b)
+    }
 }
-#[test]fn original_b_circular_subtract(){
-eq_bits(c(0).subtract(f(0)).get(),0);
-eq_bits(c(0).subtract(f(1065353216)).get(),2147483648);
-eq_bits(c(1065353216).subtract(f(0)).get(),0);
-eq_bits(c(1061158912).subtract(f(1048576000)).get(),1056964608);
-eq_bits(c(1048576000).subtract(f(1061158912)).get(),1056964608);
-eq_bits(c(2143289344).subtract(f(0)).get(),2143289344);
-eq_bits(c(0).subtract(f(2143289344)).get(),2143289344);
-eq_bits(c(1056964608).subtract(f(2139095040)).get(),4290772992);
-eq_bits(c(1039448621).subtract(f(1081324747)).get(),1050642480);
-eq_bits(c(1038710740).subtract(f(1053474948)).get(),1060622008);
-eq_bits(c(1043960537).subtract(f(3226297590)).get(),1053290784);
-eq_bits(c(1055554802).subtract(f(3230375904)).get(),1062354296);
-eq_bits(c(1064031041).subtract(f(1075429927)).get(),1057278628);
-eq_bits(c(1061029434).subtract(f(3214255233)).get(),1063866172);
-eq_bits(c(1064416143).subtract(f(1078048696)).get(),1063965872);
-eq_bits(c(1056794735).subtract(f(3229859893)).get(),1058846176);
-eq_bits(c(1062898470).subtract(f(3230471341)).get(),1048994080);
-eq_bits(c(1059861028).subtract(f(3215563522)).get(),1065314344);
-eq_bits(c(1049469778).subtract(f(3218684681)).get(),1064912828);
-eq_bits(c(1058123762).subtract(f(3201954199)).get(),1065265342);
-eq_bits(c(1024067249).subtract(f(3220598715)).get(),1064665058);
-eq_bits(c(1059909187).subtract(f(3230700445)).get(),1044786336);
-eq_bits(c(1058901482).subtract(f(3218294107)).get(),1049112896);
-eq_bits(c(1049208356).subtract(f(3229421336)).get(),1046756800);
-eq_bits(c(1056704367).subtract(f(1080251791)).get(),1064349052);
-eq_bits(c(1063628967).subtract(f(3219534613)).get(),1060247248);
-eq_bits(c(1061649949).subtract(f(3231331337)).get(),1058610792);
-eq_bits(c(1059092091).subtract(f(3211297314)).get(),1057552540);
-eq_bits(c(1040549919).subtract(f(1074020661)).get(),1031989664);
-eq_bits(c(1058335612).subtract(f(3227724854)).get(),1040609600);
-eq_bits(c(1065068334).subtract(f(3230941512)).get(),1058910576);
-eq_bits(c(1015469656).subtract(f(1076471043)).get(),1052460368);
-eq_bits(c(1051121972).subtract(f(3221675485)).get(),1054722080);
-eq_bits(c(1032638805).subtract(f(3231336751)).get(),1063510944);
-eq_bits(c(1062466791).subtract(f(1059711975)).get(),1042818048);
-eq_bits(c(1057097630).subtract(f(3229892434)).get(),1059324464);
-eq_bits(c(1063739285).subtract(f(3230124902)).get(),1041689376);
-eq_bits(c(1064533724).subtract(f(1081245124)).get(),1042685744);
-eq_bits(c(1062250585).subtract(f(1080328203)).get(),1048223920);
-eq_bits(c(1053431152).subtract(f(3216592674)).get(),1062709500);
-eq_bits(c(1061019066).subtract(f(3230464433)).get(),1041673472);
-eq_bits(c(1045169786).subtract(f(3204536786)).get(),1060395888);
-eq_bits(c(1060030108).subtract(f(3210001176)).get(),1057194420);
-eq_bits(c(1053536433).subtract(f(3220056760)).get(),1048861584);
-eq_bits(c(1057764475).subtract(f(3222795535)).get(),1064044728);
-eq_bits(c(1050786935).subtract(f(3231596317)).get(),1048948288);
-eq_bits(c(1060324721).subtract(f(3227711522)).get(),1048352736);
-eq_bits(c(1044656297).subtract(f(3224975637)).get(),1034912768);
-eq_bits(c(1053093302).subtract(f(1071240672)).get(),1060031260);
-eq_bits(c(1052507862).subtract(f(3226598668)).get(),1059451804);
-eq_bits(c(1046305862).subtract(f(3225351604)).get(),1045215104);
-eq_bits(c(1058000458).subtract(f(3229685921)).get(),1058575184);
-eq_bits(c(1054359218).subtract(f(1083398501)).get(),1062294576);
-eq_bits(c(1060109247).subtract(f(1050558511)).get(),1052882767);
-eq_bits(c(1061200873).subtract(f(3225893075)).get(),1063094068);
-eq_bits(c(1056357679).subtract(f(1080011452)).get(),1065137064);
-eq_bits(c(919207614).subtract(f(1080896955)).get(),1050055408);
-eq_bits(c(1050871964).subtract(f(3231318039)).get(),1040585760);
-eq_bits(c(1062721901).subtract(f(1055778639)).get(),1052887947);
-eq_bits(c(1058863676).subtract(f(1068407555)).get(),1048514776);
-eq_bits(c(1061480081).subtract(f(3228641075)).get(),1057588064);
-eq_bits(c(1023711438).subtract(f(1080502356)).get(),1054298232);
-eq_bits(c(1045247413).subtract(f(1029855389)).get(),1041538958);
-eq_bits(c(1049260249).subtract(f(3222626572)).get(),1058716828);
-eq_bits(c(1061499858).subtract(f(3231607778)).get(),1060672224);
-eq_bits(c(1032618075).subtract(f(1082645102)).get(),1062386840);
-eq_bits(c(1036628035).subtract(f(1053445501)).get(),1060376394);
-eq_bits(c(1061952338).subtract(f(1078908800)).get(),1058061648);
+#[test]
+fn original_b_circular_new() {
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2147483648)).get(),
+        2147483648,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(0)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1065353216)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3212836864)).get(),
+        2147483648,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1073741824)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3196059648)).get(),
+        1061158912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1048576000)).get(),
+        1048576000,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1061158912)).get(),
+        1061158912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1)).get(),
+        1,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2147483649)).get(),
+        1065353216,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2139095040)).get(),
+        4290772992,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(4286578688)).get(),
+        4290772992,
+    );
+    assert!(
+        std::panic::catch_unwind(|| {
+            CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(2143289344)).get()
+        })
+        .is_err()
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1110835592)).get(),
+        1056989696,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3263303677)).get(),
+        1064829312,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1112968292)).get(),
+        1059264768,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115021656)).get(),
+        1055960064,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1100065137)).get(),
+        1045739648,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3255265175)).get(),
+        1041787136,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3252900149)).get(),
+        1058396512,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1084749516)).get(),
+        1048500608,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1114463068)).get(),
+        1051569664,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1118677328)).get(),
+        1062512640,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3243011718)).get(),
+        1046765184,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3256324902)).get(),
+        1037677568,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3241589659)).get(),
+        1058293328,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258432633)).get(),
+        1032261120,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3266315758)).get(),
+        1065158912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1116223682)).get(),
+        1038288896,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1109661165)).get(),
+        1018128384,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119753291)).get(),
+        1025660928,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1059453445)).get(),
+        1059453445,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1103641122)).get(),
+        1021872128,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1103779876)).get(),
+        1050020096,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3256116213)).get(),
+        1063715520,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258785068)).get(),
+        1060680960,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3245975718)).get(),
+        1053485888,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3262078245)).get(),
+        1042471680,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265936724)).get(),
+        1063343616,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3255008135)).get(),
+        1040480512,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264979179)).get(),
+        1044261376,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265324913)).get(),
+        1057769344,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1116564758)).get(),
+        1060539136,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3266627402)).get(),
+        1058822912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3258085822)).get(),
+        1053237504,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1118544406)).get(),
+        1062275840,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1117707449)).get(),
+        1054652672,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119634484)).get(),
+        1040738304,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3265530471)).get(),
+        1065012352,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119185545)).get(),
+        1060455552,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264139354)).get(),
+        1058525952,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115016868)).get(),
+        1055347200,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1120019823)).get(),
+        1033223168,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1110900006)).get(),
+        1061112192,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1115625690)).get(),
+        1061566080,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3252423947)).get(),
+        1056750912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3251141141)).get(),
+        1064353120,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1108932341)).get(),
+        1047983360,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3264377610)).get(),
+        1061583616,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3261915844)).get(),
+        1061637888,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1119035289)).get(),
+        1058000000,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(1081294932)).get(),
+        1062011216,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::new(f(3267757843)).get(),
+        1065121408,
+    );
 }
-#[test]fn original_b_circular_distance(){
-eq_bits(c(0).distance(c(0)),0);
-eq_bits(c(0).distance(c(1065353216)),1065353216);
-eq_bits(c(1065353216).distance(c(0)),0);
-eq_bits(c(1061158912).distance(c(1048576000)),1056964608);
-eq_bits(c(1048576000).distance(c(1061158912)),1056964608);
-eq_bits(c(2143289344).distance(c(0)),2143289344);
-eq_bits(c(0).distance(c(2143289344)),2143289344);
-eq_bits(c(1056964608).distance(c(2139095040)),2139095040);
-eq_bits(c(1058795667).distance(c(1017551873)),1053984922);
-eq_bits(c(1048498503).distance(c(1054205250)),1043134781);
-eq_bits(c(1061297514).distance(c(1050659643)),1057867828);
-eq_bits(c(1061448065).distance(c(1065118905)),1046482144);
-eq_bits(c(1058844579).distance(c(1059819156)),1030614800);
-eq_bits(c(1057438148).distance(c(1060416199)),1043710988);
-eq_bits(c(1051198486).distance(c(1057658606)),1046107020);
-eq_bits(c(1060805730).distance(c(1039544822)),1053316024);
-eq_bits(c(1061174553).distance(c(1057378040)),1061556703);
-eq_bits(c(1057546062).distance(c(1059527129)),1039258712);
-eq_bits(c(1056635484).distance(c(1056250718)),1065160834);
-eq_bits(c(1045540218).distance(c(1045102806)),1065243864);
-eq_bits(c(1061418524).distance(c(1063614476)),1040582592);
-eq_bits(c(1063735408).distance(c(1060554841)),1062172648);
-eq_bits(c(1037758963).distance(c(1040344451)),1017603148);
-eq_bits(c(1057302575).distance(c(1046061990)),1060192443);
-eq_bits(c(1061796398).distance(c(1062260412)),1021481408);
-eq_bits(c(1059460654).distance(c(1044579802)),1057663816);
-eq_bits(c(1055408635).distance(c(1065056001)),1057445380);
-eq_bits(c(1048916124).distance(c(1057325233)),1048957126);
-eq_bits(c(1048839142).distance(c(1038177021)),1062873197);
-eq_bits(c(1061948153).distance(c(1039454922)),1051008706);
-eq_bits(c(1064749142).distance(c(1065272762)),1023388800);
-eq_bits(c(1032781876).distance(c(1056639953)),1054297028);
-eq_bits(c(1055274203).distance(c(1058246439)),1040306918);
-eq_bits(c(1061636593).distance(c(1047388713)),1055415602);
-eq_bits(c(1064803170).distance(c(1063392230)),1063942276);
-eq_bits(c(1064737654).distance(c(1064347102)),1064962664);
-eq_bits(c(1057176525).distance(c(1060206362)),1043918132);
-eq_bits(c(1062388792).distance(c(1048882494)),1054811344);
-eq_bits(c(1036138346).distance(c(1044300990)),1035686418);
-eq_bits(c(1061905106).distance(c(1058862092)),1062310202);
-eq_bits(c(1047408239).distance(c(1048949385)),1021949208);
-eq_bits(c(1052657441).distance(c(1060589953)),1051745249);
-eq_bits(c(1061184466).distance(c(1060976685)),1065145434);
-eq_bits(c(1063267360).distance(c(1055311301)),1058223810);
-eq_bits(c(1064640487).distance(c(1055080758)),1056506218);
-eq_bits(c(1063061001).distance(c(1055972306)),1058760671);
-eq_bits(c(1061645870).distance(c(1044876216)),1054140800);
-eq_bits(c(1059514778).distance(c(1057750356)),1063588794);
-eq_bits(c(1057191755).distance(c(1052712996)),1063000263);
-eq_bits(c(1063160262).distance(c(1031146717)),1044601888);
-eq_bits(c(1027492769).distance(c(1041288296)),1036153600);
-eq_bits(c(1056835471).distance(c(1058483112)),1036074756);
-eq_bits(c(1060822685).distance(c(1060264465)),1064794995);
-eq_bits(c(1056475682).distance(c(994112487)),1057258467);
-eq_bits(c(1058639854).distance(c(1045249340)),1058652002);
-eq_bits(c(1064409105).distance(c(1037021089)),1042380684);
-eq_bits(c(1062150519).distance(c(1045733080)),1053559934);
-eq_bits(c(1052041140).distance(c(1049018589)),1063841940);
-eq_bits(c(1052229976).distance(c(1064629996)),1058608704);
-eq_bits(c(1063962072).distance(c(1059921466)),1061312610);
-eq_bits(c(1052816102).distance(c(1052881731)),989867648);
-eq_bits(c(1059561573).distance(c(1065128767)),1051321780);
-eq_bits(c(1027854282).distance(c(1043254126)),1039904503);
-eq_bits(c(1043098562).distance(c(1062910521)),1060085576);
-eq_bits(c(1049449542).distance(c(1064166380)),1059535305);
-eq_bits(c(1064485961).distance(c(1039479544)),1043302492);
-eq_bits(c(1040499482).distance(c(1037810358)),1064978064);
-eq_bits(c(1058559679).distance(c(1050600619)),1060576151);
+#[test]
+fn original_b_circular_wrap() {
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2147483648)).get(),
+        2147483648,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(0)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1065353216)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3212836864)).get(),
+        2147483648,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1073741824)).get(),
+        0,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3196059648)).get(),
+        1061158912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1048576000)).get(),
+        1048576000,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1061158912)).get(),
+        1061158912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1)).get(),
+        1,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2147483649)).get(),
+        1065353216,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2139095040)).get(),
+        4290772992,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(4286578688)).get(),
+        4290772992,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(2143289344)).get(),
+        2143289344,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120231922)).get(),
+        1060174080,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258511161)).get(),
+        1061433792,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265586960)).get(),
+        1057781760,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1090335648)).get(),
+        1063886080,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113278827)).get(),
+        1062361792,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3220034959)).get(),
+        1041322888,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265320775)).get(),
+        1058299008,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3252827985)).get(),
+        1060705760,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258839184)).get(),
+        1057217536,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3264929343)).get(),
+        1058070656,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1098070723)).get(),
+        1045344448,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1119166871)).get(),
+        1058065280,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267430737)).get(),
+        1056354048,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267626864)).get(),
+        1065109504,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1111713232)).get(),
+        1062827008,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261363993)).get(),
+        1063401920,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3256042634)).get(),
+        1044084224,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3260715541)).get(),
+        1052177792,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120186863)).get(),
+        1051848448,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3257764793)).get(),
+        1058869696,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261397267)).get(),
+        1061272384,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265370779)).get(),
+        1045088768,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1110836637)).get(),
+        1057056576,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1099560361)).get(),
+        1048237184,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3259985343)).get(),
+        1041383680,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1110120237)).get(),
+        1061538624,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3252251921)).get(),
+        1062362592,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1086881599)).get(),
+        1049097200,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258974068)).get(),
+        973864960,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3263951126)).get(),
+        1022271488,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113777290)).get(),
+        1060708992,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3261165477)).get(),
+        1059329728,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267283120)).get(),
+        1058777088,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3239111571)).get(),
+        1064388304,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1099744124)).get(),
+        1058566016,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3232975805)).get(),
+        1053508656,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1102284806)).get(),
+        1054998912,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1107586975)).get(),
+        1038040576,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1109452835)).get(),
+        1047012096,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3267677442)).get(),
+        1058635520,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1117106392)).get(),
+        1062759424,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1120274843)).get(),
+        1016705024,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1114188872)).get(),
+        1050027008,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3258730224)).get(),
+        1064190976,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1116153678)).get(),
+        1058252544,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1114812137)).get(),
+        1059830336,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3265884811)).get(),
+        1049457920,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(1113884823)).get(),
+        1040750336,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3217611589)).get(),
+        1054642924,
+    );
+    eq_bits(
+        CurveUCircular::<super::super::CurveCoordSemantic2D>::wrap_around(f(3251616198)).get(),
+        1024226304,
+    );
 }
-#[test]fn original_b_circular_lerp(){
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(3212836864)).get(),1048576000);
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(0)).get(),1061158912);
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(1048576000)).get(),1063256064);
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(1056964608)).get(),0);
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(1065353216)).get(),1048576000);
-eq_bits(c(1061158912).wrapping_lerp(c(1048576000),f(1073741824)).get(),1061158912);
-assert!(std::panic::catch_unwind(||{c(1061158912).wrapping_lerp(c(1048576000),f(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{c(1061158912).wrapping_lerp(c(1048576000),f(2139095040)).get()}).is_err());
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(3212836864)).get(),1061158912);
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(0)).get(),1048576000);
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(1048576000)).get(),1052770304);
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(1056964608)).get(),1056964608);
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(1065353216)).get(),1061158912);
-eq_bits(c(1048576000).wrapping_lerp(c(1061158912),f(1073741824)).get(),1048576000);
-assert!(std::panic::catch_unwind(||{c(1048576000).wrapping_lerp(c(1061158912),f(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{c(1048576000).wrapping_lerp(c(1061158912),f(2139095040)).get()}).is_err());
-eq_bits(c(0).wrapping_lerp(c(0),f(3212836864)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(0),f(0)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(0),f(1048576000)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(0),f(1056964608)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(0),f(1065353216)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(0),f(1073741824)).get(),0);
-assert!(std::panic::catch_unwind(||{c(0).wrapping_lerp(c(0),f(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{c(0).wrapping_lerp(c(0),f(2139095040)).get()}).is_err());
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(3212836864)).get(),2147483648);
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(0)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(1048576000)).get(),1048576000);
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(1056964608)).get(),1056964608);
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(1065353216)).get(),0);
-eq_bits(c(0).wrapping_lerp(c(1065353216),f(1073741824)).get(),0);
-assert!(std::panic::catch_unwind(||{c(0).wrapping_lerp(c(1065353216),f(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{c(0).wrapping_lerp(c(1065353216),f(2139095040)).get()}).is_err());
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(3212836864)).get(),0);
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(0)).get(),0);
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(1048576000)).get(),0);
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(1056964608)).get(),0);
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(1065353216)).get(),0);
-eq_bits(c(1065353216).wrapping_lerp(c(0),f(1073741824)).get(),0);
-assert!(std::panic::catch_unwind(||{c(1065353216).wrapping_lerp(c(0),f(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{c(1065353216).wrapping_lerp(c(0),f(2139095040)).get()}).is_err());
-eq_bits(c(1061591054).wrapping_lerp(c(1061363195),f(3212824674)).get(),1061830936);
-eq_bits(c(1055438151).wrapping_lerp(c(1060700411),f(3212958042)).get(),1044044212);
-eq_bits(c(1026777587).wrapping_lerp(c(1057928448),f(3209576199)).get(),1059145126);
-eq_bits(c(983082555).wrapping_lerp(c(1059215375),f(1066930597)).get(),1061212313);
-eq_bits(c(1059989080).wrapping_lerp(c(1052266125),f(1050780751)).get(),1063589242);
-eq_bits(c(1063327701).wrapping_lerp(c(1057118875),f(1048608039)).get(),1025048352);
-eq_bits(c(1029073540).wrapping_lerp(c(1026761229),f(1042244712)).get(),1045667723);
-eq_bits(c(1063838235).wrapping_lerp(c(1057639823),f(1071803140)).get(),1020090752);
-eq_bits(c(1061893387).wrapping_lerp(c(1019580796),f(3206331519)).get(),1059527374);
-eq_bits(c(1061817500).wrapping_lerp(c(1064295249),f(1072126695)).get(),1030105088);
-eq_bits(c(1054815171).wrapping_lerp(c(1049638968),f(3204784978)).get(),1065287770);
-eq_bits(c(1035380342).wrapping_lerp(c(1049974287),f(1055026471)).get(),1043793324);
-eq_bits(c(1055668115).wrapping_lerp(c(1043289832),f(3217321986)).get(),1052667928);
-eq_bits(c(1051517640).wrapping_lerp(c(1049815079),f(3214740014)).get(),1043411732);
-eq_bits(c(1006565125).wrapping_lerp(c(1055328517),f(3190530287)).get(),1064236765);
-eq_bits(c(1042539527).wrapping_lerp(c(1050827086),f(1049081676)).get(),1045333009);
-eq_bits(c(1036489437).wrapping_lerp(c(1006893615),f(3211711296)).get(),1048437272);
-eq_bits(c(1040028803).wrapping_lerp(c(1062305819),f(1063099123)).get(),1060740255);
-eq_bits(c(1027040818).wrapping_lerp(c(1065197344),f(1050253531)).get(),1051211703);
-eq_bits(c(1064152302).wrapping_lerp(c(1062181929),f(1068557626)).get(),1041738224);
-eq_bits(c(1026599745).wrapping_lerp(c(1026158556),f(3217031144)).get(),1057729652);
-eq_bits(c(1053913118).wrapping_lerp(c(1038991131),f(1056656086)).get(),1061260782);
-eq_bits(c(1043197896).wrapping_lerp(c(1051656205),f(1061010190)).get(),1050162749);
-eq_bits(c(1061960371).wrapping_lerp(c(1040477498),f(3213589796)).get(),1054832544);
-eq_bits(c(1047944504).wrapping_lerp(c(1064407175),f(1063510844)).get(),1063111947);
-eq_bits(c(1052231606).wrapping_lerp(c(1037548656),f(3221219965)).get(),1063115922);
-eq_bits(c(1047309289).wrapping_lerp(c(1063086588),f(1071910583)).get(),1052277692);
-eq_bits(c(1047825338).wrapping_lerp(c(1065154451),f(3220528055)).get(),1062038648);
-eq_bits(c(1063574354).wrapping_lerp(c(1057348749),f(3213685343)).get(),1045316728);
-eq_bits(c(1049220097).wrapping_lerp(c(1065198111),f(1071635407)).get(),1057486844);
-eq_bits(c(1058234580).wrapping_lerp(c(1018992464),f(3199280893)).get(),1054311173);
-eq_bits(c(1057975978).wrapping_lerp(c(1062690145),f(1069790339)).get(),1065183686);
-eq_bits(c(1015281875).wrapping_lerp(c(1051789526),f(1073869604)).get(),1060076351);
-eq_bits(c(1052698926).wrapping_lerp(c(1037162557),f(1069492379)).get(),1055705064);
-eq_bits(c(1060494218).wrapping_lerp(c(1062325541),f(3177041573)).get(),1060395048);
-eq_bits(c(1049288892).wrapping_lerp(c(1064460750),f(1072135019)).get(),1056728492);
-eq_bits(c(1061182015).wrapping_lerp(c(1063452254),f(1073762364)).get(),1018805568);
-eq_bits(c(1050732163).wrapping_lerp(c(1047604060),f(1057573160)).get(),1062137094);
-eq_bits(c(1030599297).wrapping_lerp(c(1048182138),f(1066159009)).get(),1048978899);
-eq_bits(c(1065055137).wrapping_lerp(c(1063869341),f(1077203938)).get(),1058775988);
-eq_bits(c(1065117898).wrapping_lerp(c(1055682119),f(1007675161)).get(),1065188011);
-eq_bits(c(1039229291).wrapping_lerp(c(1041032197),f(1074296704)).get(),1042531190);
-eq_bits(c(1057034422).wrapping_lerp(c(1064736577),f(3216020545)).get(),1063186326);
-eq_bits(c(1054191377).wrapping_lerp(c(992137567),f(1036846213)).get(),1056156844);
-eq_bits(c(1040585749).wrapping_lerp(c(1064238656),f(3204558388)).get(),1060728604);
-eq_bits(c(1059067696).wrapping_lerp(c(1065178297),f(3217680766)).get(),1028663200);
-eq_bits(c(1046748520).wrapping_lerp(c(1058936161),f(1077394032)).get(),1052132272);
-eq_bits(c(1045745404).wrapping_lerp(c(1062394834),f(1055933176)).get(),1056857678);
-eq_bits(c(1048493848).wrapping_lerp(c(1062841482),f(1076206566)).get(),1062086280);
-eq_bits(c(1058478026).wrapping_lerp(c(1031069506),f(1055402012)).get(),1062050240);
-eq_bits(c(1056010489).wrapping_lerp(c(1060713041),f(3213712109)).get(),1044779496);
-eq_bits(c(1049383886).wrapping_lerp(c(1030986318),f(1073960433)).get(),1063437338);
-eq_bits(c(1059188474).wrapping_lerp(c(1057963959),f(1076033192)).get(),1065235960);
-eq_bits(c(1055996271).wrapping_lerp(c(1058758070),f(3176618771)).get(),1055756770);
-eq_bits(c(1040476069).wrapping_lerp(c(1062209384),f(1062950166)).get(),1060567352);
-eq_bits(c(1046131404).wrapping_lerp(c(1061551499),f(3202905519)).get(),1064672032);
-eq_bits(c(1057460076).wrapping_lerp(c(1059021714),f(3221218372)).get(),1051711636);
-eq_bits(c(1061045500).wrapping_lerp(c(1043874773),f(3215179476)).get(),1044185664);
-eq_bits(c(1051822876).wrapping_lerp(c(1014883931),f(1067208649)).get(),1042765064);
-eq_bits(c(1040594822).wrapping_lerp(c(1040956442),f(1065272198)).get(),1040954696);
-eq_bits(c(1057688335).wrapping_lerp(c(1064767831),f(1074841584)).get(),1056888144);
-eq_bits(c(1063523132).wrapping_lerp(c(1062948904),f(3205615601)).get(),1051623884);
-eq_bits(c(1038504576).wrapping_lerp(c(1061861140),f(3213233169)).get(),1053641754);
-eq_bits(c(1052349474).wrapping_lerp(c(1052279126),f(3204695081)).get(),1062816928);
-eq_bits(c(1063368187).wrapping_lerp(c(1058825263),f(1061580011)).get(),1055182920);
-eq_bits(c(1064281479).wrapping_lerp(c(1022964145),f(3206061262)).get(),1063338329);
-eq_bits(c(1059217641).wrapping_lerp(c(1063266430),f(3215737462)).get(),1050573132);
-eq_bits(c(1059107749).wrapping_lerp(c(1057420735),f(1065946383)).get(),1058487780);
-eq_bits(c(1057977979).wrapping_lerp(c(1061418563),f(3208263459)).get(),1053985964);
-eq_bits(c(1056284847).wrapping_lerp(c(1042341025),f(1075149091)).get(),1031585472);
-eq_bits(c(1050265555).wrapping_lerp(c(1050927998),f(3206967381)).get(),1049834866);
-eq_bits(c(1054758051).wrapping_lerp(c(1057610337),f(1071712411)).get(),1058936216);
-eq_bits(c(1059220885).wrapping_lerp(c(1060649523),f(3214170404)).get(),1057565137);
-eq_bits(c(1060740588).wrapping_lerp(c(1049017373),f(1074418158)).get(),1063474316);
-eq_bits(c(1061029368).wrapping_lerp(c(1024226809),f(3217483463)).get(),1049868300);
-eq_bits(c(1063308629).wrapping_lerp(c(1057014160),f(3182351046)).get(),1062413790);
-eq_bits(c(1058658801).wrapping_lerp(c(1055026948),f(3193476552)).get(),1054382440);
-eq_bits(c(1045250003).wrapping_lerp(c(1062750846),f(3205521377)).get(),1062618430);
-eq_bits(c(1064633092).wrapping_lerp(c(1053133755),f(3220997706)).get(),1038336512);
-eq_bits(c(1057099267).wrapping_lerp(c(1064296289),f(3220182140)).get(),1060377566);
+#[test]
+fn original_b_circular_add() {
+    eq_bits(c(0).add(f(0)).get(), 0);
+    eq_bits(c(0).add(f(1065353216)).get(), 0);
+    eq_bits(c(1065353216).add(f(0)).get(), 0);
+    eq_bits(c(1061158912).add(f(1048576000)).get(), 0);
+    eq_bits(c(1048576000).add(f(1061158912)).get(), 0);
+    eq_bits(c(2143289344).add(f(0)).get(), 2143289344);
+    eq_bits(c(0).add(f(2143289344)).get(), 2143289344);
+    eq_bits(c(1056964608).add(f(2139095040)).get(), 4290772992);
+    eq_bits(c(1058455765).add(f(1083983040)).get(), 1056034224);
+    eq_bits(c(1054172863).add(f(3221831689)).get(), 1049323128);
+    eq_bits(c(1056593863).add(f(3213097140)).get(), 1055552760);
+    eq_bits(c(1047523077).add(f(1083532151)).get(), 1063720824);
+    eq_bits(c(1050599450).add(f(3213567819)).get(), 1046775260);
+    eq_bits(c(1037651342).add(f(3224415853)).get(), 1051779064);
+    eq_bits(c(1058347642).add(f(1079194508)).get(), 1063381160);
+    eq_bits(c(1043377111).add(f(1076707125)).get(), 1063331784);
+    eq_bits(c(1053179787).add(f(1084157300)).get(), 1052055248);
+    eq_bits(c(1062843880).add(f(3219391264)).get(), 1032682816);
+    eq_bits(c(1049481615).add(f(3223925223)).get(), 1059201324);
+    eq_bits(c(1054766712).add(f(3230175465)).get(), 1042993104);
+    eq_bits(c(1057841990).add(f(3213978395)).get(), 1054153248);
+    eq_bits(c(1028835346).add(f(1077253346)).get(), 1063485448);
+    eq_bits(c(1043328106).add(f(3209441243)).get(), 1052743296);
+    eq_bits(c(1063627093).add(f(3221099340)).get(), 1063879356);
+    eq_bits(c(1046683919).add(f(3219351512)).get(), 1055125800);
+    eq_bits(c(1062808371).add(f(3229556937)).get(), 1063036944);
+    eq_bits(c(1048105233).add(f(3200474059)).get(), 1063028319);
+    eq_bits(c(1044343886).add(f(1082728104)).get(), 1056022688);
+    eq_bits(c(1058358566).add(f(3225515565)).get(), 1057975408);
+    eq_bits(c(1038574789).add(f(1062415718)).get(), 1064311295);
+    eq_bits(c(1058917616).add(f(1079548161)).get(), 977518592);
+    eq_bits(c(1059790625).add(f(3199800352)).get(), 1050487330);
+    eq_bits(c(1058537827).add(f(1075493695)).get(), 1010538496);
+    eq_bits(c(1063970205).add(f(3229704893)).get(), 1063243700);
+    eq_bits(c(1051740641).add(f(1059274904)).get(), 1065051528);
+    eq_bits(c(1043440003).add(f(3219386558)).get(), 1053363656);
+    eq_bits(c(1059156483).add(f(3225382674)).get(), 1059304892);
+    eq_bits(c(1059015306).add(f(3228958225)).get(), 1061638728);
+    eq_bits(c(1042357800).add(f(3219566430)).get(), 1052103068);
+    eq_bits(c(1057665583).add(f(3229614136)).get(), 1057665136);
+    eq_bits(c(1050278581).add(f(1075675033)).get(), 1061354432);
+    eq_bits(c(1059783728).add(f(1076198042)).get(), 1048698160);
+    eq_bits(c(1057892300).add(f(3230834559)).get(), 1064905680);
+    eq_bits(c(1054978309).add(f(1041586648)).get(), 1058418424);
+    eq_bits(c(1054053072).add(f(1084019010)).get(), 1050715888);
+    eq_bits(c(1059234308).add(f(3226264212)).get(), 1054748520);
+    eq_bits(c(1059064612).add(f(1033286792)).get(), 1060299189);
+    eq_bits(c(1053703641).add(f(1066731890)).get(), 1058091472);
+    eq_bits(c(1055189580).add(f(3220783122)).get(), 1056958980);
+    eq_bits(c(1049319304).add(f(3226603087)).get(), 1065185928);
+    eq_bits(c(1057351194).add(f(1031783520)).get(), 1058398816);
+    eq_bits(c(1037303767).add(f(1083770928)).get(), 1063436664);
+    eq_bits(c(1058437262).add(f(1067024048)).get(), 1061778926);
+    eq_bits(c(1051782053).add(f(1082589596)).get(), 1058046640);
+    eq_bits(c(1053680850).add(f(3218583528)).get(), 1060606616);
+    eq_bits(c(1064255651).add(f(1071624694)).get(), 1060021392);
+    eq_bits(c(1065200817).add(f(1083276655)).get(), 1057593384);
+    eq_bits(c(998213664).add(f(1078492148)).get(), 1040956768);
+    eq_bits(c(1045863541).add(f(1079137272)).get(), 1056828920);
+    eq_bits(c(1060634190).add(f(1070850904)).get(), 1052740096);
+    eq_bits(c(1059621602).add(f(1082185289)).get(), 1060060456);
+    eq_bits(c(1054151799).add(f(1049371015)).get(), 1060150015);
+    eq_bits(c(1065054816).add(f(1082682030)).get(), 1048256320);
+    eq_bits(c(1064327647).add(f(3231128404)).get(), 1046347008);
+    eq_bits(c(1059706438).add(f(3205126959)).get(), 1039915192);
+    eq_bits(c(1041318541).add(f(1045367541)).get(), 1051731649);
+    eq_bits(c(1042936349).add(f(3228550458)).get(), 1054265152);
+    eq_bits(c(1060084635).add(f(1062222800)).get(), 1056943832);
 }
-#[test]fn original_b_circular_from(){
-eq_bits(CurveU::from(c(2147483648)).get(),2147483648);
-eq_bits(CurveU::from(c(0)).get(),0);
-eq_bits(CurveU::from(c(1065353216)).get(),1065353216);
-assert!(std::panic::catch_unwind(||{CurveU::from(c(3212836864)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(1073741824)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(3196059648)).get()}).is_err());
-eq_bits(CurveU::from(c(1048576000)).get(),1048576000);
-eq_bits(CurveU::from(c(1061158912)).get(),1061158912);
-eq_bits(CurveU::from(c(1)).get(),1);
-assert!(std::panic::catch_unwind(||{CurveU::from(c(2147483649)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(2139095040)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(4286578688)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(2143289344)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(3129152111)).get()}).is_err());
-assert!(std::panic::catch_unwind(||{CurveU::from(c(1065361605)).get()}).is_err());
-eq_bits(CurveU::from(c(1061759650)).get(),1061759650);
-eq_bits(CurveU::from(c(1053323570)).get(),1053323570);
-eq_bits(CurveU::from(c(1031625198)).get(),1031625198);
-eq_bits(CurveU::from(c(1064713994)).get(),1064713994);
-eq_bits(CurveU::from(c(1036686637)).get(),1036686637);
-eq_bits(CurveU::from(c(1045348408)).get(),1045348408);
-eq_bits(CurveU::from(c(1059254679)).get(),1059254679);
-eq_bits(CurveU::from(c(1056040174)).get(),1056040174);
-eq_bits(CurveU::from(c(1064998413)).get(),1064998413);
-eq_bits(CurveU::from(c(1051573020)).get(),1051573020);
-eq_bits(CurveU::from(c(1057205778)).get(),1057205778);
-eq_bits(CurveU::from(c(1053046520)).get(),1053046520);
-eq_bits(CurveU::from(c(1056843199)).get(),1056843199);
-eq_bits(CurveU::from(c(1060789042)).get(),1060789042);
-eq_bits(CurveU::from(c(1053285447)).get(),1053285447);
-eq_bits(CurveU::from(c(1034911423)).get(),1034911423);
-eq_bits(CurveU::from(c(1064376738)).get(),1064376738);
-eq_bits(CurveU::from(c(1063692834)).get(),1063692834);
-eq_bits(CurveU::from(c(1061927632)).get(),1061927632);
-eq_bits(CurveU::from(c(1052052890)).get(),1052052890);
-eq_bits(CurveU::from(c(1057468980)).get(),1057468980);
-eq_bits(CurveU::from(c(1051796674)).get(),1051796674);
-eq_bits(CurveU::from(c(1048054288)).get(),1048054288);
-eq_bits(CurveU::from(c(1035654062)).get(),1035654062);
-eq_bits(CurveU::from(c(1053712561)).get(),1053712561);
-eq_bits(CurveU::from(c(1025580027)).get(),1025580027);
-eq_bits(CurveU::from(c(1062403259)).get(),1062403259);
-eq_bits(CurveU::from(c(1008724442)).get(),1008724442);
-eq_bits(CurveU::from(c(1050987687)).get(),1050987687);
-eq_bits(CurveU::from(c(1013998085)).get(),1013998085);
+#[test]
+fn original_b_circular_subtract() {
+    eq_bits(c(0).subtract(f(0)).get(), 0);
+    eq_bits(c(0).subtract(f(1065353216)).get(), 2147483648);
+    eq_bits(c(1065353216).subtract(f(0)).get(), 0);
+    eq_bits(c(1061158912).subtract(f(1048576000)).get(), 1056964608);
+    eq_bits(c(1048576000).subtract(f(1061158912)).get(), 1056964608);
+    eq_bits(c(2143289344).subtract(f(0)).get(), 2143289344);
+    eq_bits(c(0).subtract(f(2143289344)).get(), 2143289344);
+    eq_bits(c(1056964608).subtract(f(2139095040)).get(), 4290772992);
+    eq_bits(c(1039448621).subtract(f(1081324747)).get(), 1050642480);
+    eq_bits(c(1038710740).subtract(f(1053474948)).get(), 1060622008);
+    eq_bits(c(1043960537).subtract(f(3226297590)).get(), 1053290784);
+    eq_bits(c(1055554802).subtract(f(3230375904)).get(), 1062354296);
+    eq_bits(c(1064031041).subtract(f(1075429927)).get(), 1057278628);
+    eq_bits(c(1061029434).subtract(f(3214255233)).get(), 1063866172);
+    eq_bits(c(1064416143).subtract(f(1078048696)).get(), 1063965872);
+    eq_bits(c(1056794735).subtract(f(3229859893)).get(), 1058846176);
+    eq_bits(c(1062898470).subtract(f(3230471341)).get(), 1048994080);
+    eq_bits(c(1059861028).subtract(f(3215563522)).get(), 1065314344);
+    eq_bits(c(1049469778).subtract(f(3218684681)).get(), 1064912828);
+    eq_bits(c(1058123762).subtract(f(3201954199)).get(), 1065265342);
+    eq_bits(c(1024067249).subtract(f(3220598715)).get(), 1064665058);
+    eq_bits(c(1059909187).subtract(f(3230700445)).get(), 1044786336);
+    eq_bits(c(1058901482).subtract(f(3218294107)).get(), 1049112896);
+    eq_bits(c(1049208356).subtract(f(3229421336)).get(), 1046756800);
+    eq_bits(c(1056704367).subtract(f(1080251791)).get(), 1064349052);
+    eq_bits(c(1063628967).subtract(f(3219534613)).get(), 1060247248);
+    eq_bits(c(1061649949).subtract(f(3231331337)).get(), 1058610792);
+    eq_bits(c(1059092091).subtract(f(3211297314)).get(), 1057552540);
+    eq_bits(c(1040549919).subtract(f(1074020661)).get(), 1031989664);
+    eq_bits(c(1058335612).subtract(f(3227724854)).get(), 1040609600);
+    eq_bits(c(1065068334).subtract(f(3230941512)).get(), 1058910576);
+    eq_bits(c(1015469656).subtract(f(1076471043)).get(), 1052460368);
+    eq_bits(c(1051121972).subtract(f(3221675485)).get(), 1054722080);
+    eq_bits(c(1032638805).subtract(f(3231336751)).get(), 1063510944);
+    eq_bits(c(1062466791).subtract(f(1059711975)).get(), 1042818048);
+    eq_bits(c(1057097630).subtract(f(3229892434)).get(), 1059324464);
+    eq_bits(c(1063739285).subtract(f(3230124902)).get(), 1041689376);
+    eq_bits(c(1064533724).subtract(f(1081245124)).get(), 1042685744);
+    eq_bits(c(1062250585).subtract(f(1080328203)).get(), 1048223920);
+    eq_bits(c(1053431152).subtract(f(3216592674)).get(), 1062709500);
+    eq_bits(c(1061019066).subtract(f(3230464433)).get(), 1041673472);
+    eq_bits(c(1045169786).subtract(f(3204536786)).get(), 1060395888);
+    eq_bits(c(1060030108).subtract(f(3210001176)).get(), 1057194420);
+    eq_bits(c(1053536433).subtract(f(3220056760)).get(), 1048861584);
+    eq_bits(c(1057764475).subtract(f(3222795535)).get(), 1064044728);
+    eq_bits(c(1050786935).subtract(f(3231596317)).get(), 1048948288);
+    eq_bits(c(1060324721).subtract(f(3227711522)).get(), 1048352736);
+    eq_bits(c(1044656297).subtract(f(3224975637)).get(), 1034912768);
+    eq_bits(c(1053093302).subtract(f(1071240672)).get(), 1060031260);
+    eq_bits(c(1052507862).subtract(f(3226598668)).get(), 1059451804);
+    eq_bits(c(1046305862).subtract(f(3225351604)).get(), 1045215104);
+    eq_bits(c(1058000458).subtract(f(3229685921)).get(), 1058575184);
+    eq_bits(c(1054359218).subtract(f(1083398501)).get(), 1062294576);
+    eq_bits(c(1060109247).subtract(f(1050558511)).get(), 1052882767);
+    eq_bits(c(1061200873).subtract(f(3225893075)).get(), 1063094068);
+    eq_bits(c(1056357679).subtract(f(1080011452)).get(), 1065137064);
+    eq_bits(c(919207614).subtract(f(1080896955)).get(), 1050055408);
+    eq_bits(c(1050871964).subtract(f(3231318039)).get(), 1040585760);
+    eq_bits(c(1062721901).subtract(f(1055778639)).get(), 1052887947);
+    eq_bits(c(1058863676).subtract(f(1068407555)).get(), 1048514776);
+    eq_bits(c(1061480081).subtract(f(3228641075)).get(), 1057588064);
+    eq_bits(c(1023711438).subtract(f(1080502356)).get(), 1054298232);
+    eq_bits(c(1045247413).subtract(f(1029855389)).get(), 1041538958);
+    eq_bits(c(1049260249).subtract(f(3222626572)).get(), 1058716828);
+    eq_bits(c(1061499858).subtract(f(3231607778)).get(), 1060672224);
+    eq_bits(c(1032618075).subtract(f(1082645102)).get(), 1062386840);
+    eq_bits(c(1036628035).subtract(f(1053445501)).get(), 1060376394);
+    eq_bits(c(1061952338).subtract(f(1078908800)).get(), 1058061648);
 }
-#[test]fn original_b_circular_eq(){
-assert!(c(0)==c(2147483648));
-assert!(c(1056964608)==c(1056964608));
-assert!(!(c(1048576000)==c(1056964608)));
-assert!(!(c(2143289344)==c(2143289344)));
-assert!(!(c(2143289344)==c(0)));
-assert!(!(c(1058370836)==c(1060008675)));
-assert!(!(c(1055438476)==c(1064741985)));
-assert!(!(c(1060640810)==c(1064228276)));
-assert!(!(c(1063562888)==c(1041318068)));
-assert!(!(c(1054322952)==c(1058605100)));
-assert!(!(c(1000462759)==c(1060657966)));
-assert!(!(c(1051864265)==c(1064173357)));
-assert!(!(c(1059269741)==c(1057768638)));
-assert!(!(c(1054757899)==c(1060320982)));
-assert!(!(c(1058223035)==c(1062486822)));
-assert!(!(c(1061290325)==c(1033696578)));
-assert!(!(c(1061326525)==c(1060973147)));
-assert!(!(c(1048660901)==c(1061305605)));
-assert!(!(c(1008320352)==c(1049079981)));
-assert!(!(c(1050617994)==c(1050168839)));
-assert!(!(c(1056618990)==c(1041994582)));
-assert!(!(c(1060722090)==c(1059455481)));
-assert!(!(c(1061038999)==c(1064059954)));
-assert!(!(c(1043642463)==c(1061136526)));
-assert!(!(c(1058388468)==c(1044197322)));
-assert!(!(c(1057422581)==c(1046432985)));
-assert!(!(c(1059440095)==c(1063198696)));
-assert!(!(c(1064219670)==c(1063532214)));
-assert!(!(c(1063998492)==c(1063896723)));
-assert!(!(c(1058522892)==c(1037647036)));
+#[test]
+fn original_b_circular_distance() {
+    eq_bits(c(0).distance(c(0)), 0);
+    eq_bits(c(0).distance(c(1065353216)), 1065353216);
+    eq_bits(c(1065353216).distance(c(0)), 0);
+    eq_bits(c(1061158912).distance(c(1048576000)), 1056964608);
+    eq_bits(c(1048576000).distance(c(1061158912)), 1056964608);
+    eq_bits(c(2143289344).distance(c(0)), 2143289344);
+    eq_bits(c(0).distance(c(2143289344)), 2143289344);
+    eq_bits(c(1056964608).distance(c(2139095040)), 2139095040);
+    eq_bits(c(1058795667).distance(c(1017551873)), 1053984922);
+    eq_bits(c(1048498503).distance(c(1054205250)), 1043134781);
+    eq_bits(c(1061297514).distance(c(1050659643)), 1057867828);
+    eq_bits(c(1061448065).distance(c(1065118905)), 1046482144);
+    eq_bits(c(1058844579).distance(c(1059819156)), 1030614800);
+    eq_bits(c(1057438148).distance(c(1060416199)), 1043710988);
+    eq_bits(c(1051198486).distance(c(1057658606)), 1046107020);
+    eq_bits(c(1060805730).distance(c(1039544822)), 1053316024);
+    eq_bits(c(1061174553).distance(c(1057378040)), 1061556703);
+    eq_bits(c(1057546062).distance(c(1059527129)), 1039258712);
+    eq_bits(c(1056635484).distance(c(1056250718)), 1065160834);
+    eq_bits(c(1045540218).distance(c(1045102806)), 1065243864);
+    eq_bits(c(1061418524).distance(c(1063614476)), 1040582592);
+    eq_bits(c(1063735408).distance(c(1060554841)), 1062172648);
+    eq_bits(c(1037758963).distance(c(1040344451)), 1017603148);
+    eq_bits(c(1057302575).distance(c(1046061990)), 1060192443);
+    eq_bits(c(1061796398).distance(c(1062260412)), 1021481408);
+    eq_bits(c(1059460654).distance(c(1044579802)), 1057663816);
+    eq_bits(c(1055408635).distance(c(1065056001)), 1057445380);
+    eq_bits(c(1048916124).distance(c(1057325233)), 1048957126);
+    eq_bits(c(1048839142).distance(c(1038177021)), 1062873197);
+    eq_bits(c(1061948153).distance(c(1039454922)), 1051008706);
+    eq_bits(c(1064749142).distance(c(1065272762)), 1023388800);
+    eq_bits(c(1032781876).distance(c(1056639953)), 1054297028);
+    eq_bits(c(1055274203).distance(c(1058246439)), 1040306918);
+    eq_bits(c(1061636593).distance(c(1047388713)), 1055415602);
+    eq_bits(c(1064803170).distance(c(1063392230)), 1063942276);
+    eq_bits(c(1064737654).distance(c(1064347102)), 1064962664);
+    eq_bits(c(1057176525).distance(c(1060206362)), 1043918132);
+    eq_bits(c(1062388792).distance(c(1048882494)), 1054811344);
+    eq_bits(c(1036138346).distance(c(1044300990)), 1035686418);
+    eq_bits(c(1061905106).distance(c(1058862092)), 1062310202);
+    eq_bits(c(1047408239).distance(c(1048949385)), 1021949208);
+    eq_bits(c(1052657441).distance(c(1060589953)), 1051745249);
+    eq_bits(c(1061184466).distance(c(1060976685)), 1065145434);
+    eq_bits(c(1063267360).distance(c(1055311301)), 1058223810);
+    eq_bits(c(1064640487).distance(c(1055080758)), 1056506218);
+    eq_bits(c(1063061001).distance(c(1055972306)), 1058760671);
+    eq_bits(c(1061645870).distance(c(1044876216)), 1054140800);
+    eq_bits(c(1059514778).distance(c(1057750356)), 1063588794);
+    eq_bits(c(1057191755).distance(c(1052712996)), 1063000263);
+    eq_bits(c(1063160262).distance(c(1031146717)), 1044601888);
+    eq_bits(c(1027492769).distance(c(1041288296)), 1036153600);
+    eq_bits(c(1056835471).distance(c(1058483112)), 1036074756);
+    eq_bits(c(1060822685).distance(c(1060264465)), 1064794995);
+    eq_bits(c(1056475682).distance(c(994112487)), 1057258467);
+    eq_bits(c(1058639854).distance(c(1045249340)), 1058652002);
+    eq_bits(c(1064409105).distance(c(1037021089)), 1042380684);
+    eq_bits(c(1062150519).distance(c(1045733080)), 1053559934);
+    eq_bits(c(1052041140).distance(c(1049018589)), 1063841940);
+    eq_bits(c(1052229976).distance(c(1064629996)), 1058608704);
+    eq_bits(c(1063962072).distance(c(1059921466)), 1061312610);
+    eq_bits(c(1052816102).distance(c(1052881731)), 989867648);
+    eq_bits(c(1059561573).distance(c(1065128767)), 1051321780);
+    eq_bits(c(1027854282).distance(c(1043254126)), 1039904503);
+    eq_bits(c(1043098562).distance(c(1062910521)), 1060085576);
+    eq_bits(c(1049449542).distance(c(1064166380)), 1059535305);
+    eq_bits(c(1064485961).distance(c(1039479544)), 1043302492);
+    eq_bits(c(1040499482).distance(c(1037810358)), 1064978064);
+    eq_bits(c(1058559679).distance(c(1050600619)), 1060576151);
 }
-#[test]fn original_b_circular_contains(){
-assert!(c(1061158912).wrapping_contains(c(1048576000),c(0)));
-assert!(c(1061158912).wrapping_contains(c(1048576000),c(1048576000)));
-assert!(!(c(1061158912).wrapping_contains(c(1048576000),c(1056964608))));
-assert!(c(1061158912).wrapping_contains(c(1048576000),c(1061158912)));
-assert!(c(1061158912).wrapping_contains(c(1048576000),c(1065353216)));
-assert!(!(c(1061158912).wrapping_contains(c(1048576000),c(2143289344))));
-assert!(!(c(1048576000).wrapping_contains(c(1061158912),c(0))));
-assert!(c(1048576000).wrapping_contains(c(1061158912),c(1048576000)));
-assert!(c(1048576000).wrapping_contains(c(1061158912),c(1056964608)));
-assert!(c(1048576000).wrapping_contains(c(1061158912),c(1061158912)));
-assert!(!(c(1048576000).wrapping_contains(c(1061158912),c(1065353216))));
-assert!(!(c(1048576000).wrapping_contains(c(1061158912),c(2143289344))));
-assert!(c(0).wrapping_contains(c(0),c(0)));
-assert!(!(c(0).wrapping_contains(c(0),c(1048576000))));
-assert!(!(c(0).wrapping_contains(c(0),c(1056964608))));
-assert!(!(c(0).wrapping_contains(c(0),c(1061158912))));
-assert!(!(c(0).wrapping_contains(c(0),c(1065353216))));
-assert!(!(c(0).wrapping_contains(c(0),c(2143289344))));
-assert!(c(0).wrapping_contains(c(1065353216),c(0)));
-assert!(c(0).wrapping_contains(c(1065353216),c(1048576000)));
-assert!(c(0).wrapping_contains(c(1065353216),c(1056964608)));
-assert!(c(0).wrapping_contains(c(1065353216),c(1061158912)));
-assert!(c(0).wrapping_contains(c(1065353216),c(1065353216)));
-assert!(!(c(0).wrapping_contains(c(1065353216),c(2143289344))));
-assert!(c(1065353216).wrapping_contains(c(0),c(0)));
-assert!(!(c(1065353216).wrapping_contains(c(0),c(1048576000))));
-assert!(!(c(1065353216).wrapping_contains(c(0),c(1056964608))));
-assert!(!(c(1065353216).wrapping_contains(c(0),c(1061158912))));
-assert!(c(1065353216).wrapping_contains(c(0),c(1065353216)));
-assert!(!(c(1065353216).wrapping_contains(c(0),c(2143289344))));
-assert!(!(c(1056964608).wrapping_contains(c(1056964608),c(0))));
-assert!(!(c(1056964608).wrapping_contains(c(1056964608),c(1048576000))));
-assert!(c(1056964608).wrapping_contains(c(1056964608),c(1056964608)));
-assert!(!(c(1056964608).wrapping_contains(c(1056964608),c(1061158912))));
-assert!(!(c(1056964608).wrapping_contains(c(1056964608),c(1065353216))));
-assert!(!(c(1056964608).wrapping_contains(c(1056964608),c(2143289344))));
-assert!(!(c(1061041327).wrapping_contains(c(1023570525),c(1042414276))));
-assert!(c(1060479237).wrapping_contains(c(1058223613),c(1057465302)));
-assert!(c(1056601761).wrapping_contains(c(1034619100),c(1065113001)));
-assert!(c(1043322297).wrapping_contains(c(1029769343),c(1049814109)));
-assert!(c(1060371858).wrapping_contains(c(1056194955),c(1052166730)));
-assert!(!(c(1019845192).wrapping_contains(c(1062154573),c(1012573270))));
-assert!(c(1059060226).wrapping_contains(c(1058392229),c(1063185262)));
-assert!(c(1063407650).wrapping_contains(c(1047282653),c(1036223110)));
-assert!(!(c(1021604252).wrapping_contains(c(1055348912),c(1064895484))));
-assert!(!(c(1061748873).wrapping_contains(c(1057029914),c(1061444384))));
-assert!(!(c(1040617769).wrapping_contains(c(1053375733),c(1054263450))));
-assert!(c(1049149149).wrapping_contains(c(1024790449),c(1055444457)));
-assert!(!(c(1042199289).wrapping_contains(c(1054442615),c(1061695778))));
-assert!(c(1020217072).wrapping_contains(c(983901962),c(1056549570)));
-assert!(!(c(1032697319).wrapping_contains(c(1056936214),c(1059326406))));
-assert!(!(c(1044011640).wrapping_contains(c(1050107719),c(1058217986))));
-assert!(c(1048112255).wrapping_contains(c(1040037667),c(1053766907)));
-assert!(c(1052934843).wrapping_contains(c(1025236829),c(1058584570)));
-assert!(!(c(1061744274).wrapping_contains(c(1047621589),c(1053489283))));
-assert!(!(c(1062303785).wrapping_contains(c(1039839197),c(1052835623))));
-assert!(c(1061630250).wrapping_contains(c(1058324410),c(1050108798)));
-assert!(!(c(1061879399).wrapping_contains(c(1062629888),c(1064590950))));
-assert!(!(c(1050874969).wrapping_contains(c(1057943368),c(1044347326))));
-assert!(!(c(1052061407).wrapping_contains(c(1062651148),c(1029356566))));
-assert!(c(1060632124).wrapping_contains(c(1045902582),c(1062083221)));
-assert!(c(1062641501).wrapping_contains(c(1060890237),c(1057323774)));
-assert!(!(c(1021289431).wrapping_contains(c(1041350060),c(1056154093))));
-assert!(!(c(1011410274).wrapping_contains(c(1053749670),c(1059815299))));
-assert!(!(c(1044709444).wrapping_contains(c(1055993298),c(1060576014))));
-assert!(c(1027613554).wrapping_contains(c(1057892104),c(1042463428)));
-assert!(c(1065183882).wrapping_contains(c(1062470680),c(1049752186)));
-assert!(c(1058959158).wrapping_contains(c(1042135330),c(1062623409)));
-assert!(c(1056066182).wrapping_contains(c(1047021406),c(1015964652)));
-assert!(c(1032245957).wrapping_contains(c(1056327312),c(1052433493)));
-assert!(!(c(1046935849).wrapping_contains(c(1063207201),c(1024076159))));
-assert!(c(1051483779).wrapping_contains(c(1059941134),c(1052748095)));
-assert!(c(1051422109).wrapping_contains(c(1059637914),c(1056137815)));
-assert!(!(c(1045181913).wrapping_contains(c(1057439531),c(1063553050))));
-assert!(!(c(1060458293).wrapping_contains(c(1062502446),c(1057731705))));
-assert!(c(1043958861).wrapping_contains(c(1062981034),c(1062610221)));
-assert!(c(1051176372).wrapping_contains(c(1038491991),c(1055142118)));
-assert!(!(c(1042897585).wrapping_contains(c(1058551161),c(1064220937))));
-assert!(c(1061383856).wrapping_contains(c(1058531485),c(1056105555)));
-assert!(!(c(1063957770).wrapping_contains(c(1032782783),c(1059984879))));
-assert!(c(1025541013).wrapping_contains(c(1063596554),c(1060992280)));
-assert!(!(c(1061642880).wrapping_contains(c(1065199830),c(1045962606))));
-assert!(c(1052339279).wrapping_contains(c(1041148679),c(1053381200)));
-assert!(c(1051811831).wrapping_contains(c(1031289185),c(1055981830)));
-assert!(c(1048319931).wrapping_contains(c(1041577999),c(1056697975)));
-assert!(!(c(1063047288).wrapping_contains(c(1065245586),c(1051202455))));
-assert!(!(c(1054148323).wrapping_contains(c(1056315204),c(1059425328))));
-assert!(c(1064521574).wrapping_contains(c(1064396730),c(1063431013)));
-assert!(!(c(1061142086).wrapping_contains(c(1048770973),c(1053490045))));
-assert!(!(c(1062033151).wrapping_contains(c(1064438763),c(1057000067))));
-assert!(c(1058516368).wrapping_contains(c(1058345380),c(1064206006)));
-assert!(!(c(1036892512).wrapping_contains(c(1051980744),c(1061556245))));
-assert!(c(1061422891).wrapping_contains(c(1054590177),c(1028053291)));
-assert!(!(c(1048661567).wrapping_contains(c(1059640858),c(1059784303))));
-assert!(c(1051937444).wrapping_contains(c(1048823773),c(1057503607)));
-assert!(c(1059864594).wrapping_contains(c(1056835573),c(1063923184)));
-assert!(c(1055458232).wrapping_contains(c(1060689907),c(1060570009)));
-assert!(c(1060332081).wrapping_contains(c(1049518619),c(1044968216)));
-assert!(c(1064649439).wrapping_contains(c(1057050121),c(1044787170)));
-assert!(c(1045898791).wrapping_contains(c(1060224588),c(1052856569)));
-assert!(c(1064632579).wrapping_contains(c(1059541464),c(1056587430)));
-assert!(!(c(1065110251).wrapping_contains(c(1047939037),c(1050428666))));
-assert!(!(c(1060702927).wrapping_contains(c(1041467739),c(1052543030))));
-assert!(!(c(1056417572).wrapping_contains(c(1064749052),c(1047049876))));
-assert!(c(1048938971).wrapping_contains(c(1057234424),c(1051035790)));
-assert!(!(c(1015328420).wrapping_contains(c(1037109965),c(1062052467))));
-assert!(!(c(1052976819).wrapping_contains(c(1063344706),c(975467712))));
-assert!(c(1058246709).wrapping_contains(c(1048993043),c(1060124961)));
-assert!(c(1060614264).wrapping_contains(c(1059903716),c(1051416827)));
-assert!(c(1051616554).wrapping_contains(c(1027771868),c(1052255983)));
-assert!(c(1059502998).wrapping_contains(c(1058415009),c(1063499612)));
-assert!(!(c(1064485550).wrapping_contains(c(1058875696),c(1061477310))));
-assert!(!(c(1049203890).wrapping_contains(c(1062244303),c(1063839396))));
-assert!(c(1045607501).wrapping_contains(c(1043515052),c(1049268456)));
-assert!(!(c(1059865230).wrapping_contains(c(1063921658),c(1059668537))));
-assert!(c(1063005411).wrapping_contains(c(1050932258),c(1008575702)));
-assert!(c(1053428394).wrapping_contains(c(1046847143),c(1042731398)));
-assert!(c(1040463160).wrapping_contains(c(1059949180),c(1052583869)));
-assert!(c(1052238999).wrapping_contains(c(1040046000),c(1055682107)));
-assert!(c(1049301142).wrapping_contains(c(1047135652),c(1062050827)));
-assert!(c(1065312569).wrapping_contains(c(1053689905),c(1042474069)));
-assert!(c(1050953906).wrapping_contains(c(1042760217),c(1057552572)));
-assert!(c(1035089106).wrapping_contains(c(1054942515),c(1038326990)));
-assert!(c(1062711535).wrapping_contains(c(1058910666),c(1057511117)));
-assert!(c(1054578629).wrapping_contains(c(1051867482),c(1012732935)));
-assert!(c(1059559632).wrapping_contains(c(1052931310),c(1064495339)));
-assert!(c(1050901103).wrapping_contains(c(1047243620),c(1063985462)));
-assert!(c(1053639246).wrapping_contains(c(1062778811),c(1061388380)));
-assert!(c(1040011617).wrapping_contains(c(1063059204),c(1059617481)));
-assert!(c(1063852427).wrapping_contains(c(1044871069),c(1035575456)));
-assert!(!(c(1064739350).wrapping_contains(c(1051196279),c(1060376338))));
-assert!(!(c(1060794213).wrapping_contains(c(1047514705),c(1059521277))));
-assert!(c(1052952400).wrapping_contains(c(1047865599),c(1057338937)));
-assert!(c(1052960192).wrapping_contains(c(1050288762),c(1064761014)));
-assert!(!(c(1055515636).wrapping_contains(c(1011977470),c(1023376170))));
-assert!(c(1064624075).wrapping_contains(c(1061800625),c(1037746558)));
+#[test]
+fn original_b_circular_lerp() {
+    eq_bits(
+        c(1061158912)
+            .wrapping_lerp(c(1048576000), f(3212836864))
+            .get(),
+        1048576000,
+    );
+    eq_bits(
+        c(1061158912).wrapping_lerp(c(1048576000), f(0)).get(),
+        1061158912,
+    );
+    eq_bits(
+        c(1061158912)
+            .wrapping_lerp(c(1048576000), f(1048576000))
+            .get(),
+        1063256064,
+    );
+    eq_bits(
+        c(1061158912)
+            .wrapping_lerp(c(1048576000), f(1056964608))
+            .get(),
+        0,
+    );
+    eq_bits(
+        c(1061158912)
+            .wrapping_lerp(c(1048576000), f(1065353216))
+            .get(),
+        1048576000,
+    );
+    eq_bits(
+        c(1061158912)
+            .wrapping_lerp(c(1048576000), f(1073741824))
+            .get(),
+        1061158912,
+    );
+    assert!(
+        std::panic::catch_unwind(|| {
+            c(1061158912)
+                .wrapping_lerp(c(1048576000), f(2143289344))
+                .get()
+        })
+        .is_err()
+    );
+    assert!(
+        std::panic::catch_unwind(|| {
+            c(1061158912)
+                .wrapping_lerp(c(1048576000), f(2139095040))
+                .get()
+        })
+        .is_err()
+    );
+    eq_bits(
+        c(1048576000)
+            .wrapping_lerp(c(1061158912), f(3212836864))
+            .get(),
+        1061158912,
+    );
+    eq_bits(
+        c(1048576000).wrapping_lerp(c(1061158912), f(0)).get(),
+        1048576000,
+    );
+    eq_bits(
+        c(1048576000)
+            .wrapping_lerp(c(1061158912), f(1048576000))
+            .get(),
+        1052770304,
+    );
+    eq_bits(
+        c(1048576000)
+            .wrapping_lerp(c(1061158912), f(1056964608))
+            .get(),
+        1056964608,
+    );
+    eq_bits(
+        c(1048576000)
+            .wrapping_lerp(c(1061158912), f(1065353216))
+            .get(),
+        1061158912,
+    );
+    eq_bits(
+        c(1048576000)
+            .wrapping_lerp(c(1061158912), f(1073741824))
+            .get(),
+        1048576000,
+    );
+    assert!(
+        std::panic::catch_unwind(|| {
+            c(1048576000)
+                .wrapping_lerp(c(1061158912), f(2143289344))
+                .get()
+        })
+        .is_err()
+    );
+    assert!(
+        std::panic::catch_unwind(|| {
+            c(1048576000)
+                .wrapping_lerp(c(1061158912), f(2139095040))
+                .get()
+        })
+        .is_err()
+    );
+    eq_bits(c(0).wrapping_lerp(c(0), f(3212836864)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(0), f(0)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(0), f(1048576000)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(0), f(1056964608)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(0), f(1065353216)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(0), f(1073741824)).get(), 0);
+    assert!(
+        std::panic::catch_unwind(|| { c(0).wrapping_lerp(c(0), f(2143289344)).get() }).is_err()
+    );
+    assert!(
+        std::panic::catch_unwind(|| { c(0).wrapping_lerp(c(0), f(2139095040)).get() }).is_err()
+    );
+    eq_bits(
+        c(0).wrapping_lerp(c(1065353216), f(3212836864)).get(),
+        2147483648,
+    );
+    eq_bits(c(0).wrapping_lerp(c(1065353216), f(0)).get(), 0);
+    eq_bits(
+        c(0).wrapping_lerp(c(1065353216), f(1048576000)).get(),
+        1048576000,
+    );
+    eq_bits(
+        c(0).wrapping_lerp(c(1065353216), f(1056964608)).get(),
+        1056964608,
+    );
+    eq_bits(c(0).wrapping_lerp(c(1065353216), f(1065353216)).get(), 0);
+    eq_bits(c(0).wrapping_lerp(c(1065353216), f(1073741824)).get(), 0);
+    assert!(
+        std::panic::catch_unwind(|| { c(0).wrapping_lerp(c(1065353216), f(2143289344)).get() })
+            .is_err()
+    );
+    assert!(
+        std::panic::catch_unwind(|| { c(0).wrapping_lerp(c(1065353216), f(2139095040)).get() })
+            .is_err()
+    );
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(3212836864)).get(), 0);
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(0)).get(), 0);
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(1048576000)).get(), 0);
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(1056964608)).get(), 0);
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(1065353216)).get(), 0);
+    eq_bits(c(1065353216).wrapping_lerp(c(0), f(1073741824)).get(), 0);
+    assert!(
+        std::panic::catch_unwind(|| { c(1065353216).wrapping_lerp(c(0), f(2143289344)).get() })
+            .is_err()
+    );
+    assert!(
+        std::panic::catch_unwind(|| { c(1065353216).wrapping_lerp(c(0), f(2139095040)).get() })
+            .is_err()
+    );
+    eq_bits(
+        c(1061591054)
+            .wrapping_lerp(c(1061363195), f(3212824674))
+            .get(),
+        1061830936,
+    );
+    eq_bits(
+        c(1055438151)
+            .wrapping_lerp(c(1060700411), f(3212958042))
+            .get(),
+        1044044212,
+    );
+    eq_bits(
+        c(1026777587)
+            .wrapping_lerp(c(1057928448), f(3209576199))
+            .get(),
+        1059145126,
+    );
+    eq_bits(
+        c(983082555)
+            .wrapping_lerp(c(1059215375), f(1066930597))
+            .get(),
+        1061212313,
+    );
+    eq_bits(
+        c(1059989080)
+            .wrapping_lerp(c(1052266125), f(1050780751))
+            .get(),
+        1063589242,
+    );
+    eq_bits(
+        c(1063327701)
+            .wrapping_lerp(c(1057118875), f(1048608039))
+            .get(),
+        1025048352,
+    );
+    eq_bits(
+        c(1029073540)
+            .wrapping_lerp(c(1026761229), f(1042244712))
+            .get(),
+        1045667723,
+    );
+    eq_bits(
+        c(1063838235)
+            .wrapping_lerp(c(1057639823), f(1071803140))
+            .get(),
+        1020090752,
+    );
+    eq_bits(
+        c(1061893387)
+            .wrapping_lerp(c(1019580796), f(3206331519))
+            .get(),
+        1059527374,
+    );
+    eq_bits(
+        c(1061817500)
+            .wrapping_lerp(c(1064295249), f(1072126695))
+            .get(),
+        1030105088,
+    );
+    eq_bits(
+        c(1054815171)
+            .wrapping_lerp(c(1049638968), f(3204784978))
+            .get(),
+        1065287770,
+    );
+    eq_bits(
+        c(1035380342)
+            .wrapping_lerp(c(1049974287), f(1055026471))
+            .get(),
+        1043793324,
+    );
+    eq_bits(
+        c(1055668115)
+            .wrapping_lerp(c(1043289832), f(3217321986))
+            .get(),
+        1052667928,
+    );
+    eq_bits(
+        c(1051517640)
+            .wrapping_lerp(c(1049815079), f(3214740014))
+            .get(),
+        1043411732,
+    );
+    eq_bits(
+        c(1006565125)
+            .wrapping_lerp(c(1055328517), f(3190530287))
+            .get(),
+        1064236765,
+    );
+    eq_bits(
+        c(1042539527)
+            .wrapping_lerp(c(1050827086), f(1049081676))
+            .get(),
+        1045333009,
+    );
+    eq_bits(
+        c(1036489437)
+            .wrapping_lerp(c(1006893615), f(3211711296))
+            .get(),
+        1048437272,
+    );
+    eq_bits(
+        c(1040028803)
+            .wrapping_lerp(c(1062305819), f(1063099123))
+            .get(),
+        1060740255,
+    );
+    eq_bits(
+        c(1027040818)
+            .wrapping_lerp(c(1065197344), f(1050253531))
+            .get(),
+        1051211703,
+    );
+    eq_bits(
+        c(1064152302)
+            .wrapping_lerp(c(1062181929), f(1068557626))
+            .get(),
+        1041738224,
+    );
+    eq_bits(
+        c(1026599745)
+            .wrapping_lerp(c(1026158556), f(3217031144))
+            .get(),
+        1057729652,
+    );
+    eq_bits(
+        c(1053913118)
+            .wrapping_lerp(c(1038991131), f(1056656086))
+            .get(),
+        1061260782,
+    );
+    eq_bits(
+        c(1043197896)
+            .wrapping_lerp(c(1051656205), f(1061010190))
+            .get(),
+        1050162749,
+    );
+    eq_bits(
+        c(1061960371)
+            .wrapping_lerp(c(1040477498), f(3213589796))
+            .get(),
+        1054832544,
+    );
+    eq_bits(
+        c(1047944504)
+            .wrapping_lerp(c(1064407175), f(1063510844))
+            .get(),
+        1063111947,
+    );
+    eq_bits(
+        c(1052231606)
+            .wrapping_lerp(c(1037548656), f(3221219965))
+            .get(),
+        1063115922,
+    );
+    eq_bits(
+        c(1047309289)
+            .wrapping_lerp(c(1063086588), f(1071910583))
+            .get(),
+        1052277692,
+    );
+    eq_bits(
+        c(1047825338)
+            .wrapping_lerp(c(1065154451), f(3220528055))
+            .get(),
+        1062038648,
+    );
+    eq_bits(
+        c(1063574354)
+            .wrapping_lerp(c(1057348749), f(3213685343))
+            .get(),
+        1045316728,
+    );
+    eq_bits(
+        c(1049220097)
+            .wrapping_lerp(c(1065198111), f(1071635407))
+            .get(),
+        1057486844,
+    );
+    eq_bits(
+        c(1058234580)
+            .wrapping_lerp(c(1018992464), f(3199280893))
+            .get(),
+        1054311173,
+    );
+    eq_bits(
+        c(1057975978)
+            .wrapping_lerp(c(1062690145), f(1069790339))
+            .get(),
+        1065183686,
+    );
+    eq_bits(
+        c(1015281875)
+            .wrapping_lerp(c(1051789526), f(1073869604))
+            .get(),
+        1060076351,
+    );
+    eq_bits(
+        c(1052698926)
+            .wrapping_lerp(c(1037162557), f(1069492379))
+            .get(),
+        1055705064,
+    );
+    eq_bits(
+        c(1060494218)
+            .wrapping_lerp(c(1062325541), f(3177041573))
+            .get(),
+        1060395048,
+    );
+    eq_bits(
+        c(1049288892)
+            .wrapping_lerp(c(1064460750), f(1072135019))
+            .get(),
+        1056728492,
+    );
+    eq_bits(
+        c(1061182015)
+            .wrapping_lerp(c(1063452254), f(1073762364))
+            .get(),
+        1018805568,
+    );
+    eq_bits(
+        c(1050732163)
+            .wrapping_lerp(c(1047604060), f(1057573160))
+            .get(),
+        1062137094,
+    );
+    eq_bits(
+        c(1030599297)
+            .wrapping_lerp(c(1048182138), f(1066159009))
+            .get(),
+        1048978899,
+    );
+    eq_bits(
+        c(1065055137)
+            .wrapping_lerp(c(1063869341), f(1077203938))
+            .get(),
+        1058775988,
+    );
+    eq_bits(
+        c(1065117898)
+            .wrapping_lerp(c(1055682119), f(1007675161))
+            .get(),
+        1065188011,
+    );
+    eq_bits(
+        c(1039229291)
+            .wrapping_lerp(c(1041032197), f(1074296704))
+            .get(),
+        1042531190,
+    );
+    eq_bits(
+        c(1057034422)
+            .wrapping_lerp(c(1064736577), f(3216020545))
+            .get(),
+        1063186326,
+    );
+    eq_bits(
+        c(1054191377)
+            .wrapping_lerp(c(992137567), f(1036846213))
+            .get(),
+        1056156844,
+    );
+    eq_bits(
+        c(1040585749)
+            .wrapping_lerp(c(1064238656), f(3204558388))
+            .get(),
+        1060728604,
+    );
+    eq_bits(
+        c(1059067696)
+            .wrapping_lerp(c(1065178297), f(3217680766))
+            .get(),
+        1028663200,
+    );
+    eq_bits(
+        c(1046748520)
+            .wrapping_lerp(c(1058936161), f(1077394032))
+            .get(),
+        1052132272,
+    );
+    eq_bits(
+        c(1045745404)
+            .wrapping_lerp(c(1062394834), f(1055933176))
+            .get(),
+        1056857678,
+    );
+    eq_bits(
+        c(1048493848)
+            .wrapping_lerp(c(1062841482), f(1076206566))
+            .get(),
+        1062086280,
+    );
+    eq_bits(
+        c(1058478026)
+            .wrapping_lerp(c(1031069506), f(1055402012))
+            .get(),
+        1062050240,
+    );
+    eq_bits(
+        c(1056010489)
+            .wrapping_lerp(c(1060713041), f(3213712109))
+            .get(),
+        1044779496,
+    );
+    eq_bits(
+        c(1049383886)
+            .wrapping_lerp(c(1030986318), f(1073960433))
+            .get(),
+        1063437338,
+    );
+    eq_bits(
+        c(1059188474)
+            .wrapping_lerp(c(1057963959), f(1076033192))
+            .get(),
+        1065235960,
+    );
+    eq_bits(
+        c(1055996271)
+            .wrapping_lerp(c(1058758070), f(3176618771))
+            .get(),
+        1055756770,
+    );
+    eq_bits(
+        c(1040476069)
+            .wrapping_lerp(c(1062209384), f(1062950166))
+            .get(),
+        1060567352,
+    );
+    eq_bits(
+        c(1046131404)
+            .wrapping_lerp(c(1061551499), f(3202905519))
+            .get(),
+        1064672032,
+    );
+    eq_bits(
+        c(1057460076)
+            .wrapping_lerp(c(1059021714), f(3221218372))
+            .get(),
+        1051711636,
+    );
+    eq_bits(
+        c(1061045500)
+            .wrapping_lerp(c(1043874773), f(3215179476))
+            .get(),
+        1044185664,
+    );
+    eq_bits(
+        c(1051822876)
+            .wrapping_lerp(c(1014883931), f(1067208649))
+            .get(),
+        1042765064,
+    );
+    eq_bits(
+        c(1040594822)
+            .wrapping_lerp(c(1040956442), f(1065272198))
+            .get(),
+        1040954696,
+    );
+    eq_bits(
+        c(1057688335)
+            .wrapping_lerp(c(1064767831), f(1074841584))
+            .get(),
+        1056888144,
+    );
+    eq_bits(
+        c(1063523132)
+            .wrapping_lerp(c(1062948904), f(3205615601))
+            .get(),
+        1051623884,
+    );
+    eq_bits(
+        c(1038504576)
+            .wrapping_lerp(c(1061861140), f(3213233169))
+            .get(),
+        1053641754,
+    );
+    eq_bits(
+        c(1052349474)
+            .wrapping_lerp(c(1052279126), f(3204695081))
+            .get(),
+        1062816928,
+    );
+    eq_bits(
+        c(1063368187)
+            .wrapping_lerp(c(1058825263), f(1061580011))
+            .get(),
+        1055182920,
+    );
+    eq_bits(
+        c(1064281479)
+            .wrapping_lerp(c(1022964145), f(3206061262))
+            .get(),
+        1063338329,
+    );
+    eq_bits(
+        c(1059217641)
+            .wrapping_lerp(c(1063266430), f(3215737462))
+            .get(),
+        1050573132,
+    );
+    eq_bits(
+        c(1059107749)
+            .wrapping_lerp(c(1057420735), f(1065946383))
+            .get(),
+        1058487780,
+    );
+    eq_bits(
+        c(1057977979)
+            .wrapping_lerp(c(1061418563), f(3208263459))
+            .get(),
+        1053985964,
+    );
+    eq_bits(
+        c(1056284847)
+            .wrapping_lerp(c(1042341025), f(1075149091))
+            .get(),
+        1031585472,
+    );
+    eq_bits(
+        c(1050265555)
+            .wrapping_lerp(c(1050927998), f(3206967381))
+            .get(),
+        1049834866,
+    );
+    eq_bits(
+        c(1054758051)
+            .wrapping_lerp(c(1057610337), f(1071712411))
+            .get(),
+        1058936216,
+    );
+    eq_bits(
+        c(1059220885)
+            .wrapping_lerp(c(1060649523), f(3214170404))
+            .get(),
+        1057565137,
+    );
+    eq_bits(
+        c(1060740588)
+            .wrapping_lerp(c(1049017373), f(1074418158))
+            .get(),
+        1063474316,
+    );
+    eq_bits(
+        c(1061029368)
+            .wrapping_lerp(c(1024226809), f(3217483463))
+            .get(),
+        1049868300,
+    );
+    eq_bits(
+        c(1063308629)
+            .wrapping_lerp(c(1057014160), f(3182351046))
+            .get(),
+        1062413790,
+    );
+    eq_bits(
+        c(1058658801)
+            .wrapping_lerp(c(1055026948), f(3193476552))
+            .get(),
+        1054382440,
+    );
+    eq_bits(
+        c(1045250003)
+            .wrapping_lerp(c(1062750846), f(3205521377))
+            .get(),
+        1062618430,
+    );
+    eq_bits(
+        c(1064633092)
+            .wrapping_lerp(c(1053133755), f(3220997706))
+            .get(),
+        1038336512,
+    );
+    eq_bits(
+        c(1057099267)
+            .wrapping_lerp(c(1064296289), f(3220182140))
+            .get(),
+        1060377566,
+    );
+}
+#[test]
+fn original_b_circular_from() {
+    eq_bits(CurveU::from(c(2147483648)).get(), 2147483648);
+    eq_bits(CurveU::from(c(0)).get(), 0);
+    eq_bits(CurveU::from(c(1065353216)).get(), 1065353216);
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(3212836864)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(1073741824)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(3196059648)).get() }).is_err());
+    eq_bits(CurveU::from(c(1048576000)).get(), 1048576000);
+    eq_bits(CurveU::from(c(1061158912)).get(), 1061158912);
+    eq_bits(CurveU::from(c(1)).get(), 1);
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(2147483649)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(2139095040)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(4286578688)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(2143289344)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(3129152111)).get() }).is_err());
+    assert!(std::panic::catch_unwind(|| { CurveU::from(c(1065361605)).get() }).is_err());
+    eq_bits(CurveU::from(c(1061759650)).get(), 1061759650);
+    eq_bits(CurveU::from(c(1053323570)).get(), 1053323570);
+    eq_bits(CurveU::from(c(1031625198)).get(), 1031625198);
+    eq_bits(CurveU::from(c(1064713994)).get(), 1064713994);
+    eq_bits(CurveU::from(c(1036686637)).get(), 1036686637);
+    eq_bits(CurveU::from(c(1045348408)).get(), 1045348408);
+    eq_bits(CurveU::from(c(1059254679)).get(), 1059254679);
+    eq_bits(CurveU::from(c(1056040174)).get(), 1056040174);
+    eq_bits(CurveU::from(c(1064998413)).get(), 1064998413);
+    eq_bits(CurveU::from(c(1051573020)).get(), 1051573020);
+    eq_bits(CurveU::from(c(1057205778)).get(), 1057205778);
+    eq_bits(CurveU::from(c(1053046520)).get(), 1053046520);
+    eq_bits(CurveU::from(c(1056843199)).get(), 1056843199);
+    eq_bits(CurveU::from(c(1060789042)).get(), 1060789042);
+    eq_bits(CurveU::from(c(1053285447)).get(), 1053285447);
+    eq_bits(CurveU::from(c(1034911423)).get(), 1034911423);
+    eq_bits(CurveU::from(c(1064376738)).get(), 1064376738);
+    eq_bits(CurveU::from(c(1063692834)).get(), 1063692834);
+    eq_bits(CurveU::from(c(1061927632)).get(), 1061927632);
+    eq_bits(CurveU::from(c(1052052890)).get(), 1052052890);
+    eq_bits(CurveU::from(c(1057468980)).get(), 1057468980);
+    eq_bits(CurveU::from(c(1051796674)).get(), 1051796674);
+    eq_bits(CurveU::from(c(1048054288)).get(), 1048054288);
+    eq_bits(CurveU::from(c(1035654062)).get(), 1035654062);
+    eq_bits(CurveU::from(c(1053712561)).get(), 1053712561);
+    eq_bits(CurveU::from(c(1025580027)).get(), 1025580027);
+    eq_bits(CurveU::from(c(1062403259)).get(), 1062403259);
+    eq_bits(CurveU::from(c(1008724442)).get(), 1008724442);
+    eq_bits(CurveU::from(c(1050987687)).get(), 1050987687);
+    eq_bits(CurveU::from(c(1013998085)).get(), 1013998085);
+}
+#[test]
+fn original_b_circular_eq() {
+    assert!(c(0) == c(2147483648));
+    assert!(c(1056964608) == c(1056964608));
+    assert!(!(c(1048576000) == c(1056964608)));
+    assert!(!(c(2143289344) == c(2143289344)));
+    assert!(!(c(2143289344) == c(0)));
+    assert!(!(c(1058370836) == c(1060008675)));
+    assert!(!(c(1055438476) == c(1064741985)));
+    assert!(!(c(1060640810) == c(1064228276)));
+    assert!(!(c(1063562888) == c(1041318068)));
+    assert!(!(c(1054322952) == c(1058605100)));
+    assert!(!(c(1000462759) == c(1060657966)));
+    assert!(!(c(1051864265) == c(1064173357)));
+    assert!(!(c(1059269741) == c(1057768638)));
+    assert!(!(c(1054757899) == c(1060320982)));
+    assert!(!(c(1058223035) == c(1062486822)));
+    assert!(!(c(1061290325) == c(1033696578)));
+    assert!(!(c(1061326525) == c(1060973147)));
+    assert!(!(c(1048660901) == c(1061305605)));
+    assert!(!(c(1008320352) == c(1049079981)));
+    assert!(!(c(1050617994) == c(1050168839)));
+    assert!(!(c(1056618990) == c(1041994582)));
+    assert!(!(c(1060722090) == c(1059455481)));
+    assert!(!(c(1061038999) == c(1064059954)));
+    assert!(!(c(1043642463) == c(1061136526)));
+    assert!(!(c(1058388468) == c(1044197322)));
+    assert!(!(c(1057422581) == c(1046432985)));
+    assert!(!(c(1059440095) == c(1063198696)));
+    assert!(!(c(1064219670) == c(1063532214)));
+    assert!(!(c(1063998492) == c(1063896723)));
+    assert!(!(c(1058522892) == c(1037647036)));
+}
+#[test]
+fn original_b_circular_contains() {
+    assert!(c(1061158912).wrapping_contains(c(1048576000), c(0)));
+    assert!(c(1061158912).wrapping_contains(c(1048576000), c(1048576000)));
+    assert!(!(c(1061158912).wrapping_contains(c(1048576000), c(1056964608))));
+    assert!(c(1061158912).wrapping_contains(c(1048576000), c(1061158912)));
+    assert!(c(1061158912).wrapping_contains(c(1048576000), c(1065353216)));
+    assert!(!(c(1061158912).wrapping_contains(c(1048576000), c(2143289344))));
+    assert!(!(c(1048576000).wrapping_contains(c(1061158912), c(0))));
+    assert!(c(1048576000).wrapping_contains(c(1061158912), c(1048576000)));
+    assert!(c(1048576000).wrapping_contains(c(1061158912), c(1056964608)));
+    assert!(c(1048576000).wrapping_contains(c(1061158912), c(1061158912)));
+    assert!(!(c(1048576000).wrapping_contains(c(1061158912), c(1065353216))));
+    assert!(!(c(1048576000).wrapping_contains(c(1061158912), c(2143289344))));
+    assert!(c(0).wrapping_contains(c(0), c(0)));
+    assert!(!(c(0).wrapping_contains(c(0), c(1048576000))));
+    assert!(!(c(0).wrapping_contains(c(0), c(1056964608))));
+    assert!(!(c(0).wrapping_contains(c(0), c(1061158912))));
+    assert!(!(c(0).wrapping_contains(c(0), c(1065353216))));
+    assert!(!(c(0).wrapping_contains(c(0), c(2143289344))));
+    assert!(c(0).wrapping_contains(c(1065353216), c(0)));
+    assert!(c(0).wrapping_contains(c(1065353216), c(1048576000)));
+    assert!(c(0).wrapping_contains(c(1065353216), c(1056964608)));
+    assert!(c(0).wrapping_contains(c(1065353216), c(1061158912)));
+    assert!(c(0).wrapping_contains(c(1065353216), c(1065353216)));
+    assert!(!(c(0).wrapping_contains(c(1065353216), c(2143289344))));
+    assert!(c(1065353216).wrapping_contains(c(0), c(0)));
+    assert!(!(c(1065353216).wrapping_contains(c(0), c(1048576000))));
+    assert!(!(c(1065353216).wrapping_contains(c(0), c(1056964608))));
+    assert!(!(c(1065353216).wrapping_contains(c(0), c(1061158912))));
+    assert!(c(1065353216).wrapping_contains(c(0), c(1065353216)));
+    assert!(!(c(1065353216).wrapping_contains(c(0), c(2143289344))));
+    assert!(!(c(1056964608).wrapping_contains(c(1056964608), c(0))));
+    assert!(!(c(1056964608).wrapping_contains(c(1056964608), c(1048576000))));
+    assert!(c(1056964608).wrapping_contains(c(1056964608), c(1056964608)));
+    assert!(!(c(1056964608).wrapping_contains(c(1056964608), c(1061158912))));
+    assert!(!(c(1056964608).wrapping_contains(c(1056964608), c(1065353216))));
+    assert!(!(c(1056964608).wrapping_contains(c(1056964608), c(2143289344))));
+    assert!(!(c(1061041327).wrapping_contains(c(1023570525), c(1042414276))));
+    assert!(c(1060479237).wrapping_contains(c(1058223613), c(1057465302)));
+    assert!(c(1056601761).wrapping_contains(c(1034619100), c(1065113001)));
+    assert!(c(1043322297).wrapping_contains(c(1029769343), c(1049814109)));
+    assert!(c(1060371858).wrapping_contains(c(1056194955), c(1052166730)));
+    assert!(!(c(1019845192).wrapping_contains(c(1062154573), c(1012573270))));
+    assert!(c(1059060226).wrapping_contains(c(1058392229), c(1063185262)));
+    assert!(c(1063407650).wrapping_contains(c(1047282653), c(1036223110)));
+    assert!(!(c(1021604252).wrapping_contains(c(1055348912), c(1064895484))));
+    assert!(!(c(1061748873).wrapping_contains(c(1057029914), c(1061444384))));
+    assert!(!(c(1040617769).wrapping_contains(c(1053375733), c(1054263450))));
+    assert!(c(1049149149).wrapping_contains(c(1024790449), c(1055444457)));
+    assert!(!(c(1042199289).wrapping_contains(c(1054442615), c(1061695778))));
+    assert!(c(1020217072).wrapping_contains(c(983901962), c(1056549570)));
+    assert!(!(c(1032697319).wrapping_contains(c(1056936214), c(1059326406))));
+    assert!(!(c(1044011640).wrapping_contains(c(1050107719), c(1058217986))));
+    assert!(c(1048112255).wrapping_contains(c(1040037667), c(1053766907)));
+    assert!(c(1052934843).wrapping_contains(c(1025236829), c(1058584570)));
+    assert!(!(c(1061744274).wrapping_contains(c(1047621589), c(1053489283))));
+    assert!(!(c(1062303785).wrapping_contains(c(1039839197), c(1052835623))));
+    assert!(c(1061630250).wrapping_contains(c(1058324410), c(1050108798)));
+    assert!(!(c(1061879399).wrapping_contains(c(1062629888), c(1064590950))));
+    assert!(!(c(1050874969).wrapping_contains(c(1057943368), c(1044347326))));
+    assert!(!(c(1052061407).wrapping_contains(c(1062651148), c(1029356566))));
+    assert!(c(1060632124).wrapping_contains(c(1045902582), c(1062083221)));
+    assert!(c(1062641501).wrapping_contains(c(1060890237), c(1057323774)));
+    assert!(!(c(1021289431).wrapping_contains(c(1041350060), c(1056154093))));
+    assert!(!(c(1011410274).wrapping_contains(c(1053749670), c(1059815299))));
+    assert!(!(c(1044709444).wrapping_contains(c(1055993298), c(1060576014))));
+    assert!(c(1027613554).wrapping_contains(c(1057892104), c(1042463428)));
+    assert!(c(1065183882).wrapping_contains(c(1062470680), c(1049752186)));
+    assert!(c(1058959158).wrapping_contains(c(1042135330), c(1062623409)));
+    assert!(c(1056066182).wrapping_contains(c(1047021406), c(1015964652)));
+    assert!(c(1032245957).wrapping_contains(c(1056327312), c(1052433493)));
+    assert!(!(c(1046935849).wrapping_contains(c(1063207201), c(1024076159))));
+    assert!(c(1051483779).wrapping_contains(c(1059941134), c(1052748095)));
+    assert!(c(1051422109).wrapping_contains(c(1059637914), c(1056137815)));
+    assert!(!(c(1045181913).wrapping_contains(c(1057439531), c(1063553050))));
+    assert!(!(c(1060458293).wrapping_contains(c(1062502446), c(1057731705))));
+    assert!(c(1043958861).wrapping_contains(c(1062981034), c(1062610221)));
+    assert!(c(1051176372).wrapping_contains(c(1038491991), c(1055142118)));
+    assert!(!(c(1042897585).wrapping_contains(c(1058551161), c(1064220937))));
+    assert!(c(1061383856).wrapping_contains(c(1058531485), c(1056105555)));
+    assert!(!(c(1063957770).wrapping_contains(c(1032782783), c(1059984879))));
+    assert!(c(1025541013).wrapping_contains(c(1063596554), c(1060992280)));
+    assert!(!(c(1061642880).wrapping_contains(c(1065199830), c(1045962606))));
+    assert!(c(1052339279).wrapping_contains(c(1041148679), c(1053381200)));
+    assert!(c(1051811831).wrapping_contains(c(1031289185), c(1055981830)));
+    assert!(c(1048319931).wrapping_contains(c(1041577999), c(1056697975)));
+    assert!(!(c(1063047288).wrapping_contains(c(1065245586), c(1051202455))));
+    assert!(!(c(1054148323).wrapping_contains(c(1056315204), c(1059425328))));
+    assert!(c(1064521574).wrapping_contains(c(1064396730), c(1063431013)));
+    assert!(!(c(1061142086).wrapping_contains(c(1048770973), c(1053490045))));
+    assert!(!(c(1062033151).wrapping_contains(c(1064438763), c(1057000067))));
+    assert!(c(1058516368).wrapping_contains(c(1058345380), c(1064206006)));
+    assert!(!(c(1036892512).wrapping_contains(c(1051980744), c(1061556245))));
+    assert!(c(1061422891).wrapping_contains(c(1054590177), c(1028053291)));
+    assert!(!(c(1048661567).wrapping_contains(c(1059640858), c(1059784303))));
+    assert!(c(1051937444).wrapping_contains(c(1048823773), c(1057503607)));
+    assert!(c(1059864594).wrapping_contains(c(1056835573), c(1063923184)));
+    assert!(c(1055458232).wrapping_contains(c(1060689907), c(1060570009)));
+    assert!(c(1060332081).wrapping_contains(c(1049518619), c(1044968216)));
+    assert!(c(1064649439).wrapping_contains(c(1057050121), c(1044787170)));
+    assert!(c(1045898791).wrapping_contains(c(1060224588), c(1052856569)));
+    assert!(c(1064632579).wrapping_contains(c(1059541464), c(1056587430)));
+    assert!(!(c(1065110251).wrapping_contains(c(1047939037), c(1050428666))));
+    assert!(!(c(1060702927).wrapping_contains(c(1041467739), c(1052543030))));
+    assert!(!(c(1056417572).wrapping_contains(c(1064749052), c(1047049876))));
+    assert!(c(1048938971).wrapping_contains(c(1057234424), c(1051035790)));
+    assert!(!(c(1015328420).wrapping_contains(c(1037109965), c(1062052467))));
+    assert!(!(c(1052976819).wrapping_contains(c(1063344706), c(975467712))));
+    assert!(c(1058246709).wrapping_contains(c(1048993043), c(1060124961)));
+    assert!(c(1060614264).wrapping_contains(c(1059903716), c(1051416827)));
+    assert!(c(1051616554).wrapping_contains(c(1027771868), c(1052255983)));
+    assert!(c(1059502998).wrapping_contains(c(1058415009), c(1063499612)));
+    assert!(!(c(1064485550).wrapping_contains(c(1058875696), c(1061477310))));
+    assert!(!(c(1049203890).wrapping_contains(c(1062244303), c(1063839396))));
+    assert!(c(1045607501).wrapping_contains(c(1043515052), c(1049268456)));
+    assert!(!(c(1059865230).wrapping_contains(c(1063921658), c(1059668537))));
+    assert!(c(1063005411).wrapping_contains(c(1050932258), c(1008575702)));
+    assert!(c(1053428394).wrapping_contains(c(1046847143), c(1042731398)));
+    assert!(c(1040463160).wrapping_contains(c(1059949180), c(1052583869)));
+    assert!(c(1052238999).wrapping_contains(c(1040046000), c(1055682107)));
+    assert!(c(1049301142).wrapping_contains(c(1047135652), c(1062050827)));
+    assert!(c(1065312569).wrapping_contains(c(1053689905), c(1042474069)));
+    assert!(c(1050953906).wrapping_contains(c(1042760217), c(1057552572)));
+    assert!(c(1035089106).wrapping_contains(c(1054942515), c(1038326990)));
+    assert!(c(1062711535).wrapping_contains(c(1058910666), c(1057511117)));
+    assert!(c(1054578629).wrapping_contains(c(1051867482), c(1012732935)));
+    assert!(c(1059559632).wrapping_contains(c(1052931310), c(1064495339)));
+    assert!(c(1050901103).wrapping_contains(c(1047243620), c(1063985462)));
+    assert!(c(1053639246).wrapping_contains(c(1062778811), c(1061388380)));
+    assert!(c(1040011617).wrapping_contains(c(1063059204), c(1059617481)));
+    assert!(c(1063852427).wrapping_contains(c(1044871069), c(1035575456)));
+    assert!(!(c(1064739350).wrapping_contains(c(1051196279), c(1060376338))));
+    assert!(!(c(1060794213).wrapping_contains(c(1047514705), c(1059521277))));
+    assert!(c(1052952400).wrapping_contains(c(1047865599), c(1057338937)));
+    assert!(c(1052960192).wrapping_contains(c(1050288762), c(1064761014)));
+    assert!(!(c(1055515636).wrapping_contains(c(1011977470), c(1023376170))));
+    assert!(c(1064624075).wrapping_contains(c(1061800625), c(1037746558)));
 }

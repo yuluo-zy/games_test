@@ -160,13 +160,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &ShapeStream::new().fill_color(u32::MAX).corner_radius(20.),
         &mut |_| 0,
     );
-    renderer.rect([20., 200.], [100., 100.], u32::MAX, &raw);
+    renderer.rect_with_color([20., 200.], [100., 100.], u32::MAX, &raw);
     let mut sprite_raw = RawShapeStream::new();
     sprite_raw.append(
         &ShapeStream::new().image(ImageSource::Index(0), ImageScaling::Stretch),
         &mut |_| 0,
     );
-    renderer.rect([200., 200.], [100., 100.], u32::MAX, &sprite_raw);
+    renderer.rect_with_color([200., 200.], [100., 100.], u32::MAX, &sprite_raw);
     let batch = renderer.consume();
     let shape_frame = unsafe {
         gpu.render_offscreen(1000, 1000, &batch, renderer.atlas(), &[], &[sprite.clone()])
@@ -189,7 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &ShapeStream::new().image(ImageSource::Index(0), scaling),
             &mut |_| 0,
         );
-        renderer.rect([20., 400.], [160., 100.], u32::MAX, &ops);
+        renderer.rect_with_color([20., 400.], [160., 100.], u32::MAX, &ops);
         let batch = renderer.consume();
         let scaled_image = unsafe {
             gpu.render_offscreen(1000, 1000, &batch, renderer.atlas(), &[], &[sprite.clone()])

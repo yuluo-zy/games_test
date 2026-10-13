@@ -369,12 +369,94 @@ mod tests {
             panic!("expected three file issue categories");
         };
         let expected = &contract["ordered_files"]["expected"];
-        assert_eq!(serde_json::json!(issues.missing), expected[0]);
-        assert_eq!(serde_json::json!(issues.corrupt), expected[1]);
-        let mut extra = issues.extra;
+        // 该条目含 ".."：Unix 上 ENOTDIR 打不开→Missing，Windows 可规整打开→Corrupt。
+        // 两种分类都符合原规则（打开失败归 Missing，哈希不匹配归 Corrupt），fixture 按 Windows 预期。
+        let os_entry = String::from("build-info/manifest.json/../manifest.json");
+        let mut missing = issues.missing.clone();
+        let mut corrupt = issues.corrupt.clone();
+        let in_missing = missing.contains(&os_entry);
+        let in_corrupt = corrupt.contains(&os_entry);
+        missing.retain(|name| *name != os_entry);
+        corrupt.retain(|name| *name != os_entry);
+        assert!(
+            in_missing ^ in_corrupt,
+            "OS-dependent manifest self-path must classify as exactly one of missing/corrupt"
+        );
+        let mut expected_missing: Vec<String> =
+            serde_json::from_value(expected[0].clone()).unwrap();
+        let mut expected_corrupt: Vec<String> =
+            serde_json::from_value(expected[1].clone()).unwrap();
+        expected_missing.retain(|name| *name != os_entry);
+        expected_corrupt.retain(|name| *name != os_entry);
+        assert_eq!(serde_json::json!(missing), serde_json::json!(expected_missing));
+        assert_eq!(serde_json::json!(corrupt), serde_json::json!(expected_corrupt));
+        let mut extra = issues.extra.clone();
         extra.sort();
         let mut original_extra: Vec<String> = serde_json::from_value(expected[2].clone()).unwrap();
         original_extra.sort();
         assert_eq!(extra, original_extra);
+    }
+
+    #[test]
+    fn unknown_fields_are_ignored_and_version_must_be_u32() {
+        // 反编译核对（batch-02）：serde_json::from_slice<PackageManifest> 无 deny_unknown_fields，
+        // 未知字段直接忽略；version 字段类型错误（如 1.5）走 ManifestParse，不落到 UnsupportedVersion。
+        let disk = DiskFixture::new();
+        disk.write("good", b"good");
+        let json = serde_json::to_vec(&serde_json::json!({
+            "version": 1,
+            "files": [["good", expected(b"good")], [MANIFEST_PATH, "ignored"]],
+            "unknown_nested": {"flag": true, "arr": [1, 2]},
+        }))
+        .unwrap();
+        let valid = checked_bytes(&json);
+        disk.write(MANIFEST_PATH, &valid);
+        assert_eq!(verify_package_manifest(&disk.0), Ok(()));
+
+        let type_disk = DiskFixture::new();
+        type_disk.write("good", b"good");
+        let float_version = checked_bytes(br#"{"version":1.5,"files":[]}"#);
+        type_disk.write(MANIFEST_PATH, &float_version);
+        assert!(matches!(
+            verify_package_manifest(&type_disk.0),
+            Err(PackageVerificationError::ManifestParse(_))
+        ));
+
+        let string_disk = DiskFixture::new();
+        string_disk.write("good", b"good");
+        let string_version = checked_bytes(br#"{"version":"1","files":[]}"#);
+        string_disk.write(MANIFEST_PATH, &string_version);
+        assert!(matches!(
+            verify_package_manifest(&string_disk.0),
+            Err(PackageVerificationError::ManifestParse(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_and_denied_directory_probes() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let disk = DiskFixture::new();
+        disk.write("real", b"data");
+        disk.write("sub/file", b"data");
+        symlink(disk.0.join("real"), disk.0.join("link-file")).unwrap();
+        symlink(disk.0.join("sub"), disk.0.join("link-dir")).unwrap();
+        // 目录去掉读/执行权限：read_dir 失败静默，不 panic、不把内部文件列为 extra。
+        std::fs::set_permissions(disk.0.join("sub"), std::fs::Permissions::from_mode(0o000))
+            .unwrap();
+        let known: HashSet<String> = ["real".into()].into_iter().collect();
+        // 探针对照（batch-02 反编译 0x140f79650）：symlink 跳过、tmp 跳过、read_dir 失败静默、
+        // 目录递归后仅文件入 extra；denied 目录不进入。
+        let extra = find_extra_files(&disk.0, &known);
+        std::fs::set_permissions(disk.0.join("sub"), std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+        assert_eq!(extra, Vec::<String>::new());
+
+        // 已知集合外的普通文件仍被列为 extra。
+        let known2: HashSet<String> = HashSet::new();
+        let extra2 = find_extra_files(&disk.0, &known2);
+        assert!(extra2.contains(&"real".to_string()));
+        assert!(!extra2.contains(&"link-file".to_string()));
+        assert!(!extra2.contains(&"link-dir".to_string()));
     }
 }

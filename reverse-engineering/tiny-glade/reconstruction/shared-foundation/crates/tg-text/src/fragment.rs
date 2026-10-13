@@ -56,7 +56,11 @@ impl TextFragment {
         let mut fragment = Self::new(renderer, font_size, line_height);
         fragment.font_scale = entry.scale;
         fragment.set_family(entry.family.clone());
-        fragment.set_internal_scaled_metrics(renderer);
+        fragment.set_internal_scaled_metrics(
+            renderer,
+            fragment.metrics.font_size * fragment.font_scale,
+            fragment.metrics.line_height * fragment.font_scale,
+        );
         fragment
     }
     pub fn set_font_role(
@@ -68,7 +72,9 @@ impl TextFragment {
         let entry = table.get(role).expect("font role missing from font table");
         self.font_scale = entry.scale;
         self.set_family(entry.family.clone());
-        self.set_internal_scaled_metrics(renderer);
+        let scaled_font_size = self.metrics.font_size * self.font_scale;
+        let scaled_line_height = self.metrics.line_height * self.font_scale;
+        self.set_internal_scaled_metrics(renderer, scaled_font_size, scaled_line_height);
     }
     pub fn editor(&self) -> &Editor<'static> {
         &self.editor
@@ -77,14 +83,16 @@ impl TextFragment {
         self.generation = 0;
         &mut self.editor
     }
-    pub fn replace_editor(&mut self, editor: Editor<'static>) -> Editor<'static> {
+    /// 原 0x140b906d0：drop 旧 editor 后装入新 editor，返回 void（丢弃旧值）。
+    pub fn replace_editor(&mut self, editor: Editor<'static>) {
         self.generation = 0;
-        std::mem::replace(&mut self.editor, editor)
+        self.editor = editor;
     }
     pub fn take_editor(&mut self, renderer: &mut TextRenderer) -> Editor<'static> {
         let mut buffer = Buffer::new(&mut renderer.font_system, self.metrics);
         buffer.set_size(&mut renderer.font_system, self.max_width, f32::MAX);
-        self.replace_editor(Editor::new(buffer))
+        self.generation = 0;
+        std::mem::replace(&mut self.editor, Editor::new(buffer))
     }
     pub fn text(&self) -> String {
         self.editor.with_buffer(|b| {
@@ -118,7 +126,7 @@ impl TextFragment {
         }
         self.editor.set_cursor(Cursor::default());
         self.editor.set_selection(Selection::None);
-        self.editor_action(Action::Motion(cosmic_text::Motion::BufferStart));
+        self.editor_action(Action::Motion(cosmic_text::Motion::BufferEnd));
     }
     fn attrs(&self) -> Attrs<'_> {
         Attrs::new()
@@ -155,18 +163,32 @@ impl TextFragment {
         let metrics = Metrics::new(font_size, line_height);
         if self.metrics != metrics {
             self.metrics = metrics;
-            self.set_internal_scaled_metrics(renderer);
+            let scaled_font_size = self.metrics.font_size * self.font_scale;
+            let scaled_line_height = self.metrics.line_height * self.font_scale;
+            self.set_internal_scaled_metrics(renderer, scaled_font_size, scaled_line_height);
         }
     }
-    pub fn set_internal_scaled_metrics(&mut self, renderer: &mut TextRenderer) {
+    pub fn set_internal_scaled_metrics(
+        &mut self,
+        renderer: &mut TextRenderer,
+        font_size: f32,
+        line_height: f32,
+    ) {
+        // 原 0x140b90780：传入已缩放 metrics，与当前 buffer 相等且均非 NaN 时早退。
+        let current = self
+            .editor
+            .with_buffer(|b| (b.metrics().font_size, b.metrics().line_height));
+        let equal = !current.0.is_nan()
+            && !font_size.is_nan()
+            && current.0 == font_size
+            && !current.1.is_nan()
+            && !line_height.is_nan()
+            && current.1 == line_height;
+        if equal {
+            return;
+        }
         self.editor.with_buffer_mut(|b| {
-            b.set_metrics(
-                &mut renderer.font_system,
-                Metrics::new(
-                    self.metrics.font_size * self.font_scale,
-                    self.metrics.line_height * self.font_scale,
-                ),
-            )
+            b.set_metrics(&mut renderer.font_system, Metrics::new(font_size, line_height));
         });
         self.editor.set_redraw(true);
         self.generation = 0;
@@ -211,14 +233,14 @@ impl TextFragment {
         });
         self.editor
             .shape_as_needed(&mut renderer.font_system, false);
-        self.bounds = self.editor.with_buffer(|b| {
-            b.layout_runs().fold([0_f32, 0_f32], |acc, run| {
-                [
-                    acc[0].max(run.line_w),
-                    acc[1].max(run.line_top + b.metrics().line_height),
-                ]
-            })
+        // 原 0x140b90f60：bounds[0] 由 with_buffer 布局闭包取 max(line_w)；
+        // bounds[1] 直取当前字体 metrics 的 scaled line_height（fVar1 + 0.0，归零 -0.0），
+        // 不用 layout_runs 折叠的最大高度。role 0 对应内联 scaled metrics，
+        // role 1/其他原直读 font table 条目的 line_height（候选 FontTableEntry 无该字段，见缺口登记）。
+        let width = self.editor.with_buffer(|b| {
+            b.layout_runs().fold(0_f32, |acc, run| acc.max(run.line_w))
         });
+        self.bounds = [width, (self.metrics.line_height * self.font_scale) + 0.0];
         if self.prepared_scale != renderer.pixels_per_point() {
             self.prepared_scale = renderer.pixels_per_point();
             self.generation = 0;

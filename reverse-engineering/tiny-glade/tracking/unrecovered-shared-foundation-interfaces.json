@@ -1,20 +1,20 @@
 {
   "baseline": "B",
   "denominator_complete": false,
-  "count": 194,
+  "count": 185,
   "definition": "Classified business interfaces without a reviewed mapped implementation. Generated reuse, schema helper records and unresolved traits are excluded and separately retained.",
   "modules": {
     "crates/utils/src": 35,
     "crates/utils/src/components": 9,
-    "crates/utils/src/curve": 89,
-    "crates/utils/src/geometry": 58,
+    "crates/utils/src/curve": 85,
+    "crates/utils/src/geometry": 53,
     "crates/asset/src": 2,
     "crates/asset-pipe/src": 1
   },
   "reasons": {
-    "not_yet_business_analyzed": 143,
-    "decompiled_not_business_analyzed": 44,
-    "analyzed_not_implemented": 7
+    "not_yet_business_analyzed": 140,
+    "decompiled_not_business_analyzed": 42,
+    "compiled_body_not_located": 3
   },
   "interfaces": [
     {
@@ -354,34 +354,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::wall_space::WallSpaceCoord::bound",
-      "source_module": "crates/utils/src",
-      "original_source": "crates/utils/src/wall_space.rs",
-      "reason": "not_yet_business_analyzed",
-      "explanation": "尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。",
-      "original_audit_gaps": [
-        "No per-interface business analysis recorded; PDB name/location is inventory only."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/utils-base/interface-coverage.json",
-      "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::wall_space::WallSpaceCoord::is_bounded",
-      "source_module": "crates/utils/src",
-      "original_source": "crates/utils/src/wall_space.rs",
-      "reason": "not_yet_business_analyzed",
-      "explanation": "尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。",
-      "original_audit_gaps": [
-        "No per-interface business analysis recorded; PDB name/location is inventory only."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/utils-base/interface-coverage.json",
-      "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::wall_space::WallSpaceCoord::new",
       "source_module": "crates/utils/src",
       "original_source": "crates/utils/src/wall_space.rs",
@@ -411,20 +383,6 @@
     },
     {
       "interface_id": "utils::wall_space::WallSpaceCoord::subtract",
-      "source_module": "crates/utils/src",
-      "original_source": "crates/utils/src/wall_space.rs",
-      "reason": "not_yet_business_analyzed",
-      "explanation": "尚未进入已验收的业务分析/实现批次；只有接口库存不能证明算法与调用策略。",
-      "original_audit_gaps": [
-        "No per-interface business analysis recorded; PDB name/location is inventory only."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/utils-base/interface-coverage.json",
-      "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::wall_space::WallSpaceCoord::to_affine3",
       "source_module": "crates/utils/src",
       "original_source": "crates/utils/src/wall_space.rs",
       "reason": "not_yet_business_analyzed",
@@ -963,21 +921,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::curve::Curve<T,CSem>::is_on_right_side",
-      "source_module": "crates/utils/src/curve",
-      "original_source": "crates/utils/src/curve/mod.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed nearest-segment and normalized cross-side query; no implementation.",
-        "This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::curve::Curve<T,CSem>::is_valid",
       "source_module": "crates/utils/src/curve",
       "original_source": "crates/utils/src/curve/mod.rs",
@@ -1173,21 +1116,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::curve::Curve<T,CSem>::try_extend",
-      "source_module": "crates/utils/src/curve",
-      "original_source": "crates/utils/src/curve/mod.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Original mutates/appends the owned point vector then rebuilds with duplicate rejection; no recovered mutating API yet.",
-        "This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::curve::Curve<T,CSem>::try_new_from_points_remove_duplicates",
       "source_module": "crates/utils/src/curve",
       "original_source": "crates/utils/src/curve/mod.rs",
@@ -1204,36 +1132,6 @@
     },
     {
       "interface_id": "utils::curve::Curve<T,CSem>::try_resample",
-      "source_module": "crates/utils/src/curve",
-      "original_source": "crates/utils/src/curve/mod.rs",
-      "reason": "decompiled_not_business_analyzed",
-      "explanation": "已有反编译材料，但尚未把分支、参数及引用方组合解释成业务合同；不是反编译工具失败。",
-      "original_audit_gaps": [
-        "Only located/PDB/decompiled evidence; no business rule analysis or implementation.",
-        "This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count",
-      "source_module": "crates/utils/src/curve",
-      "original_source": "crates/utils/src/curve/mod.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed spacing/retained-feature and endpoint append paths; final algorithm not reconstructed.",
-        "This merged generic interface has additional instantiations; raw PDB names do not resolve all T/CSem variants. Curve2-only comparison must not count Curve3 query variants as verified."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count_remap",
       "source_module": "crates/utils/src/curve",
       "original_source": "crates/utils/src/curve/mod.rs",
       "reason": "decompiled_not_business_analyzed",
@@ -2023,34 +1921,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::geometry::circle::Circle2d::as_curve2",
-      "source_module": "crates/utils/src/geometry",
-      "original_source": "crates/utils/src/geometry/circle.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed collect→curve build call; whether collection closes the final segment remains unresolved."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::geometry::circle::Circle2d::as_curve2_range",
-      "source_module": "crates/utils/src/geometry",
-      "original_source": "crates/utils/src/geometry/circle.rs",
-      "reason": "decompiled_not_business_analyzed",
-      "explanation": "已有反编译材料，但尚未把分支、参数及引用方组合解释成业务合同；不是反编译工具失败。",
-      "original_audit_gaps": [
-        "Only located/PDB/decompiled evidence; no business rule analysis or implementation."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::geometry::circle::Circle2d::as_curve3",
       "source_module": "crates/utils/src/geometry",
       "original_source": "crates/utils/src/geometry/circle.rs",
@@ -2317,20 +2187,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge",
-      "source_module": "crates/utils/src/geometry",
-      "original_source": "crates/utils/src/geometry/rectangle.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed inverse footprint and hypot branch; not implemented."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::geometry::rectangle::Rectangle2d::expand_along_edge",
       "source_module": "crates/utils/src/geometry",
       "original_source": "crates/utils/src/geometry/rectangle.rs",
@@ -2443,20 +2299,6 @@
       "known_attempt_failed": false
     },
     {
-      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners",
-      "source_module": "crates/utils/src/geometry",
-      "original_source": "crates/utils/src/geometry/rectangle.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed exact-corner/edge dispatch and transformed corner normal sums; no implementation."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
       "interface_id": "utils::geometry::rectangle::Rectangle2d::half_dimensions",
       "source_module": "crates/utils/src/geometry",
       "original_source": "crates/utils/src/geometry/rectangle.rs",
@@ -2551,20 +2393,6 @@
       ],
       "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
       "business_analysis_started": false,
-      "ownership_triage_pending": false,
-      "known_attempt_failed": false
-    },
-    {
-      "interface_id": "utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge",
-      "source_module": "crates/utils/src/geometry",
-      "original_source": "crates/utils/src/geometry/rectangle.rs",
-      "reason": "analyzed_not_implemented",
-      "explanation": "已有部分原业务分析，但尚未完成可接受的映射实现；具体剩余规则见下方原审计缺口。",
-      "original_audit_gaps": [
-        "Reviewed inverse footprint/hypot/inside branch; not implemented."
-      ],
-      "detailed_audit": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
-      "business_analysis_started": true,
       "ownership_triage_pending": false,
       "known_attempt_failed": false
     },
@@ -2777,6 +2605,36 @@
       "business_analysis_started": false,
       "ownership_triage_pending": false,
       "known_attempt_failed": false
+    },
+    {
+      "interface_id": "utils::wall_space::WallSpaceCoord::bound",
+      "source_module": "crates/utils/src",
+      "original_source": "crates/utils/src/wall_space.rs",
+      "reason": "compiled_body_not_located",
+      "explanation": "现有 B 库与已检查 PDB 记录未定位独立过程或内联宿主；已抽查 38 个相关调用者中的 6 个。这支持当前缺少可验证编译体，不证明 B 未编译、没有消费者或语义永远不可恢复。",
+      "compiled_body_observed": false,
+      "uncompiled_in_b_proven": false,
+      "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
+    },
+    {
+      "interface_id": "utils::wall_space::WallSpaceCoord::is_bounded",
+      "source_module": "crates/utils/src",
+      "original_source": "crates/utils/src/wall_space.rs",
+      "reason": "compiled_body_not_located",
+      "explanation": "现有 B 库与已检查 PDB 记录未定位独立过程或内联宿主；已抽查 38 个相关调用者中的 6 个。这支持当前缺少可验证编译体，不证明 B 未编译、没有消费者或语义永远不可恢复。",
+      "compiled_body_observed": false,
+      "uncompiled_in_b_proven": false,
+      "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
+    },
+    {
+      "interface_id": "utils::wall_space::WallSpaceCoord::to_affine3",
+      "source_module": "crates/utils/src",
+      "original_source": "crates/utils/src/wall_space.rs",
+      "reason": "compiled_body_not_located",
+      "explanation": "现有 B 库与已检查 PDB 记录未定位独立过程或内联宿主；已抽查 38 个相关调用者中的 6 个。这支持当前缺少可验证编译体，不证明 B 未编译、没有消费者或语义永远不可恢复。",
+      "compiled_body_observed": false,
+      "uncompiled_in_b_proven": false,
+      "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
     }
   ],
   "excluded_queues": {
@@ -2934,5 +2792,17 @@
   "inventory_input": {
     "path": "tracking/shared-foundation-interfaces.json",
     "sha256": "e6488017cf8bd305d9a976041599e9c0a3ee0e69c7c416df02a69b3adf507aae"
-  }
+  },
+  "candidate_implemented_2026-10-13": [
+    "utils::curve::Curve<T,CSem>::is_on_right_side",
+    "utils::curve::Curve<T,CSem>::try_extend",
+    "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count",
+    "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count_remap",
+    "utils::geometry::circle::Circle2d::as_curve2",
+    "utils::geometry::circle::Circle2d::as_curve2_range",
+    "utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge",
+    "utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners",
+    "utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge"
+  ],
+  "reviewed_at": "2026-10-13T17:24:17.424Z"
 }

@@ -14,8 +14,8 @@ fn main() -> Result<()> {
     // Synthetic account in the explicitly supplied probe directory only.
     paths::initialize_paths(123456789, Some(&owned_probe))?;
     let before = lookup("AreYouSure");
-    anyhow::ensure!(before == "AreYouSure", "preinit lookup changed the key");
-    anyhow::ensure!(game_locale() == "en-US", "preinit locale");
+    anyhow::ensure!(&*before == "AreYouSure", "preinit lookup changed the key");
+    anyhow::ensure!(&*game_locale() == "en-US", "preinit locale");
     let mut locales = Vec::new();
     for entry in std::fs::read_dir(game.join("assets/lang"))? {
         let path = entry?.path();
@@ -32,31 +32,31 @@ fn main() -> Result<()> {
     }
     locales.sort();
     load_locale("zh-CN")?;
-    anyhow::ensure!(game_locale() == "zh-CN", "selected locale");
+    anyhow::ensure!(&*game_locale() == "zh-CN", "selected locale");
     let translated = lookup("AreYouSure");
-    anyhow::ensure!(translated != "AreYouSure", "real Chinese translation");
+    anyhow::ensure!(&*translated != "AreYouSure", "real Chinese translation");
     load_locale("en-US")?;
     anyhow::ensure!(
-        lookup("AreYouSure") == "Are you sure?",
+        &*lookup("AreYouSure") == "Are you sure?",
         "real English translation"
     );
-    // Held static text remains valid after replacement.
+    // Held owned text remains valid after replacement.
     anyhow::ensure!(!translated.is_empty(), "text survival across replacement");
     load_locale("__missing_probe_locale__")?;
-    anyhow::ensure!(game_locale() == "en-US", "missing pack fallback");
+    anyhow::ensure!(&*game_locale() == "en-US", "missing pack fallback");
     anyhow::ensure!(
         std::fs::read_to_string(paths::standard_app_root_path().join("last_used_locale"))?
             == "__missing_probe_locale__",
         "requested locale persistence"
     );
-    if std::env::var("TG_DISABLE_LANG_FALLBACK").is_err() {
+    if std::env::var_os("TG_DISABLE_LANG_FALLBACK").is_none() {
         anyhow::ensure!(
-            lookup("__missing_probe_key__") == "?___missing_probe_key__",
+            &*lookup("__missing_probe_key__") == "?___missing_probe_key__",
             "missing key fallback marker"
         );
     } else {
         anyhow::ensure!(
-            lookup("__missing_probe_key__") == "__missing_probe_key__",
+            &*lookup("__missing_probe_key__") == "__missing_probe_key__",
             "fallback disabled"
         );
     }

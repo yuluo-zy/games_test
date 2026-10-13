@@ -14,6 +14,10 @@ B FontTable与ShapeStream/RawShapeStream CPU配置→lookup/scaled、builder→r
 
 既有6tests/51原append+21原metrics；独立review未发现CPU代码/性能/造轮子缺陷。原PDB String::deserialize→RON deserialize_string链纠正旧同址标签误读；当前仅注释/README修正，旧证明hash保留。候选请求/接受集合/panic/分配复用探针完成；完整text/glyph/GPU与原serde未验。
 
+batch-02（2026-10-13）：Ghidra shared + radare2 RNE 反编译 TextRenderer/TextFragment/font_table 族；修正 rect 签名（pos/extent/opacity/shapes，颜色固定 u32::MAX 经 scale_u32_packed_srgba_color 缩放）、set_internal_scaled_metrics 签名（renderer/font_size/line_height + NaN 守卫早退）、scaled 操作数序；cosmic-text/etagere 接线经 consume/upload/get_glyph 反编译确认；登记 prepare Action 0x22 break、bounds[1] 来源、replace_editor 返回 void、render getter 契约差异。behavior 6/6 + text_pipeline 9 过（2 Windows 专属字体测试加非 Windows ignore），clippy 过。证据：[batch-02 BUSINESS_RULES](../../evidence/small-libs-batch-02-2026-10-13/tg-text/BUSINESS_RULES.md)、[delivery](../../evidence/small-libs-batch-02-2026-10-13/tg-text/delivery.json)、[native-oracle](../../evidence/small-libs-batch-02-2026-10-13/tg-text/native-oracle.json)。
+
+完成轮（2026-10-14）：set_text 入队动作改 BufferEnd（原 tag 0x14）、prepare bounds[1] 改 scaled line_height、replace_editor 改 void + take_editor 用 mem::replace、0x22 break 分类为超范围无效标签（防御守卫，行为等价）；cosmic::Action 确认 32 字节/扁平标签 0x0-0x21。35 测试过（含 integrity symlink/权限探针），clippy 过。
+完成度判定（2026-10-14）：库内业务函数全部实现（TextFragment 17/TextRenderer 11/FontTable/ShapeStream），核心算法反编译验证；保留项——简单 setter 未逐一 fresh 反编译复核、render 返回类型为重建扩展、TextRenderer::new 装配细节、依赖/工具链边界、消费者接线与 A/C。
 ## 已恢复的函数和类型范围
 
 - FontTable::get/from_ron、FontTableEntry::scaled/default_scale

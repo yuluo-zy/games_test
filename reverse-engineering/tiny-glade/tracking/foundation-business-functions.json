@@ -310,11 +310,12 @@
           "id": "utils:27",
           "name": "墙空间偏移与范围",
           "behavior": "沿墙限制或放开偏移，判断墙空间区域相交并形成变换",
-          "status": "scope_only",
-          "remaining": "bound、offset、region和to_affine3规则",
+          "status": "partial",
+          "remaining": "bound/is_bounded/to_affine3 仅定位到 PDB 声明，现有记录未找到编译体或内联宿主；不可据此证明未编译，仍需补证",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
           "implementation_task_ready": false,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "utils:28",
@@ -360,8 +361,8 @@
           "id": "utils:32",
           "name": "曲线侧向判断",
           "behavior": "按最近区段与叉积判断点位于曲线哪一侧",
-          "status": "analyzed_no_impl",
-          "remaining": "尚无原映射实现；不同维度策略需分开",
+          "status": "partial",
+          "remaining": "is_on_right_side 已实现（nearest-segment+叉积）；原对照与消费者待验收",
           "evidence_scope": "原业务已有分析，实现仍缺",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -410,18 +411,18 @@
           "id": "utils:37",
           "name": "按间距重采样",
           "behavior": "按空间间距或区段规则重新生成曲线点列",
-          "status": "scope_only",
-          "remaining": "try_resample与各remap/per-segment策略",
+          "status": "partial",
+          "remaining": "按间距 resample/remap/per-segment 已实现；原入口差分待验收",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
-          "implementation_task_ready": false,
+          "implementation_task_ready": true,
           "full_feature_accepted": false
         },
         {
           "id": "utils:38",
           "name": "按点数重采样",
           "behavior": "用目标近似点数确定间距，处理特征点和终点",
-          "status": "analyzed_no_impl",
-          "remaining": "最终算法与所有remap变体未实现",
+          "status": "partial",
+          "remaining": "按点数 resample/remap 变体已实现；原入口差分待验收",
           "evidence_scope": "原业务已有分析，实现仍缺",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -430,10 +431,10 @@
           "id": "utils:39",
           "name": "曲线平滑与移动",
           "behavior": "对点列平滑、加权平滑、原位平滑或整体平移",
-          "status": "scope_only",
-          "remaining": "平滑权重、闭合端点及实际调用约束",
+          "status": "partial",
+          "remaining": "平滑/带权/原位/translate 已实现；闭合端点原对照待验收",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
-          "implementation_task_ready": false,
+          "implementation_task_ready": true,
           "full_feature_accepted": false
         },
         {
@@ -470,10 +471,10 @@
           "id": "utils:43",
           "name": "变换矩阵组装",
           "behavior": "从位移/旋转/缩放形成矩阵、仿射变换和前方向",
-          "status": "scope_only",
-          "remaining": "手写组合与生成注册胶水的归属区分",
+          "status": "partial",
+          "remaining": "compute_affine/compute_matrix/forward 已实现（glam 组装）；消费者待接",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
-          "implementation_task_ready": false,
+          "implementation_task_ready": true,
           "full_feature_accepted": false
         },
         {
@@ -510,8 +511,8 @@
           "id": "utils:47",
           "name": "圆形转曲线",
           "behavior": "把圆形或圆弧范围变成Curve2/Curve3",
-          "status": "analyzed_no_impl",
-          "remaining": "as_curve2已分析未实现；闭合末段及其他变体待确认",
+          "status": "partial",
+          "remaining": "as_curve2/as_curve2_range/as_curve3 已实现；闭合末段原对照待验收",
           "evidence_scope": "原业务已有分析，实现仍缺",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -540,21 +541,23 @@
           "id": "utils:50",
           "name": "矩形边缘距离",
           "behavior": "求最近边界距离及内外符号",
-          "status": "analyzed_no_impl",
-          "remaining": "普通/有符号距离均尚未实现",
+          "status": "partial",
+          "remaining": "已修复 directed local-edge 距离（不取 abs）；80 个既有组合快照通过，真实消费者与完整边界未验收",
           "evidence_scope": "原业务已有分析，实现仍缺",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "utils:51",
           "name": "矩形边角法线",
           "behavior": "按边和角计算朝向，特殊角点使用未归一法线和",
           "status": "partial",
-          "remaining": "特殊角点法线已分析未实现，其余最近边策略待确认",
+          "remaining": "最近边法线按归一化分量独立选轴，80 个组合快照及旋转/平局回归通过；完整消费者未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "utils:52",
@@ -610,10 +613,10 @@
           "id": "utils:57",
           "name": "屏幕坐标转换",
           "behavior": "从世界位置转换裁剪空间和屏幕空间",
-          "status": "scope_only",
-          "remaining": "ws_to_cs/ws_to_ss原规则与调用者",
+          "status": "partial",
+          "remaining": "ws_to_cs/ws_to_ss 已实现；原规则与调用者对照待验收",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
-          "implementation_task_ready": false,
+          "implementation_task_ready": true,
           "full_feature_accepted": false
         },
         {
@@ -2446,7 +2449,7 @@
           "name": "配置继承",
           "behavior": "处理未指定、显式空值、父配置和子覆盖，形成最终资源描述",
           "status": "partial",
-          "remaining": "全部concrete_default owner、错误路径及类型",
+          "remaining": "RT/audio/trigger 深层默认已实现并原地址标注；泛型 concrete_default 无原实体，最终化次序按证据核对",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -2466,7 +2469,7 @@
           "name": "prefab参数合成",
           "behavior": "应用scale/albedo等配置的默认与覆盖，收集依赖",
           "status": "partial",
-          "remaining": "所有资产默认值和消费者约束",
+          "remaining": "prefab 参数合成与深层默认已实现；真实消费者约束待验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -2584,10 +2587,11 @@
           "name": "尺寸与压缩资格",
           "behavior": "压缩资格看源图两维是否至少4，可压缩尺寸对齐4",
           "status": "partial",
-          "remaining": "真实游戏消费者与全部边界未验收",
+          "remaining": "非零输入/resize 及块对齐溢出返回错误；真实消费者与其余边界未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "asset-pipe:03",
@@ -2604,17 +2608,18 @@
           "name": "mip生成",
           "behavior": "每层从base采样并按原策略物化RGBA8，处理边缘重复padding",
           "status": "partial",
-          "remaining": "真实游戏消费者与全部边界未验收",
+          "remaining": "Limited(0) 返回错误；正常 mip 样例通过，完整原行为未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "asset-pipe:05",
           "name": "压缩模式选择",
           "behavior": "BC7按alpha全不透明与否选择原basic preset；实际压缩调用依赖",
           "status": "partial",
-          "remaining": "真实游戏消费者与全部边界未验收",
+          "remaining": "BcMode::block_bytes 已实现（DDS/BC 常量）；真实游戏消费者与全部边界未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
           "full_feature_accepted": false
@@ -2634,20 +2639,22 @@
           "name": "纹理数组产出",
           "behavior": "按一致header与layer顺序合并各层字节",
           "status": "partial",
-          "remaining": "真实游戏消费者与全部边界未验收",
+          "remaining": "数组层输出与内容变化缓存回归通过；嵌套数组/DDS 数组与真实消费者仍未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "asset-pipe:08",
           "name": "增量构建缓存",
           "behavior": "按desc、源mtime、magic/version判断是否重建，保留header-only命中行为",
           "status": "partial",
-          "remaining": "真实游戏消费者与全部边界未验收",
+          "remaining": "新增全部源文件时间/大小/XXH3 内容指纹，旧缓存迁移及保留时间戳的层编辑已回归；缓存负载仍为 header-only 判定，未验收完整原策略",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
         },
         {
           "id": "asset-pipe:09",
@@ -5278,9 +5285,8 @@
     "libraries": 58,
     "entries": 286,
     "by_status": {
-      "partial": 166,
-      "scope_only": 67,
-      "analyzed_no_impl": 4,
+      "partial": 175,
+      "scope_only": 62,
       "contract_only": 4,
       "provenance_pending": 26,
       "reuse": 9,

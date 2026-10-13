@@ -115,6 +115,32 @@ impl Seek for FaultStream {
     }
 }
 #[test]
+fn byte_exact_header_layout_and_trailing_partial_tail_ignored() {
+    // 反编译核对（batch-02）：add_chunk 在 start 写 tag u64 LE、start+8 写 0，
+    // Drop 回填 end-start-16；Reader 在 position+16 >= len 时返回 None，
+    // 不足 16 字节的尾部被忽略（不含 EOF 错误）。
+    let mut bytes = Vec::new();
+    let mut writer = Writer::new(Cursor::new(&mut bytes));
+    {
+        writer.add_chunk("Snap").unwrap().write_all(b"payload").unwrap();
+    }
+    let cursor = writer.finish().unwrap();
+    assert_eq!(cursor.position(), 16 + 7);
+    let mut expected = Vec::new();
+    expected.extend_from_slice(&tag_from_str("Snap").to_le_bytes());
+    expected.extend_from_slice(&7u64.to_le_bytes());
+    expected.extend_from_slice(b"payload");
+    assert_eq!(bytes, expected);
+
+    // 尾部追加 5 字节残缺数据：Reader 忽略，不报错，位置停在残缺段起点。
+    bytes.extend_from_slice(b"tai\0\0");
+    let mut iter = Reader::new(&bytes).iter();
+    let chunk = iter.next().unwrap().unwrap();
+    assert_eq!((chunk.tag, chunk.data), (tag_from_str("Snap"), &b"payload"[..]));
+    assert!(iter.next().is_none());
+    assert_eq!(iter.cursor.position(), 23);
+}
+#[test]
 fn partial_writes_use_std_write_all() {
     let stream = FaultStream {
         cursor: Cursor::new(vec![]),

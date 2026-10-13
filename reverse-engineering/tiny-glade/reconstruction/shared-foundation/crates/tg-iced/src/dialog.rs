@@ -127,7 +127,7 @@ impl crate::gui_runner::NativeProgram for Controls {
             .into_iter()
             .fold(row!().spacing(20), |r, (key, message)| {
                 r.push(
-                    button(text(crate::text(key).to_owned()))
+                    button(text(crate::text(key).to_string()))
                         .padding(10)
                         .width(150)
                         .on_press(message),

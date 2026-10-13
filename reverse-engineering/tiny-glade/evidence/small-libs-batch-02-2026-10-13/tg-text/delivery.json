@@ -1,0 +1,166 @@
+{
+  "module": "tg-text",
+  "baseline": "B",
+  "status": "implemented_bounded_behavior_verified",
+  "source": "crates/tg-text/src/{lib.rs,font_table.rs,shape_stream.rs,fragment.rs,renderer.rs,color.rs}",
+  "implementation": "reconstruction/shared-foundation/crates/tg-text/src/",
+  "round": "small-libs-batch-02",
+  "round_changes": [
+    {
+      "change": "TextRenderer::rect 对齐原签名：rect(pos, extent, opacity:f32, shapes)，颜色固定 u32::MAX，alpha 经 scale_u32_packed_srgba_color 缩放",
+      "evidence": "RNE 0x140b8f510 反汇编：mov ecx,0xffffffff; movaps xmm1,xmm3; call 0x140c918d0；0x140b8f625 panic 'stream_len < 256'",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/renderer.rs",
+      "verification": "original_native_rect_opacity_and_stream_packet + ownership_selection_alignment_and_shape_packet 通过"
+    },
+    {
+      "change": "新增 rect_with_color 作为重建扩展（原 rect 的颜色显式入口）",
+      "evidence": "候选扩展；原函数无独立 color 参数",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/renderer.rs"
+    },
+    {
+      "change": "TextFragment::set_internal_scaled_metrics 对齐原签名：带 (font_size, line_height) 缩放参数；与当前 buffer metrics 相等且均非 NaN 时早退",
+      "evidence": "RNE 0x140b90780：参数比较 + NaN 守卫早退 + 变化重建",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/fragment.rs",
+      "verification": "same_text_resets_cursor_and_font_roles_scale_metrics 通过"
+    },
+    {
+      "change": "FontTableEntry::scaled 操作数顺序对齐原 mulps：self.scale * input（scale 为第一操作数）",
+      "evidence": "RNE 0x140b9209f-0x140b920a8：movsldup scale; mulps xmm1(scale), xmm0(input)",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/font_table.rs"
+    },
+    {
+      "change": "clippy chunks_exact -> as_chunks 清理",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/renderer.rs"
+    },
+    {
+      "change": "set_text 入队动作修正：BufferStart → BufferEnd（原 tag=0x14，光标落文档末尾）",
+      "evidence": "0x140fac4c0 set_text 反编译 local_b8 低 u32=0x14; probe cosmic::Action size=32 BufferEnd=0x14",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/fragment.rs",
+      "verification": "real_fonts_edit_and_warm_cache（ends_with 语义）通过"
+    },
+    {
+      "change": "prepare bounds[1] 修正：layout fold → scaled line_height(+0.0)",
+      "evidence": "0x140b90f60: *(float*)(self+0x23c)=fVar1+0.0",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/fragment.rs",
+      "verification": "bounds[1]==30 断言通过"
+    },
+    {
+      "change": "replace_editor 返回 void（丢弃旧 editor）；take_editor 改用 mem::replace 直接返回旧值",
+      "evidence": "0x140b906d0 drop_in_place 旧 editor; 0x140b91620 take_editor",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/fragment.rs",
+      "verification": "take_editor/replace_editor 测试通过"
+    }
+  ],
+  "interface_mapping": [
+    {
+      "original": "TextRenderer::new",
+      "address": "0x140b8e4a0",
+      "recovered": "TextRenderer::new",
+      "comparison": "decompiled_static_and_candidate"
+    },
+    {
+      "original": "TextRenderer::load_font_from_file",
+      "address": "0x140b8f360",
+      "recovered": "load_font_from_file",
+      "comparison": "decompiled_static_and_candidate"
+    },
+    {
+      "original": "TextRenderer::rect",
+      "address": "0x140b8f510",
+      "recovered": "rect(pos,extent,opacity,shapes) + rect_with_color(extension)",
+      "comparison": "rne_disassembly_confirmed_signature"
+    },
+    {
+      "original": "TextRenderer::render",
+      "address": "0x140b8f670",
+      "recovered": "render()->AtlasDescriptor 为重建扩展；原返回流视图",
+      "comparison": "decompiled_getter_differs"
+    },
+    {
+      "original": "TextRenderer::consume",
+      "address": "0x140fac810",
+      "recovered": "consume/RenderBatch",
+      "comparison": "decompiled_gpu_wiring"
+    },
+    {
+      "original": "TextRenderer::upload_pending_glyphs",
+      "address": "0x140b8f680",
+      "recovered": "upload_pending_glyphs",
+      "comparison": "decompiled_gpu_wiring"
+    },
+    {
+      "original": "TextRenderer::get_glyph",
+      "address": "0x140b8fea0",
+      "recovered": "get_glyph",
+      "comparison": "decompiled_glyph_cache"
+    },
+    {
+      "original": "TextFragment::prepare",
+      "address": "0x140b90f60",
+      "recovered": "prepare",
+      "comparison": "decompiled; action 0x22 break/bounds 差异已登记"
+    },
+    {
+      "original": "TextFragment::render",
+      "address": "0x140b91120",
+      "recovered": "render",
+      "comparison": "decompiled_generation_check"
+    },
+    {
+      "original": "TextFragment::set_internal_scaled_metrics",
+      "address": "0x140b90780",
+      "recovered": "set_internal_scaled_metrics(renderer, font_size, line_height)",
+      "comparison": "rne_disassembly_confirmed_signature"
+    },
+    {
+      "original": "TextFragment::replace_editor",
+      "address": "0x140b906d0",
+      "recovered": "replace_editor(returns old via mem::replace; original drops)",
+      "comparison": "decompiled_drop_in_place_differs"
+    },
+    {
+      "original": "TextFragment::take_editor",
+      "address": "0x140b91620",
+      "recovered": "take_editor",
+      "comparison": "decompiled_static_and_candidate"
+    },
+    {
+      "original": "font_table::FontTable::get",
+      "address": "0x140b91fa0",
+      "recovered": "FontTable::get",
+      "comparison": "decompiled_hash_lookup_matches"
+    },
+    {
+      "original": "font_table::FontTableEntry::scaled",
+      "address": "0x140b92090",
+      "recovered": "scaled",
+      "comparison": "rne_disassembly_mulps_operand_order"
+    }
+  ],
+  "validation": {
+    "cargo_check": "passed",
+    "cargo_clippy": "passed (-D warnings, no gpu feature)",
+    "cargo_test": "behavior 6/6 + text_pipeline 9/9（2 Windows 专属 ignore）通过",
+    "environment_limited_tests": [
+      "font_initialization_and_ecs_use_dependencies: macOS 字体族映射 Fantasy->Papyrus，Windows 期望 Impact（环境相关，非本轮回归）",
+      "external_validation_font_rtl_glyphs_and_visual_positions: 依赖 C:/Windows/Fonts/arial.ttf（Windows 专属路径，macOS 不可用）"
+    ]
+  },
+  "cosmic_text_fork": "PounceLight/cosmic-text 0.11.2 rev 3da2a14ea3d063875fdc55695431e74405302b0f (features std+swash)；etagere 0.2.10。接线方式经 consume/upload/get_glyph 反编译确认与原调用一致；逐字节 fork 等价属依赖边界。",
+  "remaining": [
+    "TextRenderer::new 完整原装配细节",
+    "render getter(+0x440/+0x460) 消费者契约",
+    "toolbar/SSBO 真实消费者接线（GPU/窗口，后置）",
+    "inf*0 NaN 位模式：原构建 0xFFC00000 vs 本机 LLVM 0x7FC00000（工具链规范化差异，测试已 NaN 容忍）"
+  ],
+  "completion_classifications": [
+    {
+      "item": "prepare Action 0x22 break",
+      "result": "0x22 为超范围无效标签（cosmic 扁平标签 0x0-0x21），防御守卫、合法动作永不触发；候选全量应用行为等价"
+    },
+    {
+      "item": "cosmic_text::Action 类型",
+      "result": "确认 fork 中为 32 字节、扁平标签 0x0-0x21；候选 Vec<Action> 类型正确"
+    }
+  ]
+}

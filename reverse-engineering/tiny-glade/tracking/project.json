@@ -428,6 +428,7 @@
   ],
   "system_acceptances": [],
   "next_actions": [
+    "共享基础差分收口：攻 closest_edge_normal 法线组装（常量已定位）；curve2_rules/easing 定点反编译对照；circle_boundary 记为 MSVC-vs-macOS libm 平台差异",
     "rhapsody：按新目录MODULE_STATUS/统一功能验收记进度；将主图registry与正在录制的Command注入首个shader callback，闭合managed descriptor→同一submit/completion；随后核对原并行/跨族、资产关联/缓存与分叉依赖，禁止按路径/函数数计完成",
     "S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器",
     "S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则",
@@ -435,13 +436,14 @@
     "S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放"
   ],
   "known_gaps": [
+    "utils 4 个差分测试失败：closest_edge_normal 法线约定、circle_boundary(libm)、curve2_rules NaN 符号、easing 1 ULP（详见 utils-gaps REPORT.md）",
     "发行树/PDB没有取回作者原始Rust文本，当前为行为恢复源码",
     "Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实",
     "屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成",
     "22个快照引用目标缺失",
     "完整游戏、场景回放与GPU尚未验收；GPU源码按最新用户要求开始恢复"
   ],
-  "updated_at_utc": "2026-10-13T11:47:23.928Z",
+  "updated_at_utc": "2026-10-14T00:00:00Z",
   "render_recovery_progress": {
     "report": "evidence/render-recovery/RHAPSODY_PROGRESS.md",
     "phase": "candidate_functional_project_original_equivalence_pending",
@@ -723,7 +725,11 @@
       "contract_only": 2
     },
     "full_original_functionality_accepted": false,
-    "raw_interface_count_is_not_functional_workload": true
+    "raw_interface_count_is_not_functional_workload": true,
+    "snapshot_of_pre_completion": true,
+    "superseded_by": "tracking/foundation-business-functions.json",
+    "current_state_report": "evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md",
+    "differential_status": "utils 87 passed/3 failed (rectangle_deformation + rectangle_distance_normals fixed; circle_boundary-libm / curve2-NaN-sign / easing-1ULP remain)"
   },
   "foundation_unstarted_recovery": {
     "baseline": "B",

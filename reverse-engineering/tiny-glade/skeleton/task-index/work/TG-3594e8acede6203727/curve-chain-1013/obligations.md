@@ -1,0 +1,1 @@
+整合前需country-core声明原package utils共享path依赖并复验编译；不要新增独立candidate crate。恢复process真实字段映射后，以当前TerrainHeightsData::sample_at_world_xz(x,z)提供sample闭包；该方法目前unimplemented，不可伪造默认高度。capture+0x58语义仍未知。完整publish/changed/deleted/历史producer链未恢复，暂勿从ECS入口调用这个数值闭包并宣称整个系统完成。候选测试冻结输入在对应curve claim，不能覆盖旧530/259报告hash。

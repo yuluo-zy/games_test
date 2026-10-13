@@ -1,0 +1,162 @@
+// publish<country_core::systems::collision::world::ColliderDiff,enum2$<country_core::systems::collision::world::ColliderDelta>_>
+// 0x141453c00 void __cdecl publish<country_core::systems::collision::world::ColliderDiff,enum2$<country_core::systems::collision::world::ColliderDelta>_>(void)
+// params: []
+
+// WARNING: Removing unreachable block (ram,0x000141453dcb)
+
+void __cdecl
+tabloid::Publisher::
+publish<country_core::systems::collision::world::ColliderDiff,enum2_<country_core::systems::collision::world::ColliderDelta>_>
+          (void)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  byte bVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  code *pcVar6;
+  longlong lVar7;
+  longlong lVar8;
+  longlong lVar9;
+  ulonglong uVar10;
+  longlong *extraout_RAX;
+  longlong *extraout_RAX_00;
+  longlong *extraout_RAX_01;
+  longlong *in_RCX;
+  byte *in_RDX;
+  longlong *plVar11;
+  bool bVar12;
+  longlong *local_88;
+  
+  uVar10 = in_RCX[6] + 1;
+  in_RCX[6] = uVar10;
+  alloc::vec::Vec::
+  retain<alloc::sync::Arc<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>,alloc::alloc::Global,tabloid::impl_1::publish::closure_env_0<country_core::systems::collision::world::ColliderDiff,enum2_<country_core::systems::collision::world::ColliderDelta>_>_>
+            ();
+  bVar3 = *in_RDX;
+  local_88 = (longlong *)0x0;
+  plVar11 = (longlong *)in_RCX[4];
+  plVar1 = plVar11 + in_RCX[5];
+  do {
+    if (plVar11 == plVar1) {
+      if (local_88 != (longlong *)0x0) {
+        lVar4 = in_RCX[2];
+        if (lVar4 == *in_RCX) {
+          alloc::raw_vec::RawVec::
+          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                    ();
+        }
+        *(longlong **)(in_RCX[1] + lVar4 * 8) = local_88;
+        in_RCX[2] = lVar4 + 1;
+      }
+      return;
+    }
+    lVar4 = *plVar11;
+    LOCK();
+    bVar12 = *(char *)(lVar4 + 0x10) == '\0';
+    if (bVar12) {
+      *(char *)(lVar4 + 0x10) = '\x01';
+    }
+    UNLOCK();
+    if (!bVar12) {
+      parking_lot::raw_mutex::RawMutex::lock_slow();
+    }
+    parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+    if ((*(longlong *)(lVar4 + 0x20) == 0) && (*(ulonglong *)(lVar4 + 0x18) < uVar10)) {
+      if (local_88 == (longlong *)0x0) {
+        core::ops::function::FnOnce::
+        call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+                  ();
+        if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+          std::thread::local::panic_access_error();
+        }
+        lVar2 = *extraout_RAX;
+        lVar7 = extraout_RAX[1];
+        *extraout_RAX = *extraout_RAX + 1;
+        core::ops::function::FnOnce::
+        call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+                  ();
+        if (extraout_RAX_00 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+          std::thread::local::panic_access_error();
+        }
+        lVar8 = *extraout_RAX_00;
+        lVar9 = extraout_RAX_00[1];
+        *extraout_RAX_00 = *extraout_RAX_00 + 1;
+        if ((bVar3 & 1) == 0) {
+          hashbrown::map::HashMap::
+          insert<country_core::systems::collision::world::SubworldColliderHandle,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                    ();
+        }
+        else {
+          core::hash::BuildHasher::
+          hash_one<std::hash::random::RandomState,ref_<country_core::systems::collision::world::SubworldColliderHandle>_>
+                    ();
+          hashbrown::raw::RawTable::
+          remove_entry<tuple_<country_core::systems::collision::world::SubworldColliderHandle,tuple_<>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<country_core::systems::collision::world::SubworldColliderHandle,country_core::systems::collision::world::SubworldColliderHandle,tuple_<>_>_>
+                    ();
+        }
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        if (extraout_RAX_01 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+          alloc::alloc::handle_alloc_error();
+        }
+        extraout_RAX_01[0xe] = lVar9;
+        extraout_RAX_01[0xf] = uVar10;
+        extraout_RAX_01[0xc] = 0;
+        extraout_RAX_01[0xd] = lVar8;
+        extraout_RAX_01[10] = 0;
+        extraout_RAX_01[0xb] = 0;
+        extraout_RAX_01[8] = lVar7;
+        extraout_RAX_01[9] =
+             (longlong)&anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;
+        extraout_RAX_01[6] = 0;
+        extraout_RAX_01[7] = lVar2;
+        extraout_RAX_01[4] = 0;
+        extraout_RAX_01[5] = 0;
+        extraout_RAX_01[2] = 0;
+        extraout_RAX_01[3] =
+             (longlong)&anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;
+        *extraout_RAX_01 = 1;
+        extraout_RAX_01[1] = 1;
+        local_88 = extraout_RAX_01;
+      }
+      LOCK();
+      lVar2 = *local_88;
+      *local_88 = *local_88 + 1;
+      UNLOCK();
+      if (*local_88 == 0 || SCARRY8(lVar2,1) != *local_88 < 0) {
+                    // WARNING: Does not return
+        pcVar6 = (code *)invalidInstructionException();
+        (*pcVar6)();
+      }
+      plVar5 = *(longlong **)(lVar4 + 0x20);
+      if (plVar5 != (longlong *)0x0) {
+        LOCK();
+        *plVar5 = *plVar5 + -1;
+        UNLOCK();
+        if (*plVar5 == 0) {
+          alloc::sync::Arc::
+          drop_slow<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::systems::collision::world::ColliderDiff>_>,alloc::alloc::Global>
+                    ();
+        }
+      }
+      *(longlong **)(lVar4 + 0x20) = local_88;
+    }
+    parking_lot_core::parking_lot::deadlock_impl::release_resource();
+    plVar11 = plVar11 + 1;
+    LOCK();
+    bVar12 = *(char *)(lVar4 + 0x10) == '\x01';
+    if (bVar12) {
+      *(char *)(lVar4 + 0x10) = '\0';
+    }
+    UNLOCK();
+    if (!bVar12) {
+      parking_lot::raw_mutex::RawMutex::unlock_slow();
+    }
+  } while( true );
+}
+
+

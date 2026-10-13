@@ -14,6 +14,10 @@ B manifest原bytes校验→schema/version→逐文件missing/corrupt→递归ext
 
 既有4候选tests/真实manifest/disk检查；独立review原x64 FNV/数组Hash叶4096+128组合gate零差异，跨批/Unicode/junction探针通过。无确认业务bug/造轮子；64批线程创建与全文件读取成本已测，未证明原性能回退。完整verify/罕见schema/report consumer未验收。
 
+batch-02（2026-10-13）：Ghidra 反编译 verify/find_extra_files×2/checksum 叶与候选逐条一致；修复合成测试的 OS 平台相关失败（`build-info/manifest.json/../manifest.json` Unix=Missing/Windows=Corrupt）；新增 serde/schema 边界测试（unknown-field 忽略、version 类型错误归 ManifestParse）；报告/崩溃消费者接线证据（verify_package_integrity_and_show_report 0x2552f5→run_integrity_report_gui、on_game_crashed 0x3b040f→run_crash_reporter_gui）。7 测试过、clippy 过。证据：[batch-02 BUSINESS_RULES](../../evidence/small-libs-batch-02-2026-10-13/tg-package-integrity/BUSINESS_RULES.md)、[delivery](../../evidence/small-libs-batch-02-2026-10-13/tg-package-integrity/delivery.json)、[native-oracle](../../evidence/small-libs-batch-02-2026-10-13/tg-package-integrity/native-oracle.json)。
+
+完成轮（2026-10-14）：新增 symlink/权限探针测试（symlink 跳过、无权限目录 read_dir 静默），8 测试过。
+完成度判定（2026-10-14）：库内业务逻辑全部实现并反编译验证（校验门/verify 链/extra 扫描）；未闭合仅报告/崩溃 GUI 消费者接线与 A/C（按用户保留）。
 ## 已恢复的函数和类型范围
 
 - is_valid_manifest_checksum

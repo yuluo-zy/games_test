@@ -14,6 +14,10 @@ B chunk tag/Writer/ChunkWriter/Reader/Iterator业务链可调用；库IO/LE编�
 
 既有6候选tests/173原Reader案例；独立review新增20限定原Cursor Writer/Drop+pending error与3原Reader错误后恢复组均匹配，候选四故障/unwind/零复制验证。无确认代码缺陷或性能回退，完整save consumer/泛型IO仍未验收。
 
+batch-02（2026-10-13）：Ghidra 反编译 add_chunk×2/Drop/iter/next 与候选逐条一致；新增字节级 header 测试（12 测试过、clippy 过）；存档消费者映射深化（capture_game_snapshot add_chunk<&str> + validate_and_load Reader::iter→next + DeflateDecoder）。证据：[batch-02 BUSINESS_RULES](../../evidence/small-libs-batch-02-2026-10-13/motomoto/BUSINESS_RULES.md)、[delivery](../../evidence/small-libs-batch-02-2026-10-13/motomoto/delivery.json)、[native-oracle](../../evidence/small-libs-batch-02-2026-10-13/motomoto/native-oracle.json)。
+
+完成轮（2026-10-14）：补 AsTag for &str（0x142080ca0）与 tag_from_str_trunc（0x142080d00）反编译一致；登记原仅 Cursor 单态化范围（泛型 IO 合同归候选边界）、ChunkWriter 三字段 ABI 观察、Reader::new 地址勘误。
+完成度判定（2026-10-14）：库内业务逻辑全部实现并反编译验证（tag 编码/add_chunk/Drop/Reader 迭代边界）；未闭合仅消费者接线与 A/C（按用户保留）。
 ## 已恢复的函数和类型范围
 
 - tag_from_str/tag_from_str_trunc/tag_from_le_bytes_truncated

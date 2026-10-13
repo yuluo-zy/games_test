@@ -1,0 +1,178 @@
+{
+  "module": "tg-text",
+  "baseline": "B",
+  "date": "2026-10-13",
+  "session": "tgtext-b02",
+  "scope": "TextRenderer/TextFragment strategy re-verification via Ghidra shared worker + radare2 RNE disassembly",
+  "oracle": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "patched_b_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323"
+  },
+  "decompiled_functions": [
+    {
+      "address": "0x140b8e4a0",
+      "symbol": "tg_text::TextRenderer::new",
+      "size": 2464,
+      "note": "复杂初始化(字体系统/atlas/缓冲)；候选 with_atlas_size 默认 1024 来自 new 内 0x400 常数。"
+    },
+    {
+      "address": "0x140b8f360",
+      "symbol": "tg_text::TextRenderer::load_font_from_file",
+      "size": 59,
+      "rules": [
+        "FontSystem::db_mut() -> fontdb::Database::load_font_file_impl()",
+        "加载失败时 anyhow::error::from<io::Error> 转换并返回",
+        "候选 load_font_from_file 一致"
+      ]
+    },
+    {
+      "address": "0x140b8f510",
+      "symbol": "tg_text::TextRenderer::rect",
+      "size": 349,
+      "rules": [
+        "签名：rect(&mut self, pos:[f32;2], extent:[f32;2], opacity:f32, shapes) —— 原函数无独立 color 参数",
+        "断言 shapes 长度 < 256，panic 消息 'assertion failed: stream_len < 256'（0x140b8f625）",
+        "颜色固定 0xffffffff，经 utils::scale_u32_packed_srgba_color(0xffffffff, opacity) 缩放 alpha（0x140b8f548 mov ecx,0xffffffff; 0x140b8f550 call 0x140c918d0）",
+        "primitive 字段布局：pos_min=pos, pos_extent=extent, uv_min=0, uv_extent=(1,1), color=缩放结果, stream=(当前shape词数<<8)|shapes.len, padding=0",
+        "随后把 shapes 词追加到 stream.shapes（memcpy）",
+        "rect 调用方 toolbar::mei::widgets 0x140680330/0x140680590 传 opacity 与 shapes 引用；radare2 注释 (0.5f opacity, -1=0xffffffff)"
+      ]
+    },
+    {
+      "address": "0x140b8f670",
+      "symbol": "tg_text::TextRenderer::render",
+      "size": 15,
+      "rules": [
+        "getter：rdx=[self+0x440]（快照 primitives 数），rax=&self+0x460；返回 (u64, ptr)",
+        "与候选 render()->AtlasDescriptor 不同——候选为重建扩展；原 render 返回流视图供 GPU/消费者",
+        "gpu.rs 消费链对应 consume(+0x440 快照)。render 调用方 toolbar 0x1409cxxx"
+      ]
+    },
+    {
+      "address": "0x140fac810",
+      "symbol": "tg_text::TextRenderer::consume<toolbar::text::flush_text_render::closure_env$0>",
+      "size": 632,
+      "rules": [
+        "把 primitives 数与 shape 词数快照写入 +0x440；经 rhapsody update_buffer_bytes 上传（结果 0xb 校验）",
+        "重置 +0x420/+0x438 后调 upload_pending_glyphs()；帧计数 +0x4c8 自增",
+        "候选 consume/RenderBatch 语义一致（GPU 上传为 rhapsody 接线）"
+      ]
+    },
+    {
+      "address": "0x140b8f680",
+      "symbol": "tg_text::TextRenderer::upload_pending_glyphs",
+      "size": 1645,
+      "rules": [
+        "bumpalo::Bump 临时分配；遍历 GlyphPendingUpload 构造 TextureUpdateData；update_texture 上传",
+        "grow_requested(+0x4d4) 分支重建；与候选 upload_pending_glyphs 语义一致"
+      ]
+    },
+    {
+      "address": "0x140b8fea0",
+      "symbol": "tg_text::TextRenderer::get_glyph",
+      "size": 1800,
+      "rules": [
+        "cosmic_text::glyph_cache::CacheKey 哈希查找 glyph_cache（open addressing）",
+        "命中返回缓存；未命中走 swash 光栅化 + atlas 分配；与候选 get_glyph 一致",
+        "含 0x100 上限断言、缓存失效处理"
+      ]
+    },
+    {
+      "address": "0x140b90f60",
+      "symbol": "tg_text::TextFragment::prepare",
+      "size": 362,
+      "rules": [
+        "actions Vec(+0x1a8/+0x1b0) 排空并逐条 editor.action()，但遇到 Action 判别值 0x22 时 break 停止后续动作——候选全量应用，差异待分类",
+        "with_buffer_mut 设置 wrap/size（closure_env_0）",
+        "bounds[0](+0x238) 由 with_buffer 布局闭包计算；bounds[1](+0x23c)=字体 metrics line_height(fVar1) 而非候选的 layout_runs fold 最大值——差异已登记",
+        "字体角色枚举(+0x38)选择 metrics 位置：role0=内联+0x154，role1=font table+0x11c，其它=font table+300"
+      ]
+    },
+    {
+      "address": "0x140b91120",
+      "symbol": "tg_text::TextFragment::render",
+      "size": 1027,
+      "rules": [
+        "generation/cache 检查：+0x24c(generation) < 传入 renderer atlas generation 时重新 generate_primitives；否则复用已生成 primitives",
+        "generate_primitives 内联于 render（closure_env_0/closure_2）",
+        "render 后设置 +0x23c bounds[1]；候选 render 的 prepare+layout_for_render+generate_primitives+append_primitives 结构一致"
+      ]
+    },
+    {
+      "address": "0x140b90780",
+      "symbol": "tg_text::TextFragment::set_internal_scaled_metrics",
+      "size": 701,
+      "rules": [
+        "签名：set_internal_scaled_metrics(&mut self, renderer, font_size:f32, line_height:f32)——参数为已缩放 metrics",
+        "与当前 buffer metrics 相等且均非 NaN 时早退（无变化不重建）",
+        "变化时重建 buffer（Buffer::new_empty + 行复制）；按字体角色(+0x38)选择比较位置",
+        "候选已对齐：带参数 + NaN 守卫早退 + set_metrics 重建（重建方式用 set_metrics 而非逐行复制，等价候选实现）"
+      ]
+    },
+    {
+      "address": "0x140b906d0",
+      "symbol": "tg_text::TextFragment::replace_editor",
+      "size": 123,
+      "rules": [
+        "drop_in_place 旧 editor 后 memcpy 新 editor(0x1a0) 进入；generation(+0x24c)=0",
+        "释放 +0x1e8 并置 0x8000000000000000 哨兵；返回 void（丢弃旧值）",
+        "候选 replace_editor 用 mem::replace 返回旧值——重建扩展；原丢弃"
+      ]
+    },
+    {
+      "address": "0x140b91620",
+      "symbol": "tg_text::TextFragment::take_editor",
+      "size": 262,
+      "rules": [
+        "创建空 buffer editor，把旧 editor(0x1a0) 复制返回，原槽置空",
+        "候选 take_editor 语义一致（替换为带 max_width 的空 editor 并返回旧值）"
+      ]
+    },
+    {
+      "address": "0x140b91fa0",
+      "symbol": "tg_text::font_table::FontTable::get",
+      "size": 227,
+      "rules": [
+        "HashMap(RandomState) 按 FontFamily key 哈希查找，命中返回条目；缺失返回 None",
+        "候选 table.get(role) 一致"
+      ]
+    },
+    {
+      "address": "0x140b92090",
+      "symbol": "tg_text::font_table::FontTableEntry::scaled",
+      "size": 32,
+      "rules": [
+        "复制 family(16B)，返回 (scale*font_size, scale*line_height) 双 f32",
+        "scale 是第一操作数：fVar1 * (float)input —— SSE mulss 传播 scale 的 NaN 符号（fixture metric case 16 期望 -NaN 0xFFC00000）",
+        "候选已对齐：self.scale * font_size / self.scale * line_height，无 clamp"
+      ]
+    }
+  ],
+  "remaining_unknowns": [
+    "TextRenderer::new 完整原装配（字体/atlas 细节）",
+    "render getter(+0x440/+0x460) 的消费者契约",
+    "cosmic-text/etagere fork 与原始调用的逐字节等价（依赖边界）"
+  ],
+  "classification_updates": [
+    {
+      "item": "prepare Action 0x22 break",
+      "classification": "0x22 是超范围无效标签（cosmic::Action 扁平标签 0x0-0x21，探测确认 size=32、33/34 变体）。break 是防御守卫，合法动作永不触发；候选“全量应用”对所有可构造输入行为等价。",
+      "evidence": "probe: size_of::<cosmic_text::Action>()=32, BufferEnd=0x14, max=Scroll=0x21"
+    },
+    {
+      "item": "set_text 入队动作",
+      "finding": "原 set_text 末尾 editor_action tag=0x14 = Action::Motion(Motion::BufferEnd)（光标落文档末尾）；候选此前用 BufferStart(0x13)——已修正为 BufferEnd",
+      "evidence": "0x140fac4c0 set_text 反编译 local_b8 低 u32=0x14; probe BufferEnd first_u32=0x14"
+    },
+    {
+      "item": "prepare bounds[1]",
+      "finding": "原 bounds[1]=scaled line_height(fVar1+0.0)，非 layout fold——候选已改为 metrics.line_height*font_scale+0.0",
+      "evidence": "0x140b90f60: *(float*)(self+0x23c)=fVar1+0.0"
+    },
+    {
+      "item": "replace_editor",
+      "finding": "原丢弃旧 editor 返回 void——候选已改 void，take_editor 改用 mem::replace 直接返回旧值",
+      "evidence": "0x140b906d0 drop_in_place 旧 editor; 0x140b91620 take_editor memcpy 返回旧值"
+    }
+  ]
+}

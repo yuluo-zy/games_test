@@ -2,7 +2,7 @@
 pub mod dialog;
 pub mod gui_runner;
 /// Game localization entry: controls keep keys until a renderer asks for text.
-pub fn text(key: &str) -> &str {
+pub fn text(key: &str) -> std::sync::Arc<str> {
     lang_lib::lookup(key)
 }
 

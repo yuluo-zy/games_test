@@ -8,6 +8,10 @@
 
 当前用户指定**源码恢复优先**；最新指示已开始渲染框架的Rust恢复与原码验证，场景和完整GPU画面验收尚未开展。源码关口与最终系统验收分列，局部差分通过不替代完整游戏集成。
 
+## 共享基础库进度（2026-10-14）
+
+三个库（utils / asset / asset-pipe）完成收口：实现层面 B 主线库内逻辑齐全（无"无业务实现"条目，见 `tracking/foundation-business-functions.json`），三库 `cargo test` + `clippy -D warnings` 全绿；但验收层面未完成——utils 现 **87 通过 / 3 失败**（差分测试）。已修复：`rectangle_deformation` 与 `rectangle_distance_normals`（`get_closest_edge_id` 0x140c9acb0=逐边线段距离首个最小、`expand_along_edge` 0x140c9c620=clamp 下界 0、`closest_edge_normal`=|local|/size 选轴）。剩余 3 失败：`circle_boundary`（MSVC vs macOS libm 平台差）、`curve2_rules`（+NaN/-NaN 符号）、`easing`（1 ULP）。`WallSpaceCoord::{bound,is_bounded,to_affine3}` 经逆向确认 B 中未编译、语义不可恢复。详见 `evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md`。
+
 | ID | 里程碑 | 最终状态 | 源码关口 | 前置验收 | 验收条件 | 证据 |
 |---|---|---|---|---|---|---|
 | M00 | 原作身份与研究输入 | 完成验收 | — | — | RNE/PDB 匹配身份；副本哈希一致；EXE 差异登记 | [baseline.json](evidence/binary/baseline.json)<br>[identity.json](workspace/input/identity.json) |

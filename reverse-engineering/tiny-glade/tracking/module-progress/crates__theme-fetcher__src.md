@@ -12,7 +12,7 @@ B主题HTTP/ETag/date/cache-control、backoff/half-open活动、CAS/ZIP校验与
 
 接线：shared_foundation_workspace_and_library_adapters_original_game_producer_consumer_pending。
 
-共享 --offline --locked Cargo测试及all-targets Clippy -D warnings通过；原叶/静态/字段与真实后端范围分别见证据，不接受完整原模块。
+2026-10-14 库内 fresh 反编译复核（B）：new@0x14054aa00/run@0x140618310（内联 fetch/download/validate/trim）/extract_with_checksums@0x140d921c0/verify_folder_checksums@0x140d939a0 逐项对照，关键常量与 1s 睡眠机器码核验；修复下载循环触发（原对任意 Err 每 1s 重试，非仅 Pending）。隔离验证 workspace 11 测试/clippy -D warnings 通过。库外主题 plugin 消费与 A/C 仍留。
 
 ## 已恢复的函数和类型范围
 

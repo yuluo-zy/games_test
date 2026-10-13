@@ -10,6 +10,32 @@
 已修复数组纹理所有叶文件的内容缓存失效、旧 metadata 迁移、零 mip/零尺寸/对齐溢出错误，以及独立法线选轴和 directed local-edge 距离中错误的 abs。utils 当前 87 通过/3 失败（圆形 4 ULP、越界切线 NaN 符号、缓动 1 ULP）；asset 15、asset-pipe 15 通过，三库严格 Clippy 通过。仍为候选/限定验证，不能说所有 B 业务实现基本完成或三库全部测试绿色。libm 根因待同平台/中间值证实；三个墙符号改为 compiled_body_not_located，未证明未编译。新增缓存和参数处理属于产品策略变化，旧原版等价报告不覆盖。详见 `evidence/foundation-review-fixes-2026-10-14/REPORT.md`。以下历史记录中的更强完成度/未编译/全绿表述由本断点纠正。
 
 
+## 2026-10-14 共享基础三库收口与差分修复
+
+用户选定 utils / asset / asset-pipe 三库完成实现+测试，明确"不造轮子用依赖库函数"，无证据符号主动逆向。已交付：`Spline2D` 2D 查询、`Vec3SliceView2` 投影访问、asset render 深层默认测试、`asset-pipe::texture::block_bytes`、shipped 三测试本机路径回退；三库 `cargo test` + `clippy -D warnings` 全绿。逆向结论：`WallSpaceCoord::{bound,is_bounded,to_affine3}` B 中未编译（仅 PDB inlinee 声明），语义不可恢复。差分修复：`rectangle_deformation` 与 `rectangle_distance_normals` 均过（get_closest_edge_id 0x140c9acb0=逐边线段距离首个最小；expand_along_edge 0x140c9c620=clamp 下界 0 非 min 参数；closest_edge_normal=|local|/size 选轴）；utils 现 **87 通过/3 失败**（circle_boundary MSVC/macOS libm、curve2_rules NaN 符号、easing 1 ULP）。证据：`evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md`；台账：`tracking/foundation-business-functions.json`（175 partial）、`tracking/unrecovered-shared-foundation-interfaces.json`（185 条，9 已实现移出、3 墙符号 not_compiled_in_b）、`tracking/project.json`、`PROJECT_PROGRESS.md`、`PROJECT_MEMORY.md`。
+
+
+## 2026-10-14 共享基础三库（theme-fetcher / feedback-reporter / tg-gpu-selector）库内收口
+
+用户选定共享基础模块三库做**库内**实现/校验（明确不做上层游戏模块接线）。对每库：枚举 B 发射面原函数 → fresh 反编译逐项对照 → 修真实差异 → 隔离验证 workspace（`/tmp/tg-closures-validation-Ckh1`，不动共享 workspace）test/clippy 验证。
+
+- **theme-fetcher**（已完成）：`new@0x14054aa00`、`run@0x140618310`（内联 fetch_events/download_blob/validate_cas_cache_entry/trim_cas）、`checked_zip::extract_with_checksums@0x140d921c0`、`verify_folder_checksums@0x140d939a0` 逐项对照，关键常量与 1s 睡眠经机器码字节核验。修复 D1：下载循环触发条件——原对**任意 Err 变体**每 1s 循环重试（Result 判别字非 0），Rust 原只重试 Pending → 改 `is_err()`。11 测试 + clippy `-D warnings` 通过。
+- **feedback-reporter**（已完成）：`build@0x1406901f0`、`report_player_feedback@0x1406903a0`、`zip_dir@0x141002650`（内联 send_report/prepare_report/zip_benchmark_data）逐项对照，601/等待分支、multipart 顺序/MIME、HTTP 失败规则、obfstr endpoint 字节核验。修复 zip_dir 缺失跳过：原 `stat` 后**仅 NotFound（Windows err 2）跳过**、其它 metadata 错误落 `is_file()` panic → Rust 改 `ErrorKind::NotFound`-only-skip。9 测试 + clippy 通过。
+- **tg-gpu-selector**（验证进行中）：target 8 个编译函数 + 内联对照中。
+
+证据：`evidence/closures-2026-10-13/{theme-fetcher,feedback-reporter,gpu-selector}/`（B-SURFACE/BusinessLogic/Compare/Verification）。库外接线（tiny-glade 主题 plugin 消费、country-core 反馈 producer、rhapsody 设备选择接线）与 A/C 仍留，不计库内完成。注：`scripts/update-module-progress.py` 重生成被并发会话悬空引用 `reconstruction/math/window_aspect.rs`（文件不存在、无 module glob 扫描）阻塞，MODULE_PROGRESS.md 两行已手工同步，待其修复后脚本重生成。
+
+
+## 2026-10-13 小型基础库第二批（batch-02）
+
+三个并行任务深化 motomoto、tg-package-integrity、tg-text（共享 workspace 中另 agent 占用的六个库之外）：反编译核对原函数并修正候选差异。motomoto 的 add_chunk/Drop/iter/next 与 B 反编译逐条一致（12 测试过）；tg-package-integrity 的 verify/find_extra_files/checksum 叶一致，修复合成测试 OS 平台相关失败（`build-info/manifest.json/../manifest.json` Unix=Missing/Windows=Corrupt）并补 serde/schema 边界测试，登记报告/崩溃消费者接线（7 测试过）；tg-text 修正 rect 签名（opacity/shapes，颜色固定经 scale_u32_packed_srgba_color）、set_internal_scaled_metrics 签名（NaN 守卫）、scaled 操作数序，cosmic-text/etagere 接线经反编译确认，登记 prepare Action 0x22 break/bounds/replace_editor/render getter 差异（behavior 6 + text_pipeline 9 过，2 Windows 专属字体测试加非 Windows ignore）。三者严格 clippy 通过，无新增依赖。证据：[整合报告](evidence/small-libs-batch-02-2026-10-13/REPORT.md)。剩余：原入口 shipped-process runtime 全链、存档/报告 schema 完整消费、GUI 像素与 A/C。
+
+2026-10-14 batch-02 完成轮：按用户指示补齐除"真实消费者接线/A/C"外的可闭合缺口。tg-text 确认 fork 中 cosmic_text::Action 为 32 字节/扁平标签 0x0–0x21，0x22 break 分类为超范围无效标签（防御守卫，行为等价）；set_text 入队动作改 BufferEnd（原 tag 0x14，光标落末尾）、prepare bounds[1] 改 scaled line_height、replace_editor 改 void + take_editor 用 mem::replace。integrity 新增 symlink/权限探针测试（8 测试过）。motomoto 补 as_tag/tag_from_str_trunc 反编译一致，登记原仅 Cursor 单态化范围、ChunkWriter 三字段 ABI 观察、Reader::new 地址勘误（batch-01 误标）。35 测试过 + 2 Windows 专属忽略，严格 clippy 过。剩余边界（真实消费者接线、A/C、shipped-process runtime 全链、render getter 契约、TextRenderer::new 装配、NaN 工具链、32/64 位 Hash）见 [REPORT 验收边界](evidence/small-libs-batch-02-2026-10-13/REPORT.md)。
+
+完成度判定（2026-10-14，详见 [REPORT](evidence/small-libs-batch-02-2026-10-13/REPORT.md)）：按功能纳入规则枚举各库 PDB 业务函数后逐项核对——**motomoto 与 tg-package-integrity 库内业务逻辑实现+反编译验证完成**；**tg-text 库内业务函数全部实现、核心算法反编译验证**，保留项为简单 setter 未逐一 fresh 反编译复核、`render` 返回类型重建扩展、`TextRenderer::new` 装配细节、依赖/工具链边界。无"PDB 有业务函数但候选完全未实现"的情况（唯一例外 `image_name_to_index` 原文即 panic stub）。未闭合项全部落在用户保留范围（消费者接线、A/C）加登记边界。
+
+2026-10-13 paths/lang-lib/tabloid 原生复核完成：三个库全部 B 发射函数已实现并逐函数反编译复核（证据 evidence/foundation-plt-2026-10-13/）。结论无库内未实现功能；TG_DISABLE_LANG_FALLBACK 判别式已交叉验证正确；tabloid 通道归属修正（ColliderDiff 仅 0x141453c00/0x141454410/0x1412926e0，Delta 类型为 ColliderDelta）。交付：tabloid DirtyTiles 语义契约测试 + paths 初始化限制边界测试；lang-lib 仅登记 load_locale 写失败偏差（保留 log）。库外缺口不变：真实 producer→consumer 与 DirtyTiles/ColliderDiff State/StateDelta 实现在 country-core。详见 [PROJECT_MEMORY](PROJECT_MEMORY.md)。
+
 2026-10-13 最新B基础库批次：用户要求C先不管，集中B。3 agent已交付8库到[共享workspace](reconstruction/shared-foundation/Cargo.toml)，32普通Rust tests与严格Clippy通过，414项公共依赖身份完全匹配原B锁。主题/cache、报告/GUI、反馈插件/GFN为候选实现，协议schema不计手写算法；详见[交付及剩余边界](evidence/foundation-unstarted-2026-10-13/REPORT.md)。下一闭包是原tiny-glade每日主题插件→fetcher、country-core/UI反馈producer→reporter、rhapsody真实设备/driver_support→选择结果消费及启动完整性/crash回调接线；先恢复真实字段/类型再接入，不重复派生visitor或公共依赖。完整原oracle与A/C适配保留，C本轮不推进。
 
 基础库的详细功能拆分见[基础库业务功能清单](FOUNDATION_BUSINESS_FUNCTIONS.md)。推进单位为游戏侧手写规则与生产消费闭包；自动派生、宏展开、通用库实现不列功能任务。未解释的入口、归属待确认和纯数据契约保持各自标记，原系统验收状态不变。

@@ -1,0 +1,106 @@
+// try_from_yml
+// 0x141848770 void __cdecl try_from_yml(void)
+// params: []
+
+void __cdecl lang_lib::language_library::LanguageLibrary::try_from_yml(void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  byte *extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong lVar1;
+  longlong *in_RCX;
+  longlong lVar2;
+  longlong *in_R9;
+  longlong lVar3;
+  longlong local_138;
+  longlong lStack_130;
+  longlong local_128;
+  longlong lStack_120;
+  longlong local_118;
+  longlong lStack_110;
+  longlong local_108;
+  char *pcStack_f8;
+  longlong local_f0;
+  longlong local_b8;
+  longlong lStack_b0;
+  
+  std::fs::read_to_string::inner();
+  if (SBORROW8(0,local_b8)) {
+    anyhow::error::impl$1::from<std::io::error::Error>();
+    in_RCX[1] = extraout_RAX;
+    *in_RCX = 0;
+  }
+  else {
+    yaml_rust2::yaml::YamlLoader::load_from_str();
+    if (SBORROW8(0,local_108)) {
+      if (local_f0 == 0) {
+        lVar3 = in_R9[1];
+        lVar2 = in_R9[2];
+        std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();
+        if ((*extraout_RAX_01 & 1) == 0) {
+          std::sys::random::hashmap_random_keys();
+          extraout_RAX_01[0] = 1;
+          extraout_RAX_01[1] = 0;
+          extraout_RAX_01[2] = 0;
+          extraout_RAX_01[3] = 0;
+          extraout_RAX_01[4] = 0;
+          extraout_RAX_01[5] = 0;
+          extraout_RAX_01[6] = 0;
+          extraout_RAX_01[7] = 0;
+          *(longlong *)(extraout_RAX_01 + 8) = extraout_RAX_02;
+          *(longlong *)(extraout_RAX_01 + 0x10) = lStack_b0;
+          lVar1 = extraout_RAX_02;
+        }
+        else {
+          lVar1 = *(longlong *)(extraout_RAX_01 + 8);
+          lStack_b0 = *(longlong *)(extraout_RAX_01 + 0x10);
+        }
+        *(longlong *)(extraout_RAX_01 + 8) = lVar1 + 1;
+        in_RCX[4] = 0;
+        in_RCX[5] = 0;
+        in_RCX[2] = (longlong)&DAT_142cf1ad0;
+        in_RCX[3] = 0;
+        in_RCX[6] = lVar1;
+        in_RCX[7] = lStack_b0;
+      }
+      else {
+        if (*pcStack_f8 != '\x05') {
+                    // WARNING: Subroutine does not return
+          core::option::unwrap_failed();
+        }
+        std::collections::hash::map::impl$87::
+        from_iter<alloc::string::String,ref_<str_>,std::hash::random::RandomState,core::iter::adapters::map::Map<hashlink::linked_hash_map::Iter<enum2_<yaml_rust2::yaml::Yaml>,enum2_<yaml_rust2::yaml::Yaml>_>,lang_lib::language_library::impl_0::try_from_yml::closure_env_0>_>
+                  ();
+        lVar3 = in_R9[1];
+        lVar2 = in_R9[2];
+        in_RCX[6] = local_118;
+        in_RCX[7] = lStack_110;
+        in_RCX[4] = local_128;
+        in_RCX[5] = lStack_120;
+        in_RCX[2] = local_138;
+        in_RCX[3] = lStack_130;
+      }
+      *in_RCX = lVar3;
+      in_RCX[1] = lVar2;
+      core::ptr::
+      drop_in_place<alloc::vec::Vec<enum2_<yaml_rust2::yaml::Yaml>,alloc::alloc::Global>_>();
+      goto joined_r0x0001418489c9;
+    }
+    anyhow::error::impl$1::from<yaml_rust2::scanner::ScanError>();
+    in_RCX[1] = extraout_RAX_00;
+    *in_RCX = 0;
+    if (local_b8 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  local_b8 = *in_R9;
+joined_r0x0001418489c9:
+  if (local_b8 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+

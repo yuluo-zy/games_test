@@ -44,12 +44,13 @@ pub struct ScaledFont<'a> {
 }
 
 impl FontTableEntry {
-    /// The original scales both input metric components without clamping.
+    /// 原 0x140b92090：scale 作为第一操作数（SSE mulss 传播 scale 的 NaN 符号），
+    /// 两分量均无 clamp。
     pub fn scaled(&self, font_size: f32, line_height: f32) -> ScaledFont<'_> {
         ScaledFont {
             family: &self.family,
-            font_size: font_size * self.scale,
-            line_height: line_height * self.scale,
+            font_size: self.scale * font_size,
+            line_height: self.scale * line_height,
         }
     }
 }

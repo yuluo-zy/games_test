@@ -238,6 +238,8 @@
 
 游戏快照的chunk容器协议。版本范围：A、B、C。
 
+batch-02（2026-10-13/14）：库内业务逻辑全部实现并反编译验证（add_chunk/Drop/iter/next/as_tag/tag 编码 + 173 原 Reader RNE 案例）；未闭合仅存档消费者接线与 A/C。[证据](evidence/small-libs-batch-02-2026-10-13/motomoto/)。
+
 边界：chunk封口包含手写Drop承载的协议规则，但不列Drop任务；byteorder/std IO/flate2/JSON实现复用。
 
 最新review已补限定Cursor的原Writer和chunk封口运行对照。通用流IO失败、最终延迟错误消费者和真实存档仍未闭合。
@@ -257,6 +259,8 @@
 ### tg-package-integrity
 
 验证发行文件是否缺失、损坏或多出。版本范围：A、B、C。
+
+batch-02（2026-10-13/14）：库内业务逻辑全部实现并反编译验证（校验门/verify 链/extra 扫描 + 29 容器案例 + 真实 2.7GB 包 + symlink/权限探针）；登记报告/崩溃 GUI 消费者接线；未闭合仅消费者接线与 A/C。[证据](evidence/small-libs-batch-02-2026-10-13/tg-package-integrity/)。
 
 边界：复用blake3/fnv/relative-path/easy-parallel/serde；不重写哈希和线程库。
 
@@ -413,6 +417,8 @@
 ### tg-text
 
 文字片段、字形缓存及UI形状编码策略。版本范围：A、B、C。
+
+batch-02（2026-10-13/14）：库内业务函数全部实现，核心算法反编译验证（rect/prepare/render/scaled/set_internal_scaled_metrics/replace_editor/take_editor/get_glyph/upload_pending_glyphs/consume/append + 51+21+20+88 原 RNE 案例）；cosmic::Action 确认 32 字节/扁平标签 0x0–0x21；保留项——简单 setter 未逐一 fresh 复核、render 返回类型为重建扩展、TextRenderer::new 装配细节、消费者接线与 A/C。[证据](evidence/small-libs-batch-02-2026-10-13/tg-text/)。
 
 边界：cosmic-text/etagere/serde/RON复用；前三个字体/流子域有证据，完整文本渲染未验收。
 

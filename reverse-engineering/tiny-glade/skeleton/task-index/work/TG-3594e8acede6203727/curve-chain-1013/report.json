@@ -1,0 +1,36 @@
+{
+  "status": "resolved_consumer_numeric_verified_B_not_full_system",
+  "claims": [
+    "TG-9cab24dd1d18f9a94a",
+    "TG-3594e8acede6203727"
+  ],
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "analysis_patched_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "worker": "shared read-only (no overlays)",
+  "native_entrypoints": [
+    "0x141468880",
+    "0x14146bb70"
+  ],
+  "weighted_cases": 18,
+  "terrain_consumer_cases": 90,
+  "comparison": "exact float bits for points,points_u,length; exact terrain sampler invocation coordinate sequence",
+  "candidate_tests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "dependency_public_matches": 13,
+  "candidate_target": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "integration": "candidate consumer only; shared utility reused unchanged; publish ECS remains unknown; no C claim upgrade",
+  "bridges": [
+    "allocator/free/realloc",
+    "CRT memcpy/memmove/memset",
+    "CRT roundf",
+    "original terrain sample_at_world_xz replaced by controlled constant response; not terrain-algorithm proof"
+  ],
+  "failures_preserved": [
+    "dependency-comparison-initial.json (autocfg1.5.1 drift; subsequently seed original lock ->1.1.0)",
+    "Ghidra first sandbox startup.lock denial then authorized read completed",
+    "Unicorn sandbox mem_map SIGILL; authorized external execution passed",
+    "shared workspace offline build blocked by asset/rkyv checkout; own validation source harness used"
+  ]
+}

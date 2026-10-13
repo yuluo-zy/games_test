@@ -97,7 +97,13 @@ pub fn zip_dir<W: Write + Seek>(
     let mut contents = Vec::new();
     for relative in &save.files {
         let path = relative.to_path(&save.root_dir);
-        if !path.exists() {
+        // Native B zip_dir @ 0x141002650 stats the entry first and skips only
+        // on a NotFound metadata error (Windows ERROR_FILE_NOT_FOUND == 2).
+        // Any other metadata error falls through to is_file() and panics like
+        // a non-file path, matching the decompiled stat -> is_file flow.
+        if let Err(error) = fs::metadata(&path)
+            && error.kind() == std::io::ErrorKind::NotFound
+        {
             continue;
         }
         if !path.is_file() {
@@ -425,6 +431,25 @@ mod tests {
             Cursor::new(Vec::new()),
             zip::CompressionMethod::Stored,
         );
+    }
+
+    #[test]
+    fn non_notfound_metadata_error_panics_not_skips() {
+        // Native B 0x141002650 skips only on NotFound; a metadata error with
+        // any other kind falls through to is_file() and panics. A NUL byte in
+        // the path yields ErrorKind::InvalidInput on all platforms.
+        let fixture = Fixture::new();
+        let mut save = fixture.save();
+        save.files.push(RelativePathBuf::from("bad\0path"));
+        let panicked = std::panic::catch_unwind(|| {
+            let _ = zip_dir(
+                &save,
+                Cursor::new(Vec::new()),
+                zip::CompressionMethod::Stored,
+            );
+        })
+        .is_err();
+        assert!(panicked);
     }
 
     #[test]

@@ -12,7 +12,7 @@ B等待/替换/601计数、选定文件ZIP、benchmark、multipart/HTTP失败规
 
 接线：shared_foundation_workspace_and_library_adapters_original_game_producer_consumer_pending。
 
-共享 --offline --locked Cargo测试及all-targets Clippy -D warnings通过；原叶/静态/字段与真实后端范围分别见证据，不接受完整原模块。
+2026-10-14 库内 fresh 反编译复核（B）：build@0x1406901f0/report_player_feedback@0x1406903a0/zip_dir@0x141002650（内联 send_report/prepare/zip_benchmark）逐项对照，601/等待分支、multipart 顺序/MIME、HTTP 规则、obfstr endpoint 字节核验；修复 zip_dir 缺失跳过（原 stat 后仅 NotFound 跳过、其它 metadata 错误落 is_file panic）。隔离验证 workspace 9 测试/clippy -D warnings 通过。库外 producer 接线与 A/C 仍留。
 
 ## 已恢复的函数和类型范围
 

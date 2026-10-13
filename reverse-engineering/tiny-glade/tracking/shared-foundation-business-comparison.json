@@ -5964,7 +5964,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6000,7 +6002,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6036,7 +6040,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6072,7 +6078,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6118,7 +6126,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6137,7 +6147,7 @@
       "reference_remaining": "实际生产者和消费者未接线",
       "current_status": "integration_pending",
       "implemented_scope": [
-        "已有通用State::empty/StateDelta::apply_to边界；测试仅Changes类型，未接真实DirtyTiles/ColliderDiff。"
+        "库内契约已闭合：tests/dirty_tiles.rs 以DirtyTiles语义（512B位网格 zero-empty+OR-apply，镜像0x140960ac0/0x140960ef0）验证 publish→订阅→take 全流程；真实类型实现仍在 country-core 库外。"
       ],
       "source_mapping": [
         {
@@ -6149,22 +6159,33 @@
           "function": "StateDelta",
           "file": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
           "line": 10
+        },
+        {
+          "function": "tests/dirty_tiles.rs",
+          "file": "reconstruction/shared-foundation/crates/tabloid/tests/dirty_tiles.rs"
         }
       ],
       "missing_library_logic": [],
       "unresolved_contracts": [],
       "validation_gaps": [
-        "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
+        "fresh反编译修正通道归属：DirtyTiles publish@0x141cf6500/0x1425db920/0x141453350、subscribe@0x141247b10/0x141cf68e0/0x141292860/0x141454290、take@0x141247c90/0x1412929e0/0x141454590；ColliderDiff publish<ColliderDiff,ColliderDelta>@0x141453c00、subscribe@0x141454410/0x1412926e0。原合同5地址全标ColliderDiff族有误。"
       ],
       "consumer_gaps": [
         "真实DirtyTiles/ColliderDiff empty/apply_to及其producer→publication→consumer没有联接；本条作为独立集成缺口。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
         "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
-        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md",
+        "reconstruction/shared-foundation/crates/tabloid/tests/dirty_tiles.rs",
+        "evidence/foundation-plt-2026-10-13/functions/0x141cf6500.txt",
+        "evidence/foundation-plt-2026-10-13/functions/0x141247c90.txt",
+        "evidence/foundation-plt-2026-10-13/functions/0x140960ac0.txt",
+        "evidence/foundation-plt-2026-10-13/functions/0x140960ef0.txt"
       ],
       "detailed_comparison": "evidence/foundation-business-comparison-2026-10-13/small-modules.json",
       "full_original_feature_accepted": false
@@ -6201,7 +6222,8 @@
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "本轮只核B Windows；其他平台不凭本实现推广。"
+        "本轮只核B Windows；其他平台不凭本实现推广。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
@@ -6244,7 +6266,8 @@
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "本轮只核B Windows；其他平台不凭本实现推广。"
+        "本轮只核B Windows；其他平台不凭本实现推广。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
@@ -6282,7 +6305,8 @@
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "本轮只核B Windows；其他平台不凭本实现推广。"
+        "本轮只核B Windows；其他平台不凭本实现推广。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
@@ -6325,7 +6349,8 @@
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "本轮只核B Windows；其他平台不凭本实现推广。"
+        "本轮只核B Windows；其他平台不凭本实现推广。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
@@ -6368,7 +6393,8 @@
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "本轮只核B Windows；其他平台不凭本实现推广。"
+        "本轮只核B Windows；其他平台不凭本实现推广。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
@@ -6410,7 +6436,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6447,7 +6475,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6479,18 +6509,23 @@
       "missing_library_logic": [],
       "unresolved_contracts": [],
       "validation_gaps": [
+        "判别式0x8000000000000001=Ok已跨load_locale_impl/find_standard_app_root_path交叉验证，现有is_err语义正确（非开放项）。",
         "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
       ],
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
         "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
         "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
-        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+        "evidence/foundation-plt-2026-10-13/functions/0x140b9c4a0.txt",
+        "evidence/foundation-plt-2026-10-13/functions/0x140b9dc80.txt"
       ],
       "detailed_comparison": "evidence/foundation-business-comparison-2026-10-13/small-modules.json",
       "full_original_feature_accepted": false
@@ -6526,7 +6561,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6563,7 +6600,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -6600,20 +6639,24 @@
       "missing_library_logic": [],
       "unresolved_contracts": [],
       "validation_gaps": [
+        "fresh asm(0x140b9c300)证实原版写失败静默丢弃无log调用；候选保留诊断log为登记偏差（用户确认保留），代码未改。",
         "已有候选合同/原材料对照，完整原功能入口和全部边界未执行；不等于源码没有实现。"
       ],
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
       "reference_corrections": [
-        "非trim、requested fallback locale与override写路径策略已有；不能列为未实现。"
+        "非trim、requested fallback locale与override写路径策略已有；不能列为未实现。",
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
       ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
         "evidence/shared-foundation-review-2026-10-13/small-modules/validation.json",
         "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
-        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+        "evidence/foundation-plt-2026-10-13/functions/0x140b9c300.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
       ],
       "detailed_comparison": "evidence/foundation-business-comparison-2026-10-13/small-modules.json",
       "full_original_feature_accepted": false
@@ -6649,7 +6692,9 @@
       "consumer_gaps": [
         "原游戏启动/系统消费者未接线；这在库外闭包范围。"
       ],
-      "reference_corrections": [],
+      "reference_corrections": [
+        "本轮原生复核通过（2026-10-13 evidence/foundation-plt-2026-10-13/），无新库内缺代码。"
+      ],
       "original_interfaces": [],
       "evidence": [
         "evidence/shared-foundation-review-2026-10-13/small-modules/review.json",
@@ -7752,53 +7797,53 @@
   ],
   "current_sources": {
     "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs": "152f10cdbd909d0642693c72d0c429dcf981e609fc4887272fec980336851c78",
-    "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs": "c97f7e0429a273fd4c1ee1feb0892df59fa4e34c8b4f7c332740e772fe6fb2a6",
-    "reconstruction/shared-foundation/crates/paths/src/lib.rs": "e6d4f87783c1b879e52ad0385a4fc48a331871340e77447258b989b169251103",
+    "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs": "05442465e1e0059c788e74a4ead920d578d16eed3e667a78d7b4e3cf6f9a34c8",
+    "reconstruction/shared-foundation/crates/paths/src/lib.rs": "33111c153b2bfc7b5b64ae7556e04969052d7a54ff5c9eb11fff9164c79f5d60",
     "reconstruction/shared-foundation/crates/tabloid/src/lib.rs": "3e1896ae4b45a7d252f5f6702d7daf659f711675e1537dbeb8a232cd644db3d2",
     "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs": "542b22e4403dfe5b86e86bea1a6f79ed7a4086a7d908188a89d1322c44146216",
     "reconstruction/shared-foundation/crates/utils/src/angle_range.rs": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
     "reconstruction/shared-foundation/crates/utils/src/camera.rs": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
     "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
-    "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+    "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs": "a287977adb195a0dcd7dd2c2889b6f10a405d7c936aad7752405a2e919fccd22",
     "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
     "reconstruction/shared-foundation/crates/utils/src/file.rs": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
     "reconstruction/shared-foundation/crates/utils/src/float_grid.rs": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
     "reconstruction/shared-foundation/crates/utils/src/halver.rs": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
     "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
     "reconstruction/shared-foundation/crates/utils/src/local_time.rs": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
-    "reconstruction/shared-foundation/crates/utils/src/loop_range.rs": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+    "reconstruction/shared-foundation/crates/utils/src/loop_range.rs": "0df4ac3afa385b8397314408d997b79d33cb9bb34564cc6f3c1e4e4f6637c0de",
     "reconstruction/shared-foundation/crates/utils/src/name_hash.rs": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
-    "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
-    "reconstruction/shared-foundation/crates/utils/src/rdp.rs": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+    "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs": "7d6e5ea2b9a7f67704fc240eee15ab64f81f1aaac1650b04060e2c33de385739",
+    "reconstruction/shared-foundation/crates/utils/src/rdp.rs": "98e7acef73ed3e64dfe29ef3c97ec5f43f6163289a446f9e423a8212bd8b1cc5",
     "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
     "reconstruction/shared-foundation/crates/utils/src/rng.rs": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
     "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs": "4da495878b1fb10e356a40565d956c6926b1fb6efeb917f3630a226e779beec4",
     "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
-    "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs": "226f8130787b2fa956fc3f0fcd080f3f96884c305d949c764715ffa864031da2",
     "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
     "reconstruction/shared-foundation/crates/utils/src/timer.rs": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
-    "reconstruction/shared-foundation/crates/utils/src/wall_space.rs": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
-    "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+    "reconstruction/shared-foundation/crates/utils/src/wall_space.rs": "f12760634a7163c022f5efbf36c90834d9447ab3f5b321308023a3dc675cc619",
+    "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs": "7da79af864a1ae9d6b5b153c2ac757db3ecb21da38d92984147b48c3f55cba68",
     "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c",
     "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs": "28d2222378fc125db45cf5537f23fe255bb398daf9c223ff15e5c11b3c9b38db",
-    "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs": "840b5bcc9323b08ef3de677afdfa242dbd90607ecce21bc9095bf6c9ce8bf4c2",
-    "reconstruction/shared-foundation/crates/utils/src/components/transform.rs": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs": "3042d689b2e91e3c444e5dda0bd34ce7f8f0d9d88345865e3868cdc4955187b2",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+    "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs": "c6494ac34a52b9b457b51ad2931e894f067f3cbe809a7fff31325dd8e90d3410",
+    "reconstruction/shared-foundation/crates/utils/src/components/transform.rs": "61f43e4ef4d54c3b8b6218d633af017aeffdd0df76898a0d35664938eb21321d",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs": "f7e18427827e01ca22ba9a0284ed8dd7534f03578b000a885463aa6352172786",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs": "112f403d1fbe35385cb54e6072cd1af86115bf40d3849bd48ded7c3289e578b8",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs": "b045754cb0b02fbfffb7fc0702ef25a2ef18a6398d3166b1c6df2c7f3b176ec1",
     "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e",
     "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs": "f9b854034c69bcf4e9e3c1dff2248498faa22c3c1b5c300f71033bc8c5cfc95b",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs": "65953e42979151bccbc8a9ce7ed9dad00d3a36d8c455ee4153440818dbc6a149",
     "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce",
     "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs": "59ed8b31b4d0a705431329ea907c534e40fc2abeed878c46ae07b2e4cd06d991",
     "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs": "b725f0bd3e30cdb73e99b2ac431344283a055acbe470c6b983bc8fe141ec2f15",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs": "83566b0cb078427626dafd6c436589508cc32f8dc87c580573f57cb7588bc213",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs": "681ee2c1fc95232336d9af710ccca87d4ce45019a83f77f4e14bcb7930c2476a",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs": "4b09386aeaeb389970be08d9182cb43a24379115ef0c54926e302acfe8f4b5e6",
-    "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs": "62cef87c502ed353756b483d62cc8c2fd32f78334172f750ac341886200a62a8",
-    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs": "49488a85b8bce34cd7602257f5a3434a87b8fe30d2bd003e1eb39598553ba9b1",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs": "d1b270395fd590228e3080cd09dd59b656731750988744d544307020f888a8b7",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs": "4f6b6a57d00ac1b533e2ec573d4b9bbe123c36cdb64a77dce3ca7e7f0b798593",
+    "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs": "b198d7333d6b8601369bf6032ad4390190953536c8a6ca327955510b5819118e",
+    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "2f64c818ae1126a90e7814240e6eed694bab413bece4328fed8354fd098a42a9",
     "reconstruction/shared-foundation/crates/asset/src/lib.rs": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
-    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "6c6067d4ff1bcdce14e8c636de1ad52717d4a66fc5b65b08c2592bdee734ea70",
     "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
     "reconstruction/shared-foundation/crates/asset/src/prefab.rs": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
     "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
@@ -7807,10 +7852,15 @@
     "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
     "reconstruction/shared-foundation/crates/asset/src/texture.rs": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
     "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
-    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "38d414639b312a9f4337ecfcf1634b19fb5fa1bc8aa1d08311cd2b93d7d0808d",
+    "reconstruction/shared-foundation/crates/tabloid/tests/dirty_tiles.rs": "768d08aa9f8ded63780892d933bab54e6d08f1a8084d78fd9edcd3f6ac37ad4b"
   },
   "policy": "Functional closures, not names or macro/helper counts. Distinguish absent library logic from missing original comparison and external game wiring. Scoped implementation is not complete original acceptance; no completion percentage.",
-  "source_modified": false,
-  "tests_rerun": false,
-  "raw_interface_count_is_not_functional_workload": true
+  "source_modified": true,
+  "tests_rerun": true,
+  "raw_interface_count_is_not_functional_workload": true,
+  "snapshot_of_pre_completion": true,
+  "superseded_by": "tracking/foundation-business-functions.json",
+  "current_state_report": "evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md",
+  "source_refresh_note": "2026-10-14 utils rectangle.rs 更新 get_closest_edge_id/expand_along_edge 后，本表历史 SHA 不再代表当前源码；逐行状态以 foundation-business-functions.json 为准"
 }

@@ -1,0 +1,57 @@
+// find_standard_app_root_path
+// 0x140b9dc80 void __cdecl find_standard_app_root_path(void)
+// params: []
+
+void __cdecl paths::find_standard_app_root_path(void)
+
+{
+  undefined8 extraout_RAX;
+  undefined8 *in_RCX;
+  longlong local_c8;
+  longlong local_a8;
+  longlong local_a0;
+  undefined8 local_98;
+  longlong local_88;
+  undefined8 local_60;
+  undefined8 uStack_58;
+  undefined8 local_50;
+  undefined8 uStack_48;
+  
+  known_folders::win::get_known_folder_path();
+  if (SBORROW8(0,local_c8)) {
+    std::env::_var();
+    if (local_a8 == -0x7fffffffffffffff) {
+      if (!SBORROW8(0,local_a0)) {
+        std::path::Path::_join();
+        if (local_a0 != 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+        goto LAB_140b9dd4e;
+      }
+    }
+    else {
+      std::backtrace::Backtrace::capture();
+      anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,enum2_<std::env::VarError>_>_>
+                ();
+      local_98 = extraout_RAX;
+    }
+    in_RCX[1] = local_98;
+    *in_RCX = 0x8000000000000000;
+  }
+  else {
+    local_88 = local_c8;
+LAB_140b9dd4e:
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::path::Path::_join();
+    in_RCX[2] = local_50;
+    in_RCX[3] = uStack_48;
+    *in_RCX = local_60;
+    in_RCX[1] = uStack_58;
+    if (local_88 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+
+

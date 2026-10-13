@@ -25,12 +25,16 @@ fn real_fonts_edit_and_warm_cache() {
     t.set_text(&mut r, "Glade 中文 e\u{301} 😀\nمرحبا");
     t.prepare(&mut r);
     assert!(t.bounds()[0] > 0.);
-    assert!(t.bounds()[1] >= 60.);
+    // 原 prepare（0x140b90f60）：bounds[1] 直取当前字体 scaled line_height（fVar1 + 0.0），
+    // 不是多行文本的 layout 折叠高度。此处 line_height=30、font_scale=1.0 → bounds[1]==30。
+    assert!((t.bounds()[1] - 30.).abs() < 0.001);
     t.editor_action(Action::Insert('A'));
     assert_eq!(t.pending_actions(), 1);
-    assert!(!t.text().starts_with('A'));
+    assert!(!t.text().ends_with('A'));
     t.prepare(&mut r);
-    assert!(t.text().starts_with('A'));
+    // 原 set_text 入队 Action::Motion(Motion::BufferEnd)（tag 0x14），光标落在文档末尾，
+    // Insert 在末尾追加而非前插。
+    assert!(t.text().ends_with('A'));
     assert_eq!(t.pending_actions(), 0);
     t.render(&mut r, [10., 20.], u32::MAX);
     let uploads = r.upload_pending_glyphs();
@@ -73,12 +77,12 @@ fn ownership_selection_alignment_and_shape_packet() {
     let old = t.take_editor(&mut r);
     assert!(old.with_buffer(|b| b.lines.iter().any(|l| l.text() == "abc def")));
     assert_eq!(t.text(), "");
-    let empty = t.replace_editor(old);
-    drop(empty);
+    // 原 replace_editor（0x140b906d0）丢弃旧 editor 返回 void。
+    t.replace_editor(old);
     assert_eq!(t.text(), "abc def");
     r.begin_frame();
-    r.rect([1., 2.], [3., 4.], 7, &RawShapeStream(vec![0, 99]));
-    r.rect([5., 6.], [7., 8.], 9, &RawShapeStream(vec![2]));
+    r.rect([1., 2.], [3., 4.], 0.5, &RawShapeStream(vec![0, 99]));
+    r.rect([5., 6.], [7., 8.], 1.0, &RawShapeStream(vec![2]));
     let b = r.consume();
     assert_eq!(b.shape_words, vec![0, 99, 2]);
     assert_eq!(b.primitives[0].stream, 2);
@@ -176,14 +180,14 @@ fn original_native_rect_opacity_and_stream_packet() {
         serde_json::from_str(include_str!("fixtures/rect-native-oracle.json")).unwrap();
     for case in evidence["cases"].as_array().unwrap() {
         let mut r = TextRenderer::new();
-        r.rect([0.; 2], [0.; 2], 0, &RawShapeStream(vec![99]));
+        r.rect([0.; 2], [0.; 2], 0.0, &RawShapeStream(vec![99]));
         let words = case["words"]
             .as_array()
             .unwrap()
             .iter()
             .map(|w| w.as_u64().unwrap() as u32)
             .collect::<Vec<_>>();
-        r.rect_with_opacity(
+        r.rect(
             [3.25, -7.5],
             [9.5, 21.25],
             case["input_color"].as_f64().unwrap() as f32,
@@ -237,6 +241,7 @@ fn centered_box_reflow_and_fresh_gpu_cache_reset() {
     assert!(!r.upload_pending_glyphs().is_empty());
 }
 #[test]
+#[cfg_attr(not(target_os = "windows"), ignore = "requires Windows font set (Fantasy->Impact)")]
 fn font_initialization_and_ecs_use_dependencies() {
     let fs = tg_text::init_font_system(Some("ko-KR".into()));
     assert_eq!(fs.locale(), "ko-KR");
@@ -311,6 +316,7 @@ fn original_native_opacity_extremes_and_color_preservation() {
 }
 
 #[test]
+#[cfg_attr(not(target_os = "windows"), ignore = "requires Windows Arial at C:/Windows/Fonts/arial.ttf")]
 fn external_validation_font_rtl_glyphs_and_visual_positions() {
     // 外部验证字体，不属于原作 font initialization/发行字体选择证据。
     let mut r = renderer();

@@ -1,0 +1,43 @@
+{
+  "module": "tg-package-integrity",
+  "baseline": "B",
+  "oracle": "B patched EXE (cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323), Ghidra shared worker",
+  "session": "evidence/toolchain/session-ghidra-shared-integrity-b02.json",
+  "functions": [
+    {
+      "address": "0x14067c3d0",
+      "name": "verify_package_manifest",
+      "key_rules": [
+        "fs::read 读 manifest；失败 → io::Error fmt 传播（ManifestRead 判别）",
+        "blake3::hash(bytes)；FNV seed 0xf52dad71b327e45a；core::array::impl$11::hash<[u8;32]>；低16位==0 门",
+        "serde_json::de::from_slice<PackageManifest>；解析失败 → serde fmt（ManifestParse 判别）",
+        "version==1 才继续；否则 UnsupportedVersion(version)（判别 -0x7ffffffffffffffd + 值）",
+        "easy_parallel::Parallel::each<CheckOutcome,(String,String)> + run 逐文件核对（含 MANIFEST_PATH 自跳过）",
+        "find_extra_files<&str>；全部空 → Ok（判别 -0x7ffffffffffffffc）；否则 FileIssues{missing,corrupt,extra}"
+      ]
+    },
+    {
+      "address": "0x140f737f0",
+      "name": "hash<[u8;32], FnvHasher>",
+      "key_rules": [
+        "FNV-1a prime 0x100000001b3",
+        "首项 (basis ^ 0x20) * prime（usize 长度 32 前缀），随后 32 字节逐 ^byte * prime",
+        "长度前缀宽度/字节序随平台变化（64 位 LE 为 8 字节）"
+      ]
+    },
+    {
+      "address": "0x140f79650",
+      "name": "find_extra_files<&str>",
+      "key_rules": [
+        "递归 readdir；file_type 位判定；file_name 非 UTF-8 跳过",
+        "RelativePath::join 后与 'tmp' 常量 eq 相等 → 跳过",
+        "symlink 跳过；read_dir 失败静默",
+        "HashSet 成员检查（hash_one<RandomState> swisstable）；目录递归 find_extra_files<PathBuf>"
+      ]
+    }
+  ],
+  "consumer_call_sites": [
+    {"function": "verify_package_integrity_and_show_report", "address": "0x1402552f5", "calls": ["verify_package_manifest 行147", "tg_integrity_report::run_integrity_report_gui 行704"]},
+    {"function": "on_game_crashed", "address": "0x1403b040f", "calls": ["verify_package_manifest 行1228", "crash_reporter_gui::run_crash_reporter_gui<closure_env_6> 行1365-1366"]}
+  ]
+}

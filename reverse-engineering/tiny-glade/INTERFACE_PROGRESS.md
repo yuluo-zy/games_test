@@ -1,5 +1,7 @@
 # 共享基础：业务函数接口进度
 
+> **2026-10-14 更新**：原"已有分析未实现"的 9 个接口已补齐候选实现（is_on_right_side、try_extend、try_resample_approx_pt_count(+remap)、Circle2d::as_curve2(+range)、矩形 distance_to_closest_edge / get_normal_at_u_non_normalized_corners / signed_distance_to_closest_edge），见 `UNRECOVERED_INTERFACES.md` 与 `evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md`。下表为 review 快照；候选实现计数相应增加 9。`WallSpaceCoord::{bound,is_bounded,to_affine3}` 经逆向确认 B 未编译、语义不可恢复。
+
 基线：B。主表只统计已分类的业务接口；宏自动实现/库转发、类型/schema合同及待分类项另列。PDB不是作者API全集，不能从文件数、Rust声明数或测试数推导完成率。
 
 | 范围 | 已观察 | 业务已分析（部分） | 未触及 | 候选实现 | 原入口对照（局部） | 待归属 |

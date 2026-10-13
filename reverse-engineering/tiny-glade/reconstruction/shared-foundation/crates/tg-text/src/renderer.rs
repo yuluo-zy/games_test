@@ -267,7 +267,7 @@ impl TextRenderer {
             }
             SwashContent::Color => rgba = image.data,
             SwashContent::SubpixelMask => {
-                for pixel in image.data.chunks_exact(3) {
+                for pixel in image.data.as_chunks::<3>().0 {
                     rgba.extend([pixel[0], pixel[1], pixel[2], *pixel.iter().max().unwrap()]);
                 }
             }
@@ -317,8 +317,26 @@ impl TextRenderer {
             std::mem::take(&mut self.pending)
         }
     }
-    pub fn rect(&mut self, pos: [f32; 2], extent: [f32; 2], color: u32, shapes: &RawShapeStream) {
-        assert!(shapes.0.len() < 256, "shape stream exceeds packed length");
+    /// 原 TextRenderer::rect(pos, extent, opacity, shapes)：颜色固定白色 u32::MAX，
+    /// alpha 经 utils::scale_u32_packed_srgba_color 按 opacity 缩放（RNE 0x140b8f548/0x140b8f550）。
+    pub fn rect(&mut self, pos: [f32; 2], extent: [f32; 2], opacity: f32, shapes: &RawShapeStream) {
+        assert!(shapes.0.len() < 256, "stream_len < 256");
+        self.rect_with_color(
+            pos,
+            extent,
+            crate::scale_u32_packed_srgba_color(u32::MAX, opacity),
+            shapes,
+        );
+    }
+    /// 重建扩展：候选显式颜色入口；原 rect 固定白色仅接受 opacity。
+    pub fn rect_with_color(
+        &mut self,
+        pos: [f32; 2],
+        extent: [f32; 2],
+        color: u32,
+        shapes: &RawShapeStream,
+    ) {
+        assert!(shapes.0.len() < 256, "stream_len < 256");
         let start = self.stream.shapes.0.len();
         assert!(
             start <= 0x00ff_ffff,
@@ -328,20 +346,6 @@ impl TextRenderer {
         primitive.stream = ((start as u32) << 8) | shapes.0.len() as u32;
         self.stream.primitives.push(primitive);
         self.stream.shapes.0.extend_from_slice(&shapes.0);
-    }
-    pub fn rect_with_opacity(
-        &mut self,
-        pos: [f32; 2],
-        extent: [f32; 2],
-        opacity: f32,
-        shapes: &RawShapeStream,
-    ) {
-        self.rect(
-            pos,
-            extent,
-            crate::scale_u32_packed_srgba_color(u32::MAX, opacity),
-            shapes,
-        );
     }
     pub fn shaped_rect(
         &mut self,
@@ -353,7 +357,7 @@ impl TextRenderer {
     ) {
         let mut raw = RawShapeStream::new();
         raw.append(shapes, resolver);
-        self.rect(pos, extent, color, &raw);
+        self.rect_with_color(pos, extent, color, &raw);
     }
     pub fn append_primitives(&mut self, primitives: &[Primitive], offset: [f32; 2], color: u32) {
         self.stream.primitives.extend(primitives.iter().map(|p| {

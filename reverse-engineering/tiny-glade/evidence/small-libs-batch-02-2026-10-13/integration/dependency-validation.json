@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "roots": [
+    "motomoto",
+    "tg-package-integrity",
+    "tg-text"
+  ],
+  "original_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "current_lock_sha256": "3c504cbb58d4b882ed7b353ede5a418dcd8ad432a569d85e6a43d9b8b0b8c710",
+  "scope": "Public dependency closure of these three crates only (small-libs workspace lock, 187 packages); dependency code is reused, not reconstructed.",
+  "git_query_policy": "Same repository and exact commit define identity; source text differences stay visible.",
+  "matched_identity_count": 157,
+  "known_candidate_deviations": 7,
+  "notes": [
+    "The 7 deviations come from the tg-text optional `gpu` feature path pulling in the rhapsody-rebuild crate closure (ash/vulkan ecosystem). They were already registered in PROJECT_MEMORY / shared-foundation README as pre-existing candidate deviations (e.g. gpu-allocator 0.27 vs 0.26). This round adds no new dependencies; the lock is unchanged.",
+    "motomoto and tg-package-integrity closures match original identity 100%; deviations are not in their dependency trees."
+  ],
+  "known_candidate_deviations_detail": [
+    { "name": "gpu-allocator", "current": "0.27.0", "original": "0.26.0" },
+    { "name": "memoffset", "current": "0.8.0", "original": "0.9.0" },
+    { "name": "num-derive", "current": "0.3.3", "original": "0.4.2" },
+    { "name": "redox_syscall", "current": "0.2.16", "original": "0.5.1" },
+    { "name": "rustc-hash", "current": "1.1.0", "original": "2.0.0" },
+    { "name": "windows-sys", "current": "0.36.1", "original": "0.59.0" },
+    { "name": "zeno", "note": "source identity differs between current lock and original lock" }
+  ]
+}

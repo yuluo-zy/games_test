@@ -1,0 +1,105 @@
+{
+  "module": "motomoto",
+  "baseline": "B",
+  "oracle": "B patched EXE (cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323), Ghidra shared worker",
+  "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+  "functions": [
+    {
+      "address": "0x141552690",
+      "name": "Writer::add_chunk<Cursor<&mut Vec>, &str>",
+      "key_rules": [
+        "deferred_error 先 take 并清空；非空直接返回 Err（不写新 header）",
+        "start=stream_position；写 tag u64 LE 于 start；写 0 长度 u64 LE 于 start+8；返回 ChunkWriter{parent,start}"
+      ]
+    },
+    {
+      "address": "0x141552820",
+      "name": "Writer::add_chunk<Cursor<&mut Vec>, u64>",
+      "key_rules": [
+        "同 &str 单态，tag 已在寄存器，无字符串转换"
+      ]
+    },
+    {
+      "address": "0x14087abf0",
+      "name": "ChunkWriter drop（seek_back_and_write_length + 错误槽）",
+      "key_rules": [
+        "end=当前位置；position=start+8；写 end-start-16 于 data+8+start；position=end",
+        "随后访问 Writer 错误槽：存在则 drop 原 io::Error 并置 None（成功路径清空槽）"
+      ]
+    },
+    {
+      "address": "0x142080d50",
+      "name": "Reader::iter",
+      "key_rules": [
+        "复制 slice ptr/len；cursor position=0（独立迭代器）"
+      ]
+    },
+    {
+      "address": "0x142080d70",
+      "name": "ChunkIterator::next（try_next 单态）",
+      "key_rules": [
+        "position+16 >= len → None（不消费尾部，含恰好16字节空chunk）",
+        "读 tag@pos、length@pos+8；position+=16；end=position+length",
+        "position+length 溢出 → 错误；end>len → ErrorKind=UnexpectedEof(0x2500000003)；end<start → slice_index_order_fail panic",
+        "返回 Some{tag, data[start..end]}，判别=1"
+      ]
+    },
+    {
+      "address": "0x142080ca0",
+      "name": "AsTag for &str / tag_from_str",
+      "key_rules": [
+        "长度>8 字节 panic；否则零补足 8 字节 LE 解释",
+        "反编译确认"
+      ]
+    },
+    {
+      "address": "0x142080d00",
+      "name": "tag_from_str_trunc / tag_from_le_bytes_truncated",
+      "key_rules": [
+        "min(8,len) 字节复制，零补足，无 panic",
+        "反编译确认"
+      ]
+    }
+  ],
+  "consumer_call_sites": [
+    {
+      "function": "capture_game_snapshot",
+      "address": "0x1417a1d00",
+      "calls": [
+        "add_chunk<&str> 0x1417a31fa",
+        "add_chunk<u64> 0x1417a35fa (batch-01)",
+        "add_chunk<&str> 0x1417a3a50 (batch-01)"
+      ]
+    },
+    {
+      "function": "validate_and_load_closest_snapshot_data",
+      "address": "0x1417a6e50",
+      "calls": [
+        "Reader::iter + next（反编译行206-208）",
+        "try_load_snapshot_data 内 next（行1367）"
+      ]
+    }
+  ],
+  "instantiations_scope": {
+    "note": "原 Writer/ChunkWriter/Reader 仅观察到 Cursor<&mut Vec<u8>> 单态化（add_chunk<Cursor,&str/u64>、Reader::iter/next）；无 File/BufWriter 原实例，泛型 IO 失败/flush 合同属候选重建边界",
+    "observed": [
+      "0x141552690 add_chunk<Cursor,&str>",
+      "0x141552820 add_chunk<Cursor,u64>",
+      "0x142080d50 iter",
+      "0x142080d70 next"
+    ]
+  },
+  "abi_observations": [
+    {
+      "note": "ChunkWriter 反编译显示 {parent, 错误槽指针, start} 三字段布局（24B）；候选 {parent, start}（16B）。业务语义等价（Drop 通过槽指针清空错误），候选未追字节 ABI",
+      "address": "0x14087abf0"
+    }
+  ],
+  "corrections": [
+    {
+      "note": "batch-01 将 Reader::new 地址标为 0x14067dd80；该地址实为 toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut（4B getter）。Reader::new 保持 metadata 级（trivial 构造）",
+      "previous": "0x14067dd80",
+      "corrected": "reader_new_address_unresolved"
+    }
+  ]
+}

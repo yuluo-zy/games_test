@@ -327,9 +327,10 @@ impl<T: Transport> ThemeFetcher<T> {
         Ok(report)
     }
 
-    /// One original run-loop iteration: fetch when due, attempt every pending
-    /// blob (including future events), then choose the last active interval.
-    /// Errors are cached per event and retried only after a new events response.
+    /// One original run-loop iteration: fetch when due, retry every event whose
+    /// blob is not yet Ok (fresh Pending and previously failed downloads), then
+    /// choose the last active interval. Failed downloads are retried each loop
+    /// iteration (run @ 0x140618310), not only after a new events response.
     pub fn run_once(
         &mut self,
         now: SystemTime,
@@ -352,7 +353,11 @@ impl<T: Transport> ThemeFetcher<T> {
         }
         let events = self.events.load_full();
         for event in events.iter() {
-            if matches!(event.data.load().as_ref(), Err(EventDataError::Pending)) {
+            // Original download loop triggers on ANY Err variant, not only
+            // Pending: run @ 0x140618310, `if (SBORROW8(0, data[2])) goto
+            // download` (Result tag word; Ok tag = 0, every Err tag != 0).
+            // A failed download is therefore retried on every 1s loop pass.
+            if event.data.load().as_ref().is_err() {
                 let data = self
                     .download_blob(&event.cid)
                     .map_err(|error| EventDataError::Error(error.to_string()));
@@ -619,14 +624,18 @@ mod tests {
         let events = br#"{"events":[{"start":100,"end":200,"cid":"wrong"}]}"#.to_vec();
         let mut fetcher = ThemeFetcher::with_transport(
             &root,
-            fixture(vec![response(200, events), response(200, zip_bytes())]),
+            fixture(vec![
+                response(200, events),
+                response(200, zip_bytes()),
+                response(200, zip_bytes()),
+            ]),
             at,
         );
         assert_eq!(
             fetcher.run_once(UNIX_EPOCH, at),
             Some(Err(EventDataError::NoActiveEvent))
         );
-        assert_eq!(fetcher.transport.requests.len(), 2);
+        assert_eq!(fetcher.transport.requests.len(), 2); // events fetch + first download attempt
         assert!(!root.join("wrong").exists());
         let active = fetcher
             .run_once(
@@ -638,7 +647,9 @@ mod tests {
             active,
             Err(EventDataError::Error("Checksum mismatch".into()))
         );
-        assert_eq!(fetcher.transport.requests.len(), 2); // download error stays cached
+        // Failed downloads are retried every loop iteration in the original.
+        assert_eq!(fetcher.transport.requests.len(), 3);
+        assert!(!root.join("wrong").exists());
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
