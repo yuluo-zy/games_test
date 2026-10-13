@@ -135,7 +135,23 @@ def run_one(job, src, profiles, tmp, self_test):
     cov = sum(int(x['changed_a']) for x in all_res)
     dep = {int(x['profile']): int(x['changed_a']) for x in all_res if x.get('name') == 'depth'}  # pixels written (not discarded) per profile; 262144-ish = full screen
     verdict = (diff_common.classify(diff) if diff else None) or ('CRASH' if len(crashed) == len(profiles) else ('SAME' if cov > 0 else 'VACUOUS'))
-    return res(verdict, crashed_profiles=crashed, coverage=cov, depth_written=dep, diff_profiles=sorted({int(x['profile']) for x in diff}), diffs=[{k: x[k] for k in ('profile', 'name', 'kind', 'mismatch', 'changed_a', 'changed_b')} for x in diff[:4]])
+    ev = None
+    if verdict in ('DIFF', 'EDGE') and diff_common.FMA_RECHECK and not self_test:
+        cs = diff_common.strict_variant(cmd, tmp / (tag + '.strict.spv'))
+
+        def run(x, y, profs):
+            rows = []
+            for pr in profs:
+                try:
+                    r = subprocess.run([BIN, '--gfx', str(tmp / (tag + '.vs%d.spv' % pr)), str(x), str(y), 'ps_main', str(pr)], capture_output=True, text=True, timeout=180, env=ENV)
+                except subprocess.TimeoutExpired:
+                    continue
+                if 'DONE' in r.stdout.splitlines():
+                    rows += [dict(kv.split('=', 1) for kv in re.findall(r'\w+=\S*', l)) for l in r.stdout.splitlines() if l.startswith('RES')]
+            return rows
+        ev = diff_common.fma_recheck(a, cs, run, profiles) if cs else dict(fma_proven=None, fma_strict_diff=None, fma_control_diff=None)
+        verdict = diff_common.apply_fma_verdict(verdict, ev)
+    return res(verdict, crashed_profiles=crashed, coverage=cov, depth_written=dep, **(ev or {}), diff_profiles=sorted({int(x['profile']) for x in diff}), diffs=[{k: x[k] for k in ('profile', 'name', 'kind', 'mismatch', 'changed_a', 'changed_b')} for x in diff[:4]])
 
 
 def main():
@@ -146,7 +162,9 @@ def main():
     ap.add_argument('--jobs', type=int, default=8)
     ap.add_argument('--profiles', nargs='*', type=int, default=list(range(16)))
     ap.add_argument('--out', default=str(ROOT / 'evidence/render-passes/integration/diff-exec-ps.json'))
+    ap.add_argument('--no-fma-check', action='store_true', help='skip the strict-arithmetic / NoContraction recheck of DIFF/EDGE modules')
     a = ap.parse_args()
+    diff_common.FMA_RECHECK = not a.no_fma_check
     tmp = Path(tempfile.mkdtemp(prefix='diffps_'))
     js = jobs(a.only)
     with ThreadPoolExecutor(a.jobs) as ex:

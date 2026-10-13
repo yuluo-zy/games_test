@@ -71,7 +71,16 @@ def run_one(job, src, profiles, tmp, self_test):
     cap = [x for x in rs if x['name'] == '__capture']
     cov = sum(int(x['changed_a']) for x in cap)
     verdict = (diff_common.classify(diff) if diff else None) or ('CRASH' if crashed and cov == 0 else ('SAME' if cov > 0 else 'VACUOUS'))
-    return res(verdict, crashed_profiles=crashed, coverage=cov, diff_profiles=sorted({int(x['profile']) for x in diff}), diffs=[{k: x[k] for k in ('profile', 'name', 'mismatch', 'changed_a', 'changed_b', 'first')} for x in diff[:4]])
+    ev = None
+    if verdict in ('DIFF', 'EDGE') and diff_common.FMA_RECHECK and not self_test:
+        cs = diff_common.strict_variant(cmd, tmp / (tag + '.strict.spv'))
+
+        def run(x, y, profs):
+            ls, _cr, e = diff_common.run_profiles([BIN, '--vs', str(x), str(y), 'vs_main'], profs, ENV)
+            return None if e or 'DONE' not in ls else [dict(kv.split('=', 1) for kv in re.findall(r'\w+=\S*', l)) for l in ls if l.startswith('RES')]
+        ev = diff_common.fma_recheck(a, cs, run, profiles) if cs else dict(fma_proven=None, fma_strict_diff=None, fma_control_diff=None)
+        verdict = diff_common.apply_fma_verdict(verdict, ev)
+    return res(verdict, crashed_profiles=crashed, coverage=cov, **(ev or {}), diff_profiles=sorted({int(x['profile']) for x in diff}), diffs=[{k: x[k] for k in ('profile', 'name', 'mismatch', 'changed_a', 'changed_b', 'first')} for x in diff[:4]])
 
 
 def main():
@@ -82,7 +91,9 @@ def main():
     ap.add_argument('--jobs', type=int, default=8)
     ap.add_argument('--profiles', nargs='*', type=int, default=list(range(16)))
     ap.add_argument('--out', default=str(ROOT / 'evidence/render-passes/integration/diff-exec-vs.json'))
+    ap.add_argument('--no-fma-check', action='store_true', help='skip the strict-arithmetic / NoContraction recheck of DIFF/EDGE modules')
     a = ap.parse_args()
+    diff_common.FMA_RECHECK = not a.no_fma_check
     tmp = Path(tempfile.mkdtemp(prefix='diffvs_'))
     js = jobs(a.only)
     with ThreadPoolExecutor(a.jobs) as ex:

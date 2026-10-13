@@ -34,6 +34,10 @@ GRAMMAR = ROOT / 'skeleton' / '_tools' / 'spirv.core.grammar.json'
 if not GRAMMAR.exists():
     GRAMMAR = ROOT / 'evidence/render-passes/../../skeleton/_tools/spirv.core.grammar.json'
 STAGE_MACRO = {'cs': '__SHADER_STAGE_COMPUTE', 'vs': '__SHADER_STAGE_VERTEX', 'ps': '__SHADER_STAGE_PIXEL'}
+SUBMUL_HELPER = '''// dxc factors (a*c) - (b*c) into (a-b)*c, which rounds differently from the original; precise temporaries keep both products.
+template<typename T> T spv_fmsub(T a, T b, float c) { precise T p = a * c; precise T q = b * c; precise T r = p - q; return r; }
+'''
+
 FREXP_HELPER = '''// dxc 1.9/1.10 lowers the native frexp() to invalid SPIR-V (OpConvertSToF on a non-int); same
 // workaround as inc/curve.hlsl.
 float3 incb_frexp(float3 x, out int3 exponent)
@@ -158,6 +162,7 @@ def fix_lift_bugs(text):
                   r'{ int3 _fe; \1.mantissa = frexp(\2, _fe); \1.exponent = _fe; }', text)
     text = re.sub(r'\b_alias_', '__alias_', text)  # spirv-cross collapses the double underscore
     text = fix_srem(text)
+    text = re.sub(r'\(\(([\w.]+) \* ([\d.]+f)\) - \(([\w.]+) \* \2\)\)', r'spv_fmsub(\1, \3, \2)', text)
     # dxc reassociates (c*a)*(c*a) -> (c*c)*(a*a), which flips a sphere/AABB boundary test in
     # bin_lights_to_cells (n_14dca8ba); `precise` keeps the original evaluation order.
     text = re.sub(r'\bfloat (_\d+) = ([\d.]+f) \* asfloat\(532487669', r'precise float \1 = \2 * asfloat(532487669', text)
@@ -248,7 +253,7 @@ def lift_file(rel, pairs=None):
             text = re.sub(r'\n(\w+) main\(', '\n\\1 %s(' % t['entry'], text)
             guards.append('(defined(TGV_%s) && (__SHADER_TARGET_STAGE == %s))' % (vid, STAGE_MACRO[stage]))
             blocks.append('#if defined(TGV_%s) && (__SHADER_TARGET_STAGE == %s)\n// lifted from %s (spirv-cross; behaviour-exact, names are SPIR-V ids)\n%s%s%s#pragma dxc diagnostic pop\n#endif\n'
-                          % (vid, STAGE_MACRO[stage], bn, PRAGMA, FREXP_HELPER if 'frexp(' in text else '', text))
+                          % (vid, STAGE_MACRO[stage], bn, PRAGMA, (FREXP_HELPER if 'frexp(' in text else '') + (SUBMUL_HELPER if 'spv_fmsub(' in text else ''), text))
     if pairs is not None:
         orig = hand_original(rel)
         return ('// PATCHED: modules %s are lifted from the oracle bins by tools/render-passes/batch_lift.py;\n'

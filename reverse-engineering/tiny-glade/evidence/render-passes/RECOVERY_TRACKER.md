@@ -116,3 +116,16 @@
 | water/ice_refl_resolve（剩余） | **驱动 FMA 融合**：输出对舍入极敏感（光线步进+阈值） | 原版自身加/不加 NoContraction 就有 3/11/15 个字不同；原版注入 NoContraction、重建版加 `precise` 后 profile 20/24/25/29 **逐位一致** | 保持原样（不加 precise，避免偏离原版融合行为）；diff_common.PROVEN_FMA 把它的 DIFF 记为 EDGE | EDGE |
 
 改动文件：tools/render-passes/{batch_lift.py,diff_common.py,diff_exec.py}；shaders/{taa,tgsr,path_pebbles}.cs.hlsl、water/ice_refl_resolve.cs.hlsl、light_binning/bin_lights_to_cells.cs.hlsl；integration/diff-exec.json。结构门禁仍 637/638。
+
+## 5 个 EDGE 的逐值证明（任务 D）
+- 新增 `tools/render-passes/spv_nocontract.py`（给 SPIR-V 全部浮点算术结果注入 NoContraction）与 `diff_common.strict_variant / fma_recheck / apply_fma_verdict`；
+  `diff_exec*.py` 对每个 DIFF/EDGE 自动复核（`--no-fma-check` 可关）：重建版用 `dxc -Gis`（严格 IEEE，去 float_controls 模式）+ NoContraction，原版也注入 NoContraction，
+  逐位一致才算"已证明 FMA/重结合"（保持 EDGE，记 `fma_proven`）；不一致则升为 DIFF。硬编码的 PROVEN_FMA 名单已删除。
+  负例：把 ice_refl_resolve 活路径上的常量 8.656→8.7，复核结果 DIFF（strict 差异 168 字）。
+- lilypad / reed 顶点着色器（4 个变体）：**原先"FMA 融合"的推断是错的**。禁融合对照无变化，原版默认 vs 原版禁融合也无差异。
+  真因：dxc 把 `(x*20)-(z*20)` 因式分解成 `(x-z)*20`（原版是 2 个 FMul，重建版 1 个），舍入不同，经哈希种子放大。
+  修复：batch_lift 新增 `spv_fmsub`（precise 临时量保持两次乘法），两个文件刷新；0–15 号输入 4 个变体全部 SAME，结构门禁不变。
+- water/ice_refl_resolve：保持 EDGE，但已逐值证明。重建版 -Gis + 两边 NoContraction：0–63 号输入 0 差异；对照 原版默认 vs 原版禁融合：29 字差异；
+  重建版 -Gis 严格顺序但允许驱动融合 vs 原版默认：0 差异。即差别完全来自 dxc 默认编译对表达式的重结合 + lavapipe 乘加融合，算法相同。
+  无法在 HLSL 层变 SAME（`precise` 同时禁止融合，原版默认执行里是被融合的）。
+- 最新全量：像素 SAME 232/空壳 2；顶点 SAME 234；计算 SAME 168 / EDGE 1 / 空壳 1；结构门禁 637/638。

@@ -4063,9 +4063,9 @@
     "variant": "b903e43ffb3da915",
     "entry": "vs_main",
     "stage": "VS",
-    "ratio": 1.092,
+    "ratio": 1.094,
     "gate": true,
-    "exec": "EDGE",
+    "exec": "SAME",
     "impl": "提升"
    },
    {
@@ -4083,13 +4083,13 @@
     "variant": "f0adff76827e73ff",
     "entry": "vs_main",
     "stage": "VS",
-    "ratio": 1.092,
+    "ratio": 1.094,
     "gate": true,
-    "exec": "EDGE",
+    "exec": "SAME",
     "impl": "提升"
    }
   ],
-  "note": "VS 在 14 号输入(1e4 量级浮点)有 FMA 融合差异，判为 EDGE，非算法差异"
+  "note": "VS 曾在 14 号输入出现差异，根因不是 FMA 而是 dxc 把 (x*20)-(z*20) 因式分解为 (x-z)*20 改变舍入；batch_lift 用 spv_fmsub(precise 临时量) 保持两次乘法后，各变体 SAME"
  },
  {
   "file": "lilypad_flower.raster.hlsl",
@@ -6814,9 +6814,9 @@
     "variant": "b903e43ffb3da915",
     "entry": "vs_main",
     "stage": "VS",
-    "ratio": 1.092,
+    "ratio": 1.094,
     "gate": true,
-    "exec": "EDGE",
+    "exec": "SAME",
     "impl": "提升"
    },
    {
@@ -6834,13 +6834,13 @@
     "variant": "f0adff76827e73ff",
     "entry": "vs_main",
     "stage": "VS",
-    "ratio": 1.092,
+    "ratio": 1.094,
     "gate": true,
-    "exec": "EDGE",
+    "exec": "SAME",
     "impl": "提升"
    }
   ],
-  "note": "VS 在 14 号输入有 FMA 融合差异，判为 EDGE，非算法差异"
+  "note": "同 lilypad：dxc 因式分解 (x*20)-(z*20) 导致差异；spv_fmsub 修复后各变体 SAME"
  },
  {
   "file": "resolve_to_swapchain.cs.hlsl",
@@ -9493,7 +9493,7 @@
     "impl": "提升"
    }
   ],
-  "note": "输出对舍入极敏感：驱动乘加融合差异，原版/重建版统一禁融合后逐位一致；记为 EDGE（diff_common.PROVEN_FMA）"
+  "note": "已逐值证明：重建版用 dxc -Gis(严格 IEEE)编译并给原版/重建版全部浮点运算注入 NoContraction 后，0–63 号输入逐位一致(strict 差异 0)；默认执行的差异仅来自 lavapipe 对两种指令顺序的乘加融合不同(对照：原版默认 vs 原版禁融合 差 29 字)。另证：同一份重建版以 -Gis 严格顺序编译、允许驱动融合时与原版默认执行逐位一致(0 差异)，说明唯一差别是 dxc 对表达式的重结合；仍记为 EDGE(已证明)，因为默认 dxc 编译无法在 HLSL 里保留严格顺序又允许融合"
  },
  {
   "file": "water/ice_refr_resolve.cs.hlsl",

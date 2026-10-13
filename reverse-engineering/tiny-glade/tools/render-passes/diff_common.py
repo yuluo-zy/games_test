@@ -35,10 +35,64 @@ def run_profiles(prefix, profiles, env, timeout=180):
 CORE_PROFILES = {0, 2, 3, 4, 8, 12} | set(range(16, 32))  # 16..31: coverage-search mixes of small ints + unit floats (gen_mixed in spv-diff); 32+ also contain zeros/huge words -> EDGE
 
 
-# Modules whose only remaining difference was proven to be driver FMA contraction: with NoContraction
-# injected into the oracle and `precise` in the candidate the outputs are bit-identical (see
-# RECOVERY_TRACKER.md "8 个差异调查结果"). They are reported as EDGE, never SAME.
-PROVEN_FMA = {'water/ice_refl_resolve.cs.hlsl'}
+# --- FMA / strict-arithmetic recheck -------------------------------------------------------------------
+# A DIFF/EDGE is "explained by FMA" only when this recheck holds (no hard-coded module list):
+#   candidate' = dxc -Gis (strict IEEE: no reassociation, `precise` everywhere), SPIR-V float_controls modes stripped,
+#   NoContraction injected on every float op (spv_nocontract.py);   oracle' = oracle + NoContraction.
+# oracle' vs candidate' bit-identical on every profile  =>  same algorithm; the default-run difference is only
+# lavapipe fusing mul+add differently in the two instruction orders.
+# Control: oracle vs oracle' differing on the same inputs shows that contraction by itself changes the result.
+FMA_RECHECK = True
+
+
+def strict_variant(cmd, out_path, strip_dgq=False):
+    """Recompile `cmd` (a dxc command line ending in -Fo <file> ...) strictly; returns the NoContraction-injected module path or None."""
+    import spv_nocontract, spv_strip_dgq, struct
+    cmd2 = [x.replace('vulkan1.1', 'vulkan1.2') for x in cmd]
+    cmd2[cmd2.index('-Fo') + 1] = str(out_path)
+    cmd2.insert(1, '-Gis')
+    if subprocess.run(cmd2, capture_output=True, text=True).returncode or not Path(out_path).exists():
+        return None
+    data = Path(out_path).read_bytes()
+    if strip_dgq:
+        data = spv_strip_dgq.strip(data)[0]
+    w = list(struct.unpack('<%dI' % (len(data) // 4), data))
+    out, i = w[:5], 5
+    while i < len(w):  # -Gis adds SignedZeroInfNanPreserve & co. (float_controls); the arithmetic order is already baked in
+        wc, op = w[i] >> 16, w[i] & 0xffff
+        if not ((op == 16 and w[i + 2] in (4459, 4460, 4461, 4462, 4463)) or (op == 17 and w[i + 1] in (4466, 4467, 4468, 4469, 4470))):
+            out += w[i:i + wc]
+        i += wc
+    # fuse variant: same strict instruction order, but no NoContraction -> the driver may contract exactly like it does for the oracle
+    fo, i = out[:5], 5
+    while i < len(out):
+        wc, op = out[i] >> 16, out[i] & 0xffff
+        if not (op == 71 and out[i + 2] == 42):
+            fo += out[i:i + wc]
+        i += wc
+    Path(str(out_path) + '.fuse.spv').write_bytes(struct.pack('<%dI' % len(fo), *fo))
+    Path(out_path).write_bytes(spv_nocontract.inject(struct.pack('<%dI' % len(out), *out))[0])
+    return Path(out_path)
+
+
+def fma_recheck(a_path, c_strict, run, profiles):
+    """run(x, y, profiles) -> list of RES row dicts, or None when the run failed. Returns the evidence dict."""
+    import spv_nocontract
+    a_nc = Path(str(a_path) + '.nc.spv')
+    a_nc.write_bytes(spv_nocontract.inject(Path(a_path).read_bytes())[0])
+    strict = run(a_nc, c_strict, profiles)
+    control = run(a_path, a_nc, profiles)
+    fused = run(a_path, Path(str(c_strict) + '.fuse.spv'), profiles)
+    words = lambda rows: None if rows is None else sum(int(r['mismatch']) for r in rows)
+    return dict(fma_proven=(words(strict) == 0) if strict is not None else None, fma_strict_diff=words(strict), fma_control_diff=words(control),
+                fma_strict_fused_diff=words(fused))  # 0 here = candidate in the original (non-reassociated) order, contracted by the driver, equals the oracle bit for bit
+
+
+def apply_fma_verdict(verdict, ev):
+    """DIFF/EDGE + recheck evidence -> final verdict: proven => EDGE(fma_proven); otherwise a (still) unexplained difference is DIFF."""
+    if verdict not in ('DIFF', 'EDGE') or ev is None:
+        return verdict
+    return 'EDGE' if ev.get('fma_proven') else 'DIFF'
 
 
 def classify(diff_rows):

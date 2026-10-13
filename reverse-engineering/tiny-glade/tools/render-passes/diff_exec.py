@@ -76,9 +76,17 @@ def run_one(job, src, profiles, tmp, self_test=False):
     diff = [x for x in res if int(x['mismatch']) > 0]
     cov = sum(int(x['changed_a']) for x in res)
     verdict = (diff_common.classify(diff) if diff else None) or ('CRASH' if crashed and cov == 0 else ('SAME' if cov > 0 else 'VACUOUS'))
-    if verdict == 'DIFF' and rel in diff_common.PROVEN_FMA:
-        verdict = 'EDGE'
-    return dict(file=rel, bin=binn, entry=t['entry'], verdict=verdict, crashed_profiles=crashed, coverage=cov,
+    ev = None
+    if verdict in ('DIFF', 'EDGE') and diff_common.FMA_RECHECK and not self_test:
+        cs = diff_common.strict_variant(cmd, tmp / (tag + '.strict.spv'), strip_dgq=True)
+        env = diff_common.with_ms(dict(os.environ, LP_NUM_THREADS='0', VK_ICD_FILENAMES=os.environ.get('VK_ICD_FILENAMES', '/usr/share/vulkan/icd.d/lvp_icd.json')))
+
+        def run(x, y, profs):
+            ls, _cr, e = diff_common.run_profiles([BIN, str(x), str(y), t['entry']], profs, env, timeout=25)
+            return None if e or 'DONE' not in ls else [dict(kv.split('=', 1) for kv in re.findall(r'\w+=\S*', l)) for l in ls if l.startswith('RES')]
+        ev = diff_common.fma_recheck(a, cs, run, profiles) if cs else dict(fma_proven=None, fma_strict_diff=None, fma_control_diff=None)
+        verdict = diff_common.apply_fma_verdict(verdict, ev)
+    return dict(file=rel, bin=binn, entry=t['entry'], verdict=verdict, crashed_profiles=crashed, coverage=cov, **(ev or {}),
                 diff_profiles=sorted({int(x['profile']) for x in diff}), diffs=[{k: x[k] for k in ('profile', 'binding', 'name', 'mismatch', 'changed_a', 'changed_b')} for x in diff[:4]])
 
 
@@ -90,7 +98,9 @@ def main():
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--profiles', nargs='*', type=int, default=list(range(16)))
     ap.add_argument('--out', default=str(ROOT / 'evidence/render-passes/integration/diff-exec.json'))
+    ap.add_argument('--no-fma-check', action='store_true', help='skip the strict-arithmetic / NoContraction recheck of DIFF/EDGE modules')
     a = ap.parse_args()
+    diff_common.FMA_RECHECK = not a.no_fma_check
     tmp = Path(tempfile.mkdtemp(prefix='diffexec_'))
     js = jobs(a.only)
     with ThreadPoolExecutor(a.jobs) as ex:

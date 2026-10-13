@@ -20,13 +20,13 @@ STAGE = {'cs_main': 'CS', 'vs_main': 'VS', 'ps_main': 'PS'}
 
 NOTES = {  # file -> known remark (all backed by evidence in validation-pipeline.md / RECOVERY_TRACKER.md)
     'final_post.raster.hlsl': 'f0ad 变体的 ps_main 是无结果占位，dxc 会整段删除，结构门禁无法匹配；文件头保留 KNOWN EXCEPTION 说明',
-    'lilypad.raster.hlsl': 'VS 在 14 号输入(1e4 量级浮点)有 FMA 融合差异，判为 EDGE，非算法差异',
-    'reed.raster.hlsl': 'VS 在 14 号输入有 FMA 融合差异，判为 EDGE，非算法差异',
+    'lilypad.raster.hlsl': 'VS 曾在 14 号输入出现差异，根因不是 FMA 而是 dxc 把 (x*20)-(z*20) 因式分解为 (x-z)*20 改变舍入；batch_lift 用 spv_fmsub(precise 临时量) 保持两次乘法后，各变体 SAME',
+    'reed.raster.hlsl': '同 lilypad：dxc 因式分解 (x*20)-(z*20) 导致差异；spv_fmsub 修复后各变体 SAME',
     'path_pebbles.cs.hlsl': 'spirv-cross 把 OpSRem 展开为 a-b*(a/b)，除数为 0 时 UB；batch_lift.fix_srem 修复后 SAME',
     'ice_plane.raster.hlsl': '曾因 half(NaN) 符号位(UB)出现差异，提升后各变体均 SAME',
     'taa.cs.hlsl': 'frexp 辅助函数未处理非规格化数（提升缺陷），已修复后 SAME',
     'tgsr.cs.hlsl': 'frexp 辅助函数未处理非规格化数（提升缺陷），4 个变体已修复后 SAME',
-    'water/ice_refl_resolve.cs.hlsl': '输出对舍入极敏感：驱动乘加融合差异，原版/重建版统一禁融合后逐位一致；记为 EDGE（diff_common.PROVEN_FMA）',
+    'water/ice_refl_resolve.cs.hlsl': '已逐值证明：重建版用 dxc -Gis(严格 IEEE)编译并给原版/重建版全部浮点运算注入 NoContraction 后，0–63 号输入逐位一致(strict 差异 0)；默认执行的差异仅来自 lavapipe 对两种指令顺序的乘加融合不同(对照：原版默认 vs 原版禁融合 差 29 字)。另证：同一份重建版以 -Gis 严格顺序编译、允许驱动融合时与原版默认执行逐位一致(0 差异)，说明唯一差别是 dxc 对表达式的重结合；仍记为 EDGE(已证明)，因为默认 dxc 编译无法在 HLSL 里保留严格顺序又允许融合',
     'light_binning/bin_lights_to_cells.cs.hlsl': 'dxc 把 (6a)*(6a) 重排为 36*(a*a) 使球/格子边界判断翻转；对相关值加 precise 后两个变体 SAME',
     'dof/analyze.cs.hlsl': 'dxc 会给 quad 操作加 DerivativeGroupQuadsKHR，由 spv_strip_dgq.py 去除后一致',
     'water/spawn_waterwheels.cs.hlsl': '原版只有约 3 条指令(空壳)',

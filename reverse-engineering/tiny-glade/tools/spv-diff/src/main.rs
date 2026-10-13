@@ -938,7 +938,7 @@ unsafe fn run(gpu: &Gpu, a: &[u8], b: &[u8], entry: &str, refl: &Reflection, pro
             } else { compare(if matches!(l.res.kind, Kind::Ssbo) { Chan::F32 } else { chan }, &outs[0][i], &outs[1][i]) };
             let ch_a = outs[0][i].iter().zip(&init[i]).filter(|(x, y)| x != y).count();
             let ch_b = outs[1][i].iter().zip(&init[i]).filter(|(x, y)| x != y).count();
-            let fs = first.map(|o| format!("{}:{:02x}{:02x}{:02x}{:02x}/{:02x}{:02x}{:02x}{:02x}", o, outs[0][i][o], outs[0][i][o+1.min(outs[0][i].len()-o-1)], 0, 0, outs[1][i][o], outs[1][i][o+1.min(outs[1][i].len()-o-1)], 0, 0)).unwrap_or_default();
+            let fs = first.map(|o| { let w = |v: &Vec<u8>| if o + 4 <= v.len() { u32::from_le_bytes(v[o..o + 4].try_into().unwrap()) } else { 0 }; let (x, y) = (w(&outs[0][i]), w(&outs[1][i])); format!("{}:{:08x}/{:08x}({:e}/{:e})", o, x, y, f32::from_bits(x), f32::from_bits(y)) }).unwrap_or_default();
             println!("RES profile={} set={} binding={} name={} kind={} mismatch={} changed_a={} changed_b={} first={}", profile, l.res.set, l.res.binding, l.res.name,
                 if matches!(l.res.kind, Kind::Ssbo) { "ssbo" } else { "image" }, mism, ch_a, ch_b, fs);
         }
