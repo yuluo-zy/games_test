@@ -441,7 +441,7 @@
     "22个快照引用目标缺失",
     "完整游戏、场景回放与GPU尚未验收；GPU源码按最新用户要求开始恢复"
   ],
-  "updated_at_utc": "2026-10-12T10:08:01.154567+00:00",
+  "updated_at_utc": "2026-10-13T11:47:23.928Z",
   "render_recovery_progress": {
     "report": "evidence/render-recovery/RHAPSODY_PROGRESS.md",
     "phase": "candidate_functional_project_original_equivalence_pending",
@@ -647,5 +647,139 @@
     "original_dxc_identity_known": false,
     "whole_original_shader_algorithm_equivalence": false,
     "raster_draw_or_whole_frame": false
+  },
+  "small_libraries_recovery": {
+    "baseline": "B",
+    "status": "scoped_candidates_independently_reviewed_partial",
+    "report": "evidence/small-libs-batch-01/REPORT.md",
+    "summary": "evidence/small-libs-batch-01/integration/summary.json",
+    "parallel_owners": 3,
+    "candidate_tests": 16,
+    "public_dependency_identities_verified": 22,
+    "source_workspace": "reconstruction/shared-foundation",
+    "full_original_libraries_accepted": false,
+    "tg_text_scope": "FontTable and ShapeStream CPU only",
+    "original_game_consumers_accepted": false,
+    "current_source_review": "evidence/small-libs-review-2026-10-13/integration/summary.json",
+    "historical_batch_source_hashes_current": false,
+    "hash_change_reason": "tg-text comment and README correction only; executable code unchanged, historical hashes retained"
+  },
+  "shared_foundation_code_review": {
+    "source": "tracking/shared-foundation-code-review.json",
+    "report": "evidence/shared-foundation-review-2026-10-13/REVIEW.md",
+    "fixed_findings": 6,
+    "original_functionality_complete": false,
+    "unrecovered_interface_source": "tracking/unrecovered-shared-foundation-interfaces.json",
+    "candidate_tests_passed": 85,
+    "external_dependencies_original_identity_matched": 104,
+    "interface_classification": {
+      "source": "tracking/shared-foundation-interface-classification.json",
+      "report": "INTERFACE_CLASSIFICATION.md",
+      "raw_observations": 609,
+      "business_observations": 468,
+      "generated_reuse": 62,
+      "schema_helper_records": 46,
+      "unresolved": 33,
+      "business_unmapped": 194,
+      "business_untouched": 188,
+      "classification_is_not_new_recovery": true
+    }
+  },
+  "small_libraries_review": {
+    "baseline": "B Windows x86_64",
+    "status": "parallel_review_complete",
+    "report": "evidence/small-libs-review-2026-10-13/REPORT.md",
+    "summary": "evidence/small-libs-review-2026-10-13/integration/summary.json",
+    "reviewers": 3,
+    "confirmed_algorithm_defects": 0,
+    "confirmed_dependency_reimplementations": 0,
+    "confirmed_documentation_defects_fixed": 1,
+    "performance": "Integrity per-file thread creation/full-file buffering measured; no original regression demonstrated",
+    "full_functionality_complete": false,
+    "actual_code_behavior_changed": false,
+    "historical_batch_hashes_preserved": true,
+    "failed_owned_worker_residue_cleared": true
+  },
+  "shared_foundation_business_comparison": {
+    "reference": "FOUNDATION_BUSINESS_FUNCTIONS.md",
+    "report": "FOUNDATION_BUSINESS_COMPARISON.md",
+    "source": "tracking/shared-foundation-business-comparison.json",
+    "scope": [
+      "utils",
+      "tabloid",
+      "paths",
+      "lang-lib",
+      "theme-defs",
+      "asset",
+      "asset-pipe"
+    ],
+    "functional_rows": 98,
+    "states": {
+      "implemented_scoped": 60,
+      "partial_missing_logic": 22,
+      "not_implemented": 9,
+      "out_of_baseline": 4,
+      "integration_pending": 1,
+      "contract_only": 2
+    },
+    "full_original_functionality_accepted": false,
+    "raw_interface_count_is_not_functional_workload": true
+  },
+  "foundation_unstarted_recovery": {
+    "baseline": "B",
+    "scope": "User explicitly deferred C; recover B own library policies with original dependency reuse",
+    "libraries": [
+      "tg-iced",
+      "tg-integrity-report",
+      "crash-reporter-gui",
+      "tg-gpu-selector",
+      "feedback-reporter",
+      "theme-fetcher",
+      "theme-server-proto",
+      "geforcenow"
+    ],
+    "status": "candidate_partial_shared_workspace",
+    "full_module_accepted": false,
+    "source": "reconstruction/shared-foundation/Cargo.toml",
+    "report": "evidence/foundation-unstarted-2026-10-13/REPORT.md",
+    "dependency_audit": {
+      "report": "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json",
+      "public_packages": 414,
+      "mismatches": 0
+    },
+    "tests": {
+      "ordinary_rust": 32,
+      "gfn_fixture_rust": 1,
+      "gfn_fixture_internal_cases": 14,
+      "strict_all_targets_clippy": true,
+      "original_ui_cases": 131,
+      "original_gfn_feedback_cases": 66,
+      "scope": "Bounded tests/slices; no original whole pipeline equivalence"
+    },
+    "c_deferred_by_user": true,
+    "remaining": [
+      "原GUI默认尺寸/调度频率/完整选项与精确widget样式",
+      "真实游戏启动消费者；A/C未适配",
+      "原verify入口至实际启动报告消费者",
+      "完整原GUI样式/平台失败边界与A/C适配",
+      "原panic报告producer/callback payload ABI与发送入口",
+      "完整原GUI样式/clipboard OS实效/真实崩溃端到端",
+      "A/C未适配",
+      "rhapsody真实AvailableGraphicsDevice/driver_support生产者",
+      "opaque allowlist u32字段语义和实际device创建消费",
+      "原GUI像素与A/C适配",
+      "公开字段与两ready路径语义原名/ABI",
+      "完整原report/zip入口oracle",
+      "country-core/UI实际反馈producer和A/C适配",
+      "完整原run入口oracle和tiny-glade主题plugin/ECS消费",
+      "原完整reqwest feature/日志callback与A/C适配",
+      "原服务兼容/版本契约；未证明独立手写迁移/校验",
+      "完整主题plugin消费与A/C适配",
+      "真实GFN SDK未加载/云服务未运行",
+      "实际游戏启动/路径/配置消费者",
+      "原错误枚举标签/Display与A/C适配"
+    ],
+    "business_catalog": "tracking/foundation-business-functions.json",
+    "module_progress": "tracking/module-progress.json"
   }
 }

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "reviewer": "root",
+  "scope": "Independent review of new library code against original rule reports and owned raw/native evidence, excluding full game consumer/GPU acceptance",
+  "findings": [
+    {
+      "module": "motomoto",
+      "rules": [
+        "LE u64 tag + LE u64 payload length",
+        "Drop backfills length and restores position",
+        "Deferred Drop error consumed before tag conversion/new header",
+        "position+16 >= len ends iteration; terminal empty chunk ignored",
+        "Payload compression stays with save consumer"
+      ],
+      "repairs": [
+        "Drop now replaces the error Option on both success/failure",
+        "Explicit wrapping arithmetic matches original release instruction behavior"
+      ],
+      "remaining": [
+        "Original Writer/Drop entry execution",
+        "Full save consumer/schema/compression",
+        "Original flush/Reader::new shared alias ABI"
+      ]
+    },
+    {
+      "module": "tg-package-integrity",
+      "rules": [
+        "Raw bytes: BLAKE3 -> Hash<[u8;32]> -> keyed FNV -> low16 zero gate",
+        "Exact lowercase digest text comparison",
+        "Only exact manifest self-path bypasses per-file hash",
+        "All read failures missing; digest differences corrupt; extras recurse excluding root tmp",
+        "Duplicates preserved for checks; HashSet only for extra membership"
+      ],
+      "repairs": [
+        "Initial raw-FNV interpretation corrected using native helper",
+        "Fixture deletion checks canonical target lies under owned fixture subtree"
+      ],
+      "intentional_difference": "64-file easy-parallel batches; stable filesystem order/policy maintained, concurrent mutation timing unknown",
+      "remaining": [
+        "Original entry runtime oracle",
+        "Rare schema and special Windows filesystem conditions",
+        "32-bit/big-endian hash prefix",
+        "Report/crash consumer integration"
+      ]
+    },
+    {
+      "module": "tg-text",
+      "rules": [
+        "Font roles from shipped table; default scale1; missing lookup None",
+        "Metrics multiplied by scale with no clamp",
+        "Shape stream ordered u32 protocol; image index16 bits/scaling24 bits",
+        "RON image source string-only; numeric index available only builder",
+        "Raw encode/with_scaling fold into append; named resolver order preserved",
+        "encode_no_images indexed route works; named route panics"
+      ],
+      "remaining": [
+        "TextFragment/TextRenderer",
+        "Glyph shaping/atlas/GPU uploads",
+        "Full original serde execution/unknown-field contract",
+        "True game texture resolver and consumer integration"
+      ]
+    }
+  ],
+  "sample_provenance": {
+    "manifest": {
+      "path": "reconstruction/shared-foundation/crates/tg-package-integrity/fixtures/B-manifest.json",
+      "byte_equal_to_original": true,
+      "bytes": 264376,
+      "sha256": "3425e76472672b9b7c3d18ed6f7cdc1f21d2c445782845a82528dd4f50bf0a11"
+    },
+    "font_table": {
+      "path": "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/font-table.ron",
+      "byte_equal_to_original": true,
+      "sha256": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+      "bytes": 164
+    }
+  },
+  "dependency_validation": "dependency-validation.json",
+  "validation": {
+    "candidate_tests": 16,
+    "all_target_clippy_warnings_as_errors": "passed",
+    "original_reader_cases": 173,
+    "original_text_append_cases": 51,
+    "original_text_metric_cases": 21,
+    "original_text_small_calls": 5,
+    "integrity_original_entry_executed": false,
+    "whole_game_executed": false,
+    "gpu_executed": false
+  },
+  "status": "reviewed_scoped_candidate_partial",
+  "tooling_partial_reports": [
+    {
+      "path": "motomoto/read-result.json",
+      "ok": false,
+      "note": "Reader response retained; subsequent Writer request incomplete. Writer rules use original disassembly; batch not passed."
+    },
+    {
+      "path": "tg-text/assembly-result.json",
+      "ok": false,
+      "note": "Script output retained but job/checkpoint failed; standalone raw/LLVM/native evidence and successful schema/reopen jobs establish separately scoped evidence."
+    }
+  ]
+}

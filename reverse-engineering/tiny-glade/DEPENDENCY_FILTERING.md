@@ -4,6 +4,8 @@
 
 ## 每个实现入口必须先过归属检查
 
+2026-10-13 用户纠正宏派生方法的进度口径：Default/fmt/Debug/Clone/Eq/Hash、serde生成visitor及Bevy Component执行胶水不逐个列为“尚未实现业务”。确认后用derive/原库；自定义字段默认值、枚举、格式属性、required-components及错误模板按类型/schema合同合并记录。仅凭名字不能确认宏生成，手写默认状态或包含业务校验的trait仍保留；未知归属另列待分类，不混入已确认业务缺口。共享基础609原记录保持不变，当前分类见[INTERFACE_CLASSIFICATION.md](INTERFACE_CLASSIFICATION.md)。
+
 1. 对照各版 Cargo.lock、PDB 源路径/校验和、函数定义所属模块和调用点。A 未提供锁文件，用 PDB 中 registry/git/rustc 路径确认依赖来源；缺失版本不从 B/C 填造。
 2. 已确认 registry/git 库或 Rust 标准库实现，标记 `dependency_reuse`，直接复用原版本、commit 和所需 API，不生成它的 Rust 替代实现。游戏包调用该库的策略、参数、组合顺序仍需恢复。
 3. local/path 包只表示构建来源。已知 SDK、引擎、渲染器、分配器仍是依赖（索引明确排除已确认的 FidelityFX、XeGTAO、GPU-Raytracer、gpu-allocator、vk-sync-fork）；私有仓库路径也不自动证明是游戏业务。先确认模块归属和目标功能。

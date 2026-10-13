@@ -1,0 +1,99 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "themes-unstarted-20261013",
+  "pid": 29560,
+  "project": "D:\\game\\tools\\reverse-runtime\\themes-unstarted-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "prepare_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "targets": [
+          {
+            "address": "0x140db8370",
+            "size": 449,
+            "bytes_sha256": "c8471b3370eb9aae98093997a247a9553ba7a63bc18952302cdee9dda779b7e5",
+            "range_basis": "B PE .pdata RUNTIME_FUNCTION exact start/end"
+          }
+        ]
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\themes\\event-time-map.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\themes\\\\\\\\event-time-map.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 212, \\\"sha256\\\": \\\"a0742e31b6325112571c728f9eb59aae979683222d58317d219077b34e5e8e05\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":25}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.047,
+      "stdout": "{\"prepared\": [{\"address\": \"0x140db8370\", \"requested_bytes\": 449, \"body_bytes\": 449, \"range_basis\": \"B PE .pdata RUNTIME_FUNCTION exact start/end\", \"prototype_changed\": false}], \"no_whole_program_analysis\": true}\n",
+      "passed": true
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140db8370",
+        "fields": "signature,decompiled_code,callees"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\themes\\event-time-map.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\themes\\\\\\\\event-time-map.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 3856, \\\"sha256\\\": \\\"79a305fe6ba6c001b34c8ef70e5adf79ff63bdae620474bf27d6012244fdba4c\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":356}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.359,
+      "stdout": "{\"functions\": [{\"address\": \"0x140db8370\", \"name\": \"FUN_140db8370\", \"signature\": \"undefined FUN_140db8370(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 449, \"prototype_is_not_verified_Rust_ABI\": true, \"callees\": [{\"address\": \"140d7bd90\", \"name\": \"FUN_140d7bd90\"}, {\"address\": \"140d63d00\", \"name\": \"FUN_140d63d00\"}, {\"address\": \"1428d9000\", \"name\": \"FUN_1428d9000\"}], \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\nvoid FUN_140db8370(longlong *param_1,undefined8 *param_2)\\r\\n\\r\\n{\\r\\n  undefined4 *puVar1;\\r\\n  longlong lVar2;\\r\\n  code *pcVar3;\\r\\n  undefined4 uVar4;\\r\\n  undefined4 uVar5;\\r\\n  undefined8 *puVar6;\\r\\n  undefined4 uVar7;\\r\\n  undefined4 uVar8;\\r\\n  longlong lVar9;\\r\\n  longlong lVar10;\\r\\n  longlong lVar11;\\r\\n  undefined4 uStack_c0;\\r\\n  undefined4 uStack_bc;\\r\\n  undefined4 uStack_b8;\\r\\n  undefined4 uStack_b4;\\r\\n  undefined8 uStack_b0;\\r\\n  undefined8 uStack_a8;\\r\\n  undefined8 uStack_a0;\\r\\n  undefined8 uStack_98;\\r\\n  undefined8 uStack_90;\\r\\n  undefined4 uStack_88;\\r\\n  undefined4 uStack_84;\\r\\n  undefined4 uStack_80;\\r\\n  undefined4 uStack_7c;\\r\\n  longlong lStack_70;\\r\\n  longlong lStack_68;\\r\\n  longlong *plStack_60;\\r\\n  longlong lStack_58;\\r\\n  longlong *plStack_50;\\r\\n  undefined8 uStack_48;\\r\\n  \\r\\n  uStack_48 = 0xfffffffffffffffe;\\r\\n  lStack_68 = *param_1;\\r\\n  plStack_50 = (longlong *)*param_2;\\r\\n  lStack_58 = param_2[1];\\r\\n  if (lStack_68 != param_1[1]) {\\r\\n    plStack_60 = (longlong *)param_1[2];\\r\\n    lVar2 = param_2[2];\\r\\n    lStack_70 = ((ulonglong)(param_1[1] - lStack_68) >> 3) * -0x3333333333333333;\\r\\n    lVar11 = 0;\\r\\n    do {\\r\\n      lVar9 = *(longlong *)(lStack_68 + 0x18 + lVar11 * 0x28) - *plStack_60;\\r\\n      if (lVar9 < 1) {\\r\\n        lVar9 = 0;\\r\\n      }\\r\\n      uVar7 = 0x19db1de;\\r\\n      uVar4 = FUN_140d63d00(0xd53e8000,0x19db1de,lVar9,0);\\r\\n      lVar9 = lStack_68 + lVar11 * 0x28;\\r\\n      lVar10 = *(longlong *)(lVar9 + 0x20) - *plStack_60;\\r\\n      if (lVar10 < 1) {\\r\\n        lVar10 = 0;\\r\\n      }\\r\\n      uVar8 = 0x19db1de;\\r\\n      uVar5 = FUN_140d63d00(0xd53e8000,0x19db1de,lVar10,0);\\r\\n      FUN_140d7bd90(&uStack_c0,lVar9);\\r\\n      uStack_a8 = 1;\\r\\n      uStack_a0 = 1;\\r\\n      uStack_98 = 0x8000000000000000;\\r\\n      uStack_90 = 0x8000000000000000;\\r\\n      puVar6 = (undefined8 *)func_0x000140613c10(0x30,8);\\r\\n      if (puVar6 == (undefined8 *)0x0) {\\r\\n        FUN_1428d9000(8,0x30);\\r\\n                    /* WARNING: Does not return */\\r\\n        pcVar3 = (code *)invalidInstructionException();\\r\\n        (*pcVar3)();\\r\\n      }\\r\\n      *(undefined4 *)(puVar6 + 4) = uStack_88;\\r\\n      *(undefined4 *)((longlong)puVar6 + 0x24) = uStack_84;\\r\\n      *(undefined4 *)(puVar6 + 5) = uStack_80;\\r\\n      *(undefined4 *)((longlong)puVar6 + 0x2c) = uStack_7c;\\r\\n      *(undefined4 *)(puVar6 + 2) = (undefined4)uStack_98;\\r\\n      *(undefined4 *)((longlong)puVar6 + 0x14) = uStack_98._4_4_;\\r\\n      *(undefined4 *)(puVar6 + 3) = (undefined4)uStack_90;\\r\\n      *(undefined4 *)((longlong)puVar6 + 0x1c) = uStack_90._4_4_;\\r\\n      *puVar6 = uStack_a8;\\r\\n      puVar6[1] = uStack_a0;\\r\\n      lVar9 = lStack_58 * 0x30;\\r\\n      *(undefined8 *)(lVar2 + 0x10 + lVar9) = uStack_b0;\\r\\n      puVar1 = (undefined4 *)(lVar2 + lVar9);\\r\\n      *puVar1 = uStack_c0;\\r\\n      puVar1[1] = uStack_bc;\\r\\n      puVar1[2] = uStack_b8;\\r\\n      puVar1[3] = uStack_b4;\\r\\n      *(undefined4 *)(lVar2 + 0x18 + lVar9) = uVar4;\\r\\n      *(undefined4 *)(lVar2 + 0x1c + lVar9) = uVar7;\\r\\n      *(undefined4 *)(lVar2 + 0x20 + lVar9) = uVar5;\\r\\n      *(undefined4 *)(lVar2 + 0x24 + lVar9) = uVar8;\\r\\n      *(undefined8 **)(lVar2 + 0x28 + lVar9) = puVar6 + 2;\\r\\n      lStack_58 = lStack_58 + 1;\\r\\n      lVar11 = lVar11 + 1;\\r\\n    } while (lVar11 != lStack_70);\\r\\n  }\\r\\n  *plStack_50 = lStack_58;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.141,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "0ea51bfe5a9ed2e5b1744bf94a9d2442",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

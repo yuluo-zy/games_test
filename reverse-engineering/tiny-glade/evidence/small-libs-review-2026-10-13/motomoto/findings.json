@@ -1,0 +1,74 @@
+{
+  "module": "motomoto",
+  "review_date": "2026-10-13",
+  "confirmed_implementation_bugs": 0,
+  "verdict": "bounded_core_rules_match_original; real_game_consumer_chain_incomplete",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "findings": [
+    {
+      "id": "MM-R01",
+      "severity": "medium",
+      "category": "missing_feature",
+      "status": "confirmed_scope_gap",
+      "source": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+      "line": 45,
+      "trigger": "真实 snapshot capture/load 调用 motomoto，而重建工程仅通过库测试构造合成chunk",
+      "expected_original_evidence": "原 B capture_game_snapshot 0x1417a31fa/0x1417a35fa/0x1417a3a50 写 Snapshot、动态资源、Terrain；原 validate_and_load_closest_snapshot_data 调 Reader",
+      "actual_repro": "只读源码与父跨 reconstruction consumer搜索：库tests之外没有存档producer/consumer接线；本review oracle是限定protocol fixture",
+      "impact": "不能宣称整库真实业务链闭合或完整存档兼容；schema/压缩/迁移/最终错误消费均不由库叶测试证明",
+      "fix_suggestion": "在现有存档模块接入原serde_json/flate2和资源schema，建立至少一份有身份的真实B存档producer→reader→解压/反序列化consumer验收；无需在motomoto重新实现编码器"
+    },
+    {
+      "id": "MM-R02",
+      "severity": "low",
+      "category": "unknown",
+      "status": "unverified_original_generic_contract",
+      "source": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+      "line": 74,
+      "trigger": "W不是原观察到的Cursor<&mut Vec>，发生flush/stream_position/seek/patch IO失败",
+      "expected_original_evidence": "PDB与原码仅有Cursor实例；generic ?顺序与flush候选推断，无原泛型失败执行证明",
+      "actual_repro": "scratch复现Position/PatchSeek/PatchWrite/Restore四故障位置；候选finish均Err并短路正确；原Writer/Drop bounded oracle覆盖Cursor成功与pending error，不覆盖这些故障",
+      "impact": "候选通用流可用性有测试；原所有IO失败与flush等价性仍未知，非confirmed bug",
+      "fix_suggestion": "保留Unknown限定；若真实consumer确需File/BufWriter，核实其业务错误处理与flush生命周期，再添加对应链测试"
+    },
+    {
+      "id": "MM-R03",
+      "severity": "info",
+      "category": "intentional_difference",
+      "status": "original_behavior_preserved",
+      "source": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+      "line": 122,
+      "trigger": "末尾恰好16-byte空chunk、不足16-byte尾巴、高位signed length、reader错误后再next",
+      "expected_original_evidence": "原Reader 0x142080d7f unsigned >=；0x142080df5 signed Seek；新reader-resume-oracle.json显示InvalidInput后继续读取3个空chunk",
+      "actual_repro": "候选保留忽略终端empty/tail、负length slice panic；3组新原入口resume与候选一致",
+      "impact": "存在通常解析器不采用的宽松尾部/异常panic，但它是原作协议行为，不能当候选实现缺陷或未经说明修正",
+      "fix_suggestion": "若产品要增加严格/安全解析，新增明确命名API并保留兼容入口；真实存档consumer避免将Err后的next结果当有效恢复"
+    },
+    {
+      "id": "MM-R04",
+      "severity": "low",
+      "category": "performance_risk",
+      "status": "bounded_analysis_no_confirmed_regression",
+      "source": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+      "line": 79,
+      "trigger": "每chunk直接使用File/BufWriter而不是游戏原Cursor",
+      "expected_original_evidence": "原协议回填需取end→seek(start+8)→write长度→seek(end)；原Cursor实例没有OS syscall",
+      "actual_repro": "计数流正常chunk观测4 Seek、4 Write（含1次payload）、0flush；Reader 409600chunks release一次运行2.301ms，payload指针指向原buffer",
+      "impact": "Cursor路径无额外payload copy/分配，O(chunk数量)Reader；每chunk在通用File可能有多次seek/flush成本，目前没有原侧性能回退证据",
+      "fix_suggestion": "默认保持原Cursor内存聚合→一次文件写策略；仅在真实consumer采用文件直写且测出瓶颈时再优化，不新增手写缓冲/编码器"
+    },
+    {
+      "id": "MM-R05",
+      "severity": "info",
+      "category": "intentional_difference",
+      "status": "documented_reconstruction_extension",
+      "source": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+      "line": 59,
+      "trigger": "调用Writer::finish以取底层流/最后deferred error",
+      "expected_original_evidence": "PDB函数线索无finish；原公共字段和最终error消费者尚未知",
+      "actual_repro": "finish只take deferred error并取inner，不flush；故障流final error正确返回Err",
+      "impact": "该扩展可用且不改变chunk格式，但不能计原入口恢复；调用者若要durable IO仍需自行flush/sync",
+      "fix_suggestion": "继续将finish标为extension；consumer定义flush/sync职责，不能把finish成功等同写入磁盘完成"
+    }
+  ]
+}

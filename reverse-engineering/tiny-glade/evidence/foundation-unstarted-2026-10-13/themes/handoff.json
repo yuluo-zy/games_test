@@ -1,0 +1,87 @@
+{
+  "baseline": "B",
+  "status": "candidate_library_chain_implemented_and_shared_test_clippy_passed",
+  "files": [
+    {
+      "path": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/theme-fetcher/Cargo.toml",
+      "sha256": "2e88a484df74638ad830241a7377c766ed703cb02364425872d6109fd74d2e19"
+    },
+    {
+      "path": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/theme-fetcher/src/lib.rs",
+      "sha256": "a76758b4a970b221eee114975fd3892d559e4d8dce44b80375bf366751135c22"
+    },
+    {
+      "path": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/theme-fetcher/src/checked_zip.rs",
+      "sha256": "8bfed2b97114ef8506180e8161570bcd269e7f1838e9319acec6160ac4803377"
+    },
+    {
+      "path": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/theme-server-proto/Cargo.toml",
+      "sha256": "be1704944e1c6d778a5891f68a4545cf632d263e7d8e8f15dd31bee1093c30b2"
+    },
+    {
+      "path": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/theme-server-proto/src/lib.rs",
+      "sha256": "200fffb101dff95867b06f1b9b0fa8f80ec09e2cb9f6c46f17af57cb9944da1f"
+    }
+  ],
+  "implemented_business_functions": 8,
+  "protocol_contracts_not_algorithms": [
+    "theme_server_proto::ActiveEvent",
+    "theme_server_proto::EventsResponse"
+  ],
+  "actual_http_execution": false,
+  "original_oracle_execution": false,
+  "worker": {
+    "status": "stopped",
+    "project": "D:\\game\\tools\\reverse-runtime\\themes-unstarted-20261013\\project\\TinyGlade.gpr",
+    "shared_stopped": false
+  },
+  "validation": {
+    "first_shared_tests": {
+      "exit": 0,
+      "passed": 9,
+      "log": "cargo-test.log"
+    },
+    "constructor_and_style_changes_after_gate": true,
+    "temporary_lib_path_diagnostic": {
+      "passed": 10,
+      "excluded_from_shared_gate": true,
+      "log": "verification-cancelled.log",
+      "manifests_removed": true,
+      "build_artifacts_removed": true,
+      "workspace_removed": true
+    },
+    "strict_clippy": {
+      "exit": 0,
+      "all_targets": true,
+      "warnings_denied": true,
+      "offline": true,
+      "locked": true,
+      "log": "cargo-clippy-final.log"
+    },
+    "final_business_test_count": 11,
+    "last_result_304_fix_after_constructor_diagnostic": true,
+    "final_shared_tests": {
+      "exit": 0,
+      "passed": 11,
+      "log": "cargo-test-final.log",
+      "command": "integration/build.ps1 -Action test -Packages theme-fetcher,theme-server-proto",
+      "offline": true,
+      "locked": true
+    },
+    "exact_dependency_audit": "parent integration:414 public package source/version/checksum match original B,0 differences"
+  },
+  "remaining": [
+    "full original reqwest feature set, beyond observed blocking/Rustls and lock graph",
+    "real tiny-glade plugin/ECS hook and original full pipeline oracle",
+    "logging text/filter callbacks omitted from candidate producer"
+  ],
+  "evidence": [
+    "contract.json",
+    "prepared-functions.json",
+    "event-time-map.json",
+    "constructor.json",
+    "worker-final-state.json"
+  ],
+  "peer_review": "peer-review-feedback-cloud.json",
+  "peer_review_self": "CAS is_dir/native identity and response header-body error ordering verified after initial candidate gate"
+}

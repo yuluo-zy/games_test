@@ -1,0 +1,237 @@
+{
+  "baseline": "B",
+  "c_deferred_by_user": true,
+  "libraries": {
+    "tg-iced": {
+      "scope": "B手写对话框选项/结果与文本入口；真实原iced/winit/cosmic-text后端可运行，窗口接线为重建适配。",
+      "gaps": [
+        "原GUI默认尺寸/调度频率/完整选项与精确widget样式",
+        "真实游戏启动消费者；A/C未适配"
+      ],
+      "boundary": "只恢复B游戏对话框/结果策略，事件循环与控件复用原fork；C SDL/winit runner按用户指示后置。",
+      "features": [
+        [
+          "手写level/按钮模式、标题/说明替换和关闭结果；原叶对照，原iced窗口适配",
+          "原图标/精确样式与所有原调用者"
+        ],
+        [
+          "Controls update与ProgramWithOutcome闭合到原iced窗口关闭",
+          "完整原GUI事件链及真实游戏调用者"
+        ],
+        [
+          "真实Application、命令/结果/Tick联接；16ms频率为重建选择",
+          "原窗口默认值/调度频率与全run选项"
+        ],
+        [
+          "文本key交给lang-lib原本地化策略，standalone只读加载locale",
+          "原文本widget字体/样式完整映射"
+        ],
+        [
+          "B原iced/winit/cosmic-text fork后端；窗口探针可运行",
+          "C mouse-button/event-batch后置，B精确像素未验收"
+        ]
+      ]
+    },
+    "tg-integrity-report": {
+      "scope": "B报告三列表保持顺序，all-empty归一，单文件删除与状态/建议/UI联接。",
+      "gaps": [
+        "原verify入口至实际启动报告消费者",
+        "完整原GUI样式/平台失败边界与A/C适配"
+      ],
+      "boundary": "复用tg-package-integrity与原iced；删除行为以显式remover边界测试，原发行目录未执行删除。",
+      "features": [
+        [
+          "三列表均空才归一成功，保留输入顺序",
+          "完整verify原入口的真实消费者"
+        ],
+        [
+          "missing/corrupt/extra映射到状态与本地化section，真实窗口适配",
+          "精确原样式/罕见输入"
+        ],
+        [
+          "固定Steam完整性建议链接与对应文案key",
+          "完整平台/调用者上下文"
+        ],
+        [
+          "单次unlink；成功只删同名extra，失败保留且不重新校验",
+          "真实删除消费者未执行；root限制为重建接入保护"
+        ],
+        [
+          "update/outcome与crash内嵌报告联接，真实原iced独立窗口",
+          "完整原启动链及像素等价"
+        ]
+      ]
+    },
+    "crash-reporter-gui": {
+      "scope": "B诊断优先级、前8帧匹配、复制提示、一次callback/thread与Tick完成联接，内嵌完整性报告。",
+      "gaps": [
+        "原panic报告producer/callback payload ABI与发送入口",
+        "完整原GUI样式/clipboard OS实效/真实崩溃端到端",
+        "A/C未适配"
+      ],
+      "boundary": "恢复诊断与交互，实际报告采集/发送由callback提供；测试callback不请求真实服务。",
+      "features": [
+        [
+          "显卡driver帧/日志、前8帧OBS/FPS、Vulkan loader与integrity优先级",
+          "原真实crash producer及像素/tooltip"
+        ],
+        [
+          "more_info是建议URL；ShowDetails独立切换",
+          "原外部网页实际动作未执行"
+        ],
+        [
+          "复制传入诊断文本；成功提示严格<1秒，错误持续显示",
+          "剪贴板OS动作未执行"
+        ],
+        [
+          "Sending不重复回调；Tick检查is_finished后join，状态/outcome与原iced联接",
+          "原全GUI事件/失败payload ABI与调度频率"
+        ],
+        [
+          "一次callback创建真实worker；内嵌integrity删除→状态链测试",
+          "原panic采集/服务发送生产者未接入"
+        ]
+      ]
+    },
+    "tg-gpu-selector": {
+      "scope": "B游戏私有设备选择/driver建议/graphics错误策略及Vulkan allowlist六项workaround状态，未重建枚举/驱动库。",
+      "gaps": [
+        "rhapsody真实AvailableGraphicsDevice/driver_support生产者",
+        "opaque allowlist u32字段语义和实际device创建消费",
+        "原GUI像素与A/C适配"
+      ],
+      "boundary": "PDB/原指令确认私有UI策略；设备枚举和driver分类保留rhapsody输入边界，不重新实现SDK。",
+      "features": [
+        [
+          "选择Option索引、更多信息/取消/outcome及真实原iced窗口",
+          "真实设备列表生产者和所有原reason标签"
+        ],
+        [
+          "原vendor表及条件建议/链接，classification由rhapsody边界输入",
+          "真实driver_support生产者"
+        ],
+        [
+          "raw图形错误族与建议override、本地化key恢复",
+          "真实Vulkan失败消费者与完整reason语义"
+        ],
+        [
+          "layer/vendor tag去留切换，重复项一起移除，Apply快照",
+          "opaque u32原schema及实际device创建消费"
+        ],
+        [
+          "原六bool措施映射、标签和Apply/Cancel结果",
+          "真实render初始化消费及持久化策略"
+        ]
+      ]
+    },
+    "feedback-reporter": {
+      "scope": "B等待/替换/601计数、选定文件ZIP、benchmark、multipart/HTTP失败规则与Bevy Update事件插件。",
+      "gaps": [
+        "公开字段与两ready路径语义原名/ABI",
+        "完整原report/zip入口oracle",
+        "country-core/UI实际反馈producer和A/C适配"
+      ],
+      "boundary": "HTTP/ZIP/Bevy使用原版本；真实transport已实现但测试注入，不请求真实服务。原目录未实现panic保留。",
+      "features": [
+        [
+          "text/meta与可选screenshot/save/benchmark按原顺序/MIME组织",
+          "原全部字段名/ABI与实际上下文生产者"
+        ],
+        [
+          "只打包指定相对文件；missing跳过，目录原panic；root文件名前缀/0755/Deflated",
+          "完整原zip入口及极端IO/nonUnicode边界"
+        ],
+        [
+          "benchmark.puffin/info.txt固定名；失败非致命省略附件",
+          "实际benchmark路径/字段生产者"
+        ],
+        [
+          "connect_timeout5秒，发送失败/非2xx body/读失败规则；真实reqwest adapter",
+          "完整原发送入口与真实服务未执行"
+        ],
+        [
+          "Bevy command→Local pending替换/两文件或计数>=601→SendingFinished；保留注入provider",
+          "country-core/UI实际producer未接入"
+        ]
+      ]
+    },
+    "theme-fetcher": {
+      "scope": "B主题HTTP/ETag/date/cache-control、backoff/half-open活动、CAS/ZIP校验与库内producer。",
+      "gaps": [
+        "完整原run入口oracle和tiny-glade主题plugin/ECS消费",
+        "原完整reqwest feature/日志callback与A/C适配"
+      ],
+      "boundary": "复用原reqwest/Rustls/ZIP/BLAKE3/memmap；手写HTTP/cache/CAS组合策略已恢复，真实服务未请求。",
+      "features": [
+        [
+          "原endpoint、ETag更新顺序、Date偏移、Cache-Control与304保留Result、backoff不因成功重置",
+          "完整原fetch/run入口oracle"
+        ],
+        [
+          "半开时间窗、负时间clamp、重叠最后项获胜、只发布变化结果",
+          "实际每日主题plugin消费者"
+        ],
+        [
+          "目录才命中；200/长度/内容cid hash后提取，失败保留到新列表",
+          "完整原download入口及真实服务"
+        ],
+        [
+          "checksum验证；过期严格>14天，未来时间继续校验；错误条目独立",
+          "极端文件系统/整链原入口"
+        ],
+        [
+          "原enclosed_name/顺序/失败保留文件；完整目标path与hash构成CRC；只验证列出的文件",
+          "原完整提取/验证入口oracle与路径极端边界"
+        ],
+        [
+          "rogue文件移除，老/坏checksum目录删除，条目错误独立",
+          "真实cache大规模行为与特殊OS失败"
+        ],
+        [
+          "库内run下载所有Pending含未来事件；sender只发布变化，断开退出",
+          "真实tiny-glade主题plugin/ECS consumer"
+        ]
+      ]
+    },
+    "theme-server-proto": {
+      "scope": "B协议ActiveEvent(start/end i64,cid String)、EventsResponse(events)字段契约；serde派生不算手写算法。",
+      "gaps": [
+        "原服务兼容/版本契约；未证明独立手写迁移/校验",
+        "完整主题plugin消费与A/C适配"
+      ],
+      "boundary": "只恢复协议字段契约，serde公共实现复用；未登记visit_map等派生为算法。",
+      "features": [
+        [
+          "B ActiveEvent start/end=i64,cid=String，EventsResponse events；派生serde复用",
+          "原服务完整兼容规则；无独立手写验证证据",
+          "contract_only"
+        ],
+        [
+          "时间选择/cache等规则在theme-fetcher消费者，非协议包派生解码器",
+          "完整游戏主题消费；无独立迁移算法证据",
+          "contract_only"
+        ]
+      ]
+    },
+    "geforcenow": {
+      "scope": "B固定DLL/三导出全部加载后initialize(0)，成功query/shutdown/unload；失败不吞为false。",
+      "gaps": [
+        "真实GFN SDK未加载/云服务未运行",
+        "实际游戏启动/路径/配置消费者",
+        "原错误枚举标签/Display与A/C适配"
+      ],
+      "boundary": "恢复游戏SDK调用顺序与错误策略，libloading与vendor SDK直接复用；真实SDK未执行。",
+      "features": [
+        [
+          "固定DLL与三导出、init非零原码传播；成功query/shutdown/卸载",
+          "真实vendor SDK行为、原错误标签与全消费链"
+        ],
+        [
+          "仅库入口已恢复；哪些实际启动/路径/配置消费云判断仍待联接",
+          "原真实consumer未验收",
+          "scope_only"
+        ]
+      ]
+    }
+  }
+}

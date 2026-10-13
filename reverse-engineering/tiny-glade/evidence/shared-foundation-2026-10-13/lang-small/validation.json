@@ -1,0 +1,337 @@
+{
+  "baseline": "B",
+  "checks": [
+    {
+      "name": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "-p",
+        "lang-lib"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log": "tests.log"
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "-p",
+        "lang-lib",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log": "clippy.log"
+    },
+    {
+      "name": "locale-policy",
+      "command": [
+        "cargo",
+        "run",
+        "--locked",
+        "--offline",
+        "-p",
+        "lang-lib",
+        "--example",
+        "verify_locale_policy",
+        "--",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-2026-10-13\\lang-small\\probe-policy"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log": "locale-policy.log"
+    },
+    {
+      "name": "original-assets",
+      "command": [
+        "cargo",
+        "run",
+        "--locked",
+        "--offline",
+        "-p",
+        "lang-lib",
+        "--example",
+        "verify_original_assets",
+        "--",
+        "D:/game/ljxsj_92385/Tiny Glade",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-2026-10-13\\lang-small\\probe-original-assets"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "log": "original-assets.log"
+    }
+  ],
+  "passed": true,
+  "native_mcp_batch_verified": true,
+  "native_decompiled_functions": [
+    {
+      "address": "0x140b9c200",
+      "body_bytes": 185,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x140b9c300",
+      "body_bytes": 244,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x140b9c4a0",
+      "body_bytes": 2520,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x140b9d180",
+      "body_bytes": 490,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x140b9d480",
+      "body_bytes": 1127,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x140b9d9b0",
+      "body_bytes": 384,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x141848140",
+      "body_bytes": 1379,
+      "prototype_is_not_verified_Rust_ABI": true
+    },
+    {
+      "address": "0x141848770",
+      "body_bytes": 653,
+      "prototype_is_not_verified_Rust_ABI": true
+    }
+  ],
+  "confirmed_representative_consumers": [
+    {
+      "call_address": "0x1400854e3",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x1400854a0",
+        "0x1400873fa"
+      ],
+      "owner_public": "tiny_glade::gui::gui_controls::key_bindings_sub_menu::h1d45db3ff9255da8",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-00.asm.txt"
+    },
+    {
+      "call_address": "0x140088270",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x140088240",
+        "0x1400885b3"
+      ],
+      "owner_public": "tiny_glade::gui::gui_controls::show_control_tweakers::h6e9a8ee49e1faffb",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-01.asm.txt"
+    },
+    {
+      "call_address": "0x1402470b1",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x140247060",
+        "0x1402475d0"
+      ],
+      "owner_public": "tiny_glade::gui::settings::ui_settings_game::hcb95b4512f107e73",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-02.asm.txt"
+    },
+    {
+      "call_address": "0x14024760b",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x1402475d0",
+        "0x140247862"
+      ],
+      "owner_public": "tiny_glade::gui::settings::ui_settings_audio::h7f606e31a976051f",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-03.asm.txt"
+    },
+    {
+      "call_address": "0x14024790d",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x140247870",
+        "0x14024a1cf"
+      ],
+      "owner_public": "tiny_glade::gui::settings::ui_settings_video::hc83ecfd905080d8d",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-04.asm.txt"
+    },
+    {
+      "call_address": "0x14024aaab",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x14024aa80",
+        "0x14024ae5a"
+      ],
+      "owner_public": "tiny_glade::gui::settings::ui_settings_ui::h2df1c92536d96d40",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-05.asm.txt"
+    },
+    {
+      "call_address": "0x14024b240",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x14024b120",
+        "0x14024b32c"
+      ],
+      "owner_public": "tiny_glade::gui::settings::ui_settings_controls::h1139851a2e2ecfb6",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-06.asm.txt"
+    },
+    {
+      "call_address": "0x140323699",
+      "target": "0x140b9c300",
+      "target_name": "lang_lib::load_locale",
+      "owner_unwind": [
+        "0x140323230",
+        "0x140323729"
+      ],
+      "owner_public": "tiny_glade::load_language_library::load_language_library::h4cf471ac8ec49114",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-07.asm.txt"
+    },
+    {
+      "call_address": "0x1403aefb9",
+      "target": "0x140b9d180",
+      "target_name": "lang_lib::load_last_used_locale",
+      "owner_unwind": [
+        "0x1403ae940",
+        "0x1403b0ff1"
+      ],
+      "owner_public": "tiny_glade::panic_reporter::panic_report::on_game_crashed::h21c78601fa4abf05",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-08.asm.txt"
+    },
+    {
+      "call_address": "0x1403d086a",
+      "target": "0x140b9d480",
+      "target_name": "lang_lib::lookup",
+      "owner_unwind": [
+        "0x1403d07f0",
+        "0x1403d0974"
+      ],
+      "owner_public": "tiny_glade::gui::gui_escape_menu::wishlist_button::h9ea502f74eece6a9",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-09.asm.txt"
+    },
+    {
+      "call_address": "0x140b9c31d",
+      "target": "0x140b9c4a0",
+      "target_name": "lang_lib::load_locale_impl",
+      "owner_unwind": [
+        "0x140b9c300",
+        "0x140b9c3f4"
+      ],
+      "owner_public": "lang_lib::load_locale::h90d6a968058011dd",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-10.asm.txt"
+    },
+    {
+      "call_address": "0x140b9d2f0",
+      "target": "0x140b9c4a0",
+      "target_name": "lang_lib::load_locale_impl",
+      "owner_unwind": [
+        "0x140b9d180",
+        "0x140b9d36a"
+      ],
+      "owner_public": "lang_lib::load_last_used_locale::h1272aeacb5ec255e",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-11.asm.txt"
+    },
+    {
+      "call_address": "0x140b9d5fc",
+      "target": "0x141848140",
+      "target_name": "lang_lib::language_library::LanguageLibrary::get",
+      "owner_unwind": [
+        "0x140b9d480",
+        "0x140b9d8e7"
+      ],
+      "owner_public": "lang_lib::lookup::hb04eb21c4c6a2663",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-12.asm.txt"
+    },
+    {
+      "call_address": "0x140fbd1de",
+      "target": "0x140b9d9b0",
+      "target_name": "lang_lib::game_locale",
+      "owner_unwind": [
+        "0x140fbcf40",
+        "0x140fbd414"
+      ],
+      "owner_public": "toolbar::mei::config::TemplateView::with_slot::h762d9b4bfc497716",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-13.asm.txt"
+    },
+    {
+      "call_address": "0x140fbeb1c",
+      "target": "0x140b9d9b0",
+      "target_name": "lang_lib::game_locale",
+      "owner_unwind": [
+        "0x140fbe830",
+        "0x140fbecf7"
+      ],
+      "owner_public": "toolbar::mei::config::TemplateView::with_slot::h94de1d07cf873056",
+      "status": "llvm_original_instruction_boundary_confirmed",
+      "passed": true,
+      "assembly": "consumer-14.asm.txt"
+    }
+  ],
+  "raw_call_candidates_total": 319,
+  "original_game_native_behavior_executed": false,
+  "full_original_abi_verified": false,
+  "candidate_sources": [
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_locale_policy.rs",
+      "sha256": "39db4293227d68fb9209aea017a8c92f1f2e7ae36418b0cdaeb513a3b0f375f3"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_original_assets.rs",
+      "sha256": "b8335a52519d1bb3b086d517f8b1264425295d7398f7688bba83e9294c1cf93c"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "sha256": "cf54b2fcc79bae5d21c4017e24e350500fecbfc57b8cfb1a7d7f89c25aa7cd7f"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "sha256": "c97f7e0429a273fd4c1ee1feb0892df59fa4e34c8b4f7c332740e772fe6fb2a6"
+    }
+  ],
+  "lock_sha256": "1975eaca97a18da58f0a3deb3923198b3e3a78cbef7a6e148ff8a6d46e2643ca"
+}

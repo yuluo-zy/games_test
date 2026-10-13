@@ -1,5 +1,11 @@
 # 游戏自有源码逆向任务与收益排序
 
+2026-10-13 最新B基础库批次：用户要求C先不管，集中B。3 agent已交付8库到[共享workspace](reconstruction/shared-foundation/Cargo.toml)，32普通Rust tests与严格Clippy通过，414项公共依赖身份完全匹配原B锁。主题/cache、报告/GUI、反馈插件/GFN为候选实现，协议schema不计手写算法；详见[交付及剩余边界](evidence/foundation-unstarted-2026-10-13/REPORT.md)。下一闭包是原tiny-glade每日主题插件→fetcher、country-core/UI反馈producer→reporter、rhapsody真实设备/driver_support→选择结果消费及启动完整性/crash回调接线；先恢复真实字段/类型再接入，不重复派生visitor或公共依赖。完整原oracle与A/C适配保留，C本轮不推进。
+
+基础库的详细功能拆分见[基础库业务功能清单](FOUNDATION_BUSINESS_FUNCTIONS.md)。推进单位为游戏侧手写规则与生产消费闭包；自动派生、宏展开、通用库实现不列功能任务。未解释的入口、归属待确认和纯数据契约保持各自标记，原系统验收状态不变。
+
+当前共享七包的源码对照以[业务功能对照](FOUNDATION_BUSINESS_COMPARISON.md)为准：98行中9条utils功能未实现、22条有部分库内逻辑缺口，原验证与库外接线分开。先补高度图状态化区段输出、墙空间/重采样等实际闭包；不因缺同名helper、原图片或宏生成符号重复建立“无实现”任务。
+
 当前阶段是源码恢复；场景回放、GPU与最终画面验收后置。原作依赖全部保留在[dependency-policy.json](tracking/dependency-policy.json)，不要把901个package当作901个逆向任务。依赖实现不计入游戏源码覆盖。
 
 2026-10-12 最新用户指示继续渲染框架源码恢复和编译/原码测试：S25已完成确定性rhapsody工作图与三批并行恢复。批次01恢复ResourceInfo、Registry/Pool、CompiledGraph/Batch；批次02整合小图DSL、executor/temporal与tracked GPU生命周期；批次03关闭barrier/record分段、sequence/timeline分域和temporal完整payload主要路径。累计新增512个ResourceInfo快照、1600个BatchCompiler、29692个生命周期叶、1344个barrier和97个population原入口案例零差异；批次03候选13项Rust测试通过，跨包门禁13/13。CPU `compile -> barrier/record projection -> submit events -> immediate retire` 与 deferred GPU disposal合同进一步闭合；真实Vulkan/GPU、完整pass recording、counter构造、temporal reset/drop、pipeline/shader和游戏pass接线继续恢复。第三批门禁见[evidence/render-recovery/parallel-batch-03/integration.json](evidence/render-recovery/parallel-batch-03/integration.json)。
@@ -72,3 +78,7 @@
 ## 2026-10-13 shader 缺口调查后续
 
 已完成原非零 compute 38 tuple、原 runtime load_compiled、404/638 实际预处理／DXC／打包及19冲突包修复。接下来按 evidence/shader-gap-investigation-2026-10-13/SUMMARY.md 的具体残差恢复7个反射差异、132个zero-key宏、uint2物理地址fork适配及图像格式；确认原离线CLI/provider/cache/temp策略。397包typed反射一致不能计为完整着色语义恢复，整帧后置。
+
+## 2026-10-13 小型基础库第一批
+
+三个并行owner已交付motomoto、tg-package-integrity及tg-text的限定CPU子链，详见 [整合报告](evidence/small-libs-batch-01/REPORT.md)。下一缺口：motomoto原Writer/Drop与真实save schema消费者；完整性原入口oracle/报告consumer及特殊OS/schema；tg-text真实TextFragment/TextRenderer策略与原cosmic-text/etagere接线。原依赖继续复用，候选编译/测试与完整原业务验收分开。

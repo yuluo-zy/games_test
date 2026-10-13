@@ -1,0 +1,5014 @@
+{
+  "schema_version": 1,
+  "title": "Tiny Glade 基础库手写业务功能清单",
+  "baseline": "B primary; A/C separately identified",
+  "generated_at": "2026-10-13T09:56:48.953Z",
+  "scope": "此前基础库清单及原锁补查发现的配套基础包；country-core和systems业务系统另册；不含全部第三方依赖实现",
+  "policy": {
+    "unit": "用户可观察的规则或生产者到消费者闭包；一个功能可对应多个函数",
+    "excluded": [
+      "派生Clone/Copy/Eq/Hash/Debug/Default",
+      "drop_in_place和容器自动析构",
+      "serde/rkyv/speedy派生编解码器",
+      "通用库算法与宏展开",
+      "纯getter、转换和重导出单独计数"
+    ],
+    "custom_finalization": "有原证据的手写收尾归入资源或协议功能，例如chunk长度回填、GPU完成后回收；不以Drop接口单列任务",
+    "schema": "手写字段与默认/继承/兼容策略可以登记；仅派生数据类型标数据契约，不声称有手写算法",
+    "evidence_boundary": "原符号只证明入口存在与功能定位；scope_only不证明具体算法或手写来源；不从未找到公开上游推断自研",
+    "acceptance": "功能数量不等于原API数、完成率或新增验收；所有完成标志默认为false"
+  },
+  "states": {
+    "partial": "已有业务分析或限定实现，功能未完整验收",
+    "analyzed_no_impl": "已有原规则分析，尚无对应实现",
+    "scope_only": "原业务入口已定位，规则待分析",
+    "contract_only": "数据或协议契约，尚未证明存在独立手写逻辑",
+    "provenance_pending": "功能入口存在，公共来源与私有增量待分类",
+    "reuse": "直接复用依赖，仅恢复游戏配置或调用策略",
+    "identity_only": "仅有原包身份，功能待定位"
+  },
+  "libraries": [
+    {
+      "name": "utils",
+      "group": "共享 CPU 基础",
+      "role": "游戏自有坐标、曲线、几何、数值与状态辅助策略",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "tracking/shared-foundation-interfaces.json",
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+        "evidence/shared-foundation-review-2026-10-13/REVIEW.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "glam/half/fastrand/serde/std/xxhash等实现直接复用。自动派生与纯getter不单列功能；不同维度与泛型规则不能用Curve2证据替代。",
+      "features": [
+        {
+          "id": "utils:01",
+          "name": "角度限制",
+          "behavior": "按最小角和跨度构造可跨周期的角度范围，限制编辑角度",
+          "status": "partial",
+          "remaining": "独立wrap及极端端点策略未全部分析",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:02",
+          "name": "周期数值与插值",
+          "behavior": "归一化周期值，计算环形距离并沿环形路径插值",
+          "status": "partial",
+          "remaining": "构造归一化、半周期平局及非有限值边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:03",
+          "name": "相机投影",
+          "behavior": "由镜头、长宽比和相机位置旋转生成投影与视图关系",
+          "status": "partial",
+          "remaining": "完整相机资源组装与消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:04",
+          "name": "相机朝向投影",
+          "behavior": "提取眼睛位置、前方、右方及XZ平面朝向，处理近垂直回退",
+          "status": "partial",
+          "remaining": "完整模式切换及输入在country-core侧",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:05",
+          "name": "镜头变化",
+          "behavior": "设置垂直视野；镜头平滑与更新入口尚待联接",
+          "status": "partial",
+          "remaining": "平滑/update生产者未恢复",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:06",
+          "name": "空间投影与区域关系",
+          "behavior": "在线性或循环空间计算距离、投影、夹紧、区间减法",
+          "status": "partial",
+          "remaining": "classify_side、regions_intersect及零/负周期",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:07",
+          "name": "缓动与偏置",
+          "behavior": "按游戏枚举选择插值曲线，对过渡进度施加缓动",
+          "status": "partial",
+          "remaining": "其余已观察缓动族、越界和NaN输入",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:08",
+          "name": "带时间的备份",
+          "behavior": "按日期格式生成保留原名的备份路径并复制文件",
+          "status": "partial",
+          "remaining": "IO失败、非Unicode路径和日志策略",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:09",
+          "name": "地面网格采样",
+          "behavior": "把世界XZ映射至网格并做双线性采样，支持已观察采样器",
+          "status": "partial",
+          "remaining": "固定/动态网格标志、边界外推与真实资源",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:10",
+          "name": "半精度数据包装",
+          "behavior": "将游戏向量/数组按既定分量转换成f16用于紧凑数据",
+          "status": "partial",
+          "remaining": "仅恢复打包组合；half算法复用，完整生产者待接",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:11",
+          "name": "对象索引压缩",
+          "behavior": "为对象key维护紧凑索引，删除时调整索引并支持缓存解析",
+          "status": "partial",
+          "remaining": "insert生产策略、GPUWorld与启动消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:12",
+          "name": "本地时间缓存",
+          "behavior": "缓存平台时区偏移，初始化失败使用UTC，再转换时间",
+          "status": "partial",
+          "remaining": "实际刷新频率和平台失败流程",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:13",
+          "name": "循环索引与切片",
+          "behavior": "把有符号索引映射到周期，遍历直线/闭环范围及子切片",
+          "status": "partial",
+          "remaining": "LoopSlice、反向遍历与异常周期规则",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:14",
+          "name": "资产名称标识",
+          "behavior": "按原xxhash调用生成名称key并提供调试名称策略",
+          "status": "partial",
+          "remaining": "真实名称生产者与冲突/查找消费者；hash算法复用",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:15",
+          "name": "自然样条构造",
+          "behavior": "由2D/3D控制点和可选端点切线生成样条系数",
+          "status": "partial",
+          "remaining": "重复点、少点、非有限与极端规模",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:16",
+          "name": "周期样条构造",
+          "behavior": "构造闭合样条的节点及周期边界条件",
+          "status": "partial",
+          "remaining": "求解器剩余入口和退化周期输入",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:17",
+          "name": "样条位置和切线",
+          "behavior": "寻找采样区段，夹紧参数，计算曲线位置及切线",
+          "status": "partial",
+          "remaining": "全部区段/端点和真实编辑消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:18",
+          "name": "轮廓简化",
+          "behavior": "按RDP阈值选择保留点索引，保留已观察几何规则",
+          "status": "partial",
+          "remaining": "stitch_with、索引消费及调用者非负阈值约束",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:19",
+          "name": "颜色紧凑编码",
+          "behavior": "按游戏使用的RGB9E5范围和共享指数规则打包颜色",
+          "status": "partial",
+          "remaining": "非有限值和实际GPU字段；不扩成通用颜色库",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:20",
+          "name": "随机种子策略",
+          "behavior": "变换游戏输入种子并调用原fastrand初始化RNG",
+          "status": "partial",
+          "remaining": "各生成消费者种子来源；不恢复RNG实现",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:21",
+          "name": "快照字段选择",
+          "behavior": "只提取History内snapshots等所需字段，保留部分成功与吞错策略",
+          "status": "partial",
+          "remaining": "真实Snapshot类型及原完整visitor",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:22",
+          "name": "一维区间裁剪",
+          "behavior": "从范围扣除一个或多个区段，输出剩余有序范围",
+          "status": "partial",
+          "remaining": "连续多次裁剪、反向/非有限范围",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:23",
+          "name": "坐标分量适配",
+          "behavior": "把XZ等平面分量放入指定3D轴，并桥接借用切片",
+          "status": "partial",
+          "remaining": "Vec3SliceAs2投影轴、步长及真实借用消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:24",
+          "name": "阈值区段提取",
+          "behavior": "从样本寻找满足阈值的区段并按原策略保留回调结果",
+          "status": "partial",
+          "remaining": "NaN singleton与回调完整原入口",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:25",
+          "name": "帧时间过滤",
+          "behavior": "按warmup和历史样本过滤墙钟delta，控制初始帧输出",
+          "status": "partial",
+          "remaining": "Bevy Time/SystemParam实际联接",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:26",
+          "name": "墙曲线坐标",
+          "behavior": "在曲线参数、墙体沿线距离和世界XZ间映射，叠加高度",
+          "status": "partial",
+          "remaining": "nearest-u、外推及真实墙/装饰消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:27",
+          "name": "墙空间偏移与范围",
+          "behavior": "沿墙限制或放开偏移，判断墙空间区域相交并形成变换",
+          "status": "scope_only",
+          "remaining": "bound、offset、region和to_affine3规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:28",
+          "name": "曲线合法化",
+          "behavior": "构造2D/3D曲线，处理重复点、无效点列和闭合条件",
+          "status": "partial",
+          "remaining": "remove_duplicates全规则及Curve3/Thresholded3D实例",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:29",
+          "name": "曲线长度与分段",
+          "behavior": "累计沿线距离，建立点/区段参数与内部坐标映射",
+          "status": "partial",
+          "remaining": "全部泛型度量策略与段边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:30",
+          "name": "曲线位置和方向",
+          "behavior": "在参数或内部坐标采样位置、切线与中心切线",
+          "status": "partial",
+          "remaining": "未归一切线、非受控采样及泛型实例",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:31",
+          "name": "曲线最近点",
+          "behavior": "从世界位置找到近似曲线参数或投影位置",
+          "status": "partial",
+          "remaining": "Curve3查询策略与完整几何消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:32",
+          "name": "曲线侧向判断",
+          "behavior": "按最近区段与叉积判断点位于曲线哪一侧",
+          "status": "analyzed_no_impl",
+          "remaining": "尚无原映射实现；不同维度策略需分开",
+          "evidence_scope": "原业务已有分析，实现仍缺",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:33",
+          "name": "曲线裁切",
+          "behavior": "按区间裁切曲线，支持循环裁切与写入目标点列",
+          "status": "partial",
+          "remaining": "全部跨接缝和失败路径",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:34",
+          "name": "曲线区段视图",
+          "behavior": "创建CurveSlice，测量区段并向两端扩展至边界",
+          "status": "scope_only",
+          "remaining": "17个已观察区段接口具体业务仍未闭合",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:35",
+          "name": "曲线重映射",
+          "behavior": "重新映射曲线区段的坐标与二维参数",
+          "status": "scope_only",
+          "remaining": "CurveSlice remap/remap_2d与消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:36",
+          "name": "曲线反向与延长",
+          "behavior": "反向点列并重建参数；在末尾扩展新点",
+          "status": "partial",
+          "remaining": "反向已有实现，try_extend已分析但未实现",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:37",
+          "name": "按间距重采样",
+          "behavior": "按空间间距或区段规则重新生成曲线点列",
+          "status": "scope_only",
+          "remaining": "try_resample与各remap/per-segment策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:38",
+          "name": "按点数重采样",
+          "behavior": "用目标近似点数确定间距，处理特征点和终点",
+          "status": "analyzed_no_impl",
+          "remaining": "最终算法与所有remap变体未实现",
+          "evidence_scope": "原业务已有分析，实现仍缺",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:39",
+          "name": "曲线平滑与移动",
+          "behavior": "对点列平滑、加权平滑、原位平滑或整体平移",
+          "status": "scope_only",
+          "remaining": "平滑权重、闭合端点及实际调用约束",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:40",
+          "name": "曲线维度投影",
+          "behavior": "在Curve2、Curve3、Curve3XZ间转换并选用XZ度量",
+          "status": "scope_only",
+          "remaining": "转换、reinterpret及阈值度量完整规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:41",
+          "name": "曲线循环参数",
+          "behavior": "对闭环参数加减、距离、包含和跨接缝插值",
+          "status": "partial",
+          "remaining": "普通CurveU夹紧/min/max和实例边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:42",
+          "name": "变换朝向与比较",
+          "behavior": "游戏Transform的look-at和容差比较，数学调用glam",
+          "status": "partial",
+          "remaining": "真实组件消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:43",
+          "name": "变换矩阵组装",
+          "behavior": "从位移/旋转/缩放形成矩阵、仿射变换和前方向",
+          "status": "scope_only",
+          "remaining": "手写组合与生成注册胶水的归属区分",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:44",
+          "name": "包围盒查询",
+          "behavior": "构造/扩展包围盒，检测包含、相交以及射线/线段命中",
+          "status": "partial",
+          "remaining": "from_points和线段交叠剩余入口",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:45",
+          "name": "圆形轮廓采样",
+          "behavior": "计算周长/面积/参数点、切线、法线并离散为点列",
+          "status": "partial",
+          "remaining": "Circle2d lerp、旋转与全采样边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:46",
+          "name": "圆形几何查询",
+          "behavior": "判断点内外、带符号距离、最近周界点、射线/圆相交",
+          "status": "partial",
+          "remaining": "全部退化与调用链",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:47",
+          "name": "圆形转曲线",
+          "behavior": "把圆形或圆弧范围变成Curve2/Curve3",
+          "status": "analyzed_no_impl",
+          "remaining": "as_curve2已分析未实现；闭合末段及其他变体待确认",
+          "evidence_scope": "原业务已有分析，实现仍缺",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:48",
+          "name": "矩形轮廓采样",
+          "behavior": "把带朝向矩形转点列/曲线，按周界参数找边和点",
+          "status": "partial",
+          "remaining": "圆周区段裁切、Curve3及转变换",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:49",
+          "name": "矩形内外与交叠",
+          "behavior": "计算包含、padding和二维/三维矩形交叠",
+          "status": "partial",
+          "remaining": "矩形/圆混合相交、退化输入",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:50",
+          "name": "矩形边缘距离",
+          "behavior": "求最近边界距离及内外符号",
+          "status": "analyzed_no_impl",
+          "remaining": "普通/有符号距离均尚未实现",
+          "evidence_scope": "原业务已有分析，实现仍缺",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:51",
+          "name": "矩形边角法线",
+          "behavior": "按边和角计算朝向，特殊角点使用未归一法线和",
+          "status": "partial",
+          "remaining": "特殊角点法线已分析未实现，其余最近边策略待确认",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:52",
+          "name": "矩形变形",
+          "behavior": "扩大尺寸、沿特定边扩展，设置3D尺寸、平移和XZ朝向",
+          "status": "partial",
+          "remaining": "expand_along_edge与rotate_projective_xz规则",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:53",
+          "name": "射线和曲面拾取",
+          "behavior": "计算射线与球/三角形/平面交点和最近交距",
+          "status": "partial",
+          "remaining": "鼠标屏幕坐标生成Ray及完整拾取消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:54",
+          "name": "三角形交叠",
+          "behavior": "分类三角形关系，计算交线与有序端点，处理退化及容差",
+          "status": "partial",
+          "remaining": "内层剩余入口与真实几何消费链",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:55",
+          "name": "网格UV位置",
+          "behavior": "用重心坐标在三角形UV与空间位置之间映射",
+          "status": "partial",
+          "remaining": "get_triangle_coords_from_mesh_uv与barycentric2",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:56",
+          "name": "高度图阈值切分",
+          "behavior": "按高度阈值将高度图划成不同区域",
+          "status": "partial",
+          "remaining": "全资源消费者与边界输入",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:57",
+          "name": "屏幕坐标转换",
+          "behavior": "从世界位置转换裁剪空间和屏幕空间",
+          "status": "scope_only",
+          "remaining": "ws_to_cs/ws_to_ss原规则与调用者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "utils:58",
+          "name": "几何支撑辅助",
+          "behavior": "brace.rs仅有定义来源，具体几何业务尚待定位",
+          "status": "scope_only",
+          "remaining": "不能按文件名补造支撑类型及算法",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/utils/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        {
+          "module": "crates/utils/src/components",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        {
+          "module": "crates/utils/src/curve",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        {
+          "module": "crates/utils/src/geometry",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tabloid",
+      "group": "共享 CPU 基础",
+      "role": "把游戏增量状态分发给多个消费者",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "Arc/Mutex/RwLock/Vec由原依赖实现；Clone/Default/Deref与容器析构不是功能条目。",
+      "features": [
+        {
+          "id": "tabloid:01",
+          "name": "发布增量",
+          "behavior": "每次发布推进序号，将新delta合并进仍被订阅者或reader持有的批次",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tabloid:02",
+          "name": "慢消费者累积",
+          "behavior": "消费者已有pending时保留原批次并继续累积变化，不覆盖成最新单值",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tabloid:03",
+          "name": "新订阅起点",
+          "behavior": "新订阅只接后续变化，不补历史状态",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tabloid:04",
+          "name": "取走待处理批次",
+          "behavior": "消费者一次取走pending并记录已读序号",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tabloid:05",
+          "name": "读写同步策略",
+          "behavior": "持有reader时后续发布等待；无外部持有的批次才清除",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tabloid:06",
+          "name": "游戏状态接入",
+          "behavior": "对接DirtyTiles和ColliderDiff的empty/apply_to语义",
+          "status": "partial",
+          "remaining": "实际生产者和消费者未接线",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tabloid/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "paths",
+      "group": "共享 CPU 基础",
+      "role": "游戏账号、存档和安装目录策略",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "其他平台分支未核实；std文件系统与KnownFolder接口复用。",
+      "features": [
+        {
+          "id": "paths:01",
+          "name": "用户数据根目录",
+          "behavior": "Windows优先SavedGames已知目录，失败读USERPROFILE并追加Saved Games/Tiny Glade",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "paths:02",
+          "name": "覆盖目录与账号隔离",
+          "behavior": "显式根目录也追加Tiny Glade，再按Steam用户ID隔离账号",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "paths:03",
+          "name": "存档目录布局",
+          "behavior": "统一saves、beta-saves、tmp、deleted-saves、backup-saves及账号配置目录",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "paths:04",
+          "name": "启动目录初始化",
+          "behavior": "按原顺序创建目录，后续失败保留先前已创建目录并传播上下文",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "paths:05",
+          "name": "安装位置与初始化限制",
+          "behavior": "初始化后记录当前工作目录；未初始化访问和重复初始化失败",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/paths/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "lang-lib",
+      "group": "共享 CPU 基础",
+      "role": "游戏语言选择、回退和缺失文案策略",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "YAML解析器复用；UI/ECS初始化和完整热切换消费者未验收。",
+      "features": [
+        {
+          "id": "lang-lib:01",
+          "name": "语言包加载",
+          "behavior": "读取assets/lang/{locale}.yml的首个YAML文档，按字符串映射组织文案",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:02",
+          "name": "语言切换",
+          "behavior": "替换所选语言，保留已返回文本引用的有效性",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:03",
+          "name": "默认语言回退",
+          "behavior": "请求语言加载失败使用en-US；环境变量可禁用回退更新",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:04",
+          "name": "文案查找",
+          "behavior": "先查所选语言再查默认语言，未初始化时按原策略处理key",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:05",
+          "name": "缺失文案缓存",
+          "behavior": "首次缺失生成稳定占位文案并记录日志，重复缺失使用缓存",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:06",
+          "name": "语言偏好保存",
+          "behavior": "持久化请求locale，读取失败使用en-US；保留文件文本不trim",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "lang-lib:07",
+          "name": "加载失败分类",
+          "behavior": "区分文件/扫描错误、内容schema不匹配及默认包加载失败",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/lang-lib/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "motomoto",
+      "group": "存档与完整性",
+      "role": "游戏快照的chunk容器协议",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/small-libs-review-2026-10-13/motomoto/REVIEW.md",
+        "evidence/small-libs-batch-01/motomoto/BUSINESS_RULES.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "chunk封口包含手写Drop承载的协议规则，但不列Drop任务；byteorder/std IO/flate2/JSON实现复用。",
+      "features": [
+        {
+          "id": "motomoto:01",
+          "name": "资源段标识",
+          "behavior": "把字符串原UTF8前8字节按LE组成tag；严格/截断两种长度策略",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:02",
+          "name": "连续chunk写入",
+          "behavior": "写tag和长度占位，再原样写入payload，不自行压缩",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:03",
+          "name": "chunk封口",
+          "behavior": "结束段写入后回填实际payload长度，再恢复流末尾位置",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:04",
+          "name": "延迟写入错误",
+          "behavior": "先消费前段封口错误，错误时不转换新tag或写入新段",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:05",
+          "name": "chunk迭代读取",
+          "behavior": "按header跳过payload并返回借用数据；保留原末尾16字节边界",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:06",
+          "name": "损坏段处理",
+          "behavior": "长度越界返回错误并保留已更新的游标，异常长度按原seek规则处理",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "motomoto:07",
+          "name": "游戏快照接线",
+          "behavior": "Snapshot、动态资源tag、Terrain由存档消费者生产，读取侧交给解压/schema",
+          "status": "partial",
+          "remaining": "完整capture/load消费者、迁移与压缩设置待恢复",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/motomoto/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ],
+      "current_evidence_note": "最新review已补限定Cursor的原Writer和chunk封口运行对照。通用流IO失败、最终延迟错误消费者和真实存档仍未闭合。"
+    },
+    {
+      "name": "tg-package-integrity",
+      "group": "存档与完整性",
+      "role": "验证发行文件是否缺失、损坏或多出",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/small-libs-review-2026-10-13/tg-package-integrity/REVIEW.md",
+        "evidence/small-libs-batch-01/tg-package-integrity/BUSINESS_RULES.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "复用blake3/fnv/relative-path/easy-parallel/serde；不重写哈希和线程库。",
+      "features": [
+        {
+          "id": "tg-package-integrity:01",
+          "name": "清单原字节门禁",
+          "behavior": "JSON解析前校验BLAKE3后接指定FNV/数组Hash规则，空格也覆盖",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:02",
+          "name": "清单版本门禁",
+          "behavior": "读取version/files，只接受已观察版本1",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:03",
+          "name": "逐文件完整性",
+          "behavior": "读取每个清单条目，按精确小写hash文本比较；读取失败归缺失/不可读",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:04",
+          "name": "清单自身排除",
+          "behavior": "只精确跳过manifest自身逐文件校验，不宽泛按名字跳过",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:05",
+          "name": "额外文件发现",
+          "behavior": "递归扫描清单外条目，仅忽略根tmp及原已观察的symlink/失败条目",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:06",
+          "name": "问题汇总",
+          "behavior": "重复清单条目保留，汇总missing/corrupt/extra，三类全空才成功",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-package-integrity:07",
+          "name": "完整性结果接线",
+          "behavior": "向完整性报告和崩溃报告消费者传递结果",
+          "status": "partial",
+          "remaining": "原完整入口、报告消费者和特殊OS边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-package-integrity/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ],
+      "current_evidence_note": "最新review补了原x64 Hash组合门禁、跨批与部分Windows文件边界。完整verify、罕见schema和报告消费者仍未验收；线程创建和整文件读取成本保留。"
+    },
+    {
+      "name": "tg-integrity-report",
+      "group": "启动与报告界面",
+      "role": "将完整性问题转换成玩家可操作的报告",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/tg-integrity-report/src/controls.rs",
+        "skeleton/B/crates/tg-integrity-report/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "仅登记原业务入口，不执行删除或发送动作；iced实现复用。",
+      "features": [
+        {
+          "id": "tg-integrity-report:01",
+          "name": "报告结果整理",
+          "behavior": "normalize_verification_result入口整理供界面展示的结果",
+          "status": "scope_only",
+          "remaining": "具体排序/分组与错误规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-integrity-report:02",
+          "name": "验证状态展示",
+          "behavior": "verification_status和view展示当前校验状态",
+          "status": "scope_only",
+          "remaining": "状态到文案和界面映射",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-integrity-report:03",
+          "name": "修复建议",
+          "behavior": "advice根据问题提供建议",
+          "status": "scope_only",
+          "remaining": "各类问题的建议与链接",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-integrity-report:04",
+          "name": "删除额外包文件",
+          "behavior": "remove_unrecognized_package_file处理用户删除操作",
+          "status": "scope_only",
+          "remaining": "允许路径、失败提示及重新校验顺序",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-integrity-report:05",
+          "name": "报告界面交互",
+          "behavior": "update与run_integrity_report_gui组织界面与操作",
+          "status": "scope_only",
+          "remaining": "真实启动消费者及最终结果",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-integrity-report/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tg-iced",
+      "group": "启动与报告界面",
+      "role": "游戏专用对话框与独立GUI运行包装",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/tg-iced/src/dialog.rs",
+        "skeleton/B/crates/tg-iced/src/gui_runner.rs",
+        "skeleton/C/crates/tg-iced/src/gui_runner_sdl.rs",
+        "skeleton/C/crates/tg-iced/src/gui_runner_winit.rs",
+        "skeleton/B/crates/tg-iced/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "iced/winit/SDL引擎复用；不将控件库、事件循环库整体纳入逆向。",
+      "features": [
+        {
+          "id": "tg-iced:01",
+          "name": "消息对话框",
+          "behavior": "按级别、标题、说明构建并显示对话框",
+          "status": "scope_only",
+          "remaining": "级别/按钮/关闭结果完整规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-iced:02",
+          "name": "界面状态更新",
+          "behavior": "view/update/program_outcome把玩家操作转成退出或继续结果",
+          "status": "scope_only",
+          "remaining": "各Controls的状态机",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-iced:03",
+          "name": "GUI运行选项",
+          "behavior": "run_gui_with_options组织独立窗口运行及回调",
+          "status": "scope_only",
+          "remaining": "窗口配置、关闭、错误与启动调用者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-iced:04",
+          "name": "游戏文本包装",
+          "behavior": "tg_iced::text提供项目自己的文本入口",
+          "status": "scope_only",
+          "remaining": "本地化/样式调用策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-iced:05",
+          "name": "窗口与事件后端",
+          "behavior": "B的GUI runner以及C的winit/SDL runner包装平台事件",
+          "status": "scope_only",
+          "remaining": "C mouse-button映射和event-batch规则须独立分析",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-iced/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tg-gpu-selector",
+      "group": "启动与报告界面",
+      "role": "游戏GPU选择、初始化错误与Vulkan配置界面",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/tg-gpu-selector/src/gpu_selection.rs",
+        "skeleton/B/crates/tg-gpu-selector/src/lib.rs",
+        "skeleton/B/crates/tg-gpu-selector/src/vulkan_config.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "该包原私有UI入口已观察，整体来源仍待核实；只恢复游戏选择与提示策略。",
+      "features": [
+        {
+          "id": "tg-gpu-selector:01",
+          "name": "显卡选择界面",
+          "behavior": "运行GPU选择GUI并将选择或退出作为program_outcome",
+          "status": "scope_only",
+          "remaining": "设备列表输入、默认选择和确认行为",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-gpu-selector:02",
+          "name": "驱动更新建议",
+          "behavior": "按设备/厂商给出driver advice和更新链接",
+          "status": "scope_only",
+          "remaining": "具体设备条件与厂商映射",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-gpu-selector:03",
+          "name": "初始化错误说明",
+          "behavior": "把图形初始化错误本地化并转换成界面信息",
+          "status": "scope_only",
+          "remaining": "错误族、建议与fallback规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-gpu-selector:04",
+          "name": "Vulkan白名单配置",
+          "behavior": "展示并切换allowlist项",
+          "status": "scope_only",
+          "remaining": "键、持久化和对创建策略的影响",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-gpu-selector:05",
+          "name": "兼容措施配置",
+          "behavior": "展示workarounds并处理操作",
+          "status": "scope_only",
+          "remaining": "措施映射和真实render初始化消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-gpu-selector/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "crash-reporter-gui",
+      "group": "启动与报告界面",
+      "role": "游戏崩溃后的玩家交互流程",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/crash-reporter-gui/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "GUI只提供交互；实际报告采集/发送由真实callback和其他包消费，不按常见崩溃工具补造。",
+      "features": [
+        {
+          "id": "crash-reporter-gui:01",
+          "name": "崩溃说明展示",
+          "behavior": "main_view/view显示崩溃信息与操作入口",
+          "status": "scope_only",
+          "remaining": "字段、状态与本地化文案",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "crash-reporter-gui:02",
+          "name": "更多诊断信息",
+          "behavior": "more_info_button提供进一步信息入口",
+          "status": "scope_only",
+          "remaining": "展开或外部链接的实际动作",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "crash-reporter-gui:03",
+          "name": "复制诊断信息",
+          "behavior": "copy_to_clipboard处理玩家复制操作",
+          "status": "scope_only",
+          "remaining": "具体内容和平台失败路径",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "crash-reporter-gui:04",
+          "name": "报告交互状态",
+          "behavior": "update/tick_message处理运行中的事件和结果",
+          "status": "scope_only",
+          "remaining": "发送进行中/完成/失败及退出条件待沿原状态确认",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "crash-reporter-gui:05",
+          "name": "崩溃回调联接",
+          "behavior": "run_crash_reporter_gui接入真实panic reporter回调",
+          "status": "scope_only",
+          "remaining": "mock与真实崩溃路径区别",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/crash-reporter-gui/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "feedback-reporter",
+      "group": "启动与报告界面",
+      "role": "玩家反馈的数据组织和发送",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/feedback-reporter/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "HTTP和ZIP库复用；此次仅制作清单，不发送报告。",
+      "features": [
+        {
+          "id": "feedback-reporter:01",
+          "name": "反馈内容组织",
+          "behavior": "report_player_feedback和build组织反馈请求",
+          "status": "scope_only",
+          "remaining": "文本/上下文/附件实际字段",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "feedback-reporter:02",
+          "name": "目录附件打包",
+          "behavior": "zip_dir将选定目录放入反馈附件",
+          "status": "scope_only",
+          "remaining": "包含排除规则、相对路径和大小限制",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "feedback-reporter:03",
+          "name": "性能资料打包",
+          "behavior": "zip_benchmark_data组织benchmark数据",
+          "status": "scope_only",
+          "remaining": "实际文件选择及格式",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "feedback-reporter:04",
+          "name": "发送反馈",
+          "behavior": "send_report提交报告并处理请求结果",
+          "status": "scope_only",
+          "remaining": "服务目标、重试/超时/失败规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "feedback-reporter:05",
+          "name": "游戏入口联接",
+          "behavior": "区分玩家反馈与其他报告调用者及用户操作时序",
+          "status": "scope_only",
+          "remaining": "实际UI/回调生产者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/feedback-reporter/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tg-text",
+      "group": "文字与界面",
+      "role": "文字片段、字形缓存及UI形状编码策略",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/small-libs-review-2026-10-13/tg-text/REVIEW.md",
+        "evidence/small-libs-review-2026-10-13/integration/ERRATA.md",
+        "evidence/small-libs-batch-01/tg-text/BUSINESS_RULES.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "cosmic-text/etagere/serde/RON复用；前三个字体/流子域有证据，完整文本渲染未验收。",
+      "features": [
+        {
+          "id": "tg-text:01",
+          "name": "按UI用途选字体",
+          "behavior": "Label/MenuButton/TextEditor/Hand按角色查字体；缺失不自行换另一用途",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:02",
+          "name": "字体度量缩放",
+          "behavior": "按表scale缩放两项度量，缺省scale为1，不夹紧数值",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:03",
+          "name": "UI形状指令构建",
+          "behavior": "按调用顺序累积填充色、图片和圆角描述",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:04",
+          "name": "绘制流编码",
+          "behavior": "输出u32协议：色值原样、图片索引低16位与缩放模式、圆角0..255",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:05",
+          "name": "图片名称解析",
+          "behavior": "按出现顺序向resolver查询名称；纯索引不查询；无图片resolver路径遇名称失败",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:06",
+          "name": "文字片段编辑与布局",
+          "behavior": "TextFragment维护attrs、buffer、度量和重排准备条件",
+          "status": "scope_only",
+          "remaining": "所有权、dirty/redraw和prepare策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:07",
+          "name": "光标选择与装饰",
+          "behavior": "把文字布局run转换成字形/图元及光标、选择等消费者数据",
+          "status": "scope_only",
+          "remaining": "原具体支持项、bounds与pixels-per-point失效",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:08",
+          "name": "字形缓存与图集",
+          "behavior": "TextRenderer按字形查询图集，跟踪使用与代次，处理空间不足",
+          "status": "scope_only",
+          "remaining": "原cosmic-text/etagere接线、淘汰规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-text:09",
+          "name": "文字GPU生产消费",
+          "behavior": "上传字形纹理和绘制数据，联接toolbar与rhapsody",
+          "status": "scope_only",
+          "remaining": "真实资源生产者和渲染消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-text/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ],
+      "current_evidence_note": "最新review确认已有CPU规则，并纠正历史文档的字符串反序列化标签误读；实现复用String::deserialize。TextFragment、TextRenderer和真实字形/GPU消费链仍缺。"
+    },
+    {
+      "name": "theme-defs",
+      "group": "主题与活动",
+      "role": "供主题下载和每日主题消费者共享的数据契约",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "已观察符号主要为派生Clone/Eq；不为本包凭空创建活动选择算法。时间窗选择属于theme-fetcher和游戏插件。",
+      "features": [
+        {
+          "id": "theme-defs:01",
+          "name": "活动可用数据",
+          "behavior": "活动数据携带目录及开始/结束SystemTime",
+          "status": "contract_only",
+          "remaining": "字段契约不等于独立手写算法",
+          "evidence_scope": "仅项目数据契约，不登记为手写算法",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-defs:02",
+          "name": "数据准备状态",
+          "behavior": "表示pending、无当前活动及准备失败文本等消费者状态",
+          "status": "contract_only",
+          "remaining": "原变体名/显示措辞及全交换规则",
+          "evidence_scope": "仅项目数据契约，不登记为手写算法",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/theme-defs/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "theme-server-proto",
+      "group": "主题与活动",
+      "role": "主题服务响应的项目协议契约",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/theme-server-proto/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不列visit_map/visit_str/serde解码器任务；只有证实项目手写验证后才新增业务功能。",
+      "features": [
+        {
+          "id": "theme-server-proto:01",
+          "name": "服务响应结构",
+          "behavior": "确定主题服务协议字段、可选项和版本兼容要求",
+          "status": "contract_only",
+          "remaining": "当前已观察主要是派生Deserialize，真实字段须沿fetch_events恢复",
+          "evidence_scope": "仅项目数据契约，不登记为手写算法",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-server-proto:02",
+          "name": "协议消费者约束",
+          "behavior": "区分服务格式和theme-fetcher活动选择所需业务数据",
+          "status": "contract_only",
+          "remaining": "未证明本包有独立手写验证/迁移逻辑",
+          "evidence_scope": "仅项目数据契约，不登记为手写算法",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/theme-server-proto/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "theme-fetcher",
+      "group": "主题与活动",
+      "role": "获取活动、下载主题并维护内容缓存",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/theme-fetcher/src/checked_zip.rs",
+        "skeleton/B/crates/theme-fetcher/src/lib.rs",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "HTTP/ZIP/哈希库复用，恢复下载缓存和活动选择组合策略。",
+      "features": [
+        {
+          "id": "theme-fetcher:01",
+          "name": "活动列表获取",
+          "behavior": "fetch_events向服务取得活动数据",
+          "status": "scope_only",
+          "remaining": "请求配置、响应字段、重试与刷新频率",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:02",
+          "name": "当前活动选择",
+          "behavior": "run根据协议时间窗决定当前活动，生产ActiveEvent/状态",
+          "status": "partial",
+          "remaining": "原已观察半开区间及SystemTime转换；完整编排待分析",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:03",
+          "name": "内容下载",
+          "behavior": "download_blob获取活动内容",
+          "status": "scope_only",
+          "remaining": "下载失败、重试、大小/校验和缓存命中",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:04",
+          "name": "内容缓存验证",
+          "behavior": "validate_cas_cache_entry验证CAS条目可用性",
+          "status": "scope_only",
+          "remaining": "缓存身份、过期和不完整条目规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:05",
+          "name": "ZIP提取与验证",
+          "behavior": "extract_with_checksums和verify_folder_checksums校验提取结果",
+          "status": "scope_only",
+          "remaining": "条目约束、目录校验和失败回滚",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:06",
+          "name": "缓存清理",
+          "behavior": "trim_cas清理不再需要的内容缓存",
+          "status": "scope_only",
+          "remaining": "淘汰标准、活动引用及磁盘边界",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "theme-fetcher:07",
+          "name": "主题更新消费",
+          "behavior": "向每日主题插件交付数据目录和可用状态",
+          "status": "partial",
+          "remaining": "完整run时序、取消/错误和插件联接",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/theme-fetcher/src",
+          "status": "not_assessed",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "geforcenow",
+      "group": "平台与诊断",
+      "role": "游戏是否运行在云端环境的判断",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/geforcenow/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "SDK/平台接口不是游戏自有实现任务。",
+      "features": [
+        {
+          "id": "geforcenow:01",
+          "name": "云端运行判断",
+          "behavior": "is_running_in_cloud决定平台环境分支",
+          "status": "scope_only",
+          "remaining": "具体环境探测与失败回退",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "geforcenow:02",
+          "name": "云端分支消费",
+          "behavior": "定位哪些启动、路径或配置行为消费该判断",
+          "status": "scope_only",
+          "remaining": "消费者未定位，不凭平台名补造功能",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/geforcenow/src",
+          "status": "not_assessed",
+          "versions": [
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "usdl",
+      "group": "平台与诊断",
+      "role": "C的SDL平台安全包装，来源待分类",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/usdl/src/event.rs",
+        "skeleton/C/crates/usdl/src/keyboard.rs",
+        "skeleton/C/crates/usdl/src/lib.rs",
+        "skeleton/C/crates/usdl/src/mouse.rs",
+        "skeleton/C/crates/usdl/src/rect.rs",
+        "skeleton/C/crates/usdl/src/sdl.rs",
+        "skeleton/C/crates/usdl/src/video.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "SDL本体、通用窗口/事件库不逆向；游戏输入约束在实际消费者。",
+      "features": [
+        {
+          "id": "usdl:01",
+          "name": "窗口与显示接口",
+          "behavior": "包装窗口建立、显示模式、全屏、high-DPI和原生handle",
+          "status": "provenance_pending",
+          "remaining": "包装来源和项目必要差异",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "usdl:02",
+          "name": "事件与输入接口",
+          "behavior": "包装事件poll/wait、键码、鼠标捕获和相对模式",
+          "status": "provenance_pending",
+          "remaining": "项目调用与映射增量",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "usdl:03",
+          "name": "平台初始化接口",
+          "behavior": "装载SDL并管理video/event/mouse子系统",
+          "status": "provenance_pending",
+          "remaining": "库来源和游戏初始化策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/usdl/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "usdl-sys",
+      "group": "平台与诊断",
+      "role": "C的SDL底层FFI与动态装载包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/usdl-sys/src/backend.rs",
+        "skeleton/C/crates/usdl-sys/src/error.rs",
+        "skeleton/C/crates/usdl-sys/src/event.rs",
+        "skeleton/C/crates/usdl-sys/src/keyboard.rs",
+        "skeleton/C/crates/usdl-sys/src/lib.rs",
+        "skeleton/C/crates/usdl-sys/src/mouse.rs",
+        "skeleton/C/crates/usdl-sys/src/rect.rs",
+        "skeleton/C/crates/usdl-sys/src/syswm.rs",
+        "skeleton/C/crates/usdl-sys/src/video.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "纯FFI与平台函数不列手写游戏功能；只研究明确项目装载策略。",
+      "features": [
+        {
+          "id": "usdl-sys:01",
+          "name": "动态后端选择",
+          "behavior": "装载SDL库及符号并选择active API",
+          "status": "provenance_pending",
+          "remaining": "原路径、fallback和错误策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "usdl-sys:02",
+          "name": "平台ABI映射",
+          "behavior": "映射事件、窗口、键鼠与系统window-info接口",
+          "status": "reuse",
+          "remaining": "源身份/必要ABI差异待核实，不以FFI函数数量计业务",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/usdl-sys/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aftermath-rs",
+      "group": "平台与诊断",
+      "role": "NVIDIA GPU崩溃诊断接口包装",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/rhapsody/crates/aftermath-rs/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "NVIDIA SDK不逆向；只恢复项目配置、callback内容和消费策略。",
+      "features": [
+        {
+          "id": "aftermath-rs:01",
+          "name": "GPU崩溃回调",
+          "behavior": "包装GPU crash dump、shader debug info、description和marker回调",
+          "status": "provenance_pending",
+          "remaining": "包装来源与游戏NvAftermathDelegate实际内容",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "aftermath-rs:02",
+          "name": "崩溃处理完成状态",
+          "behavior": "查询并等待诊断状态，决定何时消费dump",
+          "status": "provenance_pending",
+          "remaining": "状态、等待及超时策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "aftermath-rs:03",
+          "name": "shader诊断关联",
+          "behavior": "取得shader debug info identifier以联接shader与dump",
+          "status": "provenance_pending",
+          "remaining": "实际记录生产与报送消费者",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "dxgi-enumerate-gpus",
+      "group": "平台与诊断",
+      "role": "Windows显卡枚举包装",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/rhapsody/crates/dxgi-enumerate-gpus/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "DXGI与wide字符串通用转换复用；不列转换函数独立业务。",
+      "features": [
+        {
+          "id": "dxgi-enumerate-gpus:01",
+          "name": "显卡信息枚举",
+          "behavior": "enumerate取得系统GPU列表与显示名称",
+          "status": "provenance_pending",
+          "remaining": "包装来源及字段过滤",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "dxgi-enumerate-gpus:02",
+          "name": "GPU列表消费",
+          "behavior": "把DXGI信息用于实际选择或诊断",
+          "status": "scope_only",
+          "remaining": "与Vulkan设备匹配和排序由消费者决定",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "gpu-profiler",
+      "group": "平台与诊断",
+      "role": "游戏GPU时间标记与性能结果包装",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/rhapsody/crates/gpu-profiler/src/backend/ash.rs",
+        "skeleton/B/crates/rhapsody/crates/gpu-profiler/src/shared.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "Vulkan query/ash实现复用；性能图展示属于真实游戏消费者。",
+      "features": [
+        {
+          "id": "gpu-profiler:01",
+          "name": "每帧时间标记",
+          "behavior": "开始帧、建立命名marker并向命令记录时间戳",
+          "status": "provenance_pending",
+          "remaining": "包装来源、marker生命周期和原消费者",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "gpu-profiler:02",
+          "name": "提交帧结果读取",
+          "behavior": "结束帧后取回GPU计时结果",
+          "status": "provenance_pending",
+          "remaining": "完成时机、未就绪与失败处理",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "gpu-profiler:03",
+          "name": "持续时间解释",
+          "behavior": "按GPU tick和timestamp period生成纳秒结果并关联名称",
+          "status": "provenance_pending",
+          "remaining": "原计时精度及实际统计消费者",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "asset",
+      "group": "资产生产与格式",
+      "role": "游戏资源描述、继承、发现与纹理交换格式",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "serde/RON/rkyv/image/DDs解码器复用；字段、默认、继承和项目格式是功能，derive不是。",
+      "features": [
+        {
+          "id": "asset:01",
+          "name": "配置继承",
+          "behavior": "处理未指定、显式空值、父配置和子覆盖，形成最终资源描述",
+          "status": "partial",
+          "remaining": "全部concrete_default owner、错误路径及类型",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:02",
+          "name": "prefab发现",
+          "behavior": "扫描资源目录并收集prefab配置及引用文件",
+          "status": "partial",
+          "remaining": "全部扫描异常、side effects与真实热重载",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:03",
+          "name": "prefab参数合成",
+          "behavior": "应用scale/albedo等配置的默认与覆盖，收集依赖",
+          "status": "partial",
+          "remaining": "所有资产默认值和消费者约束",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:04",
+          "name": "纹理描述扫描",
+          "behavior": "从路径、配置和数组命名建立纹理desc，按名称排序",
+          "status": "partial",
+          "remaining": "原CLI外层与异常目录",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:05",
+          "name": "纹理默认策略",
+          "behavior": "缺省compression为Color，保留原sRGB/尺寸等字段语义",
+          "status": "partial",
+          "remaining": "未证明全部默认owner和原字段声明",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:06",
+          "name": "纹理数组检查",
+          "behavior": "要求层索引连续且header一致，按layer-major组合",
+          "status": "partial",
+          "remaining": "真实运行时消费及全错误边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:07",
+          "name": "纹理交换格式",
+          "behavior": "生产/读取游戏magic、version与尺寸/mip/格式/payload契约",
+          "status": "partial",
+          "remaining": "archive回写已验证，不等于原全图片producer",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:08",
+          "name": "资源依赖与热更新",
+          "behavior": "把prefab/纹理文件变化传播到country-core资产库",
+          "status": "scope_only",
+          "remaining": "游戏缓存、热重载与资源所有权",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:09",
+          "name": "C网格与植被资产",
+          "behavior": "C的mesh/foliage模块描述供新资产生产者消费的数据",
+          "status": "scope_only",
+          "remaining": "C独立schema、导入与调用链",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset:10",
+          "name": "C旧Mod资源兼容",
+          "behavior": "legacy_mod/texture新增文件中的兼容规则",
+          "status": "scope_only",
+          "remaining": "C实际字段与迁移策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/asset/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "asset-pipe",
+      "group": "资产生产与格式",
+      "role": "把游戏图像描述生产成纹理资产",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "image/ddsfile/Intel压缩库/easy-parallel/rkyv复用；原完整源图缺失，完整重编译对照未闭合。",
+      "features": [
+        {
+          "id": "asset-pipe:01",
+          "name": "图像工作空间",
+          "behavior": "普通图解码后按sRGB策略对RGB做transfer，alpha保持",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:02",
+          "name": "尺寸与压缩资格",
+          "behavior": "压缩资格看源图两维是否至少4，可压缩尺寸对齐4",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:03",
+          "name": "图像缩放",
+          "behavior": "使用原image的CatmullRom按目标尺寸采样，恢复项目选择策略",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:04",
+          "name": "mip生成",
+          "behavior": "每层从base采样并按原策略物化RGBA8，处理边缘重复padding",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:05",
+          "name": "压缩模式选择",
+          "behavior": "BC7按alpha全不透明与否选择原basic preset；实际压缩调用依赖",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:06",
+          "name": "DDS输入透传",
+          "behavior": "按项目白名单保留DDS尺寸/mip/格式，忽略普通图options并取layer0",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:07",
+          "name": "纹理数组产出",
+          "behavior": "按一致header与layer顺序合并各层字节",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:08",
+          "name": "增量构建缓存",
+          "behavior": "按desc、源mtime、magic/version判断是否重建，保留header-only命中行为",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:09",
+          "name": "多资源构建汇总",
+          "behavior": "逐资源交给easy-parallel，任务完成后写meta/list，错误或panic不写目录索引",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe:10",
+          "name": "C新增纹理处理",
+          "behavior": "mip_flood/store/texture_processing的新生产策略独立分析",
+          "status": "scope_only",
+          "remaining": "C来源/算法与新资源构建链",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/asset-pipe/src",
+          "status": "candidate_partial",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "asset-pipe-bin",
+      "group": "资产生产与格式",
+      "role": "原资产生产命令行入口",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/Cargo.lock",
+        "skeleton/C/Cargo.lock",
+        "evidence/shader-build-2026-10-13/provenance/PROVENANCE.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "仅包身份已知，不能根据工具名给出已确认手写流程。",
+      "features": [
+        {
+          "id": "asset-pipe-bin:01",
+          "name": "资产构建入口定位",
+          "behavior": "原锁确认依赖asset-pipe等包，需要确定实际命令与生产目标",
+          "status": "identity_only",
+          "remaining": "runtime PDB未定位作者源路径",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe-bin:02",
+          "name": "命令与输出策略定位",
+          "behavior": "确认参数、输入输出目录和错误退出如何影响游戏资产",
+          "status": "identity_only",
+          "remaining": "待取得发行构建或工具证据；不编造CLI flags",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody",
+      "group": "渲染框架",
+      "role": "游戏自己的Vulkan资源、图执行和GPU生命周期组合策略",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "tracking/module-progress.json",
+        "evidence/render-recovery/consumer-chain-review-2026-10-12/README.md",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "ash/Vulkan/allocator/vk-sync/平台库复用；这里只恢复项目资源和调度策略。C来源commit已知，函数体仍以独立证据验收。",
+      "features": [
+        {
+          "id": "rhapsody:01",
+          "name": "设备适配与选择",
+          "behavior": "读取项目白名单、判断设备/驱动兼容与surface能力再创建设备",
+          "status": "partial",
+          "remaining": "完整排序、驱动编码和配置来源",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:02",
+          "name": "资源用途映射",
+          "behavior": "把游戏buffer/image用途转换成Vulkan用途和访问策略",
+          "status": "partial",
+          "remaining": "公开vk-sync分类器复用",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:03",
+          "name": "资源创建与初始化",
+          "behavior": "按游戏descriptor创建buffer/image/view/sampler，上传初始数据",
+          "status": "partial",
+          "remaining": "setup/texture上传已有同步候选；原并入下一图提交而不等待的时序未闭合",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:04",
+          "name": "GPU数据传输",
+          "behavior": "组织映射、staging、拷贝和读回，明确CPU与GPU可用时间",
+          "status": "partial",
+          "remaining": "全部生产者、失败路径与游戏资源",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:05",
+          "name": "shader与pipeline创建",
+          "behavior": "消费项目compiled资产/reflection形成shader、布局与pipeline",
+          "status": "partial",
+          "remaining": "全变体选择和真实raster/pass绑定",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:06",
+          "name": "descriptor绑定",
+          "behavior": "由反射生成布局、池和写入，绑定managed资源与动态常量",
+          "status": "partial",
+          "remaining": "稀疏绑定、全部资源生产者及真实Command",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:07",
+          "name": "附件与渲染目标",
+          "behavior": "组织render pass/framebuffer和附件组合",
+          "status": "partial",
+          "remaining": "完整原图与各raster consumer",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:08",
+          "name": "渲染图声明",
+          "behavior": "描述pass、资源及访问，并导入/导出外部资源",
+          "status": "partial",
+          "remaining": "游戏pass接入和全API闭合",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:09",
+          "name": "渲染图编译",
+          "behavior": "计算资源first/last use、访问关系和执行批次",
+          "status": "partial",
+          "remaining": "完整原compile失败/恢复与alias生产者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:10",
+          "name": "资源池与注册",
+          "behavior": "按图资源描述复用物理资源并维持注册和句柄关联",
+          "status": "partial",
+          "remaining": "真实游戏持有关系和全域生产者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:11",
+          "name": "录制与屏障",
+          "behavior": "从compiled access产生barrier；按原分块预算/贪心切分规则录制并给callback提供当前Command",
+          "status": "partial",
+          "remaining": "原分块策略有证据；命令池来源、开关含义及首个shader callback仍有缺口",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:12",
+          "name": "提交序号与队列",
+          "behavior": "生产command sequence，组织wait/signal和实际submit参数",
+          "status": "partial",
+          "remaining": "完整原调用链、命令池来源和多队列策略",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:13",
+          "name": "完成后资源回收",
+          "behavior": "CPU退役与GPU完成分离，按序号桶保护并回收使用中的资源",
+          "status": "partial",
+          "remaining": "全部对象种类、失败和性能边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:14",
+          "name": "跨帧资源",
+          "behavior": "按key维护temporal双缓冲/parity，支持import/export与resize替换",
+          "status": "partial",
+          "remaining": "reset、淘汰及真实跨帧消费者",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:15",
+          "name": "窗口呈现",
+          "behavior": "选择surface/swapchain、获取并呈现图像，处理变化和失败",
+          "status": "partial",
+          "remaining": "fullscreen exclusive及完整窗口状态",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:16",
+          "name": "兼容措施与诊断",
+          "behavior": "组织workarounds、调试标记、统计、profiling与GPU崩溃联接",
+          "status": "partial",
+          "remaining": "全部设备策略、Aftermath等来源边界",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:17",
+          "name": "完整游戏帧执行",
+          "behavior": "把country-core passes联接进同一录制、submit及回收链",
+          "status": "partial",
+          "remaining": "资产库状态机、raster draw和原整帧等价",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:18",
+          "name": "C独立渲染实现",
+          "behavior": "C采用rhapsody2仓库，raw/rg与render-std分包需独立对齐",
+          "status": "scope_only",
+          "remaining": "不能用B地址或B候选实现宣布C完成",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:19",
+          "name": "显存预算与峰值",
+          "behavior": "项目分配包装跟踪预算/峰值、失败采样并在失败时回滚",
+          "status": "partial",
+          "remaining": "原本地allocator分叉及完整统计口径",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:20",
+          "name": "持久渲染session",
+          "behavior": "跨帧复用chain、资源池、timeline和命令缓冲，处理resize与失败停止",
+          "status": "partial",
+          "remaining": "原完整失败展开与并行状态",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody:21",
+          "name": "游戏格式映射",
+          "behavior": "把游戏实际format字段映射到GPU格式与兼容属性",
+          "status": "partial",
+          "remaining": "原私有字段与公开格式查询分别验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/rhapsody/src",
+          "status": "candidate_partial",
+          "versions": [
+            "B"
+          ]
+        },
+        {
+          "module": "crates/rhapsody/src/raw",
+          "status": "integrated_partial",
+          "versions": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "module": "crates/rhapsody/src/raw/managed",
+          "status": "integrated_partial",
+          "versions": [
+            "A",
+            "B"
+          ]
+        },
+        {
+          "module": "crates/rhapsody/src/rg",
+          "status": "integrated_partial",
+          "versions": [
+            "A",
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "shader-pipeline",
+      "group": "shader 工具链",
+      "role": "原shader产物格式、反射数据和pipeline描述",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "sources": [
+        "evidence/shader-toolchain-2026-10-13/SUMMARY.md",
+        "evidence/shader-build-2026-10-13/pipeline/delivery.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "speedy只承担codec；项目schema及名称策略需恢复。字段schema不拆成派生序列化接口。",
+      "features": [
+        {
+          "id": "shader-pipeline:01",
+          "name": "编译产物容器",
+          "behavior": "描述多stage SPIR-V、编译请求及stored reflection的项目布局",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-pipeline:02",
+          "name": "pipeline描述组合",
+          "behavior": "组织compute/raster需要的描述对象、可选字段与stage关系",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-pipeline:03",
+          "name": "资源反射合同",
+          "behavior": "定义descriptor类别、数组数量、push constants、vertex input与local size",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-pipeline:04",
+          "name": "资源名称与别名",
+          "behavior": "按stored公共名称、debug alias和原索引规则查询资源",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-pipeline:05",
+          "name": "宏定义身份",
+          "behavior": "将define集合与shader key/变体查询联接",
+          "status": "partial",
+          "remaining": "38个非零compute key的完整输入策略",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-pipeline:06",
+          "name": "产物加载与错误",
+          "behavior": "读取compiled资产并向shader创建消费者传递上下文",
+          "status": "partial",
+          "remaining": "完整加载错误、缓存所有权与原副作用",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/rhapsody/crates/shader-pipeline/src",
+          "status": "integrated_partial",
+          "versions": [
+            "A",
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "shader-compiler",
+      "group": "shader 工具链",
+      "role": "组合原公开库和DXC生成游戏shader资产",
+      "versions": [
+        "B"
+      ],
+      "sources": [
+        "evidence/shader-build-2026-10-13/SUMMARY.md",
+        "evidence/shader-build-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-build-2026-10-13/dxc/delivery.json",
+        "evidence/shader-build-2026-10-13/provenance/PROVENANCE.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "已有真实DXC新producer，不再写无DXC；404容器可构建不证明原shader语义。B runtime PDB未定位本包作者源路径。",
+      "features": [
+        {
+          "id": "shader-compiler:01",
+          "name": "源码provider与include",
+          "behavior": "向shader-prepper提供源文件，组织include chunks与依赖记录",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:02",
+          "name": "宏和行号编排",
+          "behavior": "把项目宏及#line关联写进实际编译输入",
+          "status": "partial",
+          "remaining": "compute原宏tuple与路径解析精确规则",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:03",
+          "name": "DXC请求配置",
+          "behavior": "根据stage/入口组合目标、flags与外部编译请求",
+          "status": "partial",
+          "remaining": "原DXC版本/fork与全部配置producer",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:04",
+          "name": "反射生产",
+          "behavior": "调用原SPIR-Q，把结果投影到项目schema并合并stage资源",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:05",
+          "name": "SPIR-V后处理",
+          "behavior": "通过rspirv组织module及源文本LF等观察规则，保留调试元数据",
+          "status": "partial",
+          "remaining": "原私有postprocessor函数体与错误策略",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:06",
+          "name": "shader打包",
+          "behavior": "按项目schema组装新SPIR-V和反射，再调用speedy输出容器",
+          "status": "partial",
+          "remaining": "真实游戏消费者与全部边界未验收",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:07",
+          "name": "批量构建与变体",
+          "behavior": "对恢复shader corpus实际编译，按raster变体生成产物",
+          "status": "partial",
+          "remaining": "170个compute原宏tuple未独证，其中38非零key未知",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-compiler:08",
+          "name": "编译生命周期",
+          "behavior": "处理临时文件、错误、取消、清理和缓存",
+          "status": "scope_only",
+          "remaining": "原流程未定位，不以候选进程包装冒称原规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "shader-compiler",
+          "status": "integrated_partial",
+          "versions": []
+        }
+      ]
+    },
+    {
+      "name": "shader-variants",
+      "group": "shader 工具链",
+      "role": "项目自己的raster宏变体策略",
+      "versions": [
+        "A",
+        "B"
+      ],
+      "sources": [
+        "evidence/shader-build-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-build-2026-10-13/provenance/package-classification.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不列Clone函数；拷贝define集只是生成变体这一功能的实现动作，原规则在整体功能里恢复。",
+      "features": [
+        {
+          "id": "shader-variants:01",
+          "name": "raster变体生成",
+          "behavior": "按原已观察规则从基础defines生成SHADER_VARIANT_DEPTH_ONLY=0与1两种raster变体",
+          "status": "partial",
+          "remaining": "全部原配置到具体shader的消费关系",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shader-variants:02",
+          "name": "变体到pipeline联接",
+          "behavior": "将生成的宏组合交给compiler与shader key消费者",
+          "status": "partial",
+          "remaining": "完整编译配置、缓存key和资产库联接",
+          "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
+          "implementation_task_ready": true,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/shader-variants/src",
+          "status": "integrated_partial",
+          "versions": [
+            "A",
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "build-id",
+      "group": "构建与状态边界",
+      "role": "原构建身份配套包",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/Cargo.lock",
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "包名不能证明具体build hash算法；若仅生成常量/宏，不列手写业务任务。",
+      "features": [
+        {
+          "id": "build-id:01",
+          "name": "构建标识消费定位",
+          "behavior": "确定游戏版本或产物中如何使用该包身份",
+          "status": "identity_only",
+          "remaining": "源路径及功能尚未定位",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "state-stream",
+      "group": "构建与状态边界",
+      "role": "原锁中的状态配套包，具体用途待定位",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/Cargo.lock",
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "原包身份已知但PDB主模块表未定位手写实现；归属确认后才能列算法。",
+      "features": [
+        {
+          "id": "state-stream:01",
+          "name": "状态流业务定位",
+          "behavior": "定位实际类型、调用者及状态变更传递规则",
+          "status": "identity_only",
+          "remaining": "不把它与tabloid或历史系统直接等同",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "tg-mods",
+      "group": "C 版资产与 Mod",
+      "role": "发现Mod、维护身份并形成游戏资源覆盖层",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/tg-mods/src/discovery.rs",
+        "skeleton/C/crates/tg-mods/src/identity.rs",
+        "skeleton/C/crates/tg-mods/src/legacy_texture.rs",
+        "skeleton/C/crates/tg-mods/src/lib.rs",
+        "skeleton/C/crates/tg-mods/src/overlay.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "C独立输入与算法；不套B接口；serde/ZIP/文件系统实现复用。",
+      "features": [
+        {
+          "id": "tg-mods:01",
+          "name": "Mod目录发现",
+          "behavior": "扫描root和parts，区分目录Mod、ZIP及无parts目录",
+          "status": "scope_only",
+          "remaining": "扫描条件和错误策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:02",
+          "name": "ZIP缓存整理",
+          "behavior": "决定提取根，处理sidecar、last-used和orphaned sidecar清理",
+          "status": "scope_only",
+          "remaining": "缓存身份、路径约束与淘汰门限",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:03",
+          "name": "Mod身份",
+          "behavior": "读取/生成ModId，处理owner hash、记录条目匹配及旧sidecar名称",
+          "status": "scope_only",
+          "remaining": "身份格式、mint规则与兼容",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:04",
+          "name": "安装目录管理",
+          "behavior": "shelve_mod与deleted root管理被收起的Mod",
+          "status": "scope_only",
+          "remaining": "操作触发、移动/失败/恢复规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:05",
+          "name": "资源目录合并",
+          "behavior": "维护catalog，处理Workshop条目、supersedes和加载顺序",
+          "status": "scope_only",
+          "remaining": "优先级与冲突裁决",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:06",
+          "name": "活动覆盖层",
+          "behavior": "设置active mods，构建overlay并识别shadowed paths",
+          "status": "scope_only",
+          "remaining": "刷新、失效与实际资产消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:07",
+          "name": "缺失Mod记录",
+          "behavior": "检测存档记录引用的missing mod entries",
+          "status": "scope_only",
+          "remaining": "提示与fallback策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:08",
+          "name": "资源读取接入",
+          "behavior": "通过overlay解析路径、读取配置与列举资源文件",
+          "status": "scope_only",
+          "remaining": "ChangedPaths到真实资源重建",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:09",
+          "name": "旧纹理兼容",
+          "behavior": "parse_legacy_texture解释旧纹理资源",
+          "status": "scope_only",
+          "remaining": "旧schema与层路径映射",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "tg-mods:10",
+          "name": "Mod发布资格",
+          "behavior": "is_publishable及匹配记录确定项目允许的发布状态",
+          "status": "scope_only",
+          "remaining": "原资格条件；不是此次执行发布",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/tg-mods/src",
+          "status": "not_assessed",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "clutter-icon-pipe",
+      "group": "C 版资产与 Mod",
+      "role": "由杂物mesh与材质烘焙游戏图标",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/clutter-icon-pipe/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "这是C项目资产工具的组合策略；GPU接口、PNG和DDS库不逆向重写。",
+      "features": [
+        {
+          "id": "clutter-icon-pipe:01",
+          "name": "图标输入发现",
+          "behavior": "icon_sources与parse_clutter_mesh识别图标mesh输入",
+          "status": "scope_only",
+          "remaining": "来源筛选与属性读取规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:02",
+          "name": "材质纹理装配",
+          "behavior": "按texture recipe加载packaged blob与map textures",
+          "status": "scope_only",
+          "remaining": "map种类、缺图处理和资源绑定",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:03",
+          "name": "图标镜头与样式",
+          "behavior": "icon_camera与IconStyle shader_params决定图标构图和参数",
+          "status": "scope_only",
+          "remaining": "相机尺寸、背景、光照与样式常量",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:04",
+          "name": "GPU烘焙资源",
+          "behavior": "选择设备并建立可复用bake resources",
+          "status": "scope_only",
+          "remaining": "缓存、创建错误与生命周期",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:05",
+          "name": "图标渲染",
+          "behavior": "render_icon和bake_icon_png_from_mesh生产图标画面",
+          "status": "scope_only",
+          "remaining": "pass/descriptor和像素输出",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:06",
+          "name": "色调与底面",
+          "behavior": "加载Tony McMapface LUT并按原入口添加floor quad",
+          "status": "scope_only",
+          "remaining": "实际触发、采样与地面表现",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-icon-pipe:07",
+          "name": "PNG产出",
+          "behavior": "encode_png编码烘焙结果",
+          "status": "scope_only",
+          "remaining": "翻转、alpha、输出命名；PNG库复用",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/clutter-icon-pipe/src",
+          "status": "not_assessed",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "clutter-pack-pipe",
+      "group": "C 版资产与 Mod",
+      "role": "导入杂物资产并生产资源包和预览",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/clutter-pack-pipe/src/lib.rs",
+        "skeleton/C/crates/clutter-pack-pipe/src/mod_icons.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "GLB/image/rkyv/turbosloth算法来源要先分类；项目节点命名、材质映射和构建组合是候选业务。",
+      "features": [
+        {
+          "id": "clutter-pack-pipe:01",
+          "name": "GLB对象导入",
+          "behavior": "遍历node/primitive/material/image并形成杂物对象及mesh",
+          "status": "scope_only",
+          "remaining": "坐标、属性和对象过滤",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:02",
+          "name": "材质映射",
+          "behavior": "按MapKind选纹理prefix/options，解释shades_like与emits",
+          "status": "scope_only",
+          "remaining": "具体材质字段和组合规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:03",
+          "name": "内嵌图像提取",
+          "behavior": "extract_encoded_image读取GLB图像输入给纹理构建",
+          "status": "scope_only",
+          "remaining": "支持格式与错误策略",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:04",
+          "name": "座位节点语义",
+          "behavior": "识别coaster seat命名并从node transform形成座位信息",
+          "status": "scope_only",
+          "remaining": "命名判定和变换规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:05",
+          "name": "杂物包构建",
+          "behavior": "build_clutter_packs组织mesh、material、对象列表和依赖",
+          "status": "scope_only",
+          "remaining": "包schema、名称与增量构建",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:06",
+          "name": "对象纹理构建",
+          "behavior": "build_object_textures选择并生产对象纹理",
+          "status": "scope_only",
+          "remaining": "复用asset-pipe的参数映射",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:07",
+          "name": "包预览图",
+          "behavior": "preview_grid_shape和bake_pack_preview_jpeg生成组合预览",
+          "status": "scope_only",
+          "remaining": "排列、背景、边缘feather与输出",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "clutter-pack-pipe:08",
+          "name": "Mod杂物图标",
+          "behavior": "build_mod_clutter_icons生成Mod专用图标包",
+          "status": "scope_only",
+          "remaining": "package目录、cache和真实UI消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/clutter-pack-pipe/src",
+          "status": "not_assessed",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "asset-pipe-build",
+      "group": "C 版资产与 Mod",
+      "role": "C新增资产构建配套包",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "仅包身份与依赖链，不声称有已定位手写功能。",
+      "features": [
+        {
+          "id": "asset-pipe-build:01",
+          "name": "构建流程定位",
+          "behavior": "确认该包在C资产构建中的实际输入和输出",
+          "status": "identity_only",
+          "remaining": "runtime PDB主库存未定位源码",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "asset-pipe-build:02",
+          "name": "构建触发定位",
+          "behavior": "确认build-time或runtime调用者",
+          "status": "identity_only",
+          "remaining": "不能仅凭build包名编造build.rs规则",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "foliage-pipe",
+      "group": "C 版资产与 Mod",
+      "role": "C植被资产生产配套包",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "原锁中的local条目不是私有算法证明；不按包名猜散布或生成规则。",
+      "features": [
+        {
+          "id": "foliage-pipe:01",
+          "name": "植被资产生产定位",
+          "behavior": "沿asset::foliage与原依赖链定位本包生产者",
+          "status": "identity_only",
+          "remaining": "实际入口和算法未定位",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "grass2-shader",
+      "group": "C 版资产与 Mod",
+      "role": "C草地shader配套包",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "shader代码的游戏算法可恢复，宏生成binding和通用编译器不可计作手写逻辑。",
+      "features": [
+        {
+          "id": "grass2-shader:01",
+          "name": "草地shader功能定位",
+          "behavior": "定位其与country-core草地shader/生成代码的关系",
+          "status": "identity_only",
+          "remaining": "作者手写源码、生成部分与实际函数尚待分离",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "frozen",
+      "group": "来源待分类的基础包装",
+      "role": "原资产库使用的FrozenMap包装",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/frozen/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不恢复HashMap/Box通用实现，不把名称含Mesh/Shader的泛型实例计成游戏算法。",
+      "features": [
+        {
+          "id": "frozen:01",
+          "name": "资产对象稳定访问",
+          "behavior": "原mesh/shader/SSBO库使用map插入与访问，稳定引用策略待分析",
+          "status": "provenance_pending",
+          "remaining": "手写策略、共享访问和公开同源确认",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/frozen/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "leekspin",
+      "group": "来源待分类的基础包装",
+      "role": "诊断输出和环形记录包装",
+      "versions": [
+        "B"
+      ],
+      "sources": [
+        "skeleton/B/crates/leekspin/src/lib.rs",
+        "skeleton/B/crates/leekspin/src/ringbuffer.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "公开来源与项目私有增量待核实；环形容器本身不自动成为游戏逻辑。",
+      "features": [
+        {
+          "id": "leekspin:01",
+          "name": "重复诊断汇总",
+          "behavior": "print_deduplicated_with_count按重复次数整理输出",
+          "status": "provenance_pending",
+          "remaining": "去重key、输出周期和真实诊断消费者",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "leekspin:02",
+          "name": "诊断环形记录",
+          "behavior": "RingBuffer append/to_inner维护并交付记录",
+          "status": "provenance_pending",
+          "remaining": "容量、覆盖与导出策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/leekspin/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "conservative-line-raster",
+      "group": "来源待分类的基础包装",
+      "role": "世界笔画到保守栅格覆盖的接口",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/crates/conservative-line-raster/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "首先核实上游，复用通用栅格算法；游戏调用策略留在实际消费者。",
+      "features": [
+        {
+          "id": "conservative-line-raster:01",
+          "name": "线段保守覆盖",
+          "behavior": "conservative_plot_line枚举笔画所覆盖的格子",
+          "status": "provenance_pending",
+          "remaining": "公共算法来源与必要差异",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "conservative-line-raster:02",
+          "name": "坐标量化策略",
+          "behavior": "低层量化范围/断言处理坐标与delta",
+          "status": "provenance_pending",
+          "remaining": "边界精度与原异常条件",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "conservative-line-raster:03",
+          "name": "游戏脏格接入",
+          "behavior": "dirty_tiles笔画/历史路径/楼梯消费者使用覆盖格子",
+          "status": "scope_only",
+          "remaining": "恢复消费者坐标、宽度和dirty策略，不先重写算法",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/conservative-line-raster/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "A",
+            "B",
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "turbosloth",
+      "group": "来源待分类的基础包装",
+      "role": "C资产构建依赖、缓存与打包框架",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/crates/turbosloth/src/asset.rs",
+        "skeleton/C/crates/turbosloth/src/export.rs",
+        "skeleton/C/crates/turbosloth/src/id.rs",
+        "skeleton/C/crates/turbosloth/src/lib.rs",
+        "skeleton/C/crates/turbosloth/src/registry.rs",
+        "skeleton/C/crates/turbosloth/src/store.rs",
+        "skeleton/C/crates/turbosloth/src/util.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "框架功能不因项目内路径成为游戏业务；先查来源，后只恢复私有增量。",
+      "features": [
+        {
+          "id": "turbosloth:01",
+          "name": "构建请求与依赖",
+          "behavior": "BuildContext组织build/require、文件读取和dependency登记",
+          "status": "provenance_pending",
+          "remaining": "框架公开来源与项目特有策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:02",
+          "name": "构建产物缓存",
+          "behavior": "load/cached_value/store_asset和finish_build管理产物",
+          "status": "provenance_pending",
+          "remaining": "类型缓存、共享请求与失败重试",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:03",
+          "name": "源文件新鲜度",
+          "behavior": "观察file stamp/state，判断依赖与recipe是否仍fresh",
+          "status": "provenance_pending",
+          "remaining": "mtime/content、缺失文件和缓存有效性",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:04",
+          "name": "构建记录更新",
+          "behavior": "读取build record并重写记录的文件依赖",
+          "status": "provenance_pending",
+          "remaining": "记录格式和变化传播",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:05",
+          "name": "构建版本注册",
+          "behavior": "registered_version/versions确定recipe版本关系",
+          "status": "provenance_pending",
+          "remaining": "版本更新与失效策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:06",
+          "name": "内容与recipe身份",
+          "behavior": "组织AssetContentId/AssetRecipeId和名称索引",
+          "status": "provenance_pending",
+          "remaining": "原ID输入组合；哈希库复用",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:07",
+          "name": "资源包安装",
+          "behavior": "PackagePass组织install closure、manifest和package state",
+          "status": "provenance_pending",
+          "remaining": "依赖闭包、增量安装与缺失asset",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:08",
+          "name": "构建结果导出",
+          "behavior": "exports/parse_path/index_value/export_asset提供资产导出",
+          "status": "provenance_pending",
+          "remaining": "实际路径选择与消费者",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "turbosloth:09",
+          "name": "原子文件更新",
+          "behavior": "write_atomic辅助更新持久文件",
+          "status": "provenance_pending",
+          "remaining": "原失败、临时文件及恢复策略",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/turbosloth/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "C"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "turbosloth-macros",
+      "group": "来源待分类的基础包装",
+      "role": "C资产框架宏生成配套",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不是独立游戏功能清单；必要schema输入和游戏recipe保留到实际生产者。",
+      "features": [
+        {
+          "id": "turbosloth-macros:01",
+          "name": "宏包来源与生成边界",
+          "behavior": "核对原宏来源和生成的框架接口",
+          "status": "reuse",
+          "remaining": "原来源未定位；不列自动生成resolve/visit/decode函数任务",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "gpu-allocator",
+      "group": "复用依赖边界",
+      "role": "Vulkan内存分配依赖",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不恢复free-list、dedicated allocator、容器或整个分配器；游戏分配选择在rhapsody。",
+      "features": [
+        {
+          "id": "gpu-allocator:01",
+          "name": "GPU内存分配接口",
+          "behavior": "提供资源allocation/map/free能力，由rhapsody按需求配置",
+          "status": "reuse",
+          "remaining": "只核实原fork来源和影响调用的必要补丁",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": [
+        {
+          "module": "crates/gpu-allocator/src",
+          "status": "dependency_boundary",
+          "versions": [
+            "A",
+            "B"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vk-sync-fork",
+      "group": "复用依赖边界",
+      "role": "原Vulkan同步分类与屏障依赖",
+      "versions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "sources": [
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json",
+        "skeleton/B/crates/rhapsody/crates/vk-sync-rs/src/lib.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "is_write已确认是依赖；不计为游戏自有叶函数。",
+      "features": [
+        {
+          "id": "vk-sync-fork:01",
+          "name": "访问分类接口",
+          "behavior": "供游戏框架解释访问类型与读写分类",
+          "status": "reuse",
+          "remaining": "精确fork来源及必要差异",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "vk-sync-fork:02",
+          "name": "屏障转换接口",
+          "behavior": "由游戏资源访问决定何时调用依赖生成同步描述",
+          "status": "reuse",
+          "remaining": "调用策略在rhapsody，不重写公开同步库",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "kajiya",
+      "group": "复用依赖边界",
+      "role": "原锁中的渲染配套包，游戏使用边界待核实",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "skeleton/B/Cargo.lock",
+        "skeleton/C/Cargo.lock",
+        "evidence/shader-build-2026-10-13/provenance/PROVENANCE.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不据包名或作者公开同名仓库恢复整个引擎；必要私有调用差异单独登记。",
+      "features": [
+        {
+          "id": "kajiya:01",
+          "name": "实际调用与来源定位",
+          "behavior": "核对原锁local身份与游戏实际使用的模块及公开同源",
+          "status": "provenance_pending",
+          "remaining": "公开相似源码不能替代原私有schema或证明包等价",
+          "evidence_scope": "私有定义与公共上游归属尚待核实",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "sdl2",
+      "group": "复用依赖边界",
+      "role": "C的SDL窗口依赖",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/Cargo.lock",
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "游戏平台选择和事件映射在tg-iced/usdl及实际输入消费者。",
+      "features": [
+        {
+          "id": "sdl2:01",
+          "name": "平台窗口依赖适配",
+          "behavior": "核对原0.38.0 local来源、平台feature及必要补丁",
+          "status": "reuse",
+          "remaining": "不重做SDL事件、窗口与输入引擎",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "FidelityFX",
+      "group": "复用依赖边界",
+      "role": "AMD渲染算法SDK",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不因local路径重新实现SDK；不从GPU-Raytracer包名推断原游戏用了硬件光追。",
+      "features": [
+        {
+          "id": "FidelityFX:01",
+          "name": "游戏调用参数",
+          "behavior": "恢复游戏传入该依赖的资源、参数和调用时机",
+          "status": "reuse",
+          "remaining": "依赖实现明确排除，调用策略归具体pass",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "XeGTAO",
+      "group": "复用依赖边界",
+      "role": "环境遮蔽依赖",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不因local路径重新实现SDK；不从GPU-Raytracer包名推断原游戏用了硬件光追。",
+      "features": [
+        {
+          "id": "XeGTAO:01",
+          "name": "游戏调用参数",
+          "behavior": "恢复游戏传入该依赖的资源、参数和调用时机",
+          "status": "reuse",
+          "remaining": "依赖实现明确排除，调用策略归具体pass",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "GPU-Raytracer",
+      "group": "复用依赖边界",
+      "role": "GPU几何查询或光追配套依赖",
+      "versions": [
+        "B",
+        "C"
+      ],
+      "sources": [
+        "DEPENDENCY_FILTERING.md",
+        "tracking/dependency-exclusions.json"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不因local路径重新实现SDK；不从GPU-Raytracer包名推断原游戏用了硬件光追。",
+      "features": [
+        {
+          "id": "GPU-Raytracer:01",
+          "name": "游戏调用参数",
+          "behavior": "恢复游戏传入该依赖的资源、参数和调用时机",
+          "status": "reuse",
+          "remaining": "依赖实现明确排除，调用策略归具体pass",
+          "evidence_scope": "依赖实现排除，任务只留必要调用策略",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-core",
+      "group": "C 版渲染附属包",
+      "role": "C渲染共享view与图像归约策略",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-core/src/camera.rs",
+        "skeleton/C/rhapsody2/render-std/rhapsody-core/src/lib.rs",
+        "skeleton/C/rhapsody2/render-std/rhapsody-core/src/reduction.rs",
+        "skeleton/C/rhapsody2/render-std/rhapsody-core/src/reprojection.rs",
+        "skeleton/C/rhapsody2/render-std/rhapsody-core/src/view.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-core:01",
+          "name": "相机与视图常量",
+          "behavior": "组织C相机矩阵、视图参数、pixel offset与mip bias",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-core:02",
+          "name": "mip与深度归约",
+          "behavior": "generate_mips/depth_min_max组织图像mip及深度min/max归约",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-core:03",
+          "name": "重投影图",
+          "behavior": "render_reprojection_map构造跨视图或跨帧重投影输入输出",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-dof",
+      "group": "C 版渲染附属包",
+      "role": "C景深pass包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-dof/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-dof:01",
+          "name": "景深pass编排",
+          "behavior": "render_dof_with_coc按已有CoC组织景深渲染",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-gi",
+      "group": "C 版渲染附属包",
+      "role": "C环境遮蔽与间接光pass包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-gi/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-gi:01",
+          "name": "环境遮蔽编排",
+          "behavior": "calculate_gtao组织GTAO计算资源和pass",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-gi:02",
+          "name": "屏幕辐射评估",
+          "behavior": "eval_gi_screen_radiance组织GI screen-radiance计算",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-post",
+      "group": "C 版渲染附属包",
+      "role": "C后处理模糊金字塔",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-post/src/blur_pyramid.rs",
+        "skeleton/C/rhapsody2/render-std/rhapsody-post/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-post:01",
+          "name": "正向模糊金字塔",
+          "behavior": "render_blur_pyramid组织逐级模糊",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-post:02",
+          "name": "反向和双向模糊",
+          "behavior": "render_rev_blur_pyramid及bidirectional组合多层模糊",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-shadow",
+      "group": "C 版渲染附属包",
+      "role": "C方向光阴影pass包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-shadow/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-shadow:01",
+          "name": "阴影级联设置",
+          "behavior": "setup_directional_light_cascades计算方向光级联输入",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-shadow:02",
+          "name": "阴影贴图生产",
+          "behavior": "render_directional_light_shadow_maps2组织各级阴影图渲染",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-taa",
+      "group": "C 版渲染附属包",
+      "role": "C时域抗锯齿与TGSR包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/render-std/rhapsody-taa/src/lib.rs",
+        "skeleton/C/rhapsody2/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "同仓库来源commit已知；不能用B的HLSL或pass验证代替C。公开算法只恢复其调用策略。",
+      "features": [
+        {
+          "id": "rhapsody-taa:01",
+          "name": "时域历史创建",
+          "behavior": "create_temporal_history组织历史资源",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-taa:02",
+          "name": "TAA pass",
+          "behavior": "render_taa使用历史数据组织时域抗锯齿",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "rhapsody-taa:03",
+          "name": "TGSR变体编排",
+          "behavior": "render_tgsr/2及aux/weights变体组织输入和pass",
+          "status": "scope_only",
+          "remaining": "C仅有原入口与PDB骨架；具体算法、手写与生成边界及消费者未恢复",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "rhapsody-deferred",
+      "group": "C 版渲染附属包",
+      "role": "C渲染仓库中仅锁定身份的包",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/rhapsody2/README.md",
+        "skeleton/C/rhapsody2/_unlocated-packages/rhapsody-deferred/Cargo.toml"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "已知仓库身份不等于已恢复实现。",
+      "features": [
+        {
+          "id": "rhapsody-deferred:01",
+          "name": "渲染包用途定位",
+          "behavior": "确认本包实际调用与作者源路径",
+          "status": "identity_only",
+          "remaining": "PDB未定位，不凭deferred名猜G-buffer/light算法",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "shaderface",
+      "group": "C 版渲染附属包",
+      "role": "C shader数据、变体身份与binding描述",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/shabriri/crates/shaderface/src/binding_set.rs",
+        "skeleton/C/shabriri/crates/shaderface/src/lib.rs",
+        "skeleton/C/shabriri/crates/shaderface/src/permutation.rs",
+        "skeleton/C/shabriri/crates/shaderface/src/reflection.rs",
+        "skeleton/C/shabriri/crates/shaderface/src/reflection_ty.rs",
+        "skeleton/C/shabriri/crates/shaderface/src/shader.rs",
+        "skeleton/C/shabriri/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "PounceLight/shabriri固定commit来源；Speedy派生read_from和生成ShaderVar接口不单列功能。",
+      "features": [
+        {
+          "id": "shaderface:01",
+          "name": "binding集合组织",
+          "behavior": "构建/追加命名参数block和descriptor项，按名称查找block",
+          "status": "scope_only",
+          "remaining": "私有布局、数量和冲突规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shaderface:02",
+          "name": "变体key",
+          "behavior": "ShaderPermutationKey to_hash联接变体身份",
+          "status": "scope_only",
+          "remaining": "原key输入策略，hash库复用",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shaderface:03",
+          "name": "反射类型尺寸",
+          "behavior": "Scalar/Vector/Matrix/Array/Struct nbyte供参数布局消费",
+          "status": "scope_only",
+          "remaining": "对齐、stride和runtime array规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shaderface:04",
+          "name": "预编译参数检查",
+          "behavior": "收集未分配parameter block并识别runtime descriptors",
+          "status": "scope_only",
+          "remaining": "编译绑定错误和真实游戏消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "shabriri-rt",
+      "group": "C 版渲染附属包",
+      "role": "C生成shader接口的运行时binding与编译包装",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/shabriri/crates/shabriri-rt/src/api.rs",
+        "skeleton/C/shabriri/crates/shabriri-rt/src/compile.rs",
+        "skeleton/C/shabriri/crates/shabriri-rt/src/iter.rs",
+        "skeleton/C/shabriri/crates/shabriri-rt/_metadata/unrecovered-lib.rs",
+        "skeleton/C/shabriri/README.md"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "运行时组合策略可分析；生成文件和宏接口数量不计手写功能。",
+      "features": [
+        {
+          "id": "shabriri-rt:01",
+          "name": "参数偏移与绑定",
+          "behavior": "从array element计算binding/byte位置并生成descriptor/bind操作",
+          "status": "scope_only",
+          "remaining": "手写runtime层与生成协议的边界",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shabriri-rt:02",
+          "name": "尾部binding布局",
+          "behavior": "TailBindingSetLayout与compile组织最终绑定布局",
+          "status": "scope_only",
+          "remaining": "布局合并、冲突/失败规则",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        },
+        {
+          "id": "shabriri-rt:03",
+          "name": "预编译shader枚举",
+          "behavior": "iter_precompiled_shaders提供产物迭代",
+          "status": "scope_only",
+          "remaining": "目录/key策略与实际加载消费者",
+          "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    },
+    {
+      "name": "shabriri",
+      "group": "C 版渲染附属包",
+      "role": "C shader生成配套包，仅主包身份明确",
+      "versions": [
+        "C"
+      ],
+      "sources": [
+        "skeleton/C/shabriri/README.md",
+        "skeleton/C/shabriri/_unlocated-packages/shabriri/Cargo.toml"
+      ],
+      "full_original_functionality_accepted": false,
+      "boundary": "不把生成的shabriri.rs当作者手写代码，也不编造生成器算法。",
+      "features": [
+        {
+          "id": "shabriri:01",
+          "name": "生成工具用途定位",
+          "behavior": "确认本包是否构建时运行及实际输入输出",
+          "status": "identity_only",
+          "remaining": "PDB无主包源路径/命名空间，构建期用途仍是推断",
+          "evidence_scope": "只有原包/锁定身份，未证明具体手写功能",
+          "implementation_task_ready": false,
+          "full_feature_accepted": false
+        }
+      ],
+      "module_record": []
+    }
+  ],
+  "excluded_game_systems": [
+    "country-core",
+    "forest",
+    "system-clutter",
+    "system-color",
+    "system-configuration",
+    "system-configuration-sys",
+    "system-critters",
+    "system-decorator",
+    "system-deps",
+    "system-glade-border",
+    "system-onboarding",
+    "system-roof",
+    "system-tree",
+    "system-wall-constructor",
+    "system-water",
+    "timberframe",
+    "tiny-glade",
+    "toolbar"
+  ],
+  "external_dependency_reuse": [
+    {
+      "name": "std、Bevy、glam、fastrand、half",
+      "policy": "复用原版本；只恢复游戏调用、种子、打包和必要分叉差异"
+    },
+    {
+      "name": "serde、serde_json、RON、rkyv、speedy",
+      "policy": "复用codec/derive；项目字段、默认、继承、迁移和容错策略独立登记"
+    },
+    {
+      "name": "shader-prepper",
+      "policy": "复用0.3.0-pre.3公开include crawler；项目provider/chunk/宏/#line编排在shader-compiler"
+    },
+    {
+      "name": "DXC",
+      "policy": "复用公开编译器；核实原版本及必要fork差异，不重写HLSL编译器"
+    },
+    {
+      "name": "spirq、rspirv",
+      "policy": "复用原commit/版本；项目反射投影、后处理和打包在shader-compiler"
+    },
+    {
+      "name": "cosmic-text、etagere",
+      "policy": "复用字体整形和图集分配；项目文字编辑、缓存失效与绘制准备在tg-text"
+    },
+    {
+      "name": "image、ddsfile、压缩库、ZIP、HTTP",
+      "policy": "复用解码/压缩/网络算法；项目参数、过滤、缓存与错误编排留在生产者"
+    },
+    {
+      "name": "ash、winit、iced、SDL、NVIDIA SDK",
+      "policy": "复用接口和平台实现；项目配置、映射与回调内容独立登记"
+    },
+    {
+      "name": "哈希、容器、锁和线程库",
+      "policy": "直接复用原依赖，不逆向它们的泛型实例"
+    }
+  ],
+  "coverage": {
+    "scope_complete_relative_to_local_lock": true,
+    "whole_game_feature_denominator_complete": false,
+    "local_lock_check": {
+      "B": {
+        "local_packages": 52,
+        "excluded_game_packages": [
+          "country-core",
+          "forest",
+          "system-clutter",
+          "system-color",
+          "system-critters",
+          "system-decorator",
+          "system-glade-border",
+          "system-onboarding",
+          "system-roof",
+          "system-tree",
+          "system-wall-constructor",
+          "system-water",
+          "timberframe",
+          "tiny-glade",
+          "toolbar"
+        ],
+        "unlisted_foundation_packages": []
+      },
+      "C": {
+        "local_packages": 53,
+        "excluded_game_packages": [
+          "country-core",
+          "forest",
+          "system-clutter",
+          "system-color",
+          "system-critters",
+          "system-decorator",
+          "system-glade-border",
+          "system-onboarding",
+          "system-roof",
+          "system-tree",
+          "system-wall-constructor",
+          "system-water",
+          "timberframe",
+          "tiny-glade",
+          "toolbar"
+        ],
+        "unlisted_foundation_packages": []
+      }
+    },
+    "original_lock_identity": {
+      "B": {
+        "path": "skeleton/B/Cargo.lock",
+        "sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+        "matched": "evidence/multi-version/B-dependencies.json"
+      },
+      "C": {
+        "path": "skeleton/C/Cargo.lock",
+        "sha256": "06015059d9c1c76e1c6b17c0a580bb162b486a1d17ffbff19fa1c2106092b928",
+        "matched": "evidence/multi-version/C-dependencies.json"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "path": "tracking/shared-foundation-interfaces.json",
+      "bytes": 1509509,
+      "sha256": "e6488017cf8bd305d9a976041599e9c0a3ee0e69c7c416df02a69b3adf507aae"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+      "bytes": 10039,
+      "sha256": "8ea763bc3d632df8ac542cd83585a199962012c0ae1d7bcc515641417ccf0355"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+      "bytes": 1135040,
+      "sha256": "c2586aac3a42128d078dda95b9583468c38d08b3eb9bbdde11db7544e97cbff3"
+    },
+    {
+      "path": "evidence/shared-foundation-review-2026-10-13/REVIEW.md",
+      "bytes": 6047,
+      "sha256": "2c74058fe2cd947291037169cddf0dc4f990380ae6f7ae3c3223d1dd081a0a38"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md",
+      "bytes": 8086,
+      "sha256": "ebbd5252bd9fe8bad82c513fdf137f8e0d9b2f6e23fb2b66d105f85e8d19bbb6"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+      "bytes": 6733,
+      "sha256": "079a6252e94af58e324e53f3698c89e6c722c493042808243c44d03a9c16eb70"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+      "bytes": 6710,
+      "sha256": "e0fe1faaaecf30e2470d0143dd17e548972eca34f11fec07d724f9c2a861da79"
+    },
+    {
+      "path": "evidence/small-libs-batch-01/motomoto/BUSINESS_RULES.md",
+      "bytes": 8228,
+      "sha256": "1fab3f8233bdd1fae23cfe0504952d38757a92cd5390588d7293afa8356b63fa"
+    },
+    {
+      "path": "evidence/small-libs-batch-01/tg-package-integrity/BUSINESS_RULES.md",
+      "bytes": 9571,
+      "sha256": "2c2962652ec8168b7bd472f08952859faad5f25c34344ba710b274c1bb5eac44"
+    },
+    {
+      "path": "skeleton/B/crates/tg-integrity-report/src/controls.rs",
+      "bytes": 457460,
+      "sha256": "a892247839552808212b284638c17294df8b57105a180f0694db97fbb3e428db"
+    },
+    {
+      "path": "skeleton/B/crates/tg-integrity-report/src/lib.rs",
+      "bytes": 83535,
+      "sha256": "9dcdded560363c3bc0265e0fec811dabd4b6866d68c3985e5047e8fe97280713"
+    },
+    {
+      "path": "skeleton/B/crates/tg-iced/src/dialog.rs",
+      "bytes": 295136,
+      "sha256": "7243aefa7615ab4fdcecf689b3fe66f501a3500da744771cca4307dc66f0ee67"
+    },
+    {
+      "path": "skeleton/B/crates/tg-iced/src/gui_runner.rs",
+      "bytes": 396995,
+      "sha256": "2078ef4c515d677c5731cf409259d0fd5a1586e7becf739e4f483fc3622ec408"
+    },
+    {
+      "path": "skeleton/C/crates/tg-iced/src/gui_runner_sdl.rs",
+      "bytes": 124795,
+      "sha256": "3411de28c746524bf7dcce7e0d96a7f083a83f48e5c4232412e4b10a1944a69c"
+    },
+    {
+      "path": "skeleton/C/crates/tg-iced/src/gui_runner_winit.rs",
+      "bytes": 451726,
+      "sha256": "0199838795d71d455928e515f44fb59f4fb757db87f2600e4b2e2262a6694509"
+    },
+    {
+      "path": "skeleton/B/crates/tg-iced/src/lib.rs",
+      "bytes": 107809,
+      "sha256": "83a2419ba43028574239fbfe697515822ed0fec1c3ec273a7945bb01657a8267"
+    },
+    {
+      "path": "skeleton/B/crates/tg-gpu-selector/src/gpu_selection.rs",
+      "bytes": 514961,
+      "sha256": "62637e8fea3714b66b40cd43fb310aac5d25431d524b959b7dbf3bdda5327efe"
+    },
+    {
+      "path": "skeleton/B/crates/tg-gpu-selector/src/lib.rs",
+      "bytes": 100954,
+      "sha256": "a8b48a57430d8e9cb03ed83ab711ce302af583d5e8cc9a7bde4d768167987577"
+    },
+    {
+      "path": "skeleton/B/crates/tg-gpu-selector/src/vulkan_config.rs",
+      "bytes": 400418,
+      "sha256": "2cf9a7c10c83c6019997ad6bf7e72c40b7238c78f40d6beefc9073753a6c686c"
+    },
+    {
+      "path": "skeleton/B/crates/crash-reporter-gui/src/lib.rs",
+      "bytes": 693579,
+      "sha256": "367b06ad6438ee63fe3002567b59569743e502595772b5c52c24885d7312d818"
+    },
+    {
+      "path": "skeleton/B/crates/feedback-reporter/src/lib.rs",
+      "bytes": 996848,
+      "sha256": "d825c6f7fea33ffa460aaac03d315576301692bba04cce63f141c2e92d3093c2"
+    },
+    {
+      "path": "evidence/small-libs-batch-01/tg-text/BUSINESS_RULES.md",
+      "bytes": 11109,
+      "sha256": "3d7a94ebce55ce8608a7a65dc5b46649ebb89e993b39cf69e89ae7b6e44ec737"
+    },
+    {
+      "path": "skeleton/B/crates/theme-server-proto/src/lib.rs",
+      "bytes": 57541,
+      "sha256": "109ba71ff7ff4b13cba34c10ed793e2b5d37d6868aa11f8975d56740b1d3730e"
+    },
+    {
+      "path": "skeleton/B/crates/theme-fetcher/src/checked_zip.rs",
+      "bytes": 191793,
+      "sha256": "dd1345610726e367ddbfba509ddbf82e4f2d41cde32b690e9e91cc077f0dd62c"
+    },
+    {
+      "path": "skeleton/B/crates/theme-fetcher/src/lib.rs",
+      "bytes": 563761,
+      "sha256": "c6fa82e64369ac628e9f7f149a0ea520962ba5d4087c1961dc4c58bb29a70d18"
+    },
+    {
+      "path": "skeleton/B/crates/geforcenow/src/lib.rs",
+      "bytes": 27215,
+      "sha256": "d638a0c9dee1dec7720a573488347eb0d51171611ea55424e4db556b6e41d828"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/event.rs",
+      "bytes": 35993,
+      "sha256": "ab45785a6d5578a4914bc30779234a5479ea0bd5072585cb0bd0089c6c67b8cd"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/keyboard.rs",
+      "bytes": 27364,
+      "sha256": "6f0de3984c9054be9a2da86983f2e6e65c20c1bcf23dcee411108295e043f9c2"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/lib.rs",
+      "bytes": 14435,
+      "sha256": "ef6e0a4eebd3f863df1d569d0dc25e892a78cb9def81874a2a1b0274c462967c"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/mouse.rs",
+      "bytes": 20710,
+      "sha256": "451cae8b5d7edfee2445393dc4c53b2a5ee139b87a7701eb3eb39e595346d283"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/rect.rs",
+      "bytes": 14193,
+      "sha256": "c4338999936b549a94a2ff3d5a7256a488421f9143c66a4f0a335eda0b797cc9"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/sdl.rs",
+      "bytes": 70684,
+      "sha256": "68363259a113f0f6e47c67644b7a74e53b169beb754192d0fb08f39590567d16"
+    },
+    {
+      "path": "skeleton/C/crates/usdl/src/video.rs",
+      "bytes": 212423,
+      "sha256": "57d2d3e06efad5761d359ddb09ce4a0f9f78e03719b569e95c8a7178c4d05ed4"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/backend.rs",
+      "bytes": 552721,
+      "sha256": "a81aeb67a0810c67dd89450c429e655e476595e919abd5d836165be573d9e7b8"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/error.rs",
+      "bytes": 6191,
+      "sha256": "2eeda7e85e44f88136f6dbc0cb47f1c6a3d118bb18dc76d220e93264e126bbe1"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/event.rs",
+      "bytes": 26506,
+      "sha256": "a608682eca3cfc8e7eaf4ad446f7173bf7a14f35cee9611642229533a68f5b3d"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/keyboard.rs",
+      "bytes": 13776,
+      "sha256": "9c1286067d8aad73b00fc84b5ae0d562da4004320974f11d636597d69a9cb42e"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/lib.rs",
+      "bytes": 52809,
+      "sha256": "9479a33fb771306d6b9233781e349cab5156dec3cd3960a4705b87ef7b8a86cc"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/mouse.rs",
+      "bytes": 37894,
+      "sha256": "ce730d5e1522b072a03f6dfd27ae5d0a156c1e8e952a0890bbc8ea1b53682a3d"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/rect.rs",
+      "bytes": 4486,
+      "sha256": "9c2df73790699db7fc2330e6eef8776e8e4ada2333fe21f559300be2fadd5c28"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/syswm.rs",
+      "bytes": 19379,
+      "sha256": "783ad218620413223f0e94c779b15758ec35f70d574315df51ea7f5074e6033e"
+    },
+    {
+      "path": "skeleton/C/crates/usdl-sys/src/video.rs",
+      "bytes": 110709,
+      "sha256": "6f838cf93e49f29dd7e5101ae1279b1b769902e0bd4f41ce2778da9a81d26620"
+    },
+    {
+      "path": "skeleton/B/crates/rhapsody/crates/aftermath-rs/src/lib.rs",
+      "bytes": 129829,
+      "sha256": "d4a598838b69457623948ae3e54134d5ea4b488bfaa6fc5f0a7a3430b3bcfaec"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/README.md",
+      "bytes": 2022,
+      "sha256": "f748227032a534ac1fb4088a4faf3c5e5b6c77c65fe40cb459aef0a3b94f67f1"
+    },
+    {
+      "path": "skeleton/B/crates/rhapsody/crates/dxgi-enumerate-gpus/src/lib.rs",
+      "bytes": 44550,
+      "sha256": "fafaa290c4030117898aee7c9741ab788b8f1e40b08d4e39e2feef6a59c7a916"
+    },
+    {
+      "path": "skeleton/B/crates/rhapsody/crates/gpu-profiler/src/backend/ash.rs",
+      "bytes": 106148,
+      "sha256": "04249ce6d7031ee416f10adc847d235cb8386d54efec3b900fc63c1b83b2f347"
+    },
+    {
+      "path": "skeleton/B/crates/rhapsody/crates/gpu-profiler/src/shared.rs",
+      "bytes": 22279,
+      "sha256": "ed01e0cf0c8388467476a04be4f59af504a5cd39c57ba36ec88ce2bf2ea88892"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+      "bytes": 7174,
+      "sha256": "b8a13c69d04ac49df0b3cbcc232d9b9d77971c4e8bf893a6268437b1b587aecf"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+      "bytes": 580498,
+      "sha256": "65667cd5acbba09634083e33bd561eb50b43ba01524651d3f408bbd353cca511"
+    },
+    {
+      "path": "skeleton/B/Cargo.lock",
+      "bytes": 224933,
+      "sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd"
+    },
+    {
+      "path": "skeleton/C/Cargo.lock",
+      "bytes": 241813,
+      "sha256": "06015059d9c1c76e1c6b17c0a580bb162b486a1d17ffbff19fa1c2106092b928"
+    },
+    {
+      "path": "evidence/shader-build-2026-10-13/provenance/PROVENANCE.md",
+      "bytes": 8595,
+      "sha256": "657911c35889e9de1cd807a9e0148fdeecae66f95f8efb30ddf73dd02e3b3bda"
+    },
+    {
+      "path": "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+      "bytes": 11432,
+      "sha256": "cd37dd620554f99b71a3f47e7d725d0a4117bbbd675eb5a6568a38b2ec919e32"
+    },
+    {
+      "path": "tracking/module-progress.json",
+      "bytes": 4548499,
+      "sha256": "88dff1cbaf7dfad123425f09ad8e83455109c6b102e802ad64f6bc462c7614f2"
+    },
+    {
+      "path": "evidence/render-recovery/consumer-chain-review-2026-10-12/README.md",
+      "bytes": 5874,
+      "sha256": "96f8219e96d35c6022e28903a9ba80f42e0c1ffd9c6e1e54ff13d9d3cbb698c4"
+    },
+    {
+      "path": "evidence/shader-toolchain-2026-10-13/SUMMARY.md",
+      "bytes": 3027,
+      "sha256": "e0be3a74c67a2c83abd117dd2dc3cea9c3e476a33eb7af69d9b7a8d252bd3bd6"
+    },
+    {
+      "path": "evidence/shader-build-2026-10-13/pipeline/delivery.json",
+      "bytes": 2827,
+      "sha256": "9d5a40aa57cd7b32cf11e502462e7fb87b1761229a891d9e39c28512547529d2"
+    },
+    {
+      "path": "evidence/shader-build-2026-10-13/SUMMARY.md",
+      "bytes": 8494,
+      "sha256": "997aaf9c5f48341d3b70d277954aaffb1d48547d3f7595a5e9d4a4e25bc07a43"
+    },
+    {
+      "path": "evidence/shader-build-2026-10-13/dxc/delivery.json",
+      "bytes": 6199,
+      "sha256": "b6be8164a9370847a839b1743672cf1c8a7bade4f1d2c515475cbafb54a28771"
+    },
+    {
+      "path": "evidence/shader-build-2026-10-13/provenance/package-classification.json",
+      "bytes": 16159,
+      "sha256": "c1ff9edf3a7bd0550662bb5af560975b75977cedb7d5c2fb9abd7672cdc01fd3"
+    },
+    {
+      "path": "skeleton/C/crates/tg-mods/src/discovery.rs",
+      "bytes": 866207,
+      "sha256": "c07c93661e192d0197aa2f717cca470c74c0cb83d007818c8aa86e14f8744e1c"
+    },
+    {
+      "path": "skeleton/C/crates/tg-mods/src/identity.rs",
+      "bytes": 657127,
+      "sha256": "a06a0ba8ff101561ea85fd165768f47a33a72c5b455a1b8e737cdceb43f71a39"
+    },
+    {
+      "path": "skeleton/C/crates/tg-mods/src/legacy_texture.rs",
+      "bytes": 33218,
+      "sha256": "423fd562b377688ee2d8718edc98cbffae372582ea8dcd54bc1cef87b1fbf793"
+    },
+    {
+      "path": "skeleton/C/crates/tg-mods/src/lib.rs",
+      "bytes": 386885,
+      "sha256": "7024087840bf6ed5539ea7a7750b2967a8f759d7f59492395fa91daf3cd7bf41"
+    },
+    {
+      "path": "skeleton/C/crates/tg-mods/src/overlay.rs",
+      "bytes": 1679813,
+      "sha256": "14b5201f530e1d94868e11d192ca4ad53c0811f90575d0744cda76622f5dfd2e"
+    },
+    {
+      "path": "skeleton/C/crates/clutter-icon-pipe/src/lib.rs",
+      "bytes": 1136601,
+      "sha256": "b24a196fad08463eb422f1396235d1e95700b6bd2f70fa648e58ea5c1e4d2202"
+    },
+    {
+      "path": "skeleton/C/crates/clutter-pack-pipe/src/lib.rs",
+      "bytes": 2309649,
+      "sha256": "61090ee52d37407dceaf05e8229faa6ed27cf51a24673570b886dce5a03b88e3"
+    },
+    {
+      "path": "skeleton/C/crates/clutter-pack-pipe/src/mod_icons.rs",
+      "bytes": 178217,
+      "sha256": "b8083c3dd7e63474714d310433ebae8ed675ce157d23b67a906a3c503a0f74ed"
+    },
+    {
+      "path": "skeleton/B/crates/frozen/src/lib.rs",
+      "bytes": 374334,
+      "sha256": "f0f297537e1fb8dbb64dc8ef5554d5230c77227de9c282dcb564122800892650"
+    },
+    {
+      "path": "skeleton/B/crates/leekspin/src/lib.rs",
+      "bytes": 126140,
+      "sha256": "8463cc21743a59d9b5447e5f38ca4dfd1a7bd38599d2975cbb53472da4ba7c80"
+    },
+    {
+      "path": "skeleton/B/crates/leekspin/src/ringbuffer.rs",
+      "bytes": 34639,
+      "sha256": "50099a1696a03a0aa572e04e5ab3cdf883c96af05e7b61193c38dbb6089bdee1"
+    },
+    {
+      "path": "skeleton/B/crates/conservative-line-raster/src/lib.rs",
+      "bytes": 131915,
+      "sha256": "50a921d982998399b6b6f813fe7e4b965f7afa808ecb4e43b489d5485f273817"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/asset.rs",
+      "bytes": 4003284,
+      "sha256": "d2172c0c90a02aabedd7d9e68c8d7f4b6bfa051decf15e58ed1d539533d56d94"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/export.rs",
+      "bytes": 58896,
+      "sha256": "74049516a8805bea4186de4c32face90ad61cb22615703cf46b5ab928033fd1b"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/id.rs",
+      "bytes": 102635,
+      "sha256": "b0122cb0467a3cb1bf1034bb0835c8a27c8ca5cfad820f9afe22673af1651af6"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/lib.rs",
+      "bytes": 391060,
+      "sha256": "0916dec3d76c24b9060d582a235ecf22c9d13dc65b6d7ea9763fdcb5fa6e095f"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/registry.rs",
+      "bytes": 65727,
+      "sha256": "02b385886040206b4f9a2c56b554ab19dd7b693ed57f2ac622e1ee43b5dc7a7d"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/store.rs",
+      "bytes": 3173204,
+      "sha256": "d86e2eaff9342eeb57e7ea9e9d21addbc71296df8324ff6aeabc6fa7b5087a5b"
+    },
+    {
+      "path": "skeleton/C/crates/turbosloth/src/util.rs",
+      "bytes": 372790,
+      "sha256": "0ca3c45dd9ac54ba4e1e4ca9e47c66ac00043a8ee4f91189d25a7e5da14cebc1"
+    },
+    {
+      "path": "DEPENDENCY_FILTERING.md",
+      "bytes": 5199,
+      "sha256": "e2bef432e12bc1edb11b3caf7ceeec97414710511addfac0d3959ea8abd95b10"
+    },
+    {
+      "path": "tracking/dependency-exclusions.json",
+      "bytes": 5058075,
+      "sha256": "ab89fe470be57b9211365c6dcccfbfb446010dc53932fc0e135ac521035f9065"
+    },
+    {
+      "path": "skeleton/B/crates/rhapsody/crates/vk-sync-rs/src/lib.rs",
+      "bytes": 40256,
+      "sha256": "cc5fd00d17a6f18a99f49595ca4c4d64ed760b2c98cd0380df19ddea035bcbae"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-core/src/camera.rs",
+      "bytes": 47042,
+      "sha256": "1945ef5732524e942a05fe6f6b4e8278b6548a738dd691a828c5d0782a07179a"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-core/src/lib.rs",
+      "bytes": 145246,
+      "sha256": "6f54ee45fca9b118eb6c8e579dacbfe06631031f6177564611b2d7059edef431"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-core/src/reduction.rs",
+      "bytes": 14721,
+      "sha256": "265fd55bfb16542e3d71ab8c58d4b56b63eb2461f5e0b4a2a0b9bcf07acc1372"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-core/src/reprojection.rs",
+      "bytes": 5504,
+      "sha256": "0585cdb99fea3e05e49e0e682b57db10d22de9e1532ff4c639d1a8c9e2cad4ca"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-core/src/view.rs",
+      "bytes": 10616,
+      "sha256": "226d8d358926890cf5d03675f5a183f65ab41c58e3356129e98c9ea381ac0fe5"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-dof/src/lib.rs",
+      "bytes": 175061,
+      "sha256": "2fbe33f2cd0eb06ec079fa5285a0c05777744a85a4f6f28d0c10cd911b196ff9"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-gi/src/lib.rs",
+      "bytes": 89114,
+      "sha256": "a3317157f1c5fef312e4101633aef5b2cc3a7ea154044fe01fa197172288375f"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-post/src/blur_pyramid.rs",
+      "bytes": 11008,
+      "sha256": "3e552e4818dfef2eab9242622584b24a33f26070c588fd1ce7f850af6d36167d"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-post/src/lib.rs",
+      "bytes": 12933,
+      "sha256": "cea290282062917fdab5ebd4d7a1bc38858fc84d6039777fce6a7e58f179334e"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-shadow/src/lib.rs",
+      "bytes": 33763,
+      "sha256": "50010ff03a6a1036e744545e0029d68f3f90b6012fa2589eff2e5eac37e23552"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/render-std/rhapsody-taa/src/lib.rs",
+      "bytes": 203601,
+      "sha256": "e7cc7d96433db6c78f56e69519fa58671b627302ed0c66c79bb695c5f9dace04"
+    },
+    {
+      "path": "skeleton/C/rhapsody2/_unlocated-packages/rhapsody-deferred/Cargo.toml",
+      "bytes": 1048,
+      "sha256": "509dcd76260823f5d2b0daf9b3cc0376dda343faec29b3407e6af480b37b241f"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/binding_set.rs",
+      "bytes": 186915,
+      "sha256": "76be117a6dff6533bd5fe567660d7b251e018954bc65569c34827ce40d3c9992"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/lib.rs",
+      "bytes": 90108,
+      "sha256": "ac5c4471cdf18ec6cdc950f4d6ab4df500925784a32eed9a3957e2cbc908e477"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/permutation.rs",
+      "bytes": 32980,
+      "sha256": "9b9930a6fad31ee978faaaf3e6bd56c800842d22a1a6a2ba0b5325368f661d6a"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/reflection.rs",
+      "bytes": 281348,
+      "sha256": "aa4921911c377b1549b29f73ea0618d7939336d82cf8e10493837a2d9c2c3311"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/reflection_ty.rs",
+      "bytes": 51367,
+      "sha256": "79bc0103ff69ff735a7df64055a497c79bc7b109098dbd70ac6b0f179147b8a0"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shaderface/src/shader.rs",
+      "bytes": 246294,
+      "sha256": "873085bf8ada2823a9002d6913792af20b4fc2b223ddb433d9083593bd2adeeb"
+    },
+    {
+      "path": "skeleton/C/shabriri/README.md",
+      "bytes": 1423,
+      "sha256": "9f3a533779406e0aa78dd31cf988ca414224ed51d6dcf1b8fad090bd14f7e158"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shabriri-rt/src/api.rs",
+      "bytes": 199933,
+      "sha256": "c3a23f9cf606e1ab9406a8563f485435b9114443b38dfa5f09a4503add1c1b6e"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shabriri-rt/src/compile.rs",
+      "bytes": 46124,
+      "sha256": "9b0d6e74d6bfe31681e530027bb16f3e53f9338807b2f6f928749ae220c6ac3b"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shabriri-rt/src/iter.rs",
+      "bytes": 6648,
+      "sha256": "0b99232f0de753a6e0b962f218cee5c85a33ce5a2f0371d31c67f40ff3f81a9e"
+    },
+    {
+      "path": "skeleton/C/shabriri/crates/shabriri-rt/_metadata/unrecovered-lib.rs",
+      "bytes": 1075,
+      "sha256": "002829033a566bb0a4e73dad8b6a2e37aa0636281022f9da9d108c07877efd9e"
+    },
+    {
+      "path": "skeleton/C/shabriri/_unlocated-packages/shabriri/Cargo.toml",
+      "bytes": 1118,
+      "sha256": "a768059a8372e30136849fe18db2206bae8f6989c2180de14ee2fe8e1adce0dd"
+    },
+    {
+      "path": "evidence/small-libs-review-2026-10-13/motomoto/REVIEW.md",
+      "bytes": 7937,
+      "sha256": "656970b16bb7ac016d2fb275285688ee0f93a176ed38be63b396263db0fda0c9"
+    },
+    {
+      "path": "evidence/small-libs-review-2026-10-13/tg-package-integrity/REVIEW.md",
+      "bytes": 8943,
+      "sha256": "74032d8067d5a377cc85c915c0970fe9d2283b5f417848f35853fa6d3b946965"
+    },
+    {
+      "path": "evidence/small-libs-review-2026-10-13/tg-text/REVIEW.md",
+      "bytes": 5862,
+      "sha256": "989a0e4f45694e3ad9bfce202d33d040cdd9676d27fe1b964e9a86bb5cb78435"
+    },
+    {
+      "path": "evidence/small-libs-review-2026-10-13/integration/ERRATA.md",
+      "bytes": 1440,
+      "sha256": "f8187d2f9dbfb65029985d4b863aba9b3b7d879d10bf187cc8676611aa59c34b"
+    }
+  ],
+  "statistics": {
+    "libraries": 58,
+    "entries": 286,
+    "by_status": {
+      "partial": 135,
+      "scope_only": 98,
+      "analyzed_no_impl": 4,
+      "contract_only": 4,
+      "provenance_pending": 26,
+      "reuse": 9,
+      "identity_only": 10
+    }
+  },
+  "source_refreshes": [
+    {
+      "path": "tracking/module-progress.json",
+      "old_sha256": "8df6d72c2076377b164cc60d15d796e18e4c12918ec4fb94cf6bb4f1365c5885",
+      "new_sha256": "88dff1cbaf7dfad123425f09ad8e83455109c6b102e802ad64f6bc462c7614f2",
+      "reason": "制作清单期间台账刷新；已逐模块比较。主要为派生接口清理与small-libs新增review，功能划分不变；补入最新review和限定验收边界。"
+    }
+  ]
+}

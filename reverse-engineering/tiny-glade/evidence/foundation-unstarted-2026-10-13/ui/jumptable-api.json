@@ -1,0 +1,65 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "ui-unstarted-20261013",
+  "pid": 29344,
+  "project": "D:\\game\\tools\\reverse-runtime\\ui-unstarted-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import jpype,json\nfor n in ['ghidra.program.model.pcode.JumpTable','ghidra.program.model.pcode.HighFunction']:\n c=jpype.JClass(n)\n print(n)\n print([str(x) for x in c.class_.getConstructors()])\n print([str(x) for x in c.class_.getMethods() if 'override' in str(x).lower() or 'jump' in str(x).lower()])\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\jumptable-api.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\ui\\\\\\\\jumptable-api.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 2419, \\\"sha256\\\": \\\"980fa83d62437bbfa7d57c8e2ea4fb5237a01178e705ebb7cb8d0704731cd734\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":17}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.031,
+      "stdout": "ghidra.program.model.pcode.JumpTable\n['public ghidra.program.model.pcode.JumpTable()', 'public ghidra.program.model.pcode.JumpTable(ghidra.program.model.address.Address,java.util.ArrayList,boolean,int)']\n['public void ghidra.program.model.pcode.JumpTable.decode(ghidra.program.model.pcode.Decoder) throws ghidra.program.model.pcode.DecoderException', 'public void ghidra.program.model.pcode.JumpTable.encode(ghidra.program.model.pcode.Encoder) throws java.io.IOException', 'public boolean ghidra.program.model.pcode.JumpTable.isEmpty()', 'public void ghidra.program.model.pcode.JumpTable.writeOverride(ghidra.program.model.listing.Function) throws ghidra.util.exception.InvalidInputException', 'public ghidra.program.model.address.Address[] ghidra.program.model.pcode.JumpTable.getCases()', 'public java.lang.Integer[] ghidra.program.model.pcode.JumpTable.getLabelValues()', 'public ghidra.program.model.address.Address ghidra.program.model.pcode.JumpTable.getSwitchAddress()', 'public static int ghidra.program.model.pcode.JumpTable.getFormatOverride(ghidra.program.model.listing.Function,ghidra.program.model.address.Address)', 'public ghidra.program.model.pcode.JumpTable$LoadTable[] ghidra.program.model.pcode.JumpTable.getLoadTables()', 'public static void ghidra.program.model.pcode.JumpTable.writeFormat(ghidra.program.model.listing.Function,ghidra.program.model.address.Address,int) throws ghidra.util.exception.InvalidInputException', 'public static ghidra.program.model.pcode.JumpTable ghidra.program.model.pcode.JumpTable.readOverride(ghidra.program.model.symbol.Namespace,ghidra.program.model.symbol.SymbolTable)']\nghidra.program.model.pcode.HighFunction\n['public ghidra.program.model.pcode.HighFunction(ghidra.program.model.listing.Function,ghidra.program.model.lang.Language,ghidra.program.model.lang.CompilerSpec,ghidra.program.model.pcode.PcodeDataTypeManager)']\n['public static boolean ghidra.program.model.pcode.HighFunction.isOverrideNamespace(ghidra.program.model.symbol.Namespace)', 'public static ghidra.program.model.symbol.Namespace ghidra.program.model.pcode.HighFunction.findCreateOverrideSpace(ghidra.program.model.listing.Function)', 'public static ghidra.program.model.symbol.Namespace ghidra.program.model.pcode.HighFunction.findOverrideSpace(ghidra.program.model.listing.Function)', 'public ghidra.program.model.pcode.JumpTable[] ghidra.program.model.pcode.HighFunction.getJumpTables()']\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.562,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "31bbacf6e47777d0fd103e2a7cd99635",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

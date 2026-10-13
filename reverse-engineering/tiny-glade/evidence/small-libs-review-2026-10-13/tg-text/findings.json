@@ -1,0 +1,119 @@
+{
+  "module": "tg-text",
+  "review_date": "2026-10-13",
+  "reviewer": "review_tg_text",
+  "verdict": "No confirmed executable CPU-subdomain bug, performance defect, or dependency reimplementation found. One confirmed evidence/comment error fixed. Full tg-text remains incomplete.",
+  "counts": {
+    "confirmed_executable_bugs": 0,
+    "confirmed_performance_defects": 0,
+    "confirmed_reimplemented_dependencies": 0,
+    "confirmed_documentation_defects": 1
+  },
+  "findings": [
+    {
+      "id": "T-DOC-1",
+      "severity": "low",
+      "category": "evidence_accuracy",
+      "classification": "confirmed_documentation_bug",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs",
+      "line": 33,
+      "trigger": "Reading the former comment and batch-01 BUSINESS_RULES.md:14,59 / DIFFERENCES_AND_REPAIRS.md:5 as evidence of a source-level deserialize_str request.",
+      "expected": "Identify ImageSource Deserialize as String::deserialize followed by From<String>; the original serde 1.0.200 implementation requests deserialize_string.",
+      "originalproof": [
+        {
+          "file": "skeleton/B/crates/tg-text/src/shape_stream.rs",
+          "line": 605,
+          "detail": "Original 0x140fad7f0 PDB module1186 parent2596: record2768 serde impls::impl$8::deserialize source_line700; record2792 tag deserialize_string139; record2816 RON deserialize_string455."
+        },
+        {
+          "file": "evidence/small-libs-batch-01/tg-text/original-module-1186.txt",
+          "line": 490,
+          "detail": "LLVM S_INLINESITE records parent2768 ->2792 ->2816 give nested deserialize_string entries."
+        }
+      ],
+      "actualrepro": "scratch/src/main.rs request probe returns image_source_deserializer_request=string; serde1.0.200/src/de/impls.rs lines699–704 delegates String to deserialize_string. Physical helper0x141e43360 has aliases and cannot decide source-level method.",
+      "impact": "The executable implementation was already correct. Misleading documentation could induce a needless custom Visitor and a real compatibility regression.",
+      "fixsuggestion": "Keep String::deserialize. Correct active comment and add errata for historical documents; preserve original hashes and raw evidence.",
+      "status": "fixed_by_parent_integration",
+      "fixproof": [
+        "comment-only-correction.json",
+        "../integration/documentation-fix.json",
+        "../integration/ERRATA.md"
+      ]
+    },
+    {
+      "id": "T-GAP-1",
+      "severity": "info",
+      "category": "functional_completeness",
+      "classification": "missing_functionality",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/lib.rs",
+      "line": 1,
+      "trigger": "A real game consumer needs a TextFragment, text shaping/editor/layout/glyph primitives, renderer font loading/cache/atlas/upload/consume/render or actual image-name catalog resolution.",
+      "expected": "A complete tg-text would implement the observed consumer policy and state/lifetime rules using original cosmic-text fork and etagere APIs.",
+      "originalproof": [
+        {
+          "file": "skeleton/B/crates/tg-text/src/lib.rs",
+          "detail": "Observed TextFragment setters, editor_action/take_editor/prepare/generate_primitives; TextRenderer init/get_glyph/cache/atlas/upload/consume/render families. Closures, library calls and monomorphizations are not separate missing features."
+        }
+      ],
+      "actualrepro": "Current lib.rs exposes only font_table/shape_stream and explicitly states that TextRenderer, TextFragment, glyph atlas and GPU upload are unreconstructed. No fake renderer or glyph success stub exists.",
+      "impact": "The complete text library and true game consumer flow cannot be accepted as complete. This is an existing declared gap, not a newly discovered CPU implementation regression.",
+      "fixsuggestion": "Recover real TextFragment/toolbar consumer state and invalidation policies; connect original cosmic-text0.11.2 git3da2a14ea3d063875fdc55695431e74405302b0f and etagere0.2.10. Keep GPU completion scoped separately.",
+      "status": "known_declared_outside_delivered_cpu_subdomain"
+    },
+    {
+      "id": "T-VERIFY-1",
+      "severity": "info",
+      "category": "original_behavior_validation",
+      "classification": "unknown",
+      "file": "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs",
+      "line": 35,
+      "trigger": "Need full original RON schema acceptance/error compatibility, original panic/resolver/growth behavior, or real producer/consumer validation.",
+      "expected": "Acceptance and failure paths should be checked against original entry or complete static policy evidence before whole-schema/whole-module equivalence is claimed.",
+      "originalproof": [
+        {
+          "file": "evidence/small-libs-batch-01/tg-text/native-oracle.json",
+          "detail": "serde_entry_executed=false, capacity_growth_executed=false; existing native oracle verifies bounded CPU numeric/state subset only."
+        },
+        {
+          "file": "evidence/small-libs-batch-01/tg-text/schema-0x141e4a6b0.c",
+          "detail": "family/scale field mapping, missing and duplicate-field branches; unknown field funnels to a helper but no independently accepted complete original serde execution."
+        }
+      ],
+      "actualrepro": "probe-results.json candidate accepts unknown font/image fields, named FontTable/FontTableEntry structs and raw strings; newtype ShapeStream(...) rejected. Resolver panic preserves raw prefix [99,0,7]. These are candidate observations only, not original mismatch evidence.",
+      "impact": "No confirmed bug. Whole format/error/state equivalence remains unproven; invalid assumptions could break future consumers.",
+      "fixsuggestion": "Preserve current serde/RON delegation. Selectively verify original schema/real consumer only for concrete unresolved behavior; do not restore generic serde/std allocator internals.",
+      "status": "unverified_existing_boundary"
+    }
+  ],
+  "non_findings": [
+    {
+      "category": "correctness",
+      "detail": "No contrary evidence for role lookup/default metric arithmetic, ordered builder ownership, NaN/Inf radius clamp/truncate, index/scaling packing, prefix preservation, clear reuse, indexed encode_no_images or named panic."
+    },
+    {
+      "category": "performance",
+      "detail": "Append is O(items + resolver work), no source clone, raw clear reuses capacity. 1k/10k/100k fill probes allocate10/14/17 times initially and0 times warmed; about2.06/2.00/2.43 ns/item on this host. No original comparative timing measured."
+    },
+    {
+      "category": "dependency_reuse",
+      "detail": "serde1.0.200, original RON fork, std Vec/HashMap/String and f32 clamp/cast are reused. Word packing/default scale/metric product are private policies, not replacement libraries. No handwritten shaping/rasterizing/atlas allocator."
+    },
+    {
+      "category": "interface_reference",
+      "detail": "Skeleton30 shape symbol families include clone/From/serde/private inline functions and monomorphizations. encode/with_scaling folded into append intentionally; no per-symbol coverage denominator used."
+    }
+  ],
+  "validation": {
+    "new_candidate_probe": "scratch/build-result.json",
+    "probe_results": "probe-results.json",
+    "baseline_lock": "scratch/Cargo.lock copied from shared foundation before final successful offline build",
+    "source_readonly": true,
+    "crate_mutation_by_reviewer": false,
+    "baseline_native_cases_reexecuted": false,
+    "new_mcp_worker_started": false,
+    "original_serde_executed": false,
+    "new_gpu_execution": false,
+    "historical_hashes_preserved": true
+  }
+}

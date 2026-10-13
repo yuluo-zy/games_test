@@ -1,0 +1,71 @@
+{
+  "baseline": "B",
+  "candidate_tests": {
+    "passed": true,
+    "feedback": 8,
+    "geforcenow": 2,
+    "ignored_before_explicit_fixture": 1,
+    "report": "cargo-test.log",
+    "manifest": "reconstruction/shared-foundation/Cargo.toml",
+    "locked": true,
+    "offline": true
+  },
+  "clippy": {
+    "passed": true,
+    "all_targets": true,
+    "deny_warnings": true,
+    "report": "clippy.log"
+  },
+  "native_gfn": {
+    "passed": true,
+    "cases": 18,
+    "report": "gfn-native-validation.json",
+    "scope": "original private full entry with injected dependency boundaries"
+  },
+  "native_feedback_wait": {
+    "passed": true,
+    "cases": 48,
+    "report": "feedback-wait-native-validation.json",
+    "scope": "original readiness/count branch only"
+  },
+  "fixture_dll": {
+    "passed": true,
+    "rust_tests": 1,
+    "internal_cases": 14,
+    "report": "gfn-fixture-dll-direct.log",
+    "executable": "reconstruction/shared-foundation/target/debug/deps/geforcenow-e17080328ff12702.exe",
+    "executable_sha256": "3ba0a482deeb685ed174fc4698d10e04287ba9740b589b15f6f62163b08866e6",
+    "origin": "compiled by shared locked cargo test",
+    "dll": "fixtures/GfnFixtureRuntime.dll",
+    "live_vendor_sdk": false
+  },
+  "superseded_attempts": {
+    "isolated_harness": "aborted, manifests removed, non-authoritative",
+    "cargo_ignored_test": "shared target lock timeout after180s; not passed; direct same compiled unit executable completed fixture test"
+  },
+  "shared_lock_sha256": "3fdf6483fddc1027f68a38ab68a51a564c658ab8bdaa601bb0760913c174a00b",
+  "sources": [
+    {
+      "path": "reconstruction/shared-foundation/crates/feedback-reporter/Cargo.toml",
+      "bytes": 1861,
+      "sha256": "852b8c88d8a9c04635c12e6e00b2f19e5303a4b94415ca90bf2cbb8b64f780df"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/feedback-reporter/src/lib.rs",
+      "bytes": 21809,
+      "sha256": "8571398f74ea0a26e52c026cab1f4452ced629b563129e227d95bc291fcb13e5"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/geforcenow/Cargo.toml",
+      "bytes": 1207,
+      "sha256": "2f9fd1283eac0c749270f49c68708e5d88e9c8d838dba4e3471bf1b997aeb923"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/geforcenow/src/lib.rs",
+      "bytes": 7104,
+      "sha256": "46d37685ce21b8e74d1eeb9364864ff41a1cc9148d8a4a79b391c611e0a44889"
+    }
+  ],
+  "original_full_feedback_oracle": false,
+  "live_http": false
+}

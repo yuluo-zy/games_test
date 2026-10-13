@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "worker": "ui-unstarted-20261013",
+  "program": "tiny-glade.exe",
+  "patched_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "oracle_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "observed": [
+    {
+      "file": "tg-iced/src/dialog.rs",
+      "functions": [
+        {
+          "address": "0x140631ce0",
+          "name": "MessageDialog::new"
+        },
+        {
+          "address": "0x140631d20",
+          "name": "MessageDialog::set_level"
+        },
+        {
+          "address": "0x140631d70",
+          "name": "MessageDialog::set_title"
+        },
+        {
+          "address": "0x140631ea0",
+          "name": "MessageDialog::set_description"
+        },
+        {
+          "address": "0x1406331a0",
+          "name": "Controls::view"
+        }
+      ],
+      "rules": [
+        "empty title/description, caller supplied u32 dimensions, level0/buttons0",
+        "fluent string replacement",
+        "three button modes Ok/OkCancel/Continue and icons sheep/warning/cross"
+      ]
+    },
+    {
+      "file": "tg-integrity-report/src/controls.rs",
+      "functions": [
+        {
+          "address": "0x140dbaea0",
+          "name": "Controls::new"
+        },
+        {
+          "address": "0x140dbaed0",
+          "name": "remove_unrecognized_package_file + inline normalize"
+        },
+        {
+          "address": "0x140dbb0d0",
+          "name": "verification_status + advice"
+        },
+        {
+          "address": "0x140dbe760",
+          "name": "update"
+        }
+      ],
+      "rules": [
+        "single unlink, failures ignored",
+        "successful unlink retains nonmatching extra names",
+        "normalize only all three lists empty; no reverify; preserve input order",
+        "fixed Steam integrity advice link and localized section keys"
+      ]
+    },
+    {
+      "file": "tg-gpu-selector/src/gpu_selection.rs",
+      "functions": [
+        {
+          "address": "0x1421bb740",
+          "name": "Controls::update"
+        },
+        {
+          "address": "0x1421bba80",
+          "name": "Controls::view"
+        },
+        {
+          "address": "0x1421be370",
+          "name": "device_driver_advice"
+        },
+        {
+          "address": "0x1421c36d0",
+          "name": "get_vendor_driver_update_links"
+        },
+        {
+          "address": "0x1421c4410",
+          "name": "localize_graphics_init_error"
+        }
+      ],
+      "rules": [
+        "selection writes Option index; ShowMoreInfo sets true; URL/log external",
+        "B vendor table 0 Nvidia,1 Intel,2 Other,3 AMD,4 Qualcomm,5 Unknown",
+        "driver classification comes from rhapsody 0x140bda990; game formats suggestions/links",
+        "raw error tags and recommendation overrides preserved"
+      ]
+    },
+    {
+      "file": "tg-gpu-selector/src/vulkan_config.rs",
+      "functions": [
+        {
+          "address": "0x140df35e0",
+          "name": "Controls::new"
+        },
+        {
+          "address": "0x140df3d10",
+          "name": "toggle_allowlist_item"
+        },
+        {
+          "address": "0x140df3e70",
+          "name": "update"
+        },
+        {
+          "address": "0x140df4020",
+          "name": "view"
+        }
+      ],
+      "rules": [
+        "stable first appearance vendor grouping with None group",
+        "tagged layer/vendor retain-toggle; matching duplicate entries all removed",
+        "Apply snapshots allowlist word and six bools; Cancel close command",
+        "exact six English workaround labels retained"
+      ]
+    },
+    {
+      "file": "crash-reporter-gui/src/lib.rs",
+      "functions": [
+        {
+          "address": "0x14061f640",
+          "name": "Controls::new"
+        },
+        {
+          "address": "0x140620470",
+          "name": "Controls::update"
+        },
+        {
+          "address": "0x1406213c0",
+          "name": "Controls::view"
+        },
+        {
+          "address": "0x140623370",
+          "name": "Controls::main_view"
+        },
+        {
+          "address": "0x14062e080",
+          "name": "Controls::more_info_button"
+        },
+        {
+          "address": "0x14061f610",
+          "name": "program_outcome"
+        },
+        {
+          "address": "0x14061f620",
+          "name": "tick_message"
+        }
+      ],
+      "rules": [
+        "11 graphics-driver frame patterns and device-lost log strings",
+        "VulkanOn12/gpu-hint priorities; first8 FPS monitor/OBS frame window; first frame Vulkan loader; integrity fallback",
+        "callback consumed once to create JoinHandle, tick checks is_finished then joins",
+        "clipboard uses supplied message String; success label strict <1sec, error persistent",
+        "more_info_button is advisory URL link, ShowDetails toggles separately"
+      ]
+    }
+  ],
+  "inferred": [
+    "public Rust APIs are candidate adapters, not recovered author type signatures",
+    "view CPU projections exclude full original widget/style data",
+    "selected header new() Requested is candidate convenience default, caller must supply original reason",
+    "scoped file remover guards package root as integration safety; original single unlink has no such gate",
+    "native owned widget layouts follow recovered controls/prompt policies; exact pixel equivalence is not established",
+    "native executor tokio, tick cadence 16ms, integration feature names are candidate build choices",
+    "platform adapters use exact-original-lock public arboard/open/webbrowser APIs; probes do not invoke IO actions",
+    "native Advanced text shaping is verified font-fallback glue, not independently observed original shaping choice"
+  ],
+  "unknown": [
+    "original run options/default dimensions and exact scheduling cadence",
+    "original compiler edition, manifest dependency kinds/features and aliases",
+    "crash_reporter callback Result payload ABI",
+    "producer meaning of original GPU hint tri-state byte; exact diagnostic reason enum labels",
+    "rhapsody AvailableGraphicsDevice::driver_support producer and actual Vulkan device initialization consumers",
+    "opaque allowlist u32 field schema meaning",
+    "publisher original GUI equivalence and report-send/OS clipboard/actual GPU selection consumers remain unvalidated",
+    "tooltip/style/icon geometry and original pixel equivalence"
+  ],
+  "native_validation": {
+    "dialog_leaf_entries": 150,
+    "dialog_cases": 75,
+    "message_leaf_entries": 92,
+    "message_cases": 56,
+    "whole_original_ui_validated": false,
+    "candidate_gui_windows_captured": 5,
+    "latest_png_visual_review": "PASS"
+  },
+  "platform_actions_exercised": {
+    "native_window": true,
+    "screenshot": true,
+    "browser": false,
+    "clipboard_write": false,
+    "package_file_delete": false,
+    "report_send": false
+  }
+}

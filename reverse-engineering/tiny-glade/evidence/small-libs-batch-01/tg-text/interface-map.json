@@ -1,0 +1,71 @@
+[
+  {
+    "original_file": "crates/tg-text/src/font_table.rs",
+    "implementation": "src/font_table.rs",
+    "status": "cpu_semantics_implemented_schema_static_confirmed_not_full_file_acceptance",
+    "native": [
+      "default_scale",
+      "FontTableEntry::scaled"
+    ],
+    "static": [
+      "FontTable::get",
+      "FontFamily variants",
+      "FontTable/entry required fields and scale default",
+      "duplicate primary fields"
+    ],
+    "unknown": [
+      "original serde entry execution",
+      "full unknown-field/error payload paths"
+    ]
+  },
+  {
+    "original_file": "crates/tg-text/src/shape_stream.rs",
+    "implementation": "src/shape_stream.rs",
+    "status": "cpu_word_protocol_implemented_native_subset_verified_not_full_schema_acceptance",
+    "native": [
+      "RawShapeStream::append (51 cases)",
+      "new/clear",
+      "ShapeStream::new/is_empty"
+    ],
+    "static": [
+      "builders",
+      "ImageSource conversions and Deserialize_str",
+      "ImageScaling visitor",
+      "ShapeStreamItem visitors",
+      "encode_no_images/name resolver panic"
+    ],
+    "merged": [
+      {
+        "original": "RawShapeStream::encode",
+        "into": "RawShapeStream::append branches",
+        "basis": "module626 IPI0x86cf 3 inline instances: Vec.extend/push encoded words",
+        "not_equivalent_to": "words() accessor or a separate serialization format"
+      },
+      {
+        "original": "Image::with_scaling",
+        "into": "append Image: scaling shift24",
+        "basis": "module626 IPI0x86ce inline offsets0x7b and0xdd; native scaling output"
+      }
+    ],
+    "unknown": [
+      "original serde execution",
+      "original panic execution",
+      "actual name catalog producer",
+      "real toolbar/SSBO consumer integration"
+    ]
+  },
+  {
+    "original_file": "crates/tg-text/src/lib.rs",
+    "implementation": "src/lib.rs",
+    "status": "exports_only_original_renderer_fragment_not_implemented",
+    "unknown": [
+      "TextRenderer",
+      "TextFragment",
+      "AtlasAllocUsage",
+      "glyph cache generation and eviction",
+      "FontSystem initialization",
+      "upload/consume/render",
+      "CPU primitives and GPU resources"
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+[package]
+name = "tg-iced"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+
+[package.metadata.reconstruction]
+baseline = "B"
+original_features_known = false
+original_abi_recovered = false
+
+[dependencies]
+lang-lib = { path = "../lang-lib", version = "=0.1.0" }
+iced = { version = "=0.12.1", git = "https://github.com/PounceLight/iced.git", rev = "2bccf7317e42422cb3b98c0de4f291d8c0865380", default-features = false, features = ["tokio"], optional = true }
+
+[features]
+default = ["native-gui"]
+native-gui = ["dep:iced"]
+
+[[example]]
+name = "tg_iced_native_probe"
+required-features = ["native-gui"]

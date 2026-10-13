@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "ui-unstarted-20261013",
+  "pid": 29344,
+  "project": "D:\\game\\tools\\reverse-runtime\\ui-unstarted-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.program.disassemble import Disassembler\nfrom ghidra.program.model.address import AddressSet\np=currentProgram\na=p.getAddressFactory()\nf=p.getFunctionManager()\nrows=[]\nfor start,size,entries in [[\"140620470\",2636,[\"1406204c2\",\"1406207ff\",\"1406205f1\",\"14062064d\",\"1406204dc\",\"140620864\",\"14062091c\",\"14062079e\",\"140620b57\",\"140620561\"]],[\"140df3e70\",431,[\"140df3e93\",\"140df3f8e\",\"140df3ec2\",\"140df3f74\",\"140df3eb4\"]],[\"1421bb740\",564,[\"1421bb770\",\"1421bb88b\",\"1421bb784\",\"1421bb871\",\"1421bb897\",\"1421bb959\"]]]:\n    begin=a.getAddress(start)\n    body=AddressSet(begin,begin.add(size-1))\n    fn=f.getFunctionAt(begin)\n    overlaps=[str(x.getEntryPoint()) for x in f.getFunctionsOverlapping(body) if x!=fn]\n    if overlaps: raise ValueError('Overlapping author ranges '+str(overlaps))\n    tx=p.startTransaction('Original RNE jump-table bounded bodies')\n    ok=False\n    try:\n        for e in entries:\n            Disassembler.getDisassembler(p,monitor,None).disassemble(a.getAddress(e),body,True)\n        fn.setBody(body)\n        ok=True\n        rows.append({'address':start,'body_bytes':size,'branch_entries':entries})\n    finally:p.endTransaction(tx,ok)\nprint(json.dumps(rows))\n",
+        "timeoutSeconds": 60
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\jump-repair.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\ui\\\\\\\\jump-repair.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 470, \\\"sha256\\\": \\\"901c41a0fd9dd5942d86959c7178437625d619310378fae5bf2757b0e5c25978\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1126}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 1.141,
+      "stdout": "[{\"address\": \"140620470\", \"body_bytes\": 2636, \"branch_entries\": [\"1406204c2\", \"1406207ff\", \"1406205f1\", \"14062064d\", \"1406204dc\", \"140620864\", \"14062091c\", \"14062079e\", \"140620b57\", \"140620561\"]}, {\"address\": \"140df3e70\", \"body_bytes\": 431, \"branch_entries\": [\"140df3e93\", \"140df3f8e\", \"140df3ec2\", \"140df3f74\", \"140df3eb4\"]}, {\"address\": \"1421bb740\", \"body_bytes\": 564, \"branch_entries\": [\"1421bb770\", \"1421bb88b\", \"1421bb784\", \"1421bb871\", \"1421bb897\", \"1421bb959\"]}]\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 5.797,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":14}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "f1abffb56f0d3f42673f992ab8f08be8",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}
