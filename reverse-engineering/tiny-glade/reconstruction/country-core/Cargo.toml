@@ -16,7 +16,8 @@ path = "src/lib.rs"
 # --- versions respect the original release Cargo.lock baseline (see
 #     reconstruction/Cargo.lock and rhapsody-rebuild/Cargo.lock) ---
 # `mint` feature: dolly 0.6.0 (WP20 camera rig) converts via the mint interop.
-glam = { version = "=0.29.3", features = ["serde", "mint"] }
+# `bytemuck` feature: Pod/Zeroable for Vec3 (nani trimesh `cast_slice::<u8, Vec3>`).
+glam = { version = "=0.29.3", features = ["serde", "mint", "bytemuck"] }
 serde = { version = "=1.0.200", features = ["derive"] }
 serde_json = "=1.0.85"
 ron = "=0.8.1"
@@ -31,6 +32,13 @@ anyhow = "=1.0.103"
 fastrand = "=1.8.0"
 uuid = { version = "=1.15.1", features = ["v4"] }
 slotmap = "=1.0.6"
+# `utils::name_hash::NameHash` = xxh3_64（O 0x140c9cd80）；原 Cargo.lock 为 0.8.10。
+xxhash-rust = { version = "=0.8.10", features = ["xxh3"] }
+# bytemuck: nani trimesh `cast_slice` (O 0x142c2a0d6 `something_went_wrong<PodCastError>`).
+# 原 Cargo.lock 为 1.16.0（离线缓存没有）；缓存里最接近的是 1.21.0。`derive` 需要 bytemuck_derive（离线缺失），本 crate 不使用 derive。
+bytemuck = "=1.21.0"
+# f16 compact instance keys (nani systems, O).
+half = "=2.7.1"
 
 # WP20 camera rig (dolly 0.6.0 = the game's locked camera-rig dependency).
 dolly = "=0.6.0"
@@ -55,6 +63,10 @@ rhapsody = { path = "../rhapsody-rebuild" }
 # handled by contract modules): puffin (→ `puffin_contract`), enum-iterator 1.2
 # (→ manual `GpuWorldSubsetKind::all()`), nohash-hasher (→ local no-op hasher),
 # frozen, shader-pipeline, shader-variants, shader-compiler (→ `*_contract`).
+
+[dev-dependencies]
+# 测试里交叉校验 const 版 FNV-1a（binding_hash）。
+fnv = "=1.0.7"
 
 [profile.dev]
 opt-level = 0

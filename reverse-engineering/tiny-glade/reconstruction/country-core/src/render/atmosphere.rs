@@ -22,13 +22,25 @@ pub struct SunSkyColors {
 }
 
 impl SunSkyColors {
-    /// `lerp(&self, other, t) -> SunSkyColors` (O: 0x140a97650, 87B):
-    /// per-component `self * (1 - t) + other * t`.
+    /// `lerp(&self, other, t) -> SunSkyColors`（O 0x140a97650，87 B）：12 个 f32 逐分量
+    /// `other * t + self * (1 - t)`（`mulps`×2 + `addps`；`1-t` 先算）。**不是** glam 的
+    /// `a + (b-a)*t`，二者在舍入上不同（t=1 时后者可能得不到恰好 `other`）。
     pub fn lerp(&self, other: &SunSkyColors, t: f32) -> SunSkyColors {
-        SunSkyColors {
-            a: self.a.lerp(other.a, t),
-            b: self.b.lerp(other.b, t),
-            c: self.c.lerp(other.c, t),
-        }
+        let w = 1.0 - t;
+        SunSkyColors { a: other.a * t + self.a * w, b: other.b * t + self.b * w, c: other.c * t + self.c * w }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lerp_endpoints_are_exact() {
+        let a = SunSkyColors { a: Vec4::new(0.1, 0.2, 0.3, 0.4), b: Vec4::splat(5.0), c: Vec4::splat(-2.0) };
+        let b = SunSkyColors { a: Vec4::splat(1.0), b: Vec4::splat(9.0), c: Vec4::splat(0.7) };
+        assert_eq!(a.lerp(&b, 0.0), a);
+        assert_eq!(a.lerp(&b, 1.0), b);
+        assert_eq!(a.lerp(&b, 0.5).b, Vec4::splat(7.0));
     }
 }

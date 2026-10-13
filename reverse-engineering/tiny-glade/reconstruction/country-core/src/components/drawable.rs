@@ -57,53 +57,12 @@ impl NaniInstanceDesc {
     }
 }
 
-/// 激活实例组件（O：maintain 的 `Insert<NaniActiveInstance>` 28B command 负载 16B）。
-/// 布局（O 反编译命令写入）：`{ chunk_id: u32, instance_index: u32, kind: u8,
-/// sort_key_f16: u16, flags: u8, reserved: u8 }`（13B 有效 + 3B 填充 = 16B）。
-/// chunk_id 是否 u64（对应 InstanceKey.chunk_id）I。
-#[derive(Component, Clone, Copy, Debug, Default)]
-pub struct NaniActiveInstance {
-    /// 块/高层键（O 命令 +0x18；u32 低 32 位）。
-    pub chunk_id: u32,
-    /// 实例索引（O 命令 +0x1c）。
-    pub instance_index: u32,
-    /// subset kind（O 命令 +0x20，u8）。
-    pub kind: u8,
-    /// 排序键 f16（O：`half::f16::from_f32` → 命令 +0x21，2B）。
-    pub sort_key_f16: u16,
-    /// 标志（O 命令 +0x23；typed gap）。
-    pub flags: u8,
-    /// 保留（O 命令 +0x24 = 0）。
-    pub reserved: u8,
-}
-
-impl NaniActiveInstance {
-    /// 由 `InstanceKey` + kind 构造（O：maintain 建实例后的命令负载；U：chunk_id 语义）。
-    pub fn from_key(_key: InstanceKey, _kind: crate::render::nani::gpu_world::GpuWorldSubsetKind) -> Self {
-        todo!("recover NaniActiveInstance packing")
-    }
-
-    /// 转回 `InstanceKey`（O：update_instance_data 的 fast-path key；sort_key f16 解码 I）。
-    pub fn into_key(&self) -> InstanceKey {
-        todo!("recover InstanceKey from active instance (chunk_id + index + f16 sort_key)")
-    }
-
-    /// `InstanceHandle`（O：`{kind, index}`；maintain Local HashMap 键）。
-    pub fn handle(&self) -> InstanceHandle {
-        InstanceHandle {
-            kind: self.kind_as_kind(),
-            index: self.instance_index,
-        }
-    }
-
-    fn kind_as_kind(&self) -> crate::render::nani::gpu_world::GpuWorldSubsetKind {
-        if self.kind < 27 {
-            unsafe { core::mem::transmute::<u8, crate::render::nani::gpu_world::GpuWorldSubsetKind>(self.kind) }
-        } else {
-            todo!("invalid kind u8 {}", self.kind)
-        }
-    }
-}
+/// 激活实例组件（O：maintain 的 `Insert<NaniActiveInstance>` 命令负载 = `extend_no_data` 回调给出的 12B 记录
+/// `{id: u32, index: u32, kind: u8, pad[3]}`，各 `nani_update_*` 以 `&NaniActiveInstance` 取它，再原样传给
+/// `update_instance_data<T>`）。与 `GpuWorld` 的 12B `InstanceKey` 是同一个类型，故这里是别名
+/// （旧版 16B 的 `{chunk_id, instance_index, kind, sort_key_f16, flags, reserved}` 与机器码不符，已删除；
+/// `from_key`/`into_key`/`handle` 随之取消）。
+pub use crate::render::nani::gpu_world::InstanceKey as NaniActiveInstance;
 
 /// 纯色 albedo 贴图选择（O：ECS `&NaniSolidTexture`；nani_update_solid_albedo_map 读）。
 /// 字段 U（typed gap；纹理句柄/索引）。

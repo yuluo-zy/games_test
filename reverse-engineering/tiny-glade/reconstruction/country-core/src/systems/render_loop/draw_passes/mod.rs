@@ -5,6 +5,11 @@
 //! (see `contracts/draw-passes.md`).
 
 pub mod common_draw_params;
+pub mod d_main_support;
+pub mod draw_callbacks_a;
+pub mod draw_callbacks_b;
+#[cfg(test)]
+mod d_main_tests;
 pub mod custom_cursor_pass;
 pub mod deferred_raster;
 pub mod draw_lists;

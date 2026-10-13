@@ -6,6 +6,41 @@
 
 #![allow(dead_code, unused_imports)]
 
+/// 游戏 `utils` 的 warn-once 宏展开（O：gpu_world `extend_no_data`/`create_instances` 与 systems
+/// `nani_maintain_instances` 各内联一份；每个展开点自带一张 `static Mutex<BTreeMap<String, ()>>`，
+/// `expect("Mutex was poisonned")`，去重键 = `"module_path! ()" + "$crate :: Level :: Warn" + 消息`）。
+/// `log` crate 没有 warn-once 能力，所以只能是游戏自有逻辑；两处共用本辅助，避免两份手写。
+/// 返回 `true` = 首次出现（并已 `log::warn!`）。
+pub(crate) fn warn_once_in(
+    table: &std::sync::Mutex<alloc::collections::BTreeMap<String, ()>>,
+    target: &'static str,
+    message: &str,
+) -> bool {
+    let key = warn_once_key(message);
+    let fresh = table.lock().expect("Mutex was poisonned").insert(key, ()).is_none();
+    if fresh {
+        log::warn!(target: target, "{}", message);
+    }
+    fresh
+}
+
+/// 去重键（O：`"module_path! ()"` 15B + `"$crate :: Level :: Warn"` + 消息）。
+pub fn warn_once_key(message: &str) -> String {
+    let mut key = String::from("module_path! ()");
+    key.push_str("$crate :: Level :: Warn");
+    key.push_str(message);
+    key
+}
+
+/// 展开点：自带 `static` 去重表（与原版宏展开一致）。
+macro_rules! nani_warn_once {
+    ($target:expr, $message:expr) => {{
+        static TABLE: std::sync::Mutex<alloc::collections::BTreeMap<String, ()>> =
+            std::sync::Mutex::new(alloc::collections::BTreeMap::new());
+        $crate::render::nani::warn_once_in(&TABLE, $target, &$message)
+    }};
+}
+
 pub mod buffers;
 pub mod cull_shaders;
 pub mod draw_ext;

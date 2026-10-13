@@ -15,20 +15,6 @@ use crate::typed_gap::Gap;
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct Wren(pub Gap);
 
-// ---------------------------------------------------------------------------
-// WP18: insect/animal GPU SSBO carriers (instanced_critters draw reads these
-// through `read_storage_buffer<T>`; O names, fields U).
-// ---------------------------------------------------------------------------
-
-/// 蝴蝶实例 SSBO（O：`read_storage_buffer<ButterflySsbo>`）。
-#[derive(Clone, Debug, Default)]
-pub struct ButterflySsbo(pub Gap);
-
-/// 萤火虫实例 SSBO（O：`read_storage_buffer<FireflySsbo>`）。
-#[derive(Clone, Debug, Default)]
-pub struct FireflySsbo(pub Gap);
-
-/// 萤火虫可见性查询 SSBO（O：`read_storage_buffer<FireflyVisibilitySsbo>`；
-/// 对应用户 `_critters_firefly_vis_query.cs.hlsl` 可见性查询 compute）。
-#[derive(Clone, Debug, Default)]
-pub struct FireflyVisibilitySsbo(pub Gap);
+// B 阶段 i_infra：WP18 的 `ButterflySsbo` / `FireflySsbo` / `FireflyVisibilitySsbo` `(Gap)` 占位已删——PDB 里
+// `read_storage_buffer<…>` / `new_storage_buffer<…>` 的类型路径是 `systems::render_loop::resources::critters::*`，
+// 真实元素类型与库侧 `SsboType` 在 `systems/render_loop/resources/critters.rs`（全 crate 已无对旧占位的引用）。

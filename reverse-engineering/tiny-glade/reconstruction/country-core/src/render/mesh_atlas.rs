@@ -1,10 +1,7 @@
-//! `render/mesh_atlas.rs` — `AtlassedMeshName` (referenced by wp3 `nani/mesh_atlas`).
+//! `render/mesh_atlas.rs` -- 仅为兼容旧路径保留。
 //!
-//! This module sits at the B-skeleton path `crates/country-core/src/render/mesh_atlas.rs`
-//! (distinct from `render/nani/mesh_atlas`). Only the name-key type is referenced by the
-//! recovered packages (`MeshAtlas::add(name: AtlassedMeshName, …)`); its recovered form is
-//! a typed gap (in the original it is a ustr-style interned name).
+//! 原版里 `AtlassedMeshName` 定义在 `resources::render::mesh_atlas_library`（O：`impl$10::fmt`
+//! 0x140a3d2e0 的 PDB 路径），旧版在这里放了一份 `AtlassedMeshName(pub u64)` 占位。
+//! 现统一成一份，这里只做 re-export。
 
-/// Atlas part name key (O name; payload U — ustr-internd word in the original).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-pub struct AtlassedMeshName(pub u64);
+pub use crate::resources::render::mesh_atlas_library::AtlassedMeshName;

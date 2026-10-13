@@ -17,13 +17,18 @@ pub mod draw_stream;
 pub mod framebuffer_binding;
 pub mod pass_resource_access;
 pub mod pass_resources;
+pub mod rg_resources;
 pub mod shader_uri;
 pub mod uniform_binder;
 
 pub use bind_resources::BindGameResources;
-pub use compute_pass_builder::{ComputeDispatchApi, ComputeDispatchIndirectApi, ComputePass};
+pub use compute_pass_builder::{
+    ComputeDispatchApi, ComputeDispatchIndirectApi, ComputePass, ComputePassDevice, ComputePassInit, ComputeTexture,
+    DispatchArgs, DispatchMode, RecordedComputePass, ResourceRegistry, RgBuffer, WorldAccess,
+};
 pub use draw_builder::{DrawBuilder, NoDropOnlyTake};
 pub use draw_stream::{DrawKind, DrawPacket, DrawPassRenderCheck, RasterPass, TextureBindingKey};
+pub use pass_resource_access::{PassBinding, RecordingPassBuilder, TextureAccess};
 pub use pass_resources::PassResources;
 pub use shader_uri::{AsComputeShaderSource, ShaderUri};
 pub use uniform_binder::UniformBinder;

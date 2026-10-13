@@ -1,0 +1,23 @@
+use xxhash_rust::xxh3::xxh3_64;
+fn main() {
+    let path = std::env::args().nth(1).unwrap();
+    let targets: Vec<u64> = std::env::args().skip(2).map(|s| u64::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()).collect();
+    let data = std::fs::read(path).unwrap();
+    let mut i = 0;
+    while i < data.len() {
+        if (0x20..0x7f).contains(&data[i]) {
+            let s = i;
+            while i < data.len() && (0x20..0x7f).contains(&data[i]) { i += 1; }
+            let run = &data[s..i];
+            for a in 0..run.len() {
+                if a > 0 && run[a - 1].is_ascii_alphanumeric() && run[a].is_ascii_alphanumeric() && !run[a].is_ascii_uppercase() { continue; }
+                for l in 1..=run.len().min(64) - 0 {
+                    if a + l > run.len() { break; }
+                    let sub = &run[a..a + l];
+                    let h = xxh3_64(sub);
+                    if targets.contains(&h) { println!("{:#x} {:?}", h, String::from_utf8_lossy(sub)); }
+                }
+            }
+        } else { i += 1; }
+    }
+}

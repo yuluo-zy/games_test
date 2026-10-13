@@ -32,6 +32,9 @@ extern crate alloc;
 pub mod app_loading_state; // wp15 app-shell
 pub mod asset_libraries; // wp4 + wp14 audio_trigger_library + wp16 non-render registries
 pub mod audio_events; // wp14 audio event rows (16×register_event, O)
+pub mod frozen_map; // `frozen::FrozenMap` call-surface stand-in (external crate)
+pub mod name_hash; // utils::name_hash::NameHash (xxh3_64)
+pub mod rhapsody_types; // single placeholder set for rhapsody texture/shader types
 pub mod boundary; // wp16 game-side render/core boundary (real types where surface matches)
 pub mod components; // wp6 drawable + wp16 residual markers/geometry/utils
 pub mod game_config; // wp15
@@ -78,7 +81,6 @@ pub mod typed_gap {
 // ===========================================================================
 pub mod rhapsody_contract {
     use std::marker::PhantomData;
-    use std::sync::Arc;
 
     use super::render::shader::{ComputeShaderProgram, RasterShaderProgram};
 
@@ -87,32 +89,8 @@ pub mod rhapsody_contract {
     pub struct GraphicsDevice(pub u64);
 
     impl GraphicsDevice {
-        pub fn create_compute_pipeline(
-            &self,
-            _artifacts: Arc<CompiledShaderPipeline>,
-        ) -> Result<Arc<CompiledShaderPipeline>, PipelineError> {
-            Ok(_artifacts)
-        }
-        pub fn create_raster_pipeline(
-            &self,
-            artifacts: Arc<CompiledShaderPipeline>,
-        ) -> Box<RasterPipeline> {
-            Box::new(RasterPipeline(
-                artifacts,
-                ManagedHandle(self.0),
-                PhantomData,
-            ))
-        }
         pub fn create_persistent_descriptor_set(&self, _name: &str) -> DescriptorSet {
             DescriptorSet
-        }
-        pub fn create_texture(
-            &self,
-            _desc: TextureDesc,
-            _data: &[u8],
-            _name: u64,
-        ) -> Result<Texture, TextureError> {
-            Ok(Texture::default())
         }
         pub fn update_buffer_bytes(
             &self,
@@ -137,26 +115,12 @@ pub mod rhapsody_contract {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
     pub struct DescriptorSet;
 
-    /// Compiled shader artifacts (reused `shader_pipeline::compiled`).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct CompiledShaderPipeline(pub Vec<u8>);
-
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct ComputePipelineDesc;
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct RasterPipelineDesc {
-        /// O: desc field at +0x18 (a feature/binding selector int) used in
-        /// `get_or_generate` equality.
-        pub selector: i32,
-    }
-
-    /// Runtime raster pipeline (0x38 bytes / Box, O): holds the compiled
-    /// artifacts + a managed handle.
-    pub struct RasterPipeline(
-        pub Arc<CompiledShaderPipeline>,
-        pub ManagedHandle,
-        pub PhantomData<()>,
-    );
+    /// 设备/着色器/纹理占位类型：全 crate 唯一一份，见 `crate::rhapsody_types`。
+    pub use crate::render::pass_builder::shader_uri::ComputePipelineDesc;
+    pub use crate::rhapsody_types::{
+        CompiledShaderPipeline, ComputePipeline, RasterPipeline, RasterPipelineDesc, RasterPipelineKey,
+        Texture, TextureDesc,
+    };
 
     /// Managed GPU-object handle (reused `rhapsody::raw::managed::handle`).
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -221,47 +185,8 @@ pub mod rhapsody_contract {
         pub const NONE: ResourceHandle = ResourceHandle(0);
     }
 
-    /// Opaque texture (reused `rhapsody::raw::texture::Texture`, 0x40 bytes).
-    #[derive(Clone, Debug, Default, PartialEq, Eq)]
-    pub struct Texture {
-        pub width: u32,
-        pub height: u32,
-        pub format: u32,
-    }
-    impl Texture {
-        /// Texture handle word (O: `to_texture_binding_key` call sites); typed gap.
-        pub fn handle(&self) -> u32 {
-            0
-        }
-    }
-
-    #[derive(Clone, Debug, Default, PartialEq, Eq)]
-    pub struct TextureDesc {
-        pub sampled: bool,
-        pub mip_levels: u32,
-        pub array_elements: u32,
-    }
-    impl TextureDesc {
-        pub fn new() -> Self {
-            TextureDesc::default()
-        }
-        pub fn sampled(mut self) -> Self {
-            self.sampled = true;
-            self
-        }
-        pub fn mip_levels(mut self, m: u32) -> Self {
-            self.mip_levels = m;
-            self
-        }
-        pub fn array_elements(mut self, a: u32) -> Self {
-            self.array_elements = a;
-            self
-        }
-    }
-
-    /// Texture view descriptor (reused `rhapsody::raw::texture::TextureViewDesc`).
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-    pub struct TextureViewDesc;
+    /// Texture view descriptor (reused `rhapsody::raw::texture::TextureViewDesc`)；唯一定义见 `rhapsody_types`。
+    pub use crate::rhapsody_types::TextureViewDesc;
 
     /// 2D extent (reused `rhapsody::raw::texture::Extent2D` — `vk::Extent2D`).
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -339,6 +264,15 @@ pub mod rhapsody_contract {
         pub fn render(self, _callback: impl FnOnce(u64) -> bool + 'static) {}
     }
 
+    // B-phase append (a4_compute): a builder not attached to a recorder — used by
+    // `ComputePass`'s `BindGameResources::as_pass_builder` view; the live accesses are
+    // recorded in `pass_resource_access::RecordingPassBuilder`.
+    impl<'a, UD> PassBuilder<'a, UD> {
+        pub fn detached() -> Self {
+            PassBuilder { _marker: PhantomData }
+        }
+    }
+
     /// Render-graph handle (reused `rhapsody::rg::RenderGraph`; added at assembly
     /// for the wp3 `rhapsody_rg::render_graph::RenderGraph` import sites).
     #[derive(Default)]
@@ -353,13 +287,6 @@ pub mod rhapsody_contract {
     pub enum TextureError {
         Io,
         Create,
-    }
-
-    /// `import_export` (O: `rhapsody::rg::import_export::export` /
-    /// `import_unowned`).
-    pub fn import_export_export(_handle: ResourceHandle) {}
-    pub fn import_unowned(_data: *const u8, _size: usize) -> ResourceHandle {
-        ResourceHandle(1)
     }
 
     /// Storage-buffer descriptor with the observed vtable (+0x18 get-ptr,
@@ -467,6 +394,31 @@ pub mod utils_contract {
         pub fn expand_to_contain_point(&mut self, p: Vec3) {
             self.min = self.min.min(p);
             self.max = self.max.max(p);
+        }
+        /// O（0x141240460）：`max - min`。
+        pub fn extent(&self) -> Vec3 {
+            self.max - self.min
+        }
+        /// O（0x141240420）：`(min + max) * 0.5`。
+        pub fn center(&self) -> Vec3 {
+            (self.min + self.max) * 0.5
+        }
+    }
+
+    /// `utils::geometry::rectangle::Rectangle2d`（O 0x140c98900，24 B）：方向 (1,0) @0、中心 @8、
+    /// 宽 @0x10、长 @0x14；`new_axis_aligned` 断言 width / length 有限。
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Rectangle2d {
+        pub direction: glam::Vec2,
+        pub center: glam::Vec2,
+        pub width: f32,
+        pub length: f32,
+    }
+    impl Rectangle2d {
+        pub fn new_axis_aligned(width: f32, length: f32, center: glam::Vec2) -> Self {
+            assert!(width.is_finite(), "assertion failed: width.is_finite()");
+            assert!(length.is_finite(), "assertion failed: length.is_finite()");
+            Rectangle2d { direction: glam::Vec2::X, center, width, length }
         }
     }
 

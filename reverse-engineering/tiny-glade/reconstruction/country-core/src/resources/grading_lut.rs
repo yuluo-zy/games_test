@@ -99,26 +99,6 @@ impl GradingLuts {
     }
 }
 
-/// LUT 画廊状态（O 名称；由 `lut_gallery::LutGalleryPlugin::build` 插入）。
-/// 默认布局（O）：{+0x00=1, +0x08=1, +0x10=0, +0x14=0, +0x18..+0x30=0, +0x35=0, +0x3d=0}。
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct LutGalleryState {
-    pub _f0: u64,
-    pub _f1: u64,
-    pub flag: u8,
-    pub _u14: u32,
-    pub _gap: [u8; 0x24],
-}
-
-impl Default for LutGalleryState {
-    fn default() -> Self {
-        Self {
-            _f0: 1,
-            _f1: 1,
-            flag: 0,
-            _u14: 0,
-            _gap: [0; 0x24],
-        }
-    }
-}
+/// LUT 画廊状态：真实类型在 `systems::render_loop::lut_gallery`（O 16 B：状态 Arc + 预览槽）。
+/// 旧的 0x40 B 全零占位已删除，这里只 re-export（`lib.rs` 的 `consume::core` 仍经此路径取用）。
+pub use crate::systems::render_loop::lut_gallery::LutGalleryState;

@@ -1,61 +1,89 @@
 //! billboard_forest.rs — 远景 billboard 森林（startup 域，非帧 draw）。
 //!
-//! PDB 骨架 `systems/render_loop/draw_passes/draw_shaders/billboard_forest.rs`
-//! （编译单元 499/570）。机器码（O）：
-//! - `impl$0::build` 0x140ae8070（size 8，line 18）：`SubApp::add_systems<Startup,
-//!   startup_billboard_forest>`（bevy plugin build）。
-//! - `startup_billboard_forest` 0x140ae8080（size 578，line 27）：bevy Startup 系统；
-//!   候选接口（O）：`(Res<GraphicsDeviceResource>, Res<AssetMeshLibrary>,
-//!   Res<MeshWatch>, Res<AssetShaderLibrary>, Res<ShaderWatch>, Commands)`。
-//! - `closure$0`（line 38，inlinee）：TupleWindows 网格索引闭包。
+//! PDB `systems/render_loop/draw_passes/draw_shaders/billboard_forest.rs`（编译单元 499/570）。机器码（O）：
+//! - `BillboardForest::build` 0x140ae8070（8 B）：`SubApp::add_systems<Startup, startup_billboard_forest>`；
+//! - `startup_billboard_forest` 0x140ae8080（662 B）：骨架见 `startup_quad`。与 stars / clouds 的差别：
+//!   * 网格自带的名字是 "billboard forest"（带空格，长 0x10）；传给库的名字是 "billboard_forest"（下划线，长 0x10）；
+//!   * 32 B 常量 `(87.093262f32, 1u32, …)`（0x142ae2fd0）；
+//!   * shader 路径 "/billboard_forest.raster.hlsl"（长 0x1d）、名 "billboard_forest_shader"（长 0x17）；
+//!   * 捆绑里**没有** `DesignatedRenderPass`（`bool` 紧跟在两个句柄之后，位于 `+0x48`）。
+//! - `Plugin` trait 胶水：`type_id` 0x140295390、`name` 0x140295750 等。
 //!
-//! startup 逻辑（O）：`from_iter<u32, FlatMap<TupleWindows<RangeInclusive<u32>,
-//!   (u32,u32)>, [u32;6], closure>>` 生成 quad 网格索引 → HashMap（RandomState）
-//!   → `load_mesh_into_library`（0x140b1aca0）+ `load_shader_into_library<&str>`
-//!   （0x140b3fe40，billboard shader 入库）→ `Commands::spawn_empty` → insert
-//!   `(DrawableMeshBundle, DontCastShadow, KeepOnLevelUnload)`。
-//!
-//! shader URI（O，pass-builder shader-uri-list.json）：`/billboard_forest.raster.hlsl`
-//!     + `/billboard_plant.raster.hlsl`（compiled `_billboard_forest`/`_billboard_plant`，
-//!     变体 b903…/f0ad…）。draw 绑定在 `draw_lists.rs` 闭包族（WP5 命名边界）。
+//! shader 变体见 pass-builder shader-uri-list：`/billboard_forest.raster.hlsl` + `/billboard_plant.raster.hlsl`
+//! （后者由 `draw_lists` 闭包族使用，不在本 startup 里）。
 
-#![allow(dead_code, unused_imports)]
+use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::{
+    AddStartupSystem, QuadSpec, StartupHost, run_startup,
+};
 
-use crate::consume::core::AssetMeshLibrary;
-use crate::consume::core::AssetShaderLibrary;
-use crate::render::GraphicsDeviceResource;
-use crate::typed_gap::Gap;
+pub const BILLBOARD_MESH_NAME: &str = "billboard forest";
+pub const BILLBOARD_LIBRARY_NAME: &str = "billboard_forest";
+/// 0x142ae2fd0 = 0x42ae2fc0 → 87.093262。
+pub const BILLBOARD_FAR_PARAM: f32 = 87.093262;
+pub const BILLBOARD_SHADER_PATH: &str = "/billboard_forest.raster.hlsl";
+pub const BILLBOARD_SHADER_NAME: &str = "billboard_forest_shader";
+pub const STARTUP_SYSTEM_NAME: &str = "startup_billboard_forest";
 
-/// `BillboardForestPlugin`（impl$0）bevy plugin `build`（O：0x140ae8070）。
-/// 仅注册 `startup_billboard_forest` 到 `Startup` 调度。
-pub struct BillboardForestPlugin;
+pub const SPEC: QuadSpec = QuadSpec {
+    mesh_name: BILLBOARD_MESH_NAME,
+    library_name: BILLBOARD_LIBRARY_NAME,
+    far_param: BILLBOARD_FAR_PARAM,
+    shader_path: BILLBOARD_SHADER_PATH,
+    shader_name: BILLBOARD_SHADER_NAME,
+    designated_pass: None,
+};
 
-impl BillboardForestPlugin {
-    /// `build(&mut self, app: &mut SubApp)`（O：`SubApp::add_systems`）。
-    pub fn build(&mut self, _app: &mut Gap) {
-        // O：add_systems<Startup, startup_billboard_forest>。
-        unimplemented!()
+/// `BillboardForest`（impl$0）。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BillboardForest;
+
+impl BillboardForest {
+    /// `build`（O 0x140ae8070）。
+    pub fn build(&self, app: &mut impl AddStartupSystem) {
+        app.add_startup_system(STARTUP_SYSTEM_NAME);
     }
 }
 
-/// `startup_billboard_forest`（O：0x140ae8080）。
-/// Startup 系统：生成 billboard 森林 quad 网格索引（TupleWindows 闭包）→
-/// `load_mesh_into_library` + `load_shader_into_library<&str>` → spawn 空实体 +
-/// insert `(DrawableMeshBundle, DontCastShadow, KeepOnLevelUnload)`。
-/// 参数为 bevy 系统参数（O 候选接口）；本束以 typed gap 承载。
-pub fn startup_billboard_forest(
-    _gpu: &GraphicsDeviceResource,
-    _meshes: &AssetMeshLibrary,
-    _mesh_watch: &Gap,
-    _shaders: &AssetShaderLibrary,
-    _shader_watch: &Gap,
-    _commands: &Gap,
-) {
-    unimplemented!()
+/// `startup_billboard_forest`（O 0x140ae8080）。
+pub fn startup_billboard_forest<H: StartupHost>(host: &mut H) {
+    run_startup(&SPEC, host);
 }
 
-/// `startup_billboard_forest::closure$0`（O：line 38）。
-/// TupleWindows quad 索引闭包（`(i, j)` → `[u32; 6]` 两三角索引）。
-pub fn closure_0(_window: (u32, u32)) -> [u32; 6] {
-    unimplemented!()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::test_host::{
+        Rec, Systems,
+    };
+
+    #[test]
+    fn build_registers_exactly_one_startup_system() {
+        let mut app = Systems::default();
+        BillboardForest.build(&mut app);
+        assert_eq!(app.0, vec!["startup_billboard_forest"]);
+    }
+
+    #[test]
+    fn mesh_name_has_a_space_but_the_library_key_has_an_underscore() {
+        let mut h = Rec::default();
+        startup_billboard_forest(&mut h);
+        let (lib_name, mesh) = &h.meshes[0];
+        assert_eq!(lib_name, "billboard_forest");
+        assert_eq!(mesh.name, "billboard forest");
+        assert_eq!(BILLBOARD_MESH_NAME.len(), 0x10);
+        assert_eq!(BILLBOARD_LIBRARY_NAME.len(), 0x10);
+        assert_eq!(mesh.far_param.to_bits(), 0x42ae2fc0);
+        assert_eq!(mesh.indices, vec![0, 1, 2, 2, 1, 3]);
+    }
+
+    #[test]
+    fn no_designated_render_pass_and_longer_shader_names() {
+        let mut h = Rec::default();
+        startup_billboard_forest(&mut h);
+        assert_eq!(h.spawned[0].designated_pass, None);
+        assert_eq!(h.shaders[0].0, "/billboard_forest.raster.hlsl");
+        assert_eq!(h.shaders[0].1, "billboard_forest_shader");
+        assert_eq!(BILLBOARD_SHADER_PATH.len(), 0x1d);
+        assert_eq!(BILLBOARD_SHADER_NAME.len(), 0x17);
+    }
 }

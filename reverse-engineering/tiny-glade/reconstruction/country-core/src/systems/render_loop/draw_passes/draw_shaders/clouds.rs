@@ -1,54 +1,77 @@
-//! clouds.rs — 云层 startup（startup 域，非帧 draw）。
+//! clouds.rs — 云层（startup 域，非帧 draw）。
 //!
-//! PDB 骨架 `systems/render_loop/draw_passes/draw_shaders/clouds.rs`
-//! （编译单元 479/542/1585）。机器码（O）：
-//! - `impl$0::build` 0x14085b8a0（size 8，line 19）：`SubApp::add_systems<
-//!   Startup, startup_clouds>`。
-//! - `startup_clouds` 0x14085b8b0（size 585，line 24）：Startup 系统；候选接口
-//!   `(Res<GraphicsDeviceResource>, Res<AssetMeshLibrary>, Res<MeshWatch>,
-//!   Res<AssetShaderLibrary>, Res<ShaderWatch>, Commands)`。
-//! - `closure$0`（line 35，inlinee）：TupleWindows 云面片索引闭包。
-//!
-//! startup 逻辑（O）：quad 网格索引（TupleWindows）→ `load_mesh_into_library` +
-//! `load_shader_into_library<&str>` → `spawn_empty` + insert
-//! `(DrawableMeshBundle, DontCastShadow, KeepOnLevelUnload, DesignatedRenderPass)`
-//! （含 `DesignatedRenderPass`，与 billboard_forest 不同——云走指定 render pass）。
-//!
-//! shader URI（O）：`/cloud.raster.hlsl`（compiled `_cloud`，b903…/f0ad…）。
-//! 云动画时间 uniform 与 draw 由 `draw_lists.rs` 闭包族承载（WP5）。
+//! PDB `systems/render_loop/draw_passes/draw_shaders/clouds.rs`（编译单元 479/542/1585）。机器码（O）：
+//! - `CloudPlugin::build` 0x14085b8a0（8 B）：`SubApp::add_systems<Startup, startup_clouds>`；
+//! - `startup_clouds` 0x14085b8b0（662 B）：骨架见 `startup_quad`。常量：网格名 / 库名 "cloud"（长 5）；32 B 常量
+//!   `(84.642944f32, 1u32, …)`（0x142a94940）；shader 路径 "/cloud.raster.hlsl"（长 0x12）、名 "cloud_shader"（长 0xc）；
+//!   `DesignatedRenderPass = 0x10`。
+//! - 注：PDB 里 `from_iter` 单态化实例的闭包名属于 `clouds::startup_clouds::closure_env$0`（ICF 后三个 startup 共用）。
 
-#![allow(dead_code, unused_imports)]
+use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::{
+    AddStartupSystem, QuadSpec, StartupHost, run_startup,
+};
 
-use crate::consume::core::AssetMeshLibrary;
-use crate::consume::core::AssetShaderLibrary;
-use crate::render::GraphicsDeviceResource;
-use crate::typed_gap::Gap;
+pub const CLOUD_MESH_NAME: &str = "cloud";
+/// 0x142a94940 = 0x42a94930 → 84.642944。
+pub const CLOUD_FAR_PARAM: f32 = 84.642944;
+pub const CLOUD_SHADER_PATH: &str = "/cloud.raster.hlsl";
+pub const CLOUD_SHADER_NAME: &str = "cloud_shader";
+pub const CLOUD_DESIGNATED_PASS: u32 = 0x10;
+pub const STARTUP_SYSTEM_NAME: &str = "startup_clouds";
 
-/// `CloudsPlugin`（impl$0）bevy plugin `build`（O：0x14085b8a0）。
-pub struct CloudsPlugin;
+pub const SPEC: QuadSpec = QuadSpec {
+    mesh_name: CLOUD_MESH_NAME,
+    library_name: CLOUD_MESH_NAME,
+    far_param: CLOUD_FAR_PARAM,
+    shader_path: CLOUD_SHADER_PATH,
+    shader_name: CLOUD_SHADER_NAME,
+    designated_pass: Some(CLOUD_DESIGNATED_PASS),
+};
 
-impl CloudsPlugin {
-    /// `build(&mut self, app: &mut SubApp)`（O：`add_systems<Startup, startup_clouds>`）。
-    pub fn build(&mut self, _app: &mut Gap) {
-        unimplemented!()
+/// `CloudPlugin`（impl$0）。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CloudPlugin;
+
+impl CloudPlugin {
+    /// `build`（O 0x14085b8a0）。
+    pub fn build(&self, app: &mut impl AddStartupSystem) {
+        app.add_startup_system(STARTUP_SYSTEM_NAME);
     }
 }
 
-/// `startup_clouds`（O：0x14085b8b0）。
-/// 云层 quad 网格 + `/cloud.raster.hlsl` shader 入库 + spawn 云实体
-/// （`DesignatedRenderPass` 标记）。
-pub fn startup_clouds(
-    _gpu: &GraphicsDeviceResource,
-    _meshes: &AssetMeshLibrary,
-    _mesh_watch: &Gap,
-    _shaders: &AssetShaderLibrary,
-    _shader_watch: &Gap,
-    _commands: &Gap,
-) {
-    unimplemented!()
+/// `startup_clouds`（O 0x14085b8b0）。
+pub fn startup_clouds<H: StartupHost>(host: &mut H) {
+    run_startup(&SPEC, host);
 }
 
-/// `startup_clouds::closure$0`（O：line 35）。TupleWindows 云面片索引闭包。
-pub fn closure_0(_window: (u32, u32)) -> [u32; 6] {
-    unimplemented!()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::test_host::{
+        Rec, Systems,
+    };
+
+    #[test]
+    fn build_registers_exactly_one_startup_system() {
+        let mut app = Systems::default();
+        CloudPlugin.build(&mut app);
+        assert_eq!(app.0, vec!["startup_clouds"]);
+    }
+
+    #[test]
+    fn startup_loads_the_cloud_mesh_and_shader_and_spawns_with_designated_pass() {
+        let mut h = Rec::default();
+        startup_clouds(&mut h);
+        let (lib_name, mesh) = &h.meshes[0];
+        assert_eq!((lib_name.as_str(), mesh.name), ("cloud", "cloud"));
+        assert_eq!(mesh.indices, vec![0, 1, 2, 2, 1, 3]);
+        assert_eq!(mesh.far_param.to_bits(), 0x42a94930);
+        assert_eq!(
+            h.shaders,
+            vec![("/cloud.raster.hlsl".to_string(), "cloud_shader".to_string())]
+        );
+        assert_eq!(CLOUD_SHADER_PATH.len(), 0x12);
+        assert_eq!(CLOUD_SHADER_NAME.len(), 0xc);
+        assert_eq!(h.spawned[0].designated_pass, Some(0x10));
+    }
 }

@@ -53,18 +53,10 @@ impl AssetMeshLibrary {
 #[derive(Clone, Debug, Default)]
 pub struct AssetTextureLibrary(pub HashMap<alloc::string::String, Gap>);
 
-/// 帧常量（wp4 `render::frame_constants::FrameConstants`；O：帧序号/视口/Jitter）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FrameConstants {
-    pub frame_index: u32,
-    pub _gap: Gap,
-}
-
-/// 视口常量（wp4 `render::view_constants::ViewConstants`；O：pixel offset 设置）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ViewConstants {
-    pub _gap: Gap,
-}
+/// 帧常量 / 视口常量：已统一到真实实现（`render::frame_constants` / `render::view_constants`），
+/// 这里只做再导出，避免与旧占位并存。
+pub use crate::render::frame_constants::FrameConstants;
+pub use crate::render::view_constants::ViewConstants;
 
 /// 渲染配置（wp4 `RenderConfig`；configwatch 热载目标）。
 #[derive(Clone, Copy, Debug, Default)]

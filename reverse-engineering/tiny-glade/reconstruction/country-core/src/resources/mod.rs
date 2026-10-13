@@ -39,27 +39,9 @@ pub mod rt;
 pub mod color_id;
 pub mod window_lights;
 
-/// Frame-pass typed-gap SSBO carriers referenced through `consume::core`.
-/// These are game-owned storage-buffer types the render-loop passes name but
-/// the render packages do not own (wp5 OUT OF SCOPE).
-pub mod render_ssbo {
-    use crate::typed_gap::Gap;
-
-    pub struct LanternSsbo(pub Gap);
-    pub struct SpatialResolveOffsetsSsbo(pub Gap);
-    pub struct MouseDepthValueSsbo(pub Gap);
-    pub struct DofAutofocusSsbo(pub Gap);
-    pub struct DofFocusReadbackSsbo(pub Gap);
-    pub struct ShadowMaskHistogramSsbo(pub Gap);
-    pub struct ShadowMaskMeanSsbo(pub Gap);
-    pub struct WallColorIdSsbo(pub Gap);
-
-    /// Indirect command buffer wrappers (wp2 contract; not re-implemented).
-    pub struct DrawIndexedIndirectBuffer(pub Gap);
-    pub struct DrawIndirectBuffer(pub Gap);
-    pub struct DispatchIndirectBuffer(pub Gap);
-    pub struct AtomicCounterBuffer(pub Gap);
-}
+/// Frame-pass SSBO carriers referenced through `consume::core` / `consume::buffers`（B 阶段 i_infra：拆到 `render_ssbo.rs`，
+/// 间接缓冲 = `indirect_params`，`LanternSsbo` / `MouseDepthValueSsbo` 已是真实库侧类型）。
+pub mod render_ssbo;
 
 // WP6: recovered nani-systems-consumed resource/component families.
 pub mod critters;

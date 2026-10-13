@@ -38,6 +38,7 @@ pub mod load_texture;
 pub mod mesh;
 pub mod render_config;
 pub mod shader;
+pub mod rg_helpers;
 pub mod view_constants;
 
 // Assembly-added gap modules.
@@ -46,12 +47,10 @@ pub mod utils;
 
 /// Bevy resource wrapping the raw graphics device.
 ///
-/// Deref implementations (`impl$0::deref`, `impl$1::deref`) were observed as
-/// procedure hosts in module 521 (0x140987b30 / 0x140987b40); the inner device is
-/// the REUSED `rhapsody::raw::device::GraphicsDevice` — here the crate's
-/// `rhapsody_contract::GraphicsDevice`.
+/// O（0x140987ca0）：`Deref::deref` 是 `[self] + 0x10`，即 `ArcInner` 的数据偏移 —— 资源里放的是
+/// `Arc<GraphicsDevice>`（旧版直接存设备本体是错的）。设备本身是复用库 `rhapsody::raw::device::GraphicsDevice`。
 #[derive(bevy_ecs::resource::Resource)]
-pub struct GraphicsDeviceResource(pub crate::rhapsody_contract::GraphicsDevice);
+pub struct GraphicsDeviceResource(pub std::sync::Arc<crate::rhapsody_contract::GraphicsDevice>);
 
 impl core::ops::Deref for GraphicsDeviceResource {
     type Target = crate::rhapsody_contract::GraphicsDevice;
@@ -73,16 +72,10 @@ pub struct AvailableGraphicsDevice {
 pub struct AvailableGraphicsDevices(pub Vec<AvailableGraphicsDevice>);
 
 impl AvailableGraphicsDevices {
-    /// `from_preference_order(devices)` — reverses the preference list so the
-    /// first entry is the most-preferred device (O: pairwise 0xa0-byte element
-    /// swap loop, 0x140987cb0).
+    /// `from_preference_order(devices)`（O 0x140987cb0）：就地 `reverse()` —— 成对交换 0xa0 字节的元素，
+    /// 共 `len/2` 轮；输入的排列方向与用途（I：调用方按“最不优先在前”给出，列表内部最优在前）未在该函数内体现。
     pub fn from_preference_order(mut devices: Vec<AvailableGraphicsDevice>) -> Self {
-        let mid = devices.len() / 2;
-        for i in 0..mid {
-            let j = devices.len() - 1 - i;
-            let (a, b) = devices.split_at_mut(j);
-            core::mem::swap(&mut a[i], &mut b[0]);
-        }
+        devices.reverse();
         Self(devices)
     }
 }

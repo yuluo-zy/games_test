@@ -25,6 +25,7 @@ pub mod highlight_active_terrain_stroke;
 pub mod leaf_particles;
 pub mod mouse_depth_value;
 pub mod mouse_read_terrain_stroke_index;
+pub mod pass_kit;
 pub mod path_pebbles;
 pub mod prefix_scan;
 pub mod primary_rt_debug;

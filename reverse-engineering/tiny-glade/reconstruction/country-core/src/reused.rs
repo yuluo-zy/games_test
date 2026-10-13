@@ -254,14 +254,8 @@ pub mod line_raster {
 // frozen + nohash-hasher — write-once registries.
 // ---------------------------------------------------------------------------
 pub mod map {
-    /// `frozen::FrozenMap<K,V>` read surface (write-once; ssbo/vao/placement).
-    pub struct FrozenMap<K, V>(pub crate::Gap, pub core::marker::PhantomData<fn() -> (K, V)>);
-    impl<K, V> FrozenMap<K, V> {
-        pub fn get<Q>(&self, _k: &Q) -> Option<&V> {
-            None
-        }
-        pub fn insert(&self, _k: K, _v: V) {}
-    }
+    /// `frozen::FrozenMap<K,V>`：见 `crate::frozen_map`（可工作的占位，ssbo 库已使用）。
+    pub use crate::frozen_map::FrozenMap;
     /// `nohash_hasher::NoHashHasher<T>` (u64 pre-hashed ids).
     pub struct NoHashHasher<T>(pub crate::Gap, pub core::marker::PhantomData<fn() -> T>);
 }

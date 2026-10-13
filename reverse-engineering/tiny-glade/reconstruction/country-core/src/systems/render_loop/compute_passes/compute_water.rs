@@ -1,27 +1,47 @@
-//! compute_water.rs — W2 water_rasterize_from_cpu, W13 water_spawn_vegetation（WP7 恢复）。
+//! compute_water.rs — W2 `water_rasterize_from_cpu`、W13 `water_spawn_vegetation`。
 //!
-//! 反编译（O）：`water_rasterize_from_cpu` = 0x140a12680（size 3223）；`water_spawn_vegetation`
-//! = 0x140a13970（size 2269）。帧接线：W2 / W13（frame-wiring.md）。
+//! # `water_rasterize_from_cpu`（O：0x140a12680，4840 B）—— 实为"水 mask 模糊"
+//! 资源 `WaterRasterStagingSsbo`（type-id `0x1ad182936286a0ee`，缺失 `Option::unwrap`）；仅当其 `+0x29b` 脏字节非 0：
+//! 写变更 tick（`row+0x5c = world+0x5b0`）、清脏字节、`memset(res+0x98, 0, 0x200)`，随后：
+//! * RG 纹理 `"water blur temp"`（512×512，格式 `0x61`）；
+//! * 4 个 `"Blur water mask"`（`/gauss_blur_mask.cs.hlsl`）pass，每个 `dispatch_2d(512, 512)`
+//!   （O：`.rdata 0x142aa2500 = {1, 512, 512, 1}`），uniform 序 `is_horizontal`(bool) → `sigma`(f32) → `output_channel`(i32)：
 //!
-//! - **W2**：CPU 水位栅格 → 水 mask 纹理。`WaterRasterStagingSsbo`（type-id
-//!   `0x1ad182936286a0ee`）存在且 `WaterRaster+0x29b` 脏 → 写 `ssbo+0x5c=world+0x5b0`、
-//!   清 0x29b、`memset(0x98,0,0x200)` → 4 个 compute pass（`_water_draw_water_mask` 族，
-//!   每 pass `write_uniform<f32>` + `write_uniform<i32>` + dispatch）。
-//! - **W13**：两个 ComputePass（lilypad+lilypad_flower；reed）——`write_storage_buffer` +
-//!   纹理绑定（preset 槽 9/10/0x13/5/0x14/0x17 与 9/10/0x13/5/0x16）+
-//!   `write_storage_buffer_concurrent<DrawIndexedIndirectBuffer>` +
-//!   `write_uniform<bool>`（`ActiveSession::is_autumn`）+ `write_uniform<i32>` + dispatch。
-//!   boats/waterwheels 的 URI 动态拼接、位置并入本 pass 或独立（U，见 spawn_boats）。
+//!   | # | `is_horizontal` | `water_mask`（读 0x19） | `out_water_mask`（写 0x32） | `sigma` | `output_channel` |
+//!   |---|---|---|---|---|---|
+//!   | 1 | true  | 预设 0x13 | temp | 10.0 | 1 |
+//!   | 2 | false | temp | 预设 0x13 | 10.0 | 1 |
+//!   | 3 | true  | 预设 0x13 | temp | 30.0 | 2 |
+//!   | 4 | false | temp | 预设 0x13 | 30.0 | 2 |
+//!
+//! # `water_spawn_vegetation`（O：0x140a13970，3246 B）
+//! 顶部 `if *0x143634d90 (demo) != 0 { return }`。两个 compute pass：
+//! * `"Spawn lilypads"`（`/water/spawn_lilypads.cs.hlsl`）：写 `lilypad_buffer`/`lilypad_flower_buffer`（SSBO）；
+//!   `ActiveSession`（type-id `0x74430dfcc6d8719b`，缺失 unwrap）→ uniform `is_autumn`(bool = 会话字节 `+0x58 == 3`)；
+//!   `grid_dims`=(225,225)；贴图（预设）9 `terrain_heightmap`、10 `visual_terrain_heightmap`、0x13 `water_mask`、
+//!   5 `path_mask`、0x14 `garden_mask`（读），0x17 `animation`（写）；`write_storage_buffer_concurrent<DrawIndexedIndirectBuffer>
+//!   (draw_commands, 1)`；`draw_indirect_buffer_offset`=8；`dispatch_2d(225, 225)`。
+//! * `"Spawn reeds"`（`/water/spawn_reeds.cs.hlsl`）：写 `instance_buffer`；`grid_dims`=(150,150)；贴图 9/10/0x13/5/
+//!   0x16（`buildings_mask_non_blurred`）读；`draw_commands`（concurrent，组 1）；`draw_indirect_buffer_offset`=9；
+//!   `dispatch_2d(150, 150)`（O：`.rdata 0x142ac70a0 = {1,225,225,1}` / `0x142aa5130 = {1,150,150,1}`）。
+//!
+//! `grid_dims` 的键 = `binding_hash("grid") + 1`（O：`0xfb539f7243dbb832`；A4 的 `with_suffix_dims` 约定，
+//! `<name>_dims` 字段对应 `hash(name)+1`）。
+//!
+//! # 偏离
+//! SSBO 载体经泛型注入（`LibrarySsbo`）；`ActiveSession` 以其会话字节（[`SeasonByte`]）表示。
 
 #![allow(dead_code, unused_imports)]
 
-use crate::consume::buffers::DrawIndexedIndirectBuffer;
-use crate::render::pass_builder::pass_resource_access::SsboType;
-use crate::resources::session::ActiveSession;
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
+use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
+use crate::render::pass_builder::pass_resource_access::{RgTexture, SsboType};
+use crate::resources::texture_presets::TexturePreset;
 use crate::resources::water_mask::{WATER_MASK_GRID, WATER_MASK_SAMPLE_SCALE};
-use crate::resources::world_raster::WorldRaster;
-use crate::resources::world_raster_defs::{WaterRaster, WaterRasterStagingSsbo};
 use crate::typed_gap::Gap;
+
+use super::pass_kit::{PassEnv, binding_hash};
+use crate::rhapsody_types::TextureDesc;
 
 /// 水植被实例 SSBO（O 名；布局 U，compute_water 域）。
 pub struct LilypadSsbo(pub Gap);
@@ -51,37 +71,417 @@ pub fn world_to_water_grid(world_xz: glam::Vec2) -> glam::Vec2 {
     (world_xz / 130.0 + 0.5) * WATER_MASK_GRID as f32
 }
 
-/// W2 — CPU staging → 水 mask 纹理（O：0x140a12680）。
-/// 若 `WaterRasterStagingSsbo` 存在且 `WaterRaster` 再上传脏字节（+0x29b）：
-/// 清 staging（0x200B）+ 写 `ssbo+0x5c = world+0x5b0`，经 4 个 `_water_draw_water_mask`
-/// compute pass 上传为 512×512 水 mask 纹理。
-pub fn water_rasterize_from_cpu(
-    _world: &mut Gap,
-    _staging: &WaterRasterStagingSsbo,
-    _water: &WaterRaster,
-) {
-    // O：get_resource_id(0x1ad182936286a0ee) → unwrap_failed；+0x29b 脏判定 →
-    //   ComputePass::new + write_uniform<f32>/<i32> + dispatch×4。
-    // 纹理槽：preset 9/10/0x13（水 mask 输出）。rhapsody PassBuilder 接入边界 todo。
-    let _ = WATER_MASK_SAMPLE_SCALE;
-    unimplemented!()
+// ---------------------------------------------------------------- 绑定名
+
+pub const H_IS_HORIZONTAL: u64 = binding_hash("is_horizontal");
+pub const H_WATER_MASK: u64 = binding_hash("water_mask");
+pub const H_OUT_WATER_MASK: u64 = binding_hash("out_water_mask");
+pub const H_SIGMA: u64 = binding_hash("sigma");
+pub const H_OUTPUT_CHANNEL: u64 = binding_hash("output_channel");
+pub const H_LILYPAD_BUFFER: u64 = binding_hash("lilypad_buffer");
+pub const H_LILYPAD_FLOWER_BUFFER: u64 = binding_hash("lilypad_flower_buffer");
+pub const H_INSTANCE_BUFFER: u64 = binding_hash("instance_buffer");
+pub const H_IS_AUTUMN: u64 = binding_hash("is_autumn");
+pub const H_GRID_DIMS: u64 = binding_hash("grid").wrapping_add(1);
+pub const H_TERRAIN_HEIGHTMAP: u64 = binding_hash("terrain_heightmap");
+pub const H_VISUAL_TERRAIN_HEIGHTMAP: u64 = binding_hash("visual_terrain_heightmap");
+pub const H_PATH_MASK: u64 = binding_hash("path_mask");
+pub const H_GARDEN_MASK: u64 = binding_hash("garden_mask");
+pub const H_ANIMATION: u64 = binding_hash("animation");
+pub const H_BUILDINGS_MASK_NON_BLURRED: u64 = binding_hash("buildings_mask_non_blurred");
+pub const H_DRAW_COMMANDS: u64 = binding_hash("draw_commands");
+pub const H_DRAW_INDIRECT_BUFFER_OFFSET: u64 = binding_hash("draw_indirect_buffer_offset");
+
+pub const ACCESS_READ: u8 = 0x19;
+pub const ACCESS_WRITE: u8 = 0x32;
+
+pub const PRESET_TERRAIN_HEIGHT: TexturePreset = TexturePreset(9);
+pub const PRESET_VISUAL_TERRAIN_HEIGHT: TexturePreset = TexturePreset(10);
+pub const PRESET_WATER_MASK: TexturePreset = TexturePreset(0x13);
+pub const PRESET_PATH_MASK: TexturePreset = TexturePreset(5);
+pub const PRESET_GARDEN_MASK: TexturePreset = TexturePreset(0x14);
+pub const PRESET_BUILDINGS_MASK_NON_BLURRED: TexturePreset = TexturePreset(0x16);
+pub const PRESET_ANIMATION: TexturePreset = TexturePreset(0x17);
+
+/// 水 mask 模糊的 temp 纹理格式（O：`new_2d(.., 0x61)`）。
+pub const WATER_BLUR_FORMAT: u32 = 0x61;
+/// 秋季的会话判别字节（O：`ActiveSession +0x58 == 3`）。
+pub const AUTUMN_SESSION_BYTE: u8 = 3;
+/// `_DEV_OVERRIDE_IS_DEMO_MODE`（O：`cmp byte ptr [0x143634d90], 0`）。
+pub const DEMO_MODE_FLAG_ADDR: u64 = 0x1_4363_4d90;
+
+/// 会话判别字节（`ActiveSession` 的 `+0x58`）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SeasonByte(pub u8);
+
+impl SeasonByte {
+    pub fn is_autumn(self) -> bool {
+        self.0 == AUTUMN_SESSION_BYTE
+    }
 }
 
-/// W13 — 水面植被生成（O：0x140a13970）。
-/// Pass 1（lilypad + lilypad_flower）：`write_storage_buffer<LilypadSsbo>/
-/// <LilypadFlowerSsbo>` + `ActiveSession` 断言（type-id 0x74430dfcc6d8719b）+
-/// `write_uniform<bool>`（= `is_autumn`）+ 纹理 9/10/0x13/5/0x14/0x17 +
-/// `write_storage_buffer_concurrent<DrawIndexedIndirectBuffer>` + `write_uniform<i32>` + dispatch。
-/// Pass 2（reed）：同形，`write_storage_buffer<ReedSsbo>` + 纹理 9/10/0x13/5/0x16 + dispatch。
-pub fn water_spawn_vegetation(_world: &mut Gap, _session: &ActiveSession) {
-    // O：demo 守卫；两 ComputePass；dispatch 常量 0xe100000001/0x1000000e1 与
-    //   0x9600000001/0x100000096（1D 间接 dispatch 形）。
-    unimplemented!()
+// ---------------------------------------------------------------- W2
+
+/// `WaterRasterStagingSsbo` 的 CPU 侧状态（O：`+0x29b` 脏字节、`+0x98` 起 0x200 B 暂存）。
+#[derive(Clone, Debug)]
+pub struct WaterRasterStaging {
+    pub dirty: bool,
+    pub staging: [u8; 0x200],
+    /// 组件变更 tick（`row+0x5c`）。
+    pub changed_tick: u32,
+}
+
+impl Default for WaterRasterStaging {
+    fn default() -> Self {
+        WaterRasterStaging {
+            dirty: false,
+            staging: [0; 0x200],
+            changed_tick: 0,
+        }
+    }
+}
+
+/// 一次 gauss 模糊的参数（O 表见文件头）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BlurStep {
+    pub horizontal: bool,
+    pub sigma: f32,
+    pub output_channel: i32,
+    /// 读自 temp（否则读预设 0x13）。
+    pub from_temp: bool,
+}
+
+/// 4 步序列（O）。
+pub const BLUR_STEPS: [BlurStep; 4] = [
+    BlurStep {
+        horizontal: true,
+        sigma: 10.0,
+        output_channel: 1,
+        from_temp: false,
+    },
+    BlurStep {
+        horizontal: false,
+        sigma: 10.0,
+        output_channel: 1,
+        from_temp: true,
+    },
+    BlurStep {
+        horizontal: true,
+        sigma: 30.0,
+        output_channel: 2,
+        from_temp: false,
+    },
+    BlurStep {
+        horizontal: false,
+        sigma: 30.0,
+        output_channel: 2,
+        from_temp: true,
+    },
+];
+
+/// W2 — `water_rasterize_from_cpu`（O 0x140a12680）。返回声明的 pass（暂存非脏时为空）。
+pub fn water_rasterize_from_cpu(
+    env: &mut PassEnv<'_>,
+    staging: &mut WaterRasterStaging,
+    world_tick: u32,
+) -> Vec<RecordedComputePass> {
+    if !staging.dirty {
+        return Vec::new();
+    }
+    staging.changed_tick = world_tick;
+    staging.dirty = false;
+    staging.staging.fill(0);
+
+    let temp = env.create_texture(
+        "water blur temp",
+        TextureDesc::new_2d([WATER_MASK_GRID as u32, WATER_MASK_GRID as u32], WATER_BLUR_FORMAT),
+    );
+    BLUR_STEPS.iter().map(|step| blur_step(env, &temp, step)).collect()
+}
+
+fn blur_step(env: &mut PassEnv<'_>, temp: &RgTexture, step: &BlurStep) -> RecordedComputePass {
+    let pass = env
+        .new_pass("Blur water mask", &"/gauss_blur_mask.cs.hlsl")
+        .uniform(H_IS_HORIZONTAL, step.horizontal);
+    let pass = if step.from_temp {
+        pass.bind_texture(H_WATER_MASK, &temp, ACCESS_READ).bind_texture(
+            H_OUT_WATER_MASK,
+            &PRESET_WATER_MASK,
+            ACCESS_WRITE,
+        )
+    } else {
+        pass.bind_texture(H_WATER_MASK, &PRESET_WATER_MASK, ACCESS_READ)
+            .bind_texture(H_OUT_WATER_MASK, &temp, ACCESS_WRITE)
+    };
+    pass.uniform(H_SIGMA, step.sigma)
+        .uniform(H_OUTPUT_CHANNEL, step.output_channel)
+        .dispatch_2d(WATER_MASK_GRID as u32, WATER_MASK_GRID as u32)
+}
+
+// ---------------------------------------------------------------- W13
+
+/// 水植被生成用到的 SSBO 载体。
+pub trait WaterVegetationSsbos {
+    type Lilypad: LibrarySsbo;
+    type LilypadFlower: LibrarySsbo;
+    type Reed: LibrarySsbo;
+    /// `DrawIndexedIndirectBuffer`（`write_storage_buffer_concurrent` 的 T）。
+    type DrawCommands: LibrarySsbo;
+}
+
+pub const LILYPAD_GRID: [u32; 2] = [225, 225];
+pub const REED_GRID: [u32; 2] = [150, 150];
+pub const LILYPAD_DRAW_OFFSET: i32 = 8;
+pub const REED_DRAW_OFFSET: i32 = 9;
+/// `write_storage_buffer_concurrent` 的同步组（O：`r9d = 1`）。
+pub const DRAW_COMMANDS_GROUP: u32 = 1;
+
+/// W13 — `water_spawn_vegetation`（O 0x140a13970）。`demo_mode` = `*0x143634d90`（真则整体跳过）。
+pub fn water_spawn_vegetation<S: WaterVegetationSsbos>(
+    env: &mut PassEnv<'_>,
+    season: SeasonByte,
+    demo_mode: bool,
+) -> Vec<RecordedComputePass> {
+    if demo_mode {
+        return Vec::new();
+    }
+    let lilypads = env
+        .new_pass("Spawn lilypads", &"/water/spawn_lilypads.cs.hlsl")
+        .write_storage_buffer::<S::Lilypad>(H_LILYPAD_BUFFER)
+        .write_storage_buffer::<S::LilypadFlower>(H_LILYPAD_FLOWER_BUFFER)
+        .uniform(H_IS_AUTUMN, season.is_autumn())
+        .uniform(H_GRID_DIMS, LILYPAD_GRID)
+        .bind_texture(H_TERRAIN_HEIGHTMAP, &PRESET_TERRAIN_HEIGHT, ACCESS_READ)
+        .bind_texture(H_VISUAL_TERRAIN_HEIGHTMAP, &PRESET_VISUAL_TERRAIN_HEIGHT, ACCESS_READ)
+        .bind_texture(H_WATER_MASK, &PRESET_WATER_MASK, ACCESS_READ)
+        .bind_texture(H_PATH_MASK, &PRESET_PATH_MASK, ACCESS_READ)
+        .bind_texture(H_GARDEN_MASK, &PRESET_GARDEN_MASK, ACCESS_READ)
+        .bind_texture(H_ANIMATION, &PRESET_ANIMATION, ACCESS_WRITE)
+        .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
+        .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, LILYPAD_DRAW_OFFSET)
+        .dispatch_2d(LILYPAD_GRID[0], LILYPAD_GRID[1]);
+
+    let reeds = env
+        .new_pass("Spawn reeds", &"/water/spawn_reeds.cs.hlsl")
+        .write_storage_buffer::<S::Reed>(H_INSTANCE_BUFFER)
+        .uniform(H_GRID_DIMS, REED_GRID)
+        .bind_texture(H_TERRAIN_HEIGHTMAP, &PRESET_TERRAIN_HEIGHT, ACCESS_READ)
+        .bind_texture(H_VISUAL_TERRAIN_HEIGHTMAP, &PRESET_VISUAL_TERRAIN_HEIGHT, ACCESS_READ)
+        .bind_texture(H_WATER_MASK, &PRESET_WATER_MASK, ACCESS_READ)
+        .bind_texture(H_PATH_MASK, &PRESET_PATH_MASK, ACCESS_READ)
+        .bind_texture(
+            H_BUILDINGS_MASK_NON_BLURRED,
+            &PRESET_BUILDINGS_MASK_NON_BLURRED,
+            ACCESS_READ,
+        )
+        .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
+        .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, REED_DRAW_OFFSET)
+        .dispatch_2d(REED_GRID[0], REED_GRID[1]);
+    vec![lilypads, reeds]
 }
 
 /// 水位双线性采样入口（O：`bilinear_sample_at_world_xz<RasterBufferRef<512>>`，
 /// u8 单元 512 列；`<=0.01` 判无水——`nani_update_preplaced_flower`）。
-/// 数值语义（0..255 水位码值）U；此处以 `WorldRaster` typed-gap 呈现。
-pub fn water_level_at_xz(_raster: &WorldRaster<512>, _world_xz: glam::Vec2) -> f32 {
+/// 采样本体属 `utils::float_grid`（他人所有，尚未恢复）；`WorldRaster<512>` 在 `resources` 里是 typed gap，
+/// 读不出字节，所以这里仍返回 0.0（U，见报告）。
+pub fn water_level_at_xz(_raster: &crate::resources::world_raster::WorldRaster<512>, _world_xz: glam::Vec2) -> f32 {
     0.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::pass_builder::compute_pass_builder::DispatchMode;
+    use crate::render::pass_builder::pass_resource_access::PassBinding;
+    use crate::systems::render_loop::compute_passes::pass_kit::imm;
+    use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
+
+    struct S;
+    impl WaterVegetationSsbos for S {
+        type Lilypad = SsboA;
+        type LilypadFlower = SsboB;
+        type Reed = SsboC;
+        type DrawCommands = D;
+    }
+    #[derive(Clone, Copy, Debug, Default)]
+    struct D;
+    impl crate::render::ssbo::StorageElement for D {
+        const NAME: &'static str = "D";
+        const BUFFER_LEN: usize = 1;
+        fn default_value() -> Option<Self> {
+            Some(D)
+        }
+    }
+    impl LibrarySsbo for D {
+        type Storage = crate::render::ssbo::TypedStorageBuffer<D>;
+        fn new_storage_buffer(
+            device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+            initial: Option<&[u8]>,
+        ) -> Self::Storage {
+            match initial {
+                None => crate::render::ssbo::TypedStorageBuffer::<D>::new(device, None),
+                Some(b) => crate::render::ssbo::TypedStorageBuffer::<D>::new_storage_buffer(device, Some(b)),
+            }
+        }
+    }
+
+    fn make_env() -> Env {
+        env_with(
+            &[
+                H_WATER_MASK,
+                H_OUT_WATER_MASK,
+                H_LILYPAD_BUFFER,
+                H_LILYPAD_FLOWER_BUFFER,
+                H_INSTANCE_BUFFER,
+                H_TERRAIN_HEIGHTMAP,
+                H_VISUAL_TERRAIN_HEIGHTMAP,
+                H_PATH_MASK,
+                H_GARDEN_MASK,
+                H_ANIMATION,
+                H_BUILDINGS_MASK_NON_BLURRED,
+                H_DRAW_COMMANDS,
+            ],
+            &[
+                H_IS_HORIZONTAL,
+                H_SIGMA,
+                H_OUTPUT_CHANNEL,
+                H_IS_AUTUMN,
+                H_GRID_DIMS,
+                H_DRAW_INDIRECT_BUFFER_OFFSET,
+            ],
+            |lib, dev| {
+                lib.add_new::<SsboA>(dev);
+                lib.add_new::<SsboB>(dev);
+                lib.add_new::<SsboC>(dev);
+                lib.add_new::<D>(dev);
+            },
+        )
+    }
+
+    #[test]
+    fn hashes_are_exe_immediates() {
+        assert_eq!(H_IS_HORIZONTAL, imm(-0x26e007c8df6b43de));
+        assert_eq!(H_OUT_WATER_MASK, imm(-0x17083c584a82f898));
+        assert_eq!(H_SIGMA, imm(-0x23fdd3b0cf6d586c));
+        assert_eq!(H_OUTPUT_CHANNEL, 0x4ad76c5b9d4fae28);
+        assert_eq!(H_LILYPAD_BUFFER, 0x1de1282bcdffb385);
+        assert_eq!(H_LILYPAD_FLOWER_BUFFER, imm(-0x2f44f2d55e307ab5));
+        assert_eq!(H_INSTANCE_BUFFER, 0x6d9256d4ac7887ad);
+        assert_eq!(H_IS_AUTUMN, imm(-0x155c1f38f46dc504));
+        assert_eq!(H_GRID_DIMS, imm(-0x4ac608dbc2447ce));
+        assert_eq!(H_PATH_MASK, imm(-0x12afd000923bfde1));
+        assert_eq!(H_ANIMATION, imm(-0x6ebfffb365a48463));
+        assert_eq!(H_DRAW_COMMANDS, imm(-0xe3f85d47fed89a6));
+        assert_eq!(H_DRAW_INDIRECT_BUFFER_OFFSET, 0x0e9511a616b75789);
+        assert_eq!(H_BUILDINGS_MASK_NON_BLURRED, 0x6570181649ac6420);
+    }
+
+    #[test]
+    fn world_to_grid_maps_origin_to_cell_256() {
+        assert_eq!(world_to_water_grid(glam::Vec2::ZERO), glam::Vec2::splat(256.0));
+        assert_eq!(world_to_water_grid(glam::Vec2::splat(65.0)), glam::Vec2::splat(512.0));
+    }
+
+    #[test]
+    fn clean_staging_declares_nothing_and_touches_nothing() {
+        let mut e = make_env();
+        let mut st = WaterRasterStaging::default();
+        st.staging[3] = 9;
+        assert!(e.run(|penv| water_rasterize_from_cpu(penv, &mut st, 5)).is_empty());
+        assert!(e.frame.textures.is_empty());
+        assert_eq!((st.staging[3], st.changed_tick), (9, 0));
+    }
+
+    #[test]
+    fn dirty_staging_is_cleared_and_four_blur_passes_follow() {
+        let mut e = make_env();
+        let mut st = WaterRasterStaging {
+            dirty: true,
+            ..Default::default()
+        };
+        st.staging.fill(0xAA);
+        let passes = e.run(|penv| water_rasterize_from_cpu(penv, &mut st, 77));
+        assert!(!st.dirty);
+        assert_eq!(st.changed_tick, 77);
+        assert!(st.staging.iter().all(|b| *b == 0));
+        assert_eq!(e.frame.textures[0].0, "water blur temp");
+        let temp = e.frame.textures[0].2;
+        let d = e.frame.textures[0].1;
+        assert_eq!((d.extent, d.format), ([512, 512, 1], 0x61));
+        assert_eq!(passes.len(), 4);
+        for (p, s) in passes.iter().zip(BLUR_STEPS) {
+            assert_eq!(p.name, "Blur water mask");
+            assert!(matches!(p.dispatch, DispatchMode::Threads { x: 512, y: 512, z: 1 }));
+            assert_eq!(e.uniform_u32(p, H_IS_HORIZONTAL), u32::from(s.horizontal));
+            assert_eq!(e.uniform_f32(p, H_SIGMA), s.sigma);
+            assert_eq!(e.uniform_u32(p, H_OUTPUT_CHANNEL), s.output_channel as u32);
+        }
+        assert_eq!(e.shader_paths()[0], "/gauss_blur_mask.cs.hlsl:cs_main");
+        // 1：读预设写 temp；2：读 temp 写预设。
+        let w1 = passes[0]
+            .builder
+            .accesses
+            .iter()
+            .filter(|a| a.access == 0x32)
+            .map(|a| a.resource)
+            .collect::<Vec<_>>();
+        let r2 = passes[1]
+            .builder
+            .accesses
+            .iter()
+            .filter(|a| a.access == 0x19)
+            .map(|a| a.resource)
+            .collect::<Vec<_>>();
+        assert_eq!(w1, [temp.resource]);
+        assert_eq!(r2, [temp.resource]);
+        assert_eq!(
+            BLUR_STEPS.map(|s| (s.sigma, s.output_channel)),
+            [(10.0, 1), (10.0, 1), (30.0, 2), (30.0, 2)]
+        );
+    }
+
+    #[test]
+    fn vegetation_two_passes_with_original_grid_and_offsets() {
+        let mut e = make_env();
+        let passes = e.run(|penv| water_spawn_vegetation::<S>(penv, SeasonByte(3), false));
+        let names: Vec<_> = passes.iter().map(|p| p.name).collect();
+        assert_eq!(names, ["Spawn lilypads", "Spawn reeds"]);
+        assert!(matches!(
+            passes[0].dispatch,
+            DispatchMode::Threads { x: 225, y: 225, z: 1 }
+        ));
+        assert!(matches!(
+            passes[1].dispatch,
+            DispatchMode::Threads { x: 150, y: 150, z: 1 }
+        ));
+        assert_eq!(
+            e.shader_paths().as_slice(),
+            [
+                "/water/spawn_lilypads.cs.hlsl:cs_main",
+                "/water/spawn_reeds.cs.hlsl:cs_main"
+            ]
+        );
+        assert_eq!(e.uniform_u32(&passes[0], H_IS_AUTUMN), 1);
+        assert_eq!(e.uniform_u32(&passes[0], H_DRAW_INDIRECT_BUFFER_OFFSET), 8);
+        assert_eq!(e.uniform_u32(&passes[1], H_DRAW_INDIRECT_BUFFER_OFFSET), 9);
+        assert_eq!(e.uniform_u32(&passes[1], H_IS_AUTUMN), 0, "reeds 不写 is_autumn");
+        // lilypad：ctor + 2 SSBO + 5 读 + 1 写纹理 + draw_commands = 10 个绑定；reed：1 + 1 + 5 + 1 = 8。
+        assert_eq!(passes[0].bindings.len(), 10);
+        assert_eq!(passes[1].bindings.len(), 8);
+        // draw_commands 同步组 = 1。
+        assert_eq!(passes[0].builder.accesses.last().map(|a| a.group), Some(1));
+        assert!(matches!(passes[0].bindings.last(), Some(PassBinding::Buffer { .. })));
+    }
+
+    #[test]
+    fn demo_mode_skips_vegetation_and_non_autumn_clears_flag() {
+        let mut e = make_env();
+        assert!(
+            e.run(|penv| water_spawn_vegetation::<S>(penv, SeasonByte(3), true))
+                .is_empty()
+        );
+        assert_eq!(e.world.backend.loads.get(), 0);
+        let p = e.run(|penv| water_spawn_vegetation::<S>(penv, SeasonByte(4), false));
+        assert_eq!(e.uniform_u32(&p[0], H_IS_AUTUMN), 0);
+    }
 }

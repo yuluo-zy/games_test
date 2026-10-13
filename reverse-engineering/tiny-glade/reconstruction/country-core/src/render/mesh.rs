@@ -1,303 +1,175 @@
-//! `Mesh` / `VertexAttributeValues` — CPU mesh container (WP4-owned type).
+//! `Mesh` / `VertexAttributeValues` — CPU mesh container (layer A1).
 //!
-//! Skeleton bundle: `skeleton/B/crates/country-core/src/render/mesh.rs`
-//! (source_sha256 `e8e64685…`; 30 procedures; modules 476/…/537/544/…).
-//! Decompiles: `B_0x140a07390.c …`, `evidence/building-gates/B-mesh-extra/140a34c90.c`.
-//!
-//! `Mesh` is 0x78 = 120 bytes (O: `AssetMeshLibrary::add` box memcpy of 15 u64s).
-//! `indices` lives at +0x00, the attribute map (RandomState hash map) starts at
-//! +0x28 with buckets +0x38 / mask +0x40 / items +0x50. Fields +0x18/+0x20 and
-//! +0x58..+0x70 are typed gaps.
+//! 证据（O，逐条核对机器码；详见 `evidence/country-core-audit/L0_NOTES.md`）：
+//!  * `Mesh` 0x78 B：`indices: Vec<u32>` @0x00、`source_file: Option<(String, 8 B)>` @0x18（None = cap 取 `i64::MIN`，
+//!    32 B）、`attributes: HashMap<String, VertexAttributeValues, RandomState>` @0x38（hashbrown 表 0x38..0x58 +
+//!    SipHash 密钥 0x58..0x68，桶 0x38 B：key String @0 + 值 @0x18）、`label: &'static str` @0x68（I）。
+//!    `Mesh::new` 0x140a07390 取 `(label)`，表为空、密钥来自线程局部 `RandomState`。
+//!  * `VertexAttributeValues`：判别式 **Int=0, Float=1, Float2=2, Float3=3, Float4=4**（`set_attribute<Vec<T>>`
+//!    的写入立即数、`append` 跳转表、`build_vao` 的元素大小 4/4/8/12/16 三处互证）；Vec 在 +0x08（cap/ptr/len）。
+//!    旧版 `__GapUnlisted` 变体不存在。
+//!  * `From<Vec<[f32;2]>>`/`From<Vec<[f32;3]>>`（impl$6/impl$7 0x140a0db00/0x140a0db90）：`assert!(!v.is_empty())`。
+//!    `set_attribute<Vec<T>>` 内联了同一断言；`set_attribute<VertexAttributeValues>` 不检查。
+//!  * 取属性的方法一律：表为空/键缺失 → `Option::unwrap` panic；判别式不符 → panic `"incorrect attribute type"`
+//!    （`crates/country-core/src/render/mesh.rs`）。旧版把缺失当作空切片，是错的。
 
 use std::collections::HashMap;
 
 use glam::{Vec2, Vec3, Vec4};
 
-use crate::utils_contract::{Aabb3, Triangle};
+use crate::utils_contract::{Aabb3, Rectangle2d, Triangle};
 
-/// Vertex attribute key used by the game's mesh loader for positions (O:
-/// 15-char `"Vertex_Position"` compared bytewise in `positions`).
+/// 原版字符串（O：`positions` 比较 15 字节 `"Vertex_Position"`；`normals…` 13 字节；`uvs…` 9 字节；
+/// `add_color` 写入 12 字节 `"Vertex_Color"`）。
 pub const ATTR_POSITION: &str = "Vertex_Position";
-/// Inferred names (I) for the other standard attributes.
 pub const ATTR_NORMAL: &str = "Vertex_Normal";
 pub const ATTR_UV: &str = "Vertex_UV";
 pub const ATTR_COLOR: &str = "Vertex_Color";
 
-/// Per-vertex attribute payload. Enum discriminants observed: 0/1 = f32-ish,
-/// 2 = `Vec<[f32;2]>` (uvs), 3 = `Vec<[f32;3]>` (positions/normals/colors),
-/// 4 = `Vec<[f32;4]>`, i32 = `Vec<i32>` (I; exact order beyond 3 is a typed gap).
-#[derive(Clone, Debug)]
+/// 单个顶点属性的数据（判别式见模块注释）。
+#[derive(Clone, Debug, PartialEq)]
 pub enum VertexAttributeValues {
+    Int(Vec<i32>),
     Float(Vec<f32>),
     Float2(Vec<Vec2>),
     Float3(Vec<Vec3>),
     Float4(Vec<Vec4>),
-    Int(Vec<i32>),
-    /// Typed gap: additional variants exist in the original (O: `append`
-    /// dispatches through a jump table with more than these arms).
-    #[doc(hidden)]
-    __GapUnlisted(Vec<u8>, usize),
 }
 
 impl VertexAttributeValues {
-    /// `array_length` — element count of the backing vector (O: 0x140949170).
+    /// 元素个数（O：所有变体的 len 都在 +0x18）。
     pub fn array_length(&self) -> usize {
         match self {
-            VertexAttributeValues::Float(v) => v.len(),
-            VertexAttributeValues::Float2(v) => v.len(),
-            VertexAttributeValues::Float3(v) => v.len(),
-            VertexAttributeValues::Float4(v) => v.len(),
-            VertexAttributeValues::Int(v) => v.len(),
-            VertexAttributeValues::__GapUnlisted(v, _) => v.len(),
+            Self::Int(v) => v.len(),
+            Self::Float(v) => v.len(),
+            Self::Float2(v) => v.len(),
+            Self::Float3(v) => v.len(),
+            Self::Float4(v) => v.len(),
         }
     }
 
-    /// `stride` — bytes per element (I from variant type).
+    /// 每元素字节数（O：4/4/8/12/16）。
     pub fn stride(&self) -> usize {
         match self {
-            VertexAttributeValues::Float(_) => core::mem::size_of::<f32>(),
-            VertexAttributeValues::Float2(_) => core::mem::size_of::<Vec2>(),
-            VertexAttributeValues::Float3(_) => core::mem::size_of::<Vec3>(),
-            VertexAttributeValues::Float4(_) => core::mem::size_of::<Vec4>(),
-            VertexAttributeValues::Int(_) => core::mem::size_of::<i32>(),
-            VertexAttributeValues::__GapUnlisted(_, s) => *s,
+            Self::Int(_) | Self::Float(_) => 4,
+            Self::Float2(_) => 8,
+            Self::Float3(_) => 12,
+            Self::Float4(_) => 16,
         }
     }
 
-    /// `size_in_bytes` — total byte length (I).
     pub fn size_in_bytes(&self) -> usize {
-        self.array_length().wrapping_mul(self.stride())
+        self.array_length() * self.stride()
     }
 
-    /// `component_count` (I).
-    pub fn component_count(&self) -> usize {
-        match self {
-            VertexAttributeValues::Float(_) | VertexAttributeValues::Int(_) => 1,
-            VertexAttributeValues::Float2(_) => 2,
-            VertexAttributeValues::Float3(_) => 3,
-            VertexAttributeValues::Float4(_) => 4,
-            VertexAttributeValues::__GapUnlisted(_, _) => 0,
-        }
-    }
-
-    /// `append` — extend with `other` (O: 0x140a08440; different variants → panic).
-    pub fn append(&mut self, other: &VertexAttributeValues) {
-        let same_variant = core::mem::discriminant(self) == core::mem::discriminant(other);
-        if !same_variant {
-            panic!("cannot append different attribute types");
-        }
-        match (self, other) {
-            (VertexAttributeValues::Float(a), VertexAttributeValues::Float(b)) => {
-                a.extend_from_slice(b)
-            }
-            (VertexAttributeValues::Float2(a), VertexAttributeValues::Float2(b)) => {
-                a.extend_from_slice(b)
-            }
-            (VertexAttributeValues::Float3(a), VertexAttributeValues::Float3(b)) => {
-                a.extend_from_slice(b)
-            }
-            (VertexAttributeValues::Float4(a), VertexAttributeValues::Float4(b)) => {
-                a.extend_from_slice(b)
-            }
-            (VertexAttributeValues::Int(a), VertexAttributeValues::Int(b)) => {
-                a.extend_from_slice(b)
-            }
-            _ => {}
+    /// `append`（O 0x140a08440）：判别式相同 → `extend_from_slice`；不同 →
+    /// `panic!("vertex attribute mismatch: self: {:?}, src: {:?}", discriminant(self), discriminant(src))`。
+    pub fn append(&mut self, src: &VertexAttributeValues) {
+        match (&mut *self, src) {
+            (Self::Int(a), Self::Int(b)) => a.extend_from_slice(b),
+            (Self::Float(a), Self::Float(b)) => a.extend_from_slice(b),
+            (Self::Float2(a), Self::Float2(b)) => a.extend_from_slice(b),
+            (Self::Float3(a), Self::Float3(b)) => a.extend_from_slice(b),
+            (Self::Float4(a), Self::Float4(b)) => a.extend_from_slice(b),
+            _ => panic!(
+                "vertex attribute mismatch: self: {:?}, src: {:?}",
+                core::mem::discriminant(self),
+                core::mem::discriminant(src)
+            ),
         }
     }
 
-    /// `retain_by_index` — keep elements where `f(i)` holds (O: 0x140a36110,
-    /// used by `Mesh::retain_vertices`).
-    pub fn retain_by_index<F>(&mut self, mut f: F)
-    where
-        F: FnMut(usize) -> bool,
-    {
-        match self {
-            VertexAttributeValues::Float(v) => {
-                for i in (0..v.len()).rev() {
-                    if !f(i) {
-                        v.remove(i);
-                    }
-                }
-            }
-            VertexAttributeValues::Float2(v) => {
-                for i in (0..v.len()).rev() {
-                    if !f(i) {
-                        v.remove(i);
-                    }
-                }
-            }
-            VertexAttributeValues::Float3(v) => {
-                for i in (0..v.len()).rev() {
-                    if !f(i) {
-                        v.remove(i);
-                    }
-                }
-            }
-            VertexAttributeValues::Float4(v) => {
-                for i in (0..v.len()).rev() {
-                    if !f(i) {
-                        v.remove(i);
-                    }
-                }
-            }
-            VertexAttributeValues::Int(v) => {
-                for i in (0..v.len()).rev() {
-                    if !f(i) {
-                        v.remove(i);
-                    }
-                }
-            }
-            VertexAttributeValues::__GapUnlisted(_v, _) => {
-                let _ = f;
-                // U: unknown variant payload semantics.
-            }
+    /// `retain_by_index`（O 0x140a36110）：对各变体做 `Vec::retain`，谓词收到从 0 起的元素序号。
+    pub fn retain_by_index(&mut self, mut f: impl FnMut(usize) -> bool) {
+        fn go<T>(v: &mut Vec<T>, f: &mut impl FnMut(usize) -> bool) {
+            let mut i = 0usize;
+            v.retain(|_| {
+                let keep = f(i);
+                i += 1;
+                keep
+            });
         }
-    }
-
-    pub fn as_f32(&self) -> &[f32] {
         match self {
-            VertexAttributeValues::Float(v) => v,
-            _ => panic!("attribute is not f32"),
-        }
-    }
-    pub fn as_f32x2(&self) -> &[Vec2] {
-        match self {
-            VertexAttributeValues::Float2(v) => v,
-            _ => panic!("attribute is not f32x2"),
-        }
-    }
-    pub fn as_f32x3(&self) -> &[Vec3] {
-        match self {
-            VertexAttributeValues::Float3(v) => v,
-            _ => panic!("attribute is not f32x3"),
-        }
-    }
-    pub fn as_f32x4(&self) -> &[Vec4] {
-        match self {
-            VertexAttributeValues::Float4(v) => v,
-            _ => panic!("attribute is not f32x4"),
-        }
-    }
-    pub fn as_i32(&self) -> &[i32] {
-        match self {
-            VertexAttributeValues::Int(v) => v,
-            _ => panic!("attribute is not i32"),
+            Self::Int(v) => go(v, &mut f),
+            Self::Float(v) => go(v, &mut f),
+            Self::Float2(v) => go(v, &mut f),
+            Self::Float3(v) => go(v, &mut f),
+            Self::Float4(v) => go(v, &mut f),
         }
     }
 }
 
 macro_rules! impl_from_vec {
-    ($($ty:ident => $var:ident),* $(,)?) => {
-        $(
-            impl From<Vec<$ty>> for VertexAttributeValues {
-                fn from(v: Vec<$ty>) -> Self {
-                    VertexAttributeValues::$var(v)
-                }
+    ($($ty:ty => $var:ident),* $(,)?) => {$(
+        impl From<Vec<$ty>> for VertexAttributeValues {
+            /// 仅 Float2/Float3 有独立符号（O），其余在 `set_attribute<Vec<T>>` 内联；断言一致。
+            fn from(v: Vec<$ty>) -> Self {
+                assert!(!v.is_empty(), "assertion failed: !v.is_empty()");
+                Self::$var(v)
             }
-        )*
-    };
+        }
+    )*};
 }
-impl_from_vec! {
-    f32 => Float,
-    Vec2 => Float2,
-    Vec3 => Float3,
-    Vec4 => Float4,
-    i32 => Int,
+impl_from_vec! { i32 => Int, f32 => Float, Vec2 => Float2, Vec3 => Float3, Vec4 => Float4 }
+
+/// `source_file` 的载荷（O：32 B，首字为 String cap）。后 8 字节含义 U（I：文件修改时间）。
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceFile {
+    pub path: String,
+    pub stamp: u64,
 }
 
-/// CPU mesh container (O: 0x78 bytes; indices at +0x00, attribute map at +0x28).
-#[derive(Default, Debug)]
+/// `Mesh::collision_bbx` 的返回值（O：`Rectangle2d`(0x18 B) + `min.y` @0x18 + `max.y` @0x1c）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CollisionBbx {
+    pub rect: Rectangle2d,
+    pub min_y: f32,
+    pub max_y: f32,
+}
+
+/// CPU 网格（O：`MeshAtlas::add` 首个 mesh 走整体克隆，含属性表 `hashbrown::clone` 与 `source_file`）。
+#[derive(Debug, Clone)]
 pub struct Mesh {
     pub indices: Vec<u32>,
-    /// +0x18/+0x20 in the original layout. Semantics U (typed gap).
-    _opaque_a: u64,
-    _opaque_b: u64,
-    /// Name-keyed attributes (`HashMap<String, VertexAttributeValues>`).
+    pub source_file: Option<SourceFile>,
     pub attributes: HashMap<String, VertexAttributeValues>,
-    /// +0x58..+0x70 in the original layout. Semantics U (typed gap).
-    _opaque_c: u64,
-    _opaque_d: u64,
-    _opaque_e: u64,
+    /// +0x68：`Mesh::new` 的参数（I：调试标签）。
+    pub label: &'static str,
+}
+
+impl Default for Mesh {
+    fn default() -> Self {
+        Mesh::new("")
+    }
 }
 
 impl Mesh {
-    /// `Mesh::new` — empty mesh (O: 0x140a07390; empty indices + empty attributes).
-    pub fn new(_source_file: Option<String>) -> Self {
-        Mesh::default()
+    /// `Mesh::new`（O 0x140a07390）：空索引、`source_file = None`、空属性表。
+    pub fn new(label: &'static str) -> Self {
+        Mesh { indices: Vec::new(), source_file: None, attributes: HashMap::new(), label }
     }
 
-    /// `set_source_file` (O: 0x140a07440).
-    pub fn set_source_file(&mut self, _path: String) {
-        // O: trivial store into the +0x68/+0x70 region (typed gap).
+    /// `set_source_file`（O 0x140a07440）：释放旧值后整体覆盖。
+    pub fn set_source_file(&mut self, file: SourceFile) {
+        self.source_file = Some(file);
     }
 
-    /// `is_valid` (I).
-    pub fn is_valid(&self) -> bool {
-        !self.indices.is_empty() && self.has_attribute(ATTR_POSITION)
-    }
-
-    /// `has_attribute` (O name; U body).
     pub fn has_attribute(&self, name: &str) -> bool {
         self.attributes.contains_key(name)
     }
 
-    /// `set_indices` — replaces the index buffer (O: 0x140a07490).
+    /// `set_indices`（O 0x140a07490）：释放旧缓冲并接管新 Vec。
     pub fn set_indices(&mut self, indices: Vec<u32>) {
         self.indices = indices;
     }
 
-    /// `arrayed_indices` — triples the flat index list (O: 0x140a074d0).
+    /// `arrayed_indices`（O 0x140a074d0）：`chunks_exact(3)`，尾部不足 3 个的被丢弃。
     pub fn arrayed_indices(&self) -> Vec<[u32; 3]> {
-        self.indices
-            .chunks_exact(3)
-            .map(|c| [c[0], c[1], c[2]])
-            .collect()
+        self.indices.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
     }
 
-    /// `vertex_count` (I).
-    pub fn vertex_count(&self) -> usize {
-        self.positions().1.len()
-    }
-
-    /// `positions` — `(&indices-slice-range, &[[f32;3]])` (O: 0x140a07b30).
-    /// Missing/incorrect `Vertex_Position` attribute → panic (`unwrap_failed`).
-    pub fn positions(&self) -> (&[u32], &[Vec3]) {
-        let pos = self
-            .attributes
-            .get(ATTR_POSITION)
-            .unwrap_or_else(|| panic!("Mesh has no {} attribute", ATTR_POSITION));
-        match pos {
-            VertexAttributeValues::Float3(v) => (&self.indices, v),
-            _ => panic!("{} attribute is not f32x3", ATTR_POSITION),
-        }
-    }
-
-    /// `positions_without_indices` (O: 0x140a07ca0).
-    pub fn positions_without_indices(&self) -> &[Vec3] {
-        self.positions().1
-    }
-
-    /// `normals_without_indices` (O: 0x140a07e00; name inferred).
-    pub fn normals_without_indices(&self) -> &[Vec3] {
-        match self.attributes.get(ATTR_NORMAL) {
-            Some(VertexAttributeValues::Float3(v)) => v,
-            _ => &[],
-        }
-    }
-
-    /// `uvs_without_indices` (O: 0x140a07f50; name inferred).
-    pub fn uvs_without_indices(&self) -> &[Vec2] {
-        match self.attributes.get(ATTR_UV) {
-            Some(VertexAttributeValues::Float2(v)) => v,
-            _ => &[],
-        }
-    }
-
-    /// `set_attribute` — insert/replace a named attribute (O: 0x140a34170 &
-    /// variants). Replaces in place when the name already exists (deallocates the
-    /// old value and writes the new discriminant + Vec), else inserts a clone of
-    /// the name with the value.
+    /// `set_attribute`（O 0x140a34170 …共 8 个单态化）：键已存在 → 原位替换值（旧 Vec 释放，键不重建）；
+    /// 否则复制键并插入。`Vec<T>` 入口带非空断言（见 `From`），`VertexAttributeValues` 入口不带。
     pub fn set_attribute(&mut self, name: &str, values: impl Into<VertexAttributeValues>) {
         let values = values.into();
         match self.attributes.get_mut(name) {
@@ -308,115 +180,246 @@ impl Mesh {
         }
     }
 
-    /// `add_color` — paint every vertex a uniform color (O: 0x140a07540):
-    /// reads `Vertex_Position` count, builds `from_elem(color, n)`, sets
-    /// `Vertex_Color`.
+    fn attr(&self, name: &str) -> &VertexAttributeValues {
+        self.attributes.get(name).expect("called `Option::unwrap()` on a `None` value")
+    }
+
+    fn attr_f3(&self, name: &str) -> &[Vec3] {
+        match self.attr(name) {
+            VertexAttributeValues::Float3(v) => v,
+            _ => panic!("incorrect attribute type"),
+        }
+    }
+
+    /// `positions`（O 0x140a07b30）：`(索引, 位置)`；缺失 → unwrap panic，类型不符 → "incorrect attribute type"。
+    pub fn positions(&self) -> (&[u32], &[Vec3]) {
+        (&self.indices, self.attr_f3(ATTR_POSITION))
+    }
+
+    /// O 0x140a07ca0。
+    pub fn positions_without_indices(&self) -> &[Vec3] {
+        self.attr_f3(ATTR_POSITION)
+    }
+
+    /// O 0x140a07e00（键 `Vertex_Normal`，Float3）。
+    pub fn normals_without_indices(&self) -> &[Vec3] {
+        self.attr_f3(ATTR_NORMAL)
+    }
+
+    /// O 0x140a07f50（键 `Vertex_UV`，Float2）。
+    pub fn uvs_without_indices(&self) -> &[Vec2] {
+        match self.attr(ATTR_UV) {
+            VertexAttributeValues::Float2(v) => v,
+            _ => panic!("incorrect attribute type"),
+        }
+    }
+
+    /// `add_color`（O 0x140a07540）：`n` = 位置属性的元素个数（**不检查判别式**），
+    /// `set_attribute("Vertex_Color", vec![color; n])`；n == 0 时由 `From` 的非空断言 panic。
     pub fn add_color(&mut self, color: Vec3) {
-        let n = self.positions().1.len();
+        let n = self.attr(ATTR_POSITION).array_length();
         self.set_attribute(ATTR_COLOR, vec![color; n]);
     }
 
-    /// `add_color_self` — per-vertex color derived from position (O:
-    /// 0x140a07680; exact formula U).
-    pub fn add_color_self(&mut self) {
-        let positions = self.positions().1.to_vec();
-        let colors: Vec<Vec3> = positions
-            .iter()
-            .map(|p| Vec3::new(p.x, p.y, p.z)) // U: color function not recovered
-            .collect();
-        self.set_attribute(ATTR_COLOR, colors);
+    /// `add_color_self`（O 0x140a07680）：按值接收并返回 `Mesh` 的 builder 形态 —— 做 `add_color` 后
+    /// 整体（0x78 B）搬出。旧版把它当成“按位置着色”是错的。
+    pub fn add_color_self(mut self, color: Vec3) -> Self {
+        self.add_color(color);
+        self
     }
 
-    /// `aabb_bounds` — axis-aligned bounding box of positions (O: 0x140a07870).
-    /// Empty → `Aabb3 { min: +FLT_MAX, max: -FLT_MAX }`.
+    /// `aabb_bounds`（O 0x140a07870）：位置为空 → `{min: +MAX, max: -MAX}`；否则以首点为初值，
+    /// 其余点 `expand_to_contain_point`。
     pub fn aabb_bounds(&self) -> Aabb3 {
-        let positions = self.positions().1;
-        let mut bounds = Aabb3::empty();
-        for p in positions {
-            bounds.expand_to_contain_point(*p);
+        let pos = self.attr_f3(ATTR_POSITION);
+        let Some((&first, rest)) = pos.split_first() else {
+            return Aabb3::empty();
+        };
+        let mut b = Aabb3 { min: first, max: first };
+        for &p in rest {
+            b.expand_to_contain_point(p);
         }
-        bounds
+        b
     }
 
-    /// `collision_bbx` — collision bounding box (O: 0x140a07a70; xz-extended
-    /// variant used by the game's physics queries).
-    pub fn collision_bbx(&self) -> Aabb3 {
-        self.aabb_bounds()
+    /// `collision_bbx`（O 0x140a07a70）：`aabb_bounds` 的 xz 投影矩形（宽 = extent.x、长 = extent.z、
+    /// 中心 = (center.x, center.z)，轴对齐）加上 y 范围。
+    pub fn collision_bbx(&self) -> CollisionBbx {
+        let b = self.aabb_bounds();
+        let (e, c) = (b.extent(), b.center());
+        CollisionBbx {
+            rect: Rectangle2d::new_axis_aligned(e.x, e.z, Vec2::new(c.x, c.z)),
+            min_y: b.min.y,
+            max_y: b.max.y,
+        }
     }
 
-    /// `collision_radius_xz` — max `sqrt(x²+z²)` over vertices (O: 0x140a081e0).
+    /// `collision_radius_xz`（O 0x140a081e0）：遍历**索引**（不是顶点）取 `sqrt(x²+z²)` 的最大值，初值 0；
+    /// 索引越界 panic（`panic_bounds_check`）。
     pub fn collision_radius_xz(&self) -> f32 {
-        let (indices, positions) = self.positions();
-        let mut max_r = 0.0f32;
-        for &i in indices {
-            let p = positions[i as usize];
-            max_r = max_r.max((p.x * p.x + p.z * p.z).sqrt());
-        }
-        max_r
+        let (indices, pos) = self.positions();
+        indices.iter().fold(0.0f32, |m, &i| {
+            let p = pos[i as usize];
+            m.max((p.x * p.x + p.z * p.z).sqrt())
+        })
     }
 
-    /// `as_triangles` — collect index triples as `Triangle`s (O: 0x140a08280).
+    /// `as_triangles`（O 0x140a08280）：`chunks_exact(3)`，每组按位置表取三点（越界 panic）。
     pub fn as_triangles(&self) -> Vec<Triangle> {
-        let (indices, positions) = self.positions();
+        let (indices, pos) = self.positions();
         indices
             .chunks_exact(3)
-            .map(|c| {
-                Triangle::new(
-                    positions[c[0] as usize],
-                    positions[c[1] as usize],
-                    positions[c[2] as usize],
-                )
-            })
+            .map(|c| Triangle::new(pos[c[0] as usize], pos[c[1] as usize], pos[c[2] as usize]))
             .collect()
     }
 
-    /// `retain_vertices` — compact vertices (O: 0x140a08090).
-    ///
-    /// `vertex_flags` is `&mut [i32]` where 1 = keep, 0 = drop. On return each
-    /// entry is the new vertex index (kept) or -1 (dropped); indices are
-    /// rewritten to the compacted numbering (panic if an index pointed at a
-    /// dropped vertex).
-    pub fn retain_vertices(&mut self, vertex_flags: &mut [i32]) {
-        // 1. Keep only indices that reference kept vertices.
-        self.indices
-            .retain(|&i| vertex_flags.get(i as usize).copied().unwrap_or(0) == 1);
-
-        // 2. Compact each attribute by the keep mask.
-        let attr_names: Vec<String> = self.attributes.keys().cloned().collect();
-        for name in attr_names {
-            if let Some(values) = self.attributes.get_mut(&name) {
-                let flags = vertex_flags.to_vec();
-                values.retain_by_index(|i| flags.get(i).copied().unwrap_or(0) == 1);
-            }
+    /// `retain_vertices`（O 0x140a08090）。`flags[v] == 1` 保留顶点 v，其余删除。顺序：
+    ///  1. `indices.retain(|i| flags[i] == 1)`（越界 panic）；
+    ///  2. 每个属性 `retain_by_index(|k| flags[k] == 1)`（越界 panic）；
+    ///  3. 把 `flags` 就地改成“新顶点序号，被删除者为 -1”；
+    ///  4. 索引经 `flags` 重映射，结果为 -1 → `assert!(remapped != u32::MAX)`。
+    pub fn retain_vertices(&mut self, flags: &mut [i32]) {
+        self.indices.retain(|&i| flags[i as usize] == 1);
+        for v in self.attributes.values_mut() {
+            v.retain_by_index(|k| flags[k] == 1);
         }
-
-        // 3. Rewrite flags → new index (or -1).
         let mut next = 0i32;
-        for f in vertex_flags.iter_mut() {
-            if *f == 1 {
-                *f = next;
-                next += 1;
-            } else {
-                *f = -1;
-            }
+        for f in flags.iter_mut() {
+            let keep = *f == 1;
+            *f = if keep { next } else { -1 };
+            next += keep as i32;
         }
-
-        // 4. Rewrite indices through the remap.
-        for idx in self.indices.iter_mut() {
-            let new = vertex_flags[*idx as usize];
-            assert!(new >= 0, "index references a removed vertex");
-            *idx = new as u32;
+        for i in self.indices.iter_mut() {
+            let remapped = flags[*i as usize] as u32;
+            assert!(remapped != u32::MAX, "assertion failed: remapped != u32::MAX");
+            *i = remapped;
         }
     }
 
-    /// `clear` (O name).
-    pub fn clear(&mut self) {
-        self.indices.clear();
-        self.attributes.clear();
+    /// `translate_hack_slow_dont_use`（PDB 名为 O，无独立符号 → 已内联；行为 I：平移全部位置）。
+    pub fn translate_hack_slow_dont_use(&mut self, offset: Vec3) {
+        if let Some(VertexAttributeValues::Float3(v)) = self.attributes.get_mut(ATTR_POSITION) {
+            v.iter_mut().for_each(|p| *p += offset);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn quad() -> Mesh {
+        let mut m = Mesh::new("quad");
+        m.set_attribute(
+            ATTR_POSITION,
+            vec![Vec3::new(0.0, 1.0, 0.0), Vec3::new(2.0, 3.0, 0.0), Vec3::new(2.0, 5.0, 4.0), Vec3::new(0.0, 0.0, 4.0)],
+        );
+        m.set_indices(vec![0, 1, 2, 0, 2, 3]);
+        m
     }
 
-    /// `translate_hack_slow_dont_use` (O name; U body).
-    pub fn translate_hack_slow_dont_use(&mut self, _offset: Vec3) {
-        // U: not recovered (inline).
+    #[test]
+    fn tags_and_strides() {
+        use VertexAttributeValues as V;
+        let d = |v: &V| format!("{:?}", core::mem::discriminant(v));
+        assert_eq!(d(&V::Int(vec![1])), "Discriminant(0)");
+        assert_eq!(d(&V::Float4(vec![Vec4::ONE])), "Discriminant(4)");
+        assert_eq!(V::Float3(vec![Vec3::ONE; 2]).size_in_bytes(), 24);
+    }
+
+    #[test]
+    #[should_panic(expected = "!v.is_empty()")]
+    fn from_vec_rejects_empty() {
+        let _ = VertexAttributeValues::from(Vec::<Vec3>::new());
+    }
+
+    #[test]
+    #[should_panic(expected = "vertex attribute mismatch: self: Discriminant(2), src: Discriminant(3)")]
+    fn append_mismatch_panics_with_discriminants() {
+        let mut a = VertexAttributeValues::Float2(vec![Vec2::ZERO]);
+        a.append(&VertexAttributeValues::Float3(vec![Vec3::ZERO]));
+    }
+
+    #[test]
+    fn append_same_kind() {
+        let mut a = VertexAttributeValues::Float(vec![1.0]);
+        a.append(&VertexAttributeValues::Float(vec![2.0, 3.0]));
+        assert_eq!(a, VertexAttributeValues::Float(vec![1.0, 2.0, 3.0]));
+    }
+
+    #[test]
+    fn missing_or_wrong_attribute_panics() {
+        let m = Mesh::new("x");
+        assert!(std::panic::catch_unwind(|| Mesh::new("x").positions_without_indices().len()).is_err());
+        assert!(!m.has_attribute(ATTR_UV));
+        let mut m = quad();
+        m.set_attribute(ATTR_UV, VertexAttributeValues::Float3(vec![Vec3::ZERO]));
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| m.uvs_without_indices().len()));
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn add_color_and_builder() {
+        let m = quad().add_color_self(Vec3::new(0.1, 0.2, 0.3));
+        match &m.attributes[ATTR_COLOR] {
+            VertexAttributeValues::Float3(c) => assert_eq!((c.len(), c[3]), (4, Vec3::new(0.1, 0.2, 0.3))),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn set_attribute_replaces_in_place() {
+        let mut m = quad();
+        m.set_attribute(ATTR_POSITION, vec![Vec3::X]);
+        assert_eq!(m.attributes.len(), 1);
+        assert_eq!(m.positions_without_indices(), &[Vec3::X]);
+    }
+
+    #[test]
+    fn bounds_and_collision() {
+        let m = quad();
+        let b = m.aabb_bounds();
+        assert_eq!((b.min, b.max), (Vec3::new(0.0, 0.0, 0.0), Vec3::new(2.0, 5.0, 4.0)));
+        let c = m.collision_bbx();
+        assert_eq!((c.rect.width, c.rect.length, c.rect.center), (2.0, 4.0, Vec2::new(1.0, 2.0)));
+        assert_eq!((c.min_y, c.max_y), (0.0, 5.0));
+        assert_eq!(c.rect.direction, Vec2::X);
+        assert_eq!(m.collision_radius_xz(), (2.0f32 * 2.0 + 4.0 * 4.0).sqrt());
+    }
+
+    #[test]
+    fn empty_positions_give_inverted_box() {
+        let mut m = Mesh::new("e");
+        m.attributes.insert(ATTR_POSITION.into(), VertexAttributeValues::Float3(vec![]));
+        assert_eq!(m.aabb_bounds(), Aabb3::empty());
+    }
+
+    #[test]
+    fn triangles_and_arrayed_indices_drop_remainder() {
+        let mut m = quad();
+        m.indices.push(9); // 7 个索引，最后一个落在不足 3 个的尾部
+        assert_eq!(m.arrayed_indices(), vec![[0, 1, 2], [0, 2, 3]]);
+        assert_eq!(m.as_triangles().len(), 2);
+    }
+
+    #[test]
+    fn retain_vertices_remaps_flags_and_indices() {
+        let mut m = quad();
+        m.set_attribute(ATTR_COLOR, vec![Vec3::ONE; 4]);
+        m.set_indices(vec![0, 2, 3]);
+        let mut flags = [1, 0, 1, 1];
+        m.retain_vertices(&mut flags);
+        assert_eq!(flags, [0, -1, 1, 2]);
+        assert_eq!(m.indices, vec![0, 1, 2]);
+        assert_eq!(m.positions_without_indices().len(), 3);
+        assert_eq!(m.attributes[ATTR_COLOR].array_length(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn retain_vertices_out_of_range_index_panics() {
+        let mut m = quad();
+        m.set_indices(vec![0, 7, 1]);
+        m.retain_vertices(&mut [1, 1, 1, 1]);
     }
 }
