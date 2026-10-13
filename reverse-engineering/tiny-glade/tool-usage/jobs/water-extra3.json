@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\n# scan executable memory for the disp32 0x29b / 0x29a byte-operand patterns\n# patterns: c6/c0/c1? <modrm> 9b 02 00 00 <imm>   (MOV byte [reg+0x29b], imm)\n#           80 <modrm> 9b 02 00 00 <imm>          (CMP byte [reg+0x29b], imm)\nfm = prog.getFunctionManager()\nhits = {}\ndef scan(mem, pattern, tag):\n    try:\n        it = mem.findBytes(pattern, None, True, monitor)\n        while it.hasNext():\n            monitor.checkCancelled()\n            addr = it.next()\n            f = fm.getFunctionContaining(addr)\n            fname = str(f.getName()) if f else \"\"\n            faddr = str(f.getEntryPoint()) if f else \"\"\n            hits.setdefault(faddr, {})[tag] = hits.setdefault(faddr, {}).get(tag, 0) + 1\n    except Exception as e:\n        out[\"err_\"+tag] = str(e)\nmem = prog.getMemory()\nscan(mem, bytes([0x9b,0x02,0x00,0x00]), \"0x29b_disp32\")\nout[\"hits\"] = hits\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 600
+    },
+    "timeout_seconds": 660
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter-extra/\"\nprog = currentProgram\nADDRS = {\n  \"0x1422d4870\": \"construct_inter_roof_merlons\",\n  \"0x141ce3a70\": \"detect_inter_roof_merlons\",\n  \"0x141cd1a90\": \"detect_intra_shape_corners\",\n  \"0x141cd16b0\": \"wallandroofchanges_dirty_walls\",\n  \"0x141cd3ce0\": \"add_hole_at_shape_intersection\",\n  \"0x140edbf60\": \"intersect_shapes_closure4_stitches\",\n  \"0x140edd250\": \"intersect_shapes_closure4_merlons\",\n  \"0x141ce65b0\": \"spawn_stitches\",\n  \"0x141ce7190\": \"spawn_stitch_bricks\"\n}\nmeta = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    fm = prog.getFunctionManager()\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        meta[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    rec[\"body\"] = str(f.getBody())\n    rec[\"signature\"] = str(f.getSignature())\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        res = d.decompileFunction(f, 60, monitor)\n        if not res.decompileCompleted():\n            rec[\"error\"] = str(res.getErrorMessage())\n        else:\n            c = res.getDecompiledFunction().getC()\n            open(OUT + label + \".c\", \"w\").write(c)\n            rec[\"c_len\"] = len(c)\n    finally:\n        d.dispose()\n    meta[s] = rec\nopen(OUT + \"host_meta.json\", \"w\").write(json.dumps(meta, indent=1))\nprint(json.dumps(meta))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]

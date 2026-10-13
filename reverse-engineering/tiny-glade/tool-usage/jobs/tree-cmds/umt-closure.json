@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {}\naddr = prog.getAddressFactory().getAddress(\"0x141bd4120\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionContaining(addr)\nout[\"containing\"] = (str(f.getName()), str(f.getEntryPoint()), str(f.getBody())) if f else None\nlisting = prog.getListing()\nit = listing.getInstructions(addr, True)\ninsns = []\ncnt = 0\nwhile it.hasNext() and cnt < 120:\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\n    cnt += 1\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  }
+]

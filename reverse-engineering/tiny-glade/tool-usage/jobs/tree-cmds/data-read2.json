@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {}\naddrs = [\"0x143034d10\", \"0x143034d40\", \"0x143034d50\", \"0x143034d60\", \"0x143034d70\", \"0x143034d80\", \"0x143034f28\", \"0x143034f4f\", \"0x143035018\", \"0x143034ed8\", \"0x143035000\", \"0x143035030\", \"0x143035048\", \"0x143035058\"]\nfor a in addrs:\n    try:\n        addr = prog.getAddressFactory().getAddress(a)\n        buf = bytearray(0x30)\n        prog.getMemory().getBytes(addr, buf)\n        out[a] = \"\".join(\"%02x\" % (b & 0xFF) for b in buf)\n    except Exception as e:\n        out[a] = \"ERR:\" + str(e)[:80]\nfor a in [\"0x1429cd030\", \"0x142925870\", \"0x142a7c88c\", \"0x142a7b658\", \"0x142925904\", \"0x142a877a0\", \"0x1429edb90\", \"0x142a95db0\"]:\n    try:\n        addr = prog.getAddressFactory().getAddress(a)\n        out[a + \"_float\"] = prog.getMemory().getFloat(addr)\n    except Exception as e:\n        out[a + \"_float\"] = \"ERR:\" + str(e)[:80]\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

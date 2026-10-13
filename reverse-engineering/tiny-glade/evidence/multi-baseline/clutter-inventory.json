@@ -1,0 +1,624 @@
+{
+  "module": "system clutter (S09/S13 自动杂物 CPU 放置规则 + 屋顶 merlon / 形状缝合宿主几何)",
+  "date": "2026-10-13",
+  "method": "llvm-pdbutil 22.1.2 dump -files/-symbols 解析；B=主基线(0x140001000)，A=首发对照；base=0x140001000",
+  "source_files": [
+    {
+      "path": "crates/systems/clutter/src/lib.rs",
+      "b_sha8": "E6C0E7EC",
+      "a_sha8": "37CD3928"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/mod.rs",
+      "b_sha8": "119507C2",
+      "a_sha8": "10D4E2D6",
+      "a_path": "crates/systems/clutter/src/clutter/mod.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/populate_autoclutter_regions.rs",
+      "b_sha8": "2507E518",
+      "a_sha8": "2DE68223",
+      "a_path": "crates/systems/clutter/src/clutter/populate_clutter_regions.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/process_autoclutter_candidates.rs",
+      "b_sha8": "B5DD0D9A",
+      "a_sha8": "B0DC3488",
+      "a_path": "crates/systems/clutter/src/clutter/process_clutter_candidates.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/manage_autoclutter_entities.rs",
+      "b_sha8": "2E12F261",
+      "a_sha8": "77A32EB1",
+      "a_path": "crates/systems/clutter/src/clutter/manage_clutter_entities.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_autoclutter_around_gates.rs",
+      "b_sha8": "3366F1AD",
+      "a_sha8": "03067C76",
+      "a_path": "crates/systems/clutter/src/clutter/add_clutter_around_gates.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_autoclutter_around_windows.rs",
+      "b_sha8": "FA5E8BE3",
+      "a_sha8": "4BFF2C4B",
+      "a_path": "crates/systems/clutter/src/clutter/add_clutter_around_windows.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_autoclutter_on_windows.rs",
+      "b_sha8": "A987FE32",
+      "a_sha8": "B6BAE098",
+      "a_path": "crates/systems/clutter/src/clutter/add_clutter_on_windows.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_birdnests.rs",
+      "b_sha8": "44A997A8",
+      "a_sha8": "4A45448B",
+      "a_path": "crates/systems/clutter/src/clutter/add_birdnests.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_lantern_water_setdresssing.rs",
+      "b_sha8": "29C89882",
+      "a_sha8": "231AA48A",
+      "a_path": "crates/systems/clutter/src/clutter/add_lantern_water_setdresssing.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_tree_vegetation_setdressing.rs",
+      "b_sha8": "78CA186D",
+      "a_sha8": "8DCB52DE",
+      "a_path": "crates/systems/clutter/src/clutter/add_tree_vegetation_setdressing.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_preplaced_autoclutter.rs",
+      "b_sha8": "98BDFAD9",
+      "a_sha8": "9B8453F4",
+      "a_path": "crates/systems/clutter/src/clutter/add_preplaced_clutter.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/autoclutter_animation.rs",
+      "b_sha8": "BAC88F12",
+      "a_sha8": "501E1AB2",
+      "a_path": "crates/systems/clutter/src/clutter/clutter_animation.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/load_clutter_meshes.rs",
+      "b_sha8": "ED6C495C",
+      "a_sha8": "7BB0EAEE",
+      "a_path": "crates/systems/clutter/src/clutter/load_clutter_meshes.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/read_bush_positions_from_gpu.rs",
+      "b_sha8": "E4CDAF1D",
+      "a_sha8": "56340053",
+      "a_path": "crates/systems/clutter/src/clutter/read_bush_positions_from_gpu.rs"
+    },
+    {
+      "path": "crates/systems/clutter/src/inter_roof_merlons/detect_inter_roof_merlons.rs",
+      "b_sha8": "09AFCED1",
+      "a_sha8": "5AF4E8E8"
+    },
+    {
+      "path": "crates/systems/clutter/src/inter_roof_merlons/construct_inter_roof_merlons.rs",
+      "b_sha8": "9246AD76",
+      "a_sha8": "C5B133E4"
+    },
+    {
+      "path": "crates/systems/clutter/src/inter_roof_merlons/inter_roof_merlons_audio.rs",
+      "b_sha8": "77115FF9",
+      "a_sha8": "039DB7EF"
+    },
+    {
+      "path": "crates/systems/clutter/src/inter_shape_stitches/detect_intra_shape_corners.rs",
+      "b_sha8": "AA491F6C",
+      "a_sha8": "FBDCBAA6"
+    },
+    {
+      "path": "crates/systems/clutter/src/inter_shape_stitches/stitch_bricks.rs",
+      "b_sha8": "1A795C06",
+      "a_sha8": "D5E7CFD7"
+    },
+    {
+      "path": "crates/country-core/src/resources/preplaced_autoclutter.rs",
+      "b_sha8": "121A226C",
+      "a_sha8": "A0AAB736",
+      "a_path": "crates/country-core/src/resources/preplaced_clutter.rs"
+    },
+    {
+      "path": "crates/country-core/src/resources/water_exclude_clutter_mask.rs",
+      "b_sha8": "EFCF1C90",
+      "a_sha8": "7EF5B67A"
+    },
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs",
+      "b_sha8": "32A56EBC",
+      "a_sha8": "C3CB1AC1"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/clutter_audio.rs",
+      "b_sha8": "8F9A9D69",
+      "a_sha8": "AE933DF4"
+    },
+    {
+      "path": "crates/country-core/src/resources/clutter_meshes.rs",
+      "b_sha8": "0BB58BD9",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/resources/history/auto_clutter_edit.rs",
+      "b_sha8": "6A7AAD55",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/history/replay_auto_clutter.rs",
+      "b_sha8": "C92FD924",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs",
+      "b_sha8": "C5D14ECD",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs",
+      "b_sha8": "3D5F4A52",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/defered_autoclutter_history.rs",
+      "b_sha8": "37D8C0AE",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/ui_focus_decoclutter.rs",
+      "b_sha8": "B7D53875",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/decoclutter_show_pins.rs",
+      "b_sha8": "F3A959E1",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/ui_clutter/debug_spawn_clutter.rs",
+      "b_sha8": "80446272",
+      "a_sha8": null
+    }
+  ],
+  "modules": {
+    "b_system_clutter_rcgu": [
+      308,
+      1067,
+      1070,
+      1071,
+      1073,
+      1075,
+      1078,
+      1079,
+      1081,
+      1082,
+      2588,
+      2589,
+      2598,
+      2599,
+      2601,
+      2604,
+      2605,
+      2606,
+      2607,
+      2608,
+      2611,
+      2613,
+      2616,
+      2617,
+      2620,
+      2629,
+      2630,
+      3785,
+      3786,
+      3796,
+      3799,
+      3801,
+      3802,
+      3803,
+      3804,
+      3805,
+      3806,
+      3807,
+      3808,
+      3809,
+      3810,
+      3811,
+      3813,
+      3816,
+      3820,
+      4489,
+      4493,
+      4494,
+      4495,
+      4706,
+      4803
+    ],
+    "b_country_core_clutter_modules": [
+      10,
+      24,
+      199,
+      254,
+      481,
+      490,
+      492,
+      493,
+      498,
+      519,
+      525,
+      526,
+      527,
+      535,
+      539,
+      561,
+      579,
+      593,
+      1451,
+      1600,
+      1605,
+      1613,
+      1615,
+      1630,
+      1720
+    ],
+    "a_system_clutter_rcgu": [
+      295,
+      898,
+      899,
+      901,
+      903,
+      905,
+      907,
+      908,
+      2261,
+      2269,
+      2274,
+      2275,
+      2276,
+      2277,
+      2278,
+      2280,
+      2281,
+      2286,
+      2287,
+      2289,
+      2292,
+      3502,
+      3504,
+      3505,
+      3506,
+      3507,
+      3508,
+      3509,
+      3510,
+      3511,
+      3512,
+      3513,
+      3514,
+      3515,
+      3525,
+      3529,
+      3534,
+      3537,
+      4261,
+      4647
+    ],
+    "a_country_core_clutter_modules": [
+      421,
+      435,
+      495,
+      1403
+    ]
+  },
+  "functions_b": {
+    "cpu_placement": [
+      {
+        "name": "system_clutter::impl$0::build",
+        "va": "0x140652050",
+        "size": 3380
+      },
+      {
+        "name": "system_clutter::autoclutter::populate_autoclutter_regions::autoclutter_subscribe_to_tabloids",
+        "va": "0x1422d6930",
+        "size": 1438
+      },
+      {
+        "name": "system_clutter::autoclutter::populate_autoclutter_regions::populate_autoclutter_regions",
+        "va": "0x1422d6ed0",
+        "size": 44132
+      },
+      {
+        "name": "system_clutter::autoclutter::populate_autoclutter_regions::_::impl$0::init_state",
+        "va": "0x1422e1b40",
+        "size": 762
+      },
+      {
+        "name": "system_clutter::autoclutter::process_autoclutter_candidates::process_autoclutter_candidates",
+        "va": "0x1422ce260",
+        "size": 2375
+      },
+      {
+        "name": "system_clutter::autoclutter::add_autoclutter_around_gates::add_autoclutter_around_gates",
+        "va": "0x1422cc390",
+        "size": 2910
+      },
+      {
+        "name": "system_clutter::autoclutter::add_autoclutter_around_windows::add_autoclutter_around_windows",
+        "va": "0x1422cefe0",
+        "size": 4303
+      },
+      {
+        "name": "system_clutter::autoclutter::add_autoclutter_on_windows::add_autoclutter_on_windows",
+        "va": "0x1422cd7d0",
+        "size": 1622
+      },
+      {
+        "name": "system_clutter::autoclutter::add_birdnests::add_birdnests",
+        "va": "0x1422c9c70",
+        "size": 3143
+      },
+      {
+        "name": "system_clutter::autoclutter::add_lantern_water_setdresssing::add_lantern_water_setdresssing",
+        "va": "0x1422d2fa0",
+        "size": 2135
+      },
+      {
+        "name": "system_clutter::autoclutter::add_tree_vegetation_setdressing::add_tree_setdressing",
+        "va": "0x1422d3800",
+        "size": 2594
+      },
+      {
+        "name": "system_clutter::autoclutter::add_preplaced_autoclutter::add_preplaced_autoclutter",
+        "va": "0x141ce5900",
+        "size": 2180
+      },
+      {
+        "name": "system_clutter::autoclutter::manage_autoclutter_entities::manage_autoclutter_entities",
+        "va": "0x1422d04e0",
+        "size": 10301
+      },
+      {
+        "name": "system_clutter::autoclutter::autoclutter_animation::autoclutter_animation",
+        "va": "0x1422ccef0",
+        "size": 2261
+      }
+    ],
+    "host_geometry": [
+      {
+        "name": "system_clutter::autoclutter::load_clutter_meshes::load_clutter_meshes",
+        "va": "0x1422c0760",
+        "size": 5472
+      },
+      {
+        "name": "system_clutter::inter_roof_merlons::construct_inter_roof_merlons::construct_inter_roof_merlons",
+        "va": "0x1422d4870",
+        "size": 7070
+      },
+      {
+        "name": "system_clutter::inter_roof_merlons::detect_inter_roof_merlons::detect_inter_roof_merlons",
+        "va": "0x141ce3a70",
+        "size": 6751
+      },
+      {
+        "name": "system_clutter::inter_roof_merlons::inter_roof_merlons_audio::request_inter_roof_merlon_audio",
+        "va": "0x1422d4230",
+        "size": 524
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners",
+        "va": "0x141cd1a90",
+        "size": 8769
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::WallAndRoofChanges::dirty_walls",
+        "va": "0x141cd16b0",
+        "size": 986
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::add_hole_at_shape_intersection",
+        "va": "0x141cd3ce0",
+        "size": 436
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::intersect_shapes<system_clutter::inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners::closure_env$4>",
+        "va": "0x140edbf60",
+        "size": 4834
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::intersect_shapes<system_clutter::inter_roof_merlons::detect_inter_roof_merlons::detect_inter_roof_merlons::closure_env$4>",
+        "va": "0x140edd250",
+        "size": 2587
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::stitch_bricks::spawn_stitches",
+        "va": "0x141ce65b0",
+        "size": 3025
+      },
+      {
+        "name": "system_clutter::inter_shape_stitches::stitch_bricks::spawn_stitch_bricks",
+        "va": "0x141ce7190",
+        "size": 2961
+      }
+    ],
+    "gpu_later": [
+      {
+        "name": "system_clutter::autoclutter::read_bush_positions_from_gpu::read_bush_positions_from_gpu",
+        "va": "0x140eebaa0",
+        "size": 750
+      }
+    ]
+  },
+  "functions_a": {
+    "cpu_placement": {
+      "plugin_build": {
+        "name": "system_clutter::impl$0::build",
+        "va": "0x140410e20",
+        "size": 2168
+      },
+      "populate_clutter_regions": {
+        "name": "system_clutter::clutter::populate_clutter_regions::populate_clutter_regions",
+        "va": "0x141ad5070",
+        "size": 27544
+      },
+      "clutter_subscribe_to_tabloids": {
+        "name": "system_clutter::clutter::populate_clutter_regions::clutter_subscribe_to_tabloids",
+        "va": "0x141ad4b40",
+        "size": 1326
+      },
+      "init_state": {
+        "name": "system_clutter::clutter::populate_clutter_regions::_::impl$0::init_state",
+        "va": "0x141adbc10",
+        "size": 906
+      },
+      "get_param": {
+        "name": "system_clutter::clutter::populate_clutter_regions::_::impl$0::get_param",
+        "va": "0x141adbfa0",
+        "size": 1432
+      },
+      "process_clutter_candidates": {
+        "name": "system_clutter::clutter::process_clutter_candidates::process_clutter_candidates",
+        "va": "0x141acb2e0",
+        "size": 2740
+      },
+      "add_clutter_around_gates": {
+        "name": "system_clutter::clutter::add_clutter_around_gates::add_clutter_around_gates",
+        "va": "0x141aca4c0",
+        "size": 2322
+      },
+      "add_clutter_around_windows": {
+        "name": "system_clutter::clutter::add_clutter_around_windows::add_clutter_around_windows",
+        "va": "0x141acec60",
+        "size": 3826
+      },
+      "add_clutter_on_windows": {
+        "name": "system_clutter::clutter::add_clutter_on_windows::add_clutter_on_windows",
+        "va": "0x141acc4d0",
+        "size": 998
+      },
+      "add_birdnests": {
+        "name": "system_clutter::clutter::add_birdnests::add_birdnests",
+        "va": "0x141ad2870",
+        "size": 1740
+      },
+      "add_lantern_water_setdresssing": {
+        "name": "system_clutter::clutter::add_lantern_water_setdresssing::add_lantern_water_setdresssing",
+        "va": "0x141ad3120",
+        "size": 2609
+      },
+      "add_tree_setdressing": {
+        "name": "system_clutter::clutter::add_tree_vegetation_setdressing::add_tree_setdressing",
+        "va": "0x141ad3b60",
+        "size": 2530
+      },
+      "add_preplaced_clutter": {
+        "name": "system_clutter::clutter::add_preplaced_clutter::add_preplaced_clutter",
+        "va": "0x1414e23c0",
+        "size": 1434
+      },
+      "manage_clutter_entities": {
+        "name": "system_clutter::clutter::manage_clutter_entities::manage_clutter_entities",
+        "va": "0x141ad0060",
+        "size": 8313
+      },
+      "clutter_animation": {
+        "name": "system_clutter::clutter::clutter_animation::clutter_animation",
+        "va": "0x141acbda0",
+        "size": 1834
+      },
+      "ClutterState_add_region": {
+        "name": "system_clutter::clutter::ClutterState::add_region",
+        "va": "0x1409bd9d0",
+        "size": 1553
+      },
+      "ClutterState_remove_region_from_lazy_grid": {
+        "name": "system_clutter::clutter::ClutterState::remove_region_from_lazy_grid",
+        "va": "0x1409bdff0",
+        "size": 359
+      },
+      "ClutterState_flush_candidates_pending_removal": {
+        "name": "system_clutter::clutter::ClutterState::flush_candidates_pending_removal",
+        "va": "0x1409be160",
+        "size": 614
+      }
+    },
+    "host_geometry": {
+      "load_clutter_meshes": {
+        "name": "system_clutter::clutter::load_clutter_meshes::load_clutter_meshes",
+        "va": "0x141ac8e30",
+        "size": 3568
+      },
+      "construct_inter_roof_merlons": {
+        "name": "system_clutter::inter_roof_merlons::construct_inter_roof_merlons::construct_inter_roof_merlons",
+        "va": "0x141accdc0",
+        "size": 6552
+      },
+      "detect_inter_roof_merlons": {
+        "name": "system_clutter::inter_roof_merlons::detect_inter_roof_merlons::detect_inter_roof_merlons",
+        "va": "0x1414e0670",
+        "size": 6220
+      },
+      "request_inter_roof_merlon_audio": {
+        "name": "system_clutter::inter_roof_merlons::inter_roof_merlons_audio::request_inter_roof_merlon_audio",
+        "va": "0x141ad2f40",
+        "size": 471
+      },
+      "detect_intra_shape_corners": {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners",
+        "va": "0x1414db7f0",
+        "size": 6511
+      },
+      "dirty_walls": {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::WallAndRoofChanges::dirty_walls",
+        "va": "0x1414db440",
+        "size": 938
+      },
+      "add_hole_at_shape_intersection": {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::add_hole_at_shape_intersection",
+        "va": "0x1414dd160",
+        "size": 436
+      },
+      "intersect_shapes_corners": {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::intersect_shapes<system_clutter::inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners::closure_env$3>",
+        "va": "0x1409b7cb0",
+        "size": 5238
+      },
+      "intersect_shapes_merlons": {
+        "name": "system_clutter::inter_shape_stitches::detect_intra_shape_corners::intersect_shapes<system_clutter::inter_roof_merlons::detect_inter_roof_merlons::detect_inter_roof_merlons::closure_env$4>",
+        "va": "0x1409b70c0",
+        "size": 3056
+      },
+      "spawn_stitches": {
+        "name": "system_clutter::inter_shape_stitches::stitch_bricks::spawn_stitches",
+        "va": "0x1414e2e60",
+        "size": 2658
+      },
+      "spawn_stitch_bricks": {
+        "name": "system_clutter::inter_shape_stitches::stitch_bricks::spawn_stitch_bricks",
+        "va": "0x1414e38d0",
+        "size": 1468
+      }
+    },
+    "gpu_later": {
+      "read_bush_positions_from_gpu": {
+        "name": "system_clutter::clutter::read_bush_positions_from_gpu::read_bush_positions_from_gpu",
+        "va": "0x1414e4770",
+        "size": 753
+      }
+    }
+  },
+  "notes": [
+    "A/B 地址不通用：rcgu 名不同（A: system_clutter-36eeff59b464f88a / B: system_clutter-f35cc1a8883d085f），同函数 A/B VA 与 code size 均不同；仅角色对照有效，机器码差分需按版本重取",
+    "CPU 放置规则链入口（B）：impl$0::build(0x146624312 注册)→populate_autoclutter_regions(0x176528824, 44KB 主体)→process_autoclutter_candidates(0x176492872)→add_autoclutter_around_gates(0x176484984)/add_autoclutter_around_windows(0x176496328)/add_autoclutter_on_windows(0x17648a168)/add_birdnests(0x176474968)/add_lantern_water_setdresssing(0x176512648)/add_tree_setdressing(0x176514792)→manage_autoclutter_entities(0x176501704)",
+    "read_bush_positions_from_gpu(B 0x155642248 / A 0x161904216) 为 GPU 读取边界，标注 gpu_later 后置；对侧 GPU→CPU 拷贝在 country-core render_loop/compute_passes/read_bush_positions_for_cpu.rs（B 32A56EBC / A C3CB1AC1），system_clutter 只消费其结果",
+    "A 独有前身（目录 clutter/）：与 B autoclutter/ 1:1 对应（见 source_files.a_path），仅 add_preplaced_clutter→add_preplaced_autoclutter、clutter_animation→autoclutter_animation 改名；country-core resources/preplaced_clutter→preplaced_autoclutter 同步改名。inter_roof_merlons/inter_shape_stitches 目录 A/B 同名，SHA 随版本演进，无改名",
+    "内联差异：A 的 ClutterState::add_region/remove_region_from_lazy_grid/flush_candidates_pending_removal 为顶层符号（mod 907），B 中懒网格区域管理内联进 populate_autoclutter_regions（仅剩 DirtyTiles::iter_world_space_rect_cells<...add_region_to_lazy_grid::closure_env$0> 0x170355432 / remove_region_to_lazy_grid 0x170353704 闭包实例）；add_*_around_* 的内容以 intersect_shapes/closure 泛型实例存在",
+    "B 新增（A 无对应文件）：country-core systems/ui_clutter/*（ui_autoclutter、rmb_autoclutter、defered_autoclutter_history、ui_focus_decoclutter、decoclutter_show_pins、debug_spawn_clutter）、systems/history/replay_auto_clutter.rs、resources/history/auto_clutter_edit.rs —— B 引入自动杂物用户编辑/历史回放体系（S13 自动杂物用户侧）",
+    "依赖过滤边界：bevy_ecs FunctionSystem/SystemParam/QueryParam glue、alloc Vec spec_extend/spec_from_elem/RawVec::grow_one、core::option/slice/iter、zeno 全部排除；country_core 自有类型 AutoClutter/ClutterMesh/ClutterMarkedForDeletion/WindowShutter 经泛型实例引用保留为游戏自有边界点（其定义属 country_core 资源/组件模块）",
+    "同源文件 B/A SHA 不同，地址不通用；CPU 状态优先入口为 populate_autoclutter_regions 链，host_geometry（load_clutter_meshes/merlon/stitch）为宿主几何与网格装载，gpu_later 仅 read_bush_positions_from_gpu"
+  ],
+  "address_note": "VA 按 dump_pdb_functions.py 修正(off 十进制+0x140001000)"
+}

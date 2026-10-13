@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nkeys = (\"tree_move_bend\", \"recalc_tree_position_on_terrain_height_change\",\n        \"despawn_trees\", \"replay_tree\", \"convert_preplaced_trees\",\n        \"hide_trees\", \"ui_place_tree\", \"ui_move_tree\", \"ui_delete_tree\",\n        \"process_tree_cmds\")\nfound = []\nit = fm.getFunctions(True)\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    if \"FunctionSystem\" not in nm:\n        continue\n    low = nm.lower()\n    for key in keys:\n        if key in low:\n            found.append([key, str(fn.getEntryPoint()), str(fn.getBody()), nm])\n            break\nwith open(\"/tmp/tree-rest-wrappers-full.json\", \"w\") as fh:\n    json.dump(found, fh)\nprint(json.dumps({\"count\": len(found),\n                  \"summaries\": [[f[0], f[1], f[2]] for f in found]}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

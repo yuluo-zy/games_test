@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter-extra/\"\nprog = currentProgram\nADDRS = {\n  \"0x140aa4a60\": \"replay_auto_clutter\",\n  \"0x1409a9160\": \"history_record_auto_clutter\",\n  \"0x140976ca0\": \"handle_rmb_autoclutter\",\n  \"0x14099ca60\": \"ui_convert_autoclutter_to_decoclutter\",\n  \"0x14003d300\": \"auto_clutter_edit_serialize_a\",\n  \"0x140a18320\": \"auto_clutter_edit_serialize_b\",\n  \"0x140a18500\": \"auto_clutter_edit_deserialize\"\n}\nmeta = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    fm = prog.getFunctionManager()\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        meta[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    rec[\"body\"] = str(f.getBody())\n    rec[\"signature\"] = str(f.getSignature())\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        res = d.decompileFunction(f, 60, monitor)\n        if not res.decompileCompleted():\n            rec[\"error\"] = str(res.getErrorMessage())\n        else:\n            c = res.getDecompiledFunction().getC()\n            open(OUT + label + \".c\", \"w\").write(c)\n            rec[\"c_len\"] = len(c)\n    finally:\n        d.dispose()\n    meta[s] = rec\nopen(OUT + \"autoclutter_edit_meta.json\", \"w\").write(json.dumps(meta, indent=1))\nprint(json.dumps(meta))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142260ae0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142260ae0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 600
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 600
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x141444c70\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x141444c70\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141444c70\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x1406501d0\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

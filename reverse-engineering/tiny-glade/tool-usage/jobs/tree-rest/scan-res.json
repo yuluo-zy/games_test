@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nneedles = (\"TerrainHeight\", \"GameTime\", \"TreeMoveBend\", \"recalc\", \"terrain_height\",\n           \"PrefabInstanceData\")\nfound = []\nit = fm.getFunctions(True)\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    if \"FunctionSystem\" not in nm:\n        continue\n    if not any(n in nm for n in needles):\n        continue\n    found.append([str(fn.getEntryPoint()), str(fn.getBody()), nm[:1200]])\nwith open(\"/tmp/tree-rest-resscan.json\", \"w\") as fh:\n    json.dump(found, fh)\nprint(json.dumps({\"count\": len(found),\n                  \"summaries\": [[f[0], f[1]] for f in found]}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

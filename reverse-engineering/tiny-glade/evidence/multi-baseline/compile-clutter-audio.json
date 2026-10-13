@@ -1,0 +1,99 @@
+{
+  "id": "compile-clutter-audio",
+  "task": "把 clutter / audio 反汇编级证据草稿接入可编译工程并验证编译",
+  "date": "2026-10-13",
+  "baseline": "B patched exe sha256 cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323（证据来源，本轮只读，无新取证）",
+  "evidence_sources": [
+    "evidence/multi-baseline/clutter-extra-analysis.md",
+    "evidence/multi-baseline/audio-events-analysis.md",
+    "evidence/multi-baseline/audio-extra-analysis.md"
+  ],
+  "draft_sources": [
+    "reconstruction/clutter/src/*.rs",
+    "reconstruction/audio/src/*.rs"
+  ],
+  "status": {
+    "cargo_check": "ok",
+    "cargo_build": "ok",
+    "cargo_test": "ok (5/5, offline)",
+    "warnings": "22（全部为草稿原有未用导入/未用参数/占位方法，非错误）"
+  },
+  "crate": {
+    "workspace": "reconstruction/clutter-audio/",
+    "package": "reconstruction/clutter-audio/crates/tg-clutter-audio/",
+    "layout": "clutter 与 audio 并入单一 crate（共享 bevy_ecs/bevy_app/glam/hashbrown/serde 依赖）；clutter/ 与 audio/ 模块镜像原 system-clutter 与 country-core systems/audio 布局"
+  },
+  "dependencies": {
+    "bevy_ecs": "=0.16.0, default-features=false, features=[std]（原锁版本）",
+    "bevy_app": "=0.16.0, default-features=false, features=[std]（add_systems/add_event/insert_resource 签名需要）",
+    "glam": "=0.29.3",
+    "hashbrown": "=0.15.2（bevy_ecs 同版）",
+    "serde": "=1.0.200, features=[derive]（auto_clutter_edit 序列化）",
+    "serde_json": "=1.0.85（仅 dev-dependency，测试用）",
+    "utils": "glue 占位（原锁本地包 0.1.0，无源码）",
+    "tabloid": "glue 占位（原锁本地包 0.1.0，依赖 parking_lot）"
+  },
+  "compiled_files": {
+    "clutter": [
+      "src/clutter/mod.rs",
+      "src/clutter/auto_clutter_edit.rs",
+      "src/clutter/merlons.rs",
+      "src/clutter/stitches.rs",
+      "src/clutter/autoclutter/mod.rs",
+      "src/clutter/autoclutter/add_rules.rs",
+      "src/clutter/autoclutter/populate_autoclutter_regions.rs",
+      "src/clutter/autoclutter/process_autoclutter_candidates.rs",
+      "src/clutter/autoclutter/manage_autoclutter_entities.rs"
+    ],
+    "audio": [
+      "src/audio/mod.rs",
+      "src/audio/events.rs",
+      "src/audio/stairs.rs",
+      "src/audio/wall_kinds.rs",
+      "src/audio/update.rs",
+      "src/audio/music.rs"
+    ],
+    "glue": [
+      "src/lib.rs",
+      "src/utils.rs（utils::rng::{Circle2d,Rng} 占位）",
+      "src/tabloid.rs（Subscriber 占位）",
+      "src/glue.rs（Transform 占位 Component）"
+    ],
+    "tests": [
+      "tests/compile_evidence.rs（5 测试：AutoClutterEdit serde、stair_kind 表、wall_kind 表、music 边界、replay_auto_clutter）"
+    ]
+  },
+  "todo_unknown_count": {
+    "clutter TODO(evidence)": 22,
+    "clutter unimplemented!()/unknown() 空位": 3,
+    "audio [evidence]/占位注释位": 33,
+    "audio events.rs unknown 字段": 5,
+    "说明": "未确认字段/边界保持 unknown/TODO，不伪造语义"
+  },
+  "glue_changes_against_drafts": [
+    "路径调整：crate::autoclutter→crate::clutter::autoclutter；crate::events→crate::audio::events；crate::merlons→crate::clutter::merlons（含补 import WallHole）",
+    "bevy glue：EventReader 用 read() 替代草稿 iter()（bevy 0.16 无 iter）；dirty_walls 三个 EventReader 加 mut",
+    "事件 glue：merlons 新增 OnWallDeleted/OnWallChanged/RecalculateRoofCmd（#[derive(Event)]，dirty_walls 链需要）",
+    "events.rs 新增 add_audio_events 注册的其余 12 个事件 unit 类型（register_event 顺序证据，字段未精读不留字段）",
+    "Resource/Component/Event derive 补齐：AutoClutterState/WallHoles/PublicWalls/PublicWallState/DirtyTiles/WaterRaster/SessionMeta/BushGrid/BirdNestCandidateLocations/AudioCore/AudioSettings/WallAudioState/StairsAudioState/BuildingAudioState 等（bevy 0.16 无 blanket impl）",
+    "Component derive：AutoClutterObject/Gate/Window/TerrainDecorator/TreeEntry + glue Transform",
+    "audio unknown 资源占位：原草稿 Res<[u8;0]> 不满足 bevy Resource，改具名 AppMode/ListenerTransformResource/VolumeSourceResource/BuildingDataTable/StairsElementsTable（语义仍 unknown）",
+    "FMOD 占位 start_if_not_playing/stop_loop 放宽为泛型（原签名 &AudioInstance 与调用点 &AudioLoopPlayer 冲突）",
+    "update.rs building_event_name/stair_event_name 返回类型补 'static",
+    "auto_clutter_edit：AutoClutterEdit serde 去 #[serde(tag=...)] 用默认外部标签，产出 {\"Delete\":{\"id\":...}} 与反汇编一致；walls.insert(cmd.wall, ()) 补 value",
+    "ClutterCandidateIndex #[repr(u16)]（仅允许枚举）→ #[repr(transparent)]",
+    "add_rules lantern 键 hash_setdressing(u f32) → hash_setdressing(i u32)：与证据 tuple<u32,usize,&str> 及树路径一致（草稿原传 f32 与签名不符）",
+    "utils/tabloid 导入加 crate:: 前缀（Rust 2018 use 不回落 crate 根模块）"
+  ],
+  "not_touched": [
+    "reconstruction/tree-tool（精读 agent 运行中）",
+    "reconstruction/critters、reconstruction/terrain（已接工程）",
+    "reconstruction/clutter/src、reconstruction/audio/src 原始草稿（未改动）",
+    "原二进制/PDB 只读"
+  ],
+  "known_limits": [
+    "本草稿大量函数体为 unknown()/空骨架，只证明可编译与证据表一致，不构成原游戏行为验收",
+    "audio add_audio_systems 的第二次 add_systems 清单与其余音频系统注册点仍 unknown",
+    "clutter host_geometry 的 BrickTransformSsbo/StairsFloatingBrickParams 内部布局、WallHoles 洞字段语义、AutoClutterEdit 其他变体仍 unknown"
+  ]
+}

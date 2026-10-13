@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nit = fm.getFunctions(True)\ntotal = 0\nfound = []\nsample = []\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    total += 1\n    if \"tree\" in nm.lower():\n        if \"FunctionSystem\" in nm or \"system_type\" in nm.lower():\n            found.append([str(fn.getEntryPoint()), str(fn.getBody()), nm[:500]])\n        elif len(sample) < 12:\n            sample.append([str(fn.getEntryPoint()), nm[:300]])\nprint(json.dumps({\"total\": total, \"found\": found, \"sample\": sample}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

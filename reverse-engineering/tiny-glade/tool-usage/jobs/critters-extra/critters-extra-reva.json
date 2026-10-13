@@ -1,0 +1,542 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142326a80\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142326a80\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142326a80\")\nend = prog.getAddressFactory().getAddress(\"0x142327280\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x142326a80\", \"0x142327280\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142327280\")\nend = prog.getAddressFactory().getAddress(\"0x142327a80\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x142327280\", \"0x142327a80\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142327a80\")\nend = prog.getAddressFactory().getAddress(\"0x142328280\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x142327a80\", \"0x142328280\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142328280\")\nend = prog.getAddressFactory().getAddress(\"0x142328a80\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 3\nout[\"range\"] = [\"0x142328280\", \"0x142328a80\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142328a80\")\nend = prog.getAddressFactory().getAddress(\"0x142329280\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 4\nout[\"range\"] = [\"0x142328a80\", \"0x142329280\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142329280\")\nend = prog.getAddressFactory().getAddress(\"0x142329a80\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 5\nout[\"range\"] = [\"0x142329280\", \"0x142329a80\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142329a80\")\nend = prog.getAddressFactory().getAddress(\"0x14232a280\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 6\nout[\"range\"] = [\"0x142329a80\", \"0x14232a280\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x14232a280\")\nend = prog.getAddressFactory().getAddress(\"0x14232aa80\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 7\nout[\"range\"] = [\"0x14232a280\", \"0x14232aa80\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x14232aa80\")\nend = prog.getAddressFactory().getAddress(\"0x14232b280\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 8\nout[\"range\"] = [\"0x14232aa80\", \"0x14232b280\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x14232b280\")\nend = prog.getAddressFactory().getAddress(\"0x14232b544\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"sim_wren_boids\"\nout[\"win\"] = 9\nout[\"range\"] = [\"0x14232b280\", \"0x14232b544\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc42f0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc42f0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc42f0\")\nend = prog.getAddressFactory().getAddress(\"0x141dc448c\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"wren_boids_closure3\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc42f0\", \"0x141dc448c\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc3510\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc3510\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc3510\")\nend = prog.getAddressFactory().getAddress(\"0x141dc3d10\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"Boid_frame_update_wren\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc3510\", \"0x141dc3d10\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc3d10\")\nend = prog.getAddressFactory().getAddress(\"0x141dc42ec\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"Boid_frame_update_wren\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x141dc3d10\", \"0x141dc42ec\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc2540\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc2540\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc2540\")\nend = prog.getAddressFactory().getAddress(\"0x141dc2737\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"BoidFlock_remove_wren\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc2540\", \"0x141dc2737\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc2170\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc2170\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc2170\")\nend = prog.getAddressFactory().getAddress(\"0x141dc2338\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"Boid_random_vel_change\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc2170\", \"0x141dc2338\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f90cd0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f90cd0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f90cd0\")\nend = prog.getAddressFactory().getAddress(\"0x140f914d0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"fish\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f90cd0\", \"0x140f914d0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f914d0\")\nend = prog.getAddressFactory().getAddress(\"0x140f91cd0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"fish\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x140f914d0\", \"0x140f91cd0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f91cd0\")\nend = prog.getAddressFactory().getAddress(\"0x140f924d0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"fish\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x140f91cd0\", \"0x140f924d0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f924d0\")\nend = prog.getAddressFactory().getAddress(\"0x140f92a3d\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"fish\"\nout[\"win\"] = 3\nout[\"range\"] = [\"0x140f924d0\", \"0x140f92a3d\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f909f0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f909f0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f909f0\")\nend = prog.getAddressFactory().getAddress(\"0x140f90c05\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"FishSpawnLocations_new\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f909f0\", \"0x140f90c05\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f90c10\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f90c10\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f90c10\")\nend = prog.getAddressFactory().getAddress(\"0x140f90ccf\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"despawn_fish\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f90c10\", \"0x140f90ccf\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc2740\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc2740\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc2740\")\nend = prog.getAddressFactory().getAddress(\"0x141dc2f40\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"Boid_frame_update_fish\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc2740\", \"0x141dc2f40\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc2f40\")\nend = prog.getAddressFactory().getAddress(\"0x141dc3508\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"Boid_frame_update_fish\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x141dc2f40\", \"0x141dc3508\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141dc2340\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141dc2340\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141dc2340\")\nend = prog.getAddressFactory().getAddress(\"0x141dc2537\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"BoidFlock_remove_fish\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141dc2340\", \"0x141dc2537\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141d84d40\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141d84d40\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d84d40\")\nend = prog.getAddressFactory().getAddress(\"0x141d85540\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_butterfly_states\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141d84d40\", \"0x141d85540\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d85540\")\nend = prog.getAddressFactory().getAddress(\"0x141d85d40\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_butterfly_states\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x141d85540\", \"0x141d85d40\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d85d40\")\nend = prog.getAddressFactory().getAddress(\"0x141d8605e\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_butterfly_states\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x141d85d40\", \"0x141d8605e\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141d86060\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141d86060\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d86060\")\nend = prog.getAddressFactory().getAddress(\"0x141d867a5\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_butterfly_goals\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141d86060\", \"0x141d867a5\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141d867b0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141d867b0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d867b0\")\nend = prog.getAddressFactory().getAddress(\"0x141d86ea4\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"set_butterfly_velocities_towards_goals\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141d867b0\", \"0x141d86ea4\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x141d86eb0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141d86eb0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x141d86eb0\")\nend = prog.getAddressFactory().getAddress(\"0x141d87132\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_butterfly_audio\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x141d86eb0\", \"0x141d87132\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142316940\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142316940\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142316940\")\nend = prog.getAddressFactory().getAddress(\"0x142317033\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"update_firefly_goals\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x142316940\", \"0x142317033\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142317040\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142317040\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142317040\")\nend = prog.getAddressFactory().getAddress(\"0x142317578\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"set_firefly_velocities_towards_goals\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x142317040\", \"0x142317578\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f8ee90\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f8ee90\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f8ee90\")\nend = prog.getAddressFactory().getAddress(\"0x140f8f205\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"DuckSpawnLocations_new\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f8ee90\", \"0x140f8f205\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f8f210\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f8f210\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f8f210\")\nend = prog.getAddressFactory().getAddress(\"0x140f8f8ae\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"spawn_ducks\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f8f210\", \"0x140f8f8ae\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140f8f8b0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140f8f8b0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f8f8b0\")\nend = prog.getAddressFactory().getAddress(\"0x140f900b0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"despawn_ducks\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x140f8f8b0\", \"0x140f900b0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f900b0\")\nend = prog.getAddressFactory().getAddress(\"0x140f908b0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"despawn_ducks\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x140f900b0\", \"0x140f908b0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x140f908b0\")\nend = prog.getAddressFactory().getAddress(\"0x140f90968\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"despawn_ducks\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x140f908b0\", \"0x140f90968\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x1409d49a0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1409d49a0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x1409d49a0\")\nend = prog.getAddressFactory().getAddress(\"0x1409d51a0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"startup_critters\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x1409d49a0\", \"0x1409d51a0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x1409d51a0\")\nend = prog.getAddressFactory().getAddress(\"0x1409d59a0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"startup_critters\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x1409d51a0\", \"0x1409d59a0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x1409d59a0\")\nend = prog.getAddressFactory().getAddress(\"0x1409d5e91\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"startup_critters\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x1409d59a0\", \"0x1409d5e91\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  }
+]

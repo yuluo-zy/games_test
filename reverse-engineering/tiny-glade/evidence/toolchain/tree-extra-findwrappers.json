@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "tree-extra-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nout = {}\n\n# 1) containing functions of the two real call instructions of convert\nfor label, a in [(\"call_contain_978\", \"0x141bcb978\"),\n                 (\"call_contain_d9d4\", \"0x141bdb9d4\"),\n                 (\"call_contain_200\", \"0x141bcb200\"),\n                 (\"call_contain_b250\", \"0x141bdb250\")]:\n    addr = prog.getAddressFactory().getAddress(a)\n    f = fm.getFunctionContaining(addr)\n    if f is None:\n        out[label] = None\n        continue\n    out[label] = [str(f.getEntryPoint()), str(f.getBody()), str(f.getName())[:3000]]\n\n# 2) scan functions by keyword\nKEYS = [\"SpawnPreplacedTrees\", \"ui_place_tree\", \"ui_move_tree\", \"ui_delete_tree\",\n        \"PlaceTreeCmd\", \"reset_tree_tool\", \"startup_tree_tool\"]\nfor key in KEYS:\n    found = []\n    it = fm.getFunctions(True)\n    for fn in it:\n        monitor.checkCancelled()\n        nm = fn.getName()\n        if key in nm:\n            found.append([str(fn.getEntryPoint()), str(fn.getBody()), nm[:2200]])\n    out[\"key_\"+key] = found\n\nwith open(\"/tmp/tree-extra-wrappers.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({k: (v if isinstance(v, list) else v) for k, v in out.items()}, indent=1))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nout = {}\n\n# 1) containing functions of the two real call instructions of convert\nfor label, a in [(\"call_contain_978\", \"0x141bcb978\"),\n                 (\"call_contain_d9d4\", \"0x141bdb9d4\"),\n                 (\"call_contain_200\", \"0x141bcb200\"),\n                 (\"call_contain_b250\", \"0x141bdb250\")]:\n    addr = prog.getAddressFactory().getAddress(a)\n    f = fm.getFunctionContaining(addr)\n    if f is None:\n        out[label] = None\n        continue\n    out[label] = [str(f.getEntryPoint()), str(f.getBody()), str(f.getName())[:3000]]\n\n# 2) scan functions by keyword\nKEYS = [\"SpawnPreplacedTrees\", \"ui_place_tree\", \"ui_move_tree\", \"ui_delete_tree\",\n        \"PlaceTreeCmd\", \"reset_tree_tool\", \"startup_tree_tool\"]\nfor key in KEYS:\n    found = []\n    it = fm.getFunctions(True)\n    for fn in it:\n        monitor.checkCancelled()\n        nm = fn.getName()\n        if key in nm:\n            found.append([str(fn.getEntryPoint()), str(fn.getBody()), nm[:2200]])\n    out[\"key_\"+key] = found\n\nwith open(\"/tmp/tree-extra-wrappers.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({k: (v if isinstance(v, list) else v) for k, v in out.items()}, indent=1))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\n \\\"call_contain_978\\\": [\\n  \\\"141bcb900\\\",\\n  \\\"[[141bcb900, 141bcc1ab]]\\\",\\n  \\\"_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h8a17d8d7e71fb545E\\\"\\n ],\\n \\\"call_contain_d9d4\\\": [\\n  \\\"141bdb9d0\\\",\\n  \\\"[[141bdb9d0, 141bdba08]]\\\",\\n  \\\"FUN_141bdb9d0\\\"\\n ],\\n \\\"call_contain_200\\\": [\\n  \\\"141bcaeb0\\\",\\n  \\\"[[141bcaeb0, 141bcb3a3]]\\\",\\n  \\\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n ],\\n \\\"call_contain_b250\\\": [\\n  \\\"141bdb250\\\",\\n  \\\"[[141bdb250, 141bdb3c9]]\\\",\\n  \\\"_ZN330_$LT$F$u20$as$u20$bevy_ecs..schedule..config..IntoScheduleConfigs$LT$alloc..boxed..Box$LT$dyn$u20$bevy_ecs..system..system..System$u2b$In$u20$$u3d$$u20$$LP$$RP$$u2b$Out$u20$$u3d$$u20$core..result..Result$LT$$LP$$RP$$C$bevy_ecs..error..bevy_error..BevyError$GT$$GT$$C$$LP$bevy_ecs..schedule..config..Infallible$C$Marker$RP$$GT$$GT$12into_configs17h916e37f8ca212331E\\\"\\n ],\\n \\\"key_SpawnPreplacedTrees\\\": [\\n  [\\n   \\\"1409bdd50\\\",\\n   \\\"[[1409bdd50, 1409bdef5]]\\\",\\n   \\\"initialize<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409bdfc0\\\",\\n   \\\"[[1409bdfc0, 1409be39e]]\\\",\\n   \\\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409be3a0\\\",\\n   \\\"[[1409be3a0, 1409be3dc]]\\\",\\n   \\\"apply_deferred<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409be3e0\\\",\\n   \\\"[[1409be3e0, 1409be41c]]\\\",\\n   \\\"queue_deferred<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409be420\\\",\\n   \\\"[[1409be420, 1409be664]]\\\",\\n   \\\"validate_param_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409be670\\\",\\n   \\\"[[1409be670, 1409be674]]\\\",\\n   \\\"update_archetype_component_access<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1409beaa0\\\",\\n   \\\"[[1409beaa0, 1409beab4]]\\\",\\n   \\\"type_id<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1409beac0\\\",\\n   \\\"[[1409beac0, 1409bec6b]]\\\",\\n   \\\"run_if<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"140ea0e40\\\",\\n   \\\"[[140ea0e40, 140ea0ef2] [140ea0f00, 140ea0fa8] [140ea0fb0, 140ea13d2]]\\\",\\n   \\\"register_event<country_core::resources::history::tree_edit::SpawnPreplacedTrees>\\\"\\n  ],\\n  [\\n   \\\"14134c6b0\\\",\\n   \\\"[[14134c6b0, 14134c8f1]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<country_core::resources::history::tree_edit::SpawnPreplacedTrees>_>\\\"\\n  ],\\n  [\\n   \\\"141377a40\\\",\\n   \\\"[[141377a40, 141377e2a]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<country_core::resources::history::tree_edit::SpawnPreplacedTrees>_>\\\"\\n  ],\\n  [\\n   \\\"1413d8080\\\",\\n   \\\"[[1413d8080, 1413d8115] [1413d8120, 1413d81b4] [1413d81c0, 1413d8454]]\\\",\\n   \\\"register_resource_with<bevy_ecs::component::impl$18::register_resource::closure_env$0<bevy_ecs::event::collections::Events<country_core::resources::history::tree_edit::SpawnPreplacedTrees>_>_>\\\"\\n  ],\\n  [\\n   \\\"1413edd30\\\",\\n   \\\"[[1413edd30, 1413edd3a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1413eec40\\\",\\n   \\\"[[1413eec40, 1413eec4a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1413ef3e0\\\",\\n   \\\"[[1413ef3e0, 1413ef462]]\\\",\\n   \\\"default_system_sets<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"1413efb60\\\",\\n   \\\"[[1413efb60, 1413efc7b]]\\\",\\n   \\\"update_archetype_component_access<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>\\\"\\n  ],\\n  [\\n   \\\"1413f4820\\\",\\n   \\\"[[1413f4820, 1413f482a]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1413f4a80\\\",\\n   \\\"[[1413f4a80, 1413f4a8a]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1413f5840\\\",\\n   \\\"[[1413f5840, 1413f5a2c]]\\\",\\n   \\\"run_readonly<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1413f62c0\\\",\\n   \\\"[[1413f62c0, 1413f640d]]\\\",\\n   \\\"validate_param<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1413f67f0\\\",\\n   \\\"[[1413f67f0, 1413f681f]]\\\",\\n   \\\"run<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"14144bbd0\\\",\\n   \\\"[[14144bbd0, 14144bc7e]]\\\",\\n   \\\"initialize<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"14144c1d0\\\",\\n   \\\"[[14144c1d0, 14144c318]]\\\",\\n   \\\"run_unsafe<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"14144c9c0\\\",\\n   \\\"[[14144c9c0, 14144ca81]]\\\",\\n   \\\"validate_param_unsafe<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"14144cf00\\\",\\n   \\\"[[14144cf00, 14144d251]]\\\",\\n   \\\"run_if<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>,bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>\\\"\\n  ],\\n  [\\n   \\\"141450770\\\",\\n   \\\"[[141450770, 141450784]]\\\",\\n   \\\"type_id<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"141482ae0\\\",\\n   \\\"[[141482ae0, 141482b62]]\\\",\\n   \\\"default_system_sets<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"1414ab9f0\\\",\\n   \\\"[[1414ab9f0, 1414abc48]]\\\",\\n   \\\"validate_param<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1414d2c80\\\",\\n   \\\"[[1414d2c80, 1414d3066]]\\\",\\n   \\\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1415006c0\\\",\\n   \\\"[[1415006c0, 14150070e]]\\\",\\n   \\\"run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141506860\\\",\\n   \\\"[[141506860, 1415069ed]]\\\",\\n   \\\"validate_param<bevy_ecs::event::reader::EventReader<country_core::resources::events::ModeJustChanged>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::event::writer::EventWriter<country_core::systems::save::load_game::LoadingGameComplete>,bevy_ecs::event::writer::EventWriter<country_core::systems::save::load_completion_checker::DisplayCorruptedSaveFileWarning>_>\\\"\\n  ],\\n  [\\n   \\\"141702340\\\",\\n   \\\"[[141702340, 141702366]]\\\",\\n   \\\"system_type<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1417035a0\\\",\\n   \\\"[[1417035a0, 1417035c6]]\\\",\\n   \\\"system_type<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"141704800\\\",\\n   \\\"[[141704800, 141704813]]\\\",\\n   \\\"dyn_hash<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"141704c80\\\",\\n   \\\"[[141704c80, 141704c93]]\\\",\\n   \\\"dyn_hash<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"141705b60\\\",\\n   \\\"[[141705b60, 141705b6a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"141706a70\\\",\\n   \\\"[[141706a70, 141706a7a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"141706a90\\\",\\n   \\\"[[141706a90, 141706a9c]]\\\",\\n   \\\"dyn_clone<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1417078f0\\\",\\n   \\\"[[1417078f0, 1417078fc]]\\\",\\n   \\\"dyn_clone<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"141707dc0\\\",\\n   \\\"[[141707dc0, 141707dd4]]\\\",\\n   \\\"type_id<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141708260\\\",\\n   \\\"[[141708260, 141708274]]\\\",\\n   \\\"type_id<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"14170a1f0\\\",\\n   \\\"[[14170a1f0, 14170a1fa]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"14170a450\\\",\\n   \\\"[[14170a450, 14170a45a]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"14170add0\\\",\\n   \\\"[[14170add0, 14170ae05]]\\\",\\n   \\\"dyn_eq<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"14170c010\\\",\\n   \\\"[[14170c010, 14170c045]]\\\",\\n   \\\"dyn_eq<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"1417163e0\\\",\\n   \\\"[[1417163e0, 14171648d]]\\\",\\n   \\\"fmt<bevy_ecs::system::function_system::FunctionSystem<bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>),bool_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>)>_>\\\"\\n  ],\\n  [\\n   \\\"1417173b0\\\",\\n   \\\"[[1417173b0, 14171745d]]\\\",\\n   \\\"fmt<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::system::commands::Commands,bevy_ecs::event::reader::EventReader<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::writer::EventWriter<country_core::systems::prefab::SpawnPrefabCmd>)>_>\\\"\\n  ],\\n  [\\n   \\\"14174d2a0\\\",\\n   \\\"[[14174d2a0, 14174d42d]]\\\",\\n   \\\"validate_param<bevy_ecs::event::reader::EventReader<country_core::resources::events::ModeJustChanged>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::SpawnPreplacedTrees>,bevy_ecs::event::writer::EventWriter<country_core::systems::save::load_game::LoadingGameComplete>,bevy_ecs::event::writer::EventWriter<country_core::systems::save::load_completion_checker::DisplayCorruptedSaveFileWarning>_>\\\"\\n  ],\\n  [\\n   \\\"141bb3920\\\",\\n   \\\"[[141bb3920, 141bb39d7] [141bb39e0, 141bb3a7d] [141bb3a80, 141bb3efe]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<country_core::resources::history::tree_edit::SpawnPreplacedTrees>_>\\\"\\n  ]\\n ],\\n \\\"key_ui_place_tree\\\": [\\n  [\\n   \\\"140ea01e0\\\",\\n   \\\"[[140ea01e0, 140ea0292] [140ea02a0, 140ea0348] [140ea0350, 140ea0772]]\\\",\\n   \\\"register_event<system_tree::ui_place_tree::PlaceTreeCmd>\\\"\\n  ],\\n  [\\n   \\\"141bb2200\\\",\\n   \\\"[[141bb2200, 141bb2226]]\\\",\\n   \\\"system_type<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2370\\\",\\n   \\\"[[141bb2370, 141bb2383]]\\\",\\n   \\\"dyn_hash<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2430\\\",\\n   \\\"[[141bb2430, 141bb243a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2470\\\",\\n   \\\"[[141bb2470, 141bb247c]]\\\",\\n   \\\"dyn_clone<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2570\\\",\\n   \\\"[[141bb2570, 141bb2584]]\\\",\\n   \\\"type_id<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2730\\\",\\n   \\\"[[141bb2730, 141bb273a]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2970\\\",\\n   \\\"[[141bb2970, 141bb29a5]]\\\",\\n   \\\"dyn_eq<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2d30\\\",\\n   \\\"[[141bb2d30, 141bb2ddd]]\\\",\\n   \\\"fmt<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bbc990\\\",\\n   \\\"[[141bbc990, 141bbcbd1]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>\\\"\\n  ],\\n  [\\n   \\\"141bc0670\\\",\\n   \\\"[[141bc0670, 141bc0a5a]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>\\\"\\n  ],\\n  [\\n   \\\"141bc1ec0\\\",\\n   \\\"[[141bc1ec0, 141bc1f55] [141bc1f60, 141bc1ff4] [141bc2000, 141bc2294]]\\\",\\n   \\\"register_resource_with<bevy_ecs::component::impl$18::register_resource::closure_env$0<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bc4a30\\\",\\n   \\\"[[141bc4a30, 141bc4a3a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bc53f0\\\",\\n   \\\"[[141bc53f0, 141bc53fa]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bc5a30\\\",\\n   \\\"[[141bc5a30, 141bc5ab2]]\\\",\\n   \\\"default_system_sets<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bc8190\\\",\\n   \\\"[[141bc8190, 141bc84b8]]\\\",\\n   \\\"validate_param<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bcaeb0\\\",\\n   \\\"[[141bcaeb0, 141bcb3a3]]\\\",\\n   \\\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bcce50\\\",\\n   \\\"[[141bcce50, 141bcce81]]\\\",\\n   \\\"run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bd44d0\\\",\\n   \\\"[[141bd44d0, 141bd45df]]\\\",\\n   \\\"initialize<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd45e0\\\",\\n   \\\"[[141bd45e0, 141bd4a48]]\\\",\\n   \\\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd5c10\\\",\\n   \\\"[[141bd5c10, 141bd5eac]]\\\",\\n   \\\"validate_param_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd5f60\\\",\\n   \\\"[[141bd5f60, 141bd600c]]\\\",\\n   \\\"update_archetype_component_access<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd6010\\\",\\n   \\\"[[141bd6010, 141bd60bb]]\\\",\\n   \\\"name<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd6340\\\",\\n   \\\"[[141bd6340, 141bd64cf]]\\\",\\n   \\\"into_configs<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bd6530\\\",\\n   \\\"[[141bd6530, 141bd6544]]\\\",\\n   \\\"type_id<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"142269150\\\",\\n   \\\"[[142269150, 14226916f]]\\\",\\n   \\\"call_once<system_tree::ui_place_tree::ui_place_tree::closure_env$1,tuple$<ref$<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,ref$<country_core::asset_libraries::shader_library::AssetShaderLibrary>,ref_mut$<bevy_ecs::system::commands::Commands>_>_>\\\"\\n  ],\\n  [\\n   \\\"142269170\\\",\\n   \\\"[[142269170, 14226962e]]\\\",\\n   \\\"ui_place_tree\\\"\\n  ]\\n ],\\n \\\"key_ui_move_tree\\\": [\\n  [\\n   \\\"141bd40e0\\\",\\n   \\\"[[141bd40e0, 141bd40ff]]\\\",\\n   \\\"call_once<system_tree::ui_move_tree::ui_move_tree::closure_env$0,tuple$<ref$<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,ref$<country_core::asset_libraries::shader_library::AssetShaderLibrary>,ref_mut$<bevy_ecs::system::commands::Commands>_>_>\\\"\\n  ],\\n  [\\n   \\\"14226b1a0\\\",\\n   \\\"[[14226b1a0, 14226b424] [14226b4a8, 14226b4d0] [14226b4e0, 14226b5e7] [14226b5f0, 14226b629] [14226b630, 14226b8e7] [14226bbe5, 14226bc4b]]\\\",\\n   \\\"ui_move_tree\\\"\\n  ],\\n  [\\n   \\\"1425df760\\\",\\n   \\\"[[1425df760, 1425df8ae] [1425df8b1, 1425df8bf]]\\\",\\n   \\\"signifier<system_tree::ui_move_tree::ui_move_tree::closure_env$0>\\\"\\n  ]\\n ],\\n \\\"key_ui_delete_tree\\\": [\\n  [\\n   \\\"141bd2510\\\",\\n   \\\"[[141bd2510, 141bd2672] [141bd2680, 141bd26a0] [141bd26b0, 141bd284a] [141bd2850, 141bd2952] [141bd2960, 141bd299d] [141bd29a0, 141bd29d1] [141bd29e0, 141bd2ba3] [141bd2ba6, 141bd2bd2]]\\\",\\n   \\\"ui_delete_tree\\\"\\n  ]\\n ],\\n \\\"key_PlaceTreeCmd\\\": [\\n  [\\n   \\\"140ea01e0\\\",\\n   \\\"[[140ea01e0, 140ea0292] [140ea02a0, 140ea0348] [140ea0350, 140ea0772]]\\\",\\n   \\\"register_event<system_tree::ui_place_tree::PlaceTreeCmd>\\\"\\n  ],\\n  [\\n   \\\"141bb2200\\\",\\n   \\\"[[141bb2200, 141bb2226]]\\\",\\n   \\\"system_type<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2370\\\",\\n   \\\"[[141bb2370, 141bb2383]]\\\",\\n   \\\"dyn_hash<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2430\\\",\\n   \\\"[[141bb2430, 141bb243a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2470\\\",\\n   \\\"[[141bb2470, 141bb247c]]\\\",\\n   \\\"dyn_clone<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2570\\\",\\n   \\\"[[141bb2570, 141bb2584]]\\\",\\n   \\\"type_id<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2730\\\",\\n   \\\"[[141bb2730, 141bb273a]]\\\",\\n   \\\"as_any<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2970\\\",\\n   \\\"[[141bb2970, 141bb29a5]]\\\",\\n   \\\"dyn_eq<bevy_ecs::schedule::set::SystemTypeSet<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bb2d30\\\",\\n   \\\"[[141bb2d30, 141bb2ddd]]\\\",\\n   \\\"fmt<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::event::reader::EventReader<system_tree::ui_place_tree::PlaceTreeCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::InsertTreeCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)>_>\\\"\\n  ],\\n  [\\n   \\\"141bbc990\\\",\\n   \\\"[[141bbc990, 141bbcbd1]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>\\\"\\n  ],\\n  [\\n   \\\"141bc0670\\\",\\n   \\\"[[141bc0670, 141bc0a5a]]\\\",\\n   \\\"init_state<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>\\\"\\n  ],\\n  [\\n   \\\"141bc1ec0\\\",\\n   \\\"[[141bc1ec0, 141bc1f55] [141bc1f60, 141bc1ff4] [141bc2000, 141bc2294]]\\\",\\n   \\\"register_resource_with<bevy_ecs::component::impl$18::register_resource::closure_env$0<bevy_ecs::event::collections::Events<system_tree::ui_place_tree::PlaceTreeCmd>_>_>\\\"\\n  ],\\n  [\\n   \\\"141bc4a30\\\",\\n   \\\"[[141bc4a30, 141bc4a3a]]\\\",\\n   \\\"as_dyn_eq<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::e\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":true,\"stderr\":\"\",\"durationMs\":28711}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "default": false
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "default": 1
+            },
+            "includeDisassembly": {
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "default": false
+            },
+            "includeIncomingReferences": {
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "default": 50
+            },
+            "includeReferenceContext": {
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "default": false
+            },
+            "includeComments": {
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output",
+              "default": false
+            },
+            "includeCallees": {
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "default": false
+            },
+            "signatureOnly": {
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "default": false
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references",
+              "default": false
+            },
+            "contextLines": {
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets",
+              "default": 2
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)",
+              "default": 0
+            },
+            "includeFlow": {
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)",
+              "default": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of references to return per direction",
+              "default": 100
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "type": "boolean",
+              "description": "Include data references (reads, writes)",
+              "default": true
+            },
+            "direction": {
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ],
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)"
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "default": ""
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "default": 60
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script absolute path",
+              "default": ""
+            },
+            "startIndex": {
+              "type": "integer",
+              "description": "Pagination start (0-indexed)",
+              "default": 0
+            },
+            "nameFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script file name",
+              "default": ""
+            },
+            "maxCount": {
+              "type": "integer",
+              "description": "Maximum entries to return",
+              "default": 100
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-indexed starting line",
+              "default": 1
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum lines to return",
+              "default": 2000
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "default": false
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "default": false
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

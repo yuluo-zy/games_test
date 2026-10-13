@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nfm = prog.getFunctionManager()\n# 1) symbols with DirtyTilePublisher\nst = prog.getSymbolTable()\nsyms = []\nit = st.getAllSymbols(True)\nn = 0\nwhile it.hasNext() and n < 200000:\n    monitor.checkCancelled()\n    sym = it.next()\n    n += 1\n    nm = str(sym.getName())\n    if 'DirtyTilePublisher' in nm or 'dirty_tile_publish' in nm:\n        a = sym.getAddress()\n        f = fm.getFunctionAt(a)\n        sz = f.getBody().getNumAddresses() if f else -1\n        syms.append([nm, str(a), sz])\nout[\"publish_syms\"] = syms\n# 2) callers of water_rasterize_from_cpu 0x140a12680\nrefmgr = prog.getReferenceManager()\naddr = prog.getAddressFactory().getAddress(\"0x140a12680\")\ncallers = []\nfor r in refmgr.getReferencesTo(addr):\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    ca = r.getFromAddress()\n    cf = fm.getFunctionContaining(ca)\n    callers.append([str(ca), str(cf.getEntryPoint()) if cf else \"\", str(cf.getName()) if cf else \"\"])\nout[\"wrf_callers\"] = callers\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 330
+  }
+]

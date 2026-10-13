@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142268a30\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x142268a30\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nit = prog.getListing().getInstructions(f.getBody(), True)\ninsns = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  }
+]

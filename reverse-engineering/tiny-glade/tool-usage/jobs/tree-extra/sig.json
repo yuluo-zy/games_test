@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nout = {}\nfor label, a in [('convert_wrapper_full', '0x141bca200'), ('convert_rununsafe_full', '0x141bda260')]:\n    addr = prog.getAddressFactory().getAddress(a)\n    f = fm.getFunctionAt(addr)\n    if f is None:\n        f = fm.getFunctionContaining(addr)\n    if f is None:\n        out[label] = None\n        continue\n    out[label] = [str(f.getEntryPoint()), str(f.getBody()), str(f.getName())]\nwith open('/tmp/tree-extra-sigs.json', 'w') as fh:\n    json.dump(out, fh)\nprint(json.dumps({k: v[2] for k, v in out.items()}))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]
