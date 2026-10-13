@@ -1,0 +1,45 @@
+{
+  "scope": "independent read-only static review, no new GPU execution",
+  "findings": [
+    {
+      "id": "GPU-VIEW-1",
+      "kind": "confirmed_validation_gap",
+      "severity": "high",
+      "location": "gpu.rs:new/render_offscreen image validation",
+      "finding": "Texture2D shader bindings accept sampled Texture3D/array/multisample or non-color view descriptions; current unsafe contract does not exclude these.",
+      "suggestion": "Validate image_type TYPE_2D, array_layers1, samples TYPE_1, COLOR aspect for blue_noise and images; permit legal multiple mip levels."
+    },
+    {
+      "id": "GPU-FEATURE-2",
+      "kind": "confirmed_feature_gate_gap",
+      "severity": "high",
+      "location": "gpu.rs:new; raw/device.rs DeviceCapabilities",
+      "finding": "Runtime/partially-bound/variable-count/update-after-bind flags do not imply enabled sampled-image non-uniform indexing. Headless init requests it, arbitrary VulkanDevice creation may omit it.",
+      "suggestion": "Record actual enabled shader_sampled_image_array_non_uniform_indexing in DeviceCapabilities and require it when actual SPIR-V declares this capability; retain headless result scope."
+    },
+    {
+      "id": "GPU-ATLAS-3",
+      "kind": "integration_contract_gap",
+      "severity": "high",
+      "location": "renderer.rs:upload_pending_glyphs; gpu.rs:fresh atlas",
+      "finding": "Draining and abandoning uploads, recreating GpuTextRenderer while CPU glyph cache is warm, or switching GPU renderer with same CPU state can produce a fresh cleared atlas and glyph batches with no uploads. Current API cannot recover cached RGBA.",
+      "suggestion": "Specify upload ownership/ack/retry; add recovery/invalidate/reupload mechanism or explicit rejection requiring atlas initialization. Test failure and recreate paths; this is distinct from stale-generation rejection."
+    },
+    {
+      "id": "GPU-IDLE-4",
+      "kind": "confirmed_performance_and_documentation_issue",
+      "severity": "medium",
+      "location": "gpu.rs:pending.wait then readback.read_bytes; raw/buffer.rs:transfer; raw/graveyard.rs:idle_if_in_flight_locked",
+      "finding": "Fence wait does not advance global completed_epoch, readback sync path therefore adds vkDeviceWaitIdle after fence each frame. submits1 true; only wait-once wording false.",
+      "suggestion": "Provide narrowly unsafe read-after-specific-completion path with host invalidation, or disclose/count extra device idle. Never mark all global submits complete from one fence."
+    },
+    {
+      "id": "GPU-TEST-5",
+      "kind": "confirmed_validation_coverage_gap",
+      "severity": "medium",
+      "location": "examples/text_gpu.rs:text/scale cases",
+      "finding": "colored>100 and cold==warm do not prove atlas alpha/glyph sentinel, each loaded fallback font, combining/RTL layout, or 2x geometry. Candidate HLSL has opposite sentinels from new CPU assumptions; only original SPIR-V can arbitrate.",
+      "suggestion": "Add synthetic atlas alpha probe contrasting stream0/MAX, real glyph partial transparency/hole checks, per-script face/layout checks and scale bounds/generation assertions; preserve original binary evidence."
+    }
+  ]
+}

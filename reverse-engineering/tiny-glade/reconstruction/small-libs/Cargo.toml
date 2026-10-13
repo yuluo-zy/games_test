@@ -1,0 +1,20 @@
+[workspace]
+resolver="2"
+members=["motomoto","tg-package-integrity","tg-text"]
+[workspace.package]
+edition="2024"
+rust-version="1.86"
+publish=false
+[workspace.dependencies]
+glam = "=0.29.3"
+fastrand = "=1.8.0"
+half = "=2.4.1"
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+parking_lot = "=0.12.1"
+slotmap = "=1.0.6"
+anyhow = "=1.0.86"
+[profile.dev]
+debug="line-tables-only"
+[profile.dev.package."*"]
+debug=false

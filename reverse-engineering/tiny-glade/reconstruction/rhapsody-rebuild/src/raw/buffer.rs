@@ -309,6 +309,15 @@ impl Buffer {
     pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
         self.transfer(offset, &mut bytes.to_vec(), true, false)
     }
+    /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
+    ///
+    /// # Safety
+    /// 调用者必须等待覆盖本缓冲全部在飞访问的 fence/timeline 提交凭据，
+    /// 并保证复制期间没有其他 GPU 或宿主并发访问。GPU 写入还需已建立 HOST_READ 可见性。
+    /// 此调用只依赖本缓冲完成，不推进设备全局完成 epoch。
+    pub unsafe fn read_bytes_after_completion(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
+        self.transfer(offset, bytes, false, false)
+    }
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
         self.transfer(offset, bytes, false, true)
     }

@@ -32,3 +32,5 @@ pub mod temp_list;
 pub mod texture;
 
 pub mod resource_usage;
+
+pub mod texture_upload;

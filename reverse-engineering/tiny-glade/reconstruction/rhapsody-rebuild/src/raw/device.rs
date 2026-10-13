@@ -16,6 +16,10 @@ pub struct DeviceCapabilities {
     pub descriptor_binding_variable_descriptor_count: bool,
     pub sampled_image_update_after_bind: bool,
     pub storage_buffer_update_after_bind: bool,
+    /// 实际启用的采样图片数组非一致索引，不能由 runtime array 推断。
+    pub shader_sampled_image_array_non_uniform_indexing: bool,
+    /// runtime sampled-image 布局 flags15 所需的实际启用特性。
+    pub descriptor_binding_update_unused_while_pending: bool,
 }
 
 /// 实际 Vulkan 设备适配。原作 GraphicsDevice 的完整布局不使用此候选布局替代。
@@ -82,6 +86,20 @@ impl VulkanDevice {
                             enabled.descriptor_binding_sampled_image_update_after_bind != 0;
                         capabilities.storage_buffer_update_after_bind =
                             enabled.descriptor_binding_storage_buffer_update_after_bind != 0;
+                        capabilities.shader_sampled_image_array_non_uniform_indexing =
+                            enabled.shader_sampled_image_array_non_uniform_indexing != 0;
+                        capabilities.descriptor_binding_update_unused_while_pending =
+                            enabled.descriptor_binding_update_unused_while_pending != 0;
+                    }
+                    vk::StructureType::PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES => {
+                        let enabled = &*feature.cast::<vk::PhysicalDeviceDescriptorIndexingFeatures<'_>>();
+                        capabilities.runtime_descriptor_array = enabled.runtime_descriptor_array != 0;
+                        capabilities.descriptor_binding_partially_bound = enabled.descriptor_binding_partially_bound != 0;
+                        capabilities.descriptor_binding_variable_descriptor_count = enabled.descriptor_binding_variable_descriptor_count != 0;
+                        capabilities.sampled_image_update_after_bind = enabled.descriptor_binding_sampled_image_update_after_bind != 0;
+                        capabilities.storage_buffer_update_after_bind = enabled.descriptor_binding_storage_buffer_update_after_bind != 0;
+                        capabilities.shader_sampled_image_array_non_uniform_indexing = enabled.shader_sampled_image_array_non_uniform_indexing != 0;
+                        capabilities.descriptor_binding_update_unused_while_pending = enabled.descriptor_binding_update_unused_while_pending != 0;
                     }
                     vk::StructureType::PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES => {
                         capabilities.buffer_device_address =

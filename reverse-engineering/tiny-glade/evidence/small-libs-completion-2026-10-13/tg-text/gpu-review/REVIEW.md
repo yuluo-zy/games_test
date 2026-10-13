@@ -1,0 +1,13 @@
+# tg-text GPU 独立静态审查
+
+本轮只读审查gpu.rs/text_gpu.rs及必要rhapsody/CPU依赖，不修改生产源码、不运行wholeworkspace或新增GPU测试。结论未预先标passed；findings.json列出5项问题与建议，输入哈希绑定当前源码。
+
+Arc资源保活、成功提交/读回后atlas与target提交状态、无submit前错误时GPU新状态不commit、正确TRANSFER_SRC回拷及HOST屏障均有合理结构。ShaderLibrary/AttachmentCache复用已有实现，没有重造shader/parser/allocator。没有确认command资源过早释放或明显layouttransition缺陷。fresh atlas clear与随后区域上传有连贯屏障链；本轮仅静态核对，不能代替Validation Layer实际验证。
+
+必须处理或明确限定的项目：输入Texture2D视图合同、实际启用non-uniform indexing特性门禁、upload drain/abandoned frame/CPUwarm-GPUfresh恢复；每帧fence后额外device idle；GPU样例文字/多字体/scale误判盲区。
+
+attachment/pipeline同尺寸复用合理，但首帧UNDEFINED与后续TRANSFER_SRC initial layout可能形成两个renderpass/pipeline键；稳定warm帧不应继续增长，建议计数确认。每帧descriptor pool/set/image views、command pool、readback和upload concat仍新分配，属于独立离屏adapter成本，不能据此宣称原toolbar性能。buffer容量按2次幂复用，atlas增量多regions降低逐glyphsubmit，不引入线程/缓冲轮子。
+
+Candidate shader-source的stream0/MAX分支不能裁定原发行SPIR-V。当前GPU例的colored>100并不足以裁定，需要实际binary哨兵/alpha probe；这仅是测例缺口，不是确认新CPU哨兵错误。
+
+原GPU功能没有在此审查轮新执行；此前纹理区域adapterGPU运行结果属于独立证据，不能混入此gpu.rs完整链验收。

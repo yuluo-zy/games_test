@@ -571,6 +571,9 @@ impl GraphicsInstance {
             .descriptor_indexing(supported.descriptor_indexing != 0)
             .runtime_descriptor_array(supported.runtime_descriptor_array != 0)
             .descriptor_binding_partially_bound(supported.descriptor_binding_partially_bound != 0)
+            .descriptor_binding_update_unused_while_pending(
+                supported.descriptor_binding_update_unused_while_pending != 0,
+            )
             .descriptor_binding_variable_descriptor_count(
                 supported.descriptor_binding_variable_descriptor_count != 0,
             )
