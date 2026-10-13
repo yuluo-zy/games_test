@@ -118,3 +118,9 @@ B/C 根目录的 Cargo.lock 是各自原始锁文件的完整副本。四个 wor
 尚无编译/内联宿主证据的 15 个函数条目明确标注未知；同名函数在同一宿主多次内联时，各次内联的专属区间仍未知。参数到寄存器/栈的机器 ABI 未确认。此批仅覆盖屋顶模块及所需的内联宿主，不代表全项目或原始源码逻辑恢复。
 
 详情与示例见 [_assembly/roof-v1/README.md](_assembly/roof-v1/README.md)，核对见 [_assembly/roof-v1/verification.json](_assembly/roof-v1/verification.json)。
+
+## Git发布范围：A/B/C代码
+
+A/B/C的3,667个`.rs`文件、Cargo清单与锁、说明文档和代码形式的Shader示例已纳入发布范围，保持三个版本各自原目录。代码中的PDB/字段/接口/原指令注释属于观察骨架，不代表完整可运行游戏实现。共享52+35组有界候选在`task-index/work`中保留单份代码和ABC对应。
+
+同名`.json`/`.gz`旁路元数据、`_pdb`、全量索引和缓存继续保留本地；上述读取/重新导出说明依赖相应本地原作输入，不表示全部原始数据随Git发布。
