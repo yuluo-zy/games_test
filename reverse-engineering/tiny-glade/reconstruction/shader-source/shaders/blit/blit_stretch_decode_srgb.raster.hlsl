@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/blit/blit_stretch_decode_srgb.raster.hlsl | F-E | bins: _blit_blit_stretch_decode_srgb.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
 // Fullscreen blit: sample the input texture (stretched) and decode sRGB -> linear.
 // Evidence: ps inlined per-channel decode (0.04045/0.0773993805/0.947867333/2.4 — inc/color/srgb.hlsl srgb_to_linear);
@@ -30,3 +33,22 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
     float3 l = float3(r, g, b);
     return float4(l, c.a);
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _blit_blit_stretch_decode_srgb.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

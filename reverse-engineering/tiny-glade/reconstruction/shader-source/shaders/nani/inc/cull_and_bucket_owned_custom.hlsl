@@ -12,10 +12,10 @@
 #include "inc/frame_constants.hlsl"
 #include "inc/ray_cone.hlsl"
 #include "inc/math_const.hlsl"
-#include "draw_lists.inc.hlsl"
-#include "cull_and_bucket.inc.hlsl"
+#include "nani/draw_lists.inc.hlsl"
+#include "nani/cull_and_bucket.inc.hlsl"
 #include "inc/pack_unpack.hlsl"
-#include "atlas_part_info.inc.hlsl"
+#include "nani/atlas_part_info.inc.hlsl"
 
 // Shared cull input buffers (present in every owned-custom variant).
 StructuredBuffer<NaniDrawListInfo> draw_list_info : register(t20, space0);

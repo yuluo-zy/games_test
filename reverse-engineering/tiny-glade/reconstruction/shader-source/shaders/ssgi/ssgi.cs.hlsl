@@ -1,3 +1,6 @@
+// PATCHED: modules gi.cs.hlsl_cs_main_0.bin:cs_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)))
 // ==RECONSTRUCTED== shaders/ssgi/ssgi.cs.hlsl | F-D
 // Evidence: _ssgi_ssgi.cs.hlsl_cs_main_0.bin (SPIR-V, offset 23; SHA-256
 //   66e61114e7e782b18c01a857168ac52b587b1a063635a084e2af6b5caebef57d).
@@ -168,3 +171,238 @@ void cs_main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     output_tex[dispatchThreadID.xy] = max(0.02999999932944774627685546875f, pow(ao, 1.0f));
 }
+
+#endif
+
+#if defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)
+// lifted from _ssgi_ssgi.cs.hlsl_cs_main_0.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+static float3 _107;
+static float3 _108;
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint2 _Globals_depth_tex_dims : packoffset(c0);
+    uint2 _Globals_half_view_normal_tex_dims : packoffset(c0.z);
+    uint2 _Globals_output_tex_dims : packoffset(c1);
+};
+
+SamplerState sampler_nnc : register(s2, space0);
+Texture2D<float4> depth_tex : register(t14, space0);
+Texture2D<float4> half_view_normal_tex : register(t15, space0);
+RWTexture2D<float> output_tex : register(u16, space0);
+
+static uint3 gl_GlobalInvocationID;
+struct SPIRV_Cross_Input
+{
+    uint3 gl_GlobalInvocationID : SV_DispatchThreadID;
+};
+
+void comp_main()
+{
+    float2 _116 = float2(_Globals_output_tex_dims);
+    float2 _119 = (float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / _116;
+    uint _128;
+    _128 = 0u;
+    uint _129;
+    uint _124;
+    uint _127;
+    for (uint _123 = gl_GlobalInvocationID.y, _126 = gl_GlobalInvocationID.x, _130 = 32u; _130 > 0u; _123 = _124, _126 = _127, _128 = _129, _130 /= 2u)
+    {
+        uint _137 = uint((_126 & _130) > 0u);
+        uint _140 = uint((_123 & _130) > 0u);
+        _129 = _128 + ((_130 * _130) * ((3u * _137) ^ _140));
+        if (_140 == 0u)
+        {
+            uint _153;
+            uint _154;
+            if (_137 == 1u)
+            {
+                _153 = 63u - _123;
+                _154 = 63u - _126;
+            }
+            else
+            {
+                _153 = _123;
+                _154 = _126;
+            }
+            _124 = _154;
+            _127 = _153;
+        }
+        else
+        {
+            _124 = _123;
+            _127 = _126;
+        }
+    }
+    float2 _163 = frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(_128 + (288u * (frame_constants_frame_index % 64u)))) + 0.5f.xx);
+    float4 _174 = mul(frame_constants_view_constants[0u].sample_to_view, float4((_119 - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, 1.0f));
+    float _184 = ((-0.5f) / (_174.xyz / _174.w.xxx).z) * frame_constants_view_constants[0u].view_to_clip[1].y;
+    float2 _185 = 1.0f.xx / _116;
+    float2 _192 = float2(1.0f / frame_constants_view_constants[0u].view_to_sample[0].x, 1.0f / frame_constants_view_constants[0u].view_to_sample[1].y);
+    float2 _193 = _192 * float2(2.0f, -2.0f);
+    float2 _194 = _192 * float2(-1.0f, 1.0f);
+    float3 _202 = normalize(half_view_normal_tex.SampleLevel(sampler_nnc, _119, 0.0f).xyz * float3(1.0f, 1.0f, -1.0f));
+    float2 _204 = float2(gl_GlobalInvocationID.xy);
+    float2 _206 = (_204 + 0.5f.xx) * _185;
+    float4 _110 = depth_tex.GatherRed(sampler_nnc, _204 * _185);
+    for (uint _211 = 0u; _211 < 4u; )
+    {
+        _110[_211] = (-1.0f) / (_110[_211] * (-frame_constants_view_constants[0u].clip_to_view[3].z));
+        _211++;
+        continue;
+    }
+    float _226 = _110.y * 0.99919998645782470703125f;
+    float2 _229 = ((_193 * _206) + _194) * _226;
+    float3 _230 = float3(_229.x, _229.y, _107.z);
+    _230.z = _226;
+    float3 _233 = normalize(-_230);
+    float _237 = (-80.0f) * _184;
+    float _239 = ((0.11249999701976776123046875f / _184) / (0.012500000186264514923095703125f / _184)) + 1.0f;
+    float _240 = _163.x;
+    float _241 = _163.y;
+    float _245 = (0.125f / _184) / (_226.xx * (_193 * _185)).x;
+    float _250 = 1.2999999523162841796875f / _245;
+    float _252;
+    float _255;
+    _252 = clamp((10.0f - _245) * 0.00999999977648258209228515625f, 0.0f, 1.0f) * 0.5f;
+    _255 = 0.0f;
+    float _253;
+    for (; _255 < 1.0f; _252 = _253, _255 += 1.0f)
+    {
+        float _261 = (_255 + _240) * 3.1415927410125732421875f;
+        float _262 = cos(_261);
+        float _263 = sin(_261);
+        float2 _266 = float2(_262, -_263) * _245;
+        float3 _267 = float3(_262, _263, 0.0f);
+        float3 _270 = _267 - (_233 * dot(_267, _233));
+        float3 _272 = normalize(cross(_270, _233));
+        float3 _275 = _202 - (_272 * dot(_202, _272));
+        float _280 = length(_275);
+        float _283 = clamp(dot(_275, _233) / _280, 0.0f, 1.0f);
+        float _284 = abs(_283);
+        float _293 = float(int(sign(dot(_270, _275)))) * ((((-0.15658299624919891357421875f) * _284) + 1.57079601287841796875f) * asfloat(532487669 + (asint(1.0f - _284) >> 1)));
+        float _295 = cos(_293 + 1.57079637050628662109375f);
+        float _297 = cos(_293 - 1.57079637050628662109375f);
+        float _299;
+        float _302;
+        _299 = _295;
+        _302 = _297;
+        [unroll]
+        for (float _304 = 0.0f; _304 < 3.0f; )
+        {
+            float2 _317 = _266 * (pow((_304 + frac(_241 + ((_255 + (_304 * 3.0f)) * 0.61803400516510009765625f))) * 0.3333333432674407958984375f, 2.0f) + _250);
+            float _320 = clamp(log2(length(_317)), 0.0f, 0.0f);
+            float2 _322 = round(_317) * _185;
+            float2 _323 = _206 + _322;
+            float _330 = -frame_constants_view_constants[0u].clip_to_view[3].z;
+            float _332 = (-1.0f) / (depth_tex.SampleLevel(sampler_nnc, _323, _320).x * _330);
+            float2 _335 = ((_193 * _323) + _194) * _332;
+            float3 _336 = float3(_335.x, _335.y, _108.z);
+            _336.z = _332;
+            float2 _338 = _206 - _322;
+            float _343 = (-1.0f) / (depth_tex.SampleLevel(sampler_nnc, _338, _320).x * _330);
+            float2 _346 = ((_193 * _338) + _194) * _343;
+            float3 _347 = float3(_346.x, _346.y, _108.z);
+            _347.z = _343;
+            float3 _349 = _336 - _230;
+            float3 _350 = _347 - _230;
+            float _351 = length(_349);
+            float _352 = length(_350);
+            _299 = max(_299, lerp(_295, dot(_349 / _351.xxx, _233), clamp((_351 * _237) + _239, 0.0f, 1.0f)));
+            _302 = max(_302, lerp(_297, dot(_350 / _352.xxx, _233), clamp((_352 * _237) + _239, 0.0f, 1.0f)));
+            _304 += 1.0f;
+            continue;
+        }
+        float _368 = abs(_302);
+        float _376 = (((-0.15658299624919891357421875f) * _368) + 1.57079601287841796875f) * asfloat(532487669 + (asint(1.0f - _368) >> 1));
+        float _382;
+        if (_302 >= 0.0f)
+        {
+            _382 = _376;
+        }
+        else
+        {
+            _382 = 3.14159297943115234375f - _376;
+        }
+        float _383 = abs(_299);
+        float _391 = (((-0.15658299624919891357421875f) * _383) + 1.57079601287841796875f) * asfloat(532487669 + (asint(1.0f - _383) >> 1));
+        float _397;
+        if (_299 >= 0.0f)
+        {
+            _397 = _391;
+        }
+        else
+        {
+            _397 = 3.14159297943115234375f - _391;
+        }
+        float _398 = _382 * (-2.0f);
+        float _399 = sin(_293);
+        float _405 = 2.0f * _397;
+        _253 = _252 + (lerp(_280, 1.0f, 0.0500000007450580596923828125f) * (0.25f * (((_283 + (_398 * _399)) - cos(_398 - _293)) + ((_283 + (_405 * _399)) - cos(_405 - _293)))));
+    }
+    output_tex[gl_GlobalInvocationID.xy] = max(0.02999999932944774627685546875f, pow(_252, 1.0f));
+}
+
+[numthreads(8, 8, 1)]
+void cs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_GlobalInvocationID = stage_input.gl_GlobalInvocationID;
+    comp_main();
+}
+#pragma dxc diagnostic pop
+#endif

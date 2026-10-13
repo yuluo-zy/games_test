@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_b903e43ffb3da915.bin:ps_main, lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/ice_plane.raster.hlsl
 // SOURCE PATH : shaders/ice_plane.raster.hlsl
 // KIND        : raster_main
@@ -498,3 +501,1815 @@ PsOut ps_main(PsIn vin, float4 position : SV_Position)
     o.C4 = shadow_temporal + 0.00196078442968428134918212890625f;
     return o;
 }
+
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _ice_plane.raster.hlsl_b903e43ffb3da915.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+static float _195;
+static float _228;
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    uint _Globals_history_valid : packoffset(c0.y);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
+    uint2 _Globals_framebuffer_dims : packoffset(c1);
+    uint2 _Globals_water_mask_dims : packoffset(c1.z);
+    uint2 _Globals_half_depth_tex_dims : packoffset(c2);
+    uint2 _Globals_refraction_tex_dims : packoffset(c2.z);
+    uint2 _Globals_reprojection_tex_dims : packoffset(c3);
+    uint2 _Globals_shadows_history_tex_dims : packoffset(c3.z);
+    uint2 _Globals_surface_roughness_tex_dims : packoffset(c4);
+    column_major float4x4 _Globals_model_to_world : packoffset(c5);
+};
+
+RWByteAddressBuffer __alias_ice_refl_count_buffer : register(u23, space0);
+RWByteAddressBuffer __alias_ice_refl_px_buffer : register(u24, space0);
+SamplerState sampler_lnc : register(s0, space0);
+SamplerState sampler_llr : register(s1, space0);
+SamplerState sampler_nnc : register(s2, space0);
+SamplerState sampler_llc : register(s3, space0);
+SamplerState sampler_shadow_nearest : register(s11, space0);
+SamplerComparisonState sampler_shadow_linear : register(s12, space0);
+Texture2DArray<float4> shadow_map : register(t15, space0);
+Texture2D<float4> half_depth_tex : register(t18, space0);
+Texture2D<float4> refraction_tex : register(t19, space0);
+Texture2D<float4> shadows_history_tex : register(t21, space0);
+Texture2D<float4> surface_roughness_tex : register(t22, space0);
+
+static float4 gl_FragCoord;
+static float3 in_var_C1;
+static float3 out_var_SV_TARGET0;
+static float out_var_SV_TARGET1;
+static uint out_var_SV_TARGET2;
+static uint out_var_SV_TARGET3;
+static float out_var_SV_TARGET4;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    float4 gl_FragCoord : SV_Position;
+};
+
+struct SPIRV_Cross_Output
+{
+    float3 out_var_SV_TARGET0 : SV_Target0;
+    float out_var_SV_TARGET1 : SV_Target1;
+    uint out_var_SV_TARGET2 : SV_Target2;
+    uint out_var_SV_TARGET3 : SV_Target3;
+    float out_var_SV_TARGET4 : SV_Target4;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void frag_main()
+{
+    bool _244 = IsHelperLane();
+    uint2 _248 = uint2(gl_FragCoord.xy);
+    uint2 _249 = _248 / uint2(2u, 2u);
+    float2 _253 = float2(_Globals_half_depth_tex_dims);
+    float2 _263 = (((float2(int2(_249)) + 0.5f.xx) / _253) - 0.5f.xx) * float2(2.0f, -2.0f);
+    float _264 = _263.x;
+    float4 _269 = float4(_264, _263.y, gl_FragCoord.z, 1.0f);
+    float3 _272 = -normalize(mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, 0.0f, 1.0f))).xyz);
+    float4 _275 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
+    float3 _276 = _275.xyz;
+    float2 _280 = float2(_Globals_surface_roughness_tex_dims);
+    float2 _282 = in_var_C1.xz * 0.100000001490116119384765625f;
+    float2 _284 = mul(_282 * 3.4639999866485595703125f, float2x2(float2(1.0f, 0.0f), float2(-0.57735025882720947265625f, 1.1547005176544189453125f)));
+    float2 _285 = floor(_284);
+    float2 _286 = frac(_284);
+    float _287 = _286.x;
+    float _288 = _286.y;
+    float _289 = 1.0f - _287;
+    float _290 = _289 - _288;
+    bool _291 = _290 > 0.0f;
+    float3 _303;
+    if (_291)
+    {
+        _303 = float3(_285, _290);
+    }
+    else
+    {
+        _303 = float3(_285 + 1.0f.xx, -_290);
+    }
+    float3 _316;
+    if (_291)
+    {
+        _316 = float3(_285 + float2(0.0f, 1.0f), _288);
+    }
+    else
+    {
+        _316 = float3(_285 + float2(1.0f, 0.0f), 1.0f - _288);
+    }
+    float3 _328;
+    if (_291)
+    {
+        _328 = float3(_285 + float2(1.0f, 0.0f), _287);
+    }
+    else
+    {
+        _328 = float3(_285 + float2(0.0f, 1.0f), _289);
+    }
+    float4 _336 = float4(ddx(_282), -ddy(_282));
+    uint2 _339 = uint2(_303.xy);
+    uint2 _343 = ((_339 >> uint2(8u, 8u)) ^ _339.yx) * uint2(1103515245u, 1103515245u);
+    float2 _351 = _336.xy;
+    float2 _352 = _336.zw;
+    uint2 _358 = uint2(_316.xy);
+    uint2 _362 = ((_358 >> uint2(8u, 8u)) ^ _358.yx) * uint2(1103515245u, 1103515245u);
+    uint2 _376 = uint2(_328.xy);
+    uint2 _380 = ((_376 >> uint2(8u, 8u)) ^ _376.yx) * uint2(1103515245u, 1103515245u);
+    float4 _400 = surface_roughness_tex.SampleLevel(sampler_llr, 0.0f.xx, (log(min(_280.x, _280.y)) * 1.44269502162933349609375f) + 1.0f);
+    float _410 = 0.0199999995529651641845703125f + (0.300000011920928955078125f * (1.0f - ((((((surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_343 >> uint2(8u, 8u)) ^ _343.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _303.z) + (surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_362 >> uint2(8u, 8u)) ^ _362.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _316.z)) + (surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_380 >> uint2(8u, 8u)) ^ _380.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _328.z)) - _400) / length(float3(_303.z, _316.z, _328.z)).xxxx) + _400).x));
+    float3 _411 = mul(_272, float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)));
+    uint _412 = _248.x;
+    uint _413 = _248.y;
+    uint _420;
+    _420 = 0u;
+    uint _421;
+    uint _416;
+    uint _419;
+    for (uint _415 = _413, _418 = _412, _422 = 32u; _422 > 0u; _415 = _416, _418 = _419, _420 = _421, _422 /= 2u)
+    {
+        uint _429 = uint((_418 & _422) > 0u);
+        uint _432 = uint((_415 & _422) > 0u);
+        _421 = _420 + ((_422 * _422) * ((3u * _429) ^ _432));
+        if (_432 == 0u)
+        {
+            uint _445;
+            uint _446;
+            if (_429 == 1u)
+            {
+                _445 = 63u - _415;
+                _446 = 63u - _418;
+            }
+            else
+            {
+                _445 = _415;
+                _446 = _418;
+            }
+            _416 = _446;
+            _419 = _445;
+        }
+        else
+        {
+            _416 = _415;
+            _419 = _418;
+        }
+    }
+    float4x4 _603;
+    float _604;
+    uint _449 = frame_constants_frame_index % 64u;
+    float2 _455 = frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(_420 + (288u * _449))) + 0.5f.xx);
+    float3 _464 = normalize(float3(_411.xy * 0.07500000298023223876953125f.xx, _411.z));
+    float _466 = 6.283185482025146484375f * _455.x;
+    float _468 = _464.z;
+    precise float _67 = mad(1.0f - (_455.y * 0.300000011920928955078125f), 1.0f + _468, -_468);
+    float _474 = sqrt(clamp(1.0f - (_67 * _67), 0.0f, 1.0f));
+    float3 _480 = float3(_474 * cos(_466), _474 * sin(_466), _67) + _464;
+    float _489 = _272.y;
+    float _490 = 1.0f - _489;
+    float _491 = _490 * _490;
+    float _497 = 5.588237762451171875f * float(_449);
+    float _506 = frac(52.98291778564453125f * frac((0.067110560834407806396484375f * (float(_412) + _497)) + (0.005837149918079376220703125f * (float(_413) + _497))));
+    float4 _512 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, half_depth_tex.Load(int3(_249, 0u)).x, 1.0f)));
+    float3 _519 = _269.xyz;
+    float4 _535 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(in_var_C1 + ((reflect(_272, mul(float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)), normalize(float3(_480.xy * 0.07500000298023223876953125f.xx, _480.z)))) * float3(-1.0f, 1.0f, -1.0f)) * min(4.0f, 4.0f * length(in_var_C1 - (_512.xyz / _512.w.xxx)))), 1.0f)));
+    float3 _539 = _535.xyz / _535.w.xxx;
+    float4 _550 = _269 + (float4(_539 - _519, 0.0f) * float(int(sign(_539.z))));
+    float _551 = _550.w;
+    float3 _560 = (_550 / (float((_551 >= 0.0f) ? 1 : (-1)) * max(1.0000000133514319600180897396058e-10f, abs(_551))).xxxx).xyz;
+    float3 _561 = _560 - _519;
+    bool3 _562 = bool3(_561.x < 0.0f.xxx.x, _561.y < 0.0f.xxx.y, _561.z < 0.0f.xxx.z);
+    float3 _565 = (float3(_562.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _562.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _562.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _519) / _561;
+    float3 _571 = _519 + (_561 * max(0.0f, max(_565.x, _565.y)));
+    float3 _572 = _560 - _571;
+    bool3 _573 = bool3(_572.x >= 0.0f.xxx.x, _572.y >= 0.0f.xxx.y, _572.z >= 0.0f.xxx.z);
+    float3 _576 = (float3(_573.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _573.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _573.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _571) / _572;
+    float3 _584 = _571 + (_572 * min(1.0f, min(min(_576.x, _576.y), _576.z)));
+    float _782;
+    do
+    {
+        _603 = frame_constants_view_constants[0u].clip_to_view;
+        _604 = _603[3].z;
+        float _605 = 0.100000001490116119384765625f * _604;
+        uint _606 = uint(int(max(2u, min(3u, uint(int(floor(length((((_584.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_571.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * _253))))))));
+        float _699;
+        float _767;
+        float _768;
+        float _769;
+        float _770;
+        bool _771;
+        do
+        {
+            float3 _611 = _584 - _571;
+            float _619;
+            if (_584.z > 9.5367431640625e-07f)
+            {
+                _619 = float(_606);
+            }
+            else
+            {
+                _619 = max(1.0f, float(_606) - 1.0f);
+            }
+            float _620 = 1.0f / _619;
+            float _693;
+            float _694;
+            float _695;
+            float _696;
+            float _697;
+            bool _698;
+            if (_606 > 0u)
+            {
+                float _626 = lerp(0.0f, 1.0f, pow(_506 * _620, 1.0f));
+                float3 _628 = _571 + (_611 * _626);
+                float _633 = 1.0f / _628.z;
+                float4 _636 = half_depth_tex.SampleLevel(sampler_nnc, (_628.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                float _637 = _636.x;
+                float _640 = (1.00000202655792236328125f / _637) - _633;
+                bool _643 = (_640 < 0.0f) ? true : false;
+                float _686;
+                float _687;
+                float _688;
+                float _689;
+                float _690;
+                bool _691;
+                float _692;
+                if (_643)
+                {
+                    _686 = 0.0f;
+                    _687 = _640;
+                    _688 = _633 - (1.0f / _637);
+                    _689 = _605;
+                    _690 = _626;
+                    _691 = _643;
+                    _692 = 0.0f;
+                }
+                else
+                {
+                    float _651;
+                    float _655;
+                    _651 = _640;
+                    _655 = _626;
+                    float _652;
+                    bool _654;
+                    float _656;
+                    float _681;
+                    float _682;
+                    float _683;
+                    float _684;
+                    bool _685;
+                    uint _648 = 1u;
+                    bool _653 = _643;
+                    for (;;)
+                    {
+                        if (_648 < _606)
+                        {
+                            _656 = lerp(0.0f, 1.0f, min(0.9999847412109375f, pow((float(_648) + _506) * _620, 1.0f)));
+                            float3 _666 = _571 + (_611 * _656);
+                            float _671 = 1.0f / _666.z;
+                            float4 _673 = half_depth_tex.SampleLevel(sampler_nnc, (_666.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                            float _674 = _673.x;
+                            _652 = (1.00000202655792236328125f / _674) - _671;
+                            _654 = (_652 < 0.0f) ? true : false;
+                            if (_654)
+                            {
+                                _681 = _652;
+                                _682 = _671 - (1.0f / _674);
+                                _683 = _605;
+                                _684 = _656;
+                                _685 = _654;
+                                break;
+                            }
+                            _648++;
+                            _651 = _652;
+                            _653 = _654;
+                            _655 = _656;
+                            continue;
+                        }
+                        else
+                        {
+                            _681 = 0.0f;
+                            _682 = 0.0f;
+                            _683 = 0.0f;
+                            _684 = 1.0f;
+                            _685 = _653;
+                            break;
+                        }
+                    }
+                    _686 = _651;
+                    _687 = _681;
+                    _688 = _682;
+                    _689 = _683;
+                    _690 = _684;
+                    _691 = _685;
+                    _692 = _655;
+                }
+                _693 = _686;
+                _694 = _687;
+                _695 = _688;
+                _696 = _689;
+                _697 = _690;
+                _698 = _691;
+                _699 = _692;
+            }
+            else
+            {
+                _693 = 0.0f;
+                _694 = 0.0f;
+                _695 = 0.0f;
+                _696 = 0.0f;
+                _697 = 1.0f;
+                _698 = false;
+                _699 = 0.0f;
+            }
+            if (_698)
+            {
+                float _704;
+                float _707;
+                float _709;
+                float _711;
+                float _713;
+                float _715;
+                _704 = _699;
+                _707 = _693;
+                _709 = _694;
+                _711 = _695;
+                _713 = _696;
+                _715 = _697;
+                for (uint _717 = 0u; _717 < 1u; )
+                {
+                    float _721 = _704 + _715;
+                    float _722 = _721 * 0.5f;
+                    float3 _724 = _571 + (_611 * _722);
+                    float _729 = 1.0f / _724.z;
+                    float4 _732 = half_depth_tex.SampleLevel(sampler_nnc, (_724.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                    float _733 = _732.x;
+                    float _736 = (1.00000202655792236328125f / _733) - _729;
+                    bool _739 = (_736 < 0.0f) ? true : false;
+                    _704 = _739 ? _704 : _722;
+                    _707 = _739 ? _707 : _736;
+                    _709 = _739 ? _736 : _709;
+                    _711 = _739 ? (_729 - (1.0f / _733)) : _711;
+                    _713 = _739 ? _605 : _713;
+                    _715 = _739 ? _722 : _715;
+                    _717++;
+                    continue;
+                }
+                float _743 = lerp(_704, _715, _707 / (_707 + (-_709)));
+                float3 _745 = _571 + (_611 * _743);
+                float _750 = 1.0f / _745.z;
+                float4 _753 = half_depth_tex.SampleLevel(sampler_nnc, (_745.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                float _754 = _753.x;
+                float _757 = (1.00000202655792236328125f / _754) - _750;
+                bool _762 = (abs(_757) < (_707 * 0.89999997615814208984375f)) ? true : false;
+                _767 = _762 ? _743 : _715;
+                _768 = _762 ? _757 : _709;
+                _769 = _762 ? _605 : _713;
+                _770 = _762 ? (_750 - (1.0f / _754)) : _711;
+                _771 = true;
+                break;
+            }
+            else
+            {
+                _767 = _699;
+                _768 = _195;
+                _769 = _195;
+                _770 = _195;
+                _771 = false;
+                break;
+            }
+            break; // unreachable workaround
+        } while(false);
+        bool _779;
+        if (_771)
+        {
+            bool _778;
+            if (_770 < _769)
+            {
+                _778 = _768 < _769;
+            }
+            else
+            {
+                _778 = false;
+            }
+            _779 = _778;
+        }
+        else
+        {
+            _779 = false;
+        }
+        if (_779)
+        {
+            _782 = _767;
+            break;
+        }
+        _782 = _699;
+        break;
+    } while(false);
+    float3 _784 = lerp(_571, _584, _782.xxx);
+    float _785 = _784.x;
+    float2 _790 = (float4(_785, _784.y, _228, 1.0f).xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+    float4 _797 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_785, _784.y, half_depth_tex.SampleLevel(sampler_nnc, _790, 0.0f).x, 1.0f)));
+    float3 _801 = _797.xyz / _797.w.xxx;
+    float3 _807 = _801 - in_var_C1;
+    float3 _813 = -_276;
+    int2 _814 = int2(_248);
+    float2 _1022;
+    float _1023;
+    do
+    {
+        float4 _822 = mul(frame_constants_view_constants[2u].world_to_sample, float4(in_var_C1, 1.0f));
+        if (_822.z > 1.0f)
+        {
+            _1022 = 0.0f.xx;
+            _1023 = 0.0f;
+            break;
+        }
+        float2 _827 = _822.xy;
+        float2 _828 = abs(_827);
+        bool _830 = any(bool2(_828.x > 0.9833333492279052734375f.xx.x, _828.y > 0.9833333492279052734375f.xx.y));
+        float2 _834;
+        if (_830)
+        {
+            _834 = _827 * 0.5f;
+        }
+        else
+        {
+            _834 = _827;
+        }
+        float _835 = _830 ? 5.0f : 10.0f;
+        float _837 = _830 ? 0.5f : 1.0f;
+        float2 _838 = abs(_834);
+        float2 _841 = 1.0f.xx - (0.000833333353511989116668701171875f.xx * (2.0f * _835));
+        bool _843 = any(bool2(_838.x > _841.x, _838.y > _841.y));
+        float _849;
+        float2 _850;
+        float _851;
+        if (_843)
+        {
+            _849 = _835 * 0.2857142984867095947265625f;
+            _850 = _834 * 0.2857142984867095947265625f;
+            _851 = _837 * 0.2857142984867095947265625f;
+        }
+        else
+        {
+            _849 = _835;
+            _850 = _834;
+            _851 = _837;
+        }
+        float _854 = float(_843 ? 2u : uint(_830));
+        uint _856 = 2u + uint(_854);
+        float _859 = _813.y;
+        float4 _871 = float4(_850.x, _850.y, _822.z, _822.w) + mul(frame_constants_view_constants[_856].world_to_sample, float4((float3(0.0f, 1.0f, 0.0f) * (0.066666670143604278564453125f * clamp(1.0f - _859, 0.0f, 1.0f))) / _851.xxx, 0.0f));
+        float2 _874 = (_871.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+        float3 _875 = float3(_874.x, _874.y, _871.z);
+        float _880 = max((0.300000011920928955078125f / _851) * (1.0f - abs(_859)), 0.02500000037252902984619140625f);
+        float _891 = float((uint((_814.x * 11) + (_814.y * 7)) + (frame_constants_frame_index * 5u)) % 64u) * 1.61803400516510009765625f;
+        uint2 _892 = uint2(_814);
+        float _904 = frac(52.98291778564453125f * frac((0.067110560834407806396484375f * (float(_892.x) + _497)) + (0.005837149918079376220703125f * (float(_892.y) + _497))));
+        float4 _906 = mul(frame_constants_view_constants[_856].world_to_sample, float4(0.0f, 1.0f, 0.0f, 0.0f));
+        float _908;
+        int _911;
+        _908 = 0.0f;
+        _911 = 0;
+        float _909;
+        int _912;
+        for (int _913 = 0; _913 < 5; _908 = _909, _911 = _912, _913++)
+        {
+            float _918 = float(_913);
+            float _920 = (_918 + _891) * 2.3999631404876708984375f;
+            float3 _933 = _875 + float3((((float2(cos(_920), sin(_920)) * (_918 + _904)) * 0.20000000298023223876953125f.xx) * _849) * 0.000833333353511989116668701171875f.xx, _880 * (-0.0009765625f));
+            float4 _940 = shadow_map.SampleLevel(sampler_shadow_nearest, float3(_933.xy, _854), 0.0f);
+            float _941 = _940.x;
+            if (_933.z > _941)
+            {
+                _909 = _908 + _941;
+                _912 = _911 + 1;
+            }
+            else
+            {
+                _909 = _908;
+                _912 = _911;
+            }
+        }
+        float _949 = _908 / float(_911);
+        if (_911 == 0)
+        {
+            _1022 = 0.0f.xx;
+            _1023 = 0.0f;
+            break;
+        }
+        float _963 = max(((_871.z - _949) * ((17.0666675567626953125f * _849) * pow(10.0f, smoothstep(0.0f, 0.25f, frame_constants_fog_tint_thickness.w)))) / _949, 0.0f);
+        float _970 = (_963 / pow(pow(_963 / (_849 - 1.0f), 5.0f) + 1.0f, 0.20000000298023223876953125f)) + 1.0f;
+        float _972 = _906.z;
+        float2 _982 = (((_906.xy * float(int(sign(_972)))) / max(0.1500000059604644775390625f, abs(_972)).xx) * 0.0009765625f.xx) * 2.0f;
+        float2 _984;
+        _984 = 0.0f.xx;
+        for (int _987 = 0; _987 < 10; )
+        {
+            float _991 = float(_987);
+            float _993 = (_991 + _891) * 2.3999631404876708984375f;
+            float2 _1000 = ((float2(cos(_993), sin(_993)) * (_991 + _904)) * 0.100000001490116119384765625f.xx) * _970;
+            float3 _1006 = _875 + float3(_1000 * 0.000833333353511989116668701171875f.xx, _880 * (-0.0009765625f));
+            float _1018 = 1.0f - shadow_map.SampleCmpLevelZero(sampler_shadow_linear, float3(_1006.xy, _854), _1006.z + min(0.0f, dot(_982, _1000)));
+            _984 += float2(_1018, _1018 * _1018);
+            _987++;
+            continue;
+        }
+        _1022 = _984 * 0.100000001490116119384765625f;
+        _1023 = _970;
+        break;
+    } while(false);
+    float _1027 = clamp((_1022.x - 0.100000001490116119384765625f) * 1.4285714626312255859375f, 0.0f, 1.0f);
+    float2 _1040 = _1027.xx + ((float2(-1.0f, 1.0f) * sqrt(max(0.0f, _1022.y - (_1022.x * _1022.x)))) * (3.0f * max(0.0f, 1.0f - (_1023 * 0.20000000298023223876953125f))));
+    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(_Globals_framebuffer_dims);
+    float4 _1055 = float4((_1046 - 0.5f.xx) * float2(2.0f, -2.0f), gl_FragCoord.z, 1.0f);
+    float4 _1058 = mul(frame_constants_view_constants[0u].clip_to_prev_clip, mul(frame_constants_view_constants[0u].view_to_clip, mul(_603, _1055)));
+    float2 _1064 = ((_1058.xy / _1058.w.xx) * float2(0.5f, -0.5f)) + 0.5f.xx;
+    float2 _1069 = clamp(_1064, 0.0f.xx, 1.0f.xx);
+    float4 _1082 = float4(_1064 - ((_1055.xy * float2(0.5f, -0.5f)) + 0.5f.xx), float(all(bool2(_1069.x == _1064.x, _1069.y == _1064.y))), 1.0f) * float4(1.0f, 1.0f, clamp(1.0f - length(frame_constants_view_constants[0u].clip_to_prev_clip[3].xyz), 0.0f, 1.0f), 1.0f);
+    float _1085 = _1082.z;
+    bool _1099;
+    if (_1085 > 0.0f)
+    {
+        bool _1098;
+        if (_Globals_history_valid != 0u)
+        {
+            _1098 = !(0u == frame_constants_frame_index);
+        }
+        else
+        {
+            _1098 = false;
+        }
+        _1099 = _1098;
+    }
+    else
+    {
+        _1099 = false;
+    }
+    float _1107;
+    if (_1099)
+    {
+        _1107 = shadows_history_tex.SampleLevel(sampler_lnc, _1046 + _1082.xy, 0.0f).x;
+    }
+    else
+    {
+        _1107 = _1027;
+    }
+    float _1112 = lerp(clamp(_1107, _1040.x, _1040.y), _1027, lerp(1.0f, 0.125f, _1085));
+    float _1113 = 1.0f - _1112;
+    float4 _1121 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(in_var_C1 + (_276 * 0.5f), 1.0f)));
+    float3 _1125 = _1121.xyz / _1121.w.xxx;
+    float4 _1136 = _269 + (float4(_1125 - _519, 0.0f) * float(int(sign(_1125.z))));
+    float _1137 = _1136.w;
+    float3 _1146 = (_1136 / (float((_1137 >= 0.0f) ? 1 : (-1)) * max(1.0000000133514319600180897396058e-10f, abs(_1137))).xxxx).xyz;
+    float3 _1147 = _1146 - _519;
+    bool3 _1148 = bool3(_1147.x < 0.0f.xxx.x, _1147.y < 0.0f.xxx.y, _1147.z < 0.0f.xxx.z);
+    float3 _1151 = (float3(_1148.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _1148.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _1148.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _519) / _1147;
+    float3 _1157 = _519 + (_1147 * max(0.0f, max(_1151.x, _1151.y)));
+    float3 _1158 = _1146 - _1157;
+    bool3 _1159 = bool3(_1158.x >= 0.0f.xxx.x, _1158.y >= 0.0f.xxx.y, _1158.z >= 0.0f.xxx.z);
+    float3 _1162 = (float3(_1159.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _1159.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _1159.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _1157) / _1158;
+    float3 _1170 = _1157 + (_1158 * min(1.0f, min(min(_1162.x, _1162.y), _1162.z)));
+    bool _1313;
+    float _1314;
+    float _1315;
+    do
+    {
+        float _1188 = 0.5f * _604;
+        uint _1189 = uint(int(max(2u, min(3u, uint(int(floor(length((((_1170.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_1157.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * _253))))))));
+        float _1293;
+        float _1297;
+        float _1298;
+        float _1299;
+        float _1300;
+        bool _1301;
+        do
+        {
+            float3 _1194 = _1170 - _1157;
+            float _1202;
+            if (_1170.z > 9.5367431640625e-07f)
+            {
+                _1202 = float(_1189);
+            }
+            else
+            {
+                _1202 = max(1.0f, float(_1189) - 1.0f);
+            }
+            float _1203 = 1.0f / _1202;
+            float _1288;
+            float _1289;
+            float _1290;
+            float _1291;
+            bool _1292;
+            if (_1189 > 0u)
+            {
+                float _1209 = lerp(0.0f, 1.0f, pow(_506 * _1203, 1.0f));
+                float3 _1211 = _1157 + (_1194 * _1209);
+                float2 _1214 = (_1211.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+                float _1216 = 1.0f / _1211.z;
+                float _1221 = 1.0f / half_depth_tex.SampleLevel(sampler_llc, _1214, 0.0f).x;
+                float _1225 = 1.0f / half_depth_tex.SampleLevel(sampler_nnc, _1214, 0.0f).x;
+                float _1229 = (max(_1221, _1225) * 1.00000202655792236328125f) - _1216;
+                float _1230 = _1216 - min(_1221, _1225);
+                bool _1233 = (_1229 < 0.0f) ? (_1230 < _1188) : false;
+                float _1282;
+                float _1283;
+                float _1284;
+                float _1285;
+                bool _1286;
+                float _1287;
+                if (_1233)
+                {
+                    _1282 = _1229;
+                    _1283 = _1230;
+                    _1284 = _1188;
+                    _1285 = _1209;
+                    _1286 = _1233;
+                    _1287 = 0.0f;
+                }
+                else
+                {
+                    float _1243;
+                    _1243 = _1209;
+                    bool _1242;
+                    float _1244;
+                    float _1277;
+                    float _1278;
+                    float _1279;
+                    float _1280;
+                    bool _1281;
+                    uint _1238 = 1u;
+                    bool _1241 = _1233;
+                    for (;;)
+                    {
+                        if (_1238 < _1189)
+                        {
+                            _1244 = lerp(0.0f, 1.0f, min(0.9999847412109375f, pow((float(_1238) + _506) * _1203, 1.0f)));
+                            float3 _1254 = _1157 + (_1194 * _1244);
+                            float2 _1257 = (_1254.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+                            float _1259 = 1.0f / _1254.z;
+                            float _1263 = 1.0f / half_depth_tex.SampleLevel(sampler_llc, _1257, 0.0f).x;
+                            float _1267 = 1.0f / half_depth_tex.SampleLevel(sampler_nnc, _1257, 0.0f).x;
+                            float _1271 = (max(_1263, _1267) * 1.00000202655792236328125f) - _1259;
+                            float _1272 = _1259 - min(_1263, _1267);
+                            _1242 = (_1271 < 0.0f) ? (_1272 < _1188) : false;
+                            if (_1242)
+                            {
+                                _1277 = _1271;
+                                _1278 = _1272;
+                                _1279 = _1188;
+                                _1280 = _1244;
+                                _1281 = _1242;
+                                break;
+                            }
+                            _1238++;
+                            _1241 = _1242;
+                            _1243 = _1244;
+                            continue;
+                        }
+                        else
+                        {
+                            _1277 = 0.0f;
+                            _1278 = 0.0f;
+                            _1279 = 0.0f;
+                            _1280 = 1.0f;
+                            _1281 = _1241;
+                            break;
+                        }
+                    }
+                    _1282 = _1277;
+                    _1283 = _1278;
+                    _1284 = _1279;
+                    _1285 = _1280;
+                    _1286 = _1281;
+                    _1287 = _1243;
+                }
+                _1288 = _1282;
+                _1289 = _1283;
+                _1290 = _1284;
+                _1291 = _1285;
+                _1292 = _1286;
+                _1293 = _1287;
+            }
+            else
+            {
+                _1288 = 0.0f;
+                _1289 = 0.0f;
+                _1290 = 0.0f;
+                _1291 = 1.0f;
+                _1292 = false;
+                _1293 = 0.0f;
+            }
+            if (_1292)
+            {
+                _1297 = _1291;
+                _1298 = _1288;
+                _1299 = _1290;
+                _1300 = _1289;
+                _1301 = true;
+                break;
+            }
+            else
+            {
+                _1297 = _1293;
+                _1298 = _195;
+                _1299 = _195;
+                _1300 = _195;
+                _1301 = false;
+                break;
+            }
+            break; // unreachable workaround
+        } while(false);
+        bool _1309;
+        if (_1301)
+        {
+            bool _1308;
+            if (_1300 < _1299)
+            {
+                _1308 = _1298 < _1299;
+            }
+            else
+            {
+                _1308 = false;
+            }
+            _1309 = _1308;
+        }
+        else
+        {
+            _1309 = false;
+        }
+        if (_1309)
+        {
+            _1313 = true;
+            _1314 = _1297;
+            _1315 = _1300 / _1299;
+            break;
+        }
+        _1313 = false;
+        _1314 = _1293;
+        _1315 = 0.0f;
+        break;
+    } while(false);
+    float _1323;
+    if (_1313)
+    {
+        _1323 = min(_1113, smoothstep(0.5f, 0.0f, (1.0f - _1315) * (1.0f - _1314)));
+    }
+    else
+    {
+        _1323 = _1113;
+    }
+    uint _1334;
+    if (_244)
+    {
+        _1334 = 0u;
+    }
+    else
+    {
+        uint2 _1327 = _248 & uint2(1u, 1u);
+        _1334 = 1u << ((_1327.x + (_1327.y * 2u)) & 31u);
+    }
+    uint _1336 = _1334 + QuadReadAcrossX(_1334);
+    uint2 _1339 = _248 & uint2(1u, 1u);
+    if ((_1339.x + (_1339.y * 2u)) == firstbithigh(_1336 + QuadReadAcrossY(_1336)))
+    {
+        uint _1349;
+        __alias_ice_refl_count_buffer.InterlockedAdd(12, 1u, _1349);
+        __alias_ice_refl_px_buffer.Store<uint>(_1349 * 4 + 0, _249.x + (_249.y * 65536u));
+        if ((_1349 & 63u) == 0u)
+        {
+            uint _1360;
+            __alias_ice_refl_count_buffer.InterlockedAdd(0, 1u, _1360);
+        }
+    }
+    float _1363;
+    float3 _1415;
+    do
+    {
+        _1363 = _275.y;
+        bool _1369;
+        if (!(_1363 <= 0.0f))
+        {
+            _1369 = _489 <= 0.0f;
+        }
+        else
+        {
+            _1369 = true;
+        }
+        if (_1369)
+        {
+            _1415 = 0.0f.xxx;
+            break;
+        }
+        float _1372 = _410 * _410;
+        float3 _1374 = normalize(_272 + _276);
+        float _1375 = _1374.y;
+        float _1378 = max(0.0f, 1.0f - dot(_1374, _276));
+        float _1379 = _1378 * _1378;
+        float _1406 = ((_1375 * _1375) * (_1372 - 1.0f)) + 1.0f;
+        _1415 = ((lerp(0.02999999932944774627685546875f.xxx, 1.0f.xxx, ((_1379 * _1379) * _1378).xxx) * (((2.0f * _1363) * _489) / ((_1363 * sqrt(((((-_489) * _1372) + _489) * _489) + _1372)) + (_489 * sqrt(((((-_1363) * _1372) + _1363) * _1363) + _1372))))) * (_1372 / ((3.1415927410125732421875f * _1406) * _1406))) / ((4.0f * _489) * _1363).xxx;
+        break;
+    } while(false);
+    float3 _1440 = mul(_807 * float3(1.0f, -1.0f, 1.0f), float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)));
+    float _1442 = length(_1440);
+    float3 _1444 = _1440 * (1.0f / _1442);
+    float3 _1465 = clamp((exp(float3(-0.5950000286102294921875f, -0.374000012874603271484375f, -0.3060000240802764892578125f) * ((abs(in_var_C1.y - _801.y) + length(_807)) + 0.699999988079071044921875f)) * (0.959999978542327880859375f - (0.959999978542327880859375f * ((_491 * _491) * _490)))) * refraction_tex.SampleLevel(sampler_lnc, _790, 0.0f).xyz, 0.0f.xxx, 65408.0f.xxx);
+    float _1475 = asfloat((asuint(max(max(1.52587890625e-05f, _1465.x), max(_1465.y, _1465.z))) + 125845504u) & 2139095040u);
+    uint3 _1478 = asuint(_1465 + _1475.xxx);
+    out_var_SV_TARGET0 = lerp((frame_constants_sun_color.xyz * _1415.x) * (_1323 * clamp(_1363, 0.0f, 1.0f)), ((frame_constants_sun_color.xyz * (0.699999988079071044921875f * _1323)) * 0.3183098733425140380859375f.xxx) + frame_constants_sky_high_color.xyz, 0.00999999977648258209228515625f.xxx);
+    out_var_SV_TARGET1 = sqrt(_410);
+    out_var_SV_TARGET2 = ((uint((clamp((_1444.x * 0.5f) + 0.5f, 0.0f, 1.0f) * 255.0f) + 0.5f) << 24u) | (uint((clamp((_1444.y * 0.5f) + 0.5f, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) | spvPackHalf2x16(float2(_1442, 0.0f));
+    out_var_SV_TARGET3 = ((((asuint(_1475) << 4u) + 268435456u) | (_1478.z << 18u)) | (_1478.y << 9u)) | (_1478.x & 511u);
+    out_var_SV_TARGET4 = _1112 + 0.00196078442968428134918212890625f;
+}
+
+[earlydepthstencil]
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    in_var_C1 = stage_input.in_var_C1;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    stage_output.out_var_SV_TARGET1 = out_var_SV_TARGET1;
+    stage_output.out_var_SV_TARGET2 = out_var_SV_TARGET2;
+    stage_output.out_var_SV_TARGET3 = out_var_SV_TARGET3;
+    stage_output.out_var_SV_TARGET4 = out_var_SV_TARGET4;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _ice_plane.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+static float _195;
+static float _228;
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    uint _Globals_history_valid : packoffset(c0.y);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
+    uint2 _Globals_framebuffer_dims : packoffset(c1);
+    uint2 _Globals_water_mask_dims : packoffset(c1.z);
+    uint2 _Globals_half_depth_tex_dims : packoffset(c2);
+    uint2 _Globals_refraction_tex_dims : packoffset(c2.z);
+    uint2 _Globals_reprojection_tex_dims : packoffset(c3);
+    uint2 _Globals_shadows_history_tex_dims : packoffset(c3.z);
+    uint2 _Globals_surface_roughness_tex_dims : packoffset(c4);
+    column_major float4x4 _Globals_model_to_world : packoffset(c5);
+};
+
+RWByteAddressBuffer __alias_ice_refl_count_buffer : register(u23, space0);
+RWByteAddressBuffer __alias_ice_refl_px_buffer : register(u24, space0);
+SamplerState sampler_lnc : register(s0, space0);
+SamplerState sampler_llr : register(s1, space0);
+SamplerState sampler_nnc : register(s2, space0);
+SamplerState sampler_llc : register(s3, space0);
+SamplerState sampler_shadow_nearest : register(s11, space0);
+SamplerComparisonState sampler_shadow_linear : register(s12, space0);
+Texture2DArray<float4> shadow_map : register(t15, space0);
+Texture2D<float4> half_depth_tex : register(t18, space0);
+Texture2D<float4> refraction_tex : register(t19, space0);
+Texture2D<float4> shadows_history_tex : register(t21, space0);
+Texture2D<float4> surface_roughness_tex : register(t22, space0);
+
+static float4 gl_FragCoord;
+static float3 in_var_C1;
+static float3 out_var_SV_TARGET0;
+static float out_var_SV_TARGET1;
+static uint out_var_SV_TARGET2;
+static uint out_var_SV_TARGET3;
+static float out_var_SV_TARGET4;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    float4 gl_FragCoord : SV_Position;
+};
+
+struct SPIRV_Cross_Output
+{
+    float3 out_var_SV_TARGET0 : SV_Target0;
+    float out_var_SV_TARGET1 : SV_Target1;
+    uint out_var_SV_TARGET2 : SV_Target2;
+    uint out_var_SV_TARGET3 : SV_Target3;
+    float out_var_SV_TARGET4 : SV_Target4;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void frag_main()
+{
+    bool _244 = IsHelperLane();
+    uint2 _248 = uint2(gl_FragCoord.xy);
+    uint2 _249 = _248 / uint2(2u, 2u);
+    float2 _253 = float2(_Globals_half_depth_tex_dims);
+    float2 _263 = (((float2(int2(_249)) + 0.5f.xx) / _253) - 0.5f.xx) * float2(2.0f, -2.0f);
+    float _264 = _263.x;
+    float4 _269 = float4(_264, _263.y, gl_FragCoord.z, 1.0f);
+    float3 _272 = -normalize(mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, 0.0f, 1.0f))).xyz);
+    float4 _275 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
+    float3 _276 = _275.xyz;
+    float2 _280 = float2(_Globals_surface_roughness_tex_dims);
+    float2 _282 = in_var_C1.xz * 0.100000001490116119384765625f;
+    float2 _284 = mul(_282 * 3.4639999866485595703125f, float2x2(float2(1.0f, 0.0f), float2(-0.57735025882720947265625f, 1.1547005176544189453125f)));
+    float2 _285 = floor(_284);
+    float2 _286 = frac(_284);
+    float _287 = _286.x;
+    float _288 = _286.y;
+    float _289 = 1.0f - _287;
+    float _290 = _289 - _288;
+    bool _291 = _290 > 0.0f;
+    float3 _303;
+    if (_291)
+    {
+        _303 = float3(_285, _290);
+    }
+    else
+    {
+        _303 = float3(_285 + 1.0f.xx, -_290);
+    }
+    float3 _316;
+    if (_291)
+    {
+        _316 = float3(_285 + float2(0.0f, 1.0f), _288);
+    }
+    else
+    {
+        _316 = float3(_285 + float2(1.0f, 0.0f), 1.0f - _288);
+    }
+    float3 _328;
+    if (_291)
+    {
+        _328 = float3(_285 + float2(1.0f, 0.0f), _287);
+    }
+    else
+    {
+        _328 = float3(_285 + float2(0.0f, 1.0f), _289);
+    }
+    float4 _336 = float4(ddx(_282), -ddy(_282));
+    uint2 _339 = uint2(_303.xy);
+    uint2 _343 = ((_339 >> uint2(8u, 8u)) ^ _339.yx) * uint2(1103515245u, 1103515245u);
+    float2 _351 = _336.xy;
+    float2 _352 = _336.zw;
+    uint2 _358 = uint2(_316.xy);
+    uint2 _362 = ((_358 >> uint2(8u, 8u)) ^ _358.yx) * uint2(1103515245u, 1103515245u);
+    uint2 _376 = uint2(_328.xy);
+    uint2 _380 = ((_376 >> uint2(8u, 8u)) ^ _376.yx) * uint2(1103515245u, 1103515245u);
+    float4 _400 = surface_roughness_tex.SampleLevel(sampler_llr, 0.0f.xx, (log(min(_280.x, _280.y)) * 1.44269502162933349609375f) + 1.0f);
+    float _410 = 0.0199999995529651641845703125f + (0.300000011920928955078125f * (1.0f - ((((((surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_343 >> uint2(8u, 8u)) ^ _343.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _303.z) + (surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_362 >> uint2(8u, 8u)) ^ _362.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _316.z)) + (surface_roughness_tex.SampleGrad(sampler_llr, _282 + (float2(((_380 >> uint2(8u, 8u)) ^ _380.yx) * uint2(1103515245u, 1103515245u)) * 2.3283064365386962890625e-10f), _351, _352) * _328.z)) - _400) / length(float3(_303.z, _316.z, _328.z)).xxxx) + _400).x));
+    float3 _411 = mul(_272, float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)));
+    uint _412 = _248.x;
+    uint _413 = _248.y;
+    uint _420;
+    _420 = 0u;
+    uint _421;
+    uint _416;
+    uint _419;
+    for (uint _415 = _413, _418 = _412, _422 = 32u; _422 > 0u; _415 = _416, _418 = _419, _420 = _421, _422 /= 2u)
+    {
+        uint _429 = uint((_418 & _422) > 0u);
+        uint _432 = uint((_415 & _422) > 0u);
+        _421 = _420 + ((_422 * _422) * ((3u * _429) ^ _432));
+        if (_432 == 0u)
+        {
+            uint _445;
+            uint _446;
+            if (_429 == 1u)
+            {
+                _445 = 63u - _415;
+                _446 = 63u - _418;
+            }
+            else
+            {
+                _445 = _415;
+                _446 = _418;
+            }
+            _416 = _446;
+            _419 = _445;
+        }
+        else
+        {
+            _416 = _415;
+            _419 = _418;
+        }
+    }
+    float4x4 _603;
+    float _604;
+    uint _449 = frame_constants_frame_index % 64u;
+    float2 _455 = frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(_420 + (288u * _449))) + 0.5f.xx);
+    float3 _464 = normalize(float3(_411.xy * 0.07500000298023223876953125f.xx, _411.z));
+    float _466 = 6.283185482025146484375f * _455.x;
+    float _468 = _464.z;
+    precise float _67 = mad(1.0f - (_455.y * 0.300000011920928955078125f), 1.0f + _468, -_468);
+    float _474 = sqrt(clamp(1.0f - (_67 * _67), 0.0f, 1.0f));
+    float3 _480 = float3(_474 * cos(_466), _474 * sin(_466), _67) + _464;
+    float _489 = _272.y;
+    float _490 = 1.0f - _489;
+    float _491 = _490 * _490;
+    float _497 = 5.588237762451171875f * float(_449);
+    float _506 = frac(52.98291778564453125f * frac((0.067110560834407806396484375f * (float(_412) + _497)) + (0.005837149918079376220703125f * (float(_413) + _497))));
+    float4 _512 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, half_depth_tex.Load(int3(_249, 0u)).x, 1.0f)));
+    float3 _519 = _269.xyz;
+    float4 _535 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(in_var_C1 + ((reflect(_272, mul(float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)), normalize(float3(_480.xy * 0.07500000298023223876953125f.xx, _480.z)))) * float3(-1.0f, 1.0f, -1.0f)) * min(4.0f, 4.0f * length(in_var_C1 - (_512.xyz / _512.w.xxx)))), 1.0f)));
+    float3 _539 = _535.xyz / _535.w.xxx;
+    float4 _550 = _269 + (float4(_539 - _519, 0.0f) * float(int(sign(_539.z))));
+    float _551 = _550.w;
+    float3 _560 = (_550 / (float((_551 >= 0.0f) ? 1 : (-1)) * max(1.0000000133514319600180897396058e-10f, abs(_551))).xxxx).xyz;
+    float3 _561 = _560 - _519;
+    bool3 _562 = bool3(_561.x < 0.0f.xxx.x, _561.y < 0.0f.xxx.y, _561.z < 0.0f.xxx.z);
+    float3 _565 = (float3(_562.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _562.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _562.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _519) / _561;
+    float3 _571 = _519 + (_561 * max(0.0f, max(_565.x, _565.y)));
+    float3 _572 = _560 - _571;
+    bool3 _573 = bool3(_572.x >= 0.0f.xxx.x, _572.y >= 0.0f.xxx.y, _572.z >= 0.0f.xxx.z);
+    float3 _576 = (float3(_573.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _573.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _573.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _571) / _572;
+    float3 _584 = _571 + (_572 * min(1.0f, min(min(_576.x, _576.y), _576.z)));
+    float _782;
+    do
+    {
+        _603 = frame_constants_view_constants[0u].clip_to_view;
+        _604 = _603[3].z;
+        float _605 = 0.100000001490116119384765625f * _604;
+        uint _606 = uint(int(max(2u, min(3u, uint(int(floor(length((((_584.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_571.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * _253))))))));
+        float _699;
+        float _767;
+        float _768;
+        float _769;
+        float _770;
+        bool _771;
+        do
+        {
+            float3 _611 = _584 - _571;
+            float _619;
+            if (_584.z > 9.5367431640625e-07f)
+            {
+                _619 = float(_606);
+            }
+            else
+            {
+                _619 = max(1.0f, float(_606) - 1.0f);
+            }
+            float _620 = 1.0f / _619;
+            float _693;
+            float _694;
+            float _695;
+            float _696;
+            float _697;
+            bool _698;
+            if (_606 > 0u)
+            {
+                float _626 = lerp(0.0f, 1.0f, pow(_506 * _620, 1.0f));
+                float3 _628 = _571 + (_611 * _626);
+                float _633 = 1.0f / _628.z;
+                float4 _636 = half_depth_tex.SampleLevel(sampler_nnc, (_628.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                float _637 = _636.x;
+                float _640 = (1.00000202655792236328125f / _637) - _633;
+                bool _643 = (_640 < 0.0f) ? true : false;
+                float _686;
+                float _687;
+                float _688;
+                float _689;
+                float _690;
+                bool _691;
+                float _692;
+                if (_643)
+                {
+                    _686 = 0.0f;
+                    _687 = _640;
+                    _688 = _633 - (1.0f / _637);
+                    _689 = _605;
+                    _690 = _626;
+                    _691 = _643;
+                    _692 = 0.0f;
+                }
+                else
+                {
+                    float _651;
+                    float _655;
+                    _651 = _640;
+                    _655 = _626;
+                    float _652;
+                    bool _654;
+                    float _656;
+                    float _681;
+                    float _682;
+                    float _683;
+                    float _684;
+                    bool _685;
+                    uint _648 = 1u;
+                    bool _653 = _643;
+                    for (;;)
+                    {
+                        if (_648 < _606)
+                        {
+                            _656 = lerp(0.0f, 1.0f, min(0.9999847412109375f, pow((float(_648) + _506) * _620, 1.0f)));
+                            float3 _666 = _571 + (_611 * _656);
+                            float _671 = 1.0f / _666.z;
+                            float4 _673 = half_depth_tex.SampleLevel(sampler_nnc, (_666.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                            float _674 = _673.x;
+                            _652 = (1.00000202655792236328125f / _674) - _671;
+                            _654 = (_652 < 0.0f) ? true : false;
+                            if (_654)
+                            {
+                                _681 = _652;
+                                _682 = _671 - (1.0f / _674);
+                                _683 = _605;
+                                _684 = _656;
+                                _685 = _654;
+                                break;
+                            }
+                            _648++;
+                            _651 = _652;
+                            _653 = _654;
+                            _655 = _656;
+                            continue;
+                        }
+                        else
+                        {
+                            _681 = 0.0f;
+                            _682 = 0.0f;
+                            _683 = 0.0f;
+                            _684 = 1.0f;
+                            _685 = _653;
+                            break;
+                        }
+                    }
+                    _686 = _651;
+                    _687 = _681;
+                    _688 = _682;
+                    _689 = _683;
+                    _690 = _684;
+                    _691 = _685;
+                    _692 = _655;
+                }
+                _693 = _686;
+                _694 = _687;
+                _695 = _688;
+                _696 = _689;
+                _697 = _690;
+                _698 = _691;
+                _699 = _692;
+            }
+            else
+            {
+                _693 = 0.0f;
+                _694 = 0.0f;
+                _695 = 0.0f;
+                _696 = 0.0f;
+                _697 = 1.0f;
+                _698 = false;
+                _699 = 0.0f;
+            }
+            if (_698)
+            {
+                float _704;
+                float _707;
+                float _709;
+                float _711;
+                float _713;
+                float _715;
+                _704 = _699;
+                _707 = _693;
+                _709 = _694;
+                _711 = _695;
+                _713 = _696;
+                _715 = _697;
+                for (uint _717 = 0u; _717 < 1u; )
+                {
+                    float _721 = _704 + _715;
+                    float _722 = _721 * 0.5f;
+                    float3 _724 = _571 + (_611 * _722);
+                    float _729 = 1.0f / _724.z;
+                    float4 _732 = half_depth_tex.SampleLevel(sampler_nnc, (_724.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                    float _733 = _732.x;
+                    float _736 = (1.00000202655792236328125f / _733) - _729;
+                    bool _739 = (_736 < 0.0f) ? true : false;
+                    _704 = _739 ? _704 : _722;
+                    _707 = _739 ? _707 : _736;
+                    _709 = _739 ? _736 : _709;
+                    _711 = _739 ? (_729 - (1.0f / _733)) : _711;
+                    _713 = _739 ? _605 : _713;
+                    _715 = _739 ? _722 : _715;
+                    _717++;
+                    continue;
+                }
+                float _743 = lerp(_704, _715, _707 / (_707 + (-_709)));
+                float3 _745 = _571 + (_611 * _743);
+                float _750 = 1.0f / _745.z;
+                float4 _753 = half_depth_tex.SampleLevel(sampler_nnc, (_745.xy * float2(0.5f, -0.5f)) + 0.5f.xx, 0.0f);
+                float _754 = _753.x;
+                float _757 = (1.00000202655792236328125f / _754) - _750;
+                bool _762 = (abs(_757) < (_707 * 0.89999997615814208984375f)) ? true : false;
+                _767 = _762 ? _743 : _715;
+                _768 = _762 ? _757 : _709;
+                _769 = _762 ? _605 : _713;
+                _770 = _762 ? (_750 - (1.0f / _754)) : _711;
+                _771 = true;
+                break;
+            }
+            else
+            {
+                _767 = _699;
+                _768 = _195;
+                _769 = _195;
+                _770 = _195;
+                _771 = false;
+                break;
+            }
+            break; // unreachable workaround
+        } while(false);
+        bool _779;
+        if (_771)
+        {
+            bool _778;
+            if (_770 < _769)
+            {
+                _778 = _768 < _769;
+            }
+            else
+            {
+                _778 = false;
+            }
+            _779 = _778;
+        }
+        else
+        {
+            _779 = false;
+        }
+        if (_779)
+        {
+            _782 = _767;
+            break;
+        }
+        _782 = _699;
+        break;
+    } while(false);
+    float3 _784 = lerp(_571, _584, _782.xxx);
+    float _785 = _784.x;
+    float2 _790 = (float4(_785, _784.y, _228, 1.0f).xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+    float4 _797 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_785, _784.y, half_depth_tex.SampleLevel(sampler_nnc, _790, 0.0f).x, 1.0f)));
+    float3 _801 = _797.xyz / _797.w.xxx;
+    float3 _807 = _801 - in_var_C1;
+    float3 _813 = -_276;
+    int2 _814 = int2(_248);
+    float2 _1022;
+    float _1023;
+    do
+    {
+        float4 _822 = mul(frame_constants_view_constants[2u].world_to_sample, float4(in_var_C1, 1.0f));
+        if (_822.z > 1.0f)
+        {
+            _1022 = 0.0f.xx;
+            _1023 = 0.0f;
+            break;
+        }
+        float2 _827 = _822.xy;
+        float2 _828 = abs(_827);
+        bool _830 = any(bool2(_828.x > 0.9833333492279052734375f.xx.x, _828.y > 0.9833333492279052734375f.xx.y));
+        float2 _834;
+        if (_830)
+        {
+            _834 = _827 * 0.5f;
+        }
+        else
+        {
+            _834 = _827;
+        }
+        float _835 = _830 ? 5.0f : 10.0f;
+        float _837 = _830 ? 0.5f : 1.0f;
+        float2 _838 = abs(_834);
+        float2 _841 = 1.0f.xx - (0.000833333353511989116668701171875f.xx * (2.0f * _835));
+        bool _843 = any(bool2(_838.x > _841.x, _838.y > _841.y));
+        float _849;
+        float2 _850;
+        float _851;
+        if (_843)
+        {
+            _849 = _835 * 0.2857142984867095947265625f;
+            _850 = _834 * 0.2857142984867095947265625f;
+            _851 = _837 * 0.2857142984867095947265625f;
+        }
+        else
+        {
+            _849 = _835;
+            _850 = _834;
+            _851 = _837;
+        }
+        float _854 = float(_843 ? 2u : uint(_830));
+        uint _856 = 2u + uint(_854);
+        float _859 = _813.y;
+        float4 _871 = float4(_850.x, _850.y, _822.z, _822.w) + mul(frame_constants_view_constants[_856].world_to_sample, float4((float3(0.0f, 1.0f, 0.0f) * (0.066666670143604278564453125f * clamp(1.0f - _859, 0.0f, 1.0f))) / _851.xxx, 0.0f));
+        float2 _874 = (_871.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+        float3 _875 = float3(_874.x, _874.y, _871.z);
+        float _880 = max((0.300000011920928955078125f / _851) * (1.0f - abs(_859)), 0.02500000037252902984619140625f);
+        float _891 = float((uint((_814.x * 11) + (_814.y * 7)) + (frame_constants_frame_index * 5u)) % 64u) * 1.61803400516510009765625f;
+        uint2 _892 = uint2(_814);
+        float _904 = frac(52.98291778564453125f * frac((0.067110560834407806396484375f * (float(_892.x) + _497)) + (0.005837149918079376220703125f * (float(_892.y) + _497))));
+        float4 _906 = mul(frame_constants_view_constants[_856].world_to_sample, float4(0.0f, 1.0f, 0.0f, 0.0f));
+        float _908;
+        int _911;
+        _908 = 0.0f;
+        _911 = 0;
+        float _909;
+        int _912;
+        for (int _913 = 0; _913 < 5; _908 = _909, _911 = _912, _913++)
+        {
+            float _918 = float(_913);
+            float _920 = (_918 + _891) * 2.3999631404876708984375f;
+            float3 _933 = _875 + float3((((float2(cos(_920), sin(_920)) * (_918 + _904)) * 0.20000000298023223876953125f.xx) * _849) * 0.000833333353511989116668701171875f.xx, _880 * (-0.0009765625f));
+            float4 _940 = shadow_map.SampleLevel(sampler_shadow_nearest, float3(_933.xy, _854), 0.0f);
+            float _941 = _940.x;
+            if (_933.z > _941)
+            {
+                _909 = _908 + _941;
+                _912 = _911 + 1;
+            }
+            else
+            {
+                _909 = _908;
+                _912 = _911;
+            }
+        }
+        float _949 = _908 / float(_911);
+        if (_911 == 0)
+        {
+            _1022 = 0.0f.xx;
+            _1023 = 0.0f;
+            break;
+        }
+        float _963 = max(((_871.z - _949) * ((17.0666675567626953125f * _849) * pow(10.0f, smoothstep(0.0f, 0.25f, frame_constants_fog_tint_thickness.w)))) / _949, 0.0f);
+        float _970 = (_963 / pow(pow(_963 / (_849 - 1.0f), 5.0f) + 1.0f, 0.20000000298023223876953125f)) + 1.0f;
+        float _972 = _906.z;
+        float2 _982 = (((_906.xy * float(int(sign(_972)))) / max(0.1500000059604644775390625f, abs(_972)).xx) * 0.0009765625f.xx) * 2.0f;
+        float2 _984;
+        _984 = 0.0f.xx;
+        for (int _987 = 0; _987 < 10; )
+        {
+            float _991 = float(_987);
+            float _993 = (_991 + _891) * 2.3999631404876708984375f;
+            float2 _1000 = ((float2(cos(_993), sin(_993)) * (_991 + _904)) * 0.100000001490116119384765625f.xx) * _970;
+            float3 _1006 = _875 + float3(_1000 * 0.000833333353511989116668701171875f.xx, _880 * (-0.0009765625f));
+            float _1018 = 1.0f - shadow_map.SampleCmpLevelZero(sampler_shadow_linear, float3(_1006.xy, _854), _1006.z + min(0.0f, dot(_982, _1000)));
+            _984 += float2(_1018, _1018 * _1018);
+            _987++;
+            continue;
+        }
+        _1022 = _984 * 0.100000001490116119384765625f;
+        _1023 = _970;
+        break;
+    } while(false);
+    float _1027 = clamp((_1022.x - 0.100000001490116119384765625f) * 1.4285714626312255859375f, 0.0f, 1.0f);
+    float2 _1040 = _1027.xx + ((float2(-1.0f, 1.0f) * sqrt(max(0.0f, _1022.y - (_1022.x * _1022.x)))) * (3.0f * max(0.0f, 1.0f - (_1023 * 0.20000000298023223876953125f))));
+    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(_Globals_framebuffer_dims);
+    float4 _1055 = float4((_1046 - 0.5f.xx) * float2(2.0f, -2.0f), gl_FragCoord.z, 1.0f);
+    float4 _1058 = mul(frame_constants_view_constants[0u].clip_to_prev_clip, mul(frame_constants_view_constants[0u].view_to_clip, mul(_603, _1055)));
+    float2 _1064 = ((_1058.xy / _1058.w.xx) * float2(0.5f, -0.5f)) + 0.5f.xx;
+    float2 _1069 = clamp(_1064, 0.0f.xx, 1.0f.xx);
+    float4 _1082 = float4(_1064 - ((_1055.xy * float2(0.5f, -0.5f)) + 0.5f.xx), float(all(bool2(_1069.x == _1064.x, _1069.y == _1064.y))), 1.0f) * float4(1.0f, 1.0f, clamp(1.0f - length(frame_constants_view_constants[0u].clip_to_prev_clip[3].xyz), 0.0f, 1.0f), 1.0f);
+    float _1085 = _1082.z;
+    bool _1099;
+    if (_1085 > 0.0f)
+    {
+        bool _1098;
+        if (_Globals_history_valid != 0u)
+        {
+            _1098 = !(0u == frame_constants_frame_index);
+        }
+        else
+        {
+            _1098 = false;
+        }
+        _1099 = _1098;
+    }
+    else
+    {
+        _1099 = false;
+    }
+    float _1107;
+    if (_1099)
+    {
+        _1107 = shadows_history_tex.SampleLevel(sampler_lnc, _1046 + _1082.xy, 0.0f).x;
+    }
+    else
+    {
+        _1107 = _1027;
+    }
+    float _1112 = lerp(clamp(_1107, _1040.x, _1040.y), _1027, lerp(1.0f, 0.125f, _1085));
+    float _1113 = 1.0f - _1112;
+    float4 _1121 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(in_var_C1 + (_276 * 0.5f), 1.0f)));
+    float3 _1125 = _1121.xyz / _1121.w.xxx;
+    float4 _1136 = _269 + (float4(_1125 - _519, 0.0f) * float(int(sign(_1125.z))));
+    float _1137 = _1136.w;
+    float3 _1146 = (_1136 / (float((_1137 >= 0.0f) ? 1 : (-1)) * max(1.0000000133514319600180897396058e-10f, abs(_1137))).xxxx).xyz;
+    float3 _1147 = _1146 - _519;
+    bool3 _1148 = bool3(_1147.x < 0.0f.xxx.x, _1147.y < 0.0f.xxx.y, _1147.z < 0.0f.xxx.z);
+    float3 _1151 = (float3(_1148.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _1148.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _1148.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _519) / _1147;
+    float3 _1157 = _519 + (_1147 * max(0.0f, max(_1151.x, _1151.y)));
+    float3 _1158 = _1146 - _1157;
+    bool3 _1159 = bool3(_1158.x >= 0.0f.xxx.x, _1158.y >= 0.0f.xxx.y, _1158.z >= 0.0f.xxx.z);
+    float3 _1162 = (float3(_1159.x ? 1.0f.xxx.x : float3(-1.0f, -1.0f, 0.0f).x, _1159.y ? 1.0f.xxx.y : float3(-1.0f, -1.0f, 0.0f).y, _1159.z ? 1.0f.xxx.z : float3(-1.0f, -1.0f, 0.0f).z) - _1157) / _1158;
+    float3 _1170 = _1157 + (_1158 * min(1.0f, min(min(_1162.x, _1162.y), _1162.z)));
+    bool _1313;
+    float _1314;
+    float _1315;
+    do
+    {
+        float _1188 = 0.5f * _604;
+        uint _1189 = uint(int(max(2u, min(3u, uint(int(floor(length((((_1170.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_1157.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * _253))))))));
+        float _1293;
+        float _1297;
+        float _1298;
+        float _1299;
+        float _1300;
+        bool _1301;
+        do
+        {
+            float3 _1194 = _1170 - _1157;
+            float _1202;
+            if (_1170.z > 9.5367431640625e-07f)
+            {
+                _1202 = float(_1189);
+            }
+            else
+            {
+                _1202 = max(1.0f, float(_1189) - 1.0f);
+            }
+            float _1203 = 1.0f / _1202;
+            float _1288;
+            float _1289;
+            float _1290;
+            float _1291;
+            bool _1292;
+            if (_1189 > 0u)
+            {
+                float _1209 = lerp(0.0f, 1.0f, pow(_506 * _1203, 1.0f));
+                float3 _1211 = _1157 + (_1194 * _1209);
+                float2 _1214 = (_1211.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+                float _1216 = 1.0f / _1211.z;
+                float _1221 = 1.0f / half_depth_tex.SampleLevel(sampler_llc, _1214, 0.0f).x;
+                float _1225 = 1.0f / half_depth_tex.SampleLevel(sampler_nnc, _1214, 0.0f).x;
+                float _1229 = (max(_1221, _1225) * 1.00000202655792236328125f) - _1216;
+                float _1230 = _1216 - min(_1221, _1225);
+                bool _1233 = (_1229 < 0.0f) ? (_1230 < _1188) : false;
+                float _1282;
+                float _1283;
+                float _1284;
+                float _1285;
+                bool _1286;
+                float _1287;
+                if (_1233)
+                {
+                    _1282 = _1229;
+                    _1283 = _1230;
+                    _1284 = _1188;
+                    _1285 = _1209;
+                    _1286 = _1233;
+                    _1287 = 0.0f;
+                }
+                else
+                {
+                    float _1243;
+                    _1243 = _1209;
+                    bool _1242;
+                    float _1244;
+                    float _1277;
+                    float _1278;
+                    float _1279;
+                    float _1280;
+                    bool _1281;
+                    uint _1238 = 1u;
+                    bool _1241 = _1233;
+                    for (;;)
+                    {
+                        if (_1238 < _1189)
+                        {
+                            _1244 = lerp(0.0f, 1.0f, min(0.9999847412109375f, pow((float(_1238) + _506) * _1203, 1.0f)));
+                            float3 _1254 = _1157 + (_1194 * _1244);
+                            float2 _1257 = (_1254.xy * float2(0.5f, -0.5f)) + 0.5f.xx;
+                            float _1259 = 1.0f / _1254.z;
+                            float _1263 = 1.0f / half_depth_tex.SampleLevel(sampler_llc, _1257, 0.0f).x;
+                            float _1267 = 1.0f / half_depth_tex.SampleLevel(sampler_nnc, _1257, 0.0f).x;
+                            float _1271 = (max(_1263, _1267) * 1.00000202655792236328125f) - _1259;
+                            float _1272 = _1259 - min(_1263, _1267);
+                            _1242 = (_1271 < 0.0f) ? (_1272 < _1188) : false;
+                            if (_1242)
+                            {
+                                _1277 = _1271;
+                                _1278 = _1272;
+                                _1279 = _1188;
+                                _1280 = _1244;
+                                _1281 = _1242;
+                                break;
+                            }
+                            _1238++;
+                            _1241 = _1242;
+                            _1243 = _1244;
+                            continue;
+                        }
+                        else
+                        {
+                            _1277 = 0.0f;
+                            _1278 = 0.0f;
+                            _1279 = 0.0f;
+                            _1280 = 1.0f;
+                            _1281 = _1241;
+                            break;
+                        }
+                    }
+                    _1282 = _1277;
+                    _1283 = _1278;
+                    _1284 = _1279;
+                    _1285 = _1280;
+                    _1286 = _1281;
+                    _1287 = _1243;
+                }
+                _1288 = _1282;
+                _1289 = _1283;
+                _1290 = _1284;
+                _1291 = _1285;
+                _1292 = _1286;
+                _1293 = _1287;
+            }
+            else
+            {
+                _1288 = 0.0f;
+                _1289 = 0.0f;
+                _1290 = 0.0f;
+                _1291 = 1.0f;
+                _1292 = false;
+                _1293 = 0.0f;
+            }
+            if (_1292)
+            {
+                _1297 = _1291;
+                _1298 = _1288;
+                _1299 = _1290;
+                _1300 = _1289;
+                _1301 = true;
+                break;
+            }
+            else
+            {
+                _1297 = _1293;
+                _1298 = _195;
+                _1299 = _195;
+                _1300 = _195;
+                _1301 = false;
+                break;
+            }
+            break; // unreachable workaround
+        } while(false);
+        bool _1309;
+        if (_1301)
+        {
+            bool _1308;
+            if (_1300 < _1299)
+            {
+                _1308 = _1298 < _1299;
+            }
+            else
+            {
+                _1308 = false;
+            }
+            _1309 = _1308;
+        }
+        else
+        {
+            _1309 = false;
+        }
+        if (_1309)
+        {
+            _1313 = true;
+            _1314 = _1297;
+            _1315 = _1300 / _1299;
+            break;
+        }
+        _1313 = false;
+        _1314 = _1293;
+        _1315 = 0.0f;
+        break;
+    } while(false);
+    float _1323;
+    if (_1313)
+    {
+        _1323 = min(_1113, smoothstep(0.5f, 0.0f, (1.0f - _1315) * (1.0f - _1314)));
+    }
+    else
+    {
+        _1323 = _1113;
+    }
+    uint _1334;
+    if (_244)
+    {
+        _1334 = 0u;
+    }
+    else
+    {
+        uint2 _1327 = _248 & uint2(1u, 1u);
+        _1334 = 1u << ((_1327.x + (_1327.y * 2u)) & 31u);
+    }
+    uint _1336 = _1334 + QuadReadAcrossX(_1334);
+    uint2 _1339 = _248 & uint2(1u, 1u);
+    if ((_1339.x + (_1339.y * 2u)) == firstbithigh(_1336 + QuadReadAcrossY(_1336)))
+    {
+        uint _1349;
+        __alias_ice_refl_count_buffer.InterlockedAdd(12, 1u, _1349);
+        __alias_ice_refl_px_buffer.Store<uint>(_1349 * 4 + 0, _249.x + (_249.y * 65536u));
+        if ((_1349 & 63u) == 0u)
+        {
+            uint _1360;
+            __alias_ice_refl_count_buffer.InterlockedAdd(0, 1u, _1360);
+        }
+    }
+    float _1363;
+    float3 _1415;
+    do
+    {
+        _1363 = _275.y;
+        bool _1369;
+        if (!(_1363 <= 0.0f))
+        {
+            _1369 = _489 <= 0.0f;
+        }
+        else
+        {
+            _1369 = true;
+        }
+        if (_1369)
+        {
+            _1415 = 0.0f.xxx;
+            break;
+        }
+        float _1372 = _410 * _410;
+        float3 _1374 = normalize(_272 + _276);
+        float _1375 = _1374.y;
+        float _1378 = max(0.0f, 1.0f - dot(_1374, _276));
+        float _1379 = _1378 * _1378;
+        float _1406 = ((_1375 * _1375) * (_1372 - 1.0f)) + 1.0f;
+        _1415 = ((lerp(0.02999999932944774627685546875f.xxx, 1.0f.xxx, ((_1379 * _1379) * _1378).xxx) * (((2.0f * _1363) * _489) / ((_1363 * sqrt(((((-_489) * _1372) + _489) * _489) + _1372)) + (_489 * sqrt(((((-_1363) * _1372) + _1363) * _1363) + _1372))))) * (_1372 / ((3.1415927410125732421875f * _1406) * _1406))) / ((4.0f * _489) * _1363).xxx;
+        break;
+    } while(false);
+    float3 _1440 = mul(_807 * float3(1.0f, -1.0f, 1.0f), float3x3(float3(1.0f, -0.0f, 0.0f), float3(-0.0f, 0.0f, 1.0f), float3(-0.0f, -1.0f, 0.0f)));
+    float _1442 = length(_1440);
+    float3 _1444 = _1440 * (1.0f / _1442);
+    float3 _1465 = clamp((exp(float3(-0.5950000286102294921875f, -0.374000012874603271484375f, -0.3060000240802764892578125f) * ((abs(in_var_C1.y - _801.y) + length(_807)) + 0.699999988079071044921875f)) * (0.959999978542327880859375f - (0.959999978542327880859375f * ((_491 * _491) * _490)))) * refraction_tex.SampleLevel(sampler_lnc, _790, 0.0f).xyz, 0.0f.xxx, 65408.0f.xxx);
+    float _1475 = asfloat((asuint(max(max(1.52587890625e-05f, _1465.x), max(_1465.y, _1465.z))) + 125845504u) & 2139095040u);
+    uint3 _1478 = asuint(_1465 + _1475.xxx);
+    out_var_SV_TARGET0 = lerp((frame_constants_sun_color.xyz * _1415.x) * (_1323 * clamp(_1363, 0.0f, 1.0f)), ((frame_constants_sun_color.xyz * (0.699999988079071044921875f * _1323)) * 0.3183098733425140380859375f.xxx) + frame_constants_sky_high_color.xyz, 0.00999999977648258209228515625f.xxx);
+    out_var_SV_TARGET1 = sqrt(_410);
+    out_var_SV_TARGET2 = ((uint((clamp((_1444.x * 0.5f) + 0.5f, 0.0f, 1.0f) * 255.0f) + 0.5f) << 24u) | (uint((clamp((_1444.y * 0.5f) + 0.5f, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) | spvPackHalf2x16(float2(_1442, 0.0f));
+    out_var_SV_TARGET3 = ((((asuint(_1475) << 4u) + 268435456u) | (_1478.z << 18u)) | (_1478.y << 9u)) | (_1478.x & 511u);
+    out_var_SV_TARGET4 = _1112 + 0.00196078442968428134918212890625f;
+}
+
+[earlydepthstencil]
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    in_var_C1 = stage_input.in_var_C1;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    stage_output.out_var_SV_TARGET1 = out_var_SV_TARGET1;
+    stage_output.out_var_SV_TARGET2 = out_var_SV_TARGET2;
+    stage_output.out_var_SV_TARGET3 = out_var_SV_TARGET3;
+    stage_output.out_var_SV_TARGET4 = out_var_SV_TARGET4;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif

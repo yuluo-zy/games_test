@@ -47,3 +47,6 @@ troubleshooting.
 - Do not "fix" a `.bin` to make a check pass — the validator compares
   structure, and a failing shader means the reconstruction or the include
   graph differs from the original.
+
+## 重建状态总表
+每个 HLSL 文件的类别、功能、实现方式（提升/手写）、结构门禁与差分执行结果和备注见 [SHADER_STATUS.md](SHADER_STATUS.md)（机器可读版 `SHADER_STATUS.json`），由 `tools/render-passes/build_status_table.py` 从 `evidence/render-passes/integration/*.json` 生成。

@@ -68,9 +68,10 @@ def normalized_sha256(payload):
     return hashlib.sha256(spirv_parse.canonicalize_module(payload)).hexdigest()
 
 
-def run_dxc(dxc, hlsl_path, entry, profile, include_root, out_spv, keep_dir=None):
+def run_dxc(dxc, hlsl_path, entry, profile, include_root, out_spv, keep_dir=None, defines=()):
     """Run dxc with the canonical command and return (returncode, stderr)."""
     cmd = [str(dxc), '-E', entry, '-T', profile] + CANONICAL_FLAGS + \
+          [x for d in defines for x in ('-D', d)] + \
           ['-Fo', str(out_spv), '-I', str(include_root), str(hlsl_path)]
     if keep_dir:
         cmd.append('-Fc')  # also dump disassembly for inspection when --keep
@@ -189,6 +190,7 @@ def main():
     ap.add_argument('-I', dest='include_root', default=str(DEFAULT_INCLUDE_ROOT))
     ap.add_argument('--dxc', default=os.environ.get('DXC', shutil.which('dxc') or 'dxc'))
     ap.add_argument('--out', help='write JSON report to this path')
+    ap.add_argument('-D', '--define', action='append', default=[], help='extra -D passed to dxc (variant bins)')
     ap.add_argument('--keep', action='store_true')
     ap.add_argument('--verbose', action='store_true')
     args = ap.parse_args()
@@ -223,7 +225,7 @@ def main():
     for t in targets:
         out_spv = tempdir / ('module%d.spv' % t['offset'])
         rc, stderr = run_dxc(args.dxc, hlsl_path, t['entry'], t['profile'],
-                             include_root, out_spv, keep_dir=keep_dir)
+                             include_root, out_spv, keep_dir=keep_dir, defines=args.define)
         if rc != 0:
             results.append({
                 'module_index': t['offset'],

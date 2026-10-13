@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_b903e43ffb3da915.bin:ps_main, lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/clearing/instanced_background_tree.raster.hlsl
 // Evidence: _clearing_instanced_background_tree.raster.hlsl_b903e43ffb3da915.bin / _f0adff76827e73ff.bin.
 //   bindings: $Globals b13 (current_view_index/model_to_world), color_library b14,
@@ -138,3 +141,119 @@ PS_OUT ps_main(PS_IN i, float4 frag_coord : SV_Position)
     o.target = float4(lerp(lit * sun_color.xyz, (pow(ambient, 1.0f)) * 0.8f, alpha) * 1.2f, 1.0f);
     return o;
 }
+
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _clearing_instanced_background_tree.raster.hlsl_b903e43ffb3da915.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+
+static float4 gl_FragCoord;
+static float3 in_var_C1;
+static float3 in_var_C2;
+static float4 out_var_SV_TARGET;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+    float4 gl_FragCoord : SV_Position;
+};
+
+struct SPIRV_Cross_Output
+{
+    float4 out_var_SV_TARGET : SV_Target0;
+};
+
+void frag_main()
+{
+    bool3 _90 = ((frame_constants_render_overrides & 1u) != 0u).xxx;
+    float3 _100 = lerp(frame_constants_sky_low_color.xyz, frame_constants_sky_high_color.xyz, 0.5f.xxx) * 0.20000000298023223876953125f;
+    float _119 = smoothstep(0.070000000298023223876953125f, 0.300000011920928955078125f, 0.0005000000237487256526947021484375f / gl_FragCoord.w);
+    out_var_SV_TARGET = float4(lerp(((float3(_90.x ? 0.5f.xxx.x : in_var_C2.x, _90.y ? 0.5f.xxx.y : in_var_C2.y, _90.z ? 0.5f.xxx.z : in_var_C2.z) * 0.19098593294620513916015625f) * lerp(0.3499999940395355224609375f, 0.89999997615814208984375f, smoothstep(-0.20000000298023223876953125f, 0.800000011920928955078125f, dot(in_var_C1, mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f)).xyz)))) * frame_constants_sun_color.xyz, (float3(pow(_100.x, 1.0f), pow(_100.y, 1.0f), pow(_100.z, 1.0f)) * 1.0f) * 0.800000011920928955078125f, clamp((_119 * _119) * 2.0f, 0.0f, 1.0f).xxx) * 1.2000000476837158203125f, 1.0f);
+}
+
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C2 = stage_input.in_var_C2;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET = out_var_SV_TARGET;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _clearing_instanced_background_tree.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

@@ -21,9 +21,8 @@
 | P1c 整合裁决 + inc 修复 | done | wave1c：13 项 inc 修复应用并验证；F-R 15 bin 补验 12 硬过+3 f0ad；260 main 编译 125 PASS/135 wave-2 占位 FAIL |
 | P2 大算法族重建 | done（重建+review+合并） | wave2a 11 重建收齐；4 组 review 裁决（water-ice=A、gi-deferred=B、dof-aa=混合、nani-cull=B）；4 个合并全落：water-ice 22/22、gi-deferred 22/22、dof-aa 22/26（4 为 dxc 版本非失败）、nani-cull 44/44（含 -D 变体） |
 | P2c 最终整合 | done | wave2c：4 孤儿重建、Affine3Packed 幂等守卫修复（2 nani main 复验硬过）、全树编译 258/260、硬门 235/260、404/404 bin 覆盖 |
-| P3 整合 + 完整工程 | todo | shader 源码树完整；编译/校验管线 + 与 rhapsody/shader-pipeline 工程接线 |
-| P2 大算法族重建 | todo | nani cull、GI/ReSTIR、水/冰 RT、DoF/AA、grass、nani raster（双人+review） |
-| P3 整合 + 完整工程 | todo | shader 源码树 + 编译/校验管线并入工程 |
+| P3a 保真度门槛 + 批量提升 | done | 2026-10-13 `sweep_all.py`（指令量比 + opcode 直方图距离）+ `batch_lift.py`（spirv-cross 提升替换低保真手写）；638 模块中 637 硬门通过且比值 ≥ 0.8，唯一例外 final_post f0ad ps（dxc DCE，已注明）；见 integration/fidelity-sweep.md |
+| P3b 与 rhapsody/shader-pipeline 工程接线 | todo | 编译/校验管线并入工程 |
 
 ## 族 ↔ agent 归属
 
@@ -84,3 +83,36 @@
   18. （final-post 增补）`inc/coc.hlsl` 的 `static const float gaussian_weights[16]` 与 painterly 的 `gaussian_weights[4]` 撞名 → 局部遮蔽已绕过，记录待归一（INC-C owner）。
   19. （final-post 增补）`inc/bicubic.hlsl` 是 Catmull-Rom，final_post 实际用非 Catmull 5-tap 核 → 按 final_post 内联证据保留（INC-A owner 记录差异）。
   20. （final-post 增补）`inc/grading_lut.hlsl` 缺 color/srgb.hlsl include 边 → 补（INC-C owner）。
+
+- 2026-10-13 [resolved] **保真度门槛**：先前的"硬门"只比绑定/入口/localsize/capabilities，编造的实现也能通过。新增指令量比与 opcode 直方图距离；扫描发现 42 个模块比值 < 0.8（deferred 光照 ×4、nani cull/raster、wall_brick、terrain stroke 等均为空壳或编造）。统一用 spirv-cross 提升 oracle bin 替换（行为精确，名字为 SPIR-V id）；物理寻址模块（PhysicalStorageBuffer64）先改 Logical 再提升，指针解引用改写为 vk::RawBufferLoad。
+- 2026-10-13 [resolved] **变体宏**：提升块以 `TGV_<id>` 保护（见 fidelity-sweep.md）；`variant_defines.json` 仅保留旧手写变体宏。
+- 2026-10-13 [open] **可读性**：提升代码的局部名为 SPIR-V id，待回填命名；inc 层 24 个文件不再被任何 main 引用（推断内容，见 fidelity-sweep.md）。
+- 2026-10-13 [resolved] **指令量门槛不足以证明算法**：差分执行发现 22 个手写 compute 输出与原作不同（见 validation-pipeline.md「差分执行」），已提升替换，复跑 0 DIFF。
+- 2026-10-13 [open] **raster 无执行级验证**：468 个 VS/PS 模块仍只有结构指纹；需 PS（常量 varying 全屏绘制）与 VS（SPIR-V 改写输出到 SSBO）的差分运行器。compute 侧另有 14 SKIP / 12 VACUOUS / 4 ERROR 未覆盖。
+- 2026-10-13 [resolved] **PS 执行级验证**：见 validation-pipeline.md「画面程序差分执行」；5 个手写 PS 文件差异已提升。ice_plane 仍有输入伪影待关注。VS（234 模块）尚无执行级验证。
+- 2026-10-13 [open] **差分执行终稿**：638 模块中 488 SAME；1 DIFF（light_binning/bin_lights_to_cells n_14dca8ba…）、8 EDGE（ice_plane×2、lilypad×2、reed×2、dof/analyze、path_pebbles）待人工判定；16 个（SKIP/CRASH/ERROR）因工具/lavapipe 限制未覆盖；125 个原版为无输出空壳。
+- 2026-10-13 [resolved] **差分执行收尾**：638 模块 505 SAME / 125 空壳 / 7 EDGE / 1 DIFF；EDGE 与 DIFF 已逐个判定（见 validation-pipeline.md「最终结论」）。6 个 SAME 在正常数据档全部崩溃，仅边界档验证。dof/analyze 的差异来自 dxc 1.9 的 DerivativeGroupQuads 模式，非源码问题。
+
+- 覆盖导向输入搜索（compute）：9 个"输入没触发写入"模块中 8 个已验证 SAME（5 个手写版先被查出 DIFF 并改为提升版），1 个（spawn_waterwheels）为真空壳。详见 validation/validation-pipeline.md。
+
+- [PS discard 验证] 给像素差分加深度附件后，34 个"只有 discard"的 PS 全部可观察；其中 6 个手写 PS 的 discard 逻辑是错的，已改为 lifted。PS 现为 232 SAME / 2 VACUOUS（真空壳）。
+
+## 最终总账（合并 spv-diff 后全量重跑）
+- 结构门禁 637/638（唯一例外 final_post f0ad，结果空壳 stub，dxc 会 DCE）。
+- 像素 234：SAME 232 / VACUOUS 2（painterly/debug_target，原版空壳）；含深度附件，34 个 discard-only 全部可观察。
+- 顶点 234：SAME 230 / EDGE 4（lilypad/reed 的 FMA 融合，profile 14）。
+- 计算 170（输入 0–63；marching_squares 到 400）：SAME 161 / VACUOUS 1（spawn_waterwheels 空壳）/ DIFF 8。
+  新增混合 profile 暴露 6 个手写 DIFF（spawn_bushes_garden、spawn_flowers_garden、terrain_lighting_texture、deferred_rt、ice_deferred_rt、ice_refr_resolve），已换成提升版并复测 SAME。
+  剩余 8 个 DIFF 均为已提升（行为精确）的模块：bin_lights_to_cells n_14dca8ba、path_pebbles、taa、tgsr×4、ice_refl_resolve；差异量极小（几十个字、两边写入量接近），疑似浮点融合/NaN/越界等 UB，尚未逐个证明。
+
+## 8 个差异调查结果（计算，输入 0–63）
+结论：8 个里 7 个已变 SAME，1 个（ice_refl_resolve）定为 EDGE（仅驱动 FMA 融合差异）；仍 DIFF 为 0。计算总计 170：SAME 168 / EDGE 1 / VACUOUS 1。
+
+| 模块 | 原因 | 证据 | 处置 | 判定 |
+|---|---|---|---|---|
+| taa、tgsr×4、ice_refl_resolve(部分) | **提升缺陷**：`incb_frexp` 辅助函数不处理非规格化数（denormal），原版 GLSL Frexp 会归一化 | 原版有 1 个 OpExtInst FrexpStruct，重建版用位运算模拟；补上 `x*2^24` 归一化后 taa/tgsr 的 0–63 号输入全部一致 | 修 batch_lift.py `FREXP_HELPER`，同步改 taa、tgsr(4 份)、ice_refl_resolve 里的拷贝 | taa SAME，tgsr×4 SAME |
+| path_pebbles | **提升缺陷**：spirv-cross 把 OpSRem 展开成 `a - b*(a/b)`，除数为 0 时触发整数除零(UB)，原版是真正的取余 | 原版有 2 个 OpSRem，重建版 0 个、多 1 个 SDiv；改为 `%` 后（dxc 产出 OpSRem）0–63 号全部一致 | batch_lift.py 新增 `fix_srem`（仅非字面量除数），path_pebbles.cs.hlsl 已应用 | SAME |
+| bin_lights_to_cells n_14dca8ba | **dxc 重结合浮点**：`(6a)*(6a)` 被 LLVM 重排成 `36*(a*a)`，球-格子边界判断翻转 1 次（多写 4 个字） | 重建 SPIR-V 出现 `FMul 36, r²` 而原版只有 `r*r`；给 `_130`、`_223` 加 `precise` 后两个变体 0–63 号全部一致；NoContraction 测试证明与 FMA 无关 | batch_lift.py `fix_lift_bugs` 对 `c*asfloat(532487669…)` 及其平方加 `precise`，文件已重生成 | SAME（两个变体） |
+| water/ice_refl_resolve（剩余） | **驱动 FMA 融合**：输出对舍入极敏感（光线步进+阈值） | 原版自身加/不加 NoContraction 就有 3/11/15 个字不同；原版注入 NoContraction、重建版加 `precise` 后 profile 20/24/25/29 **逐位一致** | 保持原样（不加 precise，避免偏离原版融合行为）；diff_common.PROVEN_FMA 把它的 DIFF 记为 EDGE | EDGE |
+
+改动文件：tools/render-passes/{batch_lift.py,diff_common.py,diff_exec.py}；shaders/{taa,tgsr,path_pebbles}.cs.hlsl、water/ice_refl_resolve.cs.hlsl、light_binning/bin_lights_to_cells.cs.hlsl；integration/diff-exec.json。结构门禁仍 637/638。

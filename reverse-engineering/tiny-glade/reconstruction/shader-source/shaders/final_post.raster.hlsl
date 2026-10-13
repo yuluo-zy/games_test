@@ -1,3 +1,9 @@
+// KNOWN EXCEPTION: the f0ad ps_main is a result-less stub in the original (all values dead). dxc 1.9 DCEs its
+// whole body, so the bindings (sampler_lnc, $Globals, input_tex) and caps cannot be reproduced; the hand-written
+// full ps that used to cover this variant was invented and is now excluded.
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/final_post.raster.hlsl | evidence: _final_post.raster.hlsl_{b903,f0ad}.bin — b903 full ps: upsampling_mode dispatch (0 nearest / 1 bilinear / 2 5-tap bicubic / 3 EASU / 4 wave-gated EASU-vs-bicubic), blur_pyramid blend, lens distortion+CA, tony_mc_mapface tonemap, grading LUT (or debug RGB ramp via grading_flags), blue-noise dither, optional ICC LUT + 88x24 debug ramp; caps Shader+RuntimeDescriptorArray+GroupNonUniformVote; f0ad is a reduced stub (not the target) | status: O (all polynomials/constants from inlined SPIR-V); I (helper function names; bicubic kernel is the shipped non-Catmull variant)
 //
 // Final post-processing pass (blit_resolve_swapchain): input_tex is upsampled
@@ -374,3 +380,86 @@ float4 ps_main(float4 position : SV_Position) : SV_Target0
 
     return float4(output_color, 1.0f);
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _final_post.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+cbuffer $Globals : register(b13, space0)
+{
+    uint2 _Globals_input_tex_dims : packoffset(c0);
+    uint2 _Globals_blur_pyramid_tex_dims : packoffset(c0.z);
+    uint2 _Globals_grading_lut_tex_dims : packoffset(c1);
+    uint2 _Globals_icc_lut_dims : packoffset(c1.z);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c2);
+    uint _Globals_is_input_valid : packoffset(c2.z);
+    uint _Globals_use_icc : packoffset(c2.w);
+    float _Globals_sharpen_amount : packoffset(c3);
+    uint _Globals_upsampling_mode : packoffset(c3.y);
+    uint _Globals_grading_flags : packoffset(c3.z);
+    float _Globals_grading_strength : packoffset(c3.w);
+    float _Globals_grading_contrast : packoffset(c4);
+    float _Globals_grading_saturation : packoffset(c4.y);
+    float _Globals_vignette_amount : packoffset(c4.z);
+    float _Globals_distortion_amount : packoffset(c4.w);
+    float _Globals_ca_amount : packoffset(c5);
+    float _Globals_gamma_shift : packoffset(c5.y);
+    uint2 _Globals_framebuffer_dims : packoffset(c5.z);
+};
+
+SamplerState sampler_lnc : register(s0, space0);
+Texture2D<float4> input_tex : register(t14, space0);
+
+static float4 gl_FragCoord;
+struct SPIRV_Cross_Input
+{
+    float4 gl_FragCoord : SV_Position;
+};
+
+void frag_main()
+{
+    if (_Globals_upsampling_mode == 0u)
+    {
+    }
+    else
+    {
+        if (_Globals_upsampling_mode == 1u)
+        {
+        }
+        else
+        {
+            if (_Globals_upsampling_mode == 2u)
+            {
+            }
+            else
+            {
+                if (_Globals_upsampling_mode == 3u)
+                {
+                }
+                else
+                {
+                    float4 _98 = input_tex.GatherGreen(sampler_lnc, (float2(int2(gl_FragCoord.xy)) + 0.5f.xx) / float2(_Globals_framebuffer_dims), int2(0, 0));
+                    float _99 = _98.x;
+                    float _100 = _98.y;
+                    float _101 = _98.z;
+                    float _102 = _98.w;
+                    float _105 = min(min(_99, _100), min(_101, _102));
+                    float _108 = max(max(_99, _100), max(_101, _102));
+                }
+            }
+        }
+    }
+}
+
+void ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

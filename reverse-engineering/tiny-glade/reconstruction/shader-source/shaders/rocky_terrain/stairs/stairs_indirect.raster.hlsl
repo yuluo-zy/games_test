@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/rocky_terrain/stairs/stairs_indirect.raster.hlsl | target: _rocky_terrain_stairs_stairs_indirect.raster.hlsl_b903e43ffb3da915.bin + _rocky_terrain_stairs_stairs_indirect.raster.hlsl_f0adff76827e73ff.bin | evidence: spirv-cross + SPIR-V disasm of both bins (vs: indirect stair instance draw — instance transform (StructuredBuffer<Stair> stairs_buffer t16, structured via Affine3Packed) unpacked to a column-major float3x4, scale derived from the packed translation sum, chained value-noise bevel/rock displacement (is_pebble gates the bevel + selects the pebble buffer offset), sample-space output via view_constants[current_view_index].world_to_sample; ps: solid rocky-albedo GBuffer pack — 3-axis SampleBias of rocky_terrain_texture blended by faceting-normal weights, sqrt-packed RGB8 albedo | 0x16000000 and normal | 0xCC000000 into a uint2 SV_Target0) | bindings vs: $Globals b13 (current_view_index, rocky_terrain_texture_dims, is_pebble, pebble_buffer_offset, highlight_active_hill_dims), stairs_buffer u16, frame_constants b0/space1; ps: sampler_mipmap s10, $Globals b13, rocky_terrain_texture t15, frame_constants b0/space1 | capabilities: RuntimeDescriptorArray(5302) + SPV_EXT_descriptor_indexing (both modules) | entry: vs_main/ps_main | status: O (math/logic/bindings/entries); I (function names — inlined); residual: value-noise loop/phi/select codegen + StructuredBuffer whole-array-load + inc-layer include-graph diffs (recorded, not fixed)
 
 #include "inc/common.hlsl"
@@ -327,3 +330,22 @@ uint2 ps_main(PS_INPUT input) : SV_Target0
     result.y = albedo_packed | 369098752u;
     return result;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _rocky_terrain_stairs_stairs_indirect.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

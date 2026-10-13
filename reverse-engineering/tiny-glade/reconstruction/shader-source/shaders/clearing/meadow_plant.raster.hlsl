@@ -1,3 +1,6 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
 // ==RECONSTRUCTED== shaders/clearing/meadow_plant.raster.hlsl
 // Evidence: _clearing_meadow_plant.raster.hlsl_b903e43ffb3da915.bin / _f0adff76827e73ff.bin.
 //   bindings (vs): sampler_llb s4, sampler_default s9, $Globals b13, path_mask t14,
@@ -389,3 +392,164 @@ PS_OUT ps_main(PS_IN i, float4 frag_coord : SV_Position)
     o.target = uint2(normal_packed, albedo_packed);
     return o;
 }
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _clearing_meadow_plant.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    column_major float4x4 _Globals_model_to_world : packoffset(c1);
+    float _Globals_time : packoffset(c5);
+    uint2 _Globals_path_mask_dims : packoffset(c5.y);
+    uint2 _Globals_flower_texture_dims : packoffset(c6);
+    uint2 _Globals_terrain_heightmap_dims : packoffset(c6.z);
+    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c7);
+    uint2 _Globals_rocky_terrain_dims : packoffset(c7.z);
+    uint2 _Globals_water_mask_dims : packoffset(c8);
+    uint2 _Globals_buildings_mask_dims : packoffset(c8.z);
+    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c9);
+    uint2 _Globals_grass_object_push_dims : packoffset(c9.z);
+    int _Globals_bool_render_shadows : packoffset(c10);
+};
+
+SamplerState sampler_mipmap : register(s10, space0);
+Texture2D<float4> flower_texture : register(t15, space0);
+
+static float4 gl_FragCoord;
+static float2 in_var_C1;
+static float3 in_var_C2;
+static int in_var_C5;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float2 in_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;
+    float4 gl_FragCoord : SV_Position;
+};
+
+void frag_main()
+{
+    float4 _108 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float3 _112 = _108.xyz / _108.w.xxx;
+    bool _118 = (_Globals_bool_render_shadows == 1) ? true : false;
+    if (!_118)
+    {
+        uint2 _123 = uint2(gl_FragCoord.xy);
+        if (((_123.x ^ _123.y) & 1u) == 0u)
+        {
+            discard;
+        }
+    }
+    if (in_var_C5 == 2)
+    {
+        if (_118)
+        {
+            float3 _137 = ddx(in_var_C2);
+            float3 _138 = ddy(in_var_C2);
+            float3 _142 = ddx(in_var_C2);
+            float3 _143 = ddy(in_var_C2);
+            float3 _144 = -_143;
+            float2 _145 = ddx(in_var_C1);
+            float2 _146 = ddy(in_var_C1);
+            float2 _147 = -_146;
+            float3 _148 = cross(_142, _144);
+            float2x3 _151 = float2x3(cross(_144, _148), cross(_148, _142));
+            float3 _170 = -normalize(_112 - in_var_C2);
+            float3 _171 = _112 - (in_var_C2 + mul(transpose(float3x3(normalize(mul(float2(_145.x, _147.x), _151)), normalize(mul(float2(_145.y, _147.y), _151)), normalize(cross(_137, -_138)))), float3(0.5f.xx - in_var_C1, 0.0f)));
+            float _172 = dot(_170, _170);
+            float _173 = dot(_171, _170);
+            float _174 = 2.0f * _173;
+            float _185 = ((_173 * (-2.0f)) - sqrt((_174 * _174) - ((4.0f * _172) * (dot(_171, _171) - 0.20249998569488525390625f)))) / (2.0f * _172);
+            bool _190;
+            if (_185 == _185)
+            {
+                _190 = _185 >= 0.0f;
+            }
+            else
+            {
+                _190 = false;
+            }
+            if (!_190)
+            {
+                discard;
+            }
+        }
+        if (flower_texture.Sample(sampler_mipmap, in_var_C1).w < 0.5f)
+        {
+            discard;
+        }
+    }
+    else
+    {
+    }
+}
+
+void ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C2 = stage_input.in_var_C2;
+    in_var_C5 = stage_input.in_var_C5;
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

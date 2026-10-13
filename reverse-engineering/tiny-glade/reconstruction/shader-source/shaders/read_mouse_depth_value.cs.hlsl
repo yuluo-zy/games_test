@@ -1,3 +1,6 @@
+// PATCHED: modules ue.cs.hlsl_cs_main_0.bin:cs_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+#if !((defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)))
 // ==RECONSTRUCTED== shaders/read_mouse_depth_value.cs.hlsl | F-D
 // Evidence: _read_mouse_depth_value.cs.hlsl_cs_main_0.bin (SPIR-V, offset 23).
 //   bindings: $Globals b13 (depth_map_dims/mouse_position_screenspace/window_size/
@@ -95,3 +98,166 @@ void cs_main(uint3 groupThreadID : SV_GroupThreadID, uint groupIndex : SV_GroupI
         out_buffer.Store<float4>(48, float4(center_world_clamped.xyz / center_world_clamped.w, clamped_center));
     }
 }
+
+#endif
+
+#if defined(TGV_0) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)
+// lifted from _read_mouse_depth_value.cs.hlsl_cs_main_0.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint2 _Globals_depth_map_dims : packoffset(c0);
+    float2 _Globals_mouse_position_screenspace : packoffset(c0.z);
+    float2 _Globals_window_size : packoffset(c1);
+    float _Globals_filter_box_y_frac : packoffset(c1.z);
+};
+
+RWByteAddressBuffer out_buffer : register(u15, space0);
+Texture2D<float4> depth_map : register(t14, space0);
+
+static uint3 gl_LocalInvocationID;
+static uint gl_LocalInvocationIndex;
+struct SPIRV_Cross_Input
+{
+    uint3 gl_LocalInvocationID : SV_GroupThreadID;
+    uint gl_LocalInvocationIndex : SV_GroupIndex;
+};
+
+groupshared float2 group_depths[256];
+
+void comp_main()
+{
+    float2 _93 = _Globals_mouse_position_screenspace / _Globals_window_size;
+    float2 _96 = float2(_Globals_depth_map_dims);
+    uint2 _100 = _Globals_depth_map_dims - uint2(1u, 1u);
+    int2 _102 = int2(clamp(uint2(int2(_93 * _96)), uint2(0u, 0u), _100));
+    uint2 _103 = uint2(_102);
+    float4 _105 = depth_map.Load(int3(_103, 0u));
+    float _106 = _105.x;
+    float4 _122 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((((float2(int2(clamp(_103, uint2(0u, 0u), _100))) + 0.5f.xx) / _96) - 0.5f.xx) * float2(2.0f, -2.0f), _106, 1.0f)));
+    int2 _135 = int2(clamp(uint2(int2(0.5f.xx * _96)), uint2(0u, 0u), _100));
+    uint2 _136 = uint2(_135);
+    float4 _137 = depth_map.Load(int3(_136, 0u));
+    float _138 = _137.x;
+    float4 _150 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((((float2(int2(clamp(_136, uint2(0u, 0u), _100))) + 0.5f.xx) / _96) - 0.5f.xx) * float2(2.0f, -2.0f), _138, 1.0f)));
+    bool _159 = 0u == gl_LocalInvocationIndex;
+    if (_159)
+    {
+        out_buffer.Store<float4>(0, float4(_122.xyz / _122.w.xxx, _106));
+        out_buffer.Store<float4>(16, float4(_150.xyz / _150.w.xxx, _138));
+    }
+    float2 _176 = ((float(_Globals_depth_map_dims.y) * _Globals_filter_box_y_frac).xx / _96) * (((float2(gl_LocalInvocationID.xy) + 0.5f.xx) * 0.0625f.xx) - 0.5f.xx);
+    group_depths[gl_LocalInvocationIndex] = float2(depth_map.Load(int3(uint2(int2(clamp(uint2(int2((_93 + _176) * _96)), uint2(0u, 0u), _100))), 0u)).x, depth_map.Load(int3(uint2(int2(clamp(uint2(int2((0.5f.xx + _176) * _96)), uint2(0u, 0u), _100))), 0u)).x);
+    GroupMemoryBarrierWithGroupSync();
+    uint _199 = 2u << (firstbithigh(255u) & 31u);
+    for (uint _201 = 2u; _201 <= _199; _201 *= 2u)
+    {
+        uint _207 = _201 >> 1u;
+        for (uint _209 = _207; _209 > 0u; _209 = _209 >> 1u)
+        {
+            uint _216 = gl_LocalInvocationIndex & (_209 - 1u);
+            uint _218 = 2u * (gl_LocalInvocationIndex - _216);
+            uint _219 = _218 + _216;
+            uint _230;
+            if (_209 == _207)
+            {
+                _230 = (_218 + ((2u * _209) - 1u)) - _216;
+            }
+            else
+            {
+                _230 = (_218 + _209) + _216;
+            }
+            bool _235;
+            if (_230 < 256u)
+            {
+                _235 = _219 < 256u;
+            }
+            else
+            {
+                _235 = false;
+            }
+            if (_235)
+            {
+                float2 _239 = group_depths[_219];
+                float2 _241 = group_depths[_230];
+                bool2 _242 = bool2(_239.x <= _241.x, _239.y <= _241.y);
+                group_depths[_219] = float2(_242.x ? _239.x : _241.x, _242.y ? _239.y : _241.y);
+                group_depths[_230] = float2(_242.x ? _241.x : _239.x, _242.y ? _241.y : _239.y);
+            }
+            GroupMemoryBarrierWithGroupSync();
+        }
+    }
+    if (_159)
+    {
+        float _251 = clamp(_106, group_depths[179u].x, group_depths[230u].x);
+        float4 _261 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((((float2(_102) + 0.5f.xx) / _96) - 0.5f.xx) * float2(2.0f, -2.0f), _251, 1.0f)));
+        out_buffer.Store<float4>(32, float4(_261.xyz / _261.w.xxx, _251));
+        float _275 = clamp(_138, group_depths[179u].y, group_depths[230u].y);
+        float4 _285 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((((float2(_135) + 0.5f.xx) / _96) - 0.5f.xx) * float2(2.0f, -2.0f), _275, 1.0f)));
+        out_buffer.Store<float4>(48, float4(_285.xyz / _285.w.xxx, _275));
+    }
+}
+
+[numthreads(16, 16, 1)]
+void cs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_LocalInvocationID = stage_input.gl_LocalInvocationID;
+    gl_LocalInvocationIndex = stage_input.gl_LocalInvocationIndex;
+    comp_main();
+}
+#pragma dxc diagnostic pop
+#endif
