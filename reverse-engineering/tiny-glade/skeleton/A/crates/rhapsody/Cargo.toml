@@ -1,0 +1,125 @@
+# Generated dependency reconstruction: skeleton/_tools/restore_cargo_manifests.py
+# Evidence-derived manifest, not the original author Cargo.toml.
+# Features, dependency kind (normal/build/dev), target cfg and original aliases are not recovered.
+# Locked edges are materialized in [dependencies] as an inspection union.
+# PDB-observed transitive namespaces do not create extra B/C direct dependencies.
+
+[package]
+name = "rhapsody"
+# Original package version: unknown (A has no Cargo.lock).
+# Cargo defaults the omitted version to 0.0.0; this is not an original version.
+edition = "2021" # Reconstruction setting; original edition unknown.
+publish = false # Isolated evidence scaffold.
+
+# Inspection-only target; the original entry file is not available.
+[lib]
+path = "_manifest_stub.rs"
+
+[dependencies]
+# A_PDB_observed_candidate; exact package version: 1.0.86
+"anyhow" = { version = "=1.0.86" }
+# A_PDB_observed_candidate; exact package version: 1.7.1
+"arc-swap" = { version = "=1.7.1" }
+# A_PDB_observed_candidate; exact package version: 0.7.4
+"arrayvec" = { version = "=0.7.4" }
+# A_PDB_observed_candidate; exact package version: 0.38.0+1.3.281
+# Cargo ignores semver build metadata in requirements; full identity remains in the original lock and evidence.
+"ash" = { version = "=0.38.0+1.3.281" }
+# A_PDB_observed_candidate; exact package version: 3.12.0
+"bumpalo" = { version = "=3.12.0" }
+# A_PDB_observed_candidate; exact package version: 1.16.0
+"bytemuck" = { version = "=1.16.0" }
+# A_PDB_observed_candidate; exact package version: unknown
+# path points to the isolated skeleton; original filesystem path unknown.
+"country-core" = { path = "../country-core" }
+# A_PDB_observed_candidate; exact package version: 0.27.2
+"egui" = { version = "=0.27.2" }
+# A_PDB_observed_candidate; exact package version: 0.4.9
+"lock_api" = { version = "=0.4.9" }
+# A_PDB_observed_candidate; exact package version: 0.4.21
+"log" = { version = "=0.4.21" }
+# A_PDB_observed_candidate; exact package version: 0.11.2
+"modular-bitfield" = { version = "=0.11.2" }
+# A_PDB_observed_candidate; exact package version: 1.19.0
+"once_cell" = { version = "=1.19.0" }
+# A_PDB_observed_candidate; exact package version: 0.12.1
+"parking_lot" = { version = "=0.12.1" }
+# A_PDB_observed_candidate; exact package version: 0.14.1
+"puffin" = { version = "=0.14.1" }
+# A_PDB_observed_candidate; exact package version: 0.6.1
+"raw-window-handle" = { version = "=0.6.1" }
+# A_PDB_observed_candidate; exact package version: 1.0.200
+"serde" = { version = "=1.0.200" }
+# A_PDB_observed_candidate; exact package version: 0.8.6
+"speedy" = { version = "=0.8.6" }
+# A_PDB_observed_candidate; exact package version: 1.1.1
+"spin_sleep" = { version = "=1.1.1" }
+# A_PDB_observed_candidate; exact package version: unknown
+# path points to the isolated skeleton; original filesystem path unknown.
+"tiny-glade" = { path = "../tiny-glade" }
+# A_PDB_observed_candidate; exact package version: 1.0.0
+"ustr" = { version = "=1.0.0" }
+# A_PDB_observed_candidate; exact package version: 1.1.2
+"uuid" = { version = "=1.1.2" }
+# A_PDB_observed_candidate; exact package version: 0.37.0
+"windows" = { version = "=0.37.0" }
+
+[package.metadata.reconstruction]
+version = "A"
+manifest_status = "PDB_dependency_candidates_only"
+original_package_version_known = false
+original_features_known = false
+original_dependency_kinds_known = false
+original_target_cfg_known = false
+original_aliases_known = false
+original_edition_known = false
+complete_build_config_recovered = false
+dependency_evidence = "evidence/multi-version/A-dependencies.json"
+dependency_evidence_sha256 = "0a79fa46a4f9770bd5b0b1128f8fa2d6f9c4622c3c4085684a4cd846ae346645"
+target_status = "inspection_stub_original_entry_missing"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "append_only_vec"
+version = "unknown"
+source = "git_checkout"
+checkout_repository = "append-only-vec"
+checkout_revision = "4031d67"
+proof = "A_PDB_git_checkout"
+reason = "A Cargo.lock absent; original git URL, full commit and package version are not recorded"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "dxgi_enumerate_gpus"
+version = "unknown"
+source = "unknown"
+proof = "A_PDB_namespace"
+reason = "namespace observation lacks a unique package/version binding"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "gpu_allocator"
+version = "unknown"
+source = "unknown"
+proof = "A_PDB_namespace"
+reason = "namespace observation lacks a unique package/version binding"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "ron"
+version = "unknown"
+source = "git_checkout"
+checkout_repository = "ron"
+checkout_revision = "2787d8c"
+proof = "A_PDB_git_checkout"
+reason = "A Cargo.lock absent; original git URL, full commit and package version are not recorded"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "shader_pipeline"
+version = "unknown"
+source = "unknown"
+proof = "A_PDB_namespace"
+reason = "namespace observation lacks a unique package/version binding"
+
+[[package.metadata.reconstruction.unresolved_dependencies]]
+name = "vk_sync_fork"
+version = "unknown"
+source = "unknown"
+proof = "A_PDB_namespace"
+reason = "namespace observation lacks a unique package/version binding"

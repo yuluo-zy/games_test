@@ -6,8 +6,9 @@ use super::{
     instance::VulkanInstance,
 };
 use ash::vk;
+use parking_lot::Mutex;
 use std::sync::{
-    Arc, Mutex,
+    Arc,
     atomic::{AtomicBool, Ordering},
 };
 
@@ -273,8 +274,7 @@ impl Swapchain {
         let _guard = self
             .device
             .queue_lock
-            .lock()
-            .map_err(|_| Error::Invalid("队列锁失效"))?;
+            .lock();
         // 成功建立新交换链后旧对象可能已被驱动退役；任何后续失败都不得继续获取旧图像。
         self.stale.store(true, Ordering::Release);
         let handle = unsafe { self.loader.create_swapchain(&info, None) }?;
@@ -329,15 +329,14 @@ impl Swapchain {
         for _ in &self.images {
             slots.push(Arc::new(FrameSemaphores::new(self.device.clone())?));
         }
-        *self.slots.lock().unwrap_or_else(|e| e.into_inner()) = FrameSlots { cursor: 0, slots };
+        *self.slots.lock() = FrameSlots { cursor: 0, slots };
         self.stale.store(false, Ordering::Release);
         Ok(())
     }
     pub fn resize(&self, extent: vk::Extent2D) -> Result<()> {
         let mut desc = self
             .requested
-            .lock()
-            .map_err(|_| Error::Invalid("交换链描述锁失效"))?;
+            .lock();
         if desc.extent != extent {
             desc.extent = extent;
             self.mark_stale();
@@ -347,8 +346,7 @@ impl Swapchain {
     pub fn set_vsync(&self, vsync: bool) -> Result<()> {
         let mut desc = self
             .requested
-            .lock()
-            .map_err(|_| Error::Invalid("交换链描述锁失效"))?;
+            .lock();
         if desc.vsync != vsync {
             desc.vsync = vsync;
             self.mark_stale();
@@ -356,7 +354,7 @@ impl Swapchain {
         Ok(())
     }
     pub fn desc(&self) -> SwapchainDesc {
-        *self.requested.lock().unwrap_or_else(|e| e.into_inner())
+        *self.requested.lock()
     }
     /// 先将旧链标为退役；已有图像租约仍持有旧对象，不能被新链替换后提前销毁。
     pub(crate) fn replacement(&self) -> Result<Self> {
@@ -404,8 +402,7 @@ impl Swapchain {
         let _guard = self
             .device
             .queue_lock
-            .lock()
-            .map_err(|_| Error::Invalid("队列锁失效"))?;
+            .lock();
         if self.is_stale() {
             return Err(Error::Vulkan(vk::Result::ERROR_OUT_OF_DATE_KHR));
         }
@@ -426,8 +423,7 @@ impl Swapchain {
         }
         let mut slots = self
             .slots
-            .lock()
-            .map_err(|_| Error::Invalid("交换链槽锁失效"))?;
+            .lock();
         let slot_index = slots.cursor;
         let sync = slots
             .slots
@@ -462,8 +458,7 @@ impl Swapchain {
         let _guard = self
             .device
             .queue_lock
-            .lock()
-            .map_err(|_| Error::Invalid("队列锁失效"))?;
+            .lock();
         let (suboptimal, stale) =
             present_result(unsafe { self.loader.queue_present(self.device.queue, &info) })?;
         self.any_presented.store(true, Ordering::Release);
@@ -478,8 +473,7 @@ impl Drop for Swapchain {
         let _guard = self
             .device
             .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+            .lock();
         unsafe {
             // 这里只保护此链的呈现队列；尺寸登记与新链创建都不等待整台设备。
             // 原 retire/dispose 桶接线尚未恢复，此处仍是保守的 Vulkan 销毁边界。
@@ -562,8 +556,7 @@ impl FrameSemaphores {
     fn reserve(&self) -> Result<()> {
         let mut state = self
             .state
-            .lock()
-            .map_err(|_| Error::Invalid("交换链同步槽失效"))?;
+            .lock();
         if state.reserved {
             return Err(vk::Result::NOT_READY.into());
         }
@@ -578,8 +571,7 @@ impl FrameSemaphores {
             let _guard = self
                 .device
                 .queue_lock
-                .lock()
-                .map_err(|_| Error::Invalid("队列锁失效"))?;
+                .lock();
             unsafe { self.device.device.queue_wait_idle(self.device.queue) }?;
             state.submitted = false;
         }
@@ -589,23 +581,16 @@ impl FrameSemaphores {
     fn release(&self) {
         self.state
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .reserved = false;
     }
 }
 impl Drop for FrameSemaphores {
     fn drop(&mut self) {
-        if self
-            .state
-            .get_mut()
-            .unwrap_or_else(|e| e.into_inner())
-            .submitted
-        {
+        if self.state.get_mut().submitted {
             let _guard = self
                 .device
                 .queue_lock
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+                .lock();
             unsafe {
                 let _ = self
                     .device
@@ -687,8 +672,8 @@ impl AcquiredSwapchainFrame {
         let result = {
             let _guard = device
                 .queue_lock
-                .lock()
-                .unwrap_or_else(|error| error.into_inner());
+                .lock();
+            device.note_submit();
             unsafe { device.device.queue_submit(device.queue, &submits, fence) }
         };
         if let Err(error) = result {
@@ -697,7 +682,6 @@ impl AcquiredSwapchainFrame {
         self.sync
             .state
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .submitted = true;
         // 提交成功后，无论 present 成功与否，都先建立持有者以保护未完成的命令。
         let mut pending = PendingSwapchainFrame {

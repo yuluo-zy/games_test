@@ -1,0 +1,62 @@
+// Generated from PDB metadata by skeleton/_tools/fill_type_structures.py.
+// Version: C
+// 类型元数据；原作者源码文本/定义文件见逐项映射；不生成依赖实现。
+
+// === PDB STRUCTURES V1 BEGIN ===
+// 数据结构事实按版本保留；PDB 定义 / 仅名称关系 / 原指令观察分别标注。
+// 完整结构及原始类型记录: processthreadsapi.h.rs.structures.json.gz
+// 未记录的字段、布局、枚举值及源码定义归属 = unknown。
+// ------------------------------------------------------------------
+// [PDB PDB_definition_record] _MACHINE_ATTRIBUTES; TPI 0x21b8
+// 原始定义文件映射: PDB_UDT_source_line
+// size = unknown; alignment / packing / Rust repr = unknown
+// 定义记录: {"Kind": "LF_ENUM", "Enum": {"NumEnumerators": 3, "Options": ["None", "HasUniqueName"], "FieldList": 8631, "Name": "_MACHINE_ATTRIBUTES", "UniqueName": ".?AW4_MACHINE_ATTRIBUTES@@", "UnderlyingType": 116}}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 8631, "order": 0, "kind": "LF_ENUMERATE", "record": {"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 1, "Name": "UserEnabled"}}, "type_references": []}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 8631, "order": 1, "kind": "LF_ENUMERATE", "record": {"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 2, "Name": "KernelEnabled"}}, "type_references": []}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 8631, "order": 2, "kind": "LF_ENUMERATE", "record": {"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 4, "Name": "Wow64Container"}}, "type_references": []}
+// [PDB UDT 源码行] {"ipi_index": 139752, "original_path": "D:\\a\\_work\\1\\s\\src\\ExternalAPIs\\WindowsSDKInc\\c\\Include\\10.0.22621.0\\um\\processthreadsapi.h", "line": 1170, "module": null, "source_string_id": 139751}
+// ------------------------------------------------------------------
+// [PDB forward_declaration_only] _STARTUPINFOW; TPI 0x27ae
+// 原始定义文件映射: forward_definition_name_candidate; original declaration file unknown
+// size = unknown; alignment / packing / Rust repr = unknown
+// 定义记录: {"Kind": "LF_STRUCTURE", "Class": {"MemberCount": 0, "Options": ["None", "ForwardReference", "HasUniqueName"], "FieldList": 0, "Name": "_STARTUPINFOW", "UniqueName": ".?AU_STARTUPINFOW@@", "DerivationList": 0, "VTableShape": 0, "Size": 0}}
+// 前向定义候选（仅名称关联）: [10163]
+// ------------------------------------------------------------------
+// [PDB PDB_definition_record] _STARTUPINFOW; TPI 0x27b3
+// 原始定义文件映射: PDB_UDT_source_line
+// size = 104; alignment / packing / Rust repr = unknown
+// 定义记录: {"Kind": "LF_STRUCTURE", "Class": {"MemberCount": 18, "Options": ["None", "HasUniqueName"], "FieldList": 10162, "Name": "_STARTUPINFOW", "UniqueName": ".?AU_STARTUPINFOW@@", "DerivationList": 0, "VTableShape": 0, "Size": 104}}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 0, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 0, "Name": "cb"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 1, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 8, "Name": "lpReserved"}}, "type_references": [{"index": 1649, "spelling": "WideCharacter / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 2, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 16, "Name": "lpDesktop"}}, "type_references": [{"index": 1649, "spelling": "WideCharacter / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 3, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 24, "Name": "lpTitle"}}, "type_references": [{"index": 1649, "spelling": "WideCharacter / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 4, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 32, "Name": "dwX"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 5, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 36, "Name": "dwY"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 6, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 40, "Name": "dwXSize"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 7, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 44, "Name": "dwYSize"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 8, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 48, "Name": "dwXCountChars"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 9, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 52, "Name": "dwYCountChars"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 10, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 56, "Name": "dwFillAttribute"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 11, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 60, "Name": "dwFlags"}}, "type_references": [{"index": 34, "spelling": "UInt32Long", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 12, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 33, "FieldOffset": 64, "Name": "wShowWindow"}}, "type_references": [{"index": 33, "spelling": "UInt16Short", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 13, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 33, "FieldOffset": 66, "Name": "cbReserved2"}}, "type_references": [{"index": 33, "spelling": "UInt16Short", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 14, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1568, "FieldOffset": 72, "Name": "lpReserved2"}}, "type_references": [{"index": 1568, "spelling": "UnsignedCharacter / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 15, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 80, "Name": "hStdInput"}}, "type_references": [{"index": 1539, "spelling": "Void / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 16, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 88, "Name": "hStdOutput"}}, "type_references": [{"index": 1539, "spelling": "Void / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [字段 / 枚举值 / 类型关系] {"field_list_index": 10162, "order": 17, "kind": "LF_MEMBER", "record": {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 96, "Name": "hStdError"}}, "type_references": [{"index": 1539, "spelling": "Void / CodeView pointer mode 6", "status": "CodeView_simple_type; not Rust source spelling"}]}
+// [PDB UDT 源码行] {"ipi_index": 148768, "original_path": "D:\\a\\_work\\1\\s\\src\\ExternalAPIs\\WindowsSDKInc\\c\\Include\\10.0.22621.0\\um\\processthreadsapi.h", "line": 55, "module": null, "source_string_id": 139751}
+// === 完整 TPI 结构关系引用记录；原文不转换成猜测的 Rust ABI ===
+// [TPI 0x21b7] {"Kind": "LF_FIELDLIST", "FieldList": [{"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 1, "Name": "UserEnabled"}}, {"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 2, "Name": "KernelEnabled"}}, {"Kind": "LF_ENUMERATE", "Enumerator": {"Attrs": 3, "Value": 4, "Name": "Wow64Container"}}]}
+// [TPI 0x21b8] {"Kind": "LF_ENUM", "Enum": {"NumEnumerators": 3, "Options": ["None", "HasUniqueName"], "FieldList": 8631, "Name": "_MACHINE_ATTRIBUTES", "UniqueName": ".?AW4_MACHINE_ATTRIBUTES@@", "UnderlyingType": 116}}
+// [TPI 0x27ae] {"Kind": "LF_STRUCTURE", "Class": {"MemberCount": 0, "Options": ["None", "ForwardReference", "HasUniqueName"], "FieldList": 0, "Name": "_STARTUPINFOW", "UniqueName": ".?AU_STARTUPINFOW@@", "DerivationList": 0, "VTableShape": 0, "Size": 0}}
+// [TPI 0x27b2] {"Kind": "LF_FIELDLIST", "FieldList": [{"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 0, "Name": "cb"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 8, "Name": "lpReserved"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 16, "Name": "lpDesktop"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1649, "FieldOffset": 24, "Name": "lpTitle"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 32, "Name": "dwX"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 36, "Name": "dwY"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 40, "Name": "dwXSize"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 44, "Name": "dwYSize"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 48, "Name": "dwXCountChars"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 52, "Name": "dwYCountChars"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 56, "Name": "dwFillAttribute"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 34, "FieldOffset": 60, "Name": "dwFlags"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 33, "FieldOffset": 64, "Name": "wShowWindow"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 33, "FieldOffset": 66, "Name": "cbReserved2"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1568, "FieldOffset": 72, "Name": "lpReserved2"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 80, "Name": "hStdInput"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 88, "Name": "hStdOutput"}}, {"Kind": "LF_MEMBER", "DataMember": {"Attrs": 3, "Type": 1539, "FieldOffset": 96, "Name": "hStdError"}}]}
+// [TPI 0x27b3] {"Kind": "LF_STRUCTURE", "Class": {"MemberCount": 18, "Options": ["None", "HasUniqueName"], "FieldList": 10162, "Name": "_STARTUPINFOW", "UniqueName": ".?AU_STARTUPINFOW@@", "DerivationList": 0, "VTableShape": 0, "Size": 104}}
+// === PDB STRUCTURES V1 END ===
+
+// === WHOLE PROJECT EVIDENCE V1 BEGIN ===
+// 全项目结构/证据核对；本文件已检查，unknown 不代表已恢复实现。
+// 完整附档: processthreadsapi.h.rs.project-evidence.json.gz
+// PDB 定义及名称关系见 PDB STRUCTURES V1；业务布局只接受逐项版本证据。
+// 此文件本轮没有额外可确认的原指令字段；完整游戏布局 = unknown。
+// 只有名称/泛型/PDB/文件覆盖不等于整个游戏实现完成；函数体和未验证业务仍待恢复。
+// === WHOLE PROJECT EVIDENCE V1 END ===

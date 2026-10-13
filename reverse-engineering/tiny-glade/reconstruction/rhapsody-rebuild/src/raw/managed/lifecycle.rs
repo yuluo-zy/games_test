@@ -6,7 +6,7 @@ use crate::raw::managed::tracking::{
     CommandState, ControlBlock, TrackOutcome, drop_reference, track_handle,
 };
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Queue {
@@ -220,11 +220,7 @@ impl SequenceRuntime {
         self.resources.insert(
             id,
             Resource {
-                control: ControlBlock {
-                    last_sequence: AtomicU64::new(0),
-                    references: AtomicU32::new(1),
-                    generation,
-                },
+                control: ControlBlock::new(generation),
                 dropped: false,
             },
         );
@@ -407,10 +403,9 @@ impl SequenceRuntime {
     pub fn reclaim_ready(&mut self, queue: Queue) -> Result<(), Failure> {
         loop {
             let q = self.queues.entry(queue).or_default();
-            if !q
-                .pending
+            if q.pending
                 .front()
-                .is_some_and(|p| p.threshold.0 <= q.completed)
+                .is_none_or(|p| p.threshold.0 > q.completed)
             {
                 return Ok(());
             }

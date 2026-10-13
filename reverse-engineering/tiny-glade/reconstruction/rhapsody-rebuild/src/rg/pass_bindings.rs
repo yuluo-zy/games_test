@@ -21,10 +21,11 @@ use crate::raw::{
     texture::{Texture, TextureViewDesc},
 };
 use ash::vk;
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, HashSet},
     fmt,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
 #[derive(Debug)]
 pub enum PassBindingError {
@@ -441,7 +442,7 @@ impl ManagedPassResources {
                     layer: desc.base_layer,
                     layers: desc.layer_count,
                 };
-                let mut cache = self.views.lock().unwrap_or_else(|error| error.into_inner());
+                let mut cache = self.views.lock();
                 let view = match cache.get(&key) {
                     Some(value) => value.clone(),
                     None => {
@@ -467,13 +468,11 @@ impl ManagedPassResources {
     pub fn invalidate_views(&self) {
         self.views
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
             .clear();
     }
     pub fn view_count(&self) -> usize {
         self.views
             .lock()
-            .unwrap_or_else(|error| error.into_inner())
             .len()
     }
     pub fn descriptor_writes(

@@ -1,0 +1,43 @@
+# Generated dependency reconstruction: skeleton/_tools/restore_cargo_manifests.py
+# Evidence-derived manifest, not the original author Cargo.toml.
+# Features, dependency kind (normal/build/dev), target cfg and original aliases are not recovered.
+# Locked edges are materialized in [dependencies] as an inspection union.
+# PDB-observed transitive namespaces do not create extra B/C direct dependencies.
+
+[package]
+name = "asset"
+version = "0.1.0"
+edition = "2021" # Reconstruction setting; original edition unknown.
+publish = false # Isolated evidence scaffold.
+
+[dependencies]
+# original_lock_edge; exact package version: 1.0.100
+"anyhow" = { version = "=1.0.100" }
+# original_lock_edge; exact package version: 1.24.0
+"bytemuck" = { version = "=1.24.0" }
+# original_lock_edge; exact package version: 4.2.2
+"ordered-float" = { version = "=4.2.2" }
+# original_lock_edge; exact package version: 2.0.1
+"relative-path" = { version = "=2.0.1" }
+# original_lock_edge; exact package version: 0.8.16
+"rkyv" = { version = "=0.8.16" }
+# original_lock_edge; exact package version: 0.12.0
+"ron" = { version = "=0.12.0" }
+# original_lock_edge; exact package version: 1.0.228
+"serde" = { version = "=1.0.228" }
+# original_lock_edge; exact package version: 0.2.0
+# path points to the isolated skeleton; original filesystem path unknown.
+"turbosloth" = { version = "=0.2.0", path = "../turbosloth" }
+
+[package.metadata.reconstruction]
+version = "C"
+manifest_status = "locked_dependency_identity_union"
+original_package_version_known = true
+original_features_known = false
+original_dependency_kinds_known = false
+original_target_cfg_known = false
+original_aliases_known = false
+original_edition_known = false
+complete_build_config_recovered = false
+dependency_evidence = "evidence/multi-version/C-dependencies.json"
+dependency_evidence_sha256 = "55c1b2c3d189c3ea813c1089a5e3639a856b7fd68e21f4f6e178572ee565cf00"

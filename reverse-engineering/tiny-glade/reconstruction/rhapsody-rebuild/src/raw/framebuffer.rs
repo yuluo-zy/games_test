@@ -76,18 +76,8 @@ impl Framebuffer {
 }
 impl Drop for Framebuffer {
     fn drop(&mut self) {
-        let _guard = self
-            .render_pass
+        self.render_pass
             .device
-            .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            let _ = self.render_pass.device.device.device_wait_idle();
-            self.render_pass
-                .device
-                .device
-                .destroy_framebuffer(self.handle, None);
-        }
+            .bury(super::graveyard::Doomed::Framebuffer(self.handle));
     }
 }

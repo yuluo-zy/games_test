@@ -1,69 +1,7 @@
-//! 崩溃上下文候选实现。记录实际已开始/完成的宿主提交标记；不冒充 GPU 故障转储。
+//! GPU 崩溃诊断：debug 缓冲解析、断言检测与错误信息需求判定。
+//! （原先的宿主侧 `CrashDiagnostics` 标记环在整条管线里无调用点，且不等价于原作的 `leekspin::RingBuffer`，已删除。）
+use parking_lot::Mutex;
 use serde::Serialize;
-use std::{
-    collections::VecDeque,
-    sync::{
-        Mutex,
-        atomic::{AtomicU64, Ordering},
-    },
-};
-#[derive(Clone, Debug, Serialize)]
-pub struct CrashMarker {
-    pub id: u64,
-    pub label: String,
-    pub completed: bool,
-}
-pub struct CrashDiagnostics {
-    next: AtomicU64,
-    capacity: usize,
-    markers: Mutex<VecDeque<CrashMarker>>,
-}
-impl CrashDiagnostics {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            next: AtomicU64::new(1),
-            capacity,
-            markers: Mutex::new(VecDeque::new()),
-        }
-    }
-    pub fn begin(&self, label: impl Into<String>) -> u64 {
-        let id = self.next.fetch_add(1, Ordering::Relaxed);
-        let mut markers = self.markers.lock().unwrap_or_else(|p| p.into_inner());
-        if self.capacity > 0 {
-            while markers.len() >= self.capacity {
-                markers.pop_front();
-            }
-            markers.push_back(CrashMarker {
-                id,
-                label: label.into(),
-                completed: false,
-            });
-        }
-        id
-    }
-    pub fn complete(&self, id: u64) {
-        if let Some(marker) = self
-            .markers
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .iter_mut()
-            .find(|m| m.id == id)
-        {
-            marker.completed = true;
-        }
-    }
-    pub fn snapshot(&self) -> Vec<CrashMarker> {
-        self.markers
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .iter()
-            .cloned()
-            .collect()
-    }
-    pub fn dump_json(&self) -> std::result::Result<String, serde_json::Error> {
-        serde_json::to_string_pretty(&self.snapshot())
-    }
-}
 
 use super::{
     buffer::{Buffer, BufferDesc},
@@ -269,7 +207,7 @@ impl GpuCrashDiagnostics {
         if !command.is_recording() {
             return Err(Error::Invalid("未处于录制状态的命令不能写入 marker"));
         }
-        let mut history = self.history.lock().unwrap_or_else(|e| e.into_inner());
+        let mut history = self.history.lock();
         let id = history.next;
         history.next = id.wrapping_add(1);
         history.labels.insert(
@@ -338,7 +276,7 @@ impl GpuCrashDiagnostics {
         let mut marker = [0; 4];
         self.marker_buffer.read_bytes(0, &mut marker)?;
         let observed_marker = u32::from_le_bytes(marker);
-        let history = self.history.lock().unwrap_or_else(|e| e.into_inner());
+        let history = self.history.lock();
         let marker_label = history
             .labels
             .get(&(observed_marker & 4095))

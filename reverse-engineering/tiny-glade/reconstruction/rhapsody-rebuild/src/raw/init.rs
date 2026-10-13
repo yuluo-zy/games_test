@@ -322,10 +322,12 @@ impl GraphicsDevicesForSurface {
             match device.is_supported() {
                 DeviceDecision::Yes => {}
                 DeviceDecision::No(reason) => {
-                    if !(self.policy.allow_compatible && compatible == DeviceDecision::Yes)
-                        && !(self.policy.allow_unknown_original_policy
-                            && matches!(compatible, DeviceDecision::Unknown(_)))
-                    {
+                    // compatible 判定按策略可豁免 is_supported 的拒绝原因。
+                    let waived = (self.policy.allow_compatible
+                        && compatible == DeviceDecision::Yes)
+                        || (self.policy.allow_unknown_original_policy
+                            && matches!(compatible, DeviceDecision::Unknown(_)));
+                    if !waived {
                         reasons.push(reason)
                     }
                 }

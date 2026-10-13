@@ -22,7 +22,11 @@ use rspirv::{
     dr::{Builder, Operand},
     spirv,
 };
-use std::{cell::RefCell, collections::BTreeMap, ffi::CStr, rc::Rc, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    ffi::CStr,
+    sync::{Arc, Mutex},
+};
 fn buffer(context: &PassContext<'_>, resource: ResourceHandle) -> ManagedBuffer {
     match context.managed.unwrap().registry.resource(resource.raw()).0 {
         RegistryResource::OwnedBuffer(value) | RegistryResource::UnownedBuffer(value) => {
@@ -256,9 +260,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let pipeline = library.create_compute_pipeline("Ref消费验证", &BTreeMap::new())?;
     let state = Arc::new(DescriptorSetState::new(pipeline.layout.sets[0].clone(), 4)?);
-    let output = Rc::new(RefCell::new(None));
+    let output = Arc::new(Mutex::new(None));
     let captured = output.clone();
-    let observed = Rc::new(RefCell::new(None));
+    let observed = Arc::new(Mutex::new(None));
     let cb_observed = observed.clone();
     let mut pass = graph.add_pass("主图绑定并dispatch");
     let u = pass.buffer_ref(ubo, 4, 0)?.bind_uniform_buffer(0, 4)?;
@@ -288,8 +292,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bind_descriptor_set(raw, &pipeline, 0, &set, &[]).unwrap();
                 pipeline.device.device.cmd_dispatch(raw, 1, 1, 1);
             }
-            *captured.borrow_mut() = Some(buffer(&context, out));
-            *cb_observed.borrow_mut() =
+            *captured.lock().unwrap() = Some(buffer(&context, out));
+            *cb_observed.lock().unwrap() =
                 Some((context.command.sequence().0, context.command.handle()));
             context.keep_alive(set);
             context.keep_alive(other);
@@ -298,7 +302,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     );
     let mut run = backend.execute(graph.build())?;
-    let (sequence, handle) = observed.borrow().unwrap();
+    let (sequence, handle) = observed.lock().unwrap().unwrap();
     assert!(run.backend.submissions.iter().any(|s| {
         s.batches
             .iter()
@@ -307,7 +311,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     run.wait(u64::MAX)?;
     let mut bytes = [0; 4];
     output
-        .borrow()
+        .lock()
+        .unwrap()
         .as_ref()
         .unwrap()
         .read_bytes(0, &mut bytes)?;

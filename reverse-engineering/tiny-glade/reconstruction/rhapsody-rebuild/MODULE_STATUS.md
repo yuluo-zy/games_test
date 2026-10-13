@@ -24,6 +24,45 @@
 
 原55个PDB路径只作为结构清单，见evidence/original-structure.json；新增候选接口、字段编码和性能策略需独立对照。
 
+## 2026-10-13 显存子分配
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| 子分配（gpu-allocator 0.27.0） | **候选，默认关闭** | 原作用本地分叉 0.26.0（ash 0.38 + arc-swap/egui/puffin）；公开 0.26.0 依赖 ash ≤0.37 不兼容，0.27.0 是最近且兼容的公开版；块大小策略与统计口径可能与分叉不同 |
+| `AllocationBackend` 接入 | 已实现 | `SubAllocationBackend` 与 `DirectMemoryBackend` 同构，可放进 `GpuAllocator<B>` 峰值包装 |
+| 统计口径 | 保持每分配一条记录 | 登记表仍是逻辑分配；真实块数另用 `memory_block_count()`；登记的内存类型/堆序号由属性反查（gpu-allocator 不暴露），是近似 |
+| 非一致性内存刷新/失效 | **未验证** | 范围按分配自己的区间并对齐到 `nonCoherentAtomSize`；对齐前提有测试，但 lavapipe 只有一种一致性类型，实际刷新路径从未执行 |
+| 屏障计数 | 已实现 | `ExecutionStats.barrier_commands/transitions`，串行并行一致 |
+
+## 2026-10-13 并行录制
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `record_batch` 并行录制 | **还原原作**（PDB + PE） | 分块预算、贪心切分、双缓冲 PGO 直读自机器码；未知：命令池来源、`device+0xabb` 开关含义 |
+| 每块独立命令池 | 候选 | Vulkan 要求命令池外部同步；原作的池来源未知 |
+| `ADAPTIVE` 轻帧门槛 | 候选扩展 | 原作无；实测临界点约每 pass 2µs |
+| `Balanced` 分块 | 候选扩展 | 解决"重 pass 在末尾则整批只有 1 块"与第一帧每 pass 一块 |
+| managed 控制块无锁 | 候选 | 原作控制块即原子字段；去掉了我们自己加的互斥锁 |
+| managed 槽位表 `AppendOnlyVec` + 显存预算 `ArcSwap` 快照 | 候选（依赖取自原锁，用法有 PDB 证据；槽位内部布局与空闲链表未恢复） | 见 DEPENDENCY_AUDIT.md |
+| 管线创建并行 | 候选 | 依据：`VkPipelineCache` 未带 EXTERNALLY_SYNCHRONIZED 标志时内部同步（规范）；无 validation layer 复核 |
+| 块边界不切断 render pass | **未强制** | 当前每图 pass 自成 render pass 实例；共享后必须填 `split_allowed` |
+
+GPU 验证仍限于 lavapipe；并发同步正确性在真显卡与 validation layer 下**未验收**。
+
+## 2026-10-13 缺口收敛与性能优化
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `BufferDesc` 16B | 已对齐 | `{size,usage,alignment,memory_location}`，编译期断言尺寸；`tests/buffer_desc.rs` |
+| raw 释放 | 候选优化（非原作镜像） | `raw/graveyard.rs`：Drop O(1)，按 epoch 销毁；原作为按序列号排出的销毁桶 |
+| setup 命令缓冲/纹理上传 | 同步候选 | 保留结尾全量屏障；原作并入下一次图提交且不等待；`tests/setup_upload.rs` 逐字节往返 |
+| swapchain `retire` | 有意偏差 | 等价于下次 acquire 按 `old_swapchain` 重建；原作“取回桶+重建”未镜像 |
+| `set_fullscreen_exclusive` | 未实现 | 证据不足，保持 `Unsupported` |
+| `queue_submit` 签名 | 已取证 | 4 个寄存器参数 = `(&device, Option<u32>)` + 返回槽；见 P4 证据 |
+| 性能追踪 | 新增 | `cargo bench --bench perf`；`tests/perf_guards.rs`；见 [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) |
+
+GPU 验证口径：本机以 lavapipe 重跑 17 个探针中的 14 个并通过；其余 3 个受环境限制。真显卡、多队列、Win32 呈现、validation layer 下的同步正确性**仍未验收**。
+
 ## 2026-10-13 缺失函数补全
 
 对照 `skeleton-enriched/B/crates/rhapsody` 骨架函数清单（rg/raw/managed），按用户授权按清单顺序补全缺失函数约 200 个；新增候选接口已接入真实类型，不另开 candidate crate。交付证据见 [missing-functions-completion-2026-10-13.json](evidence/missing-functions-completion-2026-10-13.json)。

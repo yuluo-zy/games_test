@@ -219,7 +219,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         device.device.end_command_buffer(cb)?;
         {
-            let _guard = device.queue_lock.lock().unwrap();
+            let _guard = device.queue_lock.lock();
+            device.note_submit();
             device.device.queue_submit(
                 device.queue,
                 &[vk::SubmitInfo::default().command_buffers(&[cb])],
@@ -330,7 +331,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         device.device.end_command_buffer(cb)?;
         {
-            let _guard = device.queue_lock.lock().unwrap();
+            let _guard = device.queue_lock.lock();
+            device.note_submit();
             device.device.queue_submit(
                 device.queue,
                 &[vk::SubmitInfo::default().command_buffers(&[cb])],

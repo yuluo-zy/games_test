@@ -103,7 +103,7 @@ compile → begin_frame → execute_compiled → retire → take_resource
 
 - 队列：`create`(`0x140bf2560`) **必建**主族（`queueCount=1`），**条件建**第二份当且仅当存在 `(queueFlags & 3) == 2` 的专用 compute 族。时间线信号量只创建一次。本机 UHD 630 无专用 compute 族 → 单队列。
 - **wait/signal 由批次路径 + `queue_submit` 内部时间线分配器产生，不是外部注入。**
-- 无并行录制证据（单活跃 CB）。
+- ~~无并行录制证据（单活跃 CB）。~~ **更正（2026-10-13）**：`record_batch` 按上一帧 PGO 耗时把 pass 切成连续块，经 `bevy_tasks::ComputeTaskPool` 并行录制，每块一个活跃 CB。见 [parallel-recording/FINDINGS.md](../parallel-recording/FINDINGS.md)。
 - **ray tracing：本构建无硬件光追**（用户可自行复核）：
   - `VK_KHR_acceleration_structure` / `ray_query` / `ray_tracing_pipeline` 字符串计数 **全 0**；
   - 正向对照 `VK_KHR_swapchain` = 1、`VK_EXT_descriptor_indexing` = 1；timeline_semaphore/synchronization2/dynamic_rendering = 0（1.3 核心化，不需要扩展名）；

@@ -1,58 +1,78 @@
-//! Buffer 创建、内存绑定、映射读写候选；不声称此描述符等于原 16 字节 ABI。
+//! Buffer 创建、内存绑定、映射读写候选；`BufferDesc` 对齐原 16 字节描述符布局。
 use super::{
     allocator::MemoryBlock,
     device::VulkanDevice,
     error::{Error, Result},
+    graveyard::Doomed,
 };
 use ash::vk;
 use std::sync::Arc;
+/// 原作 `BufferDesc.memory_location` 枚举（取值 1..=4，0 非法）。
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemoryLocation {
+    GpuOnly = 1,
+    CpuToGpu = 2,
+    /// HOST_VISIBLE 但非低延迟映射，不要求 HOST_COHERENT。
+    CpuToGpuLowPrio = 3,
+    GpuToCpu = 4,
+}
+impl MemoryLocation {
+    pub const fn as_raw(self) -> u8 {
+        self as u8
+    }
+    pub const fn from_raw(raw: u8) -> Option<Self> {
+        match raw {
+            1 => Some(Self::GpuOnly),
+            2 => Some(Self::CpuToGpu),
+            3 => Some(Self::CpuToGpuLowPrio),
+            4 => Some(Self::GpuToCpu),
+            _ => None,
+        }
+    }
+    /// 返回 (必需, 偏好) 内存属性；映射集中在此处，创建路径不再自行拼装。
+    pub fn memory_properties(self) -> (vk::MemoryPropertyFlags, vk::MemoryPropertyFlags) {
+        use vk::MemoryPropertyFlags as F;
+        match self {
+            Self::GpuOnly => (F::DEVICE_LOCAL, F::DEVICE_LOCAL),
+            Self::CpuToGpu => (F::HOST_VISIBLE, F::HOST_COHERENT),
+            Self::CpuToGpuLowPrio => (F::HOST_VISIBLE, F::empty()),
+            Self::GpuToCpu => (F::HOST_VISIBLE, F::HOST_CACHED | F::HOST_COHERENT),
+        }
+    }
+}
+/// 原 16 字节 ABI：`{u64 size, u32 usage, u16 alignment, u8 memory_location}`。
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct BufferDesc {
     pub size: u64,
     pub usage: vk::BufferUsageFlags,
-    pub required_memory: vk::MemoryPropertyFlags,
-    pub preferred_memory: vk::MemoryPropertyFlags,
-    /// 请求的对齐（字节）；原 16 字节描述符的 `u16 alignment` 字段。0 表示无显式要求。
+    /// 请求的对齐（字节）；0 表示无显式要求。
     pub alignment: u16,
+    pub memory_location: MemoryLocation,
 }
+const _: () = assert!(std::mem::size_of::<BufferDesc>() == 16);
 impl BufferDesc {
-    pub fn new_gpu_only(size: u64, usage: vk::BufferUsageFlags) -> Self {
+    pub fn new(size: u64, usage: vk::BufferUsageFlags, memory_location: MemoryLocation) -> Self {
         Self {
             size,
             usage,
-            required_memory: vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            preferred_memory: vk::MemoryPropertyFlags::DEVICE_LOCAL,
             alignment: 0,
+            memory_location,
         }
     }
+    pub fn new_gpu_only(size: u64, usage: vk::BufferUsageFlags) -> Self {
+        Self::new(size, usage, MemoryLocation::GpuOnly)
+    }
     pub fn new_cpu_to_gpu(size: u64, usage: vk::BufferUsageFlags) -> Self {
-        Self {
-            size,
-            usage,
-            required_memory: vk::MemoryPropertyFlags::HOST_VISIBLE,
-            preferred_memory: vk::MemoryPropertyFlags::HOST_COHERENT,
-            alignment: 0,
-        }
+        Self::new(size, usage, MemoryLocation::CpuToGpu)
     }
     /// 原 memory_location=3 语义：HOST_VISIBLE 但非低延迟映射（不要求 HOST_COHERENT）。
     pub fn new_cpu_to_gpu_low_prio(size: u64, usage: vk::BufferUsageFlags) -> Self {
-        Self {
-            size,
-            usage,
-            required_memory: vk::MemoryPropertyFlags::HOST_VISIBLE,
-            preferred_memory: vk::MemoryPropertyFlags::empty(),
-            alignment: 0,
-        }
+        Self::new(size, usage, MemoryLocation::CpuToGpuLowPrio)
     }
     pub fn new_gpu_to_cpu(size: u64, usage: vk::BufferUsageFlags) -> Self {
-        Self {
-            size,
-            usage,
-            required_memory: vk::MemoryPropertyFlags::HOST_VISIBLE,
-            preferred_memory: vk::MemoryPropertyFlags::HOST_CACHED
-                | vk::MemoryPropertyFlags::HOST_COHERENT,
-            alignment: 0,
-        }
+        Self::new(size, usage, MemoryLocation::GpuToCpu)
     }
     /// 显式对齐请求；由调用方在满足 Vulkan memory-requirement 的前提下设置。
     pub fn with_alignment(mut self, alignment: u16) -> Self {
@@ -68,7 +88,7 @@ pub struct Buffer {
     pub handle: vk::Buffer,
     pub size: u64,
     pub usage: vk::BufferUsageFlags,
-    allocation: MemoryBlock,
+    allocation: std::mem::ManuallyDrop<MemoryBlock>,
     mapped_ptr: Option<usize>,
 }
 impl Buffer {
@@ -97,11 +117,12 @@ impl Buffer {
         } else {
             vk::MemoryAllocateFlags::empty()
         };
+        let (required_memory, preferred_memory) = desc.memory_location.memory_properties();
         let allocation = match MemoryBlock::allocate_with_flags(
             Arc::clone(&device),
             requirements,
-            desc.required_memory,
-            desc.preferred_memory,
+            required_memory,
+            preferred_memory,
             flags,
         ) {
             Ok(value) => value,
@@ -115,7 +136,7 @@ impl Buffer {
         if let Err(error) = unsafe {
             device
                 .device
-                .bind_buffer_memory(handle, allocation.handle, 0)
+                .bind_buffer_memory(handle, allocation.handle, allocation.offset)
         } {
             unsafe {
                 device.device.destroy_buffer(handle, None);
@@ -127,7 +148,7 @@ impl Buffer {
             handle,
             size: desc.size,
             usage: desc.usage,
-            allocation,
+            allocation: std::mem::ManuallyDrop::new(allocation),
             mapped_ptr: None,
         })
     }
@@ -150,15 +171,16 @@ impl Buffer {
         }
         let address = match self.mapped_ptr {
             Some(address) => address,
+            // 子分配：gpu-allocator 已持久映射整块，指针已含偏移；不能再 vkMapMemory 同一块内存。
+            None if self.allocation.host_ptr().is_some() => {
+                self.allocation.host_ptr().map_or(0, |p| p as usize)
+            }
             None => {
                 let _queue = self
                     .device
                     .queue_lock
-                    .lock()
-                    .map_err(|_| Error::Invalid("队列锁失效"))?;
-                unsafe {
-                    self.device.device.device_wait_idle()?;
-                }
+                    .lock();
+                self.device.idle_if_in_flight_locked()?;
                 let pointer = unsafe {
                     self.device.device.map_memory(
                         self.allocation.handle,
@@ -188,6 +210,11 @@ impl Buffer {
         }
     }
 
+    /// 宿主刷新/失效范围 `(偏移, 大小)`，供测试核对子分配的对齐前提。
+    #[doc(hidden)]
+    pub fn host_range_for_test(&self) -> (u64, u64) {
+        self.allocation.host_range()
+    }
     /// 地址只能用于具有 DEVICE_ADDRESS 分配标记且设备已启用 BDA 的缓冲。
     pub fn device_address(&self) -> Result<vk::DeviceAddress> {
         if !self.device.capabilities.buffer_device_address
@@ -200,7 +227,7 @@ impl Buffer {
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
         Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
     }
-    fn transfer(&self, offset: u64, bytes: &mut [u8], write: bool) -> Result<()> {
+    fn transfer(&self, offset: u64, bytes: &mut [u8], write: bool, sync: bool) -> Result<()> {
         if offset
             .checked_add(bytes.len() as u64)
             .is_none_or(|end| end > self.size)
@@ -217,23 +244,33 @@ impl Buffer {
         let _queue = self
             .device
             .queue_lock
-            .lock()
-            .map_err(|_| Error::Invalid("队列锁失效"))?;
-        unsafe {
-            self.device.device.device_wait_idle()?;
+            .lock();
+        if sync {
+            self.device.idle_if_in_flight_locked()?;
         }
-        let pointer = unsafe {
-            self.device.device.map_memory(
-                self.allocation.handle,
-                0,
-                vk::WHOLE_SIZE,
-                vk::MemoryMapFlags::empty(),
-            )
-        }?;
+        // 子分配直接用已持久映射的指针；专用分配每次自己 map/unmap。
+        let shared_pointer = self.allocation.host_ptr();
+        let pointer = match shared_pointer {
+            Some(pointer) => pointer.cast(),
+            None => unsafe {
+                self.device.device.map_memory(
+                    self.allocation.handle,
+                    0,
+                    vk::WHOLE_SIZE,
+                    vk::MemoryMapFlags::empty(),
+                )
+            }?,
+        };
+        let (range_offset, range_size) = self.allocation.host_range();
         let range = [vk::MappedMemoryRange::default()
             .memory(self.allocation.handle)
-            .offset(0)
-            .size(vk::WHOLE_SIZE)];
+            .offset(range_offset)
+            .size(range_size)];
+        let unmap = || {
+            if shared_pointer.is_none() {
+                unsafe { self.device.device.unmap_memory(self.allocation.handle) };
+            }
+        };
         let coherent = self
             .allocation
             .properties
@@ -244,9 +281,7 @@ impl Buffer {
             Ok(())
         };
         if let Err(error) = result {
-            unsafe {
-                self.device.device.unmap_memory(self.allocation.handle);
-            }
+            unmap();
             return Err(error.into());
         }
         unsafe {
@@ -262,33 +297,31 @@ impl Buffer {
         } else {
             Ok(())
         };
-        unsafe {
-            self.device.device.unmap_memory(self.allocation.handle);
-        }
+        unmap();
         Ok(result?)
     }
     pub fn write_bytes(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.transfer(offset, &mut bytes.to_vec(), true)
+        self.transfer(offset, &mut bytes.to_vec(), true, true)
+    }
+    /// 不等待在飞 GPU 工作的写入。
+    ///
+    /// 仅用于刚创建、GPU 从未访问过的缓冲（如上传暂存缓冲）；对可能被 GPU 使用的缓冲请用 `write_bytes`。
+    pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
+        self.transfer(offset, &mut bytes.to_vec(), true, false)
     }
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
-        self.transfer(offset, bytes, false)
+        self.transfer(offset, bytes, false, true)
     }
 }
 impl Drop for Buffer {
     fn drop(&mut self) {
-        let _lock = self
-            .device
-            .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
         if self.mapped_ptr.take().is_some() {
             unsafe {
                 self.device.device.unmap_memory(self.allocation.handle);
             }
         }
-        unsafe {
-            let _ = self.device.device.device_wait_idle();
-            self.device.device.destroy_buffer(self.handle, None);
-        }
+        // SAFETY: allocation 只在此处取出一次，之后不会再被访问。
+        let memory = unsafe { std::mem::ManuallyDrop::take(&mut self.allocation) }.into_deferred();
+        self.device.bury(Doomed::Buffer(self.handle, memory));
     }
 }

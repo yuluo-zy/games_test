@@ -7,11 +7,12 @@ use crate::raw::descriptor_set::{Binding, DescriptorSetState, LayoutPlan, descri
 use crate::raw::device::VulkanDevice;
 use ash::vk;
 use serde::{Deserialize, Serialize};
+use parking_lot::Mutex;
 use std::{
     collections::BTreeMap,
     ffi::{CStr, CString},
     io::Cursor,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
 
 pub struct ShaderModule {
@@ -97,23 +98,31 @@ impl PipelineLayout {
 }
 impl Drop for PipelineLayout {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.device.wait_idle();
-            self.device
-                .device
-                .destroy_pipeline_layout(self.handle, None);
-        }
+        self.device
+            .bury(super::graveyard::Doomed::PipelineLayout(self.handle));
     }
 }
 
-/// Vulkan 驱动缓存；序列化其读写及 pipeline 创建，满足缓存宿主同步要求。
+/// Vulkan 驱动缓存。`VkPipelineCache` 未带 EXTERNALLY_SYNCHRONIZED 标志创建，规范规定其内部同步，
+/// 所以不同键的管线可以并行创建；`lock` 只保护 `get_pipeline_cache_data` 的读取。
+///
+/// 每个键一个槽位：map 只在查找/插入槽位时短暂持锁，创建在槽位锁内进行——同键的并发调用者
+/// 排队等待同一次创建（去重），不同键互不阻塞；创建失败不缓存，下次调用重试。
 type ComputePipelineKey = (u64, u64, Vec<u8>);
+type PipelineSlot = Arc<Mutex<Option<Arc<VulkanPipeline>>>>;
 pub struct PipelineCache {
     pub device: Arc<VulkanDevice>,
     handle: vk::PipelineCache,
     lock: Mutex<()>,
-    compute: Mutex<BTreeMap<ComputePipelineKey, Arc<VulkanPipeline>>>,
-    raster: Mutex<BTreeMap<Vec<u64>, Arc<VulkanPipeline>>>,
+    compute: Mutex<BTreeMap<ComputePipelineKey, PipelineSlot>>,
+    raster: Mutex<BTreeMap<Vec<u64>, PipelineSlot>>,
+}
+/// 取（或插入）键对应的槽位；map 锁在返回前释放。
+fn slot_for<K: Ord>(map: &Mutex<BTreeMap<K, PipelineSlot>>, key: K) -> PipelineSlot {
+    map.lock()
+        .entry(key)
+        .or_default()
+        .clone()
 }
 impl PipelineCache {
     pub fn new(device: Arc<VulkanDevice>, initial_data: &[u8]) -> Result<Self, vk::Result> {
@@ -128,22 +137,24 @@ impl PipelineCache {
         })
     }
     pub fn data(&self) -> Result<Vec<u8>, vk::Result> {
-        let _lock = self.lock.lock().unwrap_or_else(|p| p.into_inner());
+        let _lock = self.lock.lock();
         unsafe { self.device.device.get_pipeline_cache_data(self.handle) }
     }
     /// 管线缓存持有布局与 shader；显式失效后已有提交仍由外部 Arc 保持有效。
     pub fn invalidate(&self) {
         self.compute
             .lock()
-            .unwrap_or_else(|p| p.into_inner())
             .clear();
         self.raster
             .lock()
-            .unwrap_or_else(|p| p.into_inner())
             .clear();
     }
     pub fn cached_compute_count(&self) -> usize {
-        self.compute.lock().unwrap_or_else(|p| p.into_inner()).len()
+        self.compute
+            .lock()
+            .values()
+            .filter(|slot| slot.lock().is_some())
+            .count()
     }
 }
 impl Drop for PipelineCache {
@@ -419,11 +430,11 @@ impl VulkanPipeline {
             desc.layout.handle.as_raw(),
             desc.entry.as_bytes().to_vec(),
         );
-        let mut candidates = cache.compute.lock().unwrap_or_else(|p| p.into_inner());
-        if let Some(pipeline) = candidates.get(&key) {
+        let slot = slot_for(&cache.compute, key);
+        let mut created = slot.lock();
+        if let Some(pipeline) = created.as_ref() {
             return Ok(pipeline.clone());
         }
-        let _lock = cache.lock.lock().unwrap_or_else(|p| p.into_inner());
         let stage = vk::PipelineShaderStageCreateInfo::default()
             .stage(vk::ShaderStageFlags::COMPUTE)
             .module(desc.shader.handle)
@@ -446,7 +457,7 @@ impl VulkanPipeline {
             shaders: vec![desc.shader],
             render_pass_owner: None,
         });
-        candidates.insert(key, pipeline.clone());
+        *created = Some(pipeline.clone());
         Ok(pipeline)
     }
     pub fn create_raster_pipeline(
@@ -463,11 +474,11 @@ impl VulkanPipeline {
             return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
         }
         let key = raster_pipeline_key(&desc);
-        let mut candidates = cache.raster.lock().unwrap_or_else(|p| p.into_inner());
-        if let Some(pipeline) = candidates.get(&key) {
+        let slot = slot_for(&cache.raster, key);
+        let mut created = slot.lock();
+        if let Some(pipeline) = created.as_ref() {
             return Ok(pipeline.clone());
         }
-        let _lock = cache.lock.lock().unwrap_or_else(|p| p.into_inner());
         let mut stages = vec![stage(
             desc.vertex.handle,
             vk::ShaderStageFlags::VERTEX,
@@ -532,7 +543,7 @@ impl VulkanPipeline {
             shaders,
             render_pass_owner: Some(desc.render_pass_owner),
         });
-        candidates.insert(key, pipeline.clone());
+        *created = Some(pipeline.clone());
         Ok(pipeline)
     }
     /// # Safety
@@ -642,10 +653,8 @@ fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
 }
 impl Drop for VulkanPipeline {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.device.wait_idle();
-            self.device.device.destroy_pipeline(self.handle, None)
-        }
+        self.device
+            .bury(super::graveyard::Doomed::Pipeline(self.handle));
     }
 }
 

@@ -14,14 +14,7 @@ impl Sampler {
 }
 impl Drop for Sampler {
     fn drop(&mut self) {
-        let _guard = self
-            .device
-            .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            let _ = self.device.device.device_wait_idle();
-            self.device.device.destroy_sampler(self.handle, None);
-        }
+        self.device
+            .bury(super::graveyard::Doomed::Sampler(self.handle));
     }
 }
