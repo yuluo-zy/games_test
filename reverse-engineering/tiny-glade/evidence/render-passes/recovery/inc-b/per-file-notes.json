@@ -1,0 +1,192 @@
+{
+  "agent": "INC-B",
+  "date": "2026-10-13",
+  "scope": "shaders/inc/ noise-and-random math layer (13 files): blue_noise, hammersley, gaussian_rand, perlin, simplex_noise, fbm_noise, morton, hsv, sh, smooth_max, curve, find_root, scatter",
+  "note": "status: O=Observation-verified symbols/algorithms, I=Inference (names were inlined by dxc -Zi, not embedded), U=Unknown. Across the layer, function names are I because dxc inlines every helper and only emits OpName for globals/types/entries (verified: raw-per-bin debug_names contain no helper names). Every body is reconstructed from inlined opcode patterns at consumer use-sites (spirv-cross decompile of game .bin), not from author text. All 13 files compile under canonical flags against the real tree (compile-self-test.log).",
+  "files": {
+    "shaders/inc/blue_noise.hlsl": {
+      "status": "I",
+      "provides": [
+        "Texture2D<float4> blue_noise_texture (global resource, bindings SampledImage(2D))",
+        "float4 blue_noise(uint2 pixel_coords, uint frame_index)"
+      ],
+      "evidence": "raw-per-bin bindings: blue_noise_texture SampledImage(2D) in 28 bins; identical inlined golden-ratio Load pattern in _apply_volumetrics.cs.hlsl_cs_main_0 and _gi_eval_screen_radiance.cs.hlsl_cs_main_0 (pixel+uint2(13,13)+uint2(frac((0.7548776865,0.5698403120)*seed+0.5)*256) % 256; tex*255*(1/256)+(1/512))",
+      "deps": [],
+      "unknowns": [
+        "function name (blue_noise is Inference; alts: sample_blue_noise / blue_noise_sample)",
+        "blue_noise_texture_dims appears as a $Globals member in consumers but observed sampling hardcodes 256 texels",
+        "some consumers (e.g. _lut_water_noise) sample blue_noise_texture directly with sampler_llr/bicubic instead of the helper"
+      ]
+    },
+    "shaders/inc/hammersley.hlsl": {
+      "status": "I",
+      "provides": [
+        "float radicalInverse_VdC(uint bits)",
+        "float2 hammersley(uint i, uint N)"
+      ],
+      "evidence": "_lut_brdf_fg.cs.hlsl_cs_main_0 inlined Van der Corput base-2 bit-reversal + float(bits)*2.3283064e-10 (2^-32); caller computed float(i)/float(N) and scaled u2 by 2*PI (fused 1.462918e-9 = 2PI/2^32)",
+      "deps": [],
+      "unknowns": [
+        "function names (hammersley/radicalInverse_VdC are the de-facto conventions matching the opcode pattern)"
+      ]
+    },
+    "shaders/inc/gaussian_rand.hlsl": {
+      "status": "I",
+      "provides": [
+        "float gaussian_rand(uint seed_a, uint seed_b)"
+      ],
+      "evidence": "_generate_grass.cs.hlsl_cs_main_0 inlined: u=(rand01(hash(seed_b))*2-1); L=log(1-u*u); c=4.5472841+0.5*L; ret=(rand01(hash(seed_a))*1.5+0.5)+(sqrt(sqrt(c*c-L*7.142857)-c)*sign(u))*0.3. rand01(hash(seed)) with INC-A hash(uint)=wang5 matches the inlined 5-step hash + asfloat((h&0x7FFFFF)|0x3F800000)-1 exactly",
+      "deps": [
+        "hash.hlsl (INC-A): hash(uint), rand01(uint) - consumer includes hash.hlsl before this file (observed include order)",
+        "math_const.hlsl (INC-A) transitively"
+      ],
+      "unknowns": [
+        "function name/signature (2-seed uint pair inferred; only visible use is _generate_grass; other 11 consumer bins include but do not visibly use it)"
+      ]
+    },
+    "shaders/inc/perlin.hlsl": {
+      "status": "I",
+      "provides": [
+        "float perlin(float2 p) - 2D *value* noise (hash lattice, smoothstep interp, returns [0,1))",
+        "uint hash(uint2 p) - 2D LCG-mix hash (1664525/1013904223 + avalanche)"
+      ],
+      "evidence": "inlined value-noise (floor/frac/hash(uint2)/f*f*(3-2f)/bilinear) in _leaf_particles, _paths_path_mask_visual, _water_plane, _rocky_terrain_displace; lattice value asfloat((h^(h>>18))&0x7FFFFF|0x3F800000)-1; include order in _water_plane (perlin at 10, hash at 11) shows perlin.hlsl #includes hash.hlsl",
+      "deps": [
+        "hash.hlsl (INC-A): hash(uint) - perlin.hlsl #includes hash.hlsl",
+        "hash(uint2) defined here (not in INC-A hash.hlsl)"
+      ],
+      "unknowns": [
+        "function name (perlin Inference; alts: perlin_noise / noise)",
+        "hash(uint2) ownership: evidence puts the 2D hash with perlin; flag for reconciliation if INC-A later adds hash(uint2) to hash.hlsl (would be a redefinition)",
+        "value-noise vs gradient-perlin: consumers show value-noise; if any consumer expects gradient perlin the lattice differs"
+      ]
+    },
+    "shaders/inc/simplex_noise.hlsl": {
+      "status": "I",
+      "provides": [
+        "float snoise(float2 v) - Ashima/WebGL-noise 2D simplex"
+      ],
+      "evidence": "_generate_grass.cs.hlsl_cs_main_0 theme-4 inlined verbatim: skew C=(0.2113248654,0.3660254038), x2 offset -0.5773503 (variant A), mod289+permute hash, m^4 falloff, 130.0 dot with 1.7928429-0.8537347*(|n|^2+|s|^2)",
+      "deps": [],
+      "unknowns": [
+        "function name (snoise Inference; alts: simplex_noise / simplexNoise)",
+        "include-graph inferred edge simplex_noise.hlsl -> scatter.hlsl is treated as unreliable (sibling vs descendant ambiguous); kept files independent"
+      ]
+    },
+    "shaders/inc/fbm_noise.hlsl": {
+      "status": "I",
+      "provides": [
+        "float fbm(float2 p) - 2-octave fractal of perlin with fixed rotation/scale"
+      ],
+      "evidence": "_paths_path_mask_visual.cs.hlsl_cs_main_0 inlined loop: value += amp*(-1+2*perlin(pos)); amp*=0.55; pos=mul(float2x2(0.8,-0.6,0.6,0.8), pos*1.9); 2 iterations",
+      "deps": [
+        "perlin.hlsl (own) - fbm_noise.hlsl #includes perlin.hlsl (include order shows fbm_noise follows perlin)"
+      ],
+      "unknowns": [
+        "octave count fixed at 2 (observed); may be a macro in original",
+        "function name (fbm Inference)"
+      ]
+    },
+    "shaders/inc/morton.hlsl": {
+      "status": "I",
+      "provides": [
+        "uint morton_encode(uint2 p)",
+        "uint2 morton_decode(uint m)"
+      ],
+      "evidence": "_dof_analyze.cs.hlsl_cs_main_0 inlined decode XOR-swap: x=m&0x55555555; (x^(x>>1))&0x33333333; (x^(x>>2))&0x0F0F0F0F; (x^(x>>4))&0x00FF00FF; (x^(x>>8))&0xFFFF (same for y from m>>1)",
+      "deps": [],
+      "unknowns": [
+        "encode not directly observed at any consumer use-site (standard inverse of decode); only decode is evidenced"
+      ]
+    },
+    "shaders/inc/hsv.hlsl": {
+      "status": "I",
+      "provides": [
+        "float3 rgb2hsv(float3 c) - h in [0,1]",
+        "float3 hsv2rgb(float3 c) - h in [0,6] triangle hue"
+      ],
+      "evidence": "_nani_cloth.raster.hlsl_b903e43ffb3da915 m1 (ps) inlined: rgb2hsv via lerp/step K-vector (0,-1/3,2/3,-1) + d=q.x-min(q.w,q.y); hsv2rgb via clamp(abs(h-3)-1, 2-abs(h-2), 2-abs(h-4)) with caller premultiplying hue by 6",
+      "deps": [],
+      "unknowns": [
+        "hsv2rgb hue convention: caller multiplies rgb2hsv hue (0..1) by 6 before hsv2rgb; header takes h in [0,6]",
+        "function names (rgb2hsv/hsv2rgb are the standard conventions matching the opcode pattern)"
+      ]
+    },
+    "shaders/inc/sh.hlsl": {
+      "status": "U",
+      "provides": [
+        "float4 sh_basis(float3 dir) - band-0+1 (Y00=0.282095, band-1=0.488603*dir)",
+        "float sh_eval(float4 sh, float3 dir)"
+      ],
+      "evidence": "_gi_eval_screen_radiance.cs.hlsl_cs_main_0 inlined: float4(0.2820949852466583251953125f, ray_dir.xyz*0.48860299587249755859375f) used to accumulate 4-coefficient SH per RGB channel",
+      "deps": [],
+      "unknowns": [
+        "only band-0+1 (4 coefficients) is observed; band-2 (9-coeff) evaluation used by lighting.hlsl (INC-C) is Unknown",
+        "function names and exact eval form (sh_basis/sh_eval Inference; alts: evalSH, shEval, irradiance helpers)",
+        "file included by 146 bins but SH constants only appear in the GI path in decompiled evidence"
+      ]
+    },
+    "shaders/inc/smooth_max.hlsl": {
+      "status": "U",
+      "provides": [
+        "float smooth_max(float a, float b, float k)"
+      ],
+      "evidence": "single consumer _terrain_editing_cache_stroke.cs.hlsl_cs_main_0 inlined use is plain max(stroke,cache) - the smooth_max function itself is not exercised there; body below is the standard IQ smax",
+      "deps": [],
+      "unknowns": [
+        "function body (standard IQ smax max(a,b)+h^2/(4k) inferred; only plain max() observed at the consumer)",
+        "function name (smooth_max Inference)"
+      ]
+    },
+    "shaders/inc/curve.hlsl": {
+      "status": "U",
+      "provides": [
+        "struct FrexpStructType { float3 mantissa; int3 exponent; }",
+        "float3 frexp(float3 x, out int3 exponent) - C-style frexp (exposed via #define frexp incb_frexp)",
+        "float3 curve(float3 x) - history quantization x + exp2(exponent - (8,8,7))"
+      ],
+      "evidence": "_taa.cs.hlsl_cs_main_0 and all 4 _tgsr.cs.hlsl_cs_main_* inlined identically: FrexpStructType{float3 mantissa,int3 exponent}; mantissa=frexp(x,out exponent); then x + exp2(float3(exponent)-float3(8,8,7)); raw-per-bin debug_names 'FrexpStructType' in 6 bins",
+      "deps": [],
+      "unknowns": [
+        "curve() body is Inference (reconstructed to match the observed inlined x+exp2(e-(8,8,7)) pattern); frexp is O/I",
+        "CROSS-AGENT CONFLICT: INC-C history_valid.hlsl also defines FrexpStructType with a SCALAR (float/float) layout; _taa/_tgsr include BOTH history_valid.hlsl AND curve.hlsl, so the two struct definitions will collide when those shaders are compiled. Decompiled evidence (float3/int3) supports my layout; needs reconciliation with INC-C.",
+        "TOOLCHAIN: dxc v1.10.2605.37 native frexp intrinsic is broken for SPIR-V; worked around with #define frexp incb_frexp (see header note)",
+        "curve.hlsl DAG edge -> frame_constants.hlsl is not needed by the reconstructed body"
+      ]
+    },
+    "shaders/inc/find_root.hlsl": {
+      "status": "U",
+      "provides": [
+        "float2 find_root(float2 p0, float2 p1, float target_height) - 2-iteration bisection + linear interpolation"
+      ],
+      "evidence": "_rocky_terrain_stairs_stairs.cs.hlsl_cs_main_0 inlined: fa=height(a)-target; fb=height(b)-target; 2 iters m=(a+b)/2, fm=height(m)-target, if(fm*fa<0) b=m else a=m; return lerp(b, a, clamp(fb/(fb-fa),0,1))",
+      "deps": [
+        "terrain_height(float2) - external residual function (observed inlined as lerp(-2.5,24, terrain_heightmap.SampleLevel(sampler_default, pos/130+0.5).x)); lives in INC-C terrain_heightmap.inc.hlsl (or per include-graph, the original find_root may #include place_stairs.inc.hlsl)",
+        "samplers.hlsl (INC-A): sampler_default (via terrain_height)",
+        "terrain_heightmap.inc.hlsl (INC-C): terrain_heightmap resource"
+      ],
+      "unknowns": [
+        "function name/signature (find_root(float2,float2,float) Inference)",
+        "terrain_height dependency name is assumed; must match INC-C terrain_heightmap.inc.hlsl",
+        "original include of place_stairs.inc.hlsl (rocky_terrain/stairs) not reproduced"
+      ]
+    },
+    "shaders/inc/scatter.hlsl": {
+      "status": "U",
+      "provides": [
+        "float2 scatter_point(uint index) - grid-cell position + hash jitter (world scale 104)",
+        "float2 scatter_cell_point(int2 cell, int seed) - golden-ratio jittered point in a 2.5-unit cell"
+      ],
+      "evidence": "_path_pebbles.cs.hlsl_cs_main_0 inlined: cell=index mod grid^2, (float2(col,row)/grid-0.5)*104 + float2(rand01(hash(index)), rand01(hash(index^188053769)))*6.3; _generate_grass.cs.hlsl_cs_main_0 inlined 3x3 nearest-point search (cell size 2.5, seed=cx+cy*577); raw-per-bin debug_names 'scatter_grid_dim'",
+      "deps": [
+        "hash.hlsl (INC-A): hash(uint), rand01(uint)",
+        "scatter_grid_dim - global int in consumers' $Globals cbuffer (referenced, not declared here)"
+      ],
+      "unknowns": [
+        "full _generate_grass algorithm (nearest-neighbor spacing + direction slerp) is only partially recovered; exact function set/signatures Unknown",
+        "world-scale constants 104/6.3 may be consumer-side in the original",
+        "function names (scatter_point Inference)"
+      ]
+    }
+  }
+}

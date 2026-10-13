@@ -1,0 +1,62 @@
+{
+  "hlsl": "reconstruction/shader-source/candidates/water-ice-a/shaders/water_plane_refraction_copy.raster.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_water_plane_refraction_copy.raster.hlsl_f0adff76827e73ff.bin",
+  "defines": [
+    "WATER_REFRACTION_COPY=0"
+  ],
+  "modules": [
+    {
+      "entry": "vs_main",
+      "structural_match": false,
+      "normalized_match": false,
+      "verdict": "FAIL",
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpAccessChain": 4,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 3,
+            "OpLine": 15,
+            "OpNoLine": 2,
+            "OpSource": 22,
+            "OpSourceContinued": 1,
+            "OpString": 22,
+            "OpTypePointer": 8,
+            "OpVectorShuffle": 3
+          },
+          "candidate_only": {
+            "OpAccessChain": 3,
+            "OpCompositeConstruct": 2,
+            "OpCompositeExtract": 6,
+            "OpLine": 19,
+            "OpNoLine": 1,
+            "OpSource": 19,
+            "OpString": 19,
+            "OpTypePointer": 7,
+            "OpUndef": 1,
+            "OpVectorShuffle": 2
+          }
+        }
+      }
+    },
+    {
+      "entry": "ps_main",
+      "structural_match": false,
+      "normalized_match": false,
+      "verdict": "FAIL",
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpSource": 22,
+            "OpSourceContinued": 1,
+            "OpString": 22
+          },
+          "candidate_only": {
+            "OpSource": 19,
+            "OpString": 19
+          }
+        }
+      }
+    }
+  ]
+}

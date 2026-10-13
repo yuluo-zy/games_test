@@ -1,0 +1,139 @@
+{
+  "review": "water-ice-a vs water-ice-b (independent reconstructions of the water/ice surface + software-BVH deferred-RT family)",
+  "reviewer": "independent-review",
+  "date": "2026-10-13",
+  "method": "per-file comparison of candidate A/B HLSL against the ground-truth .bin. Ground truth read from /Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/; modules extracted at SPIR-V magic offset 23 and cross-checked with spirv-cross (--hlsl --shader-model 64). Hard gate judged from each side's own recompile reports (evidence/render-passes/recovery/water-ice-{a,b}). Embedded OpString/OpSource include-closure lists from the bins used as an extra structural oracle (not part of the original hard gate).",
+  "hard_gate": {
+    "summary": "Both sides PASS bindings/entry/LocalSize on the b903 compute modules and b903 PS modules; both FAIL only on opcode_histogram plus the documented dxc-version caps residuals (StorageImageWriteWithoutFormat / ReadWithoutFormat on explicit-format images — NOT grounds to prefer either side). Differential: A reproduces BOTH the b903 and f0ad PS binding sets from one source (compile-time feature macro WATER_PLANE_FULL / WATERFALL_FULL / WATER_SNOW_PLANE_COLOR / WATER_ICE_CRACKS_COLOR / WATER_REFRACTION_COPY); B records the f0ad PS bindings as a hard residual (single source can only match b903). Verified by re-running recompile_check on A's water_plane for the f0ad ps_main: the f0ad target binds only ripple_source_buffer t25 / water_noise t26 / half_depth t28 / sampler_llr s1 / sampler_nnc s2 / u33 / u34 (no shadow/mask/refraction/history/autofocus), consistent with A's WATER_PLANE_FULL=0 variant."
+  },
+  "per_file": {
+    "water/deferred_rt.cs.hlsl": {
+      "winner": "merge (A as base)",
+      "evidence": "A matches the bin on: embedded include closure (36 incs, A omits only blue_noise.hlsl and terrain_heightmap.inc — both documented inc-layer flags); morton traversal mask accumulation `((count>>shift)&255)<<((mask>>shift)&31)` (bin lines 245/256/267/278); node-entry assembly `(data[1].x, (accum&0xFF000000)|((data[0].w>>24)&255))` and leaf `(data[1].y, accum&0xFFFFFF)` (bin lines 336-339); traversal control flow (break when push_depth==0 else pop stack, bin 437-454); terrain march (bb -65/65/0/24, 32-step + 8-bisect, type 1/2, bin 496-548); per-quadrant resolve with GatherBlue + luminance clamp. B matches the bin on: octant sign-selected corner bytes `c0..c5 = (rd.x<0)?data[2].z:data[2].x` (bin 234-239) — A reads data[2].x/.z per lane without the sign swap; blue-noise scroll `(frame_index+1234567u)+(bounce*137u)` (bin 173) — A drops the `+bounce*137`; post-bounce miss sky branch `ray_dir.y>0 ? sky : (theme==2 ? sky : result.xyz)` (bin 607-629) — A omits it; fresnel `1-dot(ray_dir,tangent)` (bin 776) — A uses `1-dot(ray_dir,(0,0,1))`. B wrong: single-bit mask (0x1 vs count byte), node mask = current-node remainder, different break/stack semantics, ~20 missing incs.",
+      "fidelity_notes": "Neither is a perfect transcription. The bin traversal is the true oracle; see BVH finding for the exact hybrid."
+    },
+    "water/ice_deferred_rt.cs.hlsl": {
+      "winner": "merge (A as base)",
+      "evidence": "Identical traversal structure to deferred_rt. Bin ice_deferred_rt confirms: sign-selected corners (214-219), count-byte mask accumulation (225), node-entry `(data[1].x,(accum&0xFF000000)|(data[0].w>>24&255))` + leaf (317-319). A matches closure (30 incs) + mask accumulation + node entry + control flow; B matches corner selection but wrong mask/node-entry, minimal closure.",
+      "fidelity_notes": "Same hybrid as deferred_rt."
+    },
+    "water/ice_refl_march.cs.hlsl": {
+      "winner": "merge (A as base)",
+      "evidence": "A matches bin on: Hilbert index `acc += s*s*((3u*bx)^by); if(by==0u&&bx==1u){x=63-x;y=63-y;}` with NO swap branch (bin 143-168) — B swapped the formula to `(3u*yb)^xb` and adds a swap branch; retry-on-bad structure (v=0 then k++ continue, bin 212-226) — B exits the loop with sample_dir=0 on bad; embedded include closure (30 incs) — B has ~8. B matches bin on: accept-gate polarity `reflect(basis,v).z<0 -> accept` (bin 220-224) — A inverts it (retries when reflect.z<0). Ray encode, DDA depth march, bisection, radiance pack match in both.",
+      "fidelity_notes": "Fix A's accept-gate polarity to match the bin."
+    },
+    "water/ice_refl_resolve.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Bin carries the embedded type name `FrexpStructType` (OpName) and its include closure has ice_shared.inc but NOT inc/curve.hlsl. A uses FrexpStructType + frexp and matches the closure; B invents `ice_quantize_radiance`/`ice_frexp` helpers. B's minimal closure misses blue_noise/brdf/brdf_lut/color_srgb/debug_utils/hammersley/history_valid/pack_unpack/samplers/tracked_buffer. LocalSize [8,8,1], bindings equal.",
+      "fidelity_notes": "A includes inc/curve.hlsl which is absent from the bin closure; FrexpStructType should be sourced from ice_shared.inc (see inc fixes) and the curve.hlsl include dropped for this consumer."
+    },
+    "water/ice_refr_resolve.cs.hlsl": {
+      "winner": "A",
+      "evidence": "A's include closure (common/samplers/debug_utils/tracked_buffer/pack_unpack/frame_constants/uv/ray_cone/math_const/brdf/math/color_srgb/ice_shared) matches the bin OpString list exactly; B's closure misses brdf/color_srgb/debug_utils/tracked_buffer/pack_unpack/samplers. Bodies are behavior-equivalent (packed normal decode, 8-tap spiral, fresnel 0.99437 weight, normalized write).",
+      "fidelity_notes": "Behavior equivalent; A wins on closure + embedded names."
+    },
+    "water/calc_deferred_rt_args.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Bin decompiles to `RWByteAddressBuffer water_rt_count_buffer u13` with Load<uint>/Store<uint4>. A uses RWByteAddressBuffer (matches); B uses RWStructuredBuffer<uint4> (spirv-cross of the bin is ByteAddressBuffer). A's closure (common/debug_utils/tracked_buffer) matches bin; B includes only common.",
+      "fidelity_notes": "B's StructuredBuffer access type mismatches the bin's byte-address access."
+    },
+    "water_plane.raster.hlsl": {
+      "winner": "merge (A as base)",
+      "evidence": "A's b903 PS matches the bin's structure exactly: reflectivity 0.96*fres^5 (bin 387), PCSS penumbra `(17.066666*texel_scale)*pow(10,smoothstep(0,0.25,fog_tint_thickness.w))` (bin 716-717), autofocus DoF coc `Load(camera_idx*64+56/+0/+4/+44)` (bin 735-740), surface_blend `0.6+0.4*exp2(-0.4*hdiff)*smoothstep*waves.y+ripples.y` (bin 1283), theme-4 perlin foam (bin 1355-1356), final composite `exp(-water_color*((hdiff+length(hit_world-world_pos))+0.7))*(0.96-refl)*refr*(1+blend^3) + ((reflected+sun*min(30,spec)*(1-shadow)*clamp(ndv))*(0.04+refl)) + foam` (bin 1362). Wave octave tables confirmed {2,4,8,12}/{2,2,0.5,0.2}/{17,18,20,21} (bin 54-56). B's PS (water_surface_frag.inc) is a condensed approximation that drops PCSS/DoF/perlin foam and does not reproduce the bin structure. A also reproduces the f0ad PS binding set; B cannot. A MISSES the theme==4 fast path (`if(theme==4){waves=0;ripples=0;normal=(0,1,0);}` — bin 172-184, present in BOTH b903 and f0ad) and the TAA jitter table `_244[frame_index&3]` (bin 53, 376).",
+      "fidelity_notes": "Adopt A's PS body; merge the theme-4 fast path (B/bin) and the jitter subtraction."
+    },
+    "water/water_surface_frag.inc.hlsl": {
+      "winner": "merge",
+      "evidence": "Both water_plane and waterfall PS bins embed water_surface_frag.inc.hlsl + waves.inc.hlsl, so the original PS body lived in this shared inc. B's file-split (full PS in the inc, water_plane/waterfall reference it) matches the original layout; A's version is a thin half-pack stub with the PS duplicated inline in each raster file. However A's PS BODY is the faithful transcription of the bin (see water_plane row), while B's condensed body diverges.",
+      "fidelity_notes": "Put A's PS body into water_surface_frag.inc (B's layout) + theme-4 fast path."
+    },
+    "water_ice_cracks.raster.hlsl (bin path: water/ice_cracks.raster.hlsl)": {
+      "winner": "A (merge water_mask_sampler include)",
+      "evidence": "Both reconstruct the same algorithm (view_constants[2] up-vector color + sqrt(c*0.4) albedo, packed with id 0x4D000000 / type 0x06000000). A's file path `water/ice_cracks.raster.hlsl` matches the bin's embedded OpString path (bin source path is shaders/water/ice_cracks.raster.hlsl, NOT water_ice_cracks.raster.hlsl); A's closure is closer to the bin's (material_eval/brdf/lighting/sun/color/sh/perlin). Both must add `inc/water_mask_sampler.inc` (bin closure includes it). B's header even notes the bin main_source_path is water/ice_cracks.raster.hlsl.",
+      "fidelity_notes": "Use A's path; merge water_mask_sampler.inc include into the closure."
+    },
+    "ice_plane.raster.hlsl": {
+      "winner": "A",
+      "evidence": "A matches bin: hex-lattice surface_roughness with SampleGrad 3-corner barycentric grid (grid scale 3.464, matrix (1,0),(-0.5773503,1.1547005)) and mip `log2(min(dims))+1` (bin 132, 176-177), PCSS/PCF shadow + temporal shadow history, 5 render targets, and the ~30-file include closure. B's PS is condensed: it samples surface_roughness once at uv (0,0) mip 1 (no SampleGrad, no barycentric grid) and its closure has ~10 incs.",
+      "fidelity_notes": "B's roughness sample is structurally wrong vs the bin."
+    },
+    "waterfall.raster.hlsl": {
+      "winner": "merge (A as base)",
+      "evidence": "A's closure matches the bin (water_surface_frag.inc + waterfall_vert.inc + waves.inc + perlin + fbm_noise + coc + rt; A omits only terrain_heightmap.inc — documented inc flag). A has a full procedural-mesh VS (waterfall_vert 3D value-noise) and full PS. B is a bindings+shared-incs shell. The bin's VS entry lives inside waterfall_vert.inc (B's layout); A inlines vs_main in the main file. Waterfall VS bin uses B-style 3-component hash01 lattice values (1664525/1013904223 uint3 chain, bin 124-317).",
+      "fidelity_notes": "A base; move VS into waterfall_vert.inc (B layout) and adopt B's hash3 lattice form."
+    },
+    "water_snow_plane.raster.hlsl": {
+      "winner": "A",
+      "evidence": "A matches bin exactly: water_mask green channel < 0.2 discard, perlin p=C1.xz*1.5, smoothstep(0.6,0.65, wm_g+noise^2*0.3) discard gate at 0.8, output `uint2(4286644096u, 114677205u)` (bin 19-77). B's file was not fully compared but A is exact.",
+      "fidelity_notes": "Exact transcription."
+    },
+    "water_x_paths.raster.hlsl": {
+      "winner": "A",
+      "evidence": "A's closure includes texture_utils, texture_blend, water/water_mask_sampler.inc, paths/path_mask_sampler.inc and the material/lighting stack matching the bin OpString list; B's closure is minimal and omits texture_blend/texture_utils and the material stack.",
+      "fidelity_notes": "Closure fidelity."
+    },
+    "water_plane_refraction_copy.raster.hlsl": {
+      "winner": "A",
+      "evidence": "Both are simple (VS plane + PS copy of refraction_source_tex). A's closure is closer to the bin (sun.inc/color_library/color_srgb/raymarch/perlin + terrain_heightmap flagged). Bin DOES embed terrain_heightmap.inc here.",
+      "fidelity_notes": "inc note: water_plane_refraction_copy bin includes terrain_heightmap.inc, so the omissible-texture fix must make it compilable rather than universally dropping the include."
+    },
+    "waterfall_refraction_copy.raster.hlsl": {
+      "winner": "A",
+      "evidence": "A has the full procedural VS (waterfall_vert mesh) matching the bin's VS; B has only the PS copy and defers the VS to waterfall_vert.inc. A's closure includes waterfall_vert.inc + perlin/hash.",
+      "fidelity_notes": "A covers the VS the bin embeds."
+    },
+    "water/waves.inc.hlsl": {
+      "winner": "merge",
+      "evidence": "Bin confirms A's WAVE tables exactly: _246={2,4,8,12}, _247={2,2,0.5,0.2}, _248={17,18,20,21}. A's 2-lattice smoothstep blend + damp `sin(w*16.365-t*6)/(1+amp^4)` match the bin. BUT the per-octave offset hash in the bin is `hash(uint(cell))` scalar producing a two-component hash01 (x from h, y from h+(h<<15)) — A uses `hash(uint2(c0,c0))` and replicates `.xx` (wrong; bin x!=y). B's `water_octave_offset` produces the correct two-component form but drops the second-lattice lerp and uses a guessed seed. Bin ripple is a 3-phase central-difference normal `(sin(w1), (sin(w2)-sin(w1))*0.5, (sin(w3)-sin(w1))*0.5)` at +0.01 offsets (bin 342-355) — neither A (`damp*0.5`) nor B (`ripple.xxx`) captures it.",
+      "fidelity_notes": "Merge: A's tables + 2-lattice blend + damp; B's two-component scalar hash01; add the 3-phase ripple normal."
+    },
+    "water/waterfall_vert.inc.hlsl": {
+      "winner": "merge",
+      "evidence": "Waterfall VS bin uses B-style `waterfall_hash3` (uint3 cell, 1664525/1013904223 chains, 3-component asfloat(hash&0x7FFFFF|0x3F800000)-1). A's perlin3_explicit uses a different hash form (hash(uint2)). Bin layout has vs_main inside waterfall_vert.inc. A has WaterfallMesh layout + load helper matching the instance buffer.",
+      "fidelity_notes": "Use A's mesh layout + B's hash3 lattice form; move vs_main into the inc."
+    },
+    "water/ice_shared.inc.hlsl": {
+      "winner": "merge",
+      "evidence": "All 6 ice bins embed ice_shared.inc; the ice_refl_resolve bin carries `FrexpStructType` and its closure has ice_shared.inc but not curve.hlsl, so the ice family defines FrexpStructType here (B's placement). A's ice_shared has only half pack/unpack helpers.",
+      "fidelity_notes": "Adopt B's FrexpStructType (matches the resolved curve.hlsl form) + A's half helpers; drop the curve.hlsl include in ice_refl_resolve."
+    },
+    "water/water_mask_sampler.inc.hlsl": {
+      "winner": "A",
+      "evidence": "Family bins sample the green channel: water_plane foam `water_mask.SampleLevel(sampler_llc,...).y` (bin 1356), snow_plane `.y` (bin 19/21). The reconstructed shared tree water_mask_sampler.inc also uses `.y`. A uses `.y`; B uses `.x` (red).",
+      "fidelity_notes": "Green channel consistent with shared inc + family bins."
+    }
+  },
+  "bvh_traversal_finding": {
+    "summary": "The software-BVH traversal embedded in deferred_rt and ice_deferred_rt is a morton-coded 8-slot uint2-stack traversal. inc/rt.hlsl's trace_software_bvh (non-morton, byte-field child decode) does NOT match the bins. Both candidates independently reconstructed the morton traversal; neither is complete. The bin's actual traversal is a HYBRID of the two:",
+    "common_correct_both": [
+      "firstbithigh pop of the current mask",
+      "octant permutation (7-oct)*16843009 (0x01010101)",
+      "morton child-index decode: node.x + countbits(mask & ~(0xFFFFFFFF << (((slot-24) ^ (octant&255)) & 31)))",
+      "extent decode asfloat(((data[0].w>>k)&255)<<23) (2^(byte-127) exponent encoding; inc/rt.hlsl's exp2(float(byte)) is wrong)",
+      "slab test max(lo, t_min=1e-4) <= min(hi, best_t) with inv_dir/offset",
+      "slot-mask formula (data[1].z ^ (octant & ((((data[1].z&(data[1].z<<1))&0x10101010)>>4)*255))) & 0x1F1F1F1F",
+      "tri-count lanes (data[1].z >> 5) & 0x07070707",
+      "1024-iteration cap"
+    ],
+    "A_correct_B_wrong": [
+      "mask accumulation `slot |= ((count>>shift)&255) << ((mask>>shift)&31)` (B uses a single 0x1 bit)",
+      "node entry `uint2(data[1].x, (accum&0xFF000000)|((data[0].w>>24)&255))` (B keeps the current-node remainder `rest`)",
+      "leaf `uint2(data[1].y, accum & 0xFFFFFF)`",
+      "traversal control flow: break when push_depth==0, else pop stack[pd-1] (B adds extra `leaf.y==0u`/next_stack conditions)"
+    ],
+    "B_correct_A_wrong": [
+      "octant sign-selected corner bytes: c0..c5 = (rd.x<0 ? data[2].z : data[2].x), (rd.x<0 ? data[2].x : data[2].z), etc. for y/z (A reads data[2].x/.z per lane without the sign swap)"
+    ],
+    "recommended_inc_rt_fix": "Rewrite inc/rt.hlsl's traversal as a morton-coded uint2[8]-stack traversal transcribed from the bins: pack_ray_slots octant permutation; per 8-byte-lane corner decode using sign-selected words; count-byte mask accumulation; node-entry/leaf assembly from data[1].x/.y + accumulated mask + data[0].w byte 3; push-rest-on-stack with the bin's break/pop semantics; 1024-iteration cap. Keep PackedBlBvhNode/PackedTriangle structs. Replace the quantized-corner decode (decode_bvh_corner/load_child_aabb) with the bin's slab form, and fix the extent decode to asfloat(byte<<23)."
+  },
+  "inc_fixes_both_sides_surfaced": [
+    "terrain_heightmap.inc.hlsl: reconstructed inc references a consumer-declared `terrain_heightmap` texture the family bins never bind; water_plane_refraction_copy bin DOES include it -> make the inc compilable without a binding instead of dropping the include.",
+    "blue_noise.hlsl: pins t14; the water/ice RT family binds blue_noise_texture at t15 (consumers omit the include / declare locally). Align with tracker inc-fix #17 (no global register in the inc; consumers declare per-register).",
+    "perlin.hlsl: lerp/smoothstep body emits extra OpExtInst; the family consumers (water_plane foam, snow_plane, x_paths, waterfall) embed explicit-arithmetic bilinear/trilinear (asfloat(hash & 0x7FFFFF | 0x3F800000) - 1). Rewrite perlin.hlsl to the explicit form.",
+    "waves.inc.hlsl: per-octave offset hash must be the scalar uint hash producing a two-component hash01 (x=h, y=h+(h<<15)), not a uint2 hash replicated .xx; ripple is a 3-phase central-difference normal, not damp*0.5 / .xxx.",
+    "waterfall_vert.inc.hlsl: VS lattice hash is the 3-component uint3 chain (1664525/1013904223), not a uint2 hash.",
+    "ice_shared.inc.hlsl: define FrexpStructType here (ice_refl_resolve bin name + closure); remove inc/curve.hlsl from ice_refl_resolve.",
+    "water_mask_sampler.inc.hlsl: green channel (.y) for the water coverage (matches shared tree + family bins).",
+    "current_view_index as $Globals member 0 and explicit `cbuffer $Globals : register(b13,space0)` (both sides already follow; consistent with tracker inc-fix #2/#6)."
+  ]
+}

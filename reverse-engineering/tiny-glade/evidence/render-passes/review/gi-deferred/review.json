@@ -1,0 +1,127 @@
+{
+  "review": "gi-deferred A vs B",
+  "date": "2026-10-13",
+  "method": "Independent cross-review: both candidates recompiled with tools/render-passes/recompile_check.py against the ground-truth .bin (hard gate = bindings/entry/LocalSize/caps; histogram + OpSource parity as secondary). Target trace/deferred modules disassembled at opcode level to adjudicate the BVH decode and deferred PS structure.",
+  "hard_gate_coverage": {
+    "targets_in_scope": "18 bins / 26 modules (5 gi cs + 2 bin_lights variants + 3 cell_* cs + 4 deferred x 2 variants)",
+    "candidate_A": "PASS on 10 compute bins + all 4 b903 deferred bins (14 bins). FAIL bindings on f0ad deferred (4) and bin_lights 8fae (1): A never compiled the reduced variants (decisions.md admits f0ad not compiled).",
+    "candidate_B": "PASS on all 18 bins: b903 via default DEFERRED_FULL_LIGHTING=1, f0ad via -D DEFERRED_FULL_LIGHTING=0 (re-validated here: bindings/caps/entries match exactly, histdiff 171-189), bin_lights 14dc via BIN_LIGHTS_FULL=1, 8fae via -D BIN_LIGHTS_FULL=0 (histdiff 44)."
+  },
+  "per_file": {
+    "gi/trace_gi_candidates.cs.hlsl": {
+      "winner": "A (structure), with shared inc/rt.hlsl rewrite",
+      "evidence": "Both pass hard gate (only opcode_histogram differs). Bin disassembly proves A's ray setup matches opcode-for-opcode: morton-scramble loop (offsets 8130-8413, m=32..1, 3*m^x^y, a/b 63-swap), far-plane early-out writing zero 2x2 candidates (7647-8052), 2x2 full-res block writes (ImageWrite at full_px+(i,j)), world normal via view_to_world, blue-noise dither + 288*(frame_index%64). B uses a blue-noise-hash ray, 1:1 writes, no early-out, ray_len 30 — does not match the bin. OpSource parity: A 22 vs target 41, B 39 vs 41 (B closer closure). Both call the divergent inc/rt.hlsl trace_software_bvh.",
+      "fidelity_notes": "Adopt A's cs_main body. The BVH traversal itself lives in inc/rt.hlsl (shared) and is wrong in BOTH candidates — see bvh_adjudication."
+    },
+    "gi/update_gi_radiance.cs.hlsl": {
+      "winner": "B",
+      "evidence": "Content near-identical (copy candidate radiance -> restir_radiance_out, ray_dir+depth, seed uint2 reservoir). B: OpSource 39=39 (0 target-only), histdiff 143. A: OpSource 39 vs 16, histdiff 254. B's include closure is exact.",
+      "fidelity_notes": "hi_px_subpixels table should live in gi_settings.inc (A's placement), not duplicated per file."
+    },
+    "gi/eval_screen_radiance.cs.hlsl": {
+      "winner": "B (marginal; content tie)",
+      "evidence": "A and B are structurally identical (8-sample golden spiral, depth/normal/ssgi weights, SH band-0/1 accumulate to 3 slabs). B OpSource 21 vs 22, histdiff 707 vs A 672.",
+      "fidelity_notes": "Either body acceptable; B's closure parity is better."
+    },
+    "gi/reproject_screen_radiance.cs.hlsl": {
+      "winner": "B",
+      "evidence": "A and B structurally identical (octahedral cube-face stats, 2x2 jitter mask, history sample + count clamp 1..48, 5x5 stride-2 spatial fallback gated on allow_non_determinism). B OpSource 14 vs 15, histdiff 1206 vs A 1584.",
+      "fidelity_notes": "Body equal; B closure parity better."
+    },
+    "gi/blur_screen_radiance.cs.hlsl": {
+      "winner": "B",
+      "evidence": "A and B structurally identical (3x3 cross-bilateral, stride 1/3 from temporal-stats >33, 3-slab). B OpSource 18 vs 19, histdiff 543 vs A 640.",
+      "fidelity_notes": "Body equal; B closure parity better (B also includes brdf.hlsl which matches the target closure)."
+    },
+    "gi/gi_settings.inc.hlsl": {
+      "winner": "A",
+      "evidence": "eval/blur/update bins embed a static hi_px_subpixels uint2[4] (debug_names pin it); reproject/trace don't (unused -> dropped). A defines it in gi_settings.inc (included by all 5 gi bins). B marks the file U and hoists the table into each consumer — compiled output identical but source placement diverges from the original.",
+      "fidelity_notes": "Keep A's hi_px_subpixels in gi_settings.inc. A's extra GI_DEPTH_WEIGHT_SCALE etc. are Inference constants; harmless."
+    },
+    "gi/restir.inc.hlsl": {
+      "winner": "A (content)",
+      "evidence": "Bin reservoir texel = uint2 (payload px|py<<16, .y = two packed half16 weights, W read back at >>16). A encodes exactly this (pack_restir_payload/weights, unpack helpers). B keeps the file U with only two unused constants. Both fold to identical literals in SPIR-V.",
+      "fidelity_notes": "Adopt A's packing helpers."
+    },
+    "light_binning/bin_lights_to_cells.cs.hlsl": {
+      "winner": "merge (A body + B variant flag)",
+      "evidence": "Bin 14dc constants and code prove A's RNG exactly: wang_hash((idx*1664525 + hash(frame_index) + 1013904223) * 1664525) (hash = inc/hash.hlsl 5-step, verified at offsets 386-410/3368-3583), fast-sqrt radius 6*sqrt(i) with magic 532487669, 64-slot reservoir, InterlockedAdd(1<<20), cell AABB distance test. A declares StructuredBuffer<LanternPacked> lantern_buf (bin debug name LanternPacked) and gets histdiff 716 vs B 1101. B's hash (uint2(lantern,frame_index)) does not match the bin. B correctly models the two variants with BIN_LIGHTS_FULL (8fae = count-only; re-validated histdiff 44).",
+      "fidelity_notes": "Take A's body + StructuredBuffer<LanternPacked>, wrap indices-write in B's BIN_LIGHTS_FULL feature flag. Note A's reservoir replace uses hash(hash_state)/rand01 vs bin's carried rng asfloat(mantissa|0x3F800000)-1: bin prefers the carried-rng form."
+    },
+    "light_binning/cell_prefix_sum.cs.hlsl": {
+      "winner": "tie",
+      "evidence": "Both histdiff 36, near-converged. Hillis-Steele 2-per-lane, 10 unrolled steps, clamp 64, byte-offset addressing. Structurally identical.",
+      "fidelity_notes": "Either."
+    },
+    "light_binning/cell_subtotal_prefix_sum.cs.hlsl": {
+      "winner": "tie",
+      "evidence": "Both histdiff ~370, hard gate PASS (push_constants + shared_data2x).",
+      "fidelity_notes": "Either."
+    },
+    "light_binning/cell_prefix_merge.cs.hlsl": {
+      "winner": "tie",
+      "evidence": "Both histdiff 30, hard gate PASS.",
+      "fidelity_notes": "Either."
+    },
+    "light_binning/grid.inc.hlsl": {
+      "winner": "A (content)",
+      "evidence": "Constants equal in both (scale float3(16/65,8/65,16/65), offset (16,2,16), 32x16x32, index 32*(32y+z)+x, low20 = first index / high = count). A carries the cell-index + min/max-world + point-to-cell helpers that match the bin; B is constants-only. Minor residual: bin clamps cell_min to (30,15,30) and cell_max to (33,16,33); both A (31/15/31,32/16/32) and B differ.",
+      "fidelity_notes": "Adopt A's helpers; flag the clamp-bound residual for a follow-up pass."
+    },
+    "deferred/{solid,grass,plant,canopy}_light_sun_sky.raster.hlsl": {
+      "winner": "B base + merge fixes",
+      "evidence": "A passes hard gate only on b903 (single full PS); f0ad variant never compiled (bindings FAIL). B passes both variants via DEFERRED_FULL_LIGHTING (f0ad re-validated here: bindings/caps exact, histdiff 171-189, void ps_main with no SV_Target). Bin PS structure matches B's lighting model: GGX energy-preserving diffuse + Cook-Torrance specular (0.04 F0 = 1025758986 present, 1/pi = 1050868099), SH band-1 sky (0.8862275481 = 1063444431 present), AO clamp 0.1+ssgi (0.1 present), depth weight 80, flags from gbuffer.y>>24 bits 1..6. A's PS uses a 1/pi sun only + palette sky — differs. OpSource: B 43-44 vs target 45-48; A 19-20.",
+      "fidelity_notes": "See deferred_ps_guidance for the merge deltas (octahedral normal byte source, alpha, reservoir temporal body)."
+    },
+    "deferred/light_sun_sky.inc.hlsl": {
+      "winner": "B",
+      "evidence": "Target closure shows light_sun_sky.inc included late, pulling rt.hlsl/terrain_heightmap/wall_color_ids/reservoir. B's structure matches (shared helpers: reconstruct_view_position, decode_gbuffer_normal, sun GGX+CT, sample_indirect_radiance). A's evaluate_sun_lighting/evaluate_sky_lighting are simplified and diverged.",
+      "fidelity_notes": "Adopt B's helpers; move octahedral decode here (see guidance)."
+    },
+    "deferred/light_sun_sky_prelude.inc.hlsl": {
+      "winner": "B",
+      "evidence": "Target closure: prelude included early (right after common), pulling frame_constants/halfres/fullscreen_triangle_vert. B's prelude matches this shape. A's prelude is a helper file with a screen_blue_noise helper (not in the target).",
+      "fidelity_notes": "Keep B's include-umbrella shape; A's screen_blue_noise helper is fine to fold into light_sun_sky.inc if desired."
+    }
+  },
+  "bvh_adjudication": {
+    "finding": "The shared inc/rt.hlsl trace_software_bvh is divergent from the bin for BOTH candidates. Concrete decode recovered from _gi_trace_gi_candidates.cs.hlsl_cs_main_0.bin (module offsets ~15002-17700):",
+    "node_layout": "PackedBlBvhNode = struct { uint4 v[5]; } (80 B) — matches the shared layout. AABB center = asfloat(v[0].xyz); per-axis extent scale = 2^(byte-127) where byte = the three bytes of v[0].w (bits 0-7, 8-15, 16-23); near/far corner offsets are byte-triplets at v[2].x/y/z, v[3].x/z, v[4].x, read at three byte positions (0/8/16) => up to three nested box levels per child.",
+    "traversal": "Stack entry = uint2 { child_index_base, packed_mask }. packed_mask high byte (0xFF000000) != 0 -> leaf/triangle batch: load rt_triangles[packed_mask], lane bit = 1 << (loaded_triangle_data & 31), clear it, push remaining mask while its high byte stays nonzero. Internal child node index = base + bitcount(remaining_mask) (compact contiguous children). Ray-slot XOR: per-axis sign byte = (7 - (rd.x<0 | rd.y<0 | rd.z<0)) * 0x01010101; child slot = (FindUMsb(packed_mask) - 24) XOR (7 - signbyte) & 31.",
+    "stack": "Per-lane 4-entry groupshared uint2[4] local stack; on overflow spills to groupshared rt_lds_stack[256] at index lane + (sp-4)*64 (lane-interleaved, 64 lanes).",
+    "buffer_types": "rt_bl_bvh = StructuredBuffer<PackedBlBvhNode>, rt_triangles = StructuredBuffer<PackedTriangle> (PackedTriangle { float v[3]; uint e[3] } 24 B), wall_color_ids / rt_triangle_meta = StructuredBuffer<uint>. The bin uses OpAccessChain+OpLoad structured indexing, not ByteAddressBuffer Load.",
+    "recommended_fix": "Rewrite inc/rt.hlsl trace_software_bvh to the bitmask+compact-index scheme above with StructuredBuffer types; keep the box test as 3-level near/far byte decode."
+  },
+  "deferred_ps_guidance": {
+    "gbuffer": "normal = octahedral decode of gbuffer.x LOW 24 bits (bin: abs(2*lo_byte-1) fold + z reconstruction). A reads gbuffer.x/y >> 24 (wrong byte source); B decodes gbuffer.x low bytes but as RGB8 normalize (wrong math). Merge: A's octahedral math over B's byte source.",
+    "albedo": "gbuffer.y low 24 bits RGB8, squared (both correct).",
+    "flags": "gbuffer.y >> 24, bits 1..6 tested (B's flag model correct: bit2 screen-shadow, bit3 editing-highlight, bit4 hill-highlight, bit1 AO).",
+    "sun": "energy-preserving GGX diffuse + Cook-Torrance specular, F0 0.04 from brdf_fg_lut, 1/pi — B's model matches the bin constants.",
+    "sky": "SH band-1 irradiance from the 3-slab indirect_radiance_tex (stride dims.x/3) with 0.8862275481 — B's model matches.",
+    "rdi": "Real body is much larger: Reservoir1spp { float, uint, float, float } + Reservoir1sppStreamState { float, float } arrays, 18 loops / 17 switches (temporal + spatial reservoir update). Both candidates are structural-only; keep B's gather + grid iteration but expect the histogram to stay far until the temporal loops are reconstructed.",
+    "output": "Bin writes SV_Target alpha = 2.0 (neither: A=1.0, B=0.0).",
+    "vs": "fullscreen triangle with no bindings (both correct)."
+  },
+  "inc_fixes_surfaced": [
+    "inc/rt.hlsl: rewrite trace_software_bvh (bitmask+compact-index, 3-level box bytes, StructuredBuffer<PackedBlBvhNode>/<PackedTriangle>/<uint>).",
+    "gi/gi_settings.inc.hlsl: keep A's hi_px_subpixels table (bin pins it).",
+    "gi/restir.inc.hlsl: keep A's uint2 payload/weight packing helpers.",
+    "deferred: color_library guard-skip + per-pass cbuffer (b23 deferred / b18 trace) is the correct pattern (both sides use it; matches generate_grass convention).",
+    "current_view_index as $Globals member 0: consistent with wave-1 convention; both deferred and trace declare $Globals explicitly at their bin binding."
+  ],
+  "overall_recommendation": {
+    "base": "B (gi-deferred-b) as the integration base: full 18-bin hard-gate coverage including both feature variants, near-exact include closures (OpSource within 1-5 of target), deferred PS lighting model (GGX+CT / SH band-1 / flags) matching the bin, f0ad/8fae reproduced with compile-time flags.",
+    "adopt_from_A": [
+      "trace_gi_candidates.cs.hlsl cs_main body (morton scramble, 2x2 writes, far early-out) — B's trace is structurally different from the bin.",
+      "gi_settings.inc.hlsl hi_px_subpixels placement and content.",
+      "restir.inc.hlsl packing helpers.",
+      "bin_lights_to_cells body (RNG formula + StructuredBuffer<LanternPacked>).",
+      "grid.inc.hlsl helpers."
+    ],
+    "merge_deltas": [
+      "inc/rt.hlsl BVH rewrite (concrete decode above).",
+      "deferred PS: octahedral normal from gbuffer.x low bytes; SV_Target alpha 2.0; flag bits as B; keep B as base for sun/sky/RDI.",
+      "bin_lights: wrap A's indices-write in BIN_LIGHTS_FULL."
+    ]
+  }
+}

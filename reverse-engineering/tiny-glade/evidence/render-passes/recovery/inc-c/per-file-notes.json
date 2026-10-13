@@ -1,0 +1,312 @@
+{
+  "agent": "INC-C",
+  "date": "2026-10-13",
+  "scope": "shaders/inc/ lighting-effect layer (42 files)",
+  "note": "status: O=Observation-verified symbols/algorithms, I=Inference where names were inlined, U=Unknown. Function names are I across the layer because every consumer inlines them (dxc -Zi drops inlined function OpNames); struct/buffer/member names are O (embedded OpMemberName/OpName).",
+  "files": {
+    "draw_indirect_types.hlsl": {
+      "status": "O",
+      "provides": ["DrawIndexedIndirectCommand{count,instanceCount,firstIndex,vertexOffset,firstInstance}", "DrawIndirectCommand{vertexCount,instanceCount,firstVertex,firstInstance}"],
+      "evidence": "raw-per-bin OpMemberName (_generate_grass/_wall_generate_draw_lists/_garden_*/_nani_draw_indexed_indirect_to_dispatch); stride 0x14 writes",
+      "deps": [],
+      "unknowns": []
+    },
+    "draw_indirect.hlsl": {
+      "status": "O/I",
+      "provides": ["increment_draw_indexed_indirect_instance_count", "reserve_draw_indexed_indirect_instances"],
+      "evidence": "InterlockedAdd((offset+cmd)*20+4, n) observed in _generate_grass/_wall_generate_draw_lists",
+      "deps": ["draw_indirect_types.hlsl"],
+      "unknowns": ["function names (inlined)"]
+    },
+    "draw_indirect_readonly.hlsl": {
+      "status": "O/I",
+      "provides": ["StairsCounter{count,pad0..pad2}", "load_draw_indexed_indirect_command", "load_draw_indexed_indirect_instance_count"],
+      "evidence": "StairsCounter name in _rocky_terrain_stairs_stairs_counter/_garden_read_bush_positions_for_cpu; DrawIndexedIndirectCommand reads",
+      "deps": ["draw_indirect_types.hlsl"],
+      "unknowns": ["StairsCounter exact layout"]
+    },
+    "grass_blade_data.hlsl": {
+      "status": "O/I",
+      "provides": ["GrassBladeDataPacked{position,color,packed0,packed1,packed2,pad} 32B", "grass_blade_color", "grass_blade_widths", "grass_blade_bend_xz", "grass_blade_dir_x"],
+      "evidence": "OpMemberName + byte packing decoded from _generate_grass/_grass.raster (color rgb8@12, packed0 bend/scale bytes@16, packed1/2 half2 pairs@20/24)",
+      "deps": [],
+      "unknowns": ["semantic meaning of each packed0 byte (named I)"]
+    },
+    "reservoir.hlsl": {
+      "status": "O",
+      "provides": ["Reservoir1spp{w_sum,payload,M,W} 16B", "Reservoir1sppStreamState{p_q_sel,M_sum} 8B", "reservoir_init/update/combine_streams/resolve", "pack_reservoir1spp/unpack_reservoir1spp"],
+      "evidence": "OpMemberName; ReSTIR update/resolve math in _deferred_*_light_sun_sky/_rdi_temporal (w_sum+=w, M+=1, replace when w/w_sum>=u, W=w_sum/(M*p_q_sel)); rdi_reservoir_tex uint4",
+      "deps": [],
+      "unknowns": ["function names (inlined)"]
+    },
+    "brdf.hlsl": {
+      "status": "O",
+      "provides": ["distribution_ggx", "visibility_smith_ggx", "fresnel_schlick", "diffuse_ggx", "cook_torrance_specular", "evaluate_brdf"],
+      "evidence": "exact opcodes from _deferred_solid_light_sun_sky PS: D=alphaSq/(PI*(NdotH^2*(alphaSq-1)+1)^2) alphaSq=r^4, correlated G=2NLNV/(NL*sqrt((1-a)NV^2+a)+NV*sqrt((1-a)NL^2+a)), Schlick F=lerp(0.04,1,(1-HdotL)^5), diffuse=(1+(2r^2 NdotH^2-0.5)(1-NdotL)^5)(1+...(NdotV)...)/PI",
+      "deps": [],
+      "unknowns": ["function names (inlined)"]
+    },
+    "brdf_lut.hlsl": {
+      "status": "O",
+      "provides": ["sample_brdf_fg_lut"],
+      "evidence": "brdf_fg_lut.SampleLevel((NdotV, roughness^2)*0.984375+0.0078125).xy in deferred PS; include edge brdf_lut->highlight_color",
+      "deps": ["highlight_color.hlsl"],
+      "unknowns": ["function name"]
+    },
+    "highlight_color.hlsl": {
+      "status": "O/I",
+      "provides": ["get_highlight_color(glade_theme_id)"],
+      "evidence": "color_library temp_color_1/2/3 + frame_constants.glade_theme_id used for highlight in _deferred_*/_gi_*",
+      "deps": [],
+      "unknowns": ["exact theme->color mapping"],
+      "consumer_constraint": "requires color_library.hlsl (cbuffer color_library) included first"
+    },
+    "material_eval.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["MaterialEvalData{albedo,normal,roughness,opacity,emissive}", "init_material_eval_data", "unpack_gbuffer_normal"],
+      "evidence": "include edge material_eval->brdf; consumers _deferred_*/_billboard_*/_clearing_* decode gbuffer normal/roughness + BRDF lighting; no material struct member tables embedded (SSA-inlined)",
+      "deps": ["brdf.hlsl"],
+      "unknowns": ["struct/function names (all SSA-inlined)"]
+    },
+    "material/solid_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["SolidMaterialParams{albedo,roughness,flags}", "init_solid_material"],
+      "evidence": "include edge material/solid->brdf_lut (raw style eval/../solid_material); consumers _nani_*_bricks/_plaster/_roof_floor read solid albedo/roughness",
+      "deps": ["brdf_lut.hlsl"],
+      "unknowns": ["params struct fields (I)"]
+    },
+    "material/grass_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["GrassMaterialParams", "init_grass_material"],
+      "evidence": "include edges material/grass->material_eval and ->raymarch; consumers _grass/_deferred_grass/_terrain_lighting_texture",
+      "deps": ["material_eval.inc.hlsl", "raymarch.hlsl"],
+      "unknowns": ["params struct fields (I)"]
+    },
+    "material/plant_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["PlantMaterialParams", "init_plant_material"],
+      "evidence": "include edges material/plant->material_eval and ->raymarch; consumers _clearing_meadow_*_flower/_garden_lowpoly_flower/_ivy_*",
+      "deps": ["material_eval.inc.hlsl", "raymarch.hlsl"],
+      "unknowns": ["params struct fields (I)"]
+    },
+    "material/canopy_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["CanopyMaterialParams", "init_canopy_material"],
+      "evidence": "include edge material/canopy->material_eval; consumers _clearing_tree_canopy/_deferred_canopy",
+      "deps": ["material_eval.inc.hlsl"],
+      "unknowns": ["params struct fields (I)"]
+    },
+    "material/eval/solid_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["eval_solid_material"],
+      "evidence": "raw path style eval/../solid_material; consumers _deferred_*/_gi_*",
+      "deps": ["material/solid_material.inc.hlsl", "material_eval.inc.hlsl"],
+      "unknowns": ["eval function signature"]
+    },
+    "material/eval/grass_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["eval_grass_material"],
+      "evidence": "raw path style eval/../grass_material; consumers _deferred_grass/_terrain_lighting_texture",
+      "deps": ["material/grass_material.inc.hlsl"],
+      "unknowns": ["eval function signature"]
+    },
+    "material/eval/plant_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["eval_plant_material"],
+      "evidence": "raw path style eval/../plant_material; consumer _deferred_plant",
+      "deps": ["material/plant_material.inc.hlsl"],
+      "unknowns": ["eval function signature"]
+    },
+    "material/eval/canopy_material.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["eval_canopy_material"],
+      "evidence": "raw path style eval/../canopy_material; consumer _deferred_canopy",
+      "deps": ["material/canopy_material.inc.hlsl"],
+      "unknowns": ["eval function signature"]
+    },
+    "cascades.hlsl": {
+      "status": "O",
+      "provides": ["ShadowCascadeSelection", "select_shadow_cascade"],
+      "evidence": "cascade math from _apply_screen_shadows/_terrain_lighting_texture: view_constants[2..4] world_to_sample border tests 0.9833 / 1-0.000833*2*scale, remap *0.5/*0.285714, slice = 0|1|2",
+      "deps": [],
+      "unknowns": ["struct/function names"],
+      "consumer_constraint": "requires frame_constants.hlsl (INC-A, flat members: view_constants[N])"
+    },
+    "shadow.hlsl": {
+      "status": "O",
+      "provides": ["sample_shadow"],
+      "evidence": "PCSS from _apply_screen_shadows/_terrain_lighting_texture/_critters_*: 5-sample blocker search + 10-sample SampleCmpLevelZero PCF, slope bias via projected light dir, 1/1200 texel scale",
+      "deps": ["cascades.hlsl"],
+      "unknowns": ["function name/signature"],
+      "consumer_constraint": "requires frame_constants.hlsl flat members; Texture2DArray shadow_map; samplers provided by caller"
+    },
+    "rt.hlsl": {
+      "status": "O/I",
+      "provides": ["PackedBlBvhNode{uint4 data[5]}", "PackedTriangle{float v[3]; uint e[3]}", "decode_bvh_corner", "load_child_aabb", "ray_aabb_intersect", "ray_triangle_intersect", "load_packed_triangle", "trace_software_bvh"],
+      "evidence": "OpName PackedBlBvhNode/PackedTriangle/rt_bl_bvh/rt_triangles/rt_triangle_meta/rt_lds_stack; node layout + quantized corner decode decoded from _gi_trace_gi_candidates; include edge rt->shadow",
+      "deps": ["shadow.hlsl"],
+      "unknowns": ["morton/ray-slot child-index encoding in data[1].z/w (traversal uses packed byte fields directly instead; documented Inference)", "rt_lds_stack groupshared sizing"]
+    },
+    "raymarch.hlsl": {
+      "status": "O/I",
+      "provides": ["raymarch_depth_texture", "raymarch_opacity"],
+      "evidence": "include edges material/{grass,plant}->raymarch; consumers _deferred_*/_dof_*/_water_* march view rays against depth",
+      "deps": [],
+      "unknowns": ["function names + step heuristics"]
+    },
+    "wind.hlsl": {
+      "status": "O/I",
+      "provides": ["evaluate_wind", "wind_noise"],
+      "evidence": "consumers _flag_*/_leaf_particles/_garden_lowpoly_flower bend by gust noise + time; include edge clearing/inc/instanced_placement->wind",
+      "deps": [],
+      "unknowns": ["model + function names; original used INC-B perlin/simplex"],
+      "cross_agent_dependency": "INC-B noise (perlin/simplex) expected; fallback value-noise used"
+    },
+    "foliage_exclusion.hlsl": {
+      "status": "O/I",
+      "provides": ["get_foliage_exclusion", "is_foliage_excluded"],
+      "evidence": "consumers _clearing_meadow_plant/_generate_grass sample foliage_exclusion_mask; include edge buildings/building_mask->foliage_exclusion",
+      "deps": [],
+      "unknowns": ["function names"]
+    },
+    "lod.hlsl": {
+      "status": "O/I",
+      "provides": ["MeshLod{first_index,index_count,bounding_sphere_radius,pad0}", "select_lod", "select_grass_lod"],
+      "evidence": "OpMemberName struct{first_index,index_count,bounding_sphere_radius,pad0} in _nani_cull_and_bucket/_grass_calc_tiles",
+      "deps": [],
+      "unknowns": ["struct name + thresholds"]
+    },
+    "frustum.hlsl": {
+      "status": "O/I",
+      "provides": ["Frustum", "extract_frustum", "frustum_intersects_sphere", "frustum_intersects_aabb"],
+      "evidence": "consumers _nani_cull_and_bucket/_generate_grass/_grass_calc_tiles cull against main view (nani variant uses PhysicalStorageBufferAddresses, not spirv-cross-able)",
+      "deps": [],
+      "unknowns": ["names/structure"]
+    },
+    "history_valid.hlsl": {
+      "status": "O/I",
+      "provides": ["FrexpStructType{mantissa,exponent}", "to_frexp", "history_depth_valid", "history_valid"],
+      "evidence": "OpName FrexpStructType in _taa/_tgsr/_calculate_reprojection_map/_ssgi_temporal_filter; include edges bilinear->history_valid, color/ycbcr->history_valid",
+      "deps": [],
+      "unknowns": ["function names/body"]
+    },
+    "unjitter_taa.hlsl": {
+      "status": "O/I",
+      "provides": ["unjitter_taa_pixel", "unjitter_taa_uv", "taa_history_uv"],
+      "evidence": "consumers _taa/_tgsr unjitter via sample_offset_pixels; include edge math->unjitter_taa",
+      "deps": [],
+      "unknowns": ["function names"]
+    },
+    "coc.hlsl": {
+      "status": "O",
+      "provides": ["DofFocus 64B", "DofFocusReadback", "compute_coc", "ring_samples[16]", "gaussian_weights[16]"],
+      "evidence": "OpMemberName DofFocus/DofFocusReadback in _dof_autofocus/_dof_fullres/_critters_firefly_glow; stores at 0/4/16/28/32/56; ring_samples/gaussian_weights names",
+      "deps": [],
+      "unknowns": ["coc formula (I)", "sample tables (I)"]
+    },
+    "bitonic_sort.hlsl": {
+      "status": "O/I",
+      "provides": ["bitonic_sort_pair", "BITONIC_SORT_UINT"],
+      "evidence": "64-element ascending bitonic sort over groupshared uint in _dof_autofocus (k/j loop, pair a=m+i, b=j==k/2?(m+2j-1-i):(m+j+i)); include edge bitonic_sort->coc",
+      "deps": ["coc.hlsl"],
+      "unknowns": ["function/macro names"]
+    },
+    "prefix_scan.hlsl": {
+      "status": "O",
+      "provides": ["PREFIX_SCAN_UINT", "PREFIX_SCAN_2_PER_LANE"],
+      "evidence": "Hillis-Steele inclusive scan over groupshared uint in _light_binning_cell_prefix_sum/_nani_histogram_prefix_sum/_grass_tiles_prefix; consumers declare own shared_data1x/shared_data2x",
+      "deps": [],
+      "unknowns": ["macro names; consumers must declare shared_data2x scratch"]
+    },
+    "grading_lut.hlsl": {
+      "status": "O/I",
+      "provides": ["sample_grading_lut", "apply_tony_mc_mapface", "apply_grading_lut"],
+      "evidence": "grading_lut_tex/icc_lut/tony_mc_mapface_lut Texture3D + shadow_mask_mean in _final_post/_lut_gallery_thumbnail",
+      "deps": [],
+      "unknowns": ["function names/bodies"]
+    },
+    "color_library.hlsl": {
+      "status": "O",
+      "provides": ["ColorLibrary struct (37 float4)", "cbuffer color_library (placeholder b14)"],
+      "evidence": "OpMemberName list verbatim; cbuffer variable `color_library` bound at per-consumer set0 bindings 13/14/18/21/23/24",
+      "deps": [],
+      "unknowns": [],
+      "note": "cbuffer register is a placeholder (b14); real consumers rebind at their own slot"
+    },
+    "sun.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["get_sun_color", "get_sky_low_color", "get_sky_high_color", "get_sun_direction", "get_sky_color"],
+      "evidence": "frame_constants sun/sky colors + color_library day/dusk pairs; include edge sun->color_library",
+      "deps": ["color_library.hlsl"],
+      "unknowns": ["helper names"],
+      "consumer_constraint": "requires frame_constants.hlsl flat members"
+    },
+    "lighting.hlsl": {
+      "status": "O/I",
+      "provides": ["evaluate_sun_light", "evaluate_sky_ambient", "evaluate_lighting"],
+      "evidence": "sun diffuse+specular = BRDF*NdotL*shadow in _deferred_*_light_sun_sky/_billboard_*; sky ambient from sky colors + indirect_light_tint; include edge lighting->sun.inc",
+      "deps": ["sun.inc.hlsl", "brdf.hlsl"],
+      "unknowns": ["function names"],
+      "consumer_constraint": "requires frame_constants.hlsl + color_library.hlsl"
+    },
+    "lighting_indirect.hlsl": {
+      "status": "O",
+      "provides": ["cbuffer spatial_resolve_offsets{int4 spatial_resolve_offsets_array[512]}", "get_light_grid_cell", "get_light_grid_index", "get_light_cell_range", "get_light_grid_lantern_index"],
+      "evidence": "deferred light grid: cell=clamp(floor(world_pos*0.246,0.123,0.246+16,2,16),0,(31,15,31)), idx=32*(32*cell.y+cell.z)+cell.x, packed word low20=first idx >>20=count; include edge lighting_indirect->lanterns",
+      "deps": ["lanterns.hlsl"],
+      "unknowns": ["helper names"]
+    },
+    "lanterns.hlsl": {
+      "status": "O",
+      "provides": ["LanternPacked{position,intensity__color_id} 16B", "get_lantern_position/intensity/color_id", "get_lantern_color (5 palette entries)", "evaluate_lantern_light"],
+      "evidence": "OpMemberName position/intensity__color_id; palette literals + falloff (1/(0.336+d2), smoothstep(36i,16i,d2), up smoothstep(-0.5,0.2)) from _deferred_*_light_sun_sky/_light_binning_bin_lights",
+      "deps": [],
+      "unknowns": ["helper names"]
+    },
+    "terrain_heightmap.inc.hlsl": {
+      "status": "O",
+      "provides": ["terrain_heightmap_uv", "get_terrain_height", "get_terrain_normal"],
+      "evidence": "R16F sampled at world_xz*0.0076923+0.5, lerp(-2.5,24), normal from GatherRed central difference from _terrain_lighting_texture",
+      "deps": [],
+      "unknowns": ["function names"]
+    },
+    "rocky_terrain.inc.hlsl": {
+      "status": "O/I",
+      "provides": ["get_rocky_terrain_height", "is_rocky_terrain"],
+      "evidence": "consumers sample rocky_terrain displacement; Triangle structs belong to rocky mesh passes, not this file",
+      "deps": [],
+      "unknowns": ["function names/body"]
+    },
+    "wall_color_ids.hlsl": {
+      "status": "O",
+      "provides": ["get_wall_color_id"],
+      "evidence": "ByteAddressBuffer wall_color_ids indexed by brick/triangle id in _nani_gothic_window_bricks/_gi_trace; include edge wall_color_ids->reservoir",
+      "deps": ["reservoir.hlsl"],
+      "unknowns": ["helper name"]
+    },
+    "wall_color_customization.hlsl": {
+      "status": "O/I",
+      "provides": ["get_wall_custom_color", "get_wall_default_color"],
+      "evidence": "consumers _nani_*_bricks/_plaster/_roof_floor resolve wall palette id against color_library.wall_1/2/bricks/moss",
+      "deps": [],
+      "unknowns": ["exact palette mapping"],
+      "consumer_constraint": "requires color_library.hlsl"
+    },
+    "window_color_customization.hlsl": {
+      "status": "O/I",
+      "provides": ["sample_window_color", "get_window_color"],
+      "evidence": "consumers _nani_balcony_door/_nani_solid_vertex_color_window/_solid_vertex_color_wooden_gate; include edge hash->window_color_customization",
+      "deps": [],
+      "unknowns": ["function names/body"],
+      "consumer_constraint": "requires color_library.hlsl"
+    },
+    "roof_colors_include.hlsl": {
+      "status": "O/I",
+      "provides": ["get_roof_color", "get_roof_default_color"],
+      "evidence": "consumers _nani_instanced_roof/_nani_solid_vertex_color_bricks/_wall_wall_brick_lod* read roof_color_ids/roof_colors palette",
+      "deps": [],
+      "unknowns": ["exact palette mapping"],
+      "consumer_constraint": "requires color_library.hlsl"
+    }
+  }
+}

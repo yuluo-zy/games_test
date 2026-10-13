@@ -1,0 +1,126 @@
+{
+ "agent": "GC-A",
+ "date": "2026-10-13",
+ "scope": "grass generation chain (8 compute + generate_grass + grass_common.inc + 3 grass rasters) + clearing/billboard vegetation rasters (distant_billboard, instanced_background_tree, meadow_flower, meadow_plant, tree_canopy, tree_trunk + canopy_vert.inc + inc/{instanced_placement, canopy_common, forest_floor}) + billboard_forest, billboard_plant",
+ "validation": {
+  "tool": "tools/render-passes/recompile_check.py",
+  "dxc": "/opt/homebrew/bin/dxc (v1.10.2605.37)",
+  "acceptance": "HARD GATE: bindings + entry + LocalSize + capabilities must match; opcode_histogram converge <=3 rounds, residuals recorded"
+ },
+ "hard_gate_pass": "19/19 main bins (bindings+entry+LocalSize+capabilities match on every b903 vs and ps module)",
+ "full_structural_pass": 0,
+ "residual_classes": {
+  "OpSource/OpString": "systematic -1: original build wraps each shader in a temp include file (input path separate from the main-file OpSource); direct recompile has one fewer OpSource. Recorded, not chased.",
+  "OpLine/OpNoLine": "debug line markers differ (source line layout unknown); not chased.",
+  "OpSwitch/OpUnreachable/Label": "original dxc (16ceb560) compiles if/else + do-while(false) breaks to OpSwitch; installed dxc (1.10.2605.37) emits BranchConditional/phi (RECOVERY_TRACKER #17 version drift).",
+  "matrix element access": "original loads whole float4x4 then OpCompositeExtract rows; installed dxc emits per-element OpAccessChain+OpLoad (calc_tiles, generate_grass).",
+  "twist/Rodrigues fold": "original dxc does not fold the Rodrigues matrix constants; installed dxc folds them (grass.raster/lod1 FMul/FAdd gap).",
+  "RWByteAddressBuffer byte offset": "original emits OpBitcast int-dance for byte offsets; installed dxc folds (bundles/tiles_prefix).",
+  "StructuredBuffer struct emission": "instanced_background_tree target emits the PlacementData struct type (OpMemberName/OpTypeStruct); candidate DCEs it (buffer used via byte loads) - residual.",
+  "inc/lighting.hlsl omission": "inc/lighting.hlsl references color_library.indirect_light_tint (nested form) which conflicts with this family's flat-member color_library cbuffer; lighting.hlsl is unused in these shaders so it is omitted (-1 OpSource) and the issue flagged for INC-C."
+ },
+ "inc_issues": [
+  "inc/lighting.hlsl (INC-C) references `color_library.indirect_light_tint` (nested struct form). Consumers that bind the original flat-member color_library cbuffer (billboard_forest/plant, meadow_plant, tree_canopy/trunk, instanced_background_tree, generate_grass, distant_billboard) cannot include it; the nested access should be a flat `indirect_light_tint` reference to match the embedded flat cbuffer (struct 45 = 37 flat members in billboard_forest).",
+  "inc/scatter.hlsl (INC-B) scatter_point() references $Globals member `scatter_grid_dim`; generate_grass (which only uses scatter_cell_point) needs a static stand-in declaration to compile.",
+  "inc/blue_noise.hlsl (INC-B) declares blue_noise_texture at t14; tree_canopy binds it at t21 and samples directly, so blue_noise.hlsl is omitted there (-1 OpSource).",
+  "inc/color_library.hlsl (INC-C) declares the cbuffer at a placeholder b14 with a nested member; several consumers need the flat-member cbuffer at their own binding (b13/b18/b24) - consumers guard-skip and redeclare flat."
+ ],
+ "per_shader": {
+  "generate_grass.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/calc_tiles.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/tile_bundle_count.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/tile_bundle_gen.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/bundles_prefix.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/tiles_prefix.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/calc_dispatch_args.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/calc_grasslet_bundle_ranges.cs.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass/grass_common.inc.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass_lod1.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "grass_object_push.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/distant_billboard.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/instanced_background_tree.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/meadow_flower.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/meadow_plant.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/tree_canopy.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/tree_trunk.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/canopy_vert.inc.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/inc/instanced_placement.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/inc/canopy_common.inc.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "clearing/inc/forest_floor.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "billboard_forest.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  },
+  "billboard_plant.raster.hlsl": {
+   "status": "RECONSTRUCTED",
+   "gate": "PASS (b903)"
+  }
+ }
+}

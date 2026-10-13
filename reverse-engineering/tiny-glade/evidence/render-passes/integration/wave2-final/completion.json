@@ -1,0 +1,96 @@
+{
+  "task": "wave2-final integration \u2014 4 orphans + full-tree compile + hard-gate sweep",
+  "date": "2026-10-13",
+  "orchestrator_notes": "Evidence-driven; original .bin untouched; candidates/ untouched.",
+  "orphan_reconstruction": {
+    "mei_shadow.raster.hlsl": {
+      "status": "O",
+      "bins": [
+        "b903e43ffb3da915",
+        "f0adff76827e73ff"
+      ],
+      "hard_gate": "PASS (both variants)",
+      "residual": "opcode_histogram + temp-path OpSource drift"
+    },
+    "instanced_roof_beams.raster.hlsl": {
+      "status": "O",
+      "bins": [
+        "b903e43ffb3da915",
+        "f0adff76827e73ff"
+      ],
+      "hard_gate": "PASS (both variants)",
+      "residual": "opcode_histogram + temp-path OpSource drift"
+    },
+    "instanced_roof_spire.raster.hlsl": {
+      "status": "O",
+      "bins": [
+        "b903e43ffb3da915",
+        "f0adff76827e73ff"
+      ],
+      "hard_gate": "PASS (both variants)",
+      "residual": "opcode_histogram + temp-path OpSource drift"
+    },
+    "water/water_object_push.inc.hlsl": {
+      "status": "I",
+      "bins": "include-only (7 consumer bins)",
+      "hard_gate": "n/a (consumers re-verified: bindings/entry/caps unchanged)",
+      "residual": "exact helper body inferred (OpLine + consumer use-sites)"
+    }
+  },
+  "full_tree_compile": {
+    "mains_with_bins": 260,
+    "compile_pass": 258,
+    "compile_fail": 2,
+    "include_only_no_bin": 14,
+    "fail_list": [
+      "nani_solid_vertex_color.raster.hlsl",
+      "nani_velocity_only.raster.hlsl"
+    ]
+  },
+  "hard_gate_sweep_b903": {
+    "mains_with_bins": 260,
+    "hard_gate_pass_mains": 235,
+    "hard_gate_fail_mains": 25,
+    "module_pass": 350,
+    "module_non_pass": 27,
+    "residual_category_histogram": {
+      "capabilities": 17,
+      "opcode_histogram": 369,
+      "bindings": 5,
+      "local_size": 1
+    },
+    "fail_classification": {
+      "capabilities_dxc_version": 17,
+      "bindings_structural": 5,
+      "local_size_tgsr": 1,
+      "fail_dxc_affine_conflict": 2
+    }
+  },
+  "f0ad_variant": {
+    "bins": 117,
+    "ps_binding_diff_vs_b903": 86,
+    "vs_binding_diff_vs_b903": 4,
+    "note": "f0ad raster ps modules are reduced/trivial stubs with differing bindings \u2014 documented variant artifact, not reproducible from one source."
+  },
+  "no_hzb_dash_D_variants": {
+    "bins": 9,
+    "prior_validated_modules": 13,
+    "hard_gate": "PASS (wave2-nani-cull-merge)"
+  },
+  "bin_coverage": {
+    "total_bins": 404,
+    "bins_with_matching_reconstructed_main": 404
+  },
+  "cosmetic_cleanup": {
+    "files_cleaned": 21,
+    "detail": "leftover line-1 ==SKELETON== blocks removed where a ==RECONSTRUCTED== header exists (main tree only, candidates/ untouched)"
+  },
+  "known_exceptions": [
+    "nani_solid_vertex_color / nani_velocity_only: genuine FAIL_DXC \u2014 Affine3Packed redefinition between inc/utils.hlsl:14 and wall/inc/draw_lists.hlsl:10 via nani/inc/user.hlsl chain (pre-existing wave-merge conflict)",
+    "17 modules FAIL(capabilities) \u2014 documented dxc-version capability class",
+    "5 modules FAIL(bindings) \u2014 nani_gothic_window_bricks, nani_solid_vertex_color_bricks, terrain_editing/floor, vermeer/generate_strokes, light_binning/bin_lights_to_cells",
+    "tgsr.cs FAIL(local_size) \u2014 wave-2 tgsr residual",
+    "f0ad raster ps stubs (86) \u2014 variant artifact",
+    "opcode_histogram present in ~369 modules \u2014 dxc-version codegen drift (structural hard gate unaffected)"
+  ]
+}

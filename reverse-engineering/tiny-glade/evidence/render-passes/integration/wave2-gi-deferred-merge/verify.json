@@ -1,0 +1,612 @@
+{
+  "family": "gi-deferred-merge",
+  "date": "2026-10-13",
+  "tool": "recompile_check.py + verify_variant.py (extra -D variants)",
+  "checks": [
+    {
+      "file": "bin_lights_to_cells.cs.hlsl",
+      "target": "_light_binning_bin_lights_to_cells.cs.hlsl_cs_main_14dca8ba9c11c197.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 335,
+            "candidate_only": 320
+          },
+          "op_source_counts": {
+            "target": 18,
+            "candidate": 17
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "bin_lights_to_cells.cs.hlsl",
+      "target": "_light_binning_bin_lights_to_cells.cs.hlsl_cs_main_8faee3cc8c252c04.bin",
+      "defines": [
+        "BIN_LIGHTS_FULL=0"
+      ],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 194,
+            "candidate_only": 202
+          },
+          "op_source_counts": {
+            "target": 18,
+            "candidate": 17
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "blur_screen_radiance.cs.hlsl",
+      "target": "_gi_blur_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 248,
+            "candidate_only": 295
+          },
+          "op_source_counts": {
+            "target": 19,
+            "candidate": 18
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "cell_prefix_merge.cs.hlsl",
+      "target": "_light_binning_cell_prefix_merge.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 16,
+            "candidate_only": 14
+          },
+          "op_source_counts": {
+            "target": 8,
+            "candidate": 7
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "cell_prefix_sum.cs.hlsl",
+      "target": "_light_binning_cell_prefix_sum.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 20,
+            "candidate_only": 16
+          },
+          "op_source_counts": {
+            "target": 9,
+            "candidate": 8
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "cell_subtotal_prefix_sum.cs.hlsl",
+      "target": "_light_binning_cell_subtotal_prefix_sum.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 196,
+            "candidate_only": 174
+          },
+          "op_source_counts": {
+            "target": 7,
+            "candidate": 6
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "canopy_light_sun_sky.raster.hlsl",
+      "target": "_deferred_canopy_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "vs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 99,
+            "candidate_only": 90
+          },
+          "op_source_counts": {
+            "target": 48,
+            "candidate": 45
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        },
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 4891,
+            "candidate_only": 1701
+          },
+          "op_source_counts": {
+            "target": 48,
+            "candidate": 45
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "canopy_light_sun_sky.raster.hlsl",
+      "target": "_deferred_canopy_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+      "defines": [
+        "DEFERRED_FULL_LIGHTING=0"
+      ],
+      "modules": [
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 598,
+            "candidate_only": 447
+          },
+          "op_source_counts": {
+            "target": 48,
+            "candidate": 45
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "grass_light_sun_sky.raster.hlsl",
+      "target": "_deferred_grass_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "vs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 97,
+            "candidate_only": 92
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        },
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 4594,
+            "candidate_only": 1794
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "grass_light_sun_sky.raster.hlsl",
+      "target": "_deferred_grass_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+      "defines": [
+        "DEFERRED_FULL_LIGHTING=0"
+      ],
+      "modules": [
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 563,
+            "candidate_only": 432
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "plant_light_sun_sky.raster.hlsl",
+      "target": "_deferred_plant_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "vs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 97,
+            "candidate_only": 92
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        },
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 4581,
+            "candidate_only": 1720
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "plant_light_sun_sky.raster.hlsl",
+      "target": "_deferred_plant_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+      "defines": [
+        "DEFERRED_FULL_LIGHTING=0"
+      ],
+      "modules": [
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 563,
+            "candidate_only": 432
+          },
+          "op_source_counts": {
+            "target": 47,
+            "candidate": 46
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "solid_light_sun_sky.raster.hlsl",
+      "target": "_deferred_solid_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "vs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 3,
+            "candidate_only": 0
+          },
+          "op_source_counts": {
+            "target": null,
+            "candidate": null
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        },
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 5765,
+            "candidate_only": 1703
+          },
+          "op_source_counts": {
+            "target": null,
+            "candidate": null
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "solid_light_sun_sky.raster.hlsl",
+      "target": "_deferred_solid_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+      "defines": [
+        "DEFERRED_FULL_LIGHTING=0"
+      ],
+      "modules": [
+        {
+          "entry": "ps_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 469,
+            "candidate_only": 340
+          },
+          "op_source_counts": {
+            "target": null,
+            "candidate": null
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "eval_screen_radiance.cs.hlsl",
+      "target": "_gi_eval_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 337,
+            "candidate_only": 371
+          },
+          "op_source_counts": {
+            "target": 22,
+            "candidate": 21
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "reproject_screen_radiance.cs.hlsl",
+      "target": "_gi_reproject_screen_radiance.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 568,
+            "candidate_only": 638
+          },
+          "op_source_counts": {
+            "target": 15,
+            "candidate": 14
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "trace_gi_candidates.cs.hlsl",
+      "target": "_gi_trace_gi_candidates.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 5708,
+            "candidate_only": 2443
+          },
+          "op_source_counts": {
+            "target": null,
+            "candidate": null
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    },
+    {
+      "file": "update_gi_radiance.cs.hlsl",
+      "target": "_gi_update_gi_radiance.cs.hlsl_cs_main_0.bin",
+      "defines": [],
+      "modules": [
+        {
+          "entry": "cs_main",
+          "verdict": "FAIL",
+          "hard_gate_pass": true,
+          "hard_gate": {
+            "entries_ok": true,
+            "local_size_ok": true,
+            "capabilities_ok": true,
+            "bindings_ok": true
+          },
+          "histogram_diff": {
+            "target_only": 62,
+            "candidate_only": 81
+          },
+          "op_source_counts": {
+            "target": null,
+            "candidate": null
+          },
+          "dxc_returncode": null,
+          "dxc_stderr": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks": 18,
+    "module_checks": 22,
+    "hard_gate_pass_modules": 22,
+    "hard_gate_fail_modules": 0,
+    "compile_fail_modules": 0
+  }
+}

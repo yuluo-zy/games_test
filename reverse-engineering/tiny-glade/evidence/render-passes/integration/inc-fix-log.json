@@ -1,0 +1,165 @@
+{
+ "wave": "P1c integration",
+ "date": "2026-10-13",
+ "owner": "consolidation (wave-1c)",
+ "method": "evidence-driven inc-layer fixes per RECOVERY_TRACKER adjudication items; each verified with recompile_check.py consumer compiles (hard gate = bindings/entry/LocalSize/capabilities; residual = opcode histogram / debug opcodes)",
+ "items": [
+  {
+   "item": 1,
+   "tracker": "#1/#2/#6",
+   "label": "RDA trigger",
+   "status": "O",
+   "applied": true,
+   "before": "frame_constants.hlsl had no unbounded array; consumers compiled without RuntimeDescriptorArray (candidate caps=[Shader])",
+   "after": "frame_constants.hlsl declares `Texture2D<float4> bindless_textures_dyn[] : register(t0, space2)`; 19 consumer-local copies of the same trigger removed (they include frame_constants transitively)",
+   "verification": "apply_screen_shadows: capabilities now [RuntimeDescriptorArray, Shader] == target minus known StorageImageExtendedFormats dxc diff; bindings unchanged (0 diff); all 307 target frame_constants bins carry RDA (0 without) -> trigger matches target capability set",
+   "note": "label O: trigger shape reproduced from F-E/F-W consumers"
+  },
+  {
+   "item": 2,
+   "tracker": "#2/#6/#17",
+   "label": "current_view_index in $Globals",
+   "status": "O",
+   "applied": true,
+   "before": "inc/current_view.hlsl already declared `uint current_view_index;` (non-static); consumers guard-skip it and redeclare inside explicit `cbuffer $Globals : register(bNN,space0)`",
+   "after": "no inc edit needed (already non-static); documented the in-consumer `cbuffer $Globals` pattern (adjudication #6)",
+   "verification": "demo_terrain_overlay (current_view_index as $Globals member 0): hard gate PASS, $Globals at set0/b13",
+   "note": "O: global lands in $Globals; consumers use explicit cbuffer $Globals pattern"
+  },
+  {
+   "item": 3,
+   "tracker": "#3",
+   "label": "terrain_height definition",
+   "status": "I",
+   "applied": true,
+   "before": "inc/find_root.hlsl called terrain_height(float2) but inc/terrain_heightmap.inc.hlsl did not define it; stairs.cs provided a local copy",
+   "after": "terrain_heightmap.inc.hlsl defines `float terrain_height(float2)` (samples global terrain_heightmap texture via get_terrain_height); 27 consumers that declare register-bound terrain_heightmap moved their texture declaration before the inc include (dxc eager sema); reed/lilypad/lilypad_flower/stairs_foliage_exclusion got a registerless terrain_heightmap (DCE'd); stairs.cs local copy removed",
+   "verification": "stairs.cs compiles (no FAIL_DXC), hard gate PASS, closure extra=[] missing=[]",
+   "note": "I: signature from use-site (stairs); body is the observed get_terrain_height lerp(-2.5,24) form"
+  },
+  {
+   "item": 4,
+   "tracker": "#4/#9/#12/#18",
+   "label": "include-drift prune",
+   "status": "O",
+   "applied": true,
+   "before": "inc edges pulled spurious files into every consumer (smooth_max via tracked_buffer, bicubic/quad_mesh/unjitter_taa/image/curve via math, math_const via consts, bilinear/history_valid via pack_unpack, brdf_lut/highlight_color via solid_material/brdf_lut, brdf via material_eval, raymarch via grass/plant material, color/math via ycbcr, coc via bitonic_sort, foliage_exclusion via building_mask); wave-1 EXTRA-file mains ~121",
+   "after": "removed provably-spurious edges (verified against include-graph.json closures / compile-commands embedded sets): tracked_buffer->smooth_max, math->bicubic/quad_mesh/unjitter_taa, consts->math_const, pack_unpack->bilinear, bilinear->history_valid, material_eval->brdf, solid_material->brdf_lut, brdf_lut->highlight_color, quad_mesh->image, grass/plant_material->raymarch, color/ycbcr->color/math, bitonic_sort->coc, buildings/building_mask->foliage_exclusion; consumer includes restored to match target embedded sets (apply_screen_shadows pack_unpack+history_valid; calculate_reprojection_map ray_cone+pack_unpack+bilinear+history_valid; text blue_noise; capture_screenshot_texture srgb+uv; path_mask_visual dropped path_mask_sampler; terrain_lighting_texture hash+math_const); image->curve kept (not provably absent; text/water_noise embed both)",
+   "verification": "wave-1 EXTRA-file mains: ~121 -> 0; closure MATCH mains: 3 -> 81 (rest are pre-existing consumer MISSING gaps in F-V/F-D files); apply_screen_shadows OpSource 26->22 (target 23), OpString 26->22; bindings unchanged",
+   "note": "O: edge absence proven by mains with X but not Y in original closures"
+  },
+  {
+   "item": 5,
+   "tracker": "#5",
+   "label": "sampler incs (water_mask/path_mask/building_mask)",
+   "status": "I",
+   "applied": true,
+   "before": "water/water_mask_sampler.inc.hlsl was a skeleton; buildings/building_mask.inc.hlsl lacked get_*_mask; paths/path_mask_sampler.inc.hlsl already filled by F-R",
+   "after": "water_mask_sampler.inc filled with get_water_mask()/is_water() (samples .y channel at world_xz*1/130+0.5); building_mask.inc gained get_building_mask(); path_mask_sampler kept (F-R)",
+   "verification": "consumers (path_pebbles, stairs, spawn_reeds, spawn_lilypads, path_mask_visual) compile; no binding impact",
+   "note": "I: helper names/body inference from inlined use-sites"
+  },
+  {
+   "item": 6,
+   "tracker": "#7",
+   "label": "srgb if/else",
+   "status": "O",
+   "applied": true,
+   "before": "color/srgb.hlsl used `if (...) return a; return b;` (dxc lowers to OpSwitch)",
+   "after": "rewritten to if/else assignment (matches shipped codegen)",
+   "verification": "consumers compile; no hard-gate change"
+  },
+  {
+   "item": 7,
+   "tracker": "#8",
+   "label": "blue_noise register",
+   "status": "U",
+   "applied": true,
+   "before": "inc/blue_noise.hlsl declared `Texture2D<float4> blue_noise_texture;` without register",
+   "after": "added register(t14, space0); text.raster now includes blue_noise.hlsl and dropped its local t14 declaration (its target embeds blue_noise.hlsl)",
+   "verification": "text.raster hard gate PASS; lut/water_noise left untouched (target does NOT embed blue_noise.hlsl)",
+   "note": "U/blocker-note: consumers bind blue_noise_texture at per-consumer registers (t14 text/lut, t15 rdi, t16 primary_rt_debug, t17 apply_volumetrics); a single fixed register cannot serve all \u2014 recorded for main agent"
+  },
+  {
+   "item": 8,
+   "tracker": "#10",
+   "label": "color_library cbuffer name",
+   "status": "O",
+   "applied": true,
+   "before": "cbuffer ColorLibraryData : register(b14, space0)",
+   "after": "cbuffer color_library : register(b14, space0) (original OpName; member variable stays color_library)",
+   "verification": "dxc compiles `cbuffer color_library { ColorLibrary color_library; }`; consumers (path_pebble, flag_roof_cloth, etc.) hard gate PASS"
+  },
+  {
+   "item": 9,
+   "tracker": "#11/#15",
+   "label": "samplers s5..s8",
+   "status": "O",
+   "applied": true,
+   "before": "inc/samplers.hlsl carried 9 samplers (s0..s4, s9..s12); F-V consumers locally declared sampler_s5..s8 to restore $Globals position; a raw-bin scan showed no bin binds s5-s8 and I initially mis-read that as 'the original had 9 samplers'",
+   "after": "RESTORED the full 13-sampler set in inc/samplers.hlsl (s0..s12). The original DID declare 13 samplers: dxc DCEs unused ones from SPIR-V so bins show only the used 9, but the declarations position the auto $Globals at b13. Removed the now-duplicate local sampler_s5..s8 declarations from 23 consumers.",
+   "verification": "flag_small/lilypad/sheep $Globals back to b13 (hard gate PASS); consumer bindings unchanged (unused samplers DCE'd)",
+   "note": "O: 13-sampler declaration set; sampler_s5..s8 names are Inference (DCE'd, not embedded)"
+  },
+  {
+   "item": 10,
+   "tracker": "#12",
+   "label": "highlight_color include",
+   "status": "O",
+   "applied": true,
+   "before": "inc/highlight_color.hlsl referenced color_library without including it",
+   "after": "added `#include \"color_library.hlsl\"` plus ordering note (consumers binding color_library elsewhere must guard-skip and declare first)",
+   "verification": "compiles; no current reconstructed consumer pulls highlight_color.hlsl (path_pebble's solid_material->brdf_lut->highlight_color chain pruned)",
+   "note": "O: include restored per adjudication"
+  },
+  {
+   "item": 11,
+   "tracker": "#13",
+   "label": "ray_cone / wall_distortion skeletons",
+   "status": "I",
+   "applied": true,
+   "before": "both files were skeleton placeholders (no code)",
+   "after": "filled with minimal behavior-consistent bodies marked Inference (ray_cone: RayCone struct + half-width/mip helpers; wall_distortion: wall_distortion_uv)",
+   "verification": "consumers compile (wave-1 embed these files for OpSource parity only; they do not call the helpers)",
+   "note": "I: names/bodies are Inference (inlined in original); minimal self-consistent"
+  },
+  {
+   "item": 12,
+   "tracker": "#14-f-r",
+   "label": "StairsCounter {int count}",
+   "status": "O",
+   "applied": true,
+   "before": "inc/draw_indirect_readonly.hlsl declared StairsCounter{uint count, pad0, pad1, pad2} (stride 16)",
+   "after": "declared StairsCounter{int count} (stride 4) per _rocky_terrain_stairs_stairs_counter OpMemberName evidence; stairs_counter.cs now includes draw_indirect_readonly.hlsl and dropped its local struct",
+   "verification": "stairs_counter hard gate PASS; target closure (common..draw_indirect_readonly+types) matches (extra=[] missing=[])"
+  },
+  {
+   "item": 13,
+   "tracker": "#16",
+   "label": "history_valid function rename",
+   "status": "O",
+   "applied": true,
+   "before": "inc/history_valid.hlsl defined function `history_valid(...)` colliding with $Globals member history_valid in several consumers; rdi/temporal and ssgi/temporal_filter carried #define/guard hacks",
+   "after": "function renamed to is_history_valid; rdi/temporal guard-skip removed; ssgi/temporal_filter #define-hack removed; apply_screen_shadows re-includes history_valid.hlsl + pack_unpack.hlsl; calculate_reprojection_map includes history_valid.hlsl + bilinear + pack_unpack + ray_cone",
+   "verification": "apply_screen_shadows hard gate PASS, closure extra=[] missing=[]; ssgi/temporal_filter compiles, hard gate PASS (caps residual = StorageImageExtendedFormats only)"
+  },
+  {
+   "item": 14,
+   "tracker": "#15",
+   "label": "rev_blur sampler register",
+   "status": "O",
+   "applied": false,
+   "before": "samplers.hlsl pins sampler_lnc at s0; rev_blur target binds sampler_lnc at s3",
+   "after": "no change: rev_blur.cs.hlsl is self-contained (no #include) and self-declares sampler_lnc at s3; no conflict with samplers.hlsl",
+   "verification": "rev_blur hard gate PASS (s3 preserved)"
+  }
+ ],
+ "summary": {
+  "applied": 13,
+  "verified": 13,
+  "reverted": 0,
+  "blocked": 0,
+  "note": "item 7 (blue_noise register) applied with a documented deviation (per-consumer registers); item 14 no-change after verification",
+  "hard_gate_sweep": "151 wave-1 mains swept: 108 hard-gate PASS; remaining diffs are documented dxc-version capability artifacts (StorageImageExtendedFormats / ReadWithoutFormat), skeleton placeholders (missing entry), f0ad variant-trivial ps modules, and pre-existing terrain_editing/floor.ps incomplete body"
+ }
+}

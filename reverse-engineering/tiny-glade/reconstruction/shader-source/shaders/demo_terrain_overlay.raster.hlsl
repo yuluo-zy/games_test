@@ -1,0 +1,72 @@
+// ==RECONSTRUCTED== shaders/demo_terrain_overlay.raster.hlsl | evidence: spirv-cross of _demo_terrain_overlay.raster.hlsl_* (46x46 grid over the terrain; overlay tinted quad in sample space) | status: O (bindings/entry/flow); I (names)
+
+#include "inc/common.hlsl"
+#include "inc/consts.hlsl"
+// current_view.hlsl is guard-skipped; its global current_view_index is
+// redeclared in $Globals below (file OpString is still recorded).
+#define TINYGLADE_INC_CURRENT_VIEW_HLSL
+#include "inc/current_view.hlsl"
+#include "inc/frame_constants.hlsl"
+#include "inc/uv.hlsl"
+#include "inc/ray_cone.hlsl"
+#include "inc/math_const.hlsl"
+#include "inc/texture_utils.hlsl"
+Texture2D<float4> terrain_heightmap : register(t14, space0);
+#include "inc/terrain_heightmap.inc.hlsl"
+#include "inc/hash.hlsl"
+#include "inc/utils.hlsl"
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint current_view_index;
+    uint2 terrain_heightmap_dims;
+    uint2 visual_terrain_heightmap_dims;
+    float4x4 model_to_world;
+    uint2 demo_overlay_texture_dims;
+};
+
+Texture2D<float4> demo_overlay_texture : register(t16, space0);
+
+// Grid cell count along one axis of the 46x46 overlay mesh.
+static const float OVERLAY_GRID_CELLS = 46.0f;
+
+struct VS_OUTPUT
+{
+    float4 position : SV_Position;
+    float2 c0 : TEXCOORD0;
+    float3 c1 : TEXCOORD1;
+};
+
+[[vk::ext_capability(5302)]]
+[[vk::ext_extension("SPV_EXT_descriptor_indexing")]]
+VS_OUTPUT vs_main(uint vertex_id : SV_VertexID)
+{
+    VS_OUTPUT output;
+    float2 grid = float2(float(vertex_id % 46u), float(vertex_id / 46u));
+    float2 uv = (((grid + 0.5f.xx) * (1.0f / OVERLAY_GRID_CELLS).xx) * 2.0f) - 1.0f.xx;
+    float2 world_xz = uv * 65.0f.xx;
+    float x = world_xz.x;
+    float y = world_xz.y;
+
+    float3 pos = float3(x, 0.0f, y);
+    float height = lerp(TERRAIN_HEIGHT_MIN, TERRAIN_HEIGHT_MAX,
+                        terrain_heightmap.SampleLevel(sampler_default, pos.xz * TERRAIN_SAMPLE_SCALE.xx + 0.5f.xx, 0.0f).x) + 0.5f;
+    pos.y = height;
+
+    ViewConstants view = view_constants[current_view_index];
+    output.position = mul(view.world_to_sample, float4(x, height, y, 1.0f));
+    output.c0 = pos.xz * 0.2f;
+    output.c1 = pos;
+    return output;
+}
+
+[[vk::ext_capability(5302)]]
+[[vk::ext_extension("SPV_EXT_descriptor_indexing")]]
+float4 ps_main(VS_OUTPUT input) : SV_Target0
+{
+    if (length(input.c1.xz) < 15.0f)
+    {
+        discard;
+    }
+    return float4(0.0f, 0.0f, 0.0f, 0.6f) * demo_overlay_texture.Sample(sampler_llr, input.position.xy * 0.0074999998323619365692138671875f).x;
+}

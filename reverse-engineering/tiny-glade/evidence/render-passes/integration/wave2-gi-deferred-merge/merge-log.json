@@ -1,0 +1,138 @@
+{
+  "integration": "wave2-gi-deferred-merge",
+  "date": "2026-10-13",
+  "review": "evidence/render-passes/review/gi-deferred/review.json + review.md (READ FULLY before merging)",
+  "verdict_applied": "B base (gi-deferred-b) as the integration base; A body for trace / gi_settings / restir / grid / bin_lights; merge deltas applied only where the bins confirm them.",
+  "per_file": {
+    "shaders/gi/trace_gi_candidates.cs.hlsl": {
+      "label": "O (structure/bindings from disassembly); I/U (screen-space march + material eval simplified — review-documented histogram gap)",
+      "decision": "cs_main body adopted from candidate A (morton-scramble loop m=32..1 acc+=m*m*((3*bx)^by) with 63-a/b swap, far-plane early-out writing zero 2x2 candidates, 2x2 full-res block writes, 288*(frame_index%64) blue-noise dither). Include closure follows candidate B's near-exact shape, plus terrain_heightmap.inc / blue_noise.hlsl / history_valid.hlsl to match the target OpSource set.",
+      "rt_call": "trace_software_bvh called with the reconciled per-lane uint2[4] stack + lane (gl_LocalInvocationIndex); groupshared rt_lds_stack[256] declared and TINYGLADE_RT_LDS_STACK_SPILL defined before inc/rt.hlsl.",
+      "verification": "bindings/entries/LocalSize/caps PASS; opcode histogram differs (simplified march + material eval)."
+    },
+    "shaders/gi/update_gi_radiance.cs.hlsl": {
+      "label": "O",
+      "decision": "candidate B content (near-exact include closure). hi_px_subpixels moved to gi_settings.inc (A placement); local copy removed. terrain_heightmap.inc added for closure with TINYGLADE_TERRAIN_HEIGHTMAP_NO_GLOBAL (this pass binds no terrain texture).",
+      "verification": "hard gate PASS; near-converged histogram residual (OpSource 24 vs 28 line-diff class)."
+    },
+    "shaders/gi/eval_screen_radiance.cs.hlsl": {
+      "label": "O",
+      "decision": "candidate B content (marginal winner; closure parity better). hi_px_subpixels via gi_settings.inc. blue_noise_texture redeclared at this pass binding t14 (inc global removed) and helper called with the texture as first parameter (3-arg form, coordinated with the concurrent water-ice merge of inc/blue_noise.hlsl).",
+      "verification": "hard gate PASS; OpSource 22 vs 21 residual; near-converged histogram."
+    },
+    "shaders/gi/reproject_screen_radiance.cs.hlsl": {
+      "label": "O",
+      "decision": "candidate B content (tie on body; OpSource 14 vs 15).",
+      "verification": "hard gate PASS; OpSource 15 vs 14 residual; near-converged histogram."
+    },
+    "shaders/gi/blur_screen_radiance.cs.hlsl": {
+      "label": "O",
+      "decision": "candidate B content (tie on body; includes brdf.hlsl matching the target closure). hi_px_subpixels via gi_settings.inc.",
+      "verification": "hard gate PASS; OpSource 19 vs 18 residual; near-converged histogram."
+    },
+    "shaders/gi/gi_settings.inc.hlsl": {
+      "label": "O (hi_px_subpixels pinned by eval/blur/update debug names); I (settings constants)",
+      "decision": "candidate A content. Verified no file-scope hi_px_subpixels collision across the 73 gi_settings consumers (all others declare it inside functions).",
+      "verification": "include-only; all 5 gi bins compile."
+    },
+    "shaders/gi/restir.inc.hlsl": {
+      "label": "O (reservoir texel packing); I (helper names)",
+      "decision": "candidate A content (uint2 payload px|py<<16 + two packed half16 weights).",
+      "verification": "include-only; update/eval/blur/trace compile."
+    },
+    "shaders/light_binning/bin_lights_to_cells.cs.hlsl": {
+      "label": "O (binning algorithm); O/I (reservoir RNG carry-chain)",
+      "decision": "merge per review: A body (wang_hash((idx*1664525+hash(frame_index)+1013904223)*1664525), StructuredBuffer<LanternPacked> lantern_buf) + B's BIN_LIGHTS_FULL feature flag for the 8fae count-only variant. Reservoir replacement uses the bin's carried-rng mantissa form asfloat(rng&0x7FFFFF|0x3F800000)-1.",
+      "verification": "14dc hard gate PASS (OpSource 18 vs 17, small phi gap); 8fae (-D BIN_LIGHTS_FULL=0) bindings/entries/caps PASS (OpSource 18 vs 17)."
+    },
+    "shaders/light_binning/cell_prefix_sum.cs.hlsl": {
+      "label": "O",
+      "decision": "tie -> candidate A (Hillis-Steele 2-per-lane, 10 unrolled steps).",
+      "verification": "hard gate PASS; OpSource 9 vs 8 residual (documented)."
+    },
+    "shaders/light_binning/cell_subtotal_prefix_sum.cs.hlsl": {
+      "label": "O",
+      "decision": "tie -> candidate A (9-step subtotal scan, push_constants).",
+      "verification": "hard gate PASS; OpSource 7 vs 6 residual."
+    },
+    "shaders/light_binning/cell_prefix_merge.cs.hlsl": {
+      "label": "O",
+      "decision": "tie -> candidate A.",
+      "verification": "hard gate PASS; OpSource 8 vs 7 residual."
+    },
+    "shaders/light_binning/grid.inc.hlsl": {
+      "label": "O (grid layout/constants); I (helper names)",
+      "decision": "candidate A content (cell-index + min/max-world + point-to-cell helpers). Residual flagged for follow-up: bin clamps cell_min to (30,15,30) and cell_max to (33,16,33); A clamps (31,15,31)/(32,16,32) — both candidates differ.",
+      "verification": "include-only; bin_lights + deferred compile."
+    },
+    "shaders/deferred/solid_light_sun_sky.raster.hlsl": {
+      "label": "O (structure from disassembly); I (flag name / $Globals names)",
+      "decision": "candidate B base (DEFERRED_FULL_LIGHTING for b903/f0ad). Review merge deltas REJECTED on bin evidence: the solid b903 ps decodes the gbuffer normal as RGB8 normalize of gbuffer.x low bytes (not octahedral — see light_sun_sky.inc note) and writes SV_Target alpha 0.0 (not 2.0); B matches both.",
+      "verification": "b903 bindings/entries/caps PASS, OpSource 45=45, closure SET exact; f0ad (-D DEFERRED_FULL_LIGHTING=0) bindings/entries/caps PASS."
+    },
+    "shaders/deferred/grass_light_sun_sky.raster.hlsl": {
+      "label": "O; I",
+      "decision": "candidate B base (same rejected deltas).",
+      "verification": "b903 hard gate PASS (OpSource 47 vs 46); f0ad hard gate PASS."
+    },
+    "shaders/deferred/plant_light_sun_sky.raster.hlsl": {
+      "label": "O; I",
+      "decision": "candidate B base (same rejected deltas).",
+      "verification": "b903 hard gate PASS (OpSource 47 vs 46); f0ad hard gate PASS."
+    },
+    "shaders/deferred/canopy_light_sun_sky.raster.hlsl": {
+      "label": "O; I",
+      "decision": "candidate B base (same rejected deltas).",
+      "verification": "b903 hard gate PASS (OpSource 48 vs 45); f0ad hard gate PASS."
+    },
+    "shaders/deferred/light_sun_sky.inc.hlsl": {
+      "label": "O (algorithm from use-sites); I (function names)",
+      "decision": "candidate B helpers. decode_gbuffer_normal KEPT as RGB8 normalize (bin-verified, NOT octahedral). Added terrain_heightmap.inc with TINYGLADE_TERRAIN_HEIGHTMAP_NO_GLOBAL for closure parity.",
+      "verification": "8 deferred bins compile; closure SET exact for solid."
+    },
+    "shaders/deferred/light_sun_sky_prelude.inc.hlsl": {
+      "label": "O (include edge)",
+      "decision": "candidate B include-umbrella shape (frame_constants/halfres/fullscreen_triangle_vert).",
+      "verification": "8 deferred bins compile."
+    }
+  },
+  "rt_hlsl_reconciliation": {
+    "outcome": "inc/rt.hlsl already implemented the hybrid morton decode (compact-index node entry, 2-child x 4-byte-slot corner decode, extent asfloat(byte<<23), ray-slot XOR (7-sign)*0x01010101) from the water-ice merge. Reconciled to the gi-deferred fuller decode by ADDING the per-lane uint2[4] local stack spilling to groupshared rt_lds_stack[256] at lane+(sp-4)*64 (confirmed by the _gi_trace_gi_candidates bin decompile, offsets ~15002-17700) and hoisting the octant byte out of the traversal loop. trace_software_bvh signature now takes `uint lane` + `inout uint2 stack[4]`; the spill is guarded by TINYGLADE_RT_LDS_STACK_SPILL (consumers declare rt_lds_stack before the include).",
+    "review_claims_not_applied": [
+      "StructuredBuffer<PackedBlBvhNode>/<PackedTriangle>: the trace bin decompiles to ByteAddressBuffer.Load<uint4>/<float> and both candidates hard-gate PASS with ByteAddressBuffer — kept ByteAddressBuffer.",
+      "3 nested box levels: the bin uses FOUR byte positions (0/8/16/24) per child for both children (data[1].z/.w) — the existing 2-child x 4-slot decode is correct and kept."
+    ],
+    "consumer_verification": {
+      "gi_trace": "bindings/entries/LocalSize/caps PASS (histogram residual only)",
+      "water_deferred_rt": "bindings/entries/LocalSize PASS; capabilities differ only by StorageImageWriteWithoutFormat (documented dxc-version residual); histogram near-converged (OpLabel 218 vs 206)"
+    }
+  },
+  "inc_fixes": {
+    "inc/lighting_indirect.hlsl": {
+      "applied": "removed the spurious `#include \"lanterns.hlsl\"` edge — evidence: gi trace/update closures embed lighting_indirect.hlsl WITHOUT lanterns.hlsl; deferred closures get lanterns from deferred/light_sun_sky.inc.hlsl directly.",
+      "verified": "gi trace/update + deferred rasters recompile (hard gate PASS)."
+    },
+    "inc/terrain_heightmap.inc.hlsl": {
+      "applied": "no change needed — the TINYGLADE_TERRAIN_HEIGHTMAP_NO_GLOBAL guard already exists (water-ice merge). gi update (no terrain binding) defines the guard; trace (binds t14) samples textures directly with the guard set.",
+      "verified": "gi update/trace compile (hard gate PASS)."
+    },
+    "inc/blue_noise.hlsl": {
+      "applied": "no change needed — fixed register(t14) already removed (final-post fix #17). Consumers bind per-register. eval redeclares at t14 and uses the texture-parameter 3-arg helper (the concurrent water-ice merge changed the signature).",
+      "verified": "gi eval compile (hard gate PASS)."
+    },
+    "inc/color_library.hlsl": {
+      "applied": "placeholder register(b14) left as-is (documented convention: consumers guard-skip the inc and redeclare flat at their per-pass binding — trace b18, deferred b23).",
+      "verified": "gi trace + deferred rasters compile."
+    }
+  },
+  "verification_summary": "18 checks / 22 modules: hard-gate PASS 22, hard-gate FAIL 0, compile FAIL 0. See verify.json for per-module detail.",
+  "residual_classes": [
+    "trace: screen-space march + material-eval simplification (large opcode-histogram gap; review-documented, A accepted as winner).",
+    "deferred b903: RDI temporal-reservoir loops unreconstructed (large Phi/Label gap; review-documented 'expect histogram to stay far').",
+    "deferred f0ad: trivial-PS class (moderate histogram gap, identical to B's original 559/426; documented non-failure).",
+    "OpSource closure within 1-5 of target on every module (matches review parity); OpSourceContinued multi-line source-text residual.",
+    "path-form OpString residual: `inc/material/eval/../../material_eval.inc.hlsl` (INC-C pre-existing include path, affects OpString content only).",
+    "StorageImageWriteWithoutFormat capability on water deferred_rt (dxc-version residual, documented).",
+    "grid.inc clamp-bound residual (30/15/30 vs 31/15/31): flagged for follow-up, not a hard-gate issue."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/leaf_particles.cs.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_leaf_particles.cs.hlsl_cs_main_0.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmp9WZx8n -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpAgDLQJ -Qembed_debug",
+      "dxc_returncode": 5,
+      "dxc_stderr": "reconstruction/shader-source/shaders/leaf_particles.cs.hlsl:170:91: error: vector swizzle 'yz' is out of bounds\n                float2 move = mul(rot, float2(v.x, leaf_octave_scales[i] * 0.012f * v.y)).yz;\n                                                                                          ^",
+      "verdict": "FAIL_DXC"
+    }
+  ],
+  "summary": {
+    "checked": 1,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 1
+  }
+}

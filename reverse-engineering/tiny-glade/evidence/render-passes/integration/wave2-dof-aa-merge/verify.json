@@ -1,0 +1,381 @@
+{
+  "integration": "wave2-dof-aa-merge",
+  "date": "2026-10-13",
+  "method": "recompile_check.py against the 26 in-scope ground-truth .bin (oracle read-only). Hard gate = bindings/entries/LocalSize/caps (reviewer gate); opcode histogram reported as residual class.",
+  "oracle": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "v1.10.2605.37 (/opt/homebrew/bin/dxc)",
+  "module_count": 26,
+  "hard_gate_counts": {
+    "HARD_FAIL": 4,
+    "HARD_PASS_OPCODE_RESIDUAL": 22
+  },
+  "documented_non_failures": [
+    "analyze +ComputeDerivativeGroupQuadsKHR (QuadRead, dxc 1.10)",
+    "tgsr_blur_lum -StorageImageWriteWithoutFormat",
+    "tgsr b303/f7ef 8x4 LocalSize compile-time variant",
+    "72a2 noise scheme unimplemented (fullres/halfres/lod0/lod1 72a2 bins)",
+    "OpSource/OpString/OpLine temp-path drift",
+    "ring-table packed-unpack OpLoad residual (B +45) on gather family"
+  ],
+  "modules": [
+    {
+      "bin": "_dof_analyze.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/analyze.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_FAIL",
+      "residual_classes": [
+        "opcode_histogram",
+        "capabilities"
+      ]
+    },
+    {
+      "bin": "_dof_autofocus.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/autofocus.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_clear_halfres.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/clear_halfres.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres.cs.hlsl_cs_main_6f1dd5dd8a66e104.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres.cs.hlsl_cs_main_72a2a95d73e37edc.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres_all_lod0.cs.hlsl_cs_main_6f1dd5dd8a66e104.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres_all_lod0.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres_all_lod0.cs.hlsl_cs_main_72a2a95d73e37edc.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres_all_lod0.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres_all_lod1.cs.hlsl_cs_main_6f1dd5dd8a66e104.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres_all_lod1.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres_all_lod1.cs.hlsl_cs_main_72a2a95d73e37edc.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres_all_lod1.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fullres_upsample.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fullres_upsample.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_fused.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/fused.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_halfres.cs.hlsl_cs_halfres_6f1dd5dd8a66e104.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/halfres.cs.hlsl",
+      "entry": "cs_halfres",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_halfres.cs.hlsl_cs_halfres_72a2a95d73e37edc.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/halfres.cs.hlsl",
+      "entry": "cs_halfres",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_halfres.cs.hlsl_cs_halfres_all_6f1dd5dd8a66e104.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/halfres.cs.hlsl",
+      "entry": "cs_halfres_all",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_halfres.cs.hlsl_cs_halfres_all_72a2a95d73e37edc.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/halfres.cs.hlsl",
+      "entry": "cs_halfres_all",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_init_buffers.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/init_buffers.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_dof_prepare.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dof/prepare.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_fsr_copy_history.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/fsr_copy_history.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_fsr_init_reactive.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/fsr_init_reactive.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_taa.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/taa.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_tgsr.cs.hlsl_cs_main_3ee6a953408e4c4c.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_tgsr.cs.hlsl_cs_main_7a0af18450cdbcd1.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    },
+    {
+      "bin": "_tgsr.cs.hlsl_cs_main_b303f36f0dbdd5f6.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_FAIL",
+      "residual_classes": [
+        "opcode_histogram",
+        "local_size"
+      ]
+    },
+    {
+      "bin": "_tgsr.cs.hlsl_cs_main_f7efabb81dfe256b.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_FAIL",
+      "residual_classes": [
+        "opcode_histogram",
+        "local_size"
+      ]
+    },
+    {
+      "bin": "_tgsr_blur_lum.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr_blur_lum.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_FAIL",
+      "residual_classes": [
+        "opcode_histogram",
+        "capabilities"
+      ]
+    },
+    {
+      "bin": "_tgsr_reproject.cs.hlsl_cs_main_0.bin",
+      "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/tgsr_reproject.cs.hlsl",
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "structural_verdict": "FAIL",
+      "hard_gate": "HARD_PASS_OPCODE_RESIDUAL",
+      "residual_classes": [
+        "opcode_histogram",
+        "opcode_histogram"
+      ]
+    }
+  ],
+  "summary": {
+    "date": "2026-10-13",
+    "verdict_applied": {
+      "A": [
+        "dof/analyze",
+        "dof/autofocus",
+        "dof/fused",
+        "dof/prepare",
+        "dof/fullres_all_lod1",
+        "taa",
+        "tgsr",
+        "tgsr_reproject",
+        "tgsr_common.inc (empty)",
+        "tgsr_blur_lum (tie)",
+        "dof/clear_halfres (tie)",
+        "dof/tiles.inc (tie)"
+      ],
+      "B": [
+        "fsr_copy_history",
+        "fsr_init_reactive (tie)",
+        "dof/multires.inc",
+        "dof/upsample_halfres.inc",
+        "dof/init_buffers (tie)",
+        "dof/fullres_upsample (tie)"
+      ],
+      "MERGE (B base + A overlay)": [
+        "dof/halfres (A half4 format)",
+        "dof/fullres (A half4 + A DECREASING near-branch ramp smoothstep(11,8)/abs>=11)",
+        "dof/fullres_all_lod0 (A half4 format)"
+      ]
+    },
+    "near_branch_ramp": "PER-PASS: halfres INCREASING smoothstep(8,11)/abs<8; fullres DECREASING smoothstep(11,8)/abs>=11; fused/lod0/lod1 NO guard. A correct in all four; B wrong in fullres+fused. Enforced in the merge.",
+    "inc_fixes_applied": [
+      "coc.hlsl remove ring_samples[16]+gaussian_weights[16] (consumers keep dof_ring_samples)",
+      "coc.hlsl DofFocusReadback member focus_lock_request -> lock_reponse (bin OpMemberName typo; autofocus writes readback.lock_reponse = focus_lock_request)",
+      "prepare coc_out_tex RWTexture2D<half> (R16f) + tile_output_tex RWTexture2D<half2> (Rg16f)",
+      "curve.hlsl FrexpStructType: no change; taa/tgsr hard-gate with curve.hlsl included"
+    ],
+    "inc_fixes_reverted": [],
+    "hard_gate_counts": {
+      "HARD_FAIL": 4,
+      "HARD_PASS_OPCODE_RESIDUAL": 22
+    },
+    "hard_gate_verdict": "22/26 HARD PASS (opcode-histogram residual only); 4/26 documented non-failures (analyze +QuadRead cap, tgsr_blur_lum -StorageImageWriteWithoutFormat, tgsr 8x4 LocalSize). No FAIL_DXC.",
+    "other_family_safety": "coc.hlsl consumers (painterly/vermeer/snow_particles/water_plane/waterfall/firefly_glow) still compile; opcode-histogram residual only, no structural regression."
+  }
+}
