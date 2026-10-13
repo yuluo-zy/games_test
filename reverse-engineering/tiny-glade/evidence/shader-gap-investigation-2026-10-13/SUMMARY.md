@@ -11,7 +11,7 @@
 
 ## 仍需恢复
 
-1. [7 个 typed schema 残差](build-entry/final-schema-residuals.json)：final_post 深度变体缺原资源／uniform；gothic_window_bricks、solid_albedo_map_emissive、wall_brick_lod0 各两个变体有活跃 vertex 输入差异。不得删除活跃输入或注入原 metadata 冒充相等。
+1. [7 个 typed schema 残差](build-entry/final-schema-residuals.json)：final_post 深度变体缺原资源／uniform；gothic_window_bricks、solid_albedo_map_emissive、wall_brick_lod0 各两个变体仅 vertex 输入名称不同，location/type 相同。不得删除活跃输入或注入原 metadata 冒充相等。
 2. [编译器 capability 残差](compute/capability-residual-review.md)：13 个新增 Int64 来自 batch_lift.py 主动生成 u64 RawBufferLoad 地址；原 29 处为 uint2 → physical pointer Bitcast。作者公开 RawBufferLoad2 补丁适合原类型形状，但原 DXC 版本／fork commit 未确认，尚未构建和验收此 fork。另有图像格式／精度和 quad 声明差异。
 3. 217/404 源依赖集合与原包不同，187 相同；反射一致不代表 include 组织、预处理文本或着色算法一致。完整公共接口仍有 325 阶段差异。
 4. 原离线 asset 构建 CLI、provider/cache/temp 命名与清理策略、完整宏状态及原资产状态机仍未知。runtime PDB 和原发行 manifest 不含该离线工具源码／日志。整帧仍后置。
@@ -21,3 +21,8 @@
 沿用 [上一轮来源核验](../shader-build-2026-10-13/provenance/PROVENANCE.md)：shader-prepper 为作者公开库（原 0.3.0-pre.3 直接复用），SpirQ 为作者公开 fork（原锁 4f22e6f）；DXC 基于 Microsoft 开源编译器且作者公开部分补丁。游戏本地 shader-compiler／pipeline／variants、asset-pipe 的完整公开上游尚未确认。候选 kajiya／rendertoy 全文和 PDB checksum 不匹配只能排除具体完整文本同一，不能证明全部独立开发或没有借用片段。
 
 输入及交付哈希见 final-inputs.json；native key 复验见 final-native-check.json，独立审查见 build-entry/validation.json 与 interfaces 最终审查记录。历史证据保留原状态。
+
+
+## 缺口进一步分析
+
+见 [7 个反射差异与 132 个零 key 配置分析](GAP_ANALYSIS.md)：六个包仅 VS 名称不同；final_post 深度原本已有无输出的残留计算，lifting 与新 DXC 优化共同改变资源反射，需核真实 consumer，不能误判为完整颜色后处理丢失。132 资产覆盖126source，空 artifact defines 实编译均通过且 typed schema／LocalSize全等，但原 tuple 仍需原侧构造与追加路径证明。本次为只读分析，没有关闭缺口或更新原语义完成度。
