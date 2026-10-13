@@ -29,10 +29,10 @@ Texture2D<float4> branch_e : register(t17, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 start_pos : TEXCOORD1;
-    float2 Vertex_UV : TEXCOORD2;
-    int branch_idx : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 start_pos: start_pos;
+    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(3)]] int branch_idx: branch_idx;
 };
 
 struct VsOut
@@ -95,14 +95,14 @@ float4 ps_main(VsOut vin) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    column_major float4x4 _Globals_model_to_world : packoffset(c0);
-    float _Globals_anim_t : packoffset(c4);
-    float _Globals_fade_out : packoffset(c4.y);
-    uint2 _Globals_branch_t_dims : packoffset(c4.z);
-    uint2 _Globals_branch_y_dims : packoffset(c5);
-    uint2 _Globals_branch_g_dims : packoffset(c5.z);
-    uint2 _Globals_branch_e_dims : packoffset(c6);
-    uint2 _Globals_framebuffer_dims : packoffset(c6.z);
+    column_major float4x4 model_to_world : packoffset(c0);
+    float anim_t : packoffset(c4);
+    float fade_out : packoffset(c4.y);
+    uint2 branch_t_dims : packoffset(c4.z);
+    uint2 branch_y_dims : packoffset(c5);
+    uint2 branch_g_dims : packoffset(c5.z);
+    uint2 branch_e_dims : packoffset(c6);
+    uint2 framebuffer_dims : packoffset(c6.z);
 };
 
 
@@ -116,10 +116,10 @@ static int out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_start_pos : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
-    [[vk::location(3)]] int in_var_branch_idx : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_start_pos: start_pos;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(3)]] int in_var_branch_idx: branch_idx;
 };
 
 struct SPIRV_Cross_Output
@@ -177,7 +177,7 @@ void vert_main()
         _91 = _89;
         _92 = _90;
     }
-    float _99 = clamp(1.0f - ((_Globals_anim_t * 1.2200000286102294921875f) - _92), 0.0f, 1.0f);
+    float _99 = clamp(1.0f - ((anim_t * 1.2200000286102294921875f) - _92), 0.0f, 1.0f);
     float _106 = 1.0f - (((_99 * _99) * _99) - (_99 * sin(_99 * 3.1400001049041748046875f)));
     float3 _108 = lerp(0.0f.xxx, in_var_Vertex_Position - in_var_start_pos, _106.xxx);
     float _110 = lerp(_91, 0.0f, _106);
@@ -186,7 +186,7 @@ void vert_main()
     float2 _117 = mul(float2x2(float2(_112, _111), float2(-_111, _112)), _108.xy);
     float3 _119 = float3(_117.x, _117.y, _108.z) + in_var_start_pos;
     float2 _120 = _119.xy;
-    _120.x = _119.x * (float(_Globals_framebuffer_dims.y) / float(_Globals_framebuffer_dims.x));
+    _120.x = _119.x * (float(framebuffer_dims.y) / float(framebuffer_dims.x));
     gl_Position = float4(_120 * 0.449999988079071044921875f, 1.0f, 1.0f);
     out_var_C0 = in_var_Vertex_UV;
     out_var_C1 = in_var_branch_idx;
@@ -216,14 +216,14 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    column_major float4x4 _Globals_model_to_world : packoffset(c0);
-    float _Globals_anim_t : packoffset(c4);
-    float _Globals_fade_out : packoffset(c4.y);
-    uint2 _Globals_branch_t_dims : packoffset(c4.z);
-    uint2 _Globals_branch_y_dims : packoffset(c5);
-    uint2 _Globals_branch_g_dims : packoffset(c5.z);
-    uint2 _Globals_branch_e_dims : packoffset(c6);
-    uint2 _Globals_framebuffer_dims : packoffset(c6.z);
+    column_major float4x4 model_to_world : packoffset(c0);
+    float anim_t : packoffset(c4);
+    float fade_out : packoffset(c4.y);
+    uint2 branch_t_dims : packoffset(c4.z);
+    uint2 branch_y_dims : packoffset(c5);
+    uint2 branch_g_dims : packoffset(c5.z);
+    uint2 branch_e_dims : packoffset(c6);
+    uint2 framebuffer_dims : packoffset(c6.z);
 };
 
 
@@ -237,10 +237,10 @@ static int out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_start_pos : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
-    [[vk::location(3)]] int in_var_branch_idx : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_start_pos: start_pos;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(3)]] int in_var_branch_idx: branch_idx;
 };
 
 struct SPIRV_Cross_Output
@@ -298,7 +298,7 @@ void vert_main()
         _91 = _89;
         _92 = _90;
     }
-    float _99 = clamp(1.0f - ((_Globals_anim_t * 1.2200000286102294921875f) - _92), 0.0f, 1.0f);
+    float _99 = clamp(1.0f - ((anim_t * 1.2200000286102294921875f) - _92), 0.0f, 1.0f);
     float _106 = 1.0f - (((_99 * _99) * _99) - (_99 * sin(_99 * 3.1400001049041748046875f)));
     float3 _108 = lerp(0.0f.xxx, in_var_Vertex_Position - in_var_start_pos, _106.xxx);
     float _110 = lerp(_91, 0.0f, _106);
@@ -307,7 +307,7 @@ void vert_main()
     float2 _117 = mul(float2x2(float2(_112, _111), float2(-_111, _112)), _108.xy);
     float3 _119 = float3(_117.x, _117.y, _108.z) + in_var_start_pos;
     float2 _120 = _119.xy;
-    _120.x = _119.x * (float(_Globals_framebuffer_dims.y) / float(_Globals_framebuffer_dims.x));
+    _120.x = _119.x * (float(framebuffer_dims.y) / float(framebuffer_dims.x));
     gl_Position = float4(_120 * 0.449999988079071044921875f, 1.0f, 1.0f);
     out_var_C0 = in_var_Vertex_UV;
     out_var_C1 = in_var_branch_idx;

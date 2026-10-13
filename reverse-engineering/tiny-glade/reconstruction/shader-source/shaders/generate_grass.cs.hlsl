@@ -558,20 +558,20 @@ cbuffer frame_constants : register(b0, space1)
 RWByteAddressBuffer __alias_draw_commands : register(u14, space0);
 cbuffer $Globals : register(b15, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_bg_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_path_mask_dims : packoffset(c2);
-    uint2 _Globals_grass_object_push_dims : packoffset(c2.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c3);
-    uint2 _Globals_water_mask_dims : packoffset(c3.z);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c4);
-    uint2 _Globals_buildings_mask_dims : packoffset(c4.z);
-    uint2 _Globals_garden_mask_dims : packoffset(c5);
-    uint _Globals_lod1_commands_offset : packoffset(c5.z);
-    uint _Globals_grass_buffer_size : packoffset(c5.w);
-    int _Globals_brush_index : packoffset(c6);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 bg_terrain_heightmap_dims : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 path_mask_dims : packoffset(c2);
+    uint2 grass_object_push_dims : packoffset(c2.z);
+    uint2 rocky_terrain_dims : packoffset(c3);
+    uint2 water_mask_dims : packoffset(c3.z);
+    uint2 foliage_exclusion_mask_dims : packoffset(c4);
+    uint2 buildings_mask_dims : packoffset(c4.z);
+    uint2 garden_mask_dims : packoffset(c5);
+    uint lod1_commands_offset : packoffset(c5.z);
+    uint grass_buffer_size : packoffset(c5.w);
+    int brush_index : packoffset(c6);
 };
 
 ByteAddressBuffer tile_buffer : register(t26, space0);
@@ -1283,7 +1283,7 @@ void comp_main()
         if (0u == uint(floor(_1399)))
         {
             uint _1417;
-            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1417);
+            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1417);
             uint _1419;
             __alias_atomics.InterlockedAdd(0, 1u, _1419);
             _1420 = _1419;
@@ -1291,7 +1291,7 @@ void comp_main()
         else
         {
             uint _1409;
-            __alias_lod1_commands.InterlockedAdd(_Globals_lod1_commands_offset * 16 + 0, 3u, _1409);
+            __alias_lod1_commands.InterlockedAdd(lod1_commands_offset * 16 + 0, 3u, _1409);
             uint _1411;
             __alias_atomics.InterlockedAdd(4, 4294967295u, _1411);
             _1420 = _1411 - 1u;

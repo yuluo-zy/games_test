@@ -76,7 +76,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -89,7 +89,7 @@ static float3 out_var_C0;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -115,7 +115,7 @@ void vert_main()
     }
     float4 _108 = float4(in_var_Vertex_Position, 1.0f);
     float3 _109 = mul(transpose(float4x3(float3(_70.data[0], _70.data[1], _70.data[2]), float3(_70.data[3], _70.data[4], _70.data[5]), float3(_70.data[6], _70.data[7], _70.data[8]), float3(_70.data[9], _70.data[10], _70.data[11]))), _108);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_109, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_109, 1.0f));
     out_var_C0 = _109 - mul(transpose(float4x3(float3(_85.data[0], _85.data[1], _85.data[2]), float3(_85.data[3], _85.data[4], _85.data[5]), float3(_85.data[6], _85.data[7], _85.data[8]), float3(_85.data[9], _85.data[10], _85.data[11]))), _108);
 }
 
@@ -237,7 +237,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -250,7 +250,7 @@ static float3 out_var_C0;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -276,7 +276,7 @@ void vert_main()
     }
     float4 _108 = float4(in_var_Vertex_Position, 1.0f);
     float3 _109 = mul(transpose(float4x3(float3(_70.data[0], _70.data[1], _70.data[2]), float3(_70.data[3], _70.data[4], _70.data[5]), float3(_70.data[6], _70.data[7], _70.data[8]), float3(_70.data[9], _70.data[10], _70.data[11]))), _108);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_109, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_109, 1.0f));
     out_var_C0 = _109 - mul(transpose(float4x3(float3(_85.data[0], _85.data[1], _85.data[2]), float3(_85.data[3], _85.data[4], _85.data[5]), float3(_85.data[6], _85.data[7], _85.data[8]), float3(_85.data[9], _85.data[10], _85.data[11]))), _108);
 }
 

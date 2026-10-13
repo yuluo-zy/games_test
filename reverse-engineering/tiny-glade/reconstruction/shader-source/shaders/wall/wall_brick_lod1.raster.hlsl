@@ -79,12 +79,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 ByteAddressBuffer wall_color_ids : register(t14, space0);
@@ -129,7 +129,7 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    uint _204 = ((1u + (2u * uint(_Globals_highlight_mode != 0u))) * 2097152u) + uint(gl_InstanceIndex);
+    uint _204 = ((1u + (2u * uint(highlight_mode != 0u))) * 2097152u) + uint(gl_InstanceIndex);
     float _210[12];
     [unroll]
     for (int _5ident = 0; _5ident < 12; _5ident++)
@@ -312,7 +312,7 @@ void vert_main()
     _789[2].w = _783.z;
     uint3 _795 = uint3((uint(gl_VertexIndex) & 4u) >> 2u, (uint(gl_VertexIndex) & 2u) >> 1u, uint(gl_VertexIndex) & 1u);
     float3 _796 = mul(_789, float4(0.0f, 0.0f, 0.0f, 1.0f));
-    float4 _801 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _801 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _814 = mul((_801.xyz / _801.w.xxx) - _796, float3x3(_785[0].xyz, _787[1].xyz, _789[2].xyz));
     bool3 _815 = bool3(_814.x > 0.0f.xxx.x, _814.y > 0.0f.xxx.y, _814.z > 0.0f.xxx.z);
     uint3 _816 = uint3(1u, 1u, 1u) - _795;
@@ -458,7 +458,7 @@ void vert_main()
     {
         _1055 = _1030;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _881);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _881);
     out_var_C0 = _896;
     out_var_C1 = 0.0f.xxx;
     out_var_C2 = _881.xyz;
@@ -576,12 +576,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 ByteAddressBuffer instanced_wall_data : register(t19, space0);
@@ -717,7 +717,7 @@ void frag_main()
     float3 _350 = cross(_345, _346);
     float3 _353 = (1.0f / dot(_347, _350)).xxx;
     float3x3 _357 = float3x3(cross(_346, _347) * _353, cross(_347, _345) * _353, _350 * _353);
-    float4 _362 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _362 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _366 = _362.xyz / _362.w.xxx;
     float3 _371 = mul(_357, _366 - mul(_337, float4(0.0f, 0.0f, 0.0f, 1.0f)));
     float3 _372 = mul(_357, normalize(in_var_C2 - _366));
@@ -782,7 +782,7 @@ void frag_main()
             if (_427)
             {
                 float3 _479 = mul(_337, float4(_371 + (_372 * _431), 1.0f));
-                float4 _489 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_sample, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(_479, 1.0f)));
+                float4 _489 = mul(frame_constants_view_constants[current_view_index].view_to_sample, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(_479, 1.0f)));
                 float3 _493 = _489.xyz / _489.w.xxx;
                 float _494 = _493.z;
                 _497 = _479;
@@ -1107,14 +1107,14 @@ void frag_main()
     {
         bool _866;
         float3 _867;
-        if (_Globals_highlight_mode == 1u)
+        if (highlight_mode == 1u)
         {
             _866 = true;
             _867 = lerp(_848, float3(0.699999988079071044921875f, 0.2100000083446502685546875f, 0.0f), 0.5f.xxx);
         }
         else
         {
-            bool _859 = _Globals_highlight_mode == 2u;
+            bool _859 = highlight_mode == 2u;
             float3 _863;
             if (_859)
             {
@@ -1129,9 +1129,9 @@ void frag_main()
         }
         bool _886;
         float3 _887;
-        if (_Globals_highlight_bricks_to_delete == 1)
+        if (highlight_bricks_to_delete == 1)
         {
-            bool _880 = distance(_Globals_brush_position.xz, in_var_C12) < (1.88900005817413330078125f * _Globals_eraser_mult);
+            bool _880 = distance(brush_position.xz, in_var_C12) < (1.88900005817413330078125f * eraser_mult);
             float3 _884;
             if (_880)
             {
@@ -1307,12 +1307,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 ByteAddressBuffer instanced_wall_data : register(t19, space0);
@@ -1355,7 +1355,7 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    uint _188 = ((_Globals_current_view_index + 2u) * 2097152u) + uint(gl_InstanceIndex);
+    uint _188 = ((current_view_index + 2u) * 2097152u) + uint(gl_InstanceIndex);
     float _194[12];
     [unroll]
     for (int _5ident = 0; _5ident < 12; _5ident++)
@@ -1538,7 +1538,7 @@ void vert_main()
     _773[2].w = _767.z;
     uint3 _779 = uint3((uint(gl_VertexIndex) & 4u) >> 2u, (uint(gl_VertexIndex) & 2u) >> 1u, uint(gl_VertexIndex) & 1u);
     float3 _780 = mul(_773, float4(0.0f, 0.0f, 0.0f, 1.0f));
-    float4 _783 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _783 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _796 = mul((_783.xyz / _783.w.xxx) - _780, float3x3(_769[0].xyz, _771[1].xyz, _773[2].xyz));
     bool3 _797 = bool3(_796.x > 0.0f.xxx.x, _796.y > 0.0f.xxx.y, _796.z > 0.0f.xxx.z);
     uint3 _798 = uint3(1u, 1u, 1u) - _779;
@@ -1607,7 +1607,7 @@ void vert_main()
     {
         _925 = 0.0f.xx;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _864);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _864);
     out_var_C0 = instanced_wall_data.Load<uint>(instance_list.Load<uint>(_188 * 4 + 0) * 96 + 76) & 65535u;
     out_var_C1 = 0.0f.xxx;
     out_var_C2 = _864.xyz;

@@ -26,16 +26,16 @@
 #include "gi/gi_settings.inc.hlsl"
 #include "inc/sh.hlsl"
 
-float4x4 model_to_world;
 uint is_semitransparent;
 uint is_flat_lighting;
+float4x4 model_to_world;
 int bool_render_shadows;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
 };
 
 struct VsOut
@@ -179,11 +179,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_is_semitransparent : packoffset(c0.y);
-    uint _Globals_is_flat_lighting : packoffset(c0.z);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint is_semitransparent : packoffset(c0.y);
+    uint is_flat_lighting : packoffset(c0.z);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int bool_render_shadows : packoffset(c5);
 };
 
 
@@ -209,9 +209,9 @@ struct SPIRV_Cross_Output
 void frag_main()
 {
     bool _108;
-    if (_Globals_is_semitransparent != 0u)
+    if (is_semitransparent != 0u)
     {
-        _108 = _Globals_bool_render_shadows != 0;
+        _108 = bool_render_shadows != 0;
     }
     else
     {
@@ -227,7 +227,7 @@ void frag_main()
         }
     }
     float3 _123 = normalize(in_var_C1);
-    bool _126 = _Globals_is_flat_lighting != 0u;
+    bool _126 = is_flat_lighting != 0u;
     bool _135;
     if (frame_constants_glade_theme_id == 4u)
     {
@@ -330,11 +330,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_is_semitransparent : packoffset(c0.y);
-    uint _Globals_is_flat_lighting : packoffset(c0.z);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint is_semitransparent : packoffset(c0.y);
+    uint is_flat_lighting : packoffset(c0.z);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int bool_render_shadows : packoffset(c5);
 };
 
 
@@ -347,9 +347,9 @@ struct SPIRV_Cross_Input
 void frag_main()
 {
     bool _81;
-    if (_Globals_is_semitransparent != 0u)
+    if (is_semitransparent != 0u)
     {
-        _81 = _Globals_bool_render_shadows != 0;
+        _81 = bool_render_shadows != 0;
     }
     else
     {

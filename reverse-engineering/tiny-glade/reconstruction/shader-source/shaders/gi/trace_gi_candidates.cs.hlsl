@@ -80,27 +80,27 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c1.z);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2);
-    uint _Globals_rt_bvh_node_count : packoffset(c2.z);
-    uint _Globals_rt_triangle_count : packoffset(c2.w);
-    uint _Globals_history_valid : packoffset(c3);
-    uint2 _Globals_depth_tex_dims : packoffset(c3.y);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c4);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c4.z);
-    uint2 _Globals_ssgi_tex_dims : packoffset(c5);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c5.z);
-    uint2 _Globals_half_view_normal_tex_dims : packoffset(c6);
-    uint2 _Globals_output_tex_dims : packoffset(c6.z);
-    uint2 _Globals_sh_output_tex_dims : packoffset(c7);
-    uint2 _Globals_restir_radiance_tex_dims : packoffset(c7.z);
-    uint2 _Globals_restir_ray_dir_tex_dims : packoffset(c8);
-    uint2 _Globals_restir_reservoir_tex_dims : packoffset(c8.z);
-    uint2 _Globals_candidate_radiance_tex_dims : packoffset(c9);
-    uint2 _Globals_candidate_hit_tex_dims : packoffset(c9.z);
+    uint2 terrain_heightmap_dims : packoffset(c0);
+    uint2 visual_terrain_heightmap_dims : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 terrain_lighting_texture_dims : packoffset(c1.z);
+    uint2 brdf_fg_lut_dims : packoffset(c2);
+    uint rt_bvh_node_count : packoffset(c2.z);
+    uint rt_triangle_count : packoffset(c2.w);
+    uint history_valid : packoffset(c3);
+    uint2 depth_tex_dims : packoffset(c3.y);
+    uint2 taa_history_tex_dims : packoffset(c4);
+    uint2 reprojection_tex_dims : packoffset(c4.z);
+    uint2 ssgi_tex_dims : packoffset(c5);
+    uint2 half_depth_tex_dims : packoffset(c5.z);
+    uint2 half_view_normal_tex_dims : packoffset(c6);
+    uint2 output_tex_dims : packoffset(c6.z);
+    uint2 sh_output_tex_dims : packoffset(c7);
+    uint2 restir_radiance_tex_dims : packoffset(c7.z);
+    uint2 restir_ray_dir_tex_dims : packoffset(c8);
+    uint2 restir_reservoir_tex_dims : packoffset(c8.z);
+    uint2 candidate_radiance_tex_dims : packoffset(c9);
+    uint2 candidate_hit_tex_dims : packoffset(c9.z);
 };
 
 cbuffer color_library : register(b18, space0)
@@ -195,7 +195,7 @@ void comp_main()
         float4 _376 = half_depth_tex.Load(int3(_374, 0u));
         float _377 = _376.x;
         int2 _378 = int2(_374);
-        float2 _381 = float2(_Globals_half_depth_tex_dims);
+        float2 _381 = float2(half_depth_tex_dims);
         float4 _393 = float4((((float2(_378) + 0.5f.xx) / _381) - 0.5f.xx) * float2(2.0f, -2.0f), _377, 1.0f);
         float4 _395 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, _393));
         if (((-1.0f) / (_377 * (-frame_constants_view_constants[0u].clip_to_view[3].z))) > 2000.0f)
@@ -875,7 +875,7 @@ void comp_main()
             float4 _1169 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(lerp(_1161, _1157, _1160.xxx), 1.0f)));
             float _1175 = length((_1169.xyz / _1169.w.xxx) - _558);
             bool _1185;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _1185 = !(0u == frame_constants_frame_index);
             }

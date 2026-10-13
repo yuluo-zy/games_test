@@ -84,7 +84,7 @@ Texture2D<float4> stone_floor_roughness_3 : register(t48);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
     uint instance_id : SV_InstanceID;
 };
 
@@ -319,34 +319,34 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c0.y);
-    uint _Globals_highlighted_wall_id : packoffset(c0.w);
-    uint _Globals_highlight_mode : packoffset(c1);
-    uint2 _Globals_wooden_floor_normal_dims : packoffset(c1.y);
-    uint2 _Globals_wooden_floor_height_dims : packoffset(c2);
-    uint2 _Globals_wooden_floor_seed_dims : packoffset(c2.z);
-    uint2 _Globals_wooden_floor_roughness_dims : packoffset(c3);
-    uint2 _Globals_wooden_floor_normal_2_dims : packoffset(c3.z);
-    uint2 _Globals_wooden_floor_height_2_dims : packoffset(c4);
-    uint2 _Globals_wooden_floor_seed_2_dims : packoffset(c4.z);
-    uint2 _Globals_wooden_floor_roughness_2_dims : packoffset(c5);
-    uint2 _Globals_wooden_floor_normal_3_dims : packoffset(c5.z);
-    uint2 _Globals_wooden_floor_height_3_dims : packoffset(c6);
-    uint2 _Globals_wooden_floor_seed_3_dims : packoffset(c6.z);
-    uint2 _Globals_wooden_floor_roughness_3_dims : packoffset(c7);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13);
+    uint current_view_index : packoffset(c0);
+    uint2 dirthpath_heightmap_dims : packoffset(c0.y);
+    uint highlighted_wall_id : packoffset(c0.w);
+    uint highlight_mode : packoffset(c1);
+    uint2 wooden_floor_normal_dims : packoffset(c1.y);
+    uint2 wooden_floor_height_dims : packoffset(c2);
+    uint2 wooden_floor_seed_dims : packoffset(c2.z);
+    uint2 wooden_floor_roughness_dims : packoffset(c3);
+    uint2 wooden_floor_normal_2_dims : packoffset(c3.z);
+    uint2 wooden_floor_height_2_dims : packoffset(c4);
+    uint2 wooden_floor_seed_2_dims : packoffset(c4.z);
+    uint2 wooden_floor_roughness_2_dims : packoffset(c5);
+    uint2 wooden_floor_normal_3_dims : packoffset(c5.z);
+    uint2 wooden_floor_height_3_dims : packoffset(c6);
+    uint2 wooden_floor_seed_3_dims : packoffset(c6.z);
+    uint2 wooden_floor_roughness_3_dims : packoffset(c7);
+    uint2 stone_floor_normal_dims : packoffset(c7.z);
+    uint2 stone_floor_seed_dims : packoffset(c8);
+    uint2 stone_floor_height_dims : packoffset(c8.z);
+    uint2 stone_floor_roughness_dims : packoffset(c9);
+    uint2 stone_floor_seed_2_dims : packoffset(c9.z);
+    uint2 stone_floor_normal_2_dims : packoffset(c10);
+    uint2 stone_floor_height_2_dims : packoffset(c10.z);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11);
+    uint2 stone_floor_seed_3_dims : packoffset(c11.z);
+    uint2 stone_floor_normal_3_dims : packoffset(c12);
+    uint2 stone_floor_height_3_dims : packoffset(c12.z);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -367,7 +367,7 @@ static float3x3 out_var_C9;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -389,7 +389,7 @@ void vert_main()
 {
     float3 _141 = float3(nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16), 0.0f).xzy;
     float3 _143 = float3(-nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16).y, 0.0f, nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16).x);
-    float4 _148 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _148 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     bool _157 = (nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 44) != 0u) ? true : ((nani_instance_data.Load<float3>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 0) - (_148.xyz / _148.w.xxx)).y > 0.0f);
     float3 _161;
     if (_157)
@@ -407,7 +407,7 @@ void vert_main()
     float _176 = 0.001953125f * (floor(_168.y * 512.0f) + frac(float(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 12)) * 1.61803400516510009765625f));
     float3 _177 = _168;
     _177.y = _176;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_168.x, _176, _168.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_168.x, _176, _168.z, 1.0f));
     out_var_C1 = _163;
     out_var_C2 = _177;
     out_var_C3 = _165;
@@ -528,34 +528,34 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c0.y);
-    uint _Globals_highlighted_wall_id : packoffset(c0.w);
-    uint _Globals_highlight_mode : packoffset(c1);
-    uint2 _Globals_wooden_floor_normal_dims : packoffset(c1.y);
-    uint2 _Globals_wooden_floor_height_dims : packoffset(c2);
-    uint2 _Globals_wooden_floor_seed_dims : packoffset(c2.z);
-    uint2 _Globals_wooden_floor_roughness_dims : packoffset(c3);
-    uint2 _Globals_wooden_floor_normal_2_dims : packoffset(c3.z);
-    uint2 _Globals_wooden_floor_height_2_dims : packoffset(c4);
-    uint2 _Globals_wooden_floor_seed_2_dims : packoffset(c4.z);
-    uint2 _Globals_wooden_floor_roughness_2_dims : packoffset(c5);
-    uint2 _Globals_wooden_floor_normal_3_dims : packoffset(c5.z);
-    uint2 _Globals_wooden_floor_height_3_dims : packoffset(c6);
-    uint2 _Globals_wooden_floor_seed_3_dims : packoffset(c6.z);
-    uint2 _Globals_wooden_floor_roughness_3_dims : packoffset(c7);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13);
+    uint current_view_index : packoffset(c0);
+    uint2 dirthpath_heightmap_dims : packoffset(c0.y);
+    uint highlighted_wall_id : packoffset(c0.w);
+    uint highlight_mode : packoffset(c1);
+    uint2 wooden_floor_normal_dims : packoffset(c1.y);
+    uint2 wooden_floor_height_dims : packoffset(c2);
+    uint2 wooden_floor_seed_dims : packoffset(c2.z);
+    uint2 wooden_floor_roughness_dims : packoffset(c3);
+    uint2 wooden_floor_normal_2_dims : packoffset(c3.z);
+    uint2 wooden_floor_height_2_dims : packoffset(c4);
+    uint2 wooden_floor_seed_2_dims : packoffset(c4.z);
+    uint2 wooden_floor_roughness_2_dims : packoffset(c5);
+    uint2 wooden_floor_normal_3_dims : packoffset(c5.z);
+    uint2 wooden_floor_height_3_dims : packoffset(c6);
+    uint2 wooden_floor_seed_3_dims : packoffset(c6.z);
+    uint2 wooden_floor_roughness_3_dims : packoffset(c7);
+    uint2 stone_floor_normal_dims : packoffset(c7.z);
+    uint2 stone_floor_seed_dims : packoffset(c8);
+    uint2 stone_floor_height_dims : packoffset(c8.z);
+    uint2 stone_floor_roughness_dims : packoffset(c9);
+    uint2 stone_floor_seed_2_dims : packoffset(c9.z);
+    uint2 stone_floor_normal_2_dims : packoffset(c10);
+    uint2 stone_floor_height_2_dims : packoffset(c10.z);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11);
+    uint2 stone_floor_seed_3_dims : packoffset(c11.z);
+    uint2 stone_floor_normal_3_dims : packoffset(c12);
+    uint2 stone_floor_height_3_dims : packoffset(c12.z);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13);
 };
 
 ByteAddressBuffer nani_instance_data : register(t16, space0);
@@ -624,18 +624,18 @@ struct SPIRV_Cross_Output
 void frag_main()
 {
     bool _266;
-    if (1u == _Globals_highlight_mode)
+    if (1u == highlight_mode)
     {
-        _266 = nani_instance_data.Load<uint>(in_var_C4 * 64 + 12) == _Globals_highlighted_wall_id;
+        _266 = nani_instance_data.Load<uint>(in_var_C4 * 64 + 12) == highlighted_wall_id;
     }
     else
     {
         _266 = false;
     }
     bool _273;
-    if (2u == _Globals_highlight_mode)
+    if (2u == highlight_mode)
     {
-        _273 = nani_instance_data.Load<uint>(in_var_C4 * 64 + 12) == _Globals_highlighted_wall_id;
+        _273 = nani_instance_data.Load<uint>(in_var_C4 * 64 + 12) == highlighted_wall_id;
     }
     else
     {
@@ -790,7 +790,7 @@ void frag_main()
             float _2402 = _2395.x;
             float _2405 = 1.0f / ((_2398 * _2399) - (_2401 * _2402));
             float3x3 _2415 = transpose(float3x3(((_2396 * _2398) + (_2397 * _2402)) * _2405, ((_2396 * _2401) + (_2397 * _2399)) * _2405, in_var_C1));
-            float4 _2420 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+            float4 _2420 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
             float3 _2426 = mul(_2415, float3(1.0f, 0.0f, 0.0f));
             float3 _2427 = mul(_2415, float3(0.0f, 1.0f, 0.0f));
             float3 _2428 = mul(_2415, float3(0.0f, 0.0f, 1.0f));
@@ -908,7 +908,7 @@ void frag_main()
             } while(false);
             float3 _2559 = _2449 * _2558;
             float2 _2561 = _1526 + _2559.xy;
-            float4 _2573 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_2415, _2559), 1.0f)));
+            float4 _2573 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_2415, _2559), 1.0f)));
             float3 _2582 = (stone_floor_normal.SampleLevel(sampler_llr, _2561, _2389).xyz * 2.0f) - 1.0f.xxx;
             _2582.z = _2582.z * 0.13333332538604736328125f;
             float4 _2590 = stone_floor_seed.SampleBias(sampler_llr, _2561, frame_constants_global_mip_bias);
@@ -1084,7 +1084,7 @@ void frag_main()
                 float _1985 = _1978.x;
                 float _1988 = 1.0f / ((_1981 * _1982) - (_1984 * _1985));
                 float3x3 _1998 = transpose(float3x3(((_1979 * _1981) + (_1980 * _1985)) * _1988, ((_1979 * _1984) + (_1980 * _1982)) * _1988, in_var_C1));
-                float4 _2003 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _2003 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _2009 = mul(_1998, float3(1.0f, 0.0f, 0.0f));
                 float3 _2010 = mul(_1998, float3(0.0f, 1.0f, 0.0f));
                 float3 _2011 = mul(_1998, float3(0.0f, 0.0f, 1.0f));
@@ -1202,7 +1202,7 @@ void frag_main()
                 } while(false);
                 float3 _2142 = _2032 * _2141;
                 float2 _2144 = _1526 + _2142.xy;
-                float4 _2156 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_1998, _2142), 1.0f)));
+                float4 _2156 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_1998, _2142), 1.0f)));
                 float3 _2165 = (stone_floor_normal_2.SampleLevel(sampler_llr, _2144, _1972).xyz * 2.0f) - 1.0f.xxx;
                 _2165.z = _2165.z * 0.199999988079071044921875f;
                 float4 _2173 = stone_floor_seed_2.SampleBias(sampler_llr, _2144, frame_constants_global_mip_bias);
@@ -1370,7 +1370,7 @@ void frag_main()
                 float _1577 = _1570.x;
                 float _1580 = 1.0f / ((_1573 * _1574) - (_1576 * _1577));
                 float3x3 _1590 = transpose(float3x3(((_1571 * _1573) + (_1572 * _1577)) * _1580, ((_1571 * _1576) + (_1572 * _1574)) * _1580, in_var_C1));
-                float4 _1595 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _1595 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _1601 = mul(_1590, float3(1.0f, 0.0f, 0.0f));
                 float3 _1602 = mul(_1590, float3(0.0f, 1.0f, 0.0f));
                 float3 _1603 = mul(_1590, float3(0.0f, 0.0f, 1.0f));
@@ -1488,7 +1488,7 @@ void frag_main()
                 } while(false);
                 float3 _1734 = _1624 * _1733;
                 float2 _1736 = _1526 + _1734.xy;
-                float4 _1748 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_1590, _1734), 1.0f)));
+                float4 _1748 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_1590, _1734), 1.0f)));
                 float3 _1757 = (stone_floor_normal_3.SampleLevel(sampler_llr, _1736, _1564).xyz * 2.0f) - 1.0f.xxx;
                 _1757.z = _1757.z * 0.199999988079071044921875f;
                 float4 _1765 = stone_floor_seed_3.SampleBias(sampler_llr, _1736, frame_constants_global_mip_bias);
@@ -1715,7 +1715,7 @@ void frag_main()
                 float _1182 = _1175.x;
                 float _1185 = 1.0f / ((_1178 * _1179) - (_1181 * _1182));
                 float3x3 _1195 = transpose(float3x3(((_1176 * _1178) + (_1177 * _1182)) * _1185, ((_1176 * _1181) + (_1177 * _1179)) * _1185, in_var_C1));
-                float4 _1200 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _1200 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _1206 = mul(_1195, float3(1.0f, 0.0f, 0.0f));
                 float3 _1207 = mul(_1195, float3(0.0f, 1.0f, 0.0f));
                 float3 _1208 = mul(_1195, float3(0.0f, 0.0f, 1.0f));
@@ -1833,7 +1833,7 @@ void frag_main()
                 } while(false);
                 float3 _1339 = _1229 * _1338;
                 float2 _1341 = _407 + _1339.xy;
-                float4 _1353 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_1195, _1339), 1.0f)));
+                float4 _1353 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_1195, _1339), 1.0f)));
                 float3 _1362 = (wooden_floor_normal.SampleLevel(sampler_llr, _1341, _1169).xyz * 2.0f) - 1.0f.xxx;
                 _1362.z = _1362.z * 0.199999988079071044921875f;
                 float4 _1373 = wooden_floor_seed.SampleBias(sampler_llr, _1341, frame_constants_global_mip_bias);
@@ -1979,7 +1979,7 @@ void frag_main()
                     float _817 = _810.x;
                     float _820 = 1.0f / ((_813 * _814) - (_816 * _817));
                     float3x3 _830 = transpose(float3x3(((_811 * _813) + (_812 * _817)) * _820, ((_811 * _816) + (_812 * _814)) * _820, in_var_C1));
-                    float4 _835 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                    float4 _835 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                     float3 _841 = mul(_830, float3(1.0f, 0.0f, 0.0f));
                     float3 _842 = mul(_830, float3(0.0f, 1.0f, 0.0f));
                     float3 _843 = mul(_830, float3(0.0f, 0.0f, 1.0f));
@@ -2097,7 +2097,7 @@ void frag_main()
                     } while(false);
                     float3 _974 = _864 * _973;
                     float2 _976 = _407 + _974.xy;
-                    float4 _988 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_830, _974), 1.0f)));
+                    float4 _988 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_830, _974), 1.0f)));
                     float3 _997 = (wooden_floor_normal_2.SampleLevel(sampler_llr, _976, _804).xyz * 2.0f) - 1.0f.xxx;
                     _997.z = _997.z * 0.199999988079071044921875f;
                     float4 _1008 = wooden_floor_seed_2.SampleBias(sampler_llr, _976, frame_constants_global_mip_bias);
@@ -2235,7 +2235,7 @@ void frag_main()
                     float _458 = _451.x;
                     float _461 = 1.0f / ((_454 * _455) - (_457 * _458));
                     float3x3 _471 = transpose(float3x3(((_452 * _454) + (_453 * _458)) * _461, ((_452 * _457) + (_453 * _455)) * _461, in_var_C1));
-                    float4 _476 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                    float4 _476 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                     float3 _482 = mul(_471, float3(1.0f, 0.0f, 0.0f));
                     float3 _483 = mul(_471, float3(0.0f, 1.0f, 0.0f));
                     float3 _484 = mul(_471, float3(0.0f, 0.0f, 1.0f));
@@ -2353,7 +2353,7 @@ void frag_main()
                     } while(false);
                     float3 _615 = _505 * _614;
                     float2 _617 = _407 + _615.xy;
-                    float4 _629 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C2 + mul(_471, _615), 1.0f)));
+                    float4 _629 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C2 + mul(_471, _615), 1.0f)));
                     float3 _638 = (wooden_floor_normal_3.SampleLevel(sampler_llr, _617, _445).xyz * 2.0f) - 1.0f.xxx;
                     _638.z = _638.z * 0.199999988079071044921875f;
                     float4 _649 = wooden_floor_seed_3.SampleBias(sampler_llr, _617, frame_constants_global_mip_bias);
@@ -2627,34 +2627,34 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c0.y);
-    uint _Globals_highlighted_wall_id : packoffset(c0.w);
-    uint _Globals_highlight_mode : packoffset(c1);
-    uint2 _Globals_wooden_floor_normal_dims : packoffset(c1.y);
-    uint2 _Globals_wooden_floor_height_dims : packoffset(c2);
-    uint2 _Globals_wooden_floor_seed_dims : packoffset(c2.z);
-    uint2 _Globals_wooden_floor_roughness_dims : packoffset(c3);
-    uint2 _Globals_wooden_floor_normal_2_dims : packoffset(c3.z);
-    uint2 _Globals_wooden_floor_height_2_dims : packoffset(c4);
-    uint2 _Globals_wooden_floor_seed_2_dims : packoffset(c4.z);
-    uint2 _Globals_wooden_floor_roughness_2_dims : packoffset(c5);
-    uint2 _Globals_wooden_floor_normal_3_dims : packoffset(c5.z);
-    uint2 _Globals_wooden_floor_height_3_dims : packoffset(c6);
-    uint2 _Globals_wooden_floor_seed_3_dims : packoffset(c6.z);
-    uint2 _Globals_wooden_floor_roughness_3_dims : packoffset(c7);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13);
+    uint current_view_index : packoffset(c0);
+    uint2 dirthpath_heightmap_dims : packoffset(c0.y);
+    uint highlighted_wall_id : packoffset(c0.w);
+    uint highlight_mode : packoffset(c1);
+    uint2 wooden_floor_normal_dims : packoffset(c1.y);
+    uint2 wooden_floor_height_dims : packoffset(c2);
+    uint2 wooden_floor_seed_dims : packoffset(c2.z);
+    uint2 wooden_floor_roughness_dims : packoffset(c3);
+    uint2 wooden_floor_normal_2_dims : packoffset(c3.z);
+    uint2 wooden_floor_height_2_dims : packoffset(c4);
+    uint2 wooden_floor_seed_2_dims : packoffset(c4.z);
+    uint2 wooden_floor_roughness_2_dims : packoffset(c5);
+    uint2 wooden_floor_normal_3_dims : packoffset(c5.z);
+    uint2 wooden_floor_height_3_dims : packoffset(c6);
+    uint2 wooden_floor_seed_3_dims : packoffset(c6.z);
+    uint2 wooden_floor_roughness_3_dims : packoffset(c7);
+    uint2 stone_floor_normal_dims : packoffset(c7.z);
+    uint2 stone_floor_seed_dims : packoffset(c8);
+    uint2 stone_floor_height_dims : packoffset(c8.z);
+    uint2 stone_floor_roughness_dims : packoffset(c9);
+    uint2 stone_floor_seed_2_dims : packoffset(c9.z);
+    uint2 stone_floor_normal_2_dims : packoffset(c10);
+    uint2 stone_floor_height_2_dims : packoffset(c10.z);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11);
+    uint2 stone_floor_seed_3_dims : packoffset(c11.z);
+    uint2 stone_floor_normal_3_dims : packoffset(c12);
+    uint2 stone_floor_height_3_dims : packoffset(c12.z);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -2675,7 +2675,7 @@ static float3x3 out_var_C9;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -2697,7 +2697,7 @@ void vert_main()
 {
     float3 _141 = float3(nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16), 0.0f).xzy;
     float3 _143 = float3(-nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16).y, 0.0f, nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 16).x);
-    float4 _148 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _148 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     bool _157 = (nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 44) != 0u) ? true : ((nani_instance_data.Load<float3>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 0) - (_148.xyz / _148.w.xxx)).y > 0.0f);
     float3 _161;
     if (_157)
@@ -2715,7 +2715,7 @@ void vert_main()
     float _176 = 0.001953125f * (floor(_168.y * 512.0f) + frac(float(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 12)) * 1.61803400516510009765625f));
     float3 _177 = _168;
     _177.y = _176;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_168.x, _176, _168.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_168.x, _176, _168.z, 1.0f));
     out_var_C1 = _163;
     out_var_C2 = _177;
     out_var_C3 = _165;
@@ -2836,34 +2836,34 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c0.y);
-    uint _Globals_highlighted_wall_id : packoffset(c0.w);
-    uint _Globals_highlight_mode : packoffset(c1);
-    uint2 _Globals_wooden_floor_normal_dims : packoffset(c1.y);
-    uint2 _Globals_wooden_floor_height_dims : packoffset(c2);
-    uint2 _Globals_wooden_floor_seed_dims : packoffset(c2.z);
-    uint2 _Globals_wooden_floor_roughness_dims : packoffset(c3);
-    uint2 _Globals_wooden_floor_normal_2_dims : packoffset(c3.z);
-    uint2 _Globals_wooden_floor_height_2_dims : packoffset(c4);
-    uint2 _Globals_wooden_floor_seed_2_dims : packoffset(c4.z);
-    uint2 _Globals_wooden_floor_roughness_2_dims : packoffset(c5);
-    uint2 _Globals_wooden_floor_normal_3_dims : packoffset(c5.z);
-    uint2 _Globals_wooden_floor_height_3_dims : packoffset(c6);
-    uint2 _Globals_wooden_floor_seed_3_dims : packoffset(c6.z);
-    uint2 _Globals_wooden_floor_roughness_3_dims : packoffset(c7);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13);
+    uint current_view_index : packoffset(c0);
+    uint2 dirthpath_heightmap_dims : packoffset(c0.y);
+    uint highlighted_wall_id : packoffset(c0.w);
+    uint highlight_mode : packoffset(c1);
+    uint2 wooden_floor_normal_dims : packoffset(c1.y);
+    uint2 wooden_floor_height_dims : packoffset(c2);
+    uint2 wooden_floor_seed_dims : packoffset(c2.z);
+    uint2 wooden_floor_roughness_dims : packoffset(c3);
+    uint2 wooden_floor_normal_2_dims : packoffset(c3.z);
+    uint2 wooden_floor_height_2_dims : packoffset(c4);
+    uint2 wooden_floor_seed_2_dims : packoffset(c4.z);
+    uint2 wooden_floor_roughness_2_dims : packoffset(c5);
+    uint2 wooden_floor_normal_3_dims : packoffset(c5.z);
+    uint2 wooden_floor_height_3_dims : packoffset(c6);
+    uint2 wooden_floor_seed_3_dims : packoffset(c6.z);
+    uint2 wooden_floor_roughness_3_dims : packoffset(c7);
+    uint2 stone_floor_normal_dims : packoffset(c7.z);
+    uint2 stone_floor_seed_dims : packoffset(c8);
+    uint2 stone_floor_height_dims : packoffset(c8.z);
+    uint2 stone_floor_roughness_dims : packoffset(c9);
+    uint2 stone_floor_seed_2_dims : packoffset(c9.z);
+    uint2 stone_floor_normal_2_dims : packoffset(c10);
+    uint2 stone_floor_height_2_dims : packoffset(c10.z);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11);
+    uint2 stone_floor_seed_3_dims : packoffset(c11.z);
+    uint2 stone_floor_normal_3_dims : packoffset(c12);
+    uint2 stone_floor_height_3_dims : packoffset(c12.z);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13);
 };
 
 ByteAddressBuffer nani_instance_data : register(t16, space0);
@@ -3023,7 +3023,7 @@ void frag_main()
             float _1372 = _1365.x;
             float _1375 = 1.0f / ((_1368 * _1369) - (_1371 * _1372));
             float3x3 _1385 = transpose(float3x3(((_1366 * _1368) + (_1367 * _1372)) * _1375, ((_1366 * _1371) + (_1367 * _1369)) * _1375, in_var_C1));
-            float4 _1390 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+            float4 _1390 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
             float3 _1396 = mul(_1385, float3(1.0f, 0.0f, 0.0f));
             float3 _1397 = mul(_1385, float3(0.0f, 1.0f, 0.0f));
             float3 _1398 = mul(_1385, float3(0.0f, 0.0f, 1.0f));
@@ -3165,7 +3165,7 @@ void frag_main()
                 float _1167 = _1160.x;
                 float _1170 = 1.0f / ((_1163 * _1164) - (_1166 * _1167));
                 float3x3 _1180 = transpose(float3x3(((_1161 * _1163) + (_1162 * _1167)) * _1170, ((_1161 * _1166) + (_1162 * _1164)) * _1170, in_var_C1));
-                float4 _1185 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _1185 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _1191 = mul(_1180, float3(1.0f, 0.0f, 0.0f));
                 float3 _1192 = mul(_1180, float3(0.0f, 1.0f, 0.0f));
                 float3 _1193 = mul(_1180, float3(0.0f, 0.0f, 1.0f));
@@ -3304,7 +3304,7 @@ void frag_main()
                 float _963 = _956.x;
                 float _966 = 1.0f / ((_959 * _960) - (_962 * _963));
                 float3x3 _976 = transpose(float3x3(((_957 * _959) + (_958 * _963)) * _966, ((_957 * _962) + (_958 * _960)) * _966, in_var_C1));
-                float4 _981 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _981 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _987 = mul(_976, float3(1.0f, 0.0f, 0.0f));
                 float3 _988 = mul(_976, float3(0.0f, 1.0f, 0.0f));
                 float3 _989 = mul(_976, float3(0.0f, 0.0f, 1.0f));
@@ -3465,7 +3465,7 @@ void frag_main()
                 float _746 = _739.x;
                 float _749 = 1.0f / ((_742 * _743) - (_745 * _746));
                 float3x3 _759 = transpose(float3x3(((_740 * _742) + (_741 * _746)) * _749, ((_740 * _745) + (_741 * _743)) * _749, in_var_C1));
-                float4 _764 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                float4 _764 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                 float3 _770 = mul(_759, float3(1.0f, 0.0f, 0.0f));
                 float3 _771 = mul(_759, float3(0.0f, 1.0f, 0.0f));
                 float3 _772 = mul(_759, float3(0.0f, 0.0f, 1.0f));
@@ -3607,7 +3607,7 @@ void frag_main()
                     float _541 = _534.x;
                     float _544 = 1.0f / ((_537 * _538) - (_540 * _541));
                     float3x3 _554 = transpose(float3x3(((_535 * _537) + (_536 * _541)) * _544, ((_535 * _540) + (_536 * _538)) * _544, in_var_C1));
-                    float4 _559 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                    float4 _559 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                     float3 _565 = mul(_554, float3(1.0f, 0.0f, 0.0f));
                     float3 _566 = mul(_554, float3(0.0f, 1.0f, 0.0f));
                     float3 _567 = mul(_554, float3(0.0f, 0.0f, 1.0f));
@@ -3746,7 +3746,7 @@ void frag_main()
                     float _337 = _330.x;
                     float _340 = 1.0f / ((_333 * _334) - (_336 * _337));
                     float3x3 _350 = transpose(float3x3(((_331 * _333) + (_332 * _337)) * _340, ((_331 * _336) + (_332 * _334)) * _340, in_var_C1));
-                    float4 _355 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+                    float4 _355 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
                     float3 _361 = mul(_350, float3(1.0f, 0.0f, 0.0f));
                     float3 _362 = mul(_350, float3(0.0f, 1.0f, 0.0f));
                     float3 _363 = mul(_350, float3(0.0f, 0.0f, 1.0f));

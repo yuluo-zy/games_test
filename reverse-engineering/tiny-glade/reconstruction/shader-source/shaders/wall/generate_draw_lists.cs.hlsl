@@ -476,8 +476,8 @@ struct InstancedWallData
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_hzb_tex_inner_dims : packoffset(c0.y);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 hzb_tex_inner_dims : packoffset(c0.y);
 };
 
 ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
@@ -582,7 +582,7 @@ void comp_main()
             }
             uint _281 = clamp(_275, 0u, 1u) + (2u * uint((push_constants.instance_count_and_flags & 2147483648u) != 0u));
             uint _287;
-            __alias_draw_commands.InterlockedAdd((uint(_Globals_draw_indirect_buffer_offset) + _281) * 20 + 4, 1u, _287);
+            __alias_draw_commands.InterlockedAdd((uint(draw_indirect_buffer_offset) + _281) * 20 + 4, 1u, _287);
             __alias_brick_draw_list.Store<uint>(((_281 * 2097152u) + _287) * 4 + 0, _130);
         }
         float4x4 _292 = float4x4(frame_constants_storage_buffer.Load<float>(2224), frame_constants_storage_buffer.Load<float>(2240), frame_constants_storage_buffer.Load<float>(2256), frame_constants_storage_buffer.Load<float>(2272), frame_constants_storage_buffer.Load<float>(2228), frame_constants_storage_buffer.Load<float>(2244), frame_constants_storage_buffer.Load<float>(2260), frame_constants_storage_buffer.Load<float>(2276), frame_constants_storage_buffer.Load<float>(2232), frame_constants_storage_buffer.Load<float>(2248), frame_constants_storage_buffer.Load<float>(2264), frame_constants_storage_buffer.Load<float>(2280), frame_constants_storage_buffer.Load<float>(2236), frame_constants_storage_buffer.Load<float>(2252), frame_constants_storage_buffer.Load<float>(2268), frame_constants_storage_buffer.Load<float>(2284));
@@ -623,7 +623,7 @@ void comp_main()
         {
             uint _346 = 4u + _341;
             uint _352;
-            __alias_draw_commands.InterlockedAdd((uint(_Globals_draw_indirect_buffer_offset) + _346) * 20 + 4, 1u, _352);
+            __alias_draw_commands.InterlockedAdd((uint(draw_indirect_buffer_offset) + _346) * 20 + 4, 1u, _352);
             __alias_brick_draw_list.Store<uint>(((_346 * 2097152u) + _352) * 4 + 0, _130);
             _341++;
             continue;
@@ -725,8 +725,8 @@ struct InstancedWallData
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_hzb_tex_inner_dims : packoffset(c0.y);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 hzb_tex_inner_dims : packoffset(c0.y);
 };
 
 ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
@@ -878,7 +878,7 @@ void comp_main()
             _383 = 0.0f;
             _384 = false;
         }
-        float4 _388 = float4(_Globals_hzb_tex_inner_dims.xyxy);
+        float4 _388 = float4(hzb_tex_inner_dims.xyxy);
         float4 _391 = clamp(_382 * _388, 0.0f.xxxx, _388 - 1.0f.xxxx);
         uint _402 = uint(max(0.0f, ceil(log2(max(_391.z - _391.x, _391.w - _391.y)))));
         bool _439;
@@ -913,7 +913,7 @@ void comp_main()
                 }
                 uint _481 = clamp(_475, 0u, 1u) + (2u * uint((push_constants.instance_count_and_flags & 2147483648u) != 0u));
                 uint _487;
-                __alias_draw_commands.InterlockedAdd((uint(_Globals_draw_indirect_buffer_offset) + _481) * 20 + 4, 1u, _487);
+                __alias_draw_commands.InterlockedAdd((uint(draw_indirect_buffer_offset) + _481) * 20 + 4, 1u, _487);
                 __alias_brick_draw_list.Store<uint>(((_481 * 2097152u) + _487) * 4 + 0, _142);
             }
         }

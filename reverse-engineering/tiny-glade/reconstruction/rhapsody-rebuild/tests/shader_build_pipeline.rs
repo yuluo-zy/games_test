@@ -1,7 +1,7 @@
 use rhapsody::{
     shader_compiler::{
         DxcStage,
-        build::{BuildSpec, build_pipeline, raster_variants},
+        build::{BuildSpec, build_pipeline, build_pipeline_with_recipe, raster_variants},
         preprocess::prepare_file,
         reflect::generate_reflection,
     },
@@ -13,6 +13,16 @@ use rhapsody::{
 use std::path::PathBuf;
 fn project() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+// 新测试产物默认落系统tmp；显式覆盖只能写本轮证据目录，历史包保持原样。
+fn test_evidence() -> PathBuf {
+    let directory = std::env::var_os("TG_SHADER_TEST_EVIDENCE_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            std::env::temp_dir().join(format!("tg-shader-build-tests-{}", std::process::id()))
+        });
+    std::fs::create_dir_all(&directory).unwrap();
+    directory
 }
 fn game() -> PathBuf {
     project().join("../../ljxsj_92385/Tiny Glade/compiled-shaders")
@@ -54,9 +64,9 @@ fn regenerate_all_original_metadata_without_stored_injection() {
         files += 1;
         modules += original.stages.len();
     }
-    std::fs::create_dir_all(project().join("evidence/shader-build-2026-10-13/pipeline")).unwrap();
+    std::fs::create_dir_all(test_evidence()).unwrap();
     std::fs::write(
-        project().join("evidence/shader-build-2026-10-13/pipeline/reflection-differences.txt"),
+        test_evidence().join("reflection-differences.txt"),
         mismatches.join("\n"),
     )
     .unwrap();
@@ -70,7 +80,7 @@ fn regenerate_all_original_metadata_without_stored_injection() {
 }
 #[test]
 fn exact_include_library_preserves_macro_conditions_and_tracks_dependencies() {
-    let root = project().join("evidence/shader-build-2026-10-13/pipeline/preprocess-fixture");
+    let root = test_evidence().join("preprocess-fixture");
     std::fs::create_dir_all(root.join("inc")).unwrap();
     std::fs::write(root.join("main.hlsl"),"#include \"inc/shared.hlsl\"\n#include \"inc/shared.hlsl\"\n#if FLAG\nfloat x=VALUE;\n#endif\n").unwrap();
     std::fs::write(
@@ -98,7 +108,7 @@ fn exact_include_library_preserves_macro_conditions_and_tracks_dependencies() {
 #[test]
 fn actual_dxc_preprocess_reflect_pack_selected_original_contracts() {
     let dxc = project().join("../../tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe");
-    let output = project().join("evidence/shader-build-2026-10-13/pipeline");
+    let output = test_evidence();
     let source_root = project().join("reconstruction/shader-source/shaders");
     let mut cases = vec![(
         "fill",
@@ -185,8 +195,9 @@ fn actual_dxc_preprocess_reflect_pack_selected_original_contracts() {
 fn owned_custom_includes_resolve_to_existing_nani_dependencies() {
     let root = project().join("reconstruction/shader-source/shaders");
     let mut inventory = Vec::new();
-    for family in ["curved_halftimber", "plaster", "smoke", "stairs_floor"] {
-        let source = format!("nani/cull_and_bucket_{family}.cs.hlsl");
+    // 合并后的主shader已使用自包含源码；直接验证保留helper的真实相对路径，
+    // 不再要求每个主shader都继续包含这个helper。
+    for source in ["nani/inc/cull_and_bucket_owned_custom.hlsl".to_owned()] {
         let prepared = prepare_file(&root, "shaders", &source, &ShaderDefines::default()).unwrap();
         for dependency in [
             "shaders/nani/draw_lists.inc.hlsl",
@@ -203,8 +214,44 @@ fn owned_custom_includes_resolve_to_existing_nani_dependencies() {
         inventory.push((source, prepared.dependencies));
     }
     std::fs::write(
-        project().join("evidence/shader-build-2026-10-13/pipeline/owned-custom-dependencies.json"),
+        test_evidence().join("owned-custom-dependencies.json"),
         serde_json::to_vec_pretty(&inventory).unwrap(),
     )
     .unwrap();
+}
+
+#[test]
+fn explicit_recipe_selects_source_branch_without_changing_artifact_defines() {
+    let evidence = test_evidence().join(format!("recipe-run-{}", std::process::id()));
+    let source_root = evidence.join("recipe-fixture");
+    std::fs::create_dir_all(&source_root).unwrap();
+    std::fs::write(source_root.join("main.cs.hlsl"), "#if TGV_TEST_LIFTED\n[numthreads(8, 1, 1)]\n#else\n[numthreads(1, 1, 1)]\n#endif\nvoid cs_main() {}\n").unwrap();
+    let spec = BuildSpec {
+        source_root,
+        logical_root: "shaders".into(),
+        source_path: "main.cs.hlsl".into(),
+        defines: ShaderDefines(vec![("PERM_quality".into(), "1".into())]),
+        stages: vec![(DxcStage::Compute, "cs_main".into())],
+    };
+    let artifact_defines = spec.defines.clone();
+    let artifact_key = spec.defines.artifact_hash();
+    let recipe = ShaderDefines(vec![("TGV_TEST_LIFTED".into(), "1".into())]);
+    let dxc = project().join("../../tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe");
+    let baseline = build_pipeline(&dxc, &spec, &evidence.join("recipe-baseline")).unwrap();
+    let selected =
+        build_pipeline_with_recipe(&dxc, &spec, &recipe, &evidence.join("recipe-selected"))
+            .unwrap();
+    assert_eq!(baseline.compiled.reflection.local_size, Some([1, 1, 1]));
+    assert_eq!(selected.compiled.reflection.local_size, Some([8, 1, 1]));
+    assert_eq!(spec.defines, artifact_defines);
+    assert_eq!(spec.defines.artifact_hash(), artifact_key);
+    assert_eq!(selected.artifact_defines, artifact_defines);
+    assert_eq!(selected.recipe_defines, recipe);
+    assert!(baseline.recipe_defines.0.is_empty());
+    assert!(
+        selected
+            .prepared
+            .source
+            .starts_with("#define PERM_quality 1\n#define TGV_TEST_LIFTED 1\n")
+    );
 }

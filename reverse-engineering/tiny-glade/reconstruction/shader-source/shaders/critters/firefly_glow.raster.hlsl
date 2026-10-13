@@ -32,7 +32,7 @@ uint2 framebuffer_dims;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
     uint instance_id : SV_InstanceID;
 };
 

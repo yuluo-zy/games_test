@@ -338,11 +338,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    float _Globals_time : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_grass_buffer_size : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    float time : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c0.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint grass_buffer_size : packoffset(c1.z);
 };
 
 ByteAddressBuffer grass_blade_buffer_data : register(t17, space0);
@@ -413,7 +413,7 @@ void vert_main()
     float _255 = _249.y;
     float _257 = _249.w;
     float _258 = _249.x;
-    float2 _267 = ((float2((_254 + _255) - (_257 + _258), (_258 + _255) - (_257 + _254)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+    float2 _267 = ((float2((_254 + _255) - (_257 + _258), (_258 + _255) - (_257 + _254)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
     float _278 = _205 * 0.20000000298023223876953125f;
     float3 _280 = float3(min(1.0f, _205 * 0.800000011920928955078125f) * 0.3599999845027923583984375f, _278, 1.0f) * 2.5f;
     float _303 = max(30.0f / (((-1.0f) / mul(frame_constants_view_constants[0u].world_to_view, float4(_168, 1.0f)).z) * ((0.5f * frame_constants_view_constants[0u].view_to_clip[1].y) * float(clamp(frame_constants_inner_rendering_resolution.y, 1080u, 2160u)))), 1.0f);
@@ -425,7 +425,7 @@ void vert_main()
     float3 _316 = float3((float((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 16) >> 24u) & 255u) * 0.007843137718737125396728515625f) - 1.0f, 0.0f, spvUnpackHalf2x16((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 24) >> 16u) & 65535u).x);
     float3 _317 = normalize(_316);
     float4x4 _329 = transpose(float4x4(float4(normalize(cross(_317, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(_317, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
-    float4 _335 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _335 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float _346 = clamp(_239, 0.0f, 1.0f);
     float _347 = 3.0f * ((0.02999999932944774627685546875f * spvUnpackHalf2x16((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 20) >> 16u) & 65535u).x) * lerp(1.0f, 2.0f, abs(normalize((_335.xyz / _335.w.xxx) - _309).y)));
     float _349 = _347 * (_346 * _346);
@@ -465,7 +465,7 @@ void vert_main()
     float4 _411 = mul(_329, mul(_396, float4(normalize(_400), 0.0f)));
     float3 _412 = _411.xyz;
     float4 _421 = mul(_329, mul(_396, mul(float4x4(float4((_280.x * (float((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 16) >> 8u) & 255u) * 0.0039215688593685626983642578125f)) * _303, 0.0f, 0.0f, 0.0f), float4(0.0f, _310, 0.0f, 0.0f), float4(0.0f, 0.0f, _280.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_362, 1.0f)))) + float4(_168.x, _308, _168.z, 0.0f);
-    float2 _428 = (_309.xz * 0.100000001490116119384765625f) + (float2(_Globals_time, 0.0f) * 1.2000000476837158203125f);
+    float2 _428 = (_309.xz * 0.100000001490116119384765625f) + (float2(time, 0.0f) * 1.2000000476837158203125f);
     int2 _430 = int2(floor(_428));
     float2 _431 = frac(_428);
     uint2 _432 = uint2(_430);
@@ -516,7 +516,7 @@ void vert_main()
     float _586 = (((smoothstep(-0.20000000298023223876953125f, 0.5f, _278) * _578) * (sin((((((1.0f - _566) * (((asfloat(((_456 ^ (_456 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _564) + ((asfloat(((_488 ^ (_488 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _563))) + (((asfloat(((_520 ^ (_520 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _564) * _566)) + (((asfloat(((_552 ^ (_552 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _563) * _566)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f)) * 0.699999988079071044921875f) * spvUnpackHalf2x16(grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 24) & 65535u).x;
     _412.y = _411.y - (_586 * 0.699999988079071044921875f);
     _421.x = _421.x - (_586 * 0.25f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _421);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _421);
     out_var_C0 = lerp(_183 * 0.800000011920928955078125f, _183, _578.xxx);
     out_var_C2 = cross(normalize(float3(0.0f, _267.y, 1.0f)), normalize(float3(1.0f, _267.x, 0.0f)));
     out_var_C3 = _421.xyz;
@@ -608,11 +608,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    float _Globals_time : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_grass_buffer_size : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    float time : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c0.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint grass_buffer_size : packoffset(c1.z);
 };
 
 
@@ -643,7 +643,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    float4 _107 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _107 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     if (abs(in_var_C9.x / in_var_C9.z) < lerp((-0.800000011920928955078125f) / in_var_C8, 1.0f, in_var_C7.y))
     {
         discard;
@@ -771,11 +771,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    float _Globals_time : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_grass_buffer_size : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    float time : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c0.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint grass_buffer_size : packoffset(c1.z);
 };
 
 ByteAddressBuffer grass_blade_buffer_data : register(t17, space0);
@@ -846,7 +846,7 @@ void vert_main()
     float _255 = _249.y;
     float _257 = _249.w;
     float _258 = _249.x;
-    float2 _267 = ((float2((_254 + _255) - (_257 + _258), (_258 + _255) - (_257 + _254)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+    float2 _267 = ((float2((_254 + _255) - (_257 + _258), (_258 + _255) - (_257 + _254)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
     float _278 = _205 * 0.20000000298023223876953125f;
     float3 _280 = float3(min(1.0f, _205 * 0.800000011920928955078125f) * 0.3599999845027923583984375f, _278, 1.0f) * 2.5f;
     float _303 = max(30.0f / (((-1.0f) / mul(frame_constants_view_constants[0u].world_to_view, float4(_168, 1.0f)).z) * ((0.5f * frame_constants_view_constants[0u].view_to_clip[1].y) * float(clamp(frame_constants_inner_rendering_resolution.y, 1080u, 2160u)))), 1.0f);
@@ -858,7 +858,7 @@ void vert_main()
     float3 _316 = float3((float((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 16) >> 24u) & 255u) * 0.007843137718737125396728515625f) - 1.0f, 0.0f, spvUnpackHalf2x16((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 24) >> 16u) & 65535u).x);
     float3 _317 = normalize(_316);
     float4x4 _329 = transpose(float4x4(float4(normalize(cross(_317, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(_317, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
-    float4 _335 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _335 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float _346 = clamp(_239, 0.0f, 1.0f);
     float _347 = 3.0f * ((0.02999999932944774627685546875f * spvUnpackHalf2x16((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 20) >> 16u) & 65535u).x) * lerp(1.0f, 2.0f, abs(normalize((_335.xyz / _335.w.xxx) - _309).y)));
     float _349 = _347 * (_346 * _346);
@@ -898,7 +898,7 @@ void vert_main()
     float4 _411 = mul(_329, mul(_396, float4(normalize(_400), 0.0f)));
     float3 _412 = _411.xyz;
     float4 _421 = mul(_329, mul(_396, mul(float4x4(float4((_280.x * (float((grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 16) >> 8u) & 255u) * 0.0039215688593685626983642578125f)) * _303, 0.0f, 0.0f, 0.0f), float4(0.0f, _310, 0.0f, 0.0f), float4(0.0f, 0.0f, _280.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_362, 1.0f)))) + float4(_168.x, _308, _168.z, 0.0f);
-    float2 _428 = (_309.xz * 0.100000001490116119384765625f) + (float2(_Globals_time, 0.0f) * 1.2000000476837158203125f);
+    float2 _428 = (_309.xz * 0.100000001490116119384765625f) + (float2(time, 0.0f) * 1.2000000476837158203125f);
     int2 _430 = int2(floor(_428));
     float2 _431 = frac(_428);
     uint2 _432 = uint2(_430);
@@ -949,7 +949,7 @@ void vert_main()
     float _586 = (((smoothstep(-0.20000000298023223876953125f, 0.5f, _278) * _578) * (sin((((((1.0f - _566) * (((asfloat(((_456 ^ (_456 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _564) + ((asfloat(((_488 ^ (_488 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _563))) + (((asfloat(((_520 ^ (_520 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _564) * _566)) + (((asfloat(((_552 ^ (_552 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _563) * _566)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f)) * 0.699999988079071044921875f) * spvUnpackHalf2x16(grass_blade_buffer_data.Load<uint>(uint(gl_InstanceIndex) * 32 + 24) & 65535u).x;
     _412.y = _411.y - (_586 * 0.699999988079071044921875f);
     _421.x = _421.x - (_586 * 0.25f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _421);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _421);
     out_var_C0 = lerp(_183 * 0.800000011920928955078125f, _183, _578.xxx);
     out_var_C2 = cross(normalize(float3(0.0f, _267.y, 1.0f)), normalize(float3(1.0f, _267.x, 0.0f)));
     out_var_C3 = _421.xyz;

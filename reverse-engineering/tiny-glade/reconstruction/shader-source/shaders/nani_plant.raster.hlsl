@@ -71,9 +71,9 @@ float hash2_rand(uint h)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float3 Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
     uint instance_id : SV_InstanceID;
 };
 
@@ -230,11 +230,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1.z);
-    int _Globals_bool_render_shadows : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 grass_object_push_dims : packoffset(c1.z);
+    int bool_render_shadows : packoffset(c2);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -253,9 +253,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -351,7 +351,7 @@ void vert_main()
     float _399 = _213.x - ((((_214 * _214) * (sin((((((1.0f - _363) * (((asfloat(((_253 ^ (_253 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _361) + ((asfloat(((_285 ^ (_285 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _360))) + (((asfloat(((_317 ^ (_317 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _361) * _363)) + (((asfloat(((_349 ^ (_349 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _360) * _363)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f)) * 0.0350000001490116119384765625f) * lerp(0.699999988079071044921875f, 1.0f, asfloat(((_388 + (_388 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
     float3 _400 = _213;
     _400.x = _399;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_399, _213.yz, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_399, _213.yz, 1.0f));
     out_var_C1 = normalize(mul(_161, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _400;
     out_var_C3 = pow(in_var_Vertex_Color, lerp(1.0f, 2.0f, asfloat(((_184 + (_184 << 15u)) & 8388607u) | 1065353216u) - 1.0f).xxx);
@@ -483,11 +483,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1.z);
-    int _Globals_bool_render_shadows : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 grass_object_push_dims : packoffset(c1.z);
+    int bool_render_shadows : packoffset(c2);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -506,9 +506,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -604,7 +604,7 @@ void vert_main()
     float _399 = _213.x - ((((_214 * _214) * (sin((((((1.0f - _363) * (((asfloat(((_253 ^ (_253 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _361) + ((asfloat(((_285 ^ (_285 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _360))) + (((asfloat(((_317 ^ (_317 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _361) * _363)) + (((asfloat(((_349 ^ (_349 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _360) * _363)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f)) * 0.0350000001490116119384765625f) * lerp(0.699999988079071044921875f, 1.0f, asfloat(((_388 + (_388 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
     float3 _400 = _213;
     _400.x = _399;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_399, _213.yz, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_399, _213.yz, 1.0f));
     out_var_C1 = normalize(mul(_161, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _400;
     out_var_C3 = pow(in_var_Vertex_Color, lerp(1.0f, 2.0f, asfloat(((_184 + (_184 << 15u)) & 8388607u) | 1065353216u) - 1.0f).xxx);

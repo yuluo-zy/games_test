@@ -76,8 +76,8 @@ ByteAddressBuffer instance_indirection_buffer : register(t16, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float3 vertex_normal : TEXCOORD1;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
 };
 
 struct VS_OUT

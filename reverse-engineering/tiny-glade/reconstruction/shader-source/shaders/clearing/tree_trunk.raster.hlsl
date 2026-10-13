@@ -61,11 +61,11 @@ Texture2D<float4> bark_lines : register(t20, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float3 vertex_color : TEXCOORD1;
-    float3 vertex_normal : TEXCOORD2;
-    float3 appear_pos : TEXCOORD3;
-    float age : TEXCOORD4;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_color: Vertex_Color;
+    [[vk::location(2)]] float3 vertex_normal: Vertex_Normal;
+    [[vk::location(3)]] float3 appear_pos: appear_pos;
+    [[vk::location(4)]] float age: age;
 };
 
 struct VS_OUT
@@ -349,14 +349,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.w);
-    int _Globals_is_firstperson_mode : packoffset(c1);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.y);
-    uint2 _Globals_bark_color_dims : packoffset(c1.z);
-    uint2 _Globals_bark_color_naked_dims : packoffset(c2);
-    uint2 _Globals_bark_lines_dims : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 rocky_terrain_dims : packoffset(c0.y);
+    float wind_strength : packoffset(c0.w);
+    int is_firstperson_mode : packoffset(c1);
+    float max_cone_cull_dist_range : packoffset(c1.y);
+    uint2 bark_color_dims : packoffset(c1.z);
+    uint2 bark_color_naked_dims : packoffset(c2);
+    uint2 bark_lines_dims : packoffset(c2.z);
 };
 
 ByteAddressBuffer nani_instance_data : register(t16, space0);
@@ -380,11 +380,11 @@ static float out_var_C8;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_appear_pos : TEXCOORD3;
-    [[vk::location(4)]] float in_var_age : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(4)]] float in_var_age: age;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -429,7 +429,7 @@ void vert_main()
     float4x4 _221 = transpose(float4x4(float4(_198, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_198, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
     float4 _225 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_221, mul(float4x4(float4(nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_169, _144, _164 + ((_145 * sin((fmod(_150 * 0.792452991008758544921875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.792452991008758544921875f)) + (0.20000000298023223876953125f * _169))) * sin((fmod(_150 * 0.688525021076202392578125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.688525021076202392578125f)) + _165)), 1.0f))));
     float2 _242 = _225.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * ((clamp(in_var_Vertex_Position.y * 0.100000001490116119384765625f, 0.0f, 1.0f) * 0.75f) * lerp(0.5f, 1.0f, in_var_age)));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_242.x, _225.y, _242.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_242.x, _225.y, _242.y, 1.0f));
     out_var_C1 = in_var_Vertex_Color;
     out_var_C2 = mul(_221, float4(in_var_Vertex_Normal, 0.0f)).xyz;
     out_var_C3 = float4(_242.x, _225.y, _242.y, _225.w).xyz;
@@ -523,14 +523,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.w);
-    int _Globals_is_firstperson_mode : packoffset(c1);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.y);
-    uint2 _Globals_bark_color_dims : packoffset(c1.z);
-    uint2 _Globals_bark_color_naked_dims : packoffset(c2);
-    uint2 _Globals_bark_lines_dims : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 rocky_terrain_dims : packoffset(c0.y);
+    float wind_strength : packoffset(c0.w);
+    int is_firstperson_mode : packoffset(c1);
+    float max_cone_cull_dist_range : packoffset(c1.y);
+    uint2 bark_color_dims : packoffset(c1.z);
+    uint2 bark_color_naked_dims : packoffset(c2);
+    uint2 bark_lines_dims : packoffset(c2.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -571,7 +571,7 @@ void frag_main()
     {
         discard;
     }
-    float4 _192 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C3, 1.0f));
+    float4 _192 = mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C3, 1.0f));
     float3 _193 = _192.xyz;
     float _203;
     if ((frame_constants_render_overrides & 2u) != 0u)
@@ -586,7 +586,7 @@ void frag_main()
     bool _213;
     if (int(_203 > 0.0f) == 1)
     {
-        _213 = _Globals_is_firstperson_mode == 0;
+        _213 = is_firstperson_mode == 0;
     }
     else
     {
@@ -605,7 +605,7 @@ void frag_main()
     {
         _193.x = _192.x * 0.769230782985687255859375f;
         _193.y = _192.y * 1.10000002384185791015625f;
-        float2 _232 = float2(6.659999847412109375f, _Globals_max_cone_cull_dist_range) * frame_constants_view_constants[0u].view_to_clip[1].y;
+        float2 _232 = float2(6.659999847412109375f, max_cone_cull_dist_range) * frame_constants_view_constants[0u].view_to_clip[1].y;
         float _234 = -_192.z;
         float _235 = _232.y;
         if (_234 < _235)
@@ -948,14 +948,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.w);
-    int _Globals_is_firstperson_mode : packoffset(c1);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.y);
-    uint2 _Globals_bark_color_dims : packoffset(c1.z);
-    uint2 _Globals_bark_color_naked_dims : packoffset(c2);
-    uint2 _Globals_bark_lines_dims : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 rocky_terrain_dims : packoffset(c0.y);
+    float wind_strength : packoffset(c0.w);
+    int is_firstperson_mode : packoffset(c1);
+    float max_cone_cull_dist_range : packoffset(c1.y);
+    uint2 bark_color_dims : packoffset(c1.z);
+    uint2 bark_color_naked_dims : packoffset(c2);
+    uint2 bark_lines_dims : packoffset(c2.z);
 };
 
 ByteAddressBuffer nani_instance_data : register(t16, space0);
@@ -979,11 +979,11 @@ static float out_var_C8;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_appear_pos : TEXCOORD3;
-    [[vk::location(4)]] float in_var_age : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(4)]] float in_var_age: age;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1028,7 +1028,7 @@ void vert_main()
     float4x4 _221 = transpose(float4x4(float4(_198, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_198, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
     float4 _225 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_187 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_221, mul(float4x4(float4(nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_187 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_169, _144, _164 + ((_145 * sin((fmod(_150 * 0.792452991008758544921875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.792452991008758544921875f)) + (0.20000000298023223876953125f * _169))) * sin((fmod(_150 * 0.688525021076202392578125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.688525021076202392578125f)) + _165)), 1.0f))));
     float2 _242 = _225.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * ((clamp(in_var_Vertex_Position.y * 0.100000001490116119384765625f, 0.0f, 1.0f) * 0.75f) * lerp(0.5f, 1.0f, in_var_age)));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_242.x, _225.y, _242.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_242.x, _225.y, _242.y, 1.0f));
     out_var_C1 = in_var_Vertex_Color;
     out_var_C2 = mul(_221, float4(in_var_Vertex_Normal, 0.0f)).xyz;
     out_var_C3 = float4(_242.x, _225.y, _242.y, _225.w).xyz;

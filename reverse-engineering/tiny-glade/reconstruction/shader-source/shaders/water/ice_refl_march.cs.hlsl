@@ -401,20 +401,20 @@ static float _159;
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2);
-    uint _Globals_rt_bvh_node_count : packoffset(c2.z);
-    uint _Globals_rt_triangle_count : packoffset(c2.w);
-    uint _Globals_history_valid : packoffset(c3);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c3.y);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c4);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c4.z);
-    uint2 _Globals_ice_roughness_tex_dims : packoffset(c5);
-    uint2 _Globals_refl_hit_tex_dims : packoffset(c5.z);
-    uint2 _Globals_refl_hit_radiance_tex_dims : packoffset(c6);
+    uint2 terrain_lighting_texture_dims : packoffset(c0);
+    uint2 blue_noise_texture_dims : packoffset(c0.z);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 brdf_fg_lut_dims : packoffset(c2);
+    uint rt_bvh_node_count : packoffset(c2.z);
+    uint rt_triangle_count : packoffset(c2.w);
+    uint history_valid : packoffset(c3);
+    uint2 half_depth_tex_dims : packoffset(c3.y);
+    uint2 taa_history_tex_dims : packoffset(c4);
+    uint2 reprojection_tex_dims : packoffset(c4.z);
+    uint2 ice_roughness_tex_dims : packoffset(c5);
+    uint2 refl_hit_tex_dims : packoffset(c5.z);
+    uint2 refl_hit_radiance_tex_dims : packoffset(c6);
 };
 
 cbuffer frame_constants : register(b0, space1)
@@ -490,7 +490,7 @@ void comp_main()
         uint _188 = _187 & 65535u;
         uint _190 = (_187 >> 16u) & 65535u;
         uint2 _191 = uint2(_188, _190);
-        float2 _196 = float2(_Globals_half_depth_tex_dims);
+        float2 _196 = float2(half_depth_tex_dims);
         float2 _205 = (((float2(int2(_191)) + 0.5f.xx) / _196) - 0.5f.xx) * float2(2.0f, -2.0f);
         float _206 = _205.x;
         float3 _212 = normalize(mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_206, _205.y, 0.0f, 1.0f))).xyz);
@@ -868,7 +868,7 @@ void comp_main()
         if (_638)
         {
             bool _704;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _704 = !(0u == frame_constants_frame_index);
             }

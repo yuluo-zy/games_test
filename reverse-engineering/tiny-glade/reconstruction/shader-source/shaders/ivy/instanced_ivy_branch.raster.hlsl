@@ -57,7 +57,7 @@ Texture2D<float4> ivy_branch_color : register(t15, space0);
 
 struct VSInput
 {
-    float3 position : TEXCOORD0;
+    [[vk::location(0)]] float3 position: Vertex_Position;
     uint instance : SV_InstanceID;
 };
 
@@ -274,12 +274,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_branch_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_branch_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
 };
 
 ByteAddressBuffer ivy_buffer : register(t14, space0);
@@ -297,7 +297,7 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -674,9 +674,9 @@ void vert_main()
         float2 _1044 = (((((float2(asfloat((_493 & _504) | _505) - 1.0f, asfloat(((_501 + (_501 << 15u)) & _510) | _511) - 1.0f) * _1025) * _1028) * _1031) + (((float2(asfloat((_565 & _576) | _577) - 1.0f, asfloat(((_573 + (_573 << 15u)) & _582) | _583) - 1.0f) * _1024) * _1028) * _1031)) + (((float2(asfloat((_637 & _648) | _649) - 1.0f, asfloat(((_645 + (_645 << 15u)) & _654) | _655) - 1.0f) * _1025) * _1027) * _1031)) + (((float2(asfloat((_709 & _720) | _721) - 1.0f, asfloat(((_717 + (_717 << 15u)) & _726) | _727) - 1.0f) * _1024) * _1027) * _1031);
         float2 _1060 = (((_1044 + (((float2(asfloat((_781 & _792) | _793) - 1.0f, asfloat(((_789 + (_789 << 15u)) & _798) | _799) - 1.0f) * _1025) * _1028) * _1030)) + (((float2(asfloat((_853 & _864) | _865) - 1.0f, asfloat(((_861 + (_861 << 15u)) & _870) | _871) - 1.0f) * _1024) * _1028) * _1030)) + (((float2(asfloat((_925 & _936) | _937) - 1.0f, asfloat(((_933 + (_933 << 15u)) & _942) | _943) - 1.0f) * _1025) * _1027) * _1030)) + (((float2(asfloat((_996 & _1007) | _1008) - 1.0f, asfloat(((_1004 + (_1004 << 15u)) & (_964 ? _1007 : 8388607u)) | (_964 ? _1008 : 1065353216u)) - 1.0f) * _1024) * _1027) * _1030);
         float2 _1063 = clamp((_1060 - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
-        float4 _1075 = mul(_Globals_model_to_world, float4(_441 + (float3(_1063.x, 0.0f, _1063.y) * 0.0599999986588954925537109375f), 1.0f));
+        float4 _1075 = mul(model_to_world, float4(_441 + (float3(_1063.x, 0.0f, _1063.y) * 0.0599999986588954925537109375f), 1.0f));
         float _1088 = _386 * 0.5f;
-        _1095 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _1075);
+        _1095 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _1075);
         _1096 = mul(_435, float4(normalize(float3(in_var_Vertex_Position.x, 0.0f, in_var_Vertex_Position.z)), 0.0f)).xyz;
         _1097 = float2(_159.x + _1088, _159.z + _1088) * 0.20000000298023223876953125f;
         _1098 = _1075.xyz;
@@ -882,12 +882,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_branch_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_branch_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
 };
 
 ByteAddressBuffer ivy_buffer : register(t14, space0);
@@ -905,7 +905,7 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1282,9 +1282,9 @@ void vert_main()
         float2 _1044 = (((((float2(asfloat((_493 & _504) | _505) - 1.0f, asfloat(((_501 + (_501 << 15u)) & _510) | _511) - 1.0f) * _1025) * _1028) * _1031) + (((float2(asfloat((_565 & _576) | _577) - 1.0f, asfloat(((_573 + (_573 << 15u)) & _582) | _583) - 1.0f) * _1024) * _1028) * _1031)) + (((float2(asfloat((_637 & _648) | _649) - 1.0f, asfloat(((_645 + (_645 << 15u)) & _654) | _655) - 1.0f) * _1025) * _1027) * _1031)) + (((float2(asfloat((_709 & _720) | _721) - 1.0f, asfloat(((_717 + (_717 << 15u)) & _726) | _727) - 1.0f) * _1024) * _1027) * _1031);
         float2 _1060 = (((_1044 + (((float2(asfloat((_781 & _792) | _793) - 1.0f, asfloat(((_789 + (_789 << 15u)) & _798) | _799) - 1.0f) * _1025) * _1028) * _1030)) + (((float2(asfloat((_853 & _864) | _865) - 1.0f, asfloat(((_861 + (_861 << 15u)) & _870) | _871) - 1.0f) * _1024) * _1028) * _1030)) + (((float2(asfloat((_925 & _936) | _937) - 1.0f, asfloat(((_933 + (_933 << 15u)) & _942) | _943) - 1.0f) * _1025) * _1027) * _1030)) + (((float2(asfloat((_996 & _1007) | _1008) - 1.0f, asfloat(((_1004 + (_1004 << 15u)) & (_964 ? _1007 : 8388607u)) | (_964 ? _1008 : 1065353216u)) - 1.0f) * _1024) * _1027) * _1030);
         float2 _1063 = clamp((_1060 - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
-        float4 _1075 = mul(_Globals_model_to_world, float4(_441 + (float3(_1063.x, 0.0f, _1063.y) * 0.0599999986588954925537109375f), 1.0f));
+        float4 _1075 = mul(model_to_world, float4(_441 + (float3(_1063.x, 0.0f, _1063.y) * 0.0599999986588954925537109375f), 1.0f));
         float _1088 = _386 * 0.5f;
-        _1095 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _1075);
+        _1095 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _1075);
         _1096 = mul(_435, float4(normalize(float3(in_var_Vertex_Position.x, 0.0f, in_var_Vertex_Position.z)), 0.0f)).xyz;
         _1097 = float2(_159.x + _1088, _159.z + _1088) * 0.20000000298023223876953125f;
         _1098 = _1075.xyz;

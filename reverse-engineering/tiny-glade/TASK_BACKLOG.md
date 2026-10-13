@@ -67,3 +67,8 @@
 具体证据增量保存在 `evidence/scope-priorities/` 与 `evidence/mcp/`。实际MCP工具catalog、创建/反编译/引用调用必须保存结果；失败或缺失范围保留，不把MCP注册正确当成工具已使用。
 
 所有新实现都按[项目记忆](PROJECT_MEMORY.md)排除依赖代码，并更新[项目进度](PROJECT_PROGRESS.md)和机器可读任务台账。
+
+
+## 2026-10-13 shader 缺口调查后续
+
+已完成原非零 compute 38 tuple、原 runtime load_compiled、404/638 实际预处理／DXC／打包及19冲突包修复。接下来按 evidence/shader-gap-investigation-2026-10-13/SUMMARY.md 的具体残差恢复7个反射差异、132个zero-key宏、uint2物理地址fork适配及图像格式；确认原离线CLI/provider/cache/temp策略。397包typed反射一致不能计为完整着色语义恢复，整帧后置。

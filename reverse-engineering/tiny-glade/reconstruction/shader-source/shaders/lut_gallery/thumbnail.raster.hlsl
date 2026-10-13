@@ -136,16 +136,16 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_input_tex_dims : packoffset(c0);
-    uint2 _Globals_icon_tex_dims : packoffset(c0.z);
-    uint2 _Globals_grading_lut_tex_dims : packoffset(c1);
-    uint2 _Globals_framebuffer_dims : packoffset(c1.z);
-    float2 _Globals_thumbnail_center : packoffset(c2);
-    float2 _Globals_thumbnail_size : packoffset(c2.z);
-    uint _Globals_is_hovered : packoffset(c3);
-    uint _Globals_is_active : packoffset(c3.y);
-    uint _Globals_show_icon : packoffset(c3.z);
-    float _Globals_lut_amount : packoffset(c3.w);
+    uint2 input_tex_dims : packoffset(c0);
+    uint2 icon_tex_dims : packoffset(c0.z);
+    uint2 grading_lut_tex_dims : packoffset(c1);
+    uint2 framebuffer_dims : packoffset(c1.z);
+    float2 thumbnail_center : packoffset(c2);
+    float2 thumbnail_size : packoffset(c2.z);
+    uint is_hovered : packoffset(c3);
+    uint is_active : packoffset(c3.y);
+    uint show_icon : packoffset(c3.z);
+    float lut_amount : packoffset(c3.w);
 };
 
 
@@ -218,8 +218,8 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float2 _100 = (_86.xy * _Globals_thumbnail_size) + _Globals_thumbnail_center;
-    _100.x = _100.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _100 = (_86.xy * thumbnail_size) + thumbnail_center;
+    _100.x = _100.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     gl_Position = float4((_100 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     out_var_C0 = _86.zw;
 }
@@ -244,16 +244,16 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_input_tex_dims : packoffset(c0);
-    uint2 _Globals_icon_tex_dims : packoffset(c0.z);
-    uint2 _Globals_grading_lut_tex_dims : packoffset(c1);
-    uint2 _Globals_framebuffer_dims : packoffset(c1.z);
-    float2 _Globals_thumbnail_center : packoffset(c2);
-    float2 _Globals_thumbnail_size : packoffset(c2.z);
-    uint _Globals_is_hovered : packoffset(c3);
-    uint _Globals_is_active : packoffset(c3.y);
-    uint _Globals_show_icon : packoffset(c3.z);
-    float _Globals_lut_amount : packoffset(c3.w);
+    uint2 input_tex_dims : packoffset(c0);
+    uint2 icon_tex_dims : packoffset(c0.z);
+    uint2 grading_lut_tex_dims : packoffset(c1);
+    uint2 framebuffer_dims : packoffset(c1.z);
+    float2 thumbnail_center : packoffset(c2);
+    float2 thumbnail_size : packoffset(c2.z);
+    uint is_hovered : packoffset(c3);
+    uint is_active : packoffset(c3.y);
+    uint show_icon : packoffset(c3.z);
+    float lut_amount : packoffset(c3.w);
 };
 
 
@@ -326,8 +326,8 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float2 _100 = (_86.xy * _Globals_thumbnail_size) + _Globals_thumbnail_center;
-    _100.x = _100.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _100 = (_86.xy * thumbnail_size) + thumbnail_center;
+    _100.x = _100.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     gl_Position = float4((_100 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     out_var_C0 = _86.zw;
 }

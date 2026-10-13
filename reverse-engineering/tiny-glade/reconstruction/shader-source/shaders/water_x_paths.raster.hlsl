@@ -64,9 +64,9 @@ Texture2D<float4> buildings_mask : register(t16, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float3 prim_center : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 prim_center: prim_center;
 };
 
 struct VsOut

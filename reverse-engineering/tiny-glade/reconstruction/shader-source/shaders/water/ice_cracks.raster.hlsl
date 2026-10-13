@@ -52,9 +52,9 @@ cbuffer $Globals : register(b13, space0)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
 };
 
 struct VsOut

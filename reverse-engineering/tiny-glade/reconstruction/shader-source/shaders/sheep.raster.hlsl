@@ -50,7 +50,7 @@ int is_pet_forward;
 
 struct VsIn
 {
-    float3 Vertex_Color : TEXCOORD2;
+    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
     uint vertex_id : SV_VertexID;
 };
 
@@ -195,12 +195,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    column_major float4x4 _Globals_prev_model_to_world : packoffset(c5);
-    int _Globals_animation_frame : packoffset(c9);
-    float _Globals_pet_blend : packoffset(c9.y);
-    int _Globals_is_pet_forward : packoffset(c9.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    column_major float4x4 prev_model_to_world : packoffset(c5);
+    int animation_frame : packoffset(c9);
+    float pet_blend : packoffset(c9.y);
+    int is_pet_forward : packoffset(c9.z);
 };
 
 ByteAddressBuffer animation : register(t14, space0);
@@ -215,7 +215,7 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_VertexIndex : SV_VertexID;
 };
 
@@ -230,11 +230,11 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    float _92 = clamp(1.0f - _Globals_pet_blend, 0.0f, 1.0f);
+    float _92 = clamp(1.0f - pet_blend, 0.0f, 1.0f);
     float _112;
-    if (_Globals_is_pet_forward == 0)
+    if (is_pet_forward == 0)
     {
-        float _105 = clamp(_Globals_pet_blend, 0.0f, 1.0f);
+        float _105 = clamp(pet_blend, 0.0f, 1.0f);
         _112 = ((_105 * _105) * _105) - (_105 * sin(_105 * 3.1400001049041748046875f));
     }
     else
@@ -242,14 +242,14 @@ void vert_main()
         _112 = 1.0f - (((_92 * _92) * _92) - (_92 * sin(_92 * 3.1400001049041748046875f)));
     }
     float3 _122 = _112.xxx;
-    float3 _123 = lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + _Globals_animation_frame * 16 + 0).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 960).xyz, _122);
+    float3 _123 = lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + animation_frame * 16 + 0).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 960).xyz, _122);
     float4 _134 = float4(_123.x, _123.y - 0.25f, _123.z, 1.0f);
-    float4 _135 = mul(_Globals_model_to_world, _134);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _135);
+    float4 _135 = mul(model_to_world, _134);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _135);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = mul(_Globals_model_to_world, float4(lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + _Globals_animation_frame * 16 + 480).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 976).xyz, _122), 0.0f)).xyz;
+    out_var_C1 = mul(model_to_world, float4(lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + animation_frame * 16 + 480).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 976).xyz, _122), 0.0f)).xyz;
     out_var_C2 = _135.xyz;
-    out_var_C3 = mul(_Globals_prev_model_to_world, _134).xyz;
+    out_var_C3 = mul(prev_model_to_world, _134).xyz;
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
@@ -335,12 +335,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    column_major float4x4 _Globals_prev_model_to_world : packoffset(c5);
-    int _Globals_animation_frame : packoffset(c9);
-    float _Globals_pet_blend : packoffset(c9.y);
-    int _Globals_is_pet_forward : packoffset(c9.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    column_major float4x4 prev_model_to_world : packoffset(c5);
+    int animation_frame : packoffset(c9);
+    float pet_blend : packoffset(c9.y);
+    int is_pet_forward : packoffset(c9.z);
 };
 
 ByteAddressBuffer animation : register(t14, space0);
@@ -355,7 +355,7 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_VertexIndex : SV_VertexID;
 };
 
@@ -370,11 +370,11 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    float _92 = clamp(1.0f - _Globals_pet_blend, 0.0f, 1.0f);
+    float _92 = clamp(1.0f - pet_blend, 0.0f, 1.0f);
     float _112;
-    if (_Globals_is_pet_forward == 0)
+    if (is_pet_forward == 0)
     {
-        float _105 = clamp(_Globals_pet_blend, 0.0f, 1.0f);
+        float _105 = clamp(pet_blend, 0.0f, 1.0f);
         _112 = ((_105 * _105) * _105) - (_105 * sin(_105 * 3.1400001049041748046875f));
     }
     else
@@ -382,14 +382,14 @@ void vert_main()
         _112 = 1.0f - (((_92 * _92) * _92) - (_92 * sin(_92 * 3.1400001049041748046875f)));
     }
     float3 _122 = _112.xxx;
-    float3 _123 = lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + _Globals_animation_frame * 16 + 0).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 960).xyz, _122);
+    float3 _123 = lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + animation_frame * 16 + 0).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 960).xyz, _122);
     float4 _134 = float4(_123.x, _123.y - 0.25f, _123.z, 1.0f);
-    float4 _135 = mul(_Globals_model_to_world, _134);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _135);
+    float4 _135 = mul(model_to_world, _134);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _135);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = mul(_Globals_model_to_world, float4(lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + _Globals_animation_frame * 16 + 480).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 976).xyz, _122), 0.0f)).xyz;
+    out_var_C1 = mul(model_to_world, float4(lerp(animation.Load<float4>(uint(gl_VertexIndex) * 992 + animation_frame * 16 + 480).xyz, animation.Load<float4>(uint(gl_VertexIndex) * 992 + 976).xyz, _122), 0.0f)).xyz;
     out_var_C2 = _135.xyz;
-    out_var_C3 = mul(_Globals_prev_model_to_world, _134).xyz;
+    out_var_C3 = mul(prev_model_to_world, _134).xyz;
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)

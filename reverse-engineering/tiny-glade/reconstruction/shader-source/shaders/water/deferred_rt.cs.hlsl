@@ -609,18 +609,18 @@ static const uint2 _200[8] = { uint2(0u, 0u), uint2(0u, 0u), uint2(0u, 0u), uint
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2);
-    uint _Globals_rt_bvh_node_count : packoffset(c2.z);
-    uint _Globals_rt_triangle_count : packoffset(c2.w);
-    uint _Globals_history_valid : packoffset(c3);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c3.y);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c4);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c4.z);
-    uint2 _Globals_color_tex_dims : packoffset(c5);
+    uint2 terrain_lighting_texture_dims : packoffset(c0);
+    uint2 blue_noise_texture_dims : packoffset(c0.z);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 brdf_fg_lut_dims : packoffset(c2);
+    uint rt_bvh_node_count : packoffset(c2.z);
+    uint rt_triangle_count : packoffset(c2.w);
+    uint history_valid : packoffset(c3);
+    uint2 half_depth_tex_dims : packoffset(c3.y);
+    uint2 taa_history_tex_dims : packoffset(c4);
+    uint2 reprojection_tex_dims : packoffset(c4.z);
+    uint2 color_tex_dims : packoffset(c5);
 };
 
 cbuffer frame_constants : register(b0, space1)
@@ -696,7 +696,7 @@ void comp_main()
         }
         uint4 _233 = water_rt_ray_buffer.Load<uint4>(gl_GlobalInvocationID.x * 16 + 0);
         uint2 _238 = uint2(_233.x & 65535u, (_233.x >> 16u) & 65535u);
-        float2 _245 = (float2(int2(_238)) + 0.5f.xx) / float2(_Globals_half_depth_tex_dims);
+        float2 _245 = (float2(int2(_238)) + 0.5f.xx) / float2(half_depth_tex_dims);
         float2 _253 = (_245 - 0.5f.xx) * float2(2.0f, -2.0f);
         float _254 = _253.x;
         float4 _261 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_254, _253.y, asfloat(_233.w), 1.0f)));
@@ -1311,7 +1311,7 @@ void comp_main()
             if (_1234)
             {
                 bool _1249;
-                if (_Globals_history_valid != 0u)
+                if (history_valid != 0u)
                 {
                     _1249 = !(0u == frame_constants_frame_index);
                 }
@@ -1350,7 +1350,7 @@ void comp_main()
             float3 _1294 = _1286 * (0.039999999105930328369140625f + (0.959999978542327880859375f * ((_1289 * _1289) * _1288)));
             float4 _1298 = reprojection_tex.GatherBlue(sampler_lnc, _245, int2(0, 0));
             bool _1310;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _1310 = !(0u == frame_constants_frame_index);
             }
@@ -1419,7 +1419,7 @@ void comp_main()
             if (_1400)
             {
                 bool _1415;
-                if (_Globals_history_valid != 0u)
+                if (history_valid != 0u)
                 {
                     _1415 = !(0u == frame_constants_frame_index);
                 }
@@ -1458,7 +1458,7 @@ void comp_main()
             float3 _1460 = _1452 * (0.039999999105930328369140625f + (0.959999978542327880859375f * ((_1455 * _1455) * _1454)));
             float4 _1464 = reprojection_tex.GatherBlue(sampler_lnc, _245, int2(0, 0));
             bool _1476;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _1476 = !(0u == frame_constants_frame_index);
             }
@@ -1527,7 +1527,7 @@ void comp_main()
             if (_1566)
             {
                 bool _1581;
-                if (_Globals_history_valid != 0u)
+                if (history_valid != 0u)
                 {
                     _1581 = !(0u == frame_constants_frame_index);
                 }
@@ -1566,7 +1566,7 @@ void comp_main()
             float3 _1626 = _1618 * (0.039999999105930328369140625f + (0.959999978542327880859375f * ((_1621 * _1621) * _1620)));
             float4 _1630 = reprojection_tex.GatherBlue(sampler_lnc, _245, int2(0, 0));
             bool _1642;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _1642 = !(0u == frame_constants_frame_index);
             }
@@ -1635,7 +1635,7 @@ void comp_main()
             if (_1732)
             {
                 bool _1747;
-                if (_Globals_history_valid != 0u)
+                if (history_valid != 0u)
                 {
                     _1747 = !(0u == frame_constants_frame_index);
                 }
@@ -1674,7 +1674,7 @@ void comp_main()
             float3 _1792 = _1784 * (0.039999999105930328369140625f + (0.959999978542327880859375f * ((_1787 * _1787) * _1786)));
             float4 _1796 = reprojection_tex.GatherBlue(sampler_lnc, _245, int2(0, 0));
             bool _1808;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 _1808 = !(0u == frame_constants_frame_index);
             }

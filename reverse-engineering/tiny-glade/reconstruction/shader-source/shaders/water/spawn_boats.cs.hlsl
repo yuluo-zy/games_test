@@ -177,11 +177,11 @@ struct BoatXform
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_path_mask_dims : packoffset(c0.y);
-    uint2 _Globals_water_mask_dims : packoffset(c1);
-    uint2 _Globals_buildings_mask_dims : packoffset(c1.z);
-    uint2 _Globals_grid_dims : packoffset(c2);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 path_mask_dims : packoffset(c0.y);
+    uint2 water_mask_dims : packoffset(c1);
+    uint2 buildings_mask_dims : packoffset(c1.z);
+    uint2 grid_dims : packoffset(c2);
 };
 
 cbuffer frame_constants : register(b0, space1)
@@ -238,9 +238,9 @@ void comp_main()
         best_choice = 0u;
     }
     GroupMemoryBarrierWithGroupSync();
-    float2 _135 = (float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims);
+    float2 _135 = (float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims);
     float2 _137 = (_135 - 0.5f.xx) * 130.0f.xx;
-    float _150 = 40.665630340576171875f * float(gl_GlobalInvocationID.x + (gl_GlobalInvocationID.y * _Globals_grid_dims.x));
+    float _150 = 40.665630340576171875f * float(gl_GlobalInvocationID.x + (gl_GlobalInvocationID.y * grid_dims.x));
     float _151 = cos(_150);
     float _152 = sin(_150);
     float2 _153 = float2(_151, _152);
@@ -259,7 +259,7 @@ void comp_main()
         _202 = false;
     }
     float _203 = _202 ? _197 : 0.0f;
-    float _228 = (abs(water_mask.SampleLevel(sampler_lnc, _174, 0.0f).w - water_mask.SampleLevel(sampler_lnc, _167, 0.0f).w) > 0.100000001490116119384765625f) ? 0.0f : ((path_mask.Load(int3(uint2(int2(_135 * float2(_Globals_path_mask_dims))), 0u)).x > 0.0f) ? 0.0f : (_203 * clamp(buildings_mask.SampleLevel(sampler_lnc, _135 + (_158 * 2.0f), 0.0f).y - 0.300000011920928955078125f, 0.0f, 1.0f)));
+    float _228 = (abs(water_mask.SampleLevel(sampler_lnc, _174, 0.0f).w - water_mask.SampleLevel(sampler_lnc, _167, 0.0f).w) > 0.100000001490116119384765625f) ? 0.0f : ((path_mask.Load(int3(uint2(int2(_135 * float2(path_mask_dims))), 0u)).x > 0.0f) ? 0.0f : (_203 * clamp(buildings_mask.SampleLevel(sampler_lnc, _135 + (_158 * 2.0f), 0.0f).y - 0.300000011920928955078125f, 0.0f, 1.0f)));
     uint _232 = uint(clamp(_228, 0.0f, 1.0f) * 4294967040.0f) | gl_LocalInvocationIndex;
     uint _233;
     InterlockedMax(best_choice, _232, _233);
@@ -313,7 +313,7 @@ void comp_main()
         float _331 = _313 * _152;
         float4x4 _342 = mul(mul(mul(float4x4(float4(1.0f, 0.0f, 0.0f, _137.x), float4(0.0f, 1.0f, 0.0f, -0.680000007152557373046875f), float4(0.0f, 0.0f, 1.0f, _137.y), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(float4x4(float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4x4(float4(0.85000002384185791015625f, 0.0f, 0.0f, 0.0f), float4(0.0f, 0.85000002384185791015625f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.85000002384185791015625f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), transpose(float4x4(float4((_282 * _281) + _279, _286 - _288, _291 + _292, 0.0f), float4(_286 + _288, (_295 * _285) + _279, _298 - _299, 0.0f), float4(_291 - _292, _298 + _299, (_290 * _287) + _279, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), transpose(float4x4(float4((_314 * _313) + _151, _318 - _320, _323 + _324, 0.0f), float4(_318 + _320, (_327 * _317) + _151, _330 - _331, 0.0f), float4(_323 - _324, _330 + _331, (_322 * _319) + _151, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
         uint _359;
-        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _359);
+        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _359);
         uint _361 = uint(int(_359));
         float _363[12] = { _342[0].x, _342[1].x, _342[2].x, _342[0].y, _342[1].y, _342[2].y, _342[0].z, _342[1].z, _342[2].z, _342[0].w, _342[1].w, _342[2].w };
         Affine3Packed _364 = { _363 };

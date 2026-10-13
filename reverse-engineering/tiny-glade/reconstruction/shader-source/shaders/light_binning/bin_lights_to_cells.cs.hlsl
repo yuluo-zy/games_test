@@ -209,7 +209,7 @@ cbuffer frame_constants : register(b0, space1)
 ByteAddressBuffer lantern_buf : register(t13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    uint _Globals_lantern_count : packoffset(c0);
+    uint lantern_count : packoffset(c0);
 };
 
 RWByteAddressBuffer __alias_indirection_grid : register(u15, space0);
@@ -236,7 +236,7 @@ void comp_main()
 {
     do
     {
-        if (gl_GlobalInvocationID.x >= _Globals_lantern_count)
+        if (gl_GlobalInvocationID.x >= lantern_count)
         {
             break;
         }
@@ -463,7 +463,7 @@ struct LanternPacked
 ByteAddressBuffer lantern_buf : register(t13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    uint _Globals_lantern_count : packoffset(c0);
+    uint lantern_count : packoffset(c0);
 };
 
 RWByteAddressBuffer __alias_indirection_grid : register(u15, space0);
@@ -489,7 +489,7 @@ void comp_main()
 {
     do
     {
-        if (gl_GlobalInvocationID.x >= _Globals_lantern_count)
+        if (gl_GlobalInvocationID.x >= lantern_count)
         {
             break;
         }

@@ -12,14 +12,14 @@ static uint _152;
 
 cbuffer $Globals : register(b14, space0)
 {
-    float _Globals_stroke_width : packoffset(c0);
-    uint2 _Globals_stroke_infos_device_address : packoffset(c0.y);
-    uint _Globals_stroke_count : packoffset(c0.w);
-    uint2 _Globals_img_output_dims : packoffset(c1);
-    uint2 _Globals_stroke_indices_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_terrain_sdg_dims : packoffset(c2.z);
-    uint2 _Globals_water_mask_dims : packoffset(c3);
+    float stroke_width : packoffset(c0);
+    uint2 stroke_infos_device_address : packoffset(c0.y);
+    uint stroke_count : packoffset(c0.w);
+    uint2 img_output_dims : packoffset(c1);
+    uint2 stroke_indices_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 terrain_sdg_dims : packoffset(c2.z);
+    uint2 water_mask_dims : packoffset(c3);
 };
 
 RWTexture2D<unorm float> img_output : register(u15, space0);
@@ -57,7 +57,7 @@ void comp_main()
     uint2 _240 = uint2(int3(gl_GlobalInvocationID).xy);
     float4 _242 = water_mask.Load(int3(_240, 0u));
     float _243 = _242.x;
-    float2 _248 = float2(int2(_Globals_img_output_dims));
+    float2 _248 = float2(int2(img_output_dims));
     float2 _252 = ((((float2(int3(gl_GlobalInvocationID).xy) + 0.5f.xx) / _248) * 2.0f) - 1.0f.xx) * 65.0f.xx;
     float2 _227 = _252;
     float _254 = _227.x;
@@ -150,9 +150,9 @@ void comp_main()
     float _316;
     int _318;
     float _320;
-    for (uint _321 = 0u; _321 < _Globals_stroke_count; _292 = _293, _295 = _296, _297 = _298, _299 = _300, _301 = _302, _303 = _304, _305 = _306, _307 = _308, _309 = _310, _311 = _312, _313 = _314, _315 = _316, _317 = _318, _319 = _320, _321++)
+    for (uint _321 = 0u; _321 < stroke_count; _292 = _293, _295 = _296, _297 = _298, _299 = _300, _301 = _302, _303 = _304, _305 = _306, _307 = _308, _309 = _310, _311 = _312, _313 = _314, _315 = _316, _317 = _318, _319 = _320, _321++)
     {
-        uint2 _229 = _Globals_stroke_infos_device_address;
+        uint2 _229 = stroke_infos_device_address;
         _224.x = _229.x + (16u * (_321));
         _224.y = _229.y + uint(int(_224.x < _229.x));
         uint4 _348 = vk::RawBufferLoad<uint4>(((uint64_t)_224.y << 32) | _224.x, 16);
@@ -186,7 +186,7 @@ void comp_main()
         }
         float _371 = clamp(spvUnpackHalf2x16(_359 & 65535u).x, 0.100000001490116119384765625f, 1.0f);
         float _372 = 1.0f - _371;
-        float _376 = (_372 * _Globals_stroke_width) * 2.0f;
+        float _376 = (_372 * stroke_width) * 2.0f;
         float _378 = clamp(_367 * 0.100000001490116119384765625f, 0.0f, 1.0f);
         float _384 = max(_367 / tan(lerp(90.0f, 10.0f, pow(_371, 0.5f)) * 0.01744444482028484344482421875f), 0.0f);
         float _389 = _384 / pow(pow(_384 * 0.011904762126505374908447265625f, 1.0f) + 1.0f, 1.0f);

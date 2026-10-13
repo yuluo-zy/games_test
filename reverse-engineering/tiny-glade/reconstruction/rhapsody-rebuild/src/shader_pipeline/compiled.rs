@@ -37,6 +37,18 @@ impl std::fmt::Display for CompiledDecodeError {
 }
 impl std::error::Error for CompiledDecodeError {}
 impl CompiledShaderPipeline {
+    /// 原load_compiled先读文件再解码；两类失败各自展开path和底层错误，不启动编译。
+    /// 返回String为现工程便捷适配；原入口以anyhow::Error::msg保存同一展开文本。
+    pub fn load_compiled(path: impl AsRef<std::path::Path>) -> Result<Self, String> {
+        let path = path.as_ref();
+        let bytes = std::fs::read(path).map_err(|error| {
+            format!("Failed opening compiled shader pipeline from {path:?}: {error}")
+        })?;
+        Self::decode(&bytes).map_err(|error| {
+            format!("Failed deserializing compiled shader pipeline from {path:?}: {error}")
+        })
+    }
+
     /// 严格按字段顺序读取，绝不搜索任意偏移的 SPIR-V magic。
     /// 原入口允许尾字节，存入trailing_bytes；格式合法性由speedy检查。
     pub fn decode(bytes: &[u8]) -> Result<Self, CompiledDecodeError> {

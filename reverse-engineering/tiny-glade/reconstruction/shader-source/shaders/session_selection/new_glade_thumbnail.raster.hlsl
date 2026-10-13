@@ -69,11 +69,11 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b14, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.y);
-    uint _Globals_thumbnail_index : packoffset(c1.z);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.y);
+    uint thumbnail_index : packoffset(c1.z);
 };
 
 
@@ -146,8 +146,8 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float2 _100 = (_85.xy * _Globals_thumbnail_size) + _Globals_first_thumbnail_center;
-    _100.x = _100.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _100 = (_85.xy * thumbnail_size) + first_thumbnail_center;
+    _100.x = _100.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float2 _109 = _85.zw;
     _109.y = _85.w;
     gl_Position = float4((_100 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
@@ -174,11 +174,11 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b14, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.y);
-    uint _Globals_thumbnail_index : packoffset(c1.z);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.y);
+    uint thumbnail_index : packoffset(c1.z);
 };
 
 
@@ -251,8 +251,8 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float2 _100 = (_85.xy * _Globals_thumbnail_size) + _Globals_first_thumbnail_center;
-    _100.x = _100.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _100 = (_85.xy * thumbnail_size) + first_thumbnail_center;
+    _100.x = _100.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float2 _109 = _85.zw;
     _109.y = _85.w;
     gl_Position = float4((_100 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);

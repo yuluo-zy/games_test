@@ -1,0 +1,50 @@
+{
+  "checked_on": "2026-10-13",
+  "tests": {
+    "command": "cargo test --locked --manifest-path reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml --test shader_build_pipeline --test shader_pipeline_contract --test shader_compiler_contract --test shader_dxc_recompile --test shader_rebuild_consumer --test shader_toolchain_runtime -- --nocapture",
+    "passed": 21,
+    "failed": 0,
+    "suites": {
+      "shader_build_pipeline": 5,
+      "shader_pipeline_contract": 7,
+      "shader_compiler_contract": 3,
+      "shader_dxc_recompile": 2,
+      "shader_rebuild_consumer": 1,
+      "shader_toolchain_runtime": 3
+    }
+  },
+  "clippy": {
+    "command": "cargo clippy --locked --manifest-path reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml --all-targets -- -D warnings",
+    "exit_code": 0
+  },
+  "selected_fresh_gpu": {
+    "device": "Intel(R) UHD Graphics 630",
+    "fill_words": 64,
+    "fill_value": 3221344269,
+    "raster_layouts": 2,
+    "raster_draw": false,
+    "original_executable_run": false,
+    "original_metadata_injected": false,
+    "exit_code": 0
+  },
+  "source_gate": {
+    "full_hlsl_recipe_audit": "corpus-final-native/report.json",
+    "intermediate_only": false,
+    "packages_generated": 404,
+    "modules_generated": 638,
+    "cross_stage_uniform_failures": 0,
+    "ps_scope_error_under_repair": false,
+    "semantic_schema_equal_assets": 397,
+    "final_source_equivalence_claimed": false
+  },
+  "historical_output_preserved": true,
+  "final_affected_suites": {
+    "log": "final-affected-tests.log",
+    "passed": 12,
+    "failed": 0,
+    "suites": [
+      "shader_build_pipeline",
+      "shader_pipeline_contract"
+    ]
+  }
+}

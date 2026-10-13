@@ -24,8 +24,8 @@ cbuffer $Globals : register(b13, space0)
 
 struct VS_INPUT
 {
-    float3 position : TEXCOORD0;
-    int arrow_index : TEXCOORD1;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(1)]] int arrow_index: arrow_index;
 };
 
 struct VS_OUTPUT
@@ -122,10 +122,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_y_axis_stretch : packoffset(c5);
-    float _Globals_x_axis_stretch : packoffset(c5.y);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float y_axis_stretch : packoffset(c5);
+    float x_axis_stretch : packoffset(c5.y);
 };
 
 
@@ -136,8 +136,8 @@ static float out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] int in_var_arrow_index : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] int in_var_arrow_index: arrow_index;
 };
 
 struct SPIRV_Cross_Output
@@ -160,13 +160,13 @@ void vert_main()
     float3 _81;
     if (_65)
     {
-        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, _Globals_y_axis_stretch), 0.5f));
+        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, y_axis_stretch), 0.5f));
     }
     else
     {
-        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, _Globals_x_axis_stretch), 0.5f));
+        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, x_axis_stretch), 0.5f));
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, mul(_Globals_model_to_world, float4(_81, 1.0f)));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, mul(model_to_world, float4(_81, 1.0f)));
     out_var_C1 = 1.0f;
 }
 
@@ -277,10 +277,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_y_axis_stretch : packoffset(c5);
-    float _Globals_x_axis_stretch : packoffset(c5.y);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float y_axis_stretch : packoffset(c5);
+    float x_axis_stretch : packoffset(c5.y);
 };
 
 
@@ -291,8 +291,8 @@ static float out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] int in_var_arrow_index : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] int in_var_arrow_index: arrow_index;
 };
 
 struct SPIRV_Cross_Output
@@ -315,13 +315,13 @@ void vert_main()
     float3 _81;
     if (_65)
     {
-        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, _Globals_y_axis_stretch), 0.5f));
+        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, y_axis_stretch), 0.5f));
     }
     else
     {
-        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, _Globals_x_axis_stretch), 0.5f));
+        _81 = in_var_Vertex_Position * (1.0f + pow(smoothstep(0.0f, 0.800000011920928955078125f, x_axis_stretch), 0.5f));
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, mul(_Globals_model_to_world, float4(_81, 1.0f)));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, mul(model_to_world, float4(_81, 1.0f)));
     out_var_C1 = 1.0f;
 }
 

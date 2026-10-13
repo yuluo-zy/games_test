@@ -139,11 +139,11 @@ struct Reed
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_water_mask_dims : packoffset(c0.y);
-    uint2 _Globals_path_mask_dims : packoffset(c1);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c1.z);
-    int2 _Globals_grid_dims : packoffset(c2);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 water_mask_dims : packoffset(c0.y);
+    uint2 path_mask_dims : packoffset(c1);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c1.z);
+    int2 grid_dims : packoffset(c2);
 };
 
 RWByteAddressBuffer __alias_instance_buffer : register(u18, space0);
@@ -168,7 +168,7 @@ void comp_main()
     uint _143 = _141 + (_141 << 3u);
     uint _145 = _143 ^ (_143 >> 11u);
     float _151 = asfloat(((_145 + (_145 << 15u)) & 8388607u) | 1065353216u) - 1.0f;
-    float2 _154 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-0.4000000059604644775390625f, 0.4000000059604644775390625f, _151).xx;
+    float2 _154 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-0.4000000059604644775390625f, 0.4000000059604644775390625f, _151).xx;
     float _186;
     do
     {
@@ -324,7 +324,7 @@ void comp_main()
         float _447 = _429 * _426;
         float4x4 _458 = mul(mul(float4x4(float4(1.0f, 0.0f, 0.0f, _154.x), float4(0.0f, 1.0f, 0.0f, -1.0f), float4(0.0f, 0.0f, 1.0f, _154.y), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(float4x4(float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4x4(float4(_409, 0.0f, 0.0f, 0.0f), float4(0.0f, _409 * lerp(0.5f, 1.0f, _224 * _224), 0.0f, 0.0f), float4(0.0f, 0.0f, _409, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), transpose(float4x4(float4((_430 * _429) + _427, _434 - _436, _439 + _440, 0.0f), float4(_434 + _436, (_443 * _433) + _427, _446 - _447, 0.0f), float4(_439 - _440, _446 + _447, (_438 * _435) + _427, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
         uint _475;
-        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _475);
+        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _475);
         uint _477 = uint(int(_475));
         float _479[12] = { _458[0].x, _458[1].x, _458[2].x, _458[0].y, _458[1].y, _458[2].y, _458[0].z, _458[1].z, _458[2].z, _458[0].w, _458[1].w, _458[2].w };
         Affine3Packed _480 = { _479 };

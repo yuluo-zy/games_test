@@ -74,7 +74,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 cbuffer color_library : register(b14, space0)
@@ -130,8 +130,8 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -209,7 +209,7 @@ void vert_main()
     float3 _335 = mul(_332, float3(0.0f, 0.0f, 1.0f));
     float3 _338 = cross(_333, _334);
     float3 _341 = (1.0f / dot(_335, _338)).xxx;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_155.x, _308, _155.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_155.x, _308, _155.z, 1.0f));
     out_var_C0 = lerp(color_library_fence_color_2.xyz, color_library_fence_color_1.xyz, 0.20000000298023223876953125f.xxx) * float3(0.719999969005584716796875f, 0.647999942302703857421875f, 0.5759999752044677734375f);
     out_var_C1 = mul(in_var_Vertex_Normal, float3x3(cross(_334, _335) * _341, cross(_335, _333) * _341, _338 * _341));
     out_var_C2 = _309;
@@ -346,7 +346,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 cbuffer color_library : register(b14, space0)
@@ -402,8 +402,8 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -481,7 +481,7 @@ void vert_main()
     float3 _335 = mul(_332, float3(0.0f, 0.0f, 1.0f));
     float3 _338 = cross(_333, _334);
     float3 _341 = (1.0f / dot(_335, _338)).xxx;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_155.x, _308, _155.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_155.x, _308, _155.z, 1.0f));
     out_var_C0 = lerp(color_library_fence_color_2.xyz, color_library_fence_color_1.xyz, 0.20000000298023223876953125f.xxx) * float3(0.719999969005584716796875f, 0.647999942302703857421875f, 0.5759999752044677734375f);
     out_var_C1 = mul(in_var_Vertex_Normal, float3x3(cross(_334, _335) * _341, cross(_335, _333) * _341, _338 * _341));
     out_var_C2 = _309;

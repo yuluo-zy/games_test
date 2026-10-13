@@ -156,15 +156,15 @@ static uint _132;
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c1.z);
-    uint2 _Globals_path_mask_dims : packoffset(c2);
-    uint2 _Globals_water_mask_dims : packoffset(c2.z);
-    uint2 _Globals_contouring_grid_dims : packoffset(c3);
-    uint _Globals_pebble_indirect_draw_idx : packoffset(c3.z);
-    uint _Globals_pebble_buffer_offset : packoffset(c3.w);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 rocky_terrain_dims : packoffset(c1.z);
+    uint2 path_mask_dims : packoffset(c2);
+    uint2 water_mask_dims : packoffset(c2.z);
+    uint2 contouring_grid_dims : packoffset(c3);
+    uint pebble_indirect_draw_idx : packoffset(c3.z);
+    uint pebble_buffer_offset : packoffset(c3.w);
 };
 
 RWByteAddressBuffer __alias_stairs_buffer : register(u20, space0);
@@ -186,9 +186,9 @@ void comp_main()
     do
     {
         bool _165;
-        if (!(gl_GlobalInvocationID.x > _Globals_contouring_grid_dims.x))
+        if (!(gl_GlobalInvocationID.x > contouring_grid_dims.x))
         {
-            _165 = gl_GlobalInvocationID.y > _Globals_contouring_grid_dims.y;
+            _165 = gl_GlobalInvocationID.y > contouring_grid_dims.y;
         }
         else
         {
@@ -198,8 +198,8 @@ void comp_main()
         {
             break;
         }
-        float _170 = float(_Globals_contouring_grid_dims.x);
-        float _176 = float(_Globals_contouring_grid_dims.y);
+        float _170 = float(contouring_grid_dims.x);
+        float _176 = float(contouring_grid_dims.y);
         float2 _181 = (float2((float(gl_GlobalInvocationID.x) + 0.5f) / _170, (float(gl_GlobalInvocationID.y) + 0.5f) / _176) - 0.5f.xx) * 130.0f.xx;
         float2 _182 = 65.0f.xx / float2(_170, _176);
         float _183 = _182.x;
@@ -534,7 +534,7 @@ void comp_main()
                         float _4348 = _4342.y;
                         float _4350 = _4342.w;
                         float _4351 = _4342.x;
-                        float2 _4360 = ((float2((_4347 + _4348) - (_4350 + _4351), (_4351 + _4348) - (_4350 + _4347)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                        float2 _4360 = ((float2((_4347 + _4348) - (_4350 + _4351), (_4351 + _4348) - (_4350 + _4347)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                         float _4393;
                         do
                         {
@@ -626,7 +626,7 @@ void comp_main()
                         float4x4 _4451 = transpose(float4x4(float4(_4428, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_4428, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                         float4x4 _4453 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _4424.x), float4(0.0f, 1.0f, 0.0f, _4424.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _4424.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_4451, float4x4(float4(_4337, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                         uint _4458;
-                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _4458);
+                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _4458);
                         uint _4472 = uint(int(_4458));
                         float _4474[12] = { _4453[0].x, _4453[1].x, _4453[2].x, _4453[0].y, _4453[1].y, _4453[2].y, _4453[0].z, _4453[1].z, _4453[2].z, _4453[0].w, _4453[1].w, _4453[2].w };
                         Affine3Packed _4475 = { _4474 };
@@ -670,8 +670,8 @@ void comp_main()
                             uint _4533 = _4512 ? _4513 : 1065353216u;
                             float3 _4540 = lerp(_4230, _4277, (asfloat(((_4527 + (_4527 << 15u)) & _4531) | _4533) - 1.0f).xxx) - _4423;
                             uint _4544;
-                            __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _4544);
-                            uint _4549 = _Globals_pebble_buffer_offset + uint(int(_4544));
+                            __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _4544);
+                            uint _4549 = pebble_buffer_offset + uint(int(_4544));
                             float4x4 _4562 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _4540.x), float4(0.0f, 1.0f, 0.0f, _4540.y), float4(0.0f, 0.0f, 1.0f, _4540.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_4451, float4x4(float4(_4518, 0.0f, 0.0f, 0.0f), float4(0.0f, _4518, 0.0f, 0.0f), float4(0.0f, 0.0f, _4518, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                             float _4576[12] = { _4562[0].x, _4562[1].x, _4562[2].x, _4562[0].y, _4562[1].y, _4562[2].y, _4562[0].z, _4562[1].z, _4562[2].z, _4562[0].w, _4562[1].w, _4562[2].w };
                             Affine3Packed _4577 = { _4576 };
@@ -869,7 +869,7 @@ void comp_main()
                             float _3933 = _3927.y;
                             float _3935 = _3927.w;
                             float _3936 = _3927.x;
-                            float2 _3945 = ((float2((_3932 + _3933) - (_3935 + _3936), (_3936 + _3933) - (_3935 + _3932)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                            float2 _3945 = ((float2((_3932 + _3933) - (_3935 + _3936), (_3936 + _3933) - (_3935 + _3932)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                             float _3978;
                             do
                             {
@@ -961,7 +961,7 @@ void comp_main()
                             float4x4 _4036 = transpose(float4x4(float4(_4013, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_4013, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                             float4x4 _4038 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _4009.x), float4(0.0f, 1.0f, 0.0f, _4009.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _4009.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_4036, float4x4(float4(_3922, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                             uint _4043;
-                            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _4043);
+                            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _4043);
                             uint _4057 = uint(int(_4043));
                             float _4059[12] = { _4038[0].x, _4038[1].x, _4038[2].x, _4038[0].y, _4038[1].y, _4038[2].y, _4038[0].z, _4038[1].z, _4038[2].z, _4038[0].w, _4038[1].w, _4038[2].w };
                             Affine3Packed _4060 = { _4059 };
@@ -1005,8 +1005,8 @@ void comp_main()
                                 uint _4118 = _4097 ? _4098 : 1065353216u;
                                 float3 _4125 = lerp(_3815, _3862, (asfloat(((_4112 + (_4112 << 15u)) & _4116) | _4118) - 1.0f).xxx) - _4008;
                                 uint _4129;
-                                __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _4129);
-                                uint _4134 = _Globals_pebble_buffer_offset + uint(int(_4129));
+                                __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _4129);
+                                uint _4134 = pebble_buffer_offset + uint(int(_4129));
                                 float4x4 _4147 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _4125.x), float4(0.0f, 1.0f, 0.0f, _4125.y), float4(0.0f, 0.0f, 1.0f, _4125.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_4036, float4x4(float4(_4103, 0.0f, 0.0f, 0.0f), float4(0.0f, _4103, 0.0f, 0.0f), float4(0.0f, 0.0f, _4103, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                 float _4161[12] = { _4147[0].x, _4147[1].x, _4147[2].x, _4147[0].y, _4147[1].y, _4147[2].y, _4147[0].z, _4147[1].z, _4147[2].z, _4147[0].w, _4147[1].w, _4147[2].w };
                                 Affine3Packed _4162 = { _4161 };
@@ -1203,7 +1203,7 @@ void comp_main()
                                 float _3518 = _3512.y;
                                 float _3520 = _3512.w;
                                 float _3521 = _3512.x;
-                                float2 _3530 = ((float2((_3517 + _3518) - (_3520 + _3521), (_3521 + _3518) - (_3520 + _3517)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                float2 _3530 = ((float2((_3517 + _3518) - (_3520 + _3521), (_3521 + _3518) - (_3520 + _3517)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                 float _3563;
                                 do
                                 {
@@ -1295,7 +1295,7 @@ void comp_main()
                                 float4x4 _3621 = transpose(float4x4(float4(_3598, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_3598, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                 float4x4 _3623 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3594.x), float4(0.0f, 1.0f, 0.0f, _3594.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _3594.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_3621, float4x4(float4(_3507, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                 uint _3628;
-                                __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _3628);
+                                __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _3628);
                                 uint _3642 = uint(int(_3628));
                                 float _3644[12] = { _3623[0].x, _3623[1].x, _3623[2].x, _3623[0].y, _3623[1].y, _3623[2].y, _3623[0].z, _3623[1].z, _3623[2].z, _3623[0].w, _3623[1].w, _3623[2].w };
                                 Affine3Packed _3645 = { _3644 };
@@ -1339,8 +1339,8 @@ void comp_main()
                                     uint _3703 = _3682 ? _3683 : 1065353216u;
                                     float3 _3710 = lerp(_3397, _3447, (asfloat(((_3697 + (_3697 << 15u)) & _3701) | _3703) - 1.0f).xxx) - _3593;
                                     uint _3714;
-                                    __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _3714);
-                                    uint _3719 = _Globals_pebble_buffer_offset + uint(int(_3714));
+                                    __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _3714);
+                                    uint _3719 = pebble_buffer_offset + uint(int(_3714));
                                     float4x4 _3732 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3710.x), float4(0.0f, 1.0f, 0.0f, _3710.y), float4(0.0f, 0.0f, 1.0f, _3710.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_3621, float4x4(float4(_3688, 0.0f, 0.0f, 0.0f), float4(0.0f, _3688, 0.0f, 0.0f), float4(0.0f, 0.0f, _3688, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                     float _3746[12] = { _3732[0].x, _3732[1].x, _3732[2].x, _3732[0].y, _3732[1].y, _3732[2].y, _3732[0].z, _3732[1].z, _3732[2].z, _3732[0].w, _3732[1].w, _3732[2].w };
                                     Affine3Packed _3747 = { _3746 };
@@ -1538,7 +1538,7 @@ void comp_main()
                                     float _3100 = _3094.y;
                                     float _3102 = _3094.w;
                                     float _3103 = _3094.x;
-                                    float2 _3112 = ((float2((_3099 + _3100) - (_3102 + _3103), (_3103 + _3100) - (_3102 + _3099)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                    float2 _3112 = ((float2((_3099 + _3100) - (_3102 + _3103), (_3103 + _3100) - (_3102 + _3099)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                     float _3145;
                                     do
                                     {
@@ -1630,7 +1630,7 @@ void comp_main()
                                     float4x4 _3203 = transpose(float4x4(float4(_3180, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_3180, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                     float4x4 _3205 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3176.x), float4(0.0f, 1.0f, 0.0f, _3176.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _3176.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_3203, float4x4(float4(_3089, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                     uint _3210;
-                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _3210);
+                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _3210);
                                     uint _3224 = uint(int(_3210));
                                     float _3226[12] = { _3205[0].x, _3205[1].x, _3205[2].x, _3205[0].y, _3205[1].y, _3205[2].y, _3205[0].z, _3205[1].z, _3205[2].z, _3205[0].w, _3205[1].w, _3205[2].w };
                                     Affine3Packed _3227 = { _3226 };
@@ -1674,8 +1674,8 @@ void comp_main()
                                         uint _3285 = _3264 ? _3265 : 1065353216u;
                                         float3 _3292 = lerp(_2982, _3029, (asfloat(((_3279 + (_3279 << 15u)) & _3283) | _3285) - 1.0f).xxx) - _3175;
                                         uint _3296;
-                                        __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _3296);
-                                        uint _3301 = _Globals_pebble_buffer_offset + uint(int(_3296));
+                                        __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _3296);
+                                        uint _3301 = pebble_buffer_offset + uint(int(_3296));
                                         float4x4 _3314 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3292.x), float4(0.0f, 1.0f, 0.0f, _3292.y), float4(0.0f, 0.0f, 1.0f, _3292.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_3203, float4x4(float4(_3270, 0.0f, 0.0f, 0.0f), float4(0.0f, _3270, 0.0f, 0.0f), float4(0.0f, 0.0f, _3270, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                         float _3328[12] = { _3314[0].x, _3314[1].x, _3314[2].x, _3314[0].y, _3314[1].y, _3314[2].y, _3314[0].z, _3314[1].z, _3314[2].z, _3314[0].w, _3314[1].w, _3314[2].w };
                                         Affine3Packed _3329 = { _3328 };
@@ -1873,7 +1873,7 @@ void comp_main()
                                         float _2283 = _2277.y;
                                         float _2285 = _2277.w;
                                         float _2286 = _2277.x;
-                                        float2 _2295 = ((float2((_2282 + _2283) - (_2285 + _2286), (_2286 + _2283) - (_2285 + _2282)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                        float2 _2295 = ((float2((_2282 + _2283) - (_2285 + _2286), (_2286 + _2283) - (_2285 + _2282)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                         float _2328;
                                         do
                                         {
@@ -1965,7 +1965,7 @@ void comp_main()
                                         float4x4 _2386 = transpose(float4x4(float4(_2363, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_2363, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                         float4x4 _2388 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2359.x), float4(0.0f, 1.0f, 0.0f, _2359.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _2359.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_2386, float4x4(float4(_2272, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                         uint _2393;
-                                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _2393);
+                                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _2393);
                                         uint _2407 = uint(int(_2393));
                                         float _2409[12] = { _2388[0].x, _2388[1].x, _2388[2].x, _2388[0].y, _2388[1].y, _2388[2].y, _2388[0].z, _2388[1].z, _2388[2].z, _2388[0].w, _2388[1].w, _2388[2].w };
                                         Affine3Packed _2410 = { _2409 };
@@ -2009,8 +2009,8 @@ void comp_main()
                                             uint _2468 = _2447 ? _2448 : 1065353216u;
                                             float3 _2475 = lerp(_2165, _2212, (asfloat(((_2462 + (_2462 << 15u)) & _2466) | _2468) - 1.0f).xxx) - _2358;
                                             uint _2479;
-                                            __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _2479);
-                                            uint _2484 = _Globals_pebble_buffer_offset + uint(int(_2479));
+                                            __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _2479);
+                                            uint _2484 = pebble_buffer_offset + uint(int(_2479));
                                             float4x4 _2497 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2475.x), float4(0.0f, 1.0f, 0.0f, _2475.y), float4(0.0f, 0.0f, 1.0f, _2475.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_2386, float4x4(float4(_2453, 0.0f, 0.0f, 0.0f), float4(0.0f, _2453, 0.0f, 0.0f), float4(0.0f, 0.0f, _2453, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                             float _2511[12] = { _2497[0].x, _2497[1].x, _2497[2].x, _2497[0].y, _2497[1].y, _2497[2].y, _2497[0].z, _2497[1].z, _2497[2].z, _2497[0].w, _2497[1].w, _2497[2].w };
                                             Affine3Packed _2512 = { _2511 };
@@ -2185,7 +2185,7 @@ void comp_main()
                                         float _2685 = _2679.y;
                                         float _2687 = _2679.w;
                                         float _2688 = _2679.x;
-                                        float2 _2697 = ((float2((_2684 + _2685) - (_2687 + _2688), (_2688 + _2685) - (_2687 + _2684)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                        float2 _2697 = ((float2((_2684 + _2685) - (_2687 + _2688), (_2688 + _2685) - (_2687 + _2684)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                         float _2730;
                                         do
                                         {
@@ -2277,7 +2277,7 @@ void comp_main()
                                         float4x4 _2788 = transpose(float4x4(float4(_2765, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_2765, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                         float4x4 _2790 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2761.x), float4(0.0f, 1.0f, 0.0f, _2761.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _2761.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_2788, float4x4(float4(_2674, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                         uint _2795;
-                                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _2795);
+                                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _2795);
                                         uint _2809 = uint(int(_2795));
                                         float _2811[12] = { _2790[0].x, _2790[1].x, _2790[2].x, _2790[0].y, _2790[1].y, _2790[2].y, _2790[0].z, _2790[1].z, _2790[2].z, _2790[0].w, _2790[1].w, _2790[2].w };
                                         Affine3Packed _2812 = { _2811 };
@@ -2321,8 +2321,8 @@ void comp_main()
                                             uint _2870 = _2849 ? _2850 : 1065353216u;
                                             float3 _2877 = lerp(_2570, _2614, (asfloat(((_2864 + (_2864 << 15u)) & _2868) | _2870) - 1.0f).xxx) - _2760;
                                             uint _2881;
-                                            __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _2881);
-                                            uint _2886 = _Globals_pebble_buffer_offset + uint(int(_2881));
+                                            __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _2881);
+                                            uint _2886 = pebble_buffer_offset + uint(int(_2881));
                                             float4x4 _2899 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2877.x), float4(0.0f, 1.0f, 0.0f, _2877.y), float4(0.0f, 0.0f, 1.0f, _2877.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_2788, float4x4(float4(_2855, 0.0f, 0.0f, 0.0f), float4(0.0f, _2855, 0.0f, 0.0f), float4(0.0f, 0.0f, _2855, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                             float _2913[12] = { _2899[0].x, _2899[1].x, _2899[2].x, _2899[0].y, _2899[1].y, _2899[2].y, _2899[0].z, _2899[1].z, _2899[2].z, _2899[0].w, _2899[1].w, _2899[2].w };
                                             Affine3Packed _2914 = { _2913 };
@@ -2519,7 +2519,7 @@ void comp_main()
                                             float _1868 = _1862.y;
                                             float _1870 = _1862.w;
                                             float _1871 = _1862.x;
-                                            float2 _1880 = ((float2((_1867 + _1868) - (_1870 + _1871), (_1871 + _1868) - (_1870 + _1867)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                            float2 _1880 = ((float2((_1867 + _1868) - (_1870 + _1871), (_1871 + _1868) - (_1870 + _1867)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                             float _1913;
                                             do
                                             {
@@ -2611,7 +2611,7 @@ void comp_main()
                                             float4x4 _1971 = transpose(float4x4(float4(_1948, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_1948, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                             float4x4 _1973 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1944.x), float4(0.0f, 1.0f, 0.0f, _1944.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _1944.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1971, float4x4(float4(_1857, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                             uint _1978;
-                                            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1978);
+                                            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1978);
                                             uint _1992 = uint(int(_1978));
                                             float _1994[12] = { _1973[0].x, _1973[1].x, _1973[2].x, _1973[0].y, _1973[1].y, _1973[2].y, _1973[0].z, _1973[1].z, _1973[2].z, _1973[0].w, _1973[1].w, _1973[2].w };
                                             Affine3Packed _1995 = { _1994 };
@@ -2655,8 +2655,8 @@ void comp_main()
                                                 uint _2053 = _2032 ? _2033 : 1065353216u;
                                                 float3 _2060 = lerp(_1747, _1797, (asfloat(((_2047 + (_2047 << 15u)) & _2051) | _2053) - 1.0f).xxx) - _1943;
                                                 uint _2064;
-                                                __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _2064);
-                                                uint _2069 = _Globals_pebble_buffer_offset + uint(int(_2064));
+                                                __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _2064);
+                                                uint _2069 = pebble_buffer_offset + uint(int(_2064));
                                                 float4x4 _2082 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2060.x), float4(0.0f, 1.0f, 0.0f, _2060.y), float4(0.0f, 0.0f, 1.0f, _2060.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1971, float4x4(float4(_2038, 0.0f, 0.0f, 0.0f), float4(0.0f, _2038, 0.0f, 0.0f), float4(0.0f, 0.0f, _2038, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                 float _2096[12] = { _2082[0].x, _2082[1].x, _2082[2].x, _2082[0].y, _2082[1].y, _2082[2].y, _2082[0].z, _2082[1].z, _2082[2].z, _2082[0].w, _2082[1].w, _2082[2].w };
                                                 Affine3Packed _2097 = { _2096 };
@@ -2854,7 +2854,7 @@ void comp_main()
                                                 float _1450 = _1444.y;
                                                 float _1452 = _1444.w;
                                                 float _1453 = _1444.x;
-                                                float2 _1462 = ((float2((_1449 + _1450) - (_1452 + _1453), (_1453 + _1450) - (_1452 + _1449)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                                float2 _1462 = ((float2((_1449 + _1450) - (_1452 + _1453), (_1453 + _1450) - (_1452 + _1449)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                                 float _1495;
                                                 do
                                                 {
@@ -2946,7 +2946,7 @@ void comp_main()
                                                 float4x4 _1553 = transpose(float4x4(float4(_1530, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_1530, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                                 float4x4 _1555 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1526.x), float4(0.0f, 1.0f, 0.0f, _1526.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _1526.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1553, float4x4(float4(_1439, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                 uint _1560;
-                                                __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1560);
+                                                __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1560);
                                                 uint _1574 = uint(int(_1560));
                                                 float _1576[12] = { _1555[0].x, _1555[1].x, _1555[2].x, _1555[0].y, _1555[1].y, _1555[2].y, _1555[0].z, _1555[1].z, _1555[2].z, _1555[0].w, _1555[1].w, _1555[2].w };
                                                 Affine3Packed _1577 = { _1576 };
@@ -2990,8 +2990,8 @@ void comp_main()
                                                     uint _1635 = _1614 ? _1615 : 1065353216u;
                                                     float3 _1642 = lerp(_1332, _1379, (asfloat(((_1629 + (_1629 << 15u)) & _1633) | _1635) - 1.0f).xxx) - _1525;
                                                     uint _1646;
-                                                    __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _1646);
-                                                    uint _1651 = _Globals_pebble_buffer_offset + uint(int(_1646));
+                                                    __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _1646);
+                                                    uint _1651 = pebble_buffer_offset + uint(int(_1646));
                                                     float4x4 _1664 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1642.x), float4(0.0f, 1.0f, 0.0f, _1642.y), float4(0.0f, 0.0f, 1.0f, _1642.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1553, float4x4(float4(_1620, 0.0f, 0.0f, 0.0f), float4(0.0f, _1620, 0.0f, 0.0f), float4(0.0f, 0.0f, _1620, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                     float _1678[12] = { _1664[0].x, _1664[1].x, _1664[2].x, _1664[0].y, _1664[1].y, _1664[2].y, _1664[0].z, _1664[1].z, _1664[2].z, _1664[0].w, _1664[1].w, _1664[2].w };
                                                     Affine3Packed _1679 = { _1678 };
@@ -3189,7 +3189,7 @@ void comp_main()
                                                     float _633 = _627.y;
                                                     float _635 = _627.w;
                                                     float _636 = _627.x;
-                                                    float2 _645 = ((float2((_632 + _633) - (_635 + _636), (_636 + _633) - (_635 + _632)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                                    float2 _645 = ((float2((_632 + _633) - (_635 + _636), (_636 + _633) - (_635 + _632)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                                     float _678;
                                                     do
                                                     {
@@ -3281,7 +3281,7 @@ void comp_main()
                                                     float4x4 _736 = transpose(float4x4(float4(_713, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_713, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                                     float4x4 _738 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _709.x), float4(0.0f, 1.0f, 0.0f, _709.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _709.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_736, float4x4(float4(_622, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                     uint _743;
-                                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _743);
+                                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _743);
                                                     uint _757 = uint(int(_743));
                                                     float _759[12] = { _738[0].x, _738[1].x, _738[2].x, _738[0].y, _738[1].y, _738[2].y, _738[0].z, _738[1].z, _738[2].z, _738[0].w, _738[1].w, _738[2].w };
                                                     Affine3Packed _760 = { _759 };
@@ -3325,8 +3325,8 @@ void comp_main()
                                                         uint _818 = _797 ? _798 : 1065353216u;
                                                         float3 _825 = lerp(_515, _562, (asfloat(((_812 + (_812 << 15u)) & _816) | _818) - 1.0f).xxx) - _708;
                                                         uint _829;
-                                                        __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _829);
-                                                        uint _834 = _Globals_pebble_buffer_offset + uint(int(_829));
+                                                        __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _829);
+                                                        uint _834 = pebble_buffer_offset + uint(int(_829));
                                                         float4x4 _847 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _825.x), float4(0.0f, 1.0f, 0.0f, _825.y), float4(0.0f, 0.0f, 1.0f, _825.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_736, float4x4(float4(_803, 0.0f, 0.0f, 0.0f), float4(0.0f, _803, 0.0f, 0.0f), float4(0.0f, 0.0f, _803, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                         float _861[12] = { _847[0].x, _847[1].x, _847[2].x, _847[0].y, _847[1].y, _847[2].y, _847[0].z, _847[1].z, _847[2].z, _847[0].w, _847[1].w, _847[2].w };
                                                         Affine3Packed _862 = { _861 };
@@ -3501,7 +3501,7 @@ void comp_main()
                                                     float _1035 = _1029.y;
                                                     float _1037 = _1029.w;
                                                     float _1038 = _1029.x;
-                                                    float2 _1047 = ((float2((_1034 + _1035) - (_1037 + _1038), (_1038 + _1035) - (_1037 + _1034)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+                                                    float2 _1047 = ((float2((_1034 + _1035) - (_1037 + _1038), (_1038 + _1035) - (_1037 + _1034)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
                                                     float _1080;
                                                     do
                                                     {
@@ -3593,7 +3593,7 @@ void comp_main()
                                                     float4x4 _1138 = transpose(float4x4(float4(_1115, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(cross(_1115, float3(0.0f, 1.0f, 0.0f)), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
                                                     float4x4 _1140 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1111.x), float4(0.0f, 1.0f, 0.0f, _1111.y - 0.5f), float4(0.0f, 0.0f, 1.0f, _1111.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1138, float4x4(float4(_1024, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 0.800000011920928955078125f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                     uint _1145;
-                                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1145);
+                                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1145);
                                                     uint _1159 = uint(int(_1145));
                                                     float _1161[12] = { _1140[0].x, _1140[1].x, _1140[2].x, _1140[0].y, _1140[1].y, _1140[2].y, _1140[0].z, _1140[1].z, _1140[2].z, _1140[0].w, _1140[1].w, _1140[2].w };
                                                     Affine3Packed _1162 = { _1161 };
@@ -3637,8 +3637,8 @@ void comp_main()
                                                         uint _1220 = _1199 ? _1200 : 1065353216u;
                                                         float3 _1227 = lerp(_920, _964, (asfloat(((_1214 + (_1214 << 15u)) & _1218) | _1220) - 1.0f).xxx) - _1110;
                                                         uint _1231;
-                                                        __alias_draw_commands.InterlockedAdd(_Globals_pebble_indirect_draw_idx * 20 + 4, 1u, _1231);
-                                                        uint _1236 = _Globals_pebble_buffer_offset + uint(int(_1231));
+                                                        __alias_draw_commands.InterlockedAdd(pebble_indirect_draw_idx * 20 + 4, 1u, _1231);
+                                                        uint _1236 = pebble_buffer_offset + uint(int(_1231));
                                                         float4x4 _1249 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1227.x), float4(0.0f, 1.0f, 0.0f, _1227.y), float4(0.0f, 0.0f, 1.0f, _1227.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_1138, float4x4(float4(_1205, 0.0f, 0.0f, 0.0f), float4(0.0f, _1205, 0.0f, 0.0f), float4(0.0f, 0.0f, _1205, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                         float _1263[12] = { _1249[0].x, _1249[1].x, _1249[2].x, _1249[0].y, _1249[1].y, _1249[2].y, _1249[0].z, _1249[1].z, _1249[2].z, _1249[0].w, _1249[1].w, _1249[2].w };
                                                         Affine3Packed _1264 = { _1263 };

@@ -162,9 +162,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.z);
-    uint2 _Globals_input_tex_dims : packoffset(c1);
+    uint2 blue_noise_texture_dims : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.z);
+    uint2 input_tex_dims : packoffset(c1);
 };
 
 SamplerState sampler_nnc : register(s2, space0);
@@ -185,7 +185,7 @@ void frag_main()
     do
     {
         float2 _106 = (((blue_noise_texture.Load(int3((uint2(gl_FragCoord.xy) + uint2(frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float((frame_constants_frame_index % 64u) + 7u)) + 0.5f.xx) * 256.0f.xx)) % uint2(256u, 256u), 0u)) * 255.0f) * 0.00390625f.xxxx) + 0.001953125f.xxxx).xy;
-        float2 _114 = float2(float(_Globals_input_tex_dims.y) / float(_Globals_input_tex_dims.x), 1.0f);
+        float2 _114 = float2(float(input_tex_dims.y) / float(input_tex_dims.x), 1.0f);
         float2 _115 = _114 * 0.0074999998323619365692138671875f;
         float2 _116 = float2(0.0044100000523030757904052734375f, 0.00233100005425512790679931640625f) * _114;
         float _118;

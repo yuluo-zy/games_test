@@ -111,9 +111,9 @@ float2 spire_noise3(float3 p)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float roof_profile_mult : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float roof_profile_mult: roof_profile_mult;
     uint instance_id : SV_InstanceID;
 };
 
@@ -267,7 +267,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instanced_data : register(t15, space0);
@@ -284,9 +284,9 @@ static float out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float in_var_roof_profile_mult : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float in_var_roof_profile_mult: roof_profile_mult;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -530,7 +530,7 @@ void vert_main()
     float2 _854 = ((((((float2(asfloat((_372 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_380 + (_380 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _834) * _837) + (((float2(asfloat((_434 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_442 + (_442 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _834) * _837)) + (((float2(asfloat((_496 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_504 + (_504 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _833) * _837)) + (((float2(asfloat((_558 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_566 + (_566 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _833) * _837)) + (((float2(asfloat((_620 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_628 + (_628 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _834) * _836);
     float2 _869 = clamp(((((_854 + (((float2(asfloat((_682 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_690 + (_690 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _834) * _836)) + (((float2(asfloat((_744 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_752 + (_752 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _833) * _836)) + (((float2(asfloat((_806 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_814 + (_814 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _833) * _836)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _874 = _172 + (float3(_869.x, 0.0f, _869.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_874, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_874, 1.0f));
     out_var_C0 = float3(0.2067500054836273193359375f, 0.1769330203533172607421875f, 0.10665000975131988525390625f);
     out_var_C1 = in_var_Vertex_Normal;
     out_var_C2 = _874;
@@ -623,7 +623,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instanced_data : register(t15, space0);
@@ -640,9 +640,9 @@ static float out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float in_var_roof_profile_mult : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float in_var_roof_profile_mult: roof_profile_mult;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -886,7 +886,7 @@ void vert_main()
     float2 _854 = ((((((float2(asfloat((_372 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_380 + (_380 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _834) * _837) + (((float2(asfloat((_434 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_442 + (_442 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _834) * _837)) + (((float2(asfloat((_496 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_504 + (_504 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _833) * _837)) + (((float2(asfloat((_558 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_566 + (_566 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _833) * _837)) + (((float2(asfloat((_620 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_628 + (_628 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _834) * _836);
     float2 _869 = clamp(((((_854 + (((float2(asfloat((_682 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_690 + (_690 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _834) * _836)) + (((float2(asfloat((_744 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_752 + (_752 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _831) * _833) * _836)) + (((float2(asfloat((_806 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_814 + (_814 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _830) * _833) * _836)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _874 = _172 + (float3(_869.x, 0.0f, _869.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_874, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_874, 1.0f));
     out_var_C0 = float3(0.2067500054836273193359375f, 0.1769330203533172607421875f, 0.10665000975131988525390625f);
     out_var_C1 = in_var_Vertex_Normal;
     out_var_C2 = _874;

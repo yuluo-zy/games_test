@@ -1,0 +1,254 @@
+[
+  {
+    "file": "_billboard_plant.raster.hlsl_b903e43ffb3da915.bin",
+    "source": "billboard_plant.raster.hlsl",
+    "dxc": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe",
+    "args": [
+      "D:/game/reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/interfaces/billboard_plant.raster.hlsl.candidate.prepared.hlsl",
+      "-E",
+      "vs_main",
+      "-T",
+      "vs_6_4",
+      "-spirv",
+      "-WX",
+      "-Ges",
+      "-fspv-target-env=vulkan1.1",
+      "-HV",
+      "2021",
+      "-Zi",
+      "-Fo",
+      "D:/game/reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/interfaces/billboard_plant.raster.hlsl.candidate.vs.spv",
+      "-Qembed_debug"
+    ],
+    "prepared_before_sha256": "9ddf13031765744ecf1453c825db4bc8ce5c2001bd7de1a9b0ed9eafbb1b6331",
+    "prepared_after_sha256": "00eda0a2b069d32142b2b9366f7c4764ba44a1ca51506da892b5947c5ea0706b",
+    "new_module_sha256": "483d4fb387b5076654edc94b36e0182dbfc064a47d8c5d50da8cf8726b4553f5",
+    "status": "compiled",
+    "stdout": "",
+    "stderr": "",
+    "changed_block_before": "struct VS_IN\n{\n    float3 vertex_position : TEXCOORD0;\n    float3 vertex_normal : TEXCOORD1;\n    float2 vertex_uv : TEXCOORD2;\n    float3 uv2 : TEXCOORD3;\n    float bby : TEXCOORD4;\n    int plant_id : TEXCOORD5;\n    int prim_id : TEXCOORD6;\n};",
+    "changed_block_after": "struct VS_IN\n{\n    [[vk::location(0)]] float3 vertex_position: Vertex_Position;\n    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;\n    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;\n    [[vk::location(3)]] float3 uv2: uv2;\n    [[vk::location(4)]] float bby: bby;\n    [[vk::location(5)]] int plant_id: plant_id;\n    [[vk::location(6)]] int prim_id: prim_id;\n};",
+    "original_inputs": [
+      {
+        "name": "in.var.Vertex_Position",
+        "location": 0,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_Normal",
+        "location": 1,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_UV",
+        "location": 2,
+        "type": {
+          "vector": 2,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.uv2",
+        "location": 3,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.bby",
+        "location": 4,
+        "type": {
+          "float_bits": 32
+        }
+      },
+      {
+        "name": "in.var.plant_id",
+        "location": 5,
+        "type": {
+          "integer_bits": 32,
+          "signed": 1
+        }
+      },
+      {
+        "name": "in.var.prim_id",
+        "location": 6,
+        "type": {
+          "integer_bits": 32,
+          "signed": 1
+        }
+      }
+    ],
+    "candidate_inputs": [
+      {
+        "name": "in.var.Vertex_Position",
+        "location": 0,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_Normal",
+        "location": 1,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_UV",
+        "location": 2,
+        "type": {
+          "vector": 2,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.uv2",
+        "location": 3,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.bby",
+        "location": 4,
+        "type": {
+          "float_bits": 32
+        }
+      },
+      {
+        "name": "in.var.plant_id",
+        "location": 5,
+        "type": {
+          "integer_bits": 32,
+          "signed": 1
+        }
+      },
+      {
+        "name": "in.var.prim_id",
+        "location": 6,
+        "type": {
+          "integer_bits": 32,
+          "signed": 1
+        }
+      }
+    ],
+    "inputs_exact_equal": true,
+    "code_opcode_histogram_equal_to_baseline": true
+  },
+  {
+    "file": "_garden_lowpoly_flower.raster.hlsl_b903e43ffb3da915.bin",
+    "source": "garden_lowpoly_flower.raster.hlsl",
+    "dxc": "D:/game/tools/shader-toolchain/dxc-v1.9.2609/bin/x64/dxc.exe",
+    "args": [
+      "D:/game/reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/interfaces/garden_lowpoly_flower.raster.hlsl.candidate.prepared.hlsl",
+      "-E",
+      "vs_main",
+      "-T",
+      "vs_6_4",
+      "-spirv",
+      "-WX",
+      "-Ges",
+      "-fspv-target-env=vulkan1.1",
+      "-HV",
+      "2021",
+      "-Zi",
+      "-Fo",
+      "D:/game/reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/interfaces/garden_lowpoly_flower.raster.hlsl.candidate.vs.spv",
+      "-Qembed_debug"
+    ],
+    "prepared_before_sha256": "501b542c7d896ddfe1e426c95792192bb384b995fa999db0cbf6d0005e655f95",
+    "prepared_after_sha256": "56ee6b41f145625550a4ffc9a01c636080b5cd54bf3d29b2e0adda138bf618f3",
+    "new_module_sha256": "aa25150c6fe065139a16eb0a4736b9c0f337505561388e6eccd441c229c42891",
+    "status": "compiled",
+    "stdout": "",
+    "stderr": "",
+    "changed_block_before": "struct VSInput\n{\n    float3 position : TEXCOORD0;\n    float3 normal : TEXCOORD2;\n    float wind_bend : TEXCOORD3;\n    uint instance_id : SV_InstanceID;\n};",
+    "changed_block_after": "struct VSInput\n{\n    [[vk::location(0)]] float3 position: Vertex_Position;\n    [[vk::location(2)]] float3 normal: Vertex_Normal;\n    [[vk::location(3)]] float wind_bend: wind_bend;\n    uint instance_id : SV_InstanceID;\n};",
+    "original_inputs": [
+      {
+        "name": "in.var.Vertex_Position",
+        "location": 0,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_Normal",
+        "location": 2,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.wind_bend",
+        "location": 3,
+        "type": {
+          "float_bits": 32
+        }
+      }
+    ],
+    "candidate_inputs": [
+      {
+        "name": "in.var.Vertex_Position",
+        "location": 0,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.Vertex_Normal",
+        "location": 2,
+        "type": {
+          "vector": 3,
+          "scalar": {
+            "float_bits": 32
+          }
+        }
+      },
+      {
+        "name": "in.var.wind_bend",
+        "location": 3,
+        "type": {
+          "float_bits": 32
+        }
+      }
+    ],
+    "inputs_exact_equal": true,
+    "code_opcode_histogram_equal_to_baseline": true
+  }
+]

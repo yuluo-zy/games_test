@@ -141,14 +141,14 @@ static float3 _103;
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_path_mask_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_water_mask_dims : packoffset(c2.z);
-    uint _Globals_pebble_buffer_size : packoffset(c3);
-    int _Globals_scatter_grid_dim : packoffset(c3.y);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 path_mask_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 water_mask_dims : packoffset(c2.z);
+    uint pebble_buffer_size : packoffset(c3);
+    int scatter_grid_dim : packoffset(c3.y);
 };
 
 RWByteAddressBuffer __alias_pebble_placement_buffer : register(u20, space0);
@@ -170,9 +170,9 @@ void comp_main()
     do
     {
         int _112 = int(gl_GlobalInvocationID.x);
-        int _113 = (_112 % (_Globals_scatter_grid_dim * _Globals_scatter_grid_dim));
-        float _117 = float(_Globals_scatter_grid_dim);
-        float2 _123 = (float2(float((_113 % _Globals_scatter_grid_dim)) / _117, float(_113 / _Globals_scatter_grid_dim) / _117) - 0.5f.xx) * 104.0f.xx;
+        int _113 = (_112 % (scatter_grid_dim * scatter_grid_dim));
+        float _117 = float(scatter_grid_dim);
+        float2 _123 = (float2(float((_113 % scatter_grid_dim)) / _117, float(_113 / scatter_grid_dim) / _117) - 0.5f.xx) * 104.0f.xx;
         uint _126 = uint(_112);
         uint _128 = _126 + (_126 << 10u);
         uint _130 = _128 ^ (_128 >> 6u);
@@ -323,7 +323,7 @@ void comp_main()
         float _316 = (asfloat(((_309 + (_309 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * 0.5f;
         float3 _322 = normalize(float3(_299.x * _316, 1.0f, _299.y * _316));
         uint _328;
-        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _328);
+        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _328);
         uint _330 = uint(int(_328));
         float4x4 _351 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _159), float4(0.0f, 1.0f, 0.0f, _172), float4(0.0f, 0.0f, 1.0f, _162), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(cross(float3(_276, 0.0f, _277), _322), 0.0f), float4(_322, 0.0f), float4(_276, 0.0f, _277, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_269, 0.0f, 0.0f, 0.0f), float4(0.0f, _269, 0.0f, 0.0f), float4(0.0f, 0.0f, _269, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
         float _365[12] = { _351[0].x, _351[1].x, _351[2].x, _351[0].y, _351[1].y, _351[2].y, _351[0].z, _351[1].z, _351[2].z, _351[0].w, _351[1].w, _351[2].w };

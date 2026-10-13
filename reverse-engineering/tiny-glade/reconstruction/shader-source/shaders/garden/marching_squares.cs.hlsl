@@ -301,15 +301,15 @@ static const uint2 _164[4] = { uint2(0u, 0u), uint2(1u, 0u), uint2(1u, 1u), uint
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_garden_mask_dims : packoffset(c0.y);
-    uint2 _Globals_path_mask_dims : packoffset(c1);
-    uint2 _Globals_water_mask_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c2.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c3);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c3.z);
-    uint2 _Globals_contouring_grid_dims : packoffset(c4);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 garden_mask_dims : packoffset(c0.y);
+    uint2 path_mask_dims : packoffset(c1);
+    uint2 water_mask_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 foliage_exclusion_mask_dims : packoffset(c2.z);
+    uint2 terrain_heightmap_dims : packoffset(c3);
+    uint2 visual_terrain_heightmap_dims : packoffset(c3.z);
+    uint2 contouring_grid_dims : packoffset(c4);
 };
 
 RWByteAddressBuffer __alias_instance_buffer : register(u22, space0);
@@ -344,7 +344,7 @@ void comp_main()
 {
     do
     {
-        float2 _187 = float2(_Globals_contouring_grid_dims);
+        float2 _187 = float2(contouring_grid_dims);
         if (0u == gl_LocalInvocationIndex)
         {
             valid_garden_samples = 0u;
@@ -356,7 +356,7 @@ void comp_main()
             {
                 float2 _215 = ((float2((gl_WorkGroupID.xy * uint2(8u, 8u)) + uint2(_201, _193)) / float2(uint2(_187))) - 0.5f.xx) * 130.0f.xx;
                 group_ws_pos[_201][_193] = _215;
-                int2 _220 = int2(_Globals_garden_mask_dims);
+                int2 _220 = int2(garden_mask_dims);
                 float3 _222 = (_215.xxy * 0.0076923076994717121124267578125f.xxx) + 0.5f.xxx;
                 float4 _236 = garden_mask.Load(int3(uint2(int2(int(_222.x * float(_220.x)), int(_222.z * float(_220.y)))), 0u));
                 float _237 = _236.y;
@@ -377,7 +377,7 @@ void comp_main()
         {
             for (uint _256 = gl_LocalInvocationID.x; _256 <= 8u; _256 += 8u)
             {
-                int2 _267 = int2(_Globals_garden_mask_dims);
+                int2 _267 = int2(garden_mask_dims);
                 float3 _269 = (group_ws_pos[_256][_248].xxy * 0.0076923076994717121124267578125f.xxx) + 0.5f.xxx;
                 uint2 _288 = uint2(int2(int(_269.x * float(_267.x)), int(_269.z * float(_267.y))));
                 group_path_mask[_256][_248] = path_mask.Load(int3(_288, 0u)).x;
@@ -608,7 +608,7 @@ void comp_main()
                         float3 _635 = float3(_633.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_611 + (_611 << 15u)) & _615) | _617) - 1.0f).xxx.y, _633.y) * 0.75f;
                         float4x4 _661 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _516), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_515 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _524), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_596, 0.0f), float4(_600, 0.0f), float4(cross(_596, _600), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_635.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _635.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _635.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                         uint _678;
-                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _678);
+                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _678);
                         float _681 = 10.0f * (_516 + _524);
                         uint _683 = uint(_681 + 640.0f);
                         uint _685 = _683 + (_683 << 10u);
@@ -782,7 +782,7 @@ void comp_main()
                             float3 _980 = float3(_978.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_956 + (_956 << 15u)) & _960) | _962) - 1.0f).xxx.y, _978.y) * 0.75f;
                             float4x4 _1006 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _861), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_860 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _869), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_941, 0.0f), float4(_945, 0.0f), float4(cross(_941, _945), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_980.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _980.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _980.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                             uint _1023;
-                            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1023);
+                            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1023);
                             float _1026 = 10.0f * (_861 + _869);
                             uint _1028 = uint(_1026 + 640.0f);
                             uint _1030 = _1028 + (_1028 << 10u);
@@ -955,7 +955,7 @@ void comp_main()
                                 float3 _1328 = float3(_1326.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_1304 + (_1304 << 15u)) & _1308) | _1310) - 1.0f).xxx.y, _1326.y) * 0.75f;
                                 float4x4 _1354 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1209), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_1208 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _1217), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_1289, 0.0f), float4(_1293, 0.0f), float4(cross(_1289, _1293), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_1328.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _1328.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _1328.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                 uint _1371;
-                                __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1371);
+                                __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1371);
                                 float _1374 = 10.0f * (_1209 + _1217);
                                 uint _1376 = uint(_1374 + 640.0f);
                                 uint _1378 = _1376 + (_1376 << 10u);
@@ -1129,7 +1129,7 @@ void comp_main()
                                     float3 _1673 = float3(_1671.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_1649 + (_1649 << 15u)) & _1653) | _1655) - 1.0f).xxx.y, _1671.y) * 0.75f;
                                     float4x4 _1699 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1554), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_1553 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _1562), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_1634, 0.0f), float4(_1638, 0.0f), float4(cross(_1634, _1638), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_1673.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _1673.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _1673.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                     uint _1716;
-                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _1716);
+                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _1716);
                                     float _1719 = 10.0f * (_1554 + _1562);
                                     uint _1721 = uint(_1719 + 640.0f);
                                     uint _1723 = _1721 + (_1721 << 10u);
@@ -1313,7 +1313,7 @@ void comp_main()
                                         float3 _2013 = float3(_2011.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_1989 + (_1989 << 15u)) & _1993) | _1995) - 1.0f).xxx.y, _2011.y) * 0.75f;
                                         float4x4 _2039 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _1894), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_1893 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _1902), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_1974, 0.0f), float4(_1978, 0.0f), float4(cross(_1974, _1978), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_2013.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _2013.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _2013.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                         uint _2056;
-                                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _2056);
+                                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _2056);
                                         float _2059 = 10.0f * (_1894 + _1902);
                                         uint _2061 = uint(_2059 + 640.0f);
                                         uint _2063 = _2061 + (_2061 << 10u);
@@ -1477,7 +1477,7 @@ void comp_main()
                                         float3 _2345 = float3(_2343.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_2321 + (_2321 << 15u)) & _2325) | _2327) - 1.0f).xxx.y, _2343.y) * 0.75f;
                                         float4x4 _2371 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2226), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_2225 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _2234), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_2306, 0.0f), float4(_2310, 0.0f), float4(cross(_2306, _2310), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_2345.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _2345.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _2345.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                         uint _2388;
-                                        __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _2388);
+                                        __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _2388);
                                         float _2391 = 10.0f * (_2226 + _2234);
                                         uint _2393 = uint(_2391 + 640.0f);
                                         uint _2395 = _2393 + (_2393 << 10u);
@@ -1650,7 +1650,7 @@ void comp_main()
                                             float3 _2693 = float3(_2691.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_2669 + (_2669 << 15u)) & _2673) | _2675) - 1.0f).xxx.y, _2691.y) * 0.75f;
                                             float4x4 _2719 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2574), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_2573 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _2582), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_2654, 0.0f), float4(_2658, 0.0f), float4(cross(_2654, _2658), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_2693.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _2693.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _2693.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                             uint _2736;
-                                            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _2736);
+                                            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _2736);
                                             float _2739 = 10.0f * (_2574 + _2582);
                                             uint _2741 = uint(_2739 + 640.0f);
                                             uint _2743 = _2741 + (_2741 << 10u);
@@ -1824,7 +1824,7 @@ void comp_main()
                                                 float3 _3038 = float3(_3036.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_3014 + (_3014 << 15u)) & _3018) | _3020) - 1.0f).xxx.y, _3036.y) * 0.75f;
                                                 float4x4 _3064 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _2919), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_2918 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _2927), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_2999, 0.0f), float4(_3003, 0.0f), float4(cross(_2999, _3003), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_3038.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _3038.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _3038.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                 uint _3081;
-                                                __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _3081);
+                                                __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _3081);
                                                 float _3084 = 10.0f * (_2919 + _2927);
                                                 uint _3086 = uint(_3084 + 640.0f);
                                                 uint _3088 = _3086 + (_3086 << 10u);
@@ -2008,7 +2008,7 @@ void comp_main()
                                                     float3 _3377 = float3(_3375.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_3353 + (_3353 << 15u)) & _3357) | _3359) - 1.0f).xxx.y, _3375.y) * 0.75f;
                                                     float4x4 _3403 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3258), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_3257 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _3266), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_3338, 0.0f), float4(_3342, 0.0f), float4(cross(_3338, _3342), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_3377.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _3377.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _3377.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                     uint _3420;
-                                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _3420);
+                                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _3420);
                                                     float _3423 = 10.0f * (_3258 + _3266);
                                                     uint _3425 = uint(_3423 + 640.0f);
                                                     uint _3427 = _3425 + (_3425 << 10u);
@@ -2172,7 +2172,7 @@ void comp_main()
                                                     float3 _3709 = float3(_3707.x, lerp(0.800000011920928955078125f, 1.2999999523162841796875f, asfloat(((_3685 + (_3685 << 15u)) & _3689) | _3691) - 1.0f).xxx.y, _3707.y) * 0.75f;
                                                     float4x4 _3735 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, _3590), float4(0.0f, 1.0f, 0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (_3589 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x)), float4(0.0f, 0.0f, 1.0f, _3598), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(_3670, 0.0f), float4(_3674, 0.0f), float4(cross(_3670, _3674), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_3709.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _3709.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _3709.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
                                                     uint _3752;
-                                                    __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _3752);
+                                                    __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _3752);
                                                     float _3755 = 10.0f * (_3590 + _3598);
                                                     uint _3757 = uint(_3755 + 640.0f);
                                                     uint _3759 = _3757 + (_3757 << 10u);

@@ -134,16 +134,16 @@ struct FlowerXform
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_garden_mask_dims : packoffset(c1.z);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c2);
-    int2 _Globals_grid_dims : packoffset(c2.z);
-    uint2 _Globals_path_mask_dims : packoffset(c3);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c3.z);
-    uint2 _Globals_water_mask_dims : packoffset(c4);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c4.z);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 garden_mask_dims : packoffset(c1.z);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c2);
+    int2 grid_dims : packoffset(c2.z);
+    uint2 path_mask_dims : packoffset(c3);
+    uint2 rocky_terrain_dims : packoffset(c3.z);
+    uint2 water_mask_dims : packoffset(c4);
+    uint2 foliage_exclusion_mask_dims : packoffset(c4.z);
 };
 
 RWByteAddressBuffer __alias_bush_buffer : register(u19, space0);
@@ -175,12 +175,12 @@ void comp_main()
         uint _146 = _144 + (_144 << 3u);
         uint _148 = _146 ^ (_146 >> 11u);
         float _154 = asfloat(((_148 + (_148 << 15u)) & 8388607u) | 1065353216u) - 1.0f;
-        float2 _157 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-1.0f, 1.0f, _154).xx;
+        float2 _157 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-1.0f, 1.0f, _154).xx;
         bool _227;
         do
         {
             _161 = (_157 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx;
-            uint2 _166 = uint2(_161 * float2(_Globals_path_mask_dims));
+            uint2 _166 = uint2(_161 * float2(path_mask_dims));
             float4 _184 = terrain_heightmap.GatherRed(sampler_default, _161, int2(0, 0));
             float _189 = _184.z;
             float _190 = _184.y;
@@ -189,7 +189,7 @@ void comp_main()
             bool _214;
             if (!(path_mask.Load(int3(_166, 0u)).x > 0.20000000298023223876953125f))
             {
-                _214 = (int(rocky_terrain.Load(int3(_166, 0u)).x > 0.0f) & int(length(((float2((_189 + _190) - (_192 + _193), (_193 + _190) - (_192 + _189)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims))) > 0.89999997615814208984375f)) != 0;
+                _214 = (int(rocky_terrain.Load(int3(_166, 0u)).x > 0.0f) & int(length(((float2((_189 + _190) - (_192 + _193), (_193 + _190) - (_192 + _189)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims))) > 0.89999997615814208984375f)) != 0;
             }
             else
             {

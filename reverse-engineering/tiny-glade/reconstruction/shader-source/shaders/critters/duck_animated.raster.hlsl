@@ -22,16 +22,16 @@ int bool_render_shadows;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float3 rest_pos : TEXCOORD3;
-    float3 rest_n : TEXCOORD4;
-    int is_wing : TEXCOORD5;
-    float wing_t : TEXCOORD6;
-    int is_mouth_bottom : TEXCOORD7;
-    float3 pet_pos : TEXCOORD8;
-    float3 pet_n : TEXCOORD9;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 rest_pos: rest_pos;
+    [[vk::location(4)]] float3 rest_n: rest_n;
+    [[vk::location(5)]] int is_wing: is_wing;
+    [[vk::location(6)]] float wing_t: wing_t;
+    [[vk::location(7)]] int is_mouth_bottom: is_mouth_bottom;
+    [[vk::location(8)]] float3 pet_pos: pet_pos;
+    [[vk::location(9)]] float3 pet_n: pet_n;
 };
 
 struct VsOut

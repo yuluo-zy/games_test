@@ -13,8 +13,8 @@ static float4 _66;
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_input_tex_dims : packoffset(c0);
-    uint2 _Globals_output_tex_dims : packoffset(c0.z);
+    uint2 input_tex_dims : packoffset(c0);
+    uint2 output_tex_dims : packoffset(c0.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -29,7 +29,7 @@ struct SPIRV_Cross_Input
 
 void comp_main()
 {
-    float2 _73 = float2(_Globals_input_tex_dims);
+    float2 _73 = float2(input_tex_dims);
     float2 _76 = (float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / _73;
     float2 _79 = 1.0f.xx / _73;
     float4 _505;

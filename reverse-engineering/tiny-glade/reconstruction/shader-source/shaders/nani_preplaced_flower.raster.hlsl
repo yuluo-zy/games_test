@@ -75,10 +75,10 @@ float hash2_rand(uint h)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float wind_bend: wind_bend;
     uint instance_id : SV_InstanceID;
 };
 
@@ -272,13 +272,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1.z);
-    uint2 _Globals_albedo_map_dims : packoffset(c2);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c2.z);
-    int _Globals_bool_render_shadows : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 grass_object_push_dims : packoffset(c1.z);
+    uint2 albedo_map_dims : packoffset(c2);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c2.z);
+    int bool_render_shadows : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -300,10 +300,10 @@ static float2 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -405,7 +405,7 @@ void vert_main()
         {
             _368 = _175;
         }
-        _383 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_368, 1.0f));
+        _383 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_368, 1.0f));
         _384 = in_var_Vertex_Color;
         _385 = mul(_169, float4(in_var_Vertex_Normal, 0.0f));
         _386 = _368;
@@ -510,13 +510,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1.z);
-    uint2 _Globals_albedo_map_dims : packoffset(c2);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c2.z);
-    int _Globals_bool_render_shadows : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 grass_object_push_dims : packoffset(c1.z);
+    uint2 albedo_map_dims : packoffset(c2);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c2.z);
+    int bool_render_shadows : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -538,10 +538,10 @@ static float2 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -643,7 +643,7 @@ void vert_main()
         {
             _368 = _175;
         }
-        _383 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_368, 1.0f));
+        _383 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_368, 1.0f));
         _384 = in_var_Vertex_Color;
         _385 = mul(_169, float4(in_var_Vertex_Normal, 0.0f));
         _386 = _368;

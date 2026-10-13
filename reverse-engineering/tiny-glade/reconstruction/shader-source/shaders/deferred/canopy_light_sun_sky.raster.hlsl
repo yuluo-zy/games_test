@@ -95,9 +95,9 @@ cbuffer $Globals : register(b13, space0)
     uint lantern_count;
     uint2 indirect_radiance_tex_dims;
     uint2 rdi_reservoir_tex_dims;
-    uint2 brdf_fg_lut_dims;
     uint2 terrain_heightmap_dims;
     uint2 visual_terrain_heightmap_dims;
+    uint2 brdf_fg_lut_dims;
     uint rt_bvh_node_count;
     uint rt_triangle_count;
 };

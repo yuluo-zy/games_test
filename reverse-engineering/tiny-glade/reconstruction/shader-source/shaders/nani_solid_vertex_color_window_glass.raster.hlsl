@@ -75,10 +75,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_curtains_texture_dims : packoffset(c0.y);
-    uint2 _Globals_indoors_texture_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 curtains_texture_dims : packoffset(c0.y);
+    uint2 indoors_texture_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -102,11 +102,11 @@ static uint out_var_C7;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_glass : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_glass: is_glass;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -354,7 +354,7 @@ void vert_main()
     float2 _696 = ((((((float2(asfloat((_214 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_222 + (_222 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _676) * _679) + (((float2(asfloat((_276 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_284 + (_284 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _676) * _679)) + (((float2(asfloat((_338 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_346 + (_346 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _675) * _679)) + (((float2(asfloat((_400 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_408 + (_408 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _675) * _679)) + (((float2(asfloat((_462 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_470 + (_470 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _676) * _678);
     float2 _711 = clamp(((((_696 + (((float2(asfloat((_524 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_532 + (_532 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _676) * _678)) + (((float2(asfloat((_586 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_594 + (_594 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _675) * _678)) + (((float2(asfloat((_648 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_656 + (_656 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _675) * _678)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _716 = _168 + (float3(_711.x, 0.0f, _711.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_716, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_716, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_163, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _716;
@@ -468,10 +468,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_curtains_texture_dims : packoffset(c0.y);
-    uint2 _Globals_indoors_texture_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 curtains_texture_dims : packoffset(c0.y);
+    uint2 indoors_texture_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer nani_instance_data : register(t15, space0);
@@ -570,7 +570,7 @@ void frag_main()
     bool _224;
     if (spvBitfieldUExtract(nani_instance_data.Load<uint>(in_var_C4 * 64 + 48), 31u, 1u) != 0u)
     {
-        _224 = _Globals_bool_render_shadows != 0;
+        _224 = bool_render_shadows != 0;
     }
     else
     {
@@ -1016,10 +1016,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_curtains_texture_dims : packoffset(c0.y);
-    uint2 _Globals_indoors_texture_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 curtains_texture_dims : packoffset(c0.y);
+    uint2 indoors_texture_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -1043,11 +1043,11 @@ static uint out_var_C7;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_glass : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_glass: is_glass;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1295,7 +1295,7 @@ void vert_main()
     float2 _696 = ((((((float2(asfloat((_214 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_222 + (_222 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _676) * _679) + (((float2(asfloat((_276 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_284 + (_284 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _676) * _679)) + (((float2(asfloat((_338 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_346 + (_346 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _675) * _679)) + (((float2(asfloat((_400 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_408 + (_408 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _675) * _679)) + (((float2(asfloat((_462 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_470 + (_470 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _676) * _678);
     float2 _711 = clamp(((((_696 + (((float2(asfloat((_524 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_532 + (_532 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _676) * _678)) + (((float2(asfloat((_586 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_594 + (_594 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _673) * _675) * _678)) + (((float2(asfloat((_648 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_656 + (_656 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _672) * _675) * _678)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _716 = _168 + (float3(_711.x, 0.0f, _711.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_716, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_716, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_163, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _716;
@@ -1405,10 +1405,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_curtains_texture_dims : packoffset(c0.y);
-    uint2 _Globals_indoors_texture_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 curtains_texture_dims : packoffset(c0.y);
+    uint2 indoors_texture_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer nani_instance_data : register(t15, space0);
@@ -1483,7 +1483,7 @@ void frag_main()
     bool _96;
     if (spvBitfieldUExtract(nani_instance_data.Load<uint>(in_var_C4 * 64 + 48), 31u, 1u) != 0u)
     {
-        _96 = _Globals_bool_render_shadows != 0;
+        _96 = bool_render_shadows != 0;
     }
     else
     {

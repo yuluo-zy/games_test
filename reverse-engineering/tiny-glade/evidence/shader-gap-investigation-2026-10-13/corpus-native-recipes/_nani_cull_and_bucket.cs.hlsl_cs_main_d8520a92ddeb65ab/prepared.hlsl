@@ -1,0 +1,509 @@
+#define PERM_oc_pass 0
+#define TGV_d8520a92ddeb65ab 1
+#define TINYGLADE_NANI_NO_HZB 1
+#line 1 "shaders/nani/cull_and_bucket.cs.hlsl"
+
+
+
+
+#if defined(TGV_8a7d2f81e72c8eeb) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct MeshAtlasPartInfo
+{
+    uint first_index;
+    uint index_count;
+    float bounding_sphere_radius;
+    uint pad0;
+};
+
+struct GpuFilteredInstanceMeta
+{
+    uint raw;
+};
+
+struct NaniDrawListInfo
+{
+    uint global_instance_offset;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+ByteAddressBuffer atlas_part_info : register(t13, space0);
+RWByteAddressBuffer __alias_filtered_instance_buffer : register(u14, space0);
+RWByteAddressBuffer __alias_filtered_instance_allocator_buffer : register(u15, space0);
+RWByteAddressBuffer __alias_filtered_instance_meta_buffer : register(u16, space0);
+RWByteAddressBuffer __alias_output_histogram : register(u17, space0);
+ByteAddressBuffer prev_visibility_bitmask : register(t18, space0);
+RWByteAddressBuffer __alias_next_visibility_bitmask : register(u19, space0);
+ByteAddressBuffer draw_list_info : register(t20, space0);
+cbuffer $Globals : register(b22, space0)
+{
+    uint2 _Globals_hzb_tex_inner_dims : packoffset(c0);
+};
+
+struct PushConstants
+{
+    uint2 instance_buffer_addr;
+    uint world_subset;
+    uint input_instance_count;
+    uint draw_list_index_base;
+};
+[[vk::push_constant]]
+PushConstants push_constants;
+
+Texture2D<float4> hzb_tex : register(t21, space0);
+
+static uint3 gl_GlobalInvocationID;
+struct SPIRV_Cross_Input
+{
+    uint3 gl_GlobalInvocationID : SV_DispatchThreadID;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void comp_main()
+{
+    do
+    {
+        if (gl_GlobalInvocationID.x >= push_constants.input_instance_count)
+        {
+            break;
+        }
+        uint2 _149 = push_constants.instance_buffer_addr;
+        uint2 _147;
+        _147.x = _149.x + (16u * (gl_GlobalInvocationID.x));
+        _147.y = _149.y + uint(int(_147.x < _149.x));
+        uint4 _179 = vk::RawBufferLoad<uint4>(((uint64_t)_147.y << 32) | _147.x, 16);
+        uint4 _148 = _179;
+        uint _184 = _148.w >> 16u;
+        float2 _146 = float2(spvUnpackHalf2x16(_148.w & 65535u).x, spvUnpackHalf2x16(_184 & 65535u).x);
+        float _198 = _146.x * atlas_part_info.Load<float>(push_constants.world_subset * 1024 + _184 * 16 + 8);
+        float4 _205 = mul(frame_constants_view_constants[0u].world_to_view, float4(asfloat(_179.xyz), 1.0f));
+        uint _212 = clamp(uint(clamp((32.0f - _205.z) * 0.00347222224809229373931884765625f, 0.0f, 1.0f) * 1024.0f), 0u, 1023u);
+        float4x4 _138 = frame_constants_view_constants[0u].view_to_clip;
+        float2 _136 = 1.0f.xx;
+        float2 _137 = 0.0f.xx;
+        float4 _229 = float4((-_138[0u].x) * _136.x, _138[0u].y, _137.x, _138[0u].w);
+        float4 _241 = float4(_138[1u].x, _138[1u].y * _136.y, _137.y, _138[1u].w);
+        float4 _248 = float4(_138[3u].x, _138[3u].y, -1.0f, _138[3u].w);
+        float4 _132[4];
+        _132[0] = _248 + _229;
+        _132[1] = _248 - _229;
+        _132[2] = _248 + _241;
+        _132[3] = _248 - _241;
+        for (int _260 = 0; _260 < 4; )
+        {
+            _132[_260] /= length(_132[_260].xyz).xxxx;
+            _260++;
+            continue;
+        }
+        float4 _131[4] = _132;
+        float3 _275 = _205.xyz;
+        float3 _139 = _275;
+        float3 _140 = _275;
+        bool _287;
+        if (((-_140.z) + _198) > _138[2].w)
+        {
+            _287 = ((-_140.z) - _198) < 3.4028234663852885981170418348452e+38f;
+        }
+        else
+        {
+            _287 = false;
+        }
+        bool _289;
+        _289 = _287;
+        bool _290;
+        for (int _292 = 0; _292 < 4; _289 = _290, _292++)
+        {
+            if (_289)
+            {
+                _290 = dot(float4(_205.xyz, 1.0f), _131[_292]) > (-_198);
+            }
+            else
+            {
+                _290 = false;
+            }
+        }
+        uint _308 = draw_list_info.Load<uint>(push_constants.draw_list_index_base * 4 + 0);
+        uint _309 = gl_GlobalInvocationID.x + _308;
+        float3 _142 = _275;
+        _142.z = -_142.z;
+        float4x4 _134 = frame_constants_view_constants[0u].view_to_clip;
+        float _318 = _134[0u].x * 0.5f;
+        float4x4 _133 = frame_constants_view_constants[0u].view_to_clip;
+        float _321 = _133[1u].y * 0.5f;
+        float3 _135 = _142 * _198;
+        float _328 = (_142.z * _142.z) - (_198 * _198);
+        float _334 = sqrt((_142.x * _142.x) + _328);
+        float _360 = sqrt((_142.y * _142.y) + _328);
+        float4 _391 = float4(_Globals_hzb_tex_inner_dims.xyxy);
+        float4 _394 = clamp((float4((((_334 * _142.x) - _135.z) / ((_334 * _142.z) + _135.x)) * _318, (-(((_360 * _142.y) + _135.z) / ((_360 * _142.z) - _135.y))) * _321, (((_334 * _142.x) + _135.z) / ((_334 * _142.z) - _135.x)) * _318, (-(((_360 * _142.y) - _135.z) / ((_360 * _142.z) + _135.y))) * _321) + 0.5f.xxxx) * _391, 0.0f.xxxx, _391 - 1.0f.xxxx);
+        float4 _141 = _394;
+        float2 _143 = float2(_141.z - _141.x, _141.w - _141.y);
+        uint _414 = uint(max(0.0f, ceil(log2(max(_143.x, _143.y)))));
+        bool _462;
+        if (_289 ? true : false)
+        {
+            uint2 _421 = _414.xx & uint2(31u, 31u);
+            uint2 _144 = uint2(_394.xy) >> _421;
+            uint2 _145 = uint2(_394.zw) >> _421;
+            float4x4 _130 = frame_constants_view_constants[0u].clip_to_view;
+            _462 = (_139.z + _198) > (1.0f / (min(min(hzb_tex.Load(int3(uint2(_144.x, _144.y), _414)).x, hzb_tex.Load(int3(uint2(_144.x, _145.y), _414)).x), min(hzb_tex.Load(int3(uint2(_145.x, _144.y), _414)).x, hzb_tex.Load(int3(uint2(_145.x, _145.y), _414)).x)) * (-_130[3].z)));
+        }
+        else
+        {
+            _462 = _289;
+        }
+        if (_462)
+        {
+            uint _469 = 1u << ((_309 % 32u) & 31u);
+            uint _470;
+            __alias_next_visibility_bitmask.InterlockedOr((_309 / 32u) * 4 + 0, _469, _470);
+            if (!((prev_visibility_bitmask.Load<uint>((_309 / 32u) * 4 + 0) & _469) != 0u))
+            {
+                uint _479;
+                __alias_filtered_instance_allocator_buffer.InterlockedAdd(push_constants.draw_list_index_base * 4 + 0, 1u, _479);
+                __alias_filtered_instance_buffer.Store<uint>(_479 * 4 + 0, (gl_GlobalInvocationID.x * 1024u) + _212);
+                GpuFilteredInstanceMeta _482 = { _184 };
+                __alias_filtered_instance_meta_buffer.Store<uint>(_479 * 4 + 0, _482.raw);
+                uint _486;
+                __alias_output_histogram.InterlockedAdd(((push_constants.draw_list_index_base * 1024u) + _212) * 4 + 0, 1u, _486);
+            }
+        }
+        break;
+    } while(false);
+}
+
+[numthreads(64, 1, 1)]
+void cs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_GlobalInvocationID = stage_input.gl_GlobalInvocationID;
+    comp_main();
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_d8520a92ddeb65ab) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_COMPUTE)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct MeshAtlasPartInfo
+{
+    uint first_index;
+    uint index_count;
+    float bounding_sphere_radius;
+    uint pad0;
+};
+
+struct GpuFilteredInstanceMeta
+{
+    uint raw;
+};
+
+struct NaniDrawListInfo
+{
+    uint global_instance_offset;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+ByteAddressBuffer atlas_part_info : register(t13, space0);
+RWByteAddressBuffer __alias_filtered_instance_buffer : register(u14, space0);
+RWByteAddressBuffer __alias_filtered_instance_allocator_buffer : register(u15, space0);
+RWByteAddressBuffer __alias_filtered_instance_meta_buffer : register(u16, space0);
+RWByteAddressBuffer __alias_output_histogram : register(u17, space0);
+ByteAddressBuffer prev_visibility_bitmask : register(t18, space0);
+RWByteAddressBuffer __alias_next_visibility_bitmask : register(u19, space0);
+ByteAddressBuffer draw_list_info : register(t20, space0);
+struct PushConstants
+{
+    uint2 instance_buffer_addr;
+    uint world_subset;
+    uint input_instance_count;
+    uint draw_list_index_base;
+};
+[[vk::push_constant]]
+PushConstants push_constants;
+
+
+static uint3 gl_GlobalInvocationID;
+struct SPIRV_Cross_Input
+{
+    uint3 gl_GlobalInvocationID : SV_DispatchThreadID;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void comp_main()
+{
+    do
+    {
+        if (gl_GlobalInvocationID.x >= push_constants.input_instance_count)
+        {
+            break;
+        }
+        uint2 _140 = push_constants.instance_buffer_addr;
+        uint2 _138;
+        _138.x = _140.x + (16u * (gl_GlobalInvocationID.x));
+        _138.y = _140.y + uint(int(_138.x < _140.x));
+        uint4 _170 = vk::RawBufferLoad<uint4>(((uint64_t)_138.y << 32) | _138.x, 16);
+        uint4 _139 = _170;
+        uint _175 = _139.w >> 16u;
+        float2 _137 = float2(spvUnpackHalf2x16(_139.w & 65535u).x, spvUnpackHalf2x16(_175 & 65535u).x);
+        float _188 = atlas_part_info.Load<float>(push_constants.world_subset * 1024 + _175 * 16 + 8);
+        float _189 = _137.x * _188;
+        float4 _195 = float4(asfloat(_170.xyz), 1.0f);
+        float4 _196 = mul(frame_constants_view_constants[0u].world_to_view, _195);
+        float _197 = _196.z;
+        float4x4 _130 = frame_constants_view_constants[0u].view_to_clip;
+        uint _219 = clamp(uint(clamp((32.0f - _197) * 0.00347222224809229373931884765625f, 0.0f, 1.0f) * 1024.0f), 0u, 1023u);
+        uint _220 = gl_GlobalInvocationID.x * 1024u;
+        float4x4 _135 = frame_constants_view_constants[0u].view_to_clip;
+        float2 _133 = 1.0f.xx;
+        float2 _134 = 0.0f.xx;
+        float4 _234 = float4((-_135[0u].x) * _133.x, _135[0u].y, _134.x, _135[0u].w);
+        float4 _246 = float4(_135[1u].x, _135[1u].y * _133.y, _134.y, _135[1u].w);
+        float4 _253 = float4(_135[3u].x, _135[3u].y, -1.0f, _135[3u].w);
+        float4 _131[4];
+        _131[0] = _253 + _234;
+        _131[1] = _253 - _234;
+        _131[2] = _253 + _246;
+        _131[3] = _253 - _246;
+        for (int _265 = 0; _265 < 4; )
+        {
+            _131[_265] /= length(_131[_265].xyz).xxxx;
+            _265++;
+            continue;
+        }
+        float4 _129[4] = _131;
+        float3 _136 = _196.xyz;
+        bool _292;
+        if (((-_136.z) + _189) > _135[2].w)
+        {
+            _292 = ((-_136.z) - _189) < 3.4028234663852885981170418348452e+38f;
+        }
+        else
+        {
+            _292 = false;
+        }
+        bool _294;
+        _294 = _292;
+        bool _295;
+        for (int _297 = 0; _297 < 4; _294 = _295, _297++)
+        {
+            if (_294)
+            {
+                _295 = dot(float4(_196.xy, _197, 1.0f), _129[_297]) > (-_189);
+            }
+            else
+            {
+                _295 = false;
+            }
+        }
+        uint _314 = gl_GlobalInvocationID.x + draw_list_info.Load<uint>(push_constants.draw_list_index_base * 4 + 0);
+        bool _325;
+        if (_294)
+        {
+            _325 = (prev_visibility_bitmask.Load<uint>((_314 / 32u) * 4 + 0) & (1u << ((_314 % 32u) & 31u))) != 0u;
+        }
+        else
+        {
+            _325 = false;
+        }
+        if (_325)
+        {
+            uint _333;
+            __alias_next_visibility_bitmask.InterlockedOr((_314 / 32u) * 4 + 0, 1u << ((_314 % 32u) & 31u), _333);
+            uint _335;
+            __alias_filtered_instance_allocator_buffer.InterlockedAdd(push_constants.draw_list_index_base * 4 + 0, 1u, _335);
+            __alias_filtered_instance_buffer.Store<uint>(_335 * 4 + 0, _220 + _219);
+            GpuFilteredInstanceMeta _338 = { _175 };
+            __alias_filtered_instance_meta_buffer.Store<uint>(_335 * 4 + 0, _338.raw);
+            uint _342;
+            __alias_output_histogram.InterlockedAdd(((push_constants.draw_list_index_base * 1024u) + _219) * 4 + 0, 1u, _342);
+        }
+        if ((((_189 / max(9.9999997473787516355514526367188e-06f, -_197)) * ((0.5f * _130[1u].y) * float(clamp(frame_constants_inner_rendering_resolution.y, 1080u, 2160u)))) < 10.0f) ? false : true)
+        {
+            float4 _350 = mul(frame_constants_view_constants[2u].view_to_clip, mul(frame_constants_view_constants[2u].world_to_view, _195));
+            float4 _132 = _350;
+            uint _359 = clamp(uint((_350.xyz / _132.w.xxx).z * 1024.0f), 0u, 1023u);
+            uint _360 = _220 + _359;
+            float _369 = _189 * (2.0f * frame_constants_view_constants[2u].view_to_sample[0].x);
+            float2 _370 = abs(mul(frame_constants_view_constants[2u].world_to_sample, _195).xy);
+            float2 _372 = (-_369).xx;
+            float2 _376 = (1.0f + _369).xx;
+            uint _380 = (any(bool2(_370.x >= _372.x, _370.y >= _372.y)) ? all(bool2(_370.x <= _376.x, _370.y <= _376.y)) : false) ? 0u : 3u;
+            float2 _382 = (1.0f - _369).xx;
+            float2 _386 = (2.0f + _369).xx;
+            bool _389 = any(bool2(_370.x >= _382.x, _370.y >= _382.y)) ? all(bool2(_370.x <= _386.x, _370.y <= _386.y)) : false;
+            uint _393;
+            if (_389)
+            {
+                _393 = min(_380, 1u);
+            }
+            else
+            {
+                _393 = _380;
+            }
+            uint _394 = uint(_389);
+            float2 _396 = (2.0f - _369).xx;
+            float2 _400 = (7.0f + _369).xx;
+            uint _408;
+            uint _409;
+            if (any(bool2(_370.x >= _396.x, _370.y >= _396.y)) ? all(bool2(_370.x <= _400.x, _370.y <= _400.y)) : false)
+            {
+                _408 = max(_394, 2u);
+                _409 = min(_393, 2u);
+            }
+            else
+            {
+                _408 = _394;
+                _409 = _393;
+            }
+            for (uint _411 = _409; _411 <= _408; )
+            {
+                uint _419;
+                __alias_filtered_instance_allocator_buffer.InterlockedAdd(((push_constants.draw_list_index_base + 1u) + _411) * 4 + 0, 1u, _419);
+                __alias_filtered_instance_buffer.Store<uint>(_419 * 4 + 0, _360);
+                GpuFilteredInstanceMeta _422 = { _175 };
+                __alias_filtered_instance_meta_buffer.Store<uint>(_419 * 4 + 0, _422.raw);
+                uint _426;
+                __alias_output_histogram.InterlockedAdd(((((push_constants.draw_list_index_base + 1u) + _411) * 1024u) + _359) * 4 + 0, 1u, _426);
+                _411++;
+                continue;
+            }
+        }
+        break;
+    } while(false);
+}
+
+[numthreads(64, 1, 1)]
+void cs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_GlobalInvocationID = stage_input.gl_GlobalInvocationID;
+    comp_main();
+}
+#pragma dxc diagnostic pop
+#endif

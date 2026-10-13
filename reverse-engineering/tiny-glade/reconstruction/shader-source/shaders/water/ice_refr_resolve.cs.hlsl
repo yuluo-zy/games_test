@@ -190,10 +190,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_depth_tex_dims : packoffset(c0);
-    uint2 _Globals_refr_hit_tex_dims : packoffset(c0.z);
-    uint2 _Globals_refr_hit_radiance_tex_dims : packoffset(c1);
-    uint2 _Globals_refl_refr_radiance_out_tex_dims : packoffset(c1.z);
+    uint2 depth_tex_dims : packoffset(c0);
+    uint2 refr_hit_tex_dims : packoffset(c0.z);
+    uint2 refr_hit_radiance_tex_dims : packoffset(c1);
+    uint2 refl_refr_radiance_out_tex_dims : packoffset(c1.z);
 };
 
 Texture2D<float4> depth_tex : register(t14, space0);
@@ -231,7 +231,7 @@ void comp_main()
         float3 _134 = float3((float((_117 >> 24u) & 255u) * 0.007843137718737125396728515625f) - 1.0f, (float((_117 >> 16u) & 255u) * 0.007843137718737125396728515625f) - 1.0f, 0.0f);
         float2 _135 = _134.xy;
         _134.z = asfloat(532487669 + (asint(max(0.0f, 1.0f - dot(_135, _135))) >> 1));
-        float2 _160 = (((float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(_Globals_depth_tex_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
+        float2 _160 = (((float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(depth_tex_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
         float _161 = _160.x;
         float4 _164 = mul(frame_constants_view_constants[0u].sample_to_view, float4(_161, _160.y, 0.0f, 1.0f));
         float4 _168 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_161, _160.y, depth_tex.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, 1.0f)));
@@ -244,7 +244,7 @@ void comp_main()
         float _201 = max(_186, (((_187 / _191) * frame_constants_view_constants[0u].clip_to_view[1].y) * 0.20000000298023223876953125f) * smoothstep(0.0f, 0.0500000007450580596923828125f * _187, _186));
         float _208 = (_187 * _191) * frame_constants_view_constants[0u].clip_to_view[1].y;
         float3 _221 = reflect(-normalize(lerp(float3(0.0f, 1.0f, 0.0f), reflect(_183, float3(0.0f, 1.0f, 0.0f)), 0.959011614322662353515625f.xxx)), float3(0.0f, 1.0f, 0.0f));
-        float3 _224 = normalize(cross(float3(0.0f, 1.0f, 0.0f), _221)) * max(min((((_201 / (_201 + _187)) * _187) * _191) * 0.0684653222560882568359375f, 0.100000001490116119384765625f * _208), (4.0f / float(_Globals_refl_refr_radiance_out_tex_dims.y)) * _208);
+        float3 _224 = normalize(cross(float3(0.0f, 1.0f, 0.0f), _221)) * max(min((((_201 / (_201 + _187)) * _187) * _191) * 0.0684653222560882568359375f, 0.100000001490116119384765625f * _208), (4.0f / float(refl_refr_radiance_out_tex_dims.y)) * _208);
         float3 _225 = cross(_221, _224);
         float _236 = (float((frame_constants_frame_index * 59u) % 128u) * 1.324717998504638671875f) + (dot(float2(gl_GlobalInvocationID.xy & uint2(1u, 1u)), float2(1.0f, 2.0f)) * 0.654508531093597412109375f);
         float4 _238;
@@ -257,7 +257,7 @@ void comp_main()
             float _251 = (float(_243) + _236) * 2.3999631404876708984375f;
             float3 _258 = _172 + (((_224 * cos(_251)) + (_225 * sin(_251))) * _241);
             float4 _266 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(_258, 1.0f)));
-            uint2 _280 = uint2(int2(floor((((_266.xyz / _266.w.xxx).xy * float2(0.5f, -0.5f)) + 0.5f.xx) * float2(_Globals_refr_hit_tex_dims))));
+            uint2 _280 = uint2(int2(floor((((_266.xyz / _266.w.xxx).xy * float2(0.5f, -0.5f)) + 0.5f.xx) * float2(refr_hit_tex_dims))));
             uint4 _281 = refr_hit_tex.Load(int3(_280, 0u));
             uint _282 = _281.x;
             if (_282 != 0u)

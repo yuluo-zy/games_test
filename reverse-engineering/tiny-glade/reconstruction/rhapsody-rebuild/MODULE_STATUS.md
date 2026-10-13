@@ -76,3 +76,8 @@ GPU 验证口径：本机以 lavapipe 重跑 17 个探针中的 14 个并通过�
 验证：`cargo test --locked` 69 通过 0 失败（含此前因资产路径不可编译的 device_policy 5 个）；`cargo clippy --locked --all-targets -- -D warnings` 通过。本轮未重跑 GPU 探针（需 GPU 与 D:/ 原始资产）。
 
 **剩余 typed gap（需按原码取证才能实现）**：setup 命令缓冲体系（get_setup_cb_submit_info/with_setup_cb）、full_screen_exclusive（SwapchainInner::set_fullscreen_exclusive）、纹理暂存上传（init_texture_data/update_texture）。上述新增候选接口与原完整 ABI/行为等价性仍独立验收。
+
+
+## 2026-10-13 shader 原配置与最终打包复验
+
+38 个非零 compute 原宏 tuple 已从 native producer/caller 恢复并核原 key；实际 DXC 生成 404 个新包／638 阶段，失败 0，完整 typed 反射 397/404 相等。原 19 个 uniform 冲突包的 38 阶段经独立 SpirQ 复验全等。21 相关测试、严格 Clippy、新包 compute GPU 读回通过。原 artifact 宏与 TGV 还原源码选择宏分离。剩余 7 个 typed 反射差异、132 个 zero-key 原 tuple、325 阶段公共完整接口差异、源码依赖组织及原 DXC／离线 CLI 策略仍待恢复；不声明全 shader 语义或整帧验收。当前证据：[shader gap summary](../../evidence/shader-gap-investigation-2026-10-13/SUMMARY.md)。此前 shader-build 数字是历史验收，未覆盖本轮修复。

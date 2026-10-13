@@ -64,7 +64,7 @@ StructuredBuffer<uint> dormer_hole_count : register(t23);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
     uint instance_id : SV_InstanceID;
 };
 
@@ -251,12 +251,12 @@ static float3 _207;
 ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moss_texture_dims : packoffset(c0.y);
-    uint2 _Globals_roof_tile_normal_dims : packoffset(c1);
-    uint2 _Globals_roof_tile_damage_dims : packoffset(c1.z);
-    uint _Globals_highlighted_wall_id : packoffset(c2);
-    uint _Globals_highlight_mode : packoffset(c2.y);
+    uint current_view_index : packoffset(c0);
+    uint2 moss_texture_dims : packoffset(c0.y);
+    uint2 roof_tile_normal_dims : packoffset(c1);
+    uint2 roof_tile_damage_dims : packoffset(c1.z);
+    uint highlighted_wall_id : packoffset(c2);
+    uint highlight_mode : packoffset(c2.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t15, space0);
@@ -277,7 +277,7 @@ static float2 out_var_C10;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -826,7 +826,7 @@ void vert_main()
     float _1441 = _1440.x;
     float _1442 = 1.0f - _1441;
     float _1444 = _1440.y;
-    float4x4 _1460 = float4x4(frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 624), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 640), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 656), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 672), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 628), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 644), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 660), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 676), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 632), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 648), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 664), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 680), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 636), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 652), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 668), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 684));
+    float4x4 _1460 = float4x4(frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 624), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 640), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 656), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 672), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 628), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 644), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 660), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 676), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 632), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 648), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 664), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 680), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 636), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 652), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 668), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 684));
     float2 _1471 = ((_1260 * 0.2860000133514404296875f) * 0.5f) + ((_1259.yy * 0.2860000133514404296875f) * 0.5f);
     float2 _1475 = floor(_1471 + dot(_1471, 0.3660254180431365966796875f.xx).xx);
     float2 _1479 = (_1471 - _1475) + dot(_1475, 0.211324870586395263671875f.xx).xx;
@@ -997,12 +997,12 @@ static uint _177;
 ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moss_texture_dims : packoffset(c0.y);
-    uint2 _Globals_roof_tile_normal_dims : packoffset(c1);
-    uint2 _Globals_roof_tile_damage_dims : packoffset(c1.z);
-    uint _Globals_highlighted_wall_id : packoffset(c2);
-    uint _Globals_highlight_mode : packoffset(c2.y);
+    uint current_view_index : packoffset(c0);
+    uint2 moss_texture_dims : packoffset(c0.y);
+    uint2 roof_tile_normal_dims : packoffset(c1);
+    uint2 roof_tile_damage_dims : packoffset(c1.z);
+    uint highlighted_wall_id : packoffset(c2);
+    uint highlight_mode : packoffset(c2.y);
 };
 
 ByteAddressBuffer roof_color_ids : register(t17, space0);
@@ -1046,18 +1046,18 @@ struct SPIRV_Cross_Output
 void frag_main()
 {
     bool _210;
-    if (1u == _Globals_highlight_mode)
+    if (1u == highlight_mode)
     {
-        _210 = instanced_data.Load<uint>(in_var_C8 * 64 + 40) == _Globals_highlighted_wall_id;
+        _210 = instanced_data.Load<uint>(in_var_C8 * 64 + 40) == highlighted_wall_id;
     }
     else
     {
         _210 = false;
     }
     bool _217;
-    if (2u == _Globals_highlight_mode)
+    if (2u == highlight_mode)
     {
-        _217 = instanced_data.Load<uint>(in_var_C8 * 64 + 40) == _Globals_highlighted_wall_id;
+        _217 = instanced_data.Load<uint>(in_var_C8 * 64 + 40) == highlighted_wall_id;
     }
     else
     {
@@ -1503,12 +1503,12 @@ static float3 _207;
 ByteAddressBuffer frame_constants_storage_buffer : register(t1, space1);
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moss_texture_dims : packoffset(c0.y);
-    uint2 _Globals_roof_tile_normal_dims : packoffset(c1);
-    uint2 _Globals_roof_tile_damage_dims : packoffset(c1.z);
-    uint _Globals_highlighted_wall_id : packoffset(c2);
-    uint _Globals_highlight_mode : packoffset(c2.y);
+    uint current_view_index : packoffset(c0);
+    uint2 moss_texture_dims : packoffset(c0.y);
+    uint2 roof_tile_normal_dims : packoffset(c1);
+    uint2 roof_tile_damage_dims : packoffset(c1.z);
+    uint highlighted_wall_id : packoffset(c2);
+    uint highlight_mode : packoffset(c2.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t15, space0);
@@ -1529,7 +1529,7 @@ static float2 out_var_C10;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -2078,7 +2078,7 @@ void vert_main()
     float _1441 = _1440.x;
     float _1442 = 1.0f - _1441;
     float _1444 = _1440.y;
-    float4x4 _1460 = float4x4(frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 624), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 640), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 656), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 672), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 628), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 644), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 660), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 676), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 632), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 648), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 664), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 680), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 636), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 652), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 668), frame_constants_storage_buffer.Load<float>(_Globals_current_view_index * 800 + 684));
+    float4x4 _1460 = float4x4(frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 624), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 640), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 656), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 672), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 628), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 644), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 660), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 676), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 632), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 648), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 664), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 680), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 636), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 652), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 668), frame_constants_storage_buffer.Load<float>(current_view_index * 800 + 684));
     float2 _1471 = ((_1260 * 0.2860000133514404296875f) * 0.5f) + ((_1259.yy * 0.2860000133514404296875f) * 0.5f);
     float2 _1475 = floor(_1471 + dot(_1471, 0.3660254180431365966796875f.xx).xx);
     float2 _1479 = (_1471 - _1475) + dot(_1475, 0.211324870586395263671875f.xx).xx;

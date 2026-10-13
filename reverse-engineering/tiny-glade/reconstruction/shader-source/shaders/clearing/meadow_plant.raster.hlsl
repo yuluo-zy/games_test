@@ -111,11 +111,11 @@ Texture2D<float4> flower_texture : register(t15, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float3 vertex_color : TEXCOORD1;
-    float3 vertex_normal : TEXCOORD2;
-    float2 vertex_uv : TEXCOORD3;
-    int plant_part_id : TEXCOORD4;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_color: Vertex_Color;
+    [[vk::location(2)]] float3 vertex_normal: Vertex_Normal;
+    [[vk::location(3)]] float2 vertex_uv: Vertex_UV;
+    [[vk::location(4)]] int plant_part_id: plant_part_id;
 };
 
 struct VS_OUT
@@ -454,19 +454,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_time : packoffset(c5);
-    uint2 _Globals_path_mask_dims : packoffset(c5.y);
-    uint2 _Globals_flower_texture_dims : packoffset(c6);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c6.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c7);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c7.z);
-    uint2 _Globals_water_mask_dims : packoffset(c8);
-    uint2 _Globals_buildings_mask_dims : packoffset(c8.z);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c9);
-    uint2 _Globals_grass_object_push_dims : packoffset(c9.z);
-    int _Globals_bool_render_shadows : packoffset(c10);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float time : packoffset(c5);
+    uint2 path_mask_dims : packoffset(c5.y);
+    uint2 flower_texture_dims : packoffset(c6);
+    uint2 terrain_heightmap_dims : packoffset(c6.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c7);
+    uint2 rocky_terrain_dims : packoffset(c7.z);
+    uint2 water_mask_dims : packoffset(c8);
+    uint2 buildings_mask_dims : packoffset(c8.z);
+    uint2 foliage_exclusion_mask_dims : packoffset(c9);
+    uint2 grass_object_push_dims : packoffset(c9.z);
+    int bool_render_shadows : packoffset(c10);
 };
 
 SamplerState sampler_mipmap : register(s10, space0);
@@ -487,9 +487,9 @@ struct SPIRV_Cross_Input
 
 void frag_main()
 {
-    float4 _108 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _108 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _112 = _108.xyz / _108.w.xxx;
-    bool _118 = (_Globals_bool_render_shadows == 1) ? true : false;
+    bool _118 = (bool_render_shadows == 1) ? true : false;
     if (!_118)
     {
         uint2 _123 = uint2(gl_FragCoord.xy);

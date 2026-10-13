@@ -69,9 +69,9 @@ float sparkle_noise(float2 v)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 alt_pos : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 alt_pos: alt_pos;
     uint id : SV_InstanceID;
 };
 

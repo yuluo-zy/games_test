@@ -66,9 +66,9 @@ Texture2D<float4> grass_object_push : register(t16, space0);
 
 struct VSInput
 {
-    float3 position : TEXCOORD0;
-    float3 normal : TEXCOORD2;
-    float wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(2)]] float3 normal: Vertex_Normal;
+    [[vk::location(3)]] float wind_bend: wind_bend;
     uint instance_id : SV_InstanceID;
 };
 
@@ -202,16 +202,16 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_path_mask_dims : packoffset(c5);
-    uint2 _Globals_albedo_map_dims : packoffset(c5.z);
-    uint2 _Globals_grass_object_push_dims : packoffset(c6);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c6.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c7);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c7.z);
-    uint2 _Globals_water_mask_dims : packoffset(c8);
-    int _Globals_bool_render_shadows : packoffset(c8.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 path_mask_dims : packoffset(c5);
+    uint2 albedo_map_dims : packoffset(c5.z);
+    uint2 grass_object_push_dims : packoffset(c6);
+    uint2 terrain_heightmap_dims : packoffset(c6.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c7);
+    uint2 rocky_terrain_dims : packoffset(c7.z);
+    uint2 water_mask_dims : packoffset(c8);
+    int bool_render_shadows : packoffset(c8.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t21, space0);
@@ -230,9 +230,9 @@ static float2 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -311,7 +311,7 @@ void vert_main()
     {
         _340 = _143;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _340);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _340);
     out_var_C1 = _340.xyz;
     out_var_C2 = in_var_Vertex_Normal;
     out_var_C3 = ((_340.xz * 0.100000001490116119384765625f) + instance_buffer.Load<float4>(uint(gl_InstanceIndex) * 16 + 0).w.xx) + 0.800000011920928955078125f.xx;
@@ -490,16 +490,16 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_path_mask_dims : packoffset(c5);
-    uint2 _Globals_albedo_map_dims : packoffset(c5.z);
-    uint2 _Globals_grass_object_push_dims : packoffset(c6);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c6.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c7);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c7.z);
-    uint2 _Globals_water_mask_dims : packoffset(c8);
-    int _Globals_bool_render_shadows : packoffset(c8.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 path_mask_dims : packoffset(c5);
+    uint2 albedo_map_dims : packoffset(c5.z);
+    uint2 grass_object_push_dims : packoffset(c6);
+    uint2 terrain_heightmap_dims : packoffset(c6.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c7);
+    uint2 rocky_terrain_dims : packoffset(c7.z);
+    uint2 water_mask_dims : packoffset(c8);
+    int bool_render_shadows : packoffset(c8.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t21, space0);
@@ -518,9 +518,9 @@ static float2 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -599,7 +599,7 @@ void vert_main()
     {
         _340 = _143;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _340);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _340);
     out_var_C1 = _340.xyz;
     out_var_C2 = in_var_Vertex_Normal;
     out_var_C3 = ((_340.xz * 0.100000001490116119384765625f) + instance_buffer.Load<float4>(uint(gl_InstanceIndex) * 16 + 0).w.xx) + 0.800000011920928955078125f.xx;

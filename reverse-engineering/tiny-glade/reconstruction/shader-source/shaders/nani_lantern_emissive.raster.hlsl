@@ -42,9 +42,9 @@ StructuredBuffer<InstanceData> nani_instance_data : register(t16);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
     uint instance_id : SV_InstanceID;
 };
 

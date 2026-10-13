@@ -80,12 +80,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 ByteAddressBuffer wall_color_ids : register(t14, space0);
@@ -134,7 +134,7 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    uint _201 = (uint(_Globals_highlight_mode != 0u) * 4194304u) + uint(gl_InstanceIndex);
+    uint _201 = (uint(highlight_mode != 0u) * 4194304u) + uint(gl_InstanceIndex);
     float _211 = 1.57000005245208740234375f * float(int(instanced_wall_data.Load<uint>(instance_list.Load<uint>(_201 * 4 + 0) * 96 + 76) & 3u));
     float3 _212 = normalize(float3(0.0f, 1.0f, 0.0f));
     float _213 = sin(_211);
@@ -582,7 +582,7 @@ void vert_main()
     {
         _1190 = _1144;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _938);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _938);
     out_var_C0 = _993;
     out_var_C1 = mul(transpose(float3x3(cross(_975, _976) * _982, cross(_976, _974) * _982, _979 * _982)), _281.xyz);
     out_var_C2 = _938.xyz;
@@ -681,12 +681,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 cbuffer color_library : register(b21, space0)
@@ -1030,14 +1030,14 @@ void frag_main()
     {
         bool _481;
         float3 _482;
-        if (_Globals_highlight_mode == 1u)
+        if (highlight_mode == 1u)
         {
             _481 = true;
             _482 = lerp(_463, float3(0.699999988079071044921875f, 0.2100000083446502685546875f, 0.0f), 0.5f.xxx);
         }
         else
         {
-            bool _474 = _Globals_highlight_mode == 2u;
+            bool _474 = highlight_mode == 2u;
             float3 _478;
             if (_474)
             {
@@ -1052,9 +1052,9 @@ void frag_main()
         }
         bool _501;
         float3 _502;
-        if (_Globals_highlight_bricks_to_delete == 1)
+        if (highlight_bricks_to_delete == 1)
         {
-            bool _495 = distance(_Globals_brush_position.xz, in_var_C12) < (1.88900005817413330078125f * _Globals_eraser_mult);
+            bool _495 = distance(brush_position.xz, in_var_C12) < (1.88900005817413330078125f * eraser_mult);
             float3 _499;
             if (_495)
             {
@@ -1230,12 +1230,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_highlight_mode : packoffset(c0.y);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.z);
-    float3 _Globals_brush_position : packoffset(c1);
-    uint _Globals_bool_render_shadows : packoffset(c1.w);
-    float _Globals_eraser_mult : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint highlight_mode : packoffset(c0.y);
+    int highlight_bricks_to_delete : packoffset(c0.z);
+    float3 brush_position : packoffset(c1);
+    uint bool_render_shadows : packoffset(c1.w);
+    float eraser_mult : packoffset(c2);
 };
 
 ByteAddressBuffer instanced_wall_data : register(t19, space0);
@@ -1282,7 +1282,7 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    uint _190 = ((_Globals_current_view_index + 2u) * 2097152u) + uint(gl_InstanceIndex);
+    uint _190 = ((current_view_index + 2u) * 2097152u) + uint(gl_InstanceIndex);
     float _200 = 1.57000005245208740234375f * float(int(instanced_wall_data.Load<uint>(instance_list.Load<uint>(_190 * 4 + 0) * 96 + 76) & 3u));
     float3 _201 = normalize(float3(0.0f, 1.0f, 0.0f));
     float _202 = sin(_200);
@@ -1644,7 +1644,7 @@ void vert_main()
     {
         _1062 = 0.0f.xx;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _928);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _928);
     out_var_C0 = instanced_wall_data.Load<uint>(instance_list.Load<uint>(_190 * 4 + 0) * 96 + 76) & 65535u;
     out_var_C1 = mul(transpose(float3x3(cross(_965, _966) * _972, cross(_966, _964) * _972, _969 * _972)), _270.xyz);
     out_var_C2 = _928.xyz;

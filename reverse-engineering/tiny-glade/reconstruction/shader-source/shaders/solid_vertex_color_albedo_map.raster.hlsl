@@ -39,9 +39,9 @@ Texture2D<float4> albedo_map : register(t14);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float2 Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
 };
 
 struct VsOut
@@ -180,14 +180,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_receive_contact_shadows : packoffset(c0.y);
-    uint _Globals_is_semitransparent : packoffset(c0.z);
-    uint2 _Globals_albedo_map_dims : packoffset(c1);
-    column_major float4x4 _Globals_model_to_world : packoffset(c2);
-    int _Globals_bool_render_shadows : packoffset(c6);
-    int _Globals_is_terrain : packoffset(c6.y);
-    float _Globals_roughness_param : packoffset(c6.z);
+    uint current_view_index : packoffset(c0);
+    uint receive_contact_shadows : packoffset(c0.y);
+    uint is_semitransparent : packoffset(c0.z);
+    uint2 albedo_map_dims : packoffset(c1);
+    column_major float4x4 model_to_world : packoffset(c2);
+    int bool_render_shadows : packoffset(c6);
+    int is_terrain : packoffset(c6.y);
+    float roughness_param : packoffset(c6.z);
 };
 
 
@@ -200,9 +200,9 @@ struct SPIRV_Cross_Input
 void frag_main()
 {
     bool _82;
-    if (_Globals_is_semitransparent != 0u)
+    if (is_semitransparent != 0u)
     {
-        _82 = _Globals_bool_render_shadows != 0;
+        _82 = bool_render_shadows != 0;
     }
     else
     {

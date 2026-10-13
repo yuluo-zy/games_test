@@ -28,8 +28,8 @@ Texture2D<float4> distant_hills_texture : register(t14, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float2 vertex_uv : TEXCOORD1;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float2 vertex_uv: Vertex_UV;
 };
 
 struct VS_OUT

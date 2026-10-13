@@ -55,12 +55,12 @@ float flag_noise(float2 p)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
-    int is_tip : TEXCOORD4;
-    float bby : TEXCOORD5;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int is_tip: is_tip;
+    [[vk::location(5)]] float bby: bby;
 };
 
 struct VsOut
@@ -260,17 +260,17 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_seed : packoffset(c5);
-    float _Globals_local_start_y : packoffset(c5.y);
-    float _Globals_body_end_y : packoffset(c5.z);
-    float _Globals_tip_end_y : packoffset(c5.w);
-    int _Globals_is_corner : packoffset(c6);
-    int _Globals_color_id : packoffset(c6.y);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int seed : packoffset(c5);
+    float local_start_y : packoffset(c5.y);
+    float body_end_y : packoffset(c5.z);
+    float tip_end_y : packoffset(c5.w);
+    int is_corner : packoffset(c6);
+    int color_id : packoffset(c6.y);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 
@@ -291,12 +291,12 @@ static float2 out_var_C6;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_tip : TEXCOORD4;
-    [[vk::location(5)]] float in_var_bby : TEXCOORD5;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_tip: is_tip;
+    [[vk::location(5)]] float in_var_bby: bby;
 };
 
 struct SPIRV_Cross_Output
@@ -318,18 +318,18 @@ void vert_main()
     if (in_var_is_tip == 0)
     {
         float3 _152 = _127;
-        _152.y = -lerp(_Globals_local_start_y, _Globals_body_end_y, 1.0f - in_var_bby);
+        _152.y = -lerp(local_start_y, body_end_y, 1.0f - in_var_bby);
         _153 = _152;
     }
     else
     {
         float3 _144 = _127;
-        _144.y = -lerp(_Globals_body_end_y, _Globals_tip_end_y, 1.0f - in_var_bby);
+        _144.y = -lerp(body_end_y, tip_end_y, 1.0f - in_var_bby);
         _153 = _144;
     }
     float _167 = float(frame_constants_game_time_sec);
     float _168 = _167 + frame_constants_game_time_frac;
-    float2 _171 = (mul(_Globals_model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_168, 0.0f) * 1.2000000476837158203125f);
+    float2 _171 = (mul(model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_168, 0.0f) * 1.2000000476837158203125f);
     int2 _173 = int2(floor(_171));
     float2 _174 = frac(_171);
     uint2 _175 = uint2(_173);
@@ -376,13 +376,13 @@ void vert_main()
     float _306 = _305.x;
     float _307 = 1.0f - _306;
     float _309 = _305.y;
-    uint _325 = uint(_Globals_seed);
+    uint _325 = uint(seed);
     uint _327 = _325 + (_325 << 10u);
     uint _329 = _327 ^ (_327 >> 6u);
     uint _331 = _329 + (_329 << 3u);
     uint _333 = _331 ^ (_331 >> 11u);
     float _342 = lerp(0.300000011920928955078125f, 1.0f, ((sin((((((1.0f - _309) * (((asfloat(((_199 ^ (_199 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _307) + ((asfloat(((_231 ^ (_231 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _306))) + (((asfloat(((_263 ^ (_263 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _307) * _309)) + (((asfloat(((_295 ^ (_295 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _306) * _309)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f) * 0.699999988079071044921875f) * lerp(0.699999988079071044921875f, 1.0f, asfloat(((_333 + (_333 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
-    bool _345 = _Globals_is_corner == 0;
+    bool _345 = is_corner == 0;
     float _351;
     if (_345)
     {
@@ -453,16 +453,16 @@ void vert_main()
     {
         _522 = _515;
     }
-    float4 _527 = mul(_Globals_model_to_world, float4(_522, 1.0f));
-    float _549 = _Globals_body_end_y - _Globals_local_start_y;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _527);
+    float4 _527 = mul(model_to_world, float4(_522, 1.0f));
+    float _549 = body_end_y - local_start_y;
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _527);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = mul(_Globals_model_to_world, float4(in_var_Vertex_Normal, 0.0f)).xyz;
+    out_var_C1 = mul(model_to_world, float4(in_var_Vertex_Normal, 0.0f)).xyz;
     out_var_C2 = _527.xyz;
     out_var_C3 = float2(_127.x + 0.5f, (_522.y * 1.5f) + 0.5f);
     out_var_C4 = in_var_Vertex_UV;
     out_var_C5 = (float2(_127.x, (_522.y + (_549 * 0.5f)) + 0.20000000298023223876953125f) * (0.800000011920928955078125f / min(max(0.699999988079071044921875f, _549 - 0.5f), 1.0f))) + 0.5f.xx;
-    out_var_C6 = (float2(_127.x, (_Globals_tip_end_y - _Globals_local_start_y) + _522.y) * 0.75f) + float2(0.5f, 0.0f);
+    out_var_C6 = (float2(_127.x, (tip_end_y - local_start_y) + _522.y) * 0.75f) + float2(0.5f, 0.0f);
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
@@ -547,17 +547,17 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_seed : packoffset(c5);
-    float _Globals_local_start_y : packoffset(c5.y);
-    float _Globals_body_end_y : packoffset(c5.z);
-    float _Globals_tip_end_y : packoffset(c5.w);
-    int _Globals_is_corner : packoffset(c6);
-    int _Globals_color_id : packoffset(c6.y);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int seed : packoffset(c5);
+    float local_start_y : packoffset(c5.y);
+    float body_end_y : packoffset(c5.z);
+    float tip_end_y : packoffset(c5.w);
+    int is_corner : packoffset(c6);
+    int color_id : packoffset(c6.y);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -591,12 +591,12 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    uint _123 = uint(_Globals_seed ^ 234234);
+    uint _123 = uint(seed ^ 234234);
     uint _125 = _123 + (_123 << 10u);
     uint _127 = _125 ^ (_125 >> 6u);
     uint _129 = _127 + (_127 << 3u);
     uint _131 = _129 ^ (_129 >> 11u);
-    uint _142 = uint(_Globals_seed ^ 794);
+    uint _142 = uint(seed ^ 794);
     uint _144 = _142 + (_142 << 10u);
     uint _146 = _144 ^ (_144 >> 6u);
     uint _148 = _146 + (_146 << 3u);
@@ -606,9 +606,9 @@ void frag_main()
     float4 _185 = border_mask.SampleBias(sampler_llc, in_var_C4, frame_constants_global_mip_bias);
     float _186 = _185.x;
     float _187 = _172.x + _181.x;
-    float4 _194 = flag_patterns.SampleLevel(sampler_llc, float3(in_var_C5.x, 1.0f - in_var_C5.y, float((_Globals_seed - 6 * (_Globals_seed / 6)) + 3)), 0.0f);
+    float4 _194 = flag_patterns.SampleLevel(sampler_llc, float3(in_var_C5.x, 1.0f - in_var_C5.y, float((seed - 6 * (seed / 6)) + 3)), 0.0f);
     float _195 = _194.x;
-    uint _198 = uint(_Globals_color_id);
+    uint _198 = uint(color_id);
     float3 _220;
     if (_186 > 0.89999997615814208984375f)
     {
@@ -618,7 +618,7 @@ void frag_main()
     {
         _220 = lerp(lerp(flag_palettes.Load(int3(uint2(0u, _198), 0u)).xyz, flag_palettes.Load(int3(uint2(2u, _198), 0u)).xyz, _187.xxx), flag_palettes.Load(int3(uint2(3u, _198), 0u)).xyz, _195.xxx);
     }
-    float4 _225 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _225 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _237;
     if (dot(normalize((_225.xyz / _225.w.xxx) - in_var_C2), in_var_C1) <= 0.0f)
     {
@@ -711,17 +711,17 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_seed : packoffset(c5);
-    float _Globals_local_start_y : packoffset(c5.y);
-    float _Globals_body_end_y : packoffset(c5.z);
-    float _Globals_tip_end_y : packoffset(c5.w);
-    int _Globals_is_corner : packoffset(c6);
-    int _Globals_color_id : packoffset(c6.y);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int seed : packoffset(c5);
+    float local_start_y : packoffset(c5.y);
+    float body_end_y : packoffset(c5.z);
+    float tip_end_y : packoffset(c5.w);
+    int is_corner : packoffset(c6);
+    int color_id : packoffset(c6.y);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 
@@ -742,12 +742,12 @@ static float2 out_var_C6;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_tip : TEXCOORD4;
-    [[vk::location(5)]] float in_var_bby : TEXCOORD5;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_tip: is_tip;
+    [[vk::location(5)]] float in_var_bby: bby;
 };
 
 struct SPIRV_Cross_Output
@@ -769,18 +769,18 @@ void vert_main()
     if (in_var_is_tip == 0)
     {
         float3 _152 = _127;
-        _152.y = -lerp(_Globals_local_start_y, _Globals_body_end_y, 1.0f - in_var_bby);
+        _152.y = -lerp(local_start_y, body_end_y, 1.0f - in_var_bby);
         _153 = _152;
     }
     else
     {
         float3 _144 = _127;
-        _144.y = -lerp(_Globals_body_end_y, _Globals_tip_end_y, 1.0f - in_var_bby);
+        _144.y = -lerp(body_end_y, tip_end_y, 1.0f - in_var_bby);
         _153 = _144;
     }
     float _167 = float(frame_constants_game_time_sec);
     float _168 = _167 + frame_constants_game_time_frac;
-    float2 _171 = (mul(_Globals_model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_168, 0.0f) * 1.2000000476837158203125f);
+    float2 _171 = (mul(model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_168, 0.0f) * 1.2000000476837158203125f);
     int2 _173 = int2(floor(_171));
     float2 _174 = frac(_171);
     uint2 _175 = uint2(_173);
@@ -827,13 +827,13 @@ void vert_main()
     float _306 = _305.x;
     float _307 = 1.0f - _306;
     float _309 = _305.y;
-    uint _325 = uint(_Globals_seed);
+    uint _325 = uint(seed);
     uint _327 = _325 + (_325 << 10u);
     uint _329 = _327 ^ (_327 >> 6u);
     uint _331 = _329 + (_329 << 3u);
     uint _333 = _331 ^ (_331 >> 11u);
     float _342 = lerp(0.300000011920928955078125f, 1.0f, ((sin((((((1.0f - _309) * (((asfloat(((_199 ^ (_199 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _307) + ((asfloat(((_231 ^ (_231 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _306))) + (((asfloat(((_263 ^ (_263 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _307) * _309)) + (((asfloat(((_295 ^ (_295 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _306) * _309)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f) * 0.699999988079071044921875f) * lerp(0.699999988079071044921875f, 1.0f, asfloat(((_333 + (_333 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
-    bool _345 = _Globals_is_corner == 0;
+    bool _345 = is_corner == 0;
     float _351;
     if (_345)
     {
@@ -904,16 +904,16 @@ void vert_main()
     {
         _522 = _515;
     }
-    float4 _527 = mul(_Globals_model_to_world, float4(_522, 1.0f));
-    float _549 = _Globals_body_end_y - _Globals_local_start_y;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _527);
+    float4 _527 = mul(model_to_world, float4(_522, 1.0f));
+    float _549 = body_end_y - local_start_y;
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _527);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = mul(_Globals_model_to_world, float4(in_var_Vertex_Normal, 0.0f)).xyz;
+    out_var_C1 = mul(model_to_world, float4(in_var_Vertex_Normal, 0.0f)).xyz;
     out_var_C2 = _527.xyz;
     out_var_C3 = float2(_127.x + 0.5f, (_522.y * 1.5f) + 0.5f);
     out_var_C4 = in_var_Vertex_UV;
     out_var_C5 = (float2(_127.x, (_522.y + (_549 * 0.5f)) + 0.20000000298023223876953125f) * (0.800000011920928955078125f / min(max(0.699999988079071044921875f, _549 - 0.5f), 1.0f))) + 0.5f.xx;
-    out_var_C6 = (float2(_127.x, (_Globals_tip_end_y - _Globals_local_start_y) + _522.y) * 0.75f) + float2(0.5f, 0.0f);
+    out_var_C6 = (float2(_127.x, (tip_end_y - local_start_y) + _522.y) * 0.75f) + float2(0.5f, 0.0f);
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)

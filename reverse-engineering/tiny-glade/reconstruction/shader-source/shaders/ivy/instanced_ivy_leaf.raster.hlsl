@@ -59,9 +59,9 @@ Texture2D<float4> ivy_leaf_color : register(t15, space0);
 
 struct VSInput
 {
-    float3 position : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-    float2 uv : TEXCOORD2;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(1)]] float3 normal: Vertex_Normal;
+    [[vk::location(2)]] float2 uv: Vertex_UV;
     uint instance : SV_InstanceID;
 };
 
@@ -279,14 +279,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_flower : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_leaf_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
-    int _Globals_bool_render_shadows : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    int is_flower : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_leaf_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
+    int bool_render_shadows : packoffset(c7);
 };
 
 ByteAddressBuffer ivy_leaf_buffer : register(t16, space0);
@@ -306,9 +306,9 @@ static float2 out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -341,7 +341,7 @@ void vert_main()
         {
             _192 = _185;
         }
-        bool _195 = _Globals_is_flower == 1;
+        bool _195 = is_flower == 1;
         float3 _220;
         float3 _221;
         float3 _222;
@@ -700,7 +700,7 @@ void vert_main()
         uint _1116 = _1114 ^ (_1114 >> 6u);
         uint _1118 = _1116 + (_1116 << 3u);
         uint _1120 = _1118 ^ (_1118 >> 11u);
-        _1131 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_1071, 1.0f));
+        _1131 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_1071, 1.0f));
         _1132 = _1071;
         _1133 = mul(_237, float4(in_var_Vertex_Normal, 0.0f)).xyz;
         _1134 = (in_var_Vertex_UV * (_195 ? 0.300000011920928955078125f : 0.100000001490116119384765625f)) + float2(asfloat(((_1100 + (_1100 << 15u)) & _1104) | _1105) - 1.0f, asfloat(((_1120 + (_1120 << 15u)) & (_1103 ? _1104 : 8388607u)) | (_1103 ? _1105 : 1065353216u)) - 1.0f);
@@ -788,14 +788,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_flower : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_leaf_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
-    int _Globals_bool_render_shadows : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    int is_flower : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_leaf_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
+    int bool_render_shadows : packoffset(c7);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -820,7 +820,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    if (!((_Globals_bool_render_shadows == 1) ? true : false))
+    if (!((bool_render_shadows == 1) ? true : false))
     {
         uint2 _105 = uint2(gl_FragCoord.xy) & uint2(1u, 1u);
         if ((frame_constants_frame_index & 3u) == (_105.x + (_105.y * 2u)))
@@ -918,14 +918,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_flower : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_leaf_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
-    int _Globals_bool_render_shadows : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    int is_flower : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_leaf_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
+    int bool_render_shadows : packoffset(c7);
 };
 
 ByteAddressBuffer ivy_leaf_buffer : register(t16, space0);
@@ -945,9 +945,9 @@ static float2 out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -980,7 +980,7 @@ void vert_main()
         {
             _192 = _185;
         }
-        bool _195 = _Globals_is_flower == 1;
+        bool _195 = is_flower == 1;
         float3 _220;
         float3 _221;
         float3 _222;
@@ -1339,7 +1339,7 @@ void vert_main()
         uint _1116 = _1114 ^ (_1114 >> 6u);
         uint _1118 = _1116 + (_1116 << 3u);
         uint _1120 = _1118 ^ (_1118 >> 11u);
-        _1131 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_1071, 1.0f));
+        _1131 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_1071, 1.0f));
         _1132 = _1071;
         _1133 = mul(_237, float4(in_var_Vertex_Normal, 0.0f)).xyz;
         _1134 = (in_var_Vertex_UV * (_195 ? 0.300000011920928955078125f : 0.100000001490116119384765625f)) + float2(asfloat(((_1100 + (_1100 << 15u)) & _1104) | _1105) - 1.0f, asfloat(((_1120 + (_1120 << 15u)) & (_1103 ? _1104 : 8388607u)) | (_1103 ? _1105 : 1065353216u)) - 1.0f);
@@ -1427,14 +1427,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_flower : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_ivy_leaf_color_dims : packoffset(c5);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c6);
-    uint2 _Globals_path_mask_dims : packoffset(c6.z);
-    int _Globals_bool_render_shadows : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    int is_flower : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 ivy_leaf_color_dims : packoffset(c5);
+    uint2 terrain_heightmap_dims : packoffset(c5.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c6);
+    uint2 path_mask_dims : packoffset(c6.z);
+    int bool_render_shadows : packoffset(c7);
 };
 
 
@@ -1446,7 +1446,7 @@ struct SPIRV_Cross_Input
 
 void frag_main()
 {
-    if (!((_Globals_bool_render_shadows == 1) ? true : false))
+    if (!((bool_render_shadows == 1) ? true : false))
     {
         uint2 _77 = uint2(gl_FragCoord.xy) & uint2(1u, 1u);
         if ((frame_constants_frame_index & 3u) == (_77.x + (_77.y * 2u)))

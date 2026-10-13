@@ -1,0 +1,1241 @@
+#define SHADER_VARIANT_DEPTH_ONLY 1
+#define TGV_f0adff76827e73ff 1
+#line 1 "shaders/clearing/tree_canopy.raster.hlsl"
+
+
+
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct PlacementData
+{
+    float3 position;
+    float scale;
+    float rotation_angle;
+    int id;
+    uint custom0;
+    uint custom1;
+    uint anim_t_packed;
+    float2 bend_vector;
+    int pad0;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    int _Globals_is_firstperson_mode : packoffset(c0.y);
+    float _Globals_wind_strength : packoffset(c0.z);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
+    float _Globals_cone_angle_mult : packoffset(c1.z);
+    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+};
+
+ByteAddressBuffer nani_instance_data : register(t15, space0);
+ByteAddressBuffer instance_indirection_buffer : register(t16, space0);
+
+static float4 gl_Position;
+static int gl_InstanceIndex;
+static float3 in_var_Vertex_Position;
+static float3 in_var_Vertex_Color;
+static float3 in_var_Vertex_Normal;
+static float3 in_var_prim_center;
+static float3 in_var_prim_normals;
+static float3 in_var_appear_pos;
+static float in_var_age;
+static float3 out_var_C0;
+static float3 out_var_C1;
+static float3 out_var_C2;
+static float3 out_var_C3;
+static int out_var_C4;
+static int out_var_C5;
+static float out_var_C6;
+static float3 out_var_C7;
+static uint out_var_C8;
+static uint out_var_C9;
+static float out_var_C10;
+static float2 out_var_C11;
+static float out_var_C12;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
+    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
+    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(6)]] float in_var_age: age;
+    uint gl_InstanceIndex : SV_InstanceID;
+};
+
+struct SPIRV_Cross_Output
+{
+    [[vk::location(0)]] float3 out_var_C0 : TEXCOORD0;
+    [[vk::location(1)]] float3 out_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 out_var_C2 : TEXCOORD2;
+    [[vk::location(3)]] float3 out_var_C3 : TEXCOORD3;
+    [[vk::location(4)]] nointerpolation int out_var_C4 : TEXCOORD4;
+    [[vk::location(5)]] nointerpolation int out_var_C5 : TEXCOORD5;
+    [[vk::location(6)]] nointerpolation float out_var_C6 : TEXCOORD6;
+    [[vk::location(7)]] float3 out_var_C7 : TEXCOORD7;
+    [[vk::location(8)]] nointerpolation uint out_var_C8 : TEXCOORD8;
+    [[vk::location(9)]] nointerpolation uint out_var_C9 : TEXCOORD9;
+    [[vk::location(10)]] nointerpolation float out_var_C10 : TEXCOORD10;
+    [[vk::location(11)]] float2 out_var_C11 : TEXCOORD11;
+    [[vk::location(12)]] float out_var_C12 : TEXCOORD12;
+    float4 gl_Position : SV_Position;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void vert_main()
+{
+    float4 _744;
+    float3 _745;
+    float3 _746;
+    float3 _747;
+    float3 _748;
+    int _749;
+    int _750;
+    float _751;
+    float3 _752;
+    bool _753;
+    uint _754;
+    float _755;
+    float2 _756;
+    float _757;
+    do
+    {
+        float _213 = clamp(1.0f - clamp(lerp(-1.0f, 1.0f, clamp(spvUnpackHalf2x16(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 32) & 65535u).x, 0.0f, 1.0f)) + (1.0f - in_var_age), 0.0f, 1.0f), 0.0f, 1.0f);
+        float _219 = 1.0f - ((_213 * _213) - (_213 * sin(_213 * 3.1400001049041748046875f)));
+        float3 _221 = lerp(in_var_appear_pos, in_var_Vertex_Position, _219.xxx);
+        if (_219 < 0.00999999977648258209228515625f)
+        {
+            _744 = asfloat(0x7fbfffffu          ).xxxx;
+            _745 = 0.0f.xxx;
+            _746 = 0.0f.xxx;
+            _747 = 0.0f.xxx;
+            _748 = 0.0f.xxx;
+            _749 = 0;
+            _750 = 0;
+            _751 = 0.0f;
+            _752 = 0.0f.xxx;
+            _753 = false;
+            _754 = 0u;
+            _755 = 0.0f;
+            _756 = 0.0f.xx;
+            _757 = 0.0f;
+            break;
+        }
+        float _226 = _221.y;
+        float _227 = _226 * 0.02999999932944774627685546875f;
+        float _232 = float(frame_constants_game_time_sec);
+        float _237 = _221.x;
+        float _246 = _221.z;
+        float _247 = 0.20000000298023223876953125f * _246;
+        float _251 = _237 + ((_227 * sin((fmod(_232 * 0.8235290050506591796875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.8235290050506591796875f)) + (0.20000000298023223876953125f * _237))) * sin((fmod(_232 * 0.893616974353790283203125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.893616974353790283203125f)) + _247));
+        float _267 = _246 + ((_227 * sin((fmod(_232 * 0.792452991008758544921875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.792452991008758544921875f)) + (0.20000000298023223876953125f * _251))) * sin((fmod(_232 * 0.688525021076202392578125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.688525021076202392578125f)) + _247));
+        uint _269 = uint(int(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0)));
+        float _276 = radians(nani_instance_data.Load<float>(_269 * 48 + 16));
+        float3 _280 = normalize(float3(cos(_276), 0.0f, sin(_276)));
+        float4x4 _303 = transpose(float4x4(float4(_280, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_280, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
+        float _317 = radians(nani_instance_data.Load<float>(_269 * 48 + 16));
+        float3 _321 = normalize(float3(cos(_317), 0.0f, sin(_317)));
+        float4x4 _344 = transpose(float4x4(float4(_321, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_321, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
+        float4 _351 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_344, mul(float4x4(float4(nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(in_var_prim_center, 1.0f))));
+        float3 _358 = _351.xyz;
+        float _366 = _351.x;
+        float _367 = _351.y;
+        float4 _370 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(_366, _367, _351.z, 1.0f));
+        if (length(_370.xyz) < ((!((frame_constants_render_overrides & 2u) != 0u)) ? (-5.0f) : 5.0f))
+        {
+            _744 = asfloat(0x7fbfffffu          ).xxxx;
+            _745 = 0.0f.xxx;
+            _746 = 0.0f.xxx;
+            _747 = 0.0f.xxx;
+            _748 = 0.0f.xxx;
+            _749 = 0;
+            _750 = 0;
+            _751 = 0.0f;
+            _752 = 0.0f.xxx;
+            _753 = false;
+            _754 = 0u;
+            _755 = 0.0f;
+            _756 = 0.0f.xx;
+            _757 = 0.0f;
+            break;
+        }
+        float4 _384 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+        float3 _388 = _384.xyz / _384.w.xxx;
+        float3 _389 = _358 - _388;
+        float _390 = length(_389);
+        float _393 = dot(mul(_344, float4(in_var_prim_normals, 0.0f)).xyz, _389 * (1.0f / _390));
+        float _399 = _393 - (abs(_393) * clamp((_390 - 5.0f) * (-0.20000000298023223876953125f), 0.0f, 1.0f));
+        if (_399 >= 0.300000011920928955078125f)
+        {
+            _744 = asfloat(0x7fbfffffu          ).xxxx;
+            _745 = 0.0f.xxx;
+            _746 = 0.0f.xxx;
+            _747 = 0.0f.xxx;
+            _748 = 0.0f.xxx;
+            _749 = 0;
+            _750 = 0;
+            _751 = 0.0f;
+            _752 = 0.0f.xxx;
+            _753 = false;
+            _754 = 0u;
+            _755 = 0.0f;
+            _756 = 0.0f.xx;
+            _757 = 0.0f;
+            break;
+        }
+        float _404 = 1.0f - smoothstep(0.300000011920928955078125f, -0.199999988079071044921875f, _399);
+        float3 _412 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_303, mul(float4x4(float4(nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_251, _226, _267, 1.0f)))).xyz;
+        float _418 = (frame_constants_glade_theme_id == 4u) ? 0.4000000059604644775390625f : _Globals_wind_strength;
+        float3 _423 = (float3(in_var_Vertex_Color.xy, 0.0f) * 2.0f) - 1.0f.xxx;
+        float _424 = 3.52941608428955078125f * _418;
+        float _432 = 1.53846204280853271484375f * _418;
+        float _439 = (0.20000000298023223876953125f * sin((fmod(_232 * _424, 6.283185482025146484375f) + (frame_constants_game_time_frac * _424)) + _251)) * sin((fmod(_232 * _432, 6.283185482025146484375f) + (frame_constants_game_time_frac * _432)) + _267);
+        float _440 = cos(_439);
+        float _441 = sin(_439);
+        float _462 = lerp(-0.5f, 0.5f, 0.300000011920928955078125f * frac(52.98291778564453125f * frac(dot(float2(0.067110560834407806396484375f, 0.005837149918079376220703125f), _351.xz))));
+        float3 _464 = normalize(_388 - _358);
+        float _465 = sin(_462);
+        float _466 = cos(_462);
+        float _467 = 1.0f - _466;
+        float _468 = _464.x;
+        float _469 = _467 * _468;
+        float _472 = _464.y;
+        float _473 = _469 * _472;
+        float _474 = _464.z;
+        float _475 = _474 * _465;
+        float _477 = _467 * _474;
+        float _478 = _477 * _468;
+        float _479 = _472 * _465;
+        float _482 = _467 * _472;
+        float _485 = _482 * _474;
+        float _486 = _468 * _465;
+        float3 _505 = (mul(transpose(float4x4(float4((_469 * _468) + _466, _473 - _475, _478 + _479, 0.0f), float4(_473 + _475, (_482 * _472) + _466, _485 - _486, 0.0f), float4(_478 - _479, _485 + _486, (_477 * _474) + _466, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4((_412 + (mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(mul(float2x2(float2(_440, _441), float2(-_441, _440)), _423.xy), _423.z, 0.0f)).xyz * (asfloat(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 24)) * _219))) - _358, 1.0f)).xyz * ((1.0f - (_404 * _404)) * lerp(0.800000011920928955078125f, 1.0f, clamp(_370.z * (-0.0500000007450580596923828125f), 0.0f, 1.0f)))) + _358;
+        float2 _512 = _505.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * smoothstep(3.0f, 20.0f, in_var_Vertex_Position.y));
+        float4 _520 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_512.x, _505.y, _512.y, 1.0f));
+        float _524 = _520.w;
+        float _527 = -frame_constants_view_constants[_Globals_current_view_index].clip_to_view[3].z;
+        float _529 = (-1.0f) / ((_520.z / _524) * _527);
+        float _530 = smoothstep(1.60000002384185791015625f, 3.2000000476837158203125f, _529);
+        float4 _537 = _520;
+        _537.z = (1.0f / ((-(_529 - (1.60000002384185791015625f * _530))) * _527)) * _524;
+        int _538 = int(uint(nani_instance_data.Load<int>(_269 * 48 + 20)));
+        int _547 = int(10.0f * ((_366 + _367) + _351.z));
+        uint _549 = uint(_538 + 4);
+        uint _551 = _549 + (_549 << 10u);
+        uint _553 = _551 ^ (_551 >> 6u);
+        uint _555 = _553 + (_553 << 3u);
+        uint _557 = _555 ^ (_555 >> 11u);
+        uint _569 = uint(_547);
+        uint _571 = _569 + (_569 << 10u);
+        uint _573 = _571 ^ (_571 >> 6u);
+        uint _575 = _573 + (_573 << 3u);
+        uint _577 = _575 ^ (_575 >> 11u);
+        float2 _595 = nani_instance_data.Load<float3>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 0).xz * 0.0500000007450580596923828125f;
+        int2 _597 = int2(floor(_595));
+        float2 _598 = frac(_595);
+        uint2 _599 = uint2(_597);
+        uint _601 = _599.y;
+        uint _603 = _601 + (_601 << 10u);
+        uint _605 = _603 ^ (_603 >> 6u);
+        uint _607 = _605 + (_605 << 3u);
+        uint _609 = _607 ^ (_607 >> 11u);
+        uint _615 = (((_599.x * 1664525u) + (_609 + (_609 << 15u))) + 1013904223u) * 1664525u;
+        uint _617 = _615 ^ (_615 >> 11u);
+        uint _620 = _617 ^ ((_617 << 7u) & 2636928640u);
+        uint _623 = _620 ^ ((_620 << 15u) & 4022730752u);
+        uint2 _631 = uint2(_597 + int2(1, 0));
+        uint _633 = _631.y;
+        uint _635 = _633 + (_633 << 10u);
+        uint _637 = _635 ^ (_635 >> 6u);
+        uint _639 = _637 + (_637 << 3u);
+        uint _641 = _639 ^ (_639 >> 11u);
+        uint _647 = (((_631.x * 1664525u) + (_641 + (_641 << 15u))) + 1013904223u) * 1664525u;
+        uint _649 = _647 ^ (_647 >> 11u);
+        uint _652 = _649 ^ ((_649 << 7u) & 2636928640u);
+        uint _655 = _652 ^ ((_652 << 15u) & 4022730752u);
+        uint2 _663 = uint2(_597 + int2(0, 1));
+        uint _665 = _663.y;
+        uint _667 = _665 + (_665 << 10u);
+        uint _669 = _667 ^ (_667 >> 6u);
+        uint _671 = _669 + (_669 << 3u);
+        uint _673 = _671 ^ (_671 >> 11u);
+        uint _679 = (((_663.x * 1664525u) + (_673 + (_673 << 15u))) + 1013904223u) * 1664525u;
+        uint _681 = _679 ^ (_679 >> 11u);
+        uint _684 = _681 ^ ((_681 << 7u) & 2636928640u);
+        uint _687 = _684 ^ ((_684 << 15u) & 4022730752u);
+        uint2 _695 = uint2(_597 + int2(1, 1));
+        uint _697 = _695.y;
+        uint _699 = _697 + (_697 << 10u);
+        uint _701 = _699 ^ (_699 >> 6u);
+        uint _703 = _701 + (_701 << 3u);
+        uint _705 = _703 ^ (_703 >> 11u);
+        uint _711 = (((_695.x * 1664525u) + (_705 + (_705 << 15u))) + 1013904223u) * 1664525u;
+        uint _713 = _711 ^ (_711 >> 11u);
+        uint _716 = _713 ^ ((_713 << 7u) & 2636928640u);
+        uint _719 = _716 ^ ((_716 << 15u) & 4022730752u);
+        float2 _729 = (_598 * _598) * (3.0f.xx - (_598 * 2.0f));
+        float _730 = _729.x;
+        float _731 = 1.0f - _730;
+        float _733 = _729.y;
+        _744 = _537;
+        _745 = _412;
+        _746 = in_var_Vertex_Color;
+        _747 = mul(_303, float4(in_var_Vertex_Normal, 0.0f)).xyz;
+        _748 = float3(_512.x, _505.y, _512.y);
+        _749 = _538;
+        _750 = _547;
+        _751 = spvUnpackHalf2x16((nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 32) >> 16u) & 65535u).x;
+        _752 = _358;
+        _753 = ((int((asfloat(((_557 + (_557 << 15u)) & 8388607u) | 1065353216u) - 1.0f) < 0.4000000059604644775390625f) & int(_367 > 3.0f)) & int((asfloat(((_577 + (_577 << 15u)) & 8388607u) | 1065353216u) - 1.0f) < 0.89999997615814208984375f)) != 0;
+        _754 = uint(nani_instance_data.Load<int>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 44));
+        _755 = (((1.0f - _733) * (((asfloat(((_623 ^ (_623 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _731) + ((asfloat(((_655 ^ (_655 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _730))) + (((asfloat(((_687 ^ (_687 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _731) * _733)) + (((asfloat(((_719 ^ (_719 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _730) * _733);
+        _756 = _537.zw;
+        _757 = _530;
+        break;
+    } while(false);
+    gl_Position = _744;
+    out_var_C0 = _745;
+    out_var_C1 = _746;
+    out_var_C2 = _747;
+    out_var_C3 = _748;
+    out_var_C4 = _749;
+    out_var_C5 = _750;
+    out_var_C6 = _751;
+    out_var_C7 = _752;
+    out_var_C8 = uint(_753);
+    out_var_C9 = _754;
+    out_var_C10 = _755;
+    out_var_C11 = _756;
+    out_var_C12 = _757;
+}
+
+SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_InstanceIndex = int(stage_input.gl_InstanceIndex);
+    in_var_Vertex_Position = stage_input.in_var_Vertex_Position;
+    in_var_Vertex_Color = stage_input.in_var_Vertex_Color;
+    in_var_Vertex_Normal = stage_input.in_var_Vertex_Normal;
+    in_var_prim_center = stage_input.in_var_prim_center;
+    in_var_prim_normals = stage_input.in_var_prim_normals;
+    in_var_appear_pos = stage_input.in_var_appear_pos;
+    in_var_age = stage_input.in_var_age;
+    vert_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.gl_Position = gl_Position;
+    stage_output.out_var_C0 = out_var_C0;
+    stage_output.out_var_C1 = out_var_C1;
+    stage_output.out_var_C2 = out_var_C2;
+    stage_output.out_var_C3 = out_var_C3;
+    stage_output.out_var_C4 = out_var_C4;
+    stage_output.out_var_C5 = out_var_C5;
+    stage_output.out_var_C6 = out_var_C6;
+    stage_output.out_var_C7 = out_var_C7;
+    stage_output.out_var_C8 = out_var_C8;
+    stage_output.out_var_C9 = out_var_C9;
+    stage_output.out_var_C10 = out_var_C10;
+    stage_output.out_var_C11 = out_var_C11;
+    stage_output.out_var_C12 = out_var_C12;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+static uint _152;
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    int _Globals_is_firstperson_mode : packoffset(c0.y);
+    float _Globals_wind_strength : packoffset(c0.z);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
+    float _Globals_cone_angle_mult : packoffset(c1.z);
+    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+};
+
+cbuffer color_library : register(b14, space0)
+{
+    float4 color_library_temp_color_1 : packoffset(c0);
+    float4 color_library_temp_color_2 : packoffset(c1);
+    float4 color_library_temp_color_3 : packoffset(c2);
+    float4 color_library_roof_color_1 : packoffset(c3);
+    float4 color_library_roof_color_2 : packoffset(c4);
+    float4 color_library_sky_low_day : packoffset(c5);
+    float4 color_library_sky_high_day : packoffset(c6);
+    float4 color_library_sun_tint_day : packoffset(c7);
+    float4 color_library_sky_low_dusk : packoffset(c8);
+    float4 color_library_sky_high_dusk : packoffset(c9);
+    float4 color_library_sun_tint_dusk : packoffset(c10);
+    float4 color_library_indirect_light_tint : packoffset(c11);
+    float4 color_library_fence_color_1 : packoffset(c12);
+    float4 color_library_fence_color_2 : packoffset(c13);
+    float4 color_library_flower_color_1 : packoffset(c14);
+    float4 color_library_flower_color_2 : packoffset(c15);
+    float4 color_library_canopy_color_1 : packoffset(c16);
+    float4 color_library_canopy_color_2 : packoffset(c17);
+    float4 color_library_grass_1 : packoffset(c18);
+    float4 color_library_grass_2 : packoffset(c19);
+    float4 color_library_path : packoffset(c20);
+    float4 color_library_sky_base : packoffset(c21);
+    float4 color_library_sky_horizon : packoffset(c22);
+    float4 color_library_sky_clouds_1 : packoffset(c23);
+    float4 color_library_sky_clouds_2 : packoffset(c24);
+    float4 color_library_terrain_1 : packoffset(c25);
+    float4 color_library_terrain_2 : packoffset(c26);
+    float4 color_library_terrain_flattened : packoffset(c27);
+    float4 color_library_wall_1 : packoffset(c28);
+    float4 color_library_wall_2 : packoffset(c29);
+    float4 color_library_wall_moss : packoffset(c30);
+    float4 color_library_wall_bricks : packoffset(c31);
+    float4 color_library_ivy_branch : packoffset(c32);
+    float4 color_library_ivy_leaf_1 : packoffset(c33);
+    float4 color_library_ivy_leaf_2 : packoffset(c34);
+    float4 color_library_terrain_highlight : packoffset(c35);
+    float4 color_library_night_tint : packoffset(c36);
+};
+
+SamplerState sampler_llr : register(s1, space0);
+SamplerState sampler_llc : register(s3, space0);
+Texture2D<float4> canopy_alpha_texture : register(t17, space0);
+Texture2D<float4> canopy_flowers_color : register(t18, space0);
+Texture2D<float4> canopy_flowers_depth : register(t19, space0);
+Texture2D<float4> canopy_color : register(t20, space0);
+Texture2D<float4> blue_noise_texture : register(t21, space0);
+
+static float4 gl_FragCoord;
+static float gl_FragDepth;
+static float3 in_var_C1;
+static float3 in_var_C2;
+static float3 in_var_C3;
+static int in_var_C4;
+static int in_var_C5;
+static float in_var_C6;
+static float3 in_var_C7;
+static uint in_var_C8;
+static uint in_var_C9;
+static float in_var_C10;
+static float in_var_C12;
+static uint2 out_var_SV_TARGET0;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_C3: prim_center;
+    [[vk::location(4)]] nointerpolation int in_var_C4: prim_normals;
+    [[vk::location(5)]] nointerpolation int in_var_C5: appear_pos;
+    [[vk::location(6)]] nointerpolation float in_var_C6: age;
+    [[vk::location(7)]] float3 in_var_C7 : TEXCOORD7;
+    [[vk::location(8)]] nointerpolation uint in_var_C8 : TEXCOORD8;
+    [[vk::location(9)]] nointerpolation uint in_var_C9 : TEXCOORD9;
+    [[vk::location(10)]] nointerpolation float in_var_C10 : TEXCOORD10;
+    [[vk::location(12)]] float in_var_C12 : TEXCOORD12;
+    float4 gl_FragCoord : SV_Position;
+};
+
+struct SPIRV_Cross_Output
+{
+    uint2 out_var_SV_TARGET0 : SV_Target0;
+    float gl_FragDepth : SV_DepthLessEqual;
+};
+
+void frag_main()
+{
+    bool _170 = in_var_C8 != 0u;
+    float3 _192;
+    float _193;
+    float _194;
+    [branch]
+    if (_170)
+    {
+        float4 _182 = canopy_flowers_depth.SampleBias(sampler_llc, in_var_C1.xy, frame_constants_global_mip_bias);
+        float _183 = _182.x;
+        _192 = canopy_flowers_color.SampleBias(sampler_llc, in_var_C1.xy, frame_constants_global_mip_bias).xyz * lerp(0.5f, 2.0f, _183);
+        _193 = _183;
+        _194 = ((_183 > 0.00999999977648258209228515625f) ? 1.0f : 0.0f);
+    }
+    else
+    {
+        _192 = 0.0f.xxx;
+        _193 = 0.0f;
+        _194 = 0.0f;
+    }
+    float4 _199 = canopy_alpha_texture.SampleBias(sampler_llc, in_var_C1.xy, frame_constants_global_mip_bias);
+    float _204 = ((frame_constants_render_overrides & 2u) != 0u) ? in_var_C6 : 0.0f;
+    float4 _214 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C7, 1.0f));
+    float2 _221 = float2(6.659999847412109375f, _Globals_max_cone_cull_dist_range) * frame_constants_view_constants[0u].view_to_clip[1].y;
+    bool _227;
+    if (_204 > 0.0f)
+    {
+        _227 = _Globals_is_firstperson_mode == 0;
+    }
+    else
+    {
+        _227 = false;
+    }
+    if (_227)
+    {
+        float _230 = _214.z;
+        float _231 = -_230;
+        float _232 = _221.y;
+        if (_231 < _232)
+        {
+            float2 _238 = _214.xy + (in_var_C1.xy - 0.5f.xx);
+            float3 _239 = float3(_238.x, _238.y, _214.z);
+            _239.z = min(_230, -10.0f);
+            float _248 = _Globals_cone_angle_mult * smoothstep(_232, _221.x, _231);
+            if ((-normalize(_239 * float3(0.75f, 1.0f, 1.0f)).z) > cos((_248 * _204) + ((min(1.0f, _248 * 16.0f) * 0.07500000298023223876953125f) * (blue_noise_texture.SampleLevel(sampler_llr, ((in_var_C1.xy * 2.0f) * 4.0f) * 0.00390625f.xx, 0.0f).x - 0.5f))))
+            {
+                discard;
+            }
+        }
+    }
+    float _270 = _199.y;
+    float _274;
+    if (_170)
+    {
+        _274 = _270 - 0.300000011920928955078125f;
+    }
+    else
+    {
+        _274 = _270;
+    }
+    bool _278;
+    if (_170)
+    {
+        _278 = _194 > 0.0f;
+    }
+    else
+    {
+        _278 = false;
+    }
+    bool _282;
+    if (_278)
+    {
+        _282 = in_var_C10 < 0.60000002384185791015625f;
+    }
+    else
+    {
+        _282 = false;
+    }
+    bool _304;
+    float _305;
+    if (_282)
+    {
+        uint _285 = uint(in_var_C5);
+        uint _287 = _285 + (_285 << 10u);
+        uint _289 = _287 ^ (_287 >> 6u);
+        uint _291 = _289 + (_289 << 3u);
+        uint _293 = _291 ^ (_291 >> 11u);
+        float _301 = lerp(0.0f, 1.5f, (asfloat(((_293 + (_293 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _193);
+        _304 = _301 > _274;
+        _305 = max(_274, _301);
+    }
+    else
+    {
+        _304 = false;
+        _305 = _274;
+    }
+    uint _306 = _282 ? 1065353216u : _152;
+    uint _307 = _282 ? 8388607u : _152;
+    bool _308 = _282 ? true : false;
+    if ((_304 ? 1.0f : _199.x) < 0.20000000298023223876953125f)
+    {
+        discard;
+    }
+    bool _330;
+    if (!(frame_constants_glade_theme_id == 2u))
+    {
+        _330 = frame_constants_glade_theme_id == 4u;
+    }
+    else
+    {
+        _330 = true;
+    }
+    int _350;
+    if (_330)
+    {
+        _350 = 1;
+    }
+    else
+    {
+        int _349;
+        if (frame_constants_glade_theme_id == 1u)
+        {
+            bool _347;
+            if (!(in_var_C9 == 1u))
+            {
+                bool _346;
+                if (!(in_var_C9 == 2u))
+                {
+                    _346 = in_var_C10 > 0.4000000059604644775390625f;
+                }
+                else
+                {
+                    _346 = true;
+                }
+                _347 = _346;
+            }
+            else
+            {
+                _347 = false;
+            }
+            _349 = _347 ? 2 : 0;
+        }
+        else
+        {
+            _349 = 0;
+        }
+        _350 = _349;
+    }
+    float3 _642;
+    if (_350 == 1)
+    {
+        uint _525 = uint(in_var_C4 ^ 1128782);
+        uint _527 = _525 + (_525 << 10u);
+        uint _529 = _527 ^ (_527 >> 6u);
+        uint _531 = _529 + (_529 << 3u);
+        uint _533 = _531 ^ (_531 >> 11u);
+        bool _536 = _308 ? _308 : true;
+        uint _537 = _308 ? _307 : 8388607u;
+        uint _538 = _308 ? _306 : 1065353216u;
+        uint _544 = uint(in_var_C4 ^ 872);
+        uint _546 = _544 + (_544 << 10u);
+        uint _548 = _546 ^ (_546 >> 6u);
+        uint _550 = _548 + (_548 << 3u);
+        uint _552 = _550 ^ (_550 >> 11u);
+        bool _555 = _536 ? _536 : true;
+        uint _556 = _536 ? _537 : 8388607u;
+        uint _557 = _536 ? _538 : 1065353216u;
+        float2 _567 = in_var_C3.yz + in_var_C3.yx;
+        uint _576 = uint(in_var_C4 ^ 11282);
+        uint _578 = _576 + (_576 << 10u);
+        uint _580 = _578 ^ (_578 >> 6u);
+        uint _582 = _580 + (_580 << 3u);
+        uint _584 = _582 ^ (_582 >> 11u);
+        bool _587 = _555 ? _555 : true;
+        uint _588 = _555 ? _556 : 8388607u;
+        uint _589 = _555 ? _557 : 1065353216u;
+        uint _595 = uint(in_var_C4 ^ 82);
+        uint _597 = _595 + (_595 << 10u);
+        uint _599 = _597 ^ (_597 >> 6u);
+        uint _601 = _599 + (_599 << 3u);
+        uint _603 = _601 ^ (_601 >> 11u);
+        bool _606 = _587 ? _587 : true;
+        uint _607 = _587 ? _588 : 8388607u;
+        uint _608 = _587 ? _589 : 1065353216u;
+        uint _618 = uint(in_var_C5);
+        uint _620 = _618 + (_618 << 10u);
+        uint _622 = _620 ^ (_620 >> 6u);
+        uint _624 = _622 + (_622 << 3u);
+        uint _626 = _624 ^ (_624 >> 11u);
+        _642 = lerp(canopy_color.SampleBias(sampler_llr, (float2(asfloat(((_533 + (_533 << 15u)) & _537) | _538) - 1.0f, asfloat(((_552 + (_552 << 15u)) & _556) | _557) - 1.0f) + (in_var_C1.xy * 0.00999999977648258209228515625f)) + (_567 * 0.0005000000237487256526947021484375f), frame_constants_global_mip_bias).xyz, canopy_color.SampleBias(sampler_llr, (float2(asfloat(((_584 + (_584 << 15u)) & _588) | _589) - 1.0f, asfloat(((_603 + (_603 << 15u)) & _607) | _608) - 1.0f) + (in_var_C1.xy * 0.20000000298023223876953125f)) + (_567 * 0.0500000007450580596923828125f), frame_constants_global_mip_bias).xyz * 0.5f, lerp(0.100000001490116119384765625f, 0.5f, asfloat(((_626 + (_626 << 15u)) & (_606 ? _607 : 8388607u)) | (_606 ? _608 : 1065353216u)) - 1.0f).xxx);
+    }
+    else
+    {
+        float3 _523;
+        if (_350 == 2)
+        {
+            bool _390 = in_var_C9 == 2u;
+            uint _392 = uint(in_var_C4 ^ 1128782);
+            uint _394 = _392 + (_392 << 10u);
+            uint _396 = _394 ^ (_394 >> 6u);
+            uint _398 = _396 + (_396 << 3u);
+            uint _400 = _398 ^ (_398 >> 11u);
+            bool _403 = _308 ? _308 : true;
+            uint _404 = _308 ? _307 : 8388607u;
+            uint _405 = _308 ? _306 : 1065353216u;
+            uint _411 = uint(in_var_C4 ^ 872);
+            uint _413 = _411 + (_411 << 10u);
+            uint _415 = _413 ^ (_413 >> 6u);
+            uint _417 = _415 + (_415 << 3u);
+            uint _419 = _417 ^ (_417 >> 11u);
+            bool _422 = _403 ? _403 : true;
+            uint _423 = _403 ? _404 : 8388607u;
+            uint _424 = _403 ? _405 : 1065353216u;
+            float2 _430 = in_var_C1.xy * 0.20000000298023223876953125f;
+            float2 _434 = in_var_C3.yz + in_var_C3.yx;
+            float2 _436 = (float2(asfloat(((_400 + (_400 << 15u)) & _404) | _405) - 1.0f, asfloat(((_419 + (_419 << 15u)) & _423) | _424) - 1.0f) + _430) + (_434 * 0.004999999888241291046142578125f);
+            float2 _443;
+            if (_390)
+            {
+                float2 _442 = _436;
+                _442.y = frac(_436.y) * 0.60000002384185791015625f;
+                _443 = _442;
+            }
+            else
+            {
+                _443 = _436;
+            }
+            float4 _447 = canopy_color.SampleBias(sampler_llr, _443, frame_constants_global_mip_bias);
+            uint _450 = uint(in_var_C4 ^ 11282);
+            uint _452 = _450 + (_450 << 10u);
+            uint _454 = _452 ^ (_452 >> 6u);
+            uint _456 = _454 + (_454 << 3u);
+            uint _458 = _456 ^ (_456 >> 11u);
+            bool _461 = _422 ? _422 : true;
+            uint _462 = _422 ? _423 : 8388607u;
+            uint _463 = _422 ? _424 : 1065353216u;
+            uint _469 = uint(in_var_C4 ^ 82);
+            uint _471 = _469 + (_469 << 10u);
+            uint _473 = _471 ^ (_471 >> 6u);
+            uint _475 = _473 + (_473 << 3u);
+            uint _477 = _475 ^ (_475 >> 11u);
+            bool _480 = _461 ? _461 : true;
+            uint _481 = _461 ? _462 : 8388607u;
+            uint _482 = _461 ? _463 : 1065353216u;
+            float2 _490 = (float2(asfloat(((_458 + (_458 << 15u)) & _462) | _463) - 1.0f, asfloat(((_477 + (_477 << 15u)) & _481) | _482) - 1.0f) + _430) + (_434 * 0.0500000007450580596923828125f);
+            uint _492 = uint(in_var_C5 ^ 1128782);
+            uint _494 = _492 + (_492 << 10u);
+            uint _496 = _494 ^ (_494 >> 6u);
+            uint _498 = _496 + (_496 << 3u);
+            uint _500 = _498 ^ (_498 >> 11u);
+            float2 _516;
+            if (_390)
+            {
+                float2 _515 = _490;
+                _515.y = frac(_443.y) * 0.60000002384185791015625f;
+                _516 = _515;
+            }
+            else
+            {
+                _516 = _490;
+            }
+            _523 = lerp(_447.xyz, canopy_color.SampleBias(sampler_llr, _516, frame_constants_global_mip_bias).xyz, lerp(0.0f, 1.0f, smoothstep(0.0f, 1.0f, asfloat(((_500 + (_500 << 15u)) & (_480 ? _481 : 8388607u)) | (_480 ? _482 : 1065353216u)) - 1.0f)).xxx);
+        }
+        else
+        {
+            uint _360 = uint(in_var_C4 * 1128782);
+            uint _362 = _360 + (_360 << 10u);
+            uint _364 = _362 ^ (_362 >> 6u);
+            uint _366 = _364 + (_364 << 3u);
+            uint _368 = _366 ^ (_366 >> 11u);
+            float3 _387;
+            if (frame_constants_glade_theme_id == 3u)
+            {
+                _387 = color_library_canopy_color_2.xyz * 0.75f;
+            }
+            else
+            {
+                _387 = color_library_canopy_color_2.xyz;
+            }
+            _523 = lerp(color_library_canopy_color_1.xyz, _387, (asfloat(((_368 + (_368 << 15u)) & (_308 ? _307 : 8388607u)) | (_308 ? _306 : 1065353216u)) - 1.0f).xxx);
+        }
+        _642 = _523;
+    }
+    bool3 _643 = _304.xxx;
+    float3 _644 = float3(_643.x ? _192.x : _642.x, _643.y ? _192.y : _642.y, _643.z ? _192.z : _642.z);
+    float3 _656;
+    if (frame_constants_glade_theme_id == 4u)
+    {
+        _656 = lerp(_644, 0.699999988079071044921875f.xxx, smoothstep(0.0f, 1.0f, clamp(in_var_C2.y, 0.0f, 1.0f)).xxx);
+    }
+    else
+    {
+        _656 = _644;
+    }
+    float3 _658 = (in_var_C2 * 0.5f) + 0.5f.xxx;
+    float3 _685 = sqrt(clamp(_656, 0.0f.xxx, 1.0f.xxx));
+    out_var_SV_TARGET0 = uint2(((uint((clamp(_658.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_658.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_658.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) + (uint((clamp(clamp(_199.z - 0.00390625f, 0.0f, 1.0f), 0.0f, 1.0f) * 255.0f) + 0.5f) << 24u), ((uint((clamp(_685.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_685.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_685.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) + (uint((clamp(_305, 0.0f, 1.0f) * 255.0f) + 0.5f) << 24u));
+    gl_FragDepth = (gl_FragCoord.z / gl_FragCoord.w) / ((1.0f / gl_FragCoord.w) + ((in_var_C12 * (1.0f - _305)) * 1.60000002384185791015625f));
+}
+
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    gl_FragCoord = stage_input.gl_FragCoord;
+    gl_FragCoord.w = 1.0 / gl_FragCoord.w;
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C2 = stage_input.in_var_C2;
+    in_var_C3 = stage_input.in_var_C3;
+    in_var_C4 = stage_input.in_var_C4;
+    in_var_C5 = stage_input.in_var_C5;
+    in_var_C6 = stage_input.in_var_C6;
+    in_var_C7 = stage_input.in_var_C7;
+    in_var_C8 = stage_input.in_var_C8;
+    in_var_C9 = stage_input.in_var_C9;
+    in_var_C10 = stage_input.in_var_C10;
+    in_var_C12 = stage_input.in_var_C12;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.gl_FragDepth = gl_FragDepth;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_VERTEX)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+struct PlacementData
+{
+    float3 position;
+    float scale;
+    float rotation_angle;
+    int id;
+    uint custom0;
+    uint custom1;
+    uint anim_t_packed;
+    float2 bend_vector;
+    int pad0;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint _Globals_current_view_index : packoffset(c0);
+    int _Globals_is_firstperson_mode : packoffset(c0.y);
+    float _Globals_wind_strength : packoffset(c0.z);
+    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
+    float _Globals_cone_angle_mult : packoffset(c1.z);
+    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+};
+
+ByteAddressBuffer nani_instance_data : register(t15, space0);
+ByteAddressBuffer instance_indirection_buffer : register(t16, space0);
+
+static float4 gl_Position;
+static int gl_InstanceIndex;
+static float3 in_var_Vertex_Position;
+static float3 in_var_Vertex_Color;
+static float3 in_var_Vertex_Normal;
+static float3 in_var_prim_center;
+static float3 in_var_prim_normals;
+static float3 in_var_appear_pos;
+static float in_var_age;
+static float3 out_var_C0;
+static float3 out_var_C1;
+static float3 out_var_C2;
+static float3 out_var_C3;
+static int out_var_C4;
+static int out_var_C5;
+static float out_var_C6;
+static float3 out_var_C7;
+static uint out_var_C8;
+static uint out_var_C9;
+static float out_var_C10;
+static float2 out_var_C11;
+static float out_var_C12;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
+    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
+    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(6)]] float in_var_age: age;
+    uint gl_InstanceIndex : SV_InstanceID;
+};
+
+struct SPIRV_Cross_Output
+{
+    [[vk::location(0)]] float3 out_var_C0 : TEXCOORD0;
+    [[vk::location(1)]] float3 out_var_C1 : TEXCOORD1;
+    [[vk::location(2)]] float3 out_var_C2 : TEXCOORD2;
+    [[vk::location(3)]] float3 out_var_C3 : TEXCOORD3;
+    [[vk::location(4)]] nointerpolation int out_var_C4 : TEXCOORD4;
+    [[vk::location(5)]] nointerpolation int out_var_C5 : TEXCOORD5;
+    [[vk::location(6)]] nointerpolation float out_var_C6 : TEXCOORD6;
+    [[vk::location(7)]] float3 out_var_C7 : TEXCOORD7;
+    [[vk::location(8)]] nointerpolation uint out_var_C8 : TEXCOORD8;
+    [[vk::location(9)]] nointerpolation uint out_var_C9 : TEXCOORD9;
+    [[vk::location(10)]] nointerpolation float out_var_C10 : TEXCOORD10;
+    [[vk::location(11)]] float2 out_var_C11 : TEXCOORD11;
+    [[vk::location(12)]] float out_var_C12 : TEXCOORD12;
+    float4 gl_Position : SV_Position;
+};
+
+uint spvPackHalf2x16(float2 value)
+{
+    uint2 Packed = f32tof16(value);
+    return Packed.x | (Packed.y << 16);
+}
+
+float2 spvUnpackHalf2x16(uint value)
+{
+    return f16tof32(uint2(value & 0xffff, value >> 16));
+}
+
+void vert_main()
+{
+    float4 _544;
+    float3 _545;
+    float3 _546;
+    float3 _547;
+    float3 _548;
+    int _549;
+    int _550;
+    float _551;
+    float3 _552;
+    bool _553;
+    uint _554;
+    float _555;
+    float2 _556;
+    float _557;
+    do
+    {
+        float _193 = clamp(1.0f - clamp(lerp(-1.0f, 1.0f, clamp(spvUnpackHalf2x16(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 32) & 65535u).x, 0.0f, 1.0f)) + (1.0f - in_var_age), 0.0f, 1.0f), 0.0f, 1.0f);
+        float _199 = 1.0f - ((_193 * _193) - (_193 * sin(_193 * 3.1400001049041748046875f)));
+        if (_199 < 0.00999999977648258209228515625f)
+        {
+            _544 = asfloat(0x7fbfffffu          ).xxxx;
+            _545 = 0.0f.xxx;
+            _546 = 0.0f.xxx;
+            _547 = 0.0f.xxx;
+            _548 = 0.0f.xxx;
+            _549 = 0;
+            _550 = 0;
+            _551 = 0.0f;
+            _552 = 0.0f.xxx;
+            _553 = false;
+            _554 = 0u;
+            _555 = 0.0f;
+            _556 = 0.0f.xx;
+            _557 = 0.0f;
+            break;
+        }
+        float3 _205 = lerp(in_var_appear_pos, in_var_Vertex_Position, _199.xxx) + in_var_Vertex_Normal;
+        float _206 = _205.y;
+        float _207 = _206 * 0.02999999932944774627685546875f;
+        float _212 = float(frame_constants_game_time_sec);
+        float _217 = _205.x;
+        float _226 = _205.z;
+        float _227 = 0.20000000298023223876953125f * _226;
+        float _231 = _217 + ((_207 * sin((fmod(_212 * 0.8235290050506591796875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.8235290050506591796875f)) + (0.20000000298023223876953125f * _217))) * sin((fmod(_212 * 0.893616974353790283203125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.893616974353790283203125f)) + _227));
+        uint _249 = uint(int(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0)));
+        float _256 = radians(nani_instance_data.Load<float>(_249 * 48 + 16));
+        float3 _260 = normalize(float3(cos(_256), 0.0f, sin(_256)));
+        float4x4 _283 = transpose(float4x4(float4(_260, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_260, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
+        float4 _287 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_283, mul(float4x4(float4(nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_231, _206, _226 + ((_207 * sin((fmod(_212 * 0.792452991008758544921875f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.792452991008758544921875f)) + (0.20000000298023223876953125f * _231))) * sin((fmod(_212 * 0.688525021076202392578125f, 6.283185482025146484375f) + (frame_constants_game_time_frac * 0.688525021076202392578125f)) + _227)), 1.0f))));
+        float _297 = radians(nani_instance_data.Load<float>(_249 * 48 + 16));
+        float3 _301 = normalize(float3(cos(_297), 0.0f, sin(_297)));
+        float4x4 _324 = transpose(float4x4(float4(_301, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_301, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
+        float4 _331 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_324, mul(float4x4(float4(nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(in_var_prim_center, 1.0f))));
+        if (dot(mul(_324, float4(in_var_prim_normals, 0.0f)).xyz, normalize(mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, -1.0f, 0.0f)).xyz)) >= 0.1500000059604644775390625f)
+        {
+            _544 = asfloat(0x7fbfffffu          ).xxxx;
+            _545 = 0.0f.xxx;
+            _546 = 0.0f.xxx;
+            _547 = 0.0f.xxx;
+            _548 = 0.0f.xxx;
+            _549 = 0;
+            _550 = 0;
+            _551 = 0.0f;
+            _552 = 0.0f.xxx;
+            _553 = false;
+            _554 = 0u;
+            _555 = 0.0f;
+            _556 = 0.0f.xx;
+            _557 = 0.0f;
+            break;
+        }
+        float2 _360 = _287.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * smoothstep(3.0f, 20.0f, in_var_Vertex_Position.y));
+        float4 _368 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_360.x, _287.y, _360.y, 1.0f));
+        _368.z = (_368.z - (-0.00150000001303851604461669921875f)) * _368.w;
+        float2 _395 = nani_instance_data.Load<float3>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 0).xz * 0.0500000007450580596923828125f;
+        int2 _397 = int2(floor(_395));
+        float2 _398 = frac(_395);
+        uint2 _399 = uint2(_397);
+        uint _401 = _399.y;
+        uint _403 = _401 + (_401 << 10u);
+        uint _405 = _403 ^ (_403 >> 6u);
+        uint _407 = _405 + (_405 << 3u);
+        uint _409 = _407 ^ (_407 >> 11u);
+        uint _415 = (((_399.x * 1664525u) + (_409 + (_409 << 15u))) + 1013904223u) * 1664525u;
+        uint _417 = _415 ^ (_415 >> 11u);
+        uint _420 = _417 ^ ((_417 << 7u) & 2636928640u);
+        uint _423 = _420 ^ ((_420 << 15u) & 4022730752u);
+        uint2 _431 = uint2(_397 + int2(1, 0));
+        uint _433 = _431.y;
+        uint _435 = _433 + (_433 << 10u);
+        uint _437 = _435 ^ (_435 >> 6u);
+        uint _439 = _437 + (_437 << 3u);
+        uint _441 = _439 ^ (_439 >> 11u);
+        uint _447 = (((_431.x * 1664525u) + (_441 + (_441 << 15u))) + 1013904223u) * 1664525u;
+        uint _449 = _447 ^ (_447 >> 11u);
+        uint _452 = _449 ^ ((_449 << 7u) & 2636928640u);
+        uint _455 = _452 ^ ((_452 << 15u) & 4022730752u);
+        uint2 _463 = uint2(_397 + int2(0, 1));
+        uint _465 = _463.y;
+        uint _467 = _465 + (_465 << 10u);
+        uint _469 = _467 ^ (_467 >> 6u);
+        uint _471 = _469 + (_469 << 3u);
+        uint _473 = _471 ^ (_471 >> 11u);
+        uint _479 = (((_463.x * 1664525u) + (_473 + (_473 << 15u))) + 1013904223u) * 1664525u;
+        uint _481 = _479 ^ (_479 >> 11u);
+        uint _484 = _481 ^ ((_481 << 7u) & 2636928640u);
+        uint _487 = _484 ^ ((_484 << 15u) & 4022730752u);
+        uint2 _495 = uint2(_397 + int2(1, 1));
+        uint _497 = _495.y;
+        uint _499 = _497 + (_497 << 10u);
+        uint _501 = _499 ^ (_499 >> 6u);
+        uint _503 = _501 + (_501 << 3u);
+        uint _505 = _503 ^ (_503 >> 11u);
+        uint _511 = (((_495.x * 1664525u) + (_505 + (_505 << 15u))) + 1013904223u) * 1664525u;
+        uint _513 = _511 ^ (_511 >> 11u);
+        uint _516 = _513 ^ ((_513 << 7u) & 2636928640u);
+        uint _519 = _516 ^ ((_516 << 15u) & 4022730752u);
+        float2 _529 = (_398 * _398) * (3.0f.xx - (_398 * 2.0f));
+        float _530 = _529.x;
+        float _531 = 1.0f - _530;
+        float _533 = _529.y;
+        _544 = _368;
+        _545 = _287.xyz;
+        _546 = lerp(in_var_Vertex_Color, 0.5f.xxx, 0.300000011920928955078125f.xxx);
+        _547 = mul(_283, float4(in_var_Vertex_Normal, 0.0f)).xyz;
+        _548 = float3(_360.x, _287.y, _360.y);
+        _549 = int(uint(nani_instance_data.Load<int>(_249 * 48 + 20)));
+        _550 = int(10.0f * ((_331.x + _331.y) + _331.z));
+        _551 = spvUnpackHalf2x16((nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 32) >> 16u) & 65535u).x;
+        _552 = _331.xyz;
+        _553 = false;
+        _554 = uint(nani_instance_data.Load<int>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 44));
+        _555 = (((1.0f - _533) * (((asfloat(((_423 ^ (_423 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _531) + ((asfloat(((_455 ^ (_455 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _530))) + (((asfloat(((_487 ^ (_487 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _531) * _533)) + (((asfloat(((_519 ^ (_519 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _530) * _533);
+        _556 = _368.zw;
+        _557 = 1.0f;
+        break;
+    } while(false);
+    gl_Position = _544;
+    out_var_C0 = _545;
+    out_var_C1 = _546;
+    out_var_C2 = _547;
+    out_var_C3 = _548;
+    out_var_C4 = _549;
+    out_var_C5 = _550;
+    out_var_C6 = _551;
+    out_var_C7 = _552;
+    out_var_C8 = uint(_553);
+    out_var_C9 = _554;
+    out_var_C10 = _555;
+    out_var_C11 = _556;
+    out_var_C12 = _557;
+}
+
+SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
+{
+    gl_InstanceIndex = int(stage_input.gl_InstanceIndex);
+    in_var_Vertex_Position = stage_input.in_var_Vertex_Position;
+    in_var_Vertex_Color = stage_input.in_var_Vertex_Color;
+    in_var_Vertex_Normal = stage_input.in_var_Vertex_Normal;
+    in_var_prim_center = stage_input.in_var_prim_center;
+    in_var_prim_normals = stage_input.in_var_prim_normals;
+    in_var_appear_pos = stage_input.in_var_appear_pos;
+    in_var_age = stage_input.in_var_age;
+    vert_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.gl_Position = gl_Position;
+    stage_output.out_var_C0 = out_var_C0;
+    stage_output.out_var_C1 = out_var_C1;
+    stage_output.out_var_C2 = out_var_C2;
+    stage_output.out_var_C3 = out_var_C3;
+    stage_output.out_var_C4 = out_var_C4;
+    stage_output.out_var_C5 = out_var_C5;
+    stage_output.out_var_C6 = out_var_C6;
+    stage_output.out_var_C7 = out_var_C7;
+    stage_output.out_var_C8 = out_var_C8;
+    stage_output.out_var_C9 = out_var_C9;
+    stage_output.out_var_C10 = out_var_C10;
+    stage_output.out_var_C11 = out_var_C11;
+    stage_output.out_var_C12 = out_var_C12;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

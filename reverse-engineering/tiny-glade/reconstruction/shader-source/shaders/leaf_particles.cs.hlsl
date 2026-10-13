@@ -291,10 +291,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b14, space0)
 {
-    uint2 _Globals_water_noise_texture_dims : packoffset(c0);
-    uint2 _Globals_grass_object_push_dims : packoffset(c0.z);
-    int _Globals_particle_emitter_count : packoffset(c1);
-    int _Globals_total_particle_count : packoffset(c1.y);
+    uint2 water_noise_texture_dims : packoffset(c0);
+    uint2 grass_object_push_dims : packoffset(c0.z);
+    int particle_emitter_count : packoffset(c1);
+    int total_particle_count : packoffset(c1.y);
 };
 
 RWByteAddressBuffer __alias_leaf_particle_buffer : register(u17, space0);
@@ -314,7 +314,7 @@ void comp_main()
 {
     do
     {
-        if (gl_GlobalInvocationID.x >= uint(_Globals_total_particle_count))
+        if (gl_GlobalInvocationID.x >= uint(total_particle_count))
         {
             break;
         }
@@ -324,7 +324,7 @@ void comp_main()
         _185.scale = __alias_leaf_particle_buffer.Load<float>(gl_GlobalInvocationID.x * 32 + 16);
         _185.up_axis = __alias_leaf_particle_buffer.Load<float3>(gl_GlobalInvocationID.x * 32 + 20);
         float3 _186 = _185.position;
-        if (_Globals_particle_emitter_count == 0)
+        if (particle_emitter_count == 0)
         {
             LeafParticle _195 = { 0.0f.xxx, _185.rotation, 0.0f, _185.up_axis };
             __alias_leaf_particle_buffer.Store<float3>(gl_GlobalInvocationID.x * 32 + 0, _195.position);
@@ -767,7 +767,7 @@ void comp_main()
                 uint _760 = _758 ^ (_758 >> 6u);
                 uint _762 = _760 + (_760 << 3u);
                 uint _764 = _762 ^ (_762 >> 11u);
-                _776 = __alias_particle_emitter_buffer.Load<float3>(((uint(_651) ^ (345345u * (frame_constants_frame_index + 1u))) % uint(_Globals_particle_emitter_count)) * 16 + 0) + float3(lerp(-0.5f, 0.5f, asfloat(((_671 + (_671 << 15u)) & _675) | _677) - 1.0f), lerp(-0.5f, 0.5f, asfloat(((_692 + (_692 << 15u)) & _696) | _698) - 1.0f), lerp(-0.5f, 0.5f, asfloat(((_713 + (_713 << 15u)) & _717) | _719) - 1.0f));
+                _776 = __alias_particle_emitter_buffer.Load<float3>(((uint(_651) ^ (345345u * (frame_constants_frame_index + 1u))) % uint(particle_emitter_count)) * 16 + 0) + float3(lerp(-0.5f, 0.5f, asfloat(((_671 + (_671 << 15u)) & _675) | _677) - 1.0f), lerp(-0.5f, 0.5f, asfloat(((_692 + (_692 << 15u)) & _696) | _698) - 1.0f), lerp(-0.5f, 0.5f, asfloat(((_713 + (_713 << 15u)) & _717) | _719) - 1.0f));
                 _777 = lerp(0.60000002384185791015625f, 1.0f, asfloat((_736 & _738) | _740) - 1.0f) * 0.800000011920928955078125f;
                 _778 = normalize(float3(lerp(-1.0f, 1.0f, asfloat((_736 & _748) | _750) - 1.0f), 2.0f, lerp(-1.0f, 1.0f, asfloat(((_764 + (_764 << 15u)) & ((_737 ? _737 : true) ? _748 : 8388607u)) | ((_739 ? _739 : true) ? _750 : 1065353216u)) - 1.0f)));
             }

@@ -129,9 +129,9 @@ float2 butterfly_shadow(float3 world_pos, float4 shadow_dir)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float2 Vertex_UV : TEXCOORD1;
-    float is_wing : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float is_wing: is_wing;
     uint instance_id : SV_InstanceID;
 };
 
@@ -314,11 +314,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
-    uint2 _Globals_butterfly_skins_dims : packoffset(c0.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
+    uint2 butterfly_skins_dims : packoffset(c0.z);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
 };
 
 ByteAddressBuffer butterfly_buffer : register(t19, space0);
@@ -338,9 +338,9 @@ static float2 out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
-    [[vk::location(2)]] float in_var_is_wing : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float in_var_is_wing: is_wing;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -372,7 +372,7 @@ void vert_main()
     }
     float3 _219 = (mul(float3x3(cross(butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 16), float3(0.0f, 1.0f, 0.0f)), float3(0.0f, 1.0f, 0.0f), butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 16)), _206) + butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0)) + float3(0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).xz * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x), 0.0f);
     float _427;
-    if (_Globals_bool_render_shadows == 1)
+    if (bool_render_shadows == 1)
     {
         float4 _230 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
         float2 _425;
@@ -518,7 +518,7 @@ void vert_main()
     {
         _455 = _450;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_219, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_219, 1.0f));
     out_var_C0 = ((frame_constants_sun_color.xyz * (1.0f - _427)) * 0.3183098733425140380859375f.xxx) + frame_constants_sky_high_color.xyz;
     out_var_C1 = _455;
 }
@@ -608,11 +608,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
-    uint2 _Globals_butterfly_skins_dims : packoffset(c0.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
+    uint2 butterfly_skins_dims : packoffset(c0.z);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
 };
 
 ByteAddressBuffer butterfly_buffer : register(t19, space0);
@@ -632,9 +632,9 @@ static float2 out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
-    [[vk::location(2)]] float in_var_is_wing : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float in_var_is_wing: is_wing;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -666,7 +666,7 @@ void vert_main()
     }
     float3 _219 = (mul(float3x3(cross(butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 16), float3(0.0f, 1.0f, 0.0f)), float3(0.0f, 1.0f, 0.0f), butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 16)), _206) + butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0)) + float3(0.0f, lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, (butterfly_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).xz * 0.0076923076994717121124267578125f.xx) + 0.5f.xx, 0.0f).x), 0.0f);
     float _427;
-    if (_Globals_bool_render_shadows == 1)
+    if (bool_render_shadows == 1)
     {
         float4 _230 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
         float2 _425;
@@ -812,7 +812,7 @@ void vert_main()
     {
         _455 = _450;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_219, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_219, 1.0f));
     out_var_C0 = ((frame_constants_sun_color.xyz * (1.0f - _427)) * 0.3183098733425140380859375f.xxx) + frame_constants_sky_high_color.xyz;
     out_var_C1 = _455;
 }

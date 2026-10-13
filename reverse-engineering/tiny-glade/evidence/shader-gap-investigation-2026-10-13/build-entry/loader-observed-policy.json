@@ -1,0 +1,42 @@
+{
+  "worker": "shader-build-gap-1013",
+  "project": "D:/game/tools/reverse-runtime/shader-build-gap-1013/project/TinyGlade.gpr",
+  "program": "tiny-glade.exe",
+  "patched_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "prepared_ranges": [
+    {
+      "address": "0x1409e3c50",
+      "size": 847,
+      "bytes_sha256": "4a4131dca631971e7154eed4efb818a8130beb8b2813d49bbf0f5656e0bce21b",
+      "range_basis": "original RNE PE exception directory end_exclusive 0x1409e3f9f"
+    },
+    {
+      "address": "0x1409e4160",
+      "size": 847,
+      "bytes_sha256": "b6bba06dcbb945f9b6d6eaf7f1c6a1f4bf5d2c6842cfb5f2fbd25d9d0604edee",
+      "range_basis": "original RNE PE exception directory end_exclusive 0x1409e44af"
+    }
+  ],
+  "prototype_changes": [],
+  "seed_synchronized": false,
+  "Mac_overlays_inherited": false,
+  "runtime_loader": {
+    "sequence": [
+      "compute/raster compiled_file_path",
+      "std::fs::read",
+      "speedy decode"
+    ],
+    "read_failure": "anyhow::Error::msg(format!(\"Failed opening compiled shader pipeline from {path:?}: {error}\"))",
+    "decode_failure": "anyhow::Error::msg(format!(\"Failed deserializing compiled shader pipeline from {path:?}: {error}\"))",
+    "offline_compile_fallback": false,
+    "cache_or_temp_operations_in_these_two_bodies": false
+  },
+  "offline_compiler_unknown": [
+    "exact tool executable/name/path and original DXC build",
+    "original IncludeProvider leading slash/parent/root policy",
+    "original compile error types, contexts and preservation",
+    "cache keys/lifecycle and tempfile naming/cleanup/ownership"
+  ],
+  "ABI_verified": false
+}

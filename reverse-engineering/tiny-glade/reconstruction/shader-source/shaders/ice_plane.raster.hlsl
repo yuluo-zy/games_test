@@ -70,7 +70,7 @@ Texture2D<float4> surface_roughness_tex : register(t22, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
 };
 
 struct VsOut
@@ -566,17 +566,17 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c1);
-    uint2 _Globals_water_mask_dims : packoffset(c1.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c2);
-    uint2 _Globals_refraction_tex_dims : packoffset(c2.z);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c3);
-    uint2 _Globals_shadows_history_tex_dims : packoffset(c3.z);
-    uint2 _Globals_surface_roughness_tex_dims : packoffset(c4);
-    column_major float4x4 _Globals_model_to_world : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 blue_noise_texture_dims : packoffset(c0.z);
+    uint2 framebuffer_dims : packoffset(c1);
+    uint2 water_mask_dims : packoffset(c1.z);
+    uint2 half_depth_tex_dims : packoffset(c2);
+    uint2 refraction_tex_dims : packoffset(c2.z);
+    uint2 reprojection_tex_dims : packoffset(c3);
+    uint2 shadows_history_tex_dims : packoffset(c3.z);
+    uint2 surface_roughness_tex_dims : packoffset(c4);
+    column_major float4x4 model_to_world : packoffset(c5);
 };
 
 RWByteAddressBuffer __alias_ice_refl_count_buffer : register(u23, space0);
@@ -632,14 +632,14 @@ void frag_main()
     bool _244 = IsHelperLane();
     uint2 _248 = uint2(gl_FragCoord.xy);
     uint2 _249 = _248 / uint2(2u, 2u);
-    float2 _253 = float2(_Globals_half_depth_tex_dims);
+    float2 _253 = float2(half_depth_tex_dims);
     float2 _263 = (((float2(int2(_249)) + 0.5f.xx) / _253) - 0.5f.xx) * float2(2.0f, -2.0f);
     float _264 = _263.x;
     float4 _269 = float4(_264, _263.y, gl_FragCoord.z, 1.0f);
     float3 _272 = -normalize(mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, 0.0f, 1.0f))).xyz);
     float4 _275 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
     float3 _276 = _275.xyz;
-    float2 _280 = float2(_Globals_surface_roughness_tex_dims);
+    float2 _280 = float2(surface_roughness_tex_dims);
     float2 _282 = in_var_C1.xz * 0.100000001490116119384765625f;
     float2 _284 = mul(_282 * 3.4639999866485595703125f, float2x2(float2(1.0f, 0.0f), float2(-0.57735025882720947265625f, 1.1547005176544189453125f)));
     float2 _285 = floor(_284);
@@ -1089,7 +1089,7 @@ void frag_main()
     } while(false);
     float _1027 = clamp((_1022.x - 0.100000001490116119384765625f) * 1.4285714626312255859375f, 0.0f, 1.0f);
     float2 _1040 = _1027.xx + ((float2(-1.0f, 1.0f) * sqrt(max(0.0f, _1022.y - (_1022.x * _1022.x)))) * (3.0f * max(0.0f, 1.0f - (_1023 * 0.20000000298023223876953125f))));
-    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(_Globals_framebuffer_dims);
+    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(framebuffer_dims);
     float4 _1055 = float4((_1046 - 0.5f.xx) * float2(2.0f, -2.0f), gl_FragCoord.z, 1.0f);
     float4 _1058 = mul(frame_constants_view_constants[0u].clip_to_prev_clip, mul(frame_constants_view_constants[0u].view_to_clip, mul(_603, _1055)));
     float2 _1064 = ((_1058.xy / _1058.w.xx) * float2(0.5f, -0.5f)) + 0.5f.xx;
@@ -1100,7 +1100,7 @@ void frag_main()
     if (_1085 > 0.0f)
     {
         bool _1098;
-        if (_Globals_history_valid != 0u)
+        if (history_valid != 0u)
         {
             _1098 = !(0u == frame_constants_frame_index);
         }
@@ -1471,17 +1471,17 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c1);
-    uint2 _Globals_water_mask_dims : packoffset(c1.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c2);
-    uint2 _Globals_refraction_tex_dims : packoffset(c2.z);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c3);
-    uint2 _Globals_shadows_history_tex_dims : packoffset(c3.z);
-    uint2 _Globals_surface_roughness_tex_dims : packoffset(c4);
-    column_major float4x4 _Globals_model_to_world : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 blue_noise_texture_dims : packoffset(c0.z);
+    uint2 framebuffer_dims : packoffset(c1);
+    uint2 water_mask_dims : packoffset(c1.z);
+    uint2 half_depth_tex_dims : packoffset(c2);
+    uint2 refraction_tex_dims : packoffset(c2.z);
+    uint2 reprojection_tex_dims : packoffset(c3);
+    uint2 shadows_history_tex_dims : packoffset(c3.z);
+    uint2 surface_roughness_tex_dims : packoffset(c4);
+    column_major float4x4 model_to_world : packoffset(c5);
 };
 
 RWByteAddressBuffer __alias_ice_refl_count_buffer : register(u23, space0);
@@ -1537,14 +1537,14 @@ void frag_main()
     bool _244 = IsHelperLane();
     uint2 _248 = uint2(gl_FragCoord.xy);
     uint2 _249 = _248 / uint2(2u, 2u);
-    float2 _253 = float2(_Globals_half_depth_tex_dims);
+    float2 _253 = float2(half_depth_tex_dims);
     float2 _263 = (((float2(int2(_249)) + 0.5f.xx) / _253) - 0.5f.xx) * float2(2.0f, -2.0f);
     float _264 = _263.x;
     float4 _269 = float4(_264, _263.y, gl_FragCoord.z, 1.0f);
     float3 _272 = -normalize(mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_264, _263.y, 0.0f, 1.0f))).xyz);
     float4 _275 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
     float3 _276 = _275.xyz;
-    float2 _280 = float2(_Globals_surface_roughness_tex_dims);
+    float2 _280 = float2(surface_roughness_tex_dims);
     float2 _282 = in_var_C1.xz * 0.100000001490116119384765625f;
     float2 _284 = mul(_282 * 3.4639999866485595703125f, float2x2(float2(1.0f, 0.0f), float2(-0.57735025882720947265625f, 1.1547005176544189453125f)));
     float2 _285 = floor(_284);
@@ -1994,7 +1994,7 @@ void frag_main()
     } while(false);
     float _1027 = clamp((_1022.x - 0.100000001490116119384765625f) * 1.4285714626312255859375f, 0.0f, 1.0f);
     float2 _1040 = _1027.xx + ((float2(-1.0f, 1.0f) * sqrt(max(0.0f, _1022.y - (_1022.x * _1022.x)))) * (3.0f * max(0.0f, 1.0f - (_1023 * 0.20000000298023223876953125f))));
-    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(_Globals_framebuffer_dims);
+    float2 _1046 = (float2(_814) + 0.5f.xx) / float2(framebuffer_dims);
     float4 _1055 = float4((_1046 - 0.5f.xx) * float2(2.0f, -2.0f), gl_FragCoord.z, 1.0f);
     float4 _1058 = mul(frame_constants_view_constants[0u].clip_to_prev_clip, mul(frame_constants_view_constants[0u].view_to_clip, mul(_603, _1055)));
     float2 _1064 = ((_1058.xy / _1058.w.xx) * float2(0.5f, -0.5f)) + 0.5f.xx;
@@ -2005,7 +2005,7 @@ void frag_main()
     if (_1085 > 0.0f)
     {
         bool _1098;
-        if (_Globals_history_valid != 0u)
+        if (history_valid != 0u)
         {
             _1098 = !(0u == frame_constants_frame_index);
         }

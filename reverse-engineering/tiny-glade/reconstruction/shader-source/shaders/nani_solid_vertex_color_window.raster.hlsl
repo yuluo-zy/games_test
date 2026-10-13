@@ -88,10 +88,10 @@ float2 window_corner_rand(uint3 cell)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
     uint instance_id : SV_InstanceID;
 };
 
@@ -268,8 +268,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -301,7 +301,7 @@ void frag_main()
     bool _121;
     if ((in_var_C4 & 1u) != 0u)
     {
-        _121 = _Globals_bool_render_shadows != 0;
+        _121 = bool_render_shadows != 0;
     }
     else
     {
@@ -417,8 +417,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 
@@ -436,7 +436,7 @@ void frag_main()
     bool _86;
     if ((in_var_C4 & 1u) != 0u)
     {
-        _86 = _Globals_bool_render_shadows != 0;
+        _86 = bool_render_shadows != 0;
     }
     else
     {

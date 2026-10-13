@@ -363,9 +363,9 @@ struct PrimPacked
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0);
-    float2 _Globals_window_size_pixels : packoffset(c0.z);
-    uint2 _Globals_font_atlas_tex_dims : packoffset(c1);
+    uint2 blue_noise_texture_dims : packoffset(c0);
+    float2 window_size_pixels : packoffset(c0.z);
+    uint2 font_atlas_tex_dims : packoffset(c1);
 };
 
 ByteAddressBuffer primitives : register(t15, space0);
@@ -445,7 +445,7 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float _123 = _Globals_window_size_pixels.y * 0.001000000047497451305389404296875f;
+    float _123 = window_size_pixels.y * 0.001000000047497451305389404296875f;
     uint _124 = uint(gl_VertexIndex) / 6u;
     float _137 = float(primitives.Load<uint>(_124 * 48 + 32) & 255u) * 0.0039215688593685626983642578125f;
     float _140 = float((primitives.Load<uint>(_124 * 48 + 32) >> 8u) & 255u);
@@ -500,9 +500,9 @@ void vert_main()
         _192 = primitives.Load<float2>(_124 * 48 + 0);
     }
     float2 _196 = _192 + (primitives.Load<float2>(_124 * 48 + 8) * (_119.xy + 0.5f.xx));
-    float2 _203 = (primitives.Load<float2>(_124 * 48 + 16) + (primitives.Load<float2>(_124 * 48 + 24) * _119.zw)) / float2(_Globals_font_atlas_tex_dims);
+    float2 _203 = (primitives.Load<float2>(_124 * 48 + 16) + (primitives.Load<float2>(_124 * 48 + 24) * _119.zw)) / float2(font_atlas_tex_dims);
     bool2 _205 = (primitives.Load<uint>(_124 * 48 + 36) != 0u).xx;
-    gl_Position = float4(((_196 / (_Globals_window_size_pixels / _123.xx)) - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
+    gl_Position = float4(((_196 / (window_size_pixels / _123.xx)) - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     out_var_C0 = float2(_205.x ? _119.zw.x : _203.x, _205.y ? _119.zw.y : _203.y);
     out_var_C1 = float4(_196 - (_192 + (primitives.Load<float2>(_124 * 48 + 8) * 0.5f)), primitives.Load<float2>(_124 * 48 + 8));
     out_var_C2 = float4(float3(_158, _167, _176).xyz * _137, _137);
@@ -532,9 +532,9 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0);
-    float2 _Globals_window_size_pixels : packoffset(c0.z);
-    uint2 _Globals_font_atlas_tex_dims : packoffset(c1);
+    uint2 blue_noise_texture_dims : packoffset(c0);
+    float2 window_size_pixels : packoffset(c0.z);
+    uint2 font_atlas_tex_dims : packoffset(c1);
 };
 
 ByteAddressBuffer shape_stream : register(t16, space0);
@@ -826,7 +826,7 @@ void frag_main()
         float4 _820;
         if (in_var_C3 != 4294967295u)
         {
-            float2 _184 = ((gl_FragCoord.xy / _Globals_window_size_pixels.y.xx) * 1440.0f) * 0.300000011920928955078125f;
+            float2 _184 = ((gl_FragCoord.xy / window_size_pixels.y.xx) * 1440.0f) * 0.300000011920928955078125f;
             float2 _185 = _184 * 2.5f;
             float4 _189 = font_atlas_tex.SampleLevel(sampler_lnc, _162, 0.0f);
             float3 _190 = _189.xyz;
@@ -1080,9 +1080,9 @@ struct PrimPacked
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0);
-    float2 _Globals_window_size_pixels : packoffset(c0.z);
-    uint2 _Globals_font_atlas_tex_dims : packoffset(c1);
+    uint2 blue_noise_texture_dims : packoffset(c0);
+    float2 window_size_pixels : packoffset(c0.z);
+    uint2 font_atlas_tex_dims : packoffset(c1);
 };
 
 ByteAddressBuffer primitives : register(t15, space0);
@@ -1162,7 +1162,7 @@ void vert_main()
         }
         break; // unreachable workaround
     } while(false);
-    float _123 = _Globals_window_size_pixels.y * 0.001000000047497451305389404296875f;
+    float _123 = window_size_pixels.y * 0.001000000047497451305389404296875f;
     uint _124 = uint(gl_VertexIndex) / 6u;
     float _137 = float(primitives.Load<uint>(_124 * 48 + 32) & 255u) * 0.0039215688593685626983642578125f;
     float _140 = float((primitives.Load<uint>(_124 * 48 + 32) >> 8u) & 255u);
@@ -1217,9 +1217,9 @@ void vert_main()
         _192 = primitives.Load<float2>(_124 * 48 + 0);
     }
     float2 _196 = _192 + (primitives.Load<float2>(_124 * 48 + 8) * (_119.xy + 0.5f.xx));
-    float2 _203 = (primitives.Load<float2>(_124 * 48 + 16) + (primitives.Load<float2>(_124 * 48 + 24) * _119.zw)) / float2(_Globals_font_atlas_tex_dims);
+    float2 _203 = (primitives.Load<float2>(_124 * 48 + 16) + (primitives.Load<float2>(_124 * 48 + 24) * _119.zw)) / float2(font_atlas_tex_dims);
     bool2 _205 = (primitives.Load<uint>(_124 * 48 + 36) != 0u).xx;
-    gl_Position = float4(((_196 / (_Globals_window_size_pixels / _123.xx)) - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
+    gl_Position = float4(((_196 / (window_size_pixels / _123.xx)) - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     out_var_C0 = float2(_205.x ? _119.zw.x : _203.x, _205.y ? _119.zw.y : _203.y);
     out_var_C1 = float4(_196 - (_192 + (primitives.Load<float2>(_124 * 48 + 8) * 0.5f)), primitives.Load<float2>(_124 * 48 + 8));
     out_var_C2 = float4(float3(_158, _167, _176).xyz * _137, _137);

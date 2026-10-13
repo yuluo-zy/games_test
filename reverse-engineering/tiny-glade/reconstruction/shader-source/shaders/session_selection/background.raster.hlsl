@@ -79,9 +79,9 @@ float4 ps_main(float4 position : SV_Position) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_background_tex_dims : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.z);
-    float2 _Globals_first_thumbnail_center : packoffset(c1);
+    uint2 background_tex_dims : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.z);
+    float2 first_thumbnail_center : packoffset(c1);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -102,11 +102,11 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    float2 _89 = gl_FragCoord.xy / float2(_Globals_framebuffer_dims);
+    float2 _89 = gl_FragCoord.xy / float2(framebuffer_dims);
     float2 _92 = _89;
-    _92.x = _89.x * (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
-    float2 _96 = (_92 - _Globals_first_thumbnail_center) * 2.0f;
-    float2 _100 = float2(_Globals_background_tex_dims);
+    _92.x = _89.x * (float(framebuffer_dims.x) / float(framebuffer_dims.y));
+    float2 _96 = (_92 - first_thumbnail_center) * 2.0f;
+    float2 _100 = float2(background_tex_dims);
     float2 _102 = mul(_96 * 3.4639999866485595703125f, float2x2(float2(1.0f, 0.0f), float2(-0.57735025882720947265625f, 1.1547005176544189453125f)));
     float2 _103 = floor(_102);
     float2 _104 = frac(_102);

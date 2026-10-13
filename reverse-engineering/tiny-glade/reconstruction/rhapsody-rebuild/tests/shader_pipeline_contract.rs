@@ -183,3 +183,110 @@ fn original_type_wire_tags_and_opaque_size_boundaries() {
     assert_eq!(ty.nbyte(), Some(4));
     assert!(Type::read_from_buffer_with_ctx(LittleEndian {}, &14u32.to_le_bytes()).is_err());
 }
+
+// 原两个load_compiled读取同一个文件并分类IO/解码错误；新容器由公共builder/reflection生产。
+#[test]
+fn compiled_loader_classifies_failures_and_reads_new_package_without_cache() {
+    use rhapsody::{
+        shader_compiler::pack::package, shader_pipeline::compiled::CompiledShaderStage,
+    };
+    use rspirv::{
+        binary::Assemble,
+        dr::Builder,
+        spirv::{
+            AddressingModel, Capability, ExecutionMode, ExecutionModel, FunctionControl,
+            MemoryModel,
+        },
+    };
+    let mut builder = Builder::new();
+    builder.capability(Capability::Shader);
+    builder.memory_model(AddressingModel::Logical, MemoryModel::GLSL450);
+    let void = builder.type_void();
+    let function_type = builder.type_function(void, Vec::new());
+    let entry = builder
+        .begin_function(void, None, FunctionControl::NONE, function_type)
+        .unwrap();
+    builder.begin_block(None).unwrap();
+    builder.ret().unwrap();
+    builder.end_function().unwrap();
+    builder.entry_point(ExecutionModel::GLCompute, entry, "cs_main", []);
+    builder.execution_mode(entry, ExecutionMode::LocalSize, [1, 1, 1]);
+    let mut fresh = package(
+        vec![CompiledShaderStage {
+            stage: ShaderStage::Compute,
+            entry_point: "cs_main".into(),
+            spirv: builder.module().assemble(),
+        }],
+        vec!["shaders/new-empty-kernel.cs.hlsl".into()],
+    )
+    .unwrap();
+    fresh.trailing_bytes = vec![9, 8, 7];
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../evidence/shader-gap-investigation-2026-10-13/build-entry")
+        .join(format!("loader-test-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    let file = root.join("new shader package.bin");
+    let missing = root.join("missing shader package.bin");
+    let missing_error = CompiledShaderPipeline::load_compiled(&missing).unwrap_err();
+    assert!(missing_error.starts_with("Failed opening compiled shader pipeline from "));
+    assert!(missing_error.contains(&format!("{missing:?}")));
+    assert!(missing_error.ends_with(&std::fs::read(&missing).unwrap_err().to_string()));
+    std::fs::write(&file, fresh.encode().unwrap()).unwrap();
+    assert_eq!(CompiledShaderPipeline::load_compiled(&file).unwrap(), fresh);
+    // 文件被改成截断内容后必须再读并报解码错误，不能复用先前成功对象。
+    std::fs::write(&file, [0_u8; 3]).unwrap();
+    let truncated_error = CompiledShaderPipeline::load_compiled(&file).unwrap_err();
+    assert!(truncated_error.starts_with("Failed deserializing compiled shader pipeline from "));
+    assert!(truncated_error.contains(&format!("{file:?}")));
+    assert!(
+        truncated_error.ends_with(
+            &CompiledShaderPipeline::decode(&[0; 3])
+                .unwrap_err()
+                .to_string()
+        )
+    );
+    assert!(!truncated_error.contains("Failed opening"));
+}
+
+#[test]
+fn original_compute_define_tuples_match_all_38_nonzero_artifact_keys() {
+    let evidence = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../evidence/shader-gap-investigation-2026-10-13/compute/original-compute-tuples.json",
+    );
+    let tuples: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(evidence).unwrap()).unwrap();
+    let rows = tuples["rows"].as_array().unwrap();
+    assert_eq!(rows.len(), 38);
+    for row in rows {
+        let defines = ShaderDefines(
+            row["defines"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|pair| {
+                    (
+                        pair[0].as_str().unwrap().to_owned(),
+                        pair[1].as_str().unwrap().to_owned(),
+                    )
+                })
+                .collect(),
+        );
+        assert_eq!(
+            format!("{:x}", defines.artifact_hash()),
+            row["original_artifact_key"].as_str().unwrap()
+        );
+        let mut desc = ComputePipelineDesc::with_entry(
+            format!("/{}", row["source"].as_str().unwrap()),
+            row["entry"].as_str().unwrap(),
+        );
+        desc.defines = defines;
+        assert_eq!(
+            desc.compiled_file_path()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            row["file"].as_str().unwrap()
+        );
+    }
+}

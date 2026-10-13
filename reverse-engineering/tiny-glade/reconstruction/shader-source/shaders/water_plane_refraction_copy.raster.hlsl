@@ -57,7 +57,7 @@ cbuffer $Globals : register(b13, space0)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
 };
 
 struct VsOut

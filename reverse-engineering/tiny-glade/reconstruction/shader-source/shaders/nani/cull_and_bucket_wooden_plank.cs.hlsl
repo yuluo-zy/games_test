@@ -92,7 +92,7 @@ RWByteAddressBuffer __alias_next_visibility_bitmask : register(u19, space0);
 ByteAddressBuffer draw_list_info : register(t20, space0);
 cbuffer $Globals : register(b22, space0)
 {
-    uint2 _Globals_hzb_tex_inner_dims : packoffset(c0);
+    uint2 hzb_tex_inner_dims : packoffset(c0);
 };
 
 ByteAddressBuffer instance_buffer : register(t23, space0);
@@ -214,7 +214,7 @@ void comp_main()
         float _329 = _328 * _325;
         float _331 = _328 * _205;
         float _332 = _307.y;
-        float4 _349 = float4(_Globals_hzb_tex_inner_dims.xyxy);
+        float4 _349 = float4(hzb_tex_inner_dims.xyxy);
         float4 _352 = clamp((float4(((_315 - _316) / (_318 + _319)) * _305, (-((_329 + _316) / (_331 - _332))) * _306, ((_315 + _316) / (_318 - _319)) * _305, (-((_329 - _316) / (_331 + _332))) * _306) + 0.5f.xxxx) * _349, 0.0f.xxxx, _349 - 1.0f.xxxx);
         uint _363 = uint(max(0.0f, ceil(log2(max(_352.z - _352.x, _352.w - _352.y)))));
         bool _400;

@@ -69,23 +69,23 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2.z);
-    uint _Globals_rt_bvh_node_count : packoffset(c3);
-    uint _Globals_rt_triangle_count : packoffset(c3.y);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c3.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c4);
-    uint2 _Globals_water_mask_dims : packoffset(c4.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c5);
-    uint2 _Globals_refraction_tex_dims : packoffset(c5.z);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c6);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c6.z);
-    float3 _Globals_water_color : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 terrain_lighting_texture_dims : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 brdf_fg_lut_dims : packoffset(c2.z);
+    uint rt_bvh_node_count : packoffset(c3);
+    uint rt_triangle_count : packoffset(c3.y);
+    uint2 water_noise_texture_dims : packoffset(c3.z);
+    uint2 framebuffer_dims : packoffset(c4);
+    uint2 water_mask_dims : packoffset(c4.z);
+    uint2 half_depth_tex_dims : packoffset(c5);
+    uint2 refraction_tex_dims : packoffset(c5.z);
+    uint2 taa_history_tex_dims : packoffset(c6);
+    uint2 reprojection_tex_dims : packoffset(c6.z);
+    float3 water_color : packoffset(c7);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -327,7 +327,7 @@ void vert_main()
     float3 _807 = (((((float3(asfloat((_217 & 8388607u) | 1065353216u) - 1.0f, asfloat((_227 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_239 + (_239 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _791) * _794) + (((float3(asfloat((_293 & 8388607u) | 1065353216u) - 1.0f, asfloat((_303 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_315 + (_315 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _791) * _794)) + (((float3(asfloat((_369 & 8388607u) | 1065353216u) - 1.0f, asfloat((_379 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_391 + (_391 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _790) * _794)) + (((float3(asfloat((_445 & 8388607u) | 1065353216u) - 1.0f, asfloat((_455 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_467 + (_467 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _790) * _794);
     float3 _823 = (((_807 + (((float3(asfloat((_521 & 8388607u) | 1065353216u) - 1.0f, asfloat((_531 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_543 + (_543 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _791) * _793)) + (((float3(asfloat((_597 & 8388607u) | 1065353216u) - 1.0f, asfloat((_607 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_619 + (_619 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _791) * _793)) + (((float3(asfloat((_673 & 8388607u) | 1065353216u) - 1.0f, asfloat((_683 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_695 + (_695 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _790) * _793)) + (((float3(asfloat((_749 & 8388607u) | 1065353216u) - 1.0f, asfloat((_759 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_771 + (_771 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _790) * _793);
     float3 _828 = _160 + ((((_823 - 0.5f.xxx) * float3(1.0f, 0.0f, 1.0f)) * _152) * 0.20000000298023223876953125f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_828, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_828, 1.0f));
     out_var_C0 = normalize((_150 * (-((_131.position.y - _131.position.w) * ((-3.0f) * pow(_152, 2.0f))))) + float3(0.0f, 0.5f, 0.0f));
     out_var_C1 = _828;
 }
@@ -442,23 +442,23 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2.z);
-    uint _Globals_rt_bvh_node_count : packoffset(c3);
-    uint _Globals_rt_triangle_count : packoffset(c3.y);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c3.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c4);
-    uint2 _Globals_water_mask_dims : packoffset(c4.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c5);
-    uint2 _Globals_refraction_tex_dims : packoffset(c5.z);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c6);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c6.z);
-    float3 _Globals_water_color : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 terrain_lighting_texture_dims : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 brdf_fg_lut_dims : packoffset(c2.z);
+    uint rt_bvh_node_count : packoffset(c3);
+    uint rt_triangle_count : packoffset(c3.y);
+    uint2 water_noise_texture_dims : packoffset(c3.z);
+    uint2 framebuffer_dims : packoffset(c4);
+    uint2 water_mask_dims : packoffset(c4.z);
+    uint2 half_depth_tex_dims : packoffset(c5);
+    uint2 refraction_tex_dims : packoffset(c5.z);
+    uint2 taa_history_tex_dims : packoffset(c6);
+    uint2 reprojection_tex_dims : packoffset(c6.z);
+    float3 water_color : packoffset(c7);
 };
 
 ByteAddressBuffer ripple_source_buffer : register(t26, space0);
@@ -726,7 +726,7 @@ void frag_main()
         break;
     } while(false);
     float _799;
-    float2 _655 = (((float2(int2((_302 + uint2(1u, 1u)) - _244[frame_constants_frame_index & 3u])) + 0.5f.xx) / float2(_Globals_framebuffer_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
+    float2 _655 = (((float2(int2((_302 + uint2(1u, 1u)) - _244[frame_constants_frame_index & 3u])) + 0.5f.xx) / float2(framebuffer_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
     float _656 = _655.x;
     float4 _661 = float4(_656, _655.y, gl_FragCoord.z, 1.0f);
     float4 _662 = mul(frame_constants_view_constants[0u].sample_to_view, _661);
@@ -742,7 +742,7 @@ void frag_main()
     float _692 = frac(52.98291778564453125f * frac((0.067110560834407806396484375f * (float(_302.x) + _682)) + (0.005837149918079376220703125f * (float(_302.y) + _682))));
     uint2 _693 = _302 / uint2(2u, 2u);
     float4 _699 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_656, _655.y, half_depth_tex.Load(int3(_693, 0u)).x, 1.0f)));
-    float2 _713 = float2(_Globals_half_depth_tex_dims);
+    float2 _713 = float2(half_depth_tex_dims);
     float3 _714 = _661.xyz;
     float4 _730 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(_299 + (normalize(_665 - ((float3(_634.x, 0.0f, _634.z) * 0.5f) * 2.0f)) * min(4.0f, 4.0f * length(_299 - (_699.xyz / _699.w.xxx)))), 1.0f)));
     float3 _734 = _730.xyz / _730.w.xxx;
@@ -1384,7 +1384,7 @@ void frag_main()
     {
         float2 _1662 = (lerp(_1341, _1353, _1566.xxx).xy * float2(0.5f, -0.5f)) + 0.5f.xx;
         bool _1675;
-        if (_Globals_history_valid != 0u)
+        if (history_valid != 0u)
         {
             _1675 = !(0u == frame_constants_frame_index);
         }
@@ -1712,7 +1712,7 @@ void frag_main()
     {
         _2251 = 0.0f.xxx;
     }
-    out_var_SV_TARGET = float4(((((exp((-_Globals_water_color) * ((_1007 + length(_996 - _299)) + 0.699999988079071044921875f)) * (0.959999978542327880859375f - _676)) * refraction_tex.SampleLevel(sampler_lnc, _985, 0.0f).xyz) * (1.0f + ((_2048 * _2048) * _2048))) + ((_1685 + ((frame_constants_sun_color.xyz * min(30.0f, _1743.x)) * ((1.0f - _1218.x) * clamp(_1689, 0.0f, 1.0f)))) * (0.039999999105930328369140625f + _676))) + _2251, 0.0f);
+    out_var_SV_TARGET = float4(((((exp((-water_color) * ((_1007 + length(_996 - _299)) + 0.699999988079071044921875f)) * (0.959999978542327880859375f - _676)) * refraction_tex.SampleLevel(sampler_lnc, _985, 0.0f).xyz) * (1.0f + ((_2048 * _2048) * _2048))) + ((_1685 + ((frame_constants_sun_color.xyz * min(30.0f, _1743.x)) * ((1.0f - _1218.x) * clamp(_1689, 0.0f, 1.0f)))) * (0.039999999105930328369140625f + _676))) + _2251, 0.0f);
 }
 
 [earlydepthstencil]
@@ -1796,23 +1796,23 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2.z);
-    uint _Globals_rt_bvh_node_count : packoffset(c3);
-    uint _Globals_rt_triangle_count : packoffset(c3.y);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c3.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c4);
-    uint2 _Globals_water_mask_dims : packoffset(c4.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c5);
-    uint2 _Globals_refraction_tex_dims : packoffset(c5.z);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c6);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c6.z);
-    float3 _Globals_water_color : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 terrain_lighting_texture_dims : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 brdf_fg_lut_dims : packoffset(c2.z);
+    uint rt_bvh_node_count : packoffset(c3);
+    uint rt_triangle_count : packoffset(c3.y);
+    uint2 water_noise_texture_dims : packoffset(c3.z);
+    uint2 framebuffer_dims : packoffset(c4);
+    uint2 water_mask_dims : packoffset(c4.z);
+    uint2 half_depth_tex_dims : packoffset(c5);
+    uint2 refraction_tex_dims : packoffset(c5.z);
+    uint2 taa_history_tex_dims : packoffset(c6);
+    uint2 reprojection_tex_dims : packoffset(c6.z);
+    float3 water_color : packoffset(c7);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -2054,7 +2054,7 @@ void vert_main()
     float3 _807 = (((((float3(asfloat((_217 & 8388607u) | 1065353216u) - 1.0f, asfloat((_227 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_239 + (_239 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _791) * _794) + (((float3(asfloat((_293 & 8388607u) | 1065353216u) - 1.0f, asfloat((_303 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_315 + (_315 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _791) * _794)) + (((float3(asfloat((_369 & 8388607u) | 1065353216u) - 1.0f, asfloat((_379 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_391 + (_391 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _790) * _794)) + (((float3(asfloat((_445 & 8388607u) | 1065353216u) - 1.0f, asfloat((_455 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_467 + (_467 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _790) * _794);
     float3 _823 = (((_807 + (((float3(asfloat((_521 & 8388607u) | 1065353216u) - 1.0f, asfloat((_531 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_543 + (_543 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _791) * _793)) + (((float3(asfloat((_597 & 8388607u) | 1065353216u) - 1.0f, asfloat((_607 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_619 + (_619 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _791) * _793)) + (((float3(asfloat((_673 & 8388607u) | 1065353216u) - 1.0f, asfloat((_683 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_695 + (_695 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _788) * _790) * _793)) + (((float3(asfloat((_749 & 8388607u) | 1065353216u) - 1.0f, asfloat((_759 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_771 + (_771 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _787) * _790) * _793);
     float3 _828 = _160 + ((((_823 - 0.5f.xxx) * float3(1.0f, 0.0f, 1.0f)) * _152) * 0.20000000298023223876953125f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_828, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_828, 1.0f));
     out_var_C0 = normalize((_150 * (-((_131.position.y - _131.position.w) * ((-3.0f) * pow(_152, 2.0f))))) + float3(0.0f, 0.5f, 0.0f));
     out_var_C1 = _828;
 }
@@ -2149,23 +2149,23 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.y);
-    uint2 _Globals_terrain_lighting_texture_dims : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2.z);
-    uint _Globals_rt_bvh_node_count : packoffset(c3);
-    uint _Globals_rt_triangle_count : packoffset(c3.y);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c3.z);
-    uint2 _Globals_framebuffer_dims : packoffset(c4);
-    uint2 _Globals_water_mask_dims : packoffset(c4.z);
-    uint2 _Globals_half_depth_tex_dims : packoffset(c5);
-    uint2 _Globals_refraction_tex_dims : packoffset(c5.z);
-    uint2 _Globals_taa_history_tex_dims : packoffset(c6);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c6.z);
-    float3 _Globals_water_color : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    uint history_valid : packoffset(c0.y);
+    uint2 terrain_lighting_texture_dims : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 brdf_fg_lut_dims : packoffset(c2.z);
+    uint rt_bvh_node_count : packoffset(c3);
+    uint rt_triangle_count : packoffset(c3.y);
+    uint2 water_noise_texture_dims : packoffset(c3.z);
+    uint2 framebuffer_dims : packoffset(c4);
+    uint2 water_mask_dims : packoffset(c4.z);
+    uint2 half_depth_tex_dims : packoffset(c5);
+    uint2 refraction_tex_dims : packoffset(c5.z);
+    uint2 taa_history_tex_dims : packoffset(c6);
+    uint2 reprojection_tex_dims : packoffset(c6.z);
+    float3 water_color : packoffset(c7);
 };
 
 ByteAddressBuffer ripple_source_buffer : register(t26, space0);
@@ -2359,7 +2359,7 @@ void frag_main()
         _534 = normalize(float3(_531.x, _522.y, _531.y));
         break;
     } while(false);
-    float2 _555 = (((float2(int2((_218 + uint2(1u, 1u)) - _191[frame_constants_frame_index & 3u])) + 0.5f.xx) / float2(_Globals_framebuffer_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
+    float2 _555 = (((float2(int2((_218 + uint2(1u, 1u)) - _191[frame_constants_frame_index & 3u])) + 0.5f.xx) / float2(framebuffer_dims)) - 0.5f.xx) * float2(2.0f, -2.0f);
     float _556 = _555.x;
     float4 _561 = float4(_556, _555.y, gl_FragCoord.z, 1.0f);
     float4 _563 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, _561));
@@ -2394,7 +2394,7 @@ void frag_main()
     float _837;
     do
     {
-        uint _660 = uint(int(max(2u, min(8u, uint(int(floor(length((((_639.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_627.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * float2(_Globals_half_depth_tex_dims)))))))));
+        uint _660 = uint(int(max(2u, min(8u, uint(int(floor(length((((_639.xy * float2(0.5f, -0.5f)) + 0.5f.xx) - ((_627.xy * float2(0.5f, -0.5f)) + 0.5f.xx)) * float2(half_depth_tex_dims)))))))));
         float _753;
         float _821;
         float _822;

@@ -317,14 +317,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_depth_tex_dims : packoffset(c0);
-    float2 _Globals_point_uv : packoffset(c0.z);
-    uint _Globals_use_dual_focus : packoffset(c1);
-    uint _Globals_focus_lock_request : packoffset(c1.y);
-    uint _Globals_focus_is_locked : packoffset(c1.z);
-    float _Globals_focus_box_height : packoffset(c1.w);
-    uint _Globals_use_tilt_shift : packoffset(c2);
-    float _Globals_aperture_size : packoffset(c2.y);
+    uint2 depth_tex_dims : packoffset(c0);
+    float2 point_uv : packoffset(c0.z);
+    uint use_dual_focus : packoffset(c1);
+    uint focus_lock_request : packoffset(c1.y);
+    uint focus_is_locked : packoffset(c1.z);
+    float focus_box_height : packoffset(c1.w);
+    uint use_tilt_shift : packoffset(c2);
+    float aperture_size : packoffset(c2.y);
 };
 
 RWByteAddressBuffer __alias_autofocus_buf : register(u15, space0);
@@ -358,33 +358,33 @@ void comp_main()
     uint _144 = __alias_autofocus_buf.Load<uint>(frame_constants_camera_idx * 64 + 60);
     float _145 = clamp(_128, 0.0f, 100000.0f);
     float _146 = clamp(_130, 0.0f, 100000.0f);
-    float2 _156 = float2(1.0f / (frame_constants_view_constants[0u].view_to_clip[1].y / frame_constants_view_constants[0u].view_to_clip[0].x), 1.0f) * _Globals_focus_box_height;
-    bool _159 = _Globals_use_dual_focus != 0u;
+    float2 _156 = float2(1.0f / (frame_constants_view_constants[0u].view_to_clip[1].y / frame_constants_view_constants[0u].view_to_clip[0].x), 1.0f) * focus_box_height;
+    bool _159 = use_dual_focus != 0u;
     float3 _220;
     if (_159)
     {
-        float2 _167 = _Globals_point_uv + ((_119 * _156) * 0.20000000298023223876953125f);
-        float4 _187 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((_167 - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(_167 * float2(_Globals_depth_tex_dims))), 0u)).x, 1.0f)));
+        float2 _167 = point_uv + ((_119 * _156) * 0.20000000298023223876953125f);
+        float4 _187 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((_167 - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(_167 * float2(depth_tex_dims))), 0u)).x, 1.0f)));
         _220 = _187.xyz / _187.w.xxx;
     }
     else
     {
-        float2 _195 = _Globals_point_uv + (_119 * _156);
-        float4 _215 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((_195 - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(_195 * float2(_Globals_depth_tex_dims))), 0u)).x, 1.0f)));
+        float2 _195 = point_uv + (_119 * _156);
+        float4 _215 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((_195 - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(_195 * float2(depth_tex_dims))), 0u)).x, 1.0f)));
         _220 = _215.xyz / _215.w.xxx;
     }
     float3 _249;
     if (_159)
     {
         float2 _224 = _119 * _156;
-        float4 _244 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_224 * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2((0.5f.xx + _224) * float2(_Globals_depth_tex_dims))), 0u)).x, 1.0f)));
+        float4 _244 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4(_224 * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2((0.5f.xx + _224) * float2(depth_tex_dims))), 0u)).x, 1.0f)));
         _249 = _244.xyz / _244.w.xxx;
     }
     else
     {
         _249 = _220;
     }
-    bool _252 = _Globals_use_tilt_shift != 0u;
+    bool _252 = use_tilt_shift != 0u;
     float _254 = float(_252 ? 0 : 1);
     float3 _257 = _220;
     _257.y = _220.y * _254;
@@ -497,9 +497,9 @@ void comp_main()
         float _452;
         float _453;
         float3 _454;
-        if (_Globals_focus_lock_request == frame_constants_camera_idx)
+        if (focus_lock_request == frame_constants_camera_idx)
         {
-            float4 _432 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((_Globals_point_uv - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(_Globals_point_uv * float2(_Globals_depth_tex_dims))), 0u)).x, 1.0f)));
+            float4 _432 = mul(frame_constants_view_constants[0u].view_to_world, mul(frame_constants_view_constants[0u].sample_to_view, float4((point_uv - 0.5f.xx) * float2(2.0f, -2.0f), depth_tex.Load(int3(uint2(int2(point_uv * float2(depth_tex_dims))), 0u)).x, 1.0f)));
             float3 _436 = _432.xyz / _432.w.xxx;
             float3 _439 = _436;
             _439.y = _436.y * _254;
@@ -523,7 +523,7 @@ void comp_main()
         float3 _541;
         float _542;
         float _543;
-        if (_Globals_focus_is_locked != 0u)
+        if (focus_is_locked != 0u)
         {
             float3 _469;
             if (_123)
@@ -583,7 +583,7 @@ void comp_main()
             _542 = _452;
             _543 = _450;
         }
-        DofFocus _544 = { _539, _540, _453, _451, _454, _Globals_focus_is_locked, _541, _Globals_use_tilt_shift, _542, _543, _Globals_aperture_size, _144 };
+        DofFocus _544 = { _539, _540, _453, _451, _454, focus_is_locked, _541, use_tilt_shift, _542, _543, aperture_size, _144 };
         __alias_autofocus_buf.Store<float>(frame_constants_camera_idx * 64 + 0, _544.focus0);
         __alias_autofocus_buf.Store<float>(frame_constants_camera_idx * 64 + 4, _544.focus1);
         __alias_autofocus_buf.Store<float>(frame_constants_camera_idx * 64 + 8, _544.lock_bias0);
@@ -596,7 +596,7 @@ void comp_main()
         __alias_autofocus_buf.Store<float>(frame_constants_camera_idx * 64 + 52, _544.interp_lock_bias1);
         __alias_autofocus_buf.Store<float>(frame_constants_camera_idx * 64 + 56, _544.focus_scale);
         __alias_autofocus_buf.Store<uint>(frame_constants_camera_idx * 64 + 60, _544.pad2);
-        DofFocusReadback _546 = { _454, _Globals_focus_lock_request };
+        DofFocusReadback _546 = { _454, focus_lock_request };
         __alias_focus_readback_buf.Store<float3>(0, _546.lock_pos_ws);
         __alias_focus_readback_buf.Store<uint>(12, _546.lock_reponse);
     }

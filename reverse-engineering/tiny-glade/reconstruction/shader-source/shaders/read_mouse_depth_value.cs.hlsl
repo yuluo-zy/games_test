@@ -160,10 +160,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_depth_map_dims : packoffset(c0);
-    float2 _Globals_mouse_position_screenspace : packoffset(c0.z);
-    float2 _Globals_window_size : packoffset(c1);
-    float _Globals_filter_box_y_frac : packoffset(c1.z);
+    uint2 depth_map_dims : packoffset(c0);
+    float2 mouse_position_screenspace : packoffset(c0.z);
+    float2 window_size : packoffset(c1);
+    float filter_box_y_frac : packoffset(c1.z);
 };
 
 RWByteAddressBuffer out_buffer : register(u15, space0);
@@ -181,9 +181,9 @@ groupshared float2 group_depths[256];
 
 void comp_main()
 {
-    float2 _93 = _Globals_mouse_position_screenspace / _Globals_window_size;
-    float2 _96 = float2(_Globals_depth_map_dims);
-    uint2 _100 = _Globals_depth_map_dims - uint2(1u, 1u);
+    float2 _93 = mouse_position_screenspace / window_size;
+    float2 _96 = float2(depth_map_dims);
+    uint2 _100 = depth_map_dims - uint2(1u, 1u);
     int2 _102 = int2(clamp(uint2(int2(_93 * _96)), uint2(0u, 0u), _100));
     uint2 _103 = uint2(_102);
     float4 _105 = depth_map.Load(int3(_103, 0u));
@@ -200,7 +200,7 @@ void comp_main()
         out_buffer.Store<float4>(0, float4(_122.xyz / _122.w.xxx, _106));
         out_buffer.Store<float4>(16, float4(_150.xyz / _150.w.xxx, _138));
     }
-    float2 _176 = ((float(_Globals_depth_map_dims.y) * _Globals_filter_box_y_frac).xx / _96) * (((float2(gl_LocalInvocationID.xy) + 0.5f.xx) * 0.0625f.xx) - 0.5f.xx);
+    float2 _176 = ((float(depth_map_dims.y) * filter_box_y_frac).xx / _96) * (((float2(gl_LocalInvocationID.xy) + 0.5f.xx) * 0.0625f.xx) - 0.5f.xx);
     group_depths[gl_LocalInvocationIndex] = float2(depth_map.Load(int3(uint2(int2(clamp(uint2(int2((_93 + _176) * _96)), uint2(0u, 0u), _100))), 0u)).x, depth_map.Load(int3(uint2(int2(clamp(uint2(int2((0.5f.xx + _176) * _96)), uint2(0u, 0u), _100))), 0u)).x);
     GroupMemoryBarrierWithGroupSync();
     uint _199 = 2u << (firstbithigh(255u) & 31u);

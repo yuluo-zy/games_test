@@ -391,24 +391,24 @@ float4 ps_main(float4 position : SV_Position) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_input_tex_dims : packoffset(c0);
-    uint2 _Globals_blur_pyramid_tex_dims : packoffset(c0.z);
-    uint2 _Globals_grading_lut_tex_dims : packoffset(c1);
-    uint2 _Globals_icc_lut_dims : packoffset(c1.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c2);
-    uint _Globals_is_input_valid : packoffset(c2.z);
-    uint _Globals_use_icc : packoffset(c2.w);
-    float _Globals_sharpen_amount : packoffset(c3);
-    uint _Globals_upsampling_mode : packoffset(c3.y);
-    uint _Globals_grading_flags : packoffset(c3.z);
-    float _Globals_grading_strength : packoffset(c3.w);
-    float _Globals_grading_contrast : packoffset(c4);
-    float _Globals_grading_saturation : packoffset(c4.y);
-    float _Globals_vignette_amount : packoffset(c4.z);
-    float _Globals_distortion_amount : packoffset(c4.w);
-    float _Globals_ca_amount : packoffset(c5);
-    float _Globals_gamma_shift : packoffset(c5.y);
-    uint2 _Globals_framebuffer_dims : packoffset(c5.z);
+    uint2 input_tex_dims : packoffset(c0);
+    uint2 blur_pyramid_tex_dims : packoffset(c0.z);
+    uint2 grading_lut_tex_dims : packoffset(c1);
+    uint2 icc_lut_dims : packoffset(c1.z);
+    uint2 blue_noise_texture_dims : packoffset(c2);
+    uint is_input_valid : packoffset(c2.z);
+    uint use_icc : packoffset(c2.w);
+    float sharpen_amount : packoffset(c3);
+    uint upsampling_mode : packoffset(c3.y);
+    uint grading_flags : packoffset(c3.z);
+    float grading_strength : packoffset(c3.w);
+    float grading_contrast : packoffset(c4);
+    float grading_saturation : packoffset(c4.y);
+    float vignette_amount : packoffset(c4.z);
+    float distortion_amount : packoffset(c4.w);
+    float ca_amount : packoffset(c5);
+    float gamma_shift : packoffset(c5.y);
+    uint2 framebuffer_dims : packoffset(c5.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -422,27 +422,27 @@ struct SPIRV_Cross_Input
 
 void frag_main()
 {
-    if (_Globals_upsampling_mode == 0u)
+    if (upsampling_mode == 0u)
     {
     }
     else
     {
-        if (_Globals_upsampling_mode == 1u)
+        if (upsampling_mode == 1u)
         {
         }
         else
         {
-            if (_Globals_upsampling_mode == 2u)
+            if (upsampling_mode == 2u)
             {
             }
             else
             {
-                if (_Globals_upsampling_mode == 3u)
+                if (upsampling_mode == 3u)
                 {
                 }
                 else
                 {
-                    float4 _98 = input_tex.GatherGreen(sampler_lnc, (float2(int2(gl_FragCoord.xy)) + 0.5f.xx) / float2(_Globals_framebuffer_dims), int2(0, 0));
+                    float4 _98 = input_tex.GatherGreen(sampler_lnc, (float2(int2(gl_FragCoord.xy)) + 0.5f.xx) / float2(framebuffer_dims), int2(0, 0));
                     float _99 = _98.x;
                     float _100 = _98.y;
                     float _101 = _98.z;

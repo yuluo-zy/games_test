@@ -1,0 +1,107 @@
+{
+  "basis": "original B RNE instructions + original LLVM PDB + original .pdata bounds + exact hash auxiliary verification",
+  "macros": [
+    {
+      "family": "nani cull",
+      "name": "PERM_oc_pass",
+      "producer": "0x141623120",
+      "value": "i32 Display self+0",
+      "call": "0x140a289bb forwards incoming i32",
+      "concrete_values_pending": false,
+      "original_selection": {
+        "address": "0x140987e0a",
+        "condition": "incoming r8 pointer !=0",
+        "pass0": "0",
+        "pass1": "1",
+        "chain": [
+          "0x14098830c",
+          "0x140988500",
+          "0x1409885b3",
+          "0x140a289bb",
+          "0x1415ff4b0"
+        ]
+      }
+    },
+    {
+      "family": "dof five subpasses",
+      "name": "PERM_quality",
+      "producer": "0x140a5d4f0",
+      "value": "i32 Display self+0",
+      "concrete_values_pending": false,
+      "original_selection": {
+        "address": "0x1404ecce7",
+        "condition": "resource discriminant ==19",
+        "chain": [
+          "0x1404eccea",
+          "0x1404ecd09",
+          "0x140a5afbf",
+          "0x140a5bedb",
+          "0x140a5bf3e",
+          "0x140a5c009"
+        ]
+      }
+    },
+    {
+      "family": "light binning",
+      "name": "PERM_write",
+      "producer": "0x1409e8db0",
+      "value": "i32 Display self+0",
+      "original_calls": [
+        {
+          "address": "0x1409e7920",
+          "value": 0
+        },
+        {
+          "address": "0x1409e811f",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "family": "vermeer",
+      "name": "PERM_photomode",
+      "producer": "0x1408aab70",
+      "value": "i32 Display self+0",
+      "original_call": "0x1408a8fc9 movzbl bool into r9d; call ComputePass::new"
+    },
+    {
+      "family": "tgsr",
+      "names": [
+        "PERM_wave32",
+        "PERM_sharpen"
+      ],
+      "producer": "0x140a3e100",
+      "values": "i32 Display self+0/self+4",
+      "original_call": "0x140a3c454 wave capability/size <=32 AND supported -> bool;0x140a3c465 sharpen strength>0 -> bool"
+    },
+    {
+      "family": "gauss blur",
+      "names": [
+        "PERM_fmt",
+        "PERM_ty"
+      ],
+      "producer": "0x1408ca1c0",
+      "values": "fmt formatted as quoted string self+0/+8; ty self+16 bool -> float4/float",
+      "original_calls": [
+        {
+          "address": "0x1408c8161",
+          "fmt_address": "0x142aa310a",
+          "fmt": "rgba32f",
+          "bool": true,
+          "ty": "float4",
+          "define_fmt": "\"rgba32f\""
+        },
+        {
+          "address": "0x1408c842e",
+          "fmt_address": "0x142aa3124",
+          "fmt": "r16",
+          "bool": false,
+          "ty": "float",
+          "define_fmt": "\"r16\""
+        }
+      ]
+    }
+  ],
+  "source_change": false,
+  "hash_only_inversion": false
+}

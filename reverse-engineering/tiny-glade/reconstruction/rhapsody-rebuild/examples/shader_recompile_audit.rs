@@ -4,7 +4,7 @@ use rhapsody::raw::shader::reflect_spirv_entries;
 use rhapsody::{
     shader_compiler::{
         DxcRequest, DxcStage,
-        build::{BuildSpec, build_pipeline},
+        build::{BuildSpec, build_pipeline_with_recipe},
     },
     shader_pipeline::{
         compiled::{CompiledShaderPipeline, CompiledShaderStage},
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         project.join("evidence/render-passes/validation/compile-commands.json"),
     )?)?;
     let originals = project.join("../../ljxsj_92385/Tiny Glade/compiled-shaders");
-    let selection = if let Some(filter) = args.get(3) {
+    let selection = if let Some(filter) = args.get(3).filter(|value| value.as_str() != "-") {
         if filter.ends_with(".json") {
             let previous: Value = serde_json::from_slice(&std::fs::read(filter)?)?;
             Some(
@@ -123,6 +123,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
     let source_root = project.join("reconstruction/shader-source/shaders");
+    let config_path = args.get(4).map(PathBuf::from).unwrap_or_else(|| {
+        project.join(
+            "evidence/shader-gap-investigation-2026-10-13/compute/original-compute-tuples.json",
+        )
+    });
+    let native_configs: Value = if config_path.is_file() {
+        serde_json::from_slice(&std::fs::read(&config_path)?)?
+    } else {
+        json!({"rows":[]})
+    };
+    let recipe_path = project.join("tools/render-passes/variant_defines.json");
+    let source_recipes: Value = if recipe_path.is_file() {
+        serde_json::from_slice(&std::fs::read(&recipe_path)?)?
+    } else {
+        json!([])
+    };
     let mut rows = Vec::new();
     let mut selected_original_modules = 0;
     let mut original_define_tuple_unknown = 0;
@@ -149,10 +165,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let original = CompiledShaderPipeline::decode(&std::fs::read(originals.join(name))?)?;
         selected_original_modules += original.stages.len();
-        let variant_config_recovered = original.stages.len() == 2;
+        let native_config = native_configs["rows"]
+            .as_array()
+            .ok_or("bad native config manifest")?
+            .iter()
+            .find(|row| row["file"] == name);
+        let variant_config_recovered = original.stages.len() == 2 || native_config.is_some();
         let zero_key_compatible_with_empty = original.stages.len() == 1 && name.ends_with("_0.bin");
-        nonzero_compute_define_tuple_unknown +=
-            usize::from(original.stages.len() == 1 && !zero_key_compatible_with_empty);
+        nonzero_compute_define_tuple_unknown += usize::from(
+            original.stages.len() == 1
+                && !zero_key_compatible_with_empty
+                && native_config.is_none(),
+        );
         original_define_tuple_unknown += usize::from(!variant_config_recovered);
         let original_artifact_key = name
             .trim_end_matches(".bin")
@@ -176,6 +200,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             defines
                 .0
                 .push(("SHADER_VARIANT_DEPTH_ONLY".into(), depth.into()));
+        } else if let Some(config) = native_config {
+            if config["source"] != source || config["variant_config_recovered"] != true {
+                return Err(format!("native config identity mismatch: {name}").into());
+            }
+            defines.0 = serde_json::from_value(config["defines"].clone())?;
+            let expected_key = u64::from_str_radix(original_artifact_key, 16)?;
+            if defines.artifact_hash() != expected_key {
+                return Err(format!("native config artifact key mismatch: {name}").into());
+            }
         }
         let stages = item["modules"]
             .as_array()
@@ -194,6 +227,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ))
             })
             .collect::<Result<Vec<_>, &str>>()?;
+        if native_config.is_some_and(|config| config["entry"] != stages[0].1) {
+            return Err(format!("native config entry mismatch: {name}").into());
+        }
+        // TGV及三条源码适配规则是恢复配方，与原ShaderDefines和资产hash分开。
+        let mut recipe_defines = ShaderDefines::default();
+        let recipe_id = if original.stages.len() == 1 && stages[0].1 != "cs_main" {
+            format!("{}_{}", stages[0].1, original_artifact_key)
+        } else {
+            original_artifact_key.to_owned()
+        };
+        let source_text = std::fs::read_to_string(source_root.join(source))?;
+        if source_text.contains(&format!("TGV_{recipe_id})")) {
+            recipe_defines
+                .0
+                .push((format!("TGV_{recipe_id}"), "1".into()));
+        }
+        for recipe in source_recipes.as_array().ok_or("bad source recipe list")? {
+            if source.contains(recipe["hlsl"].as_str().ok_or("missing recipe source")?)
+                && name.contains(recipe["bin"].as_str().ok_or("missing recipe key")?)
+            {
+                for define in recipe["defines"]
+                    .as_array()
+                    .ok_or("missing recipe defines")?
+                {
+                    let text = define.as_str().ok_or("bad recipe define")?;
+                    let (key, value) = text.split_once('=').unwrap_or((text, "1"));
+                    recipe_defines.0.push((key.to_owned(), value.to_owned()));
+                }
+            }
+        }
         let spec = BuildSpec {
             source_root: source_root.clone(),
             logical_root: "shaders".into(),
@@ -203,7 +266,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let work = output.join(name.trim_end_matches(".bin"));
         let started = std::time::Instant::now();
-        match build_pipeline(&dxc, &spec, &work) {
+        match build_pipeline_with_recipe(&dxc, &spec, &recipe_defines, &work) {
             Ok(built) => {
                 compiled_bins += 1;
                 fresh_modules += built.compiled.stages.len();
@@ -235,7 +298,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     code_histogram_matches += usize::from(ops_equal);
                     module_rows.push(json!({"index":index,"entry":new.entry_point,"interface_equal":io_equal,"capabilities_equal":cap_equal,"code_opcode_histogram_equal":ops_equal,"original_capabilities":old_caps,"fresh_capabilities":new_caps,"original_interface":old_io,"fresh_interface":new_io,"original_code_opcodes":old_ops,"fresh_code_opcodes":new_ops,"original_generator":old.spirv[2],"fresh_generator":new.spirv[2]}));
                 }
-                rows.push(json!({"file":name,"source":source,"defines":spec.defines.0,"variant_config_recovered":variant_config_recovered,"original_artifact_key":original_artifact_key,"fresh_defines_hash":format!("{:x}",spec.defines.artifact_hash()),"variant_validation_scope":if variant_config_recovered{"observed original define tuple"}else if zero_key_compatible_with_empty{"zero artifact key compatible with empty baseline; original tuple not independently proven"}else{"baseline without original nonzero compute defines"},"status":"fresh_package_generated","fresh_package":bin_path,"elapsed_ms":u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),"semantic_schema_equal":schema_equal,"original_schema":old_schema,"fresh_schema":new_schema,"dependencies":built.prepared.dependencies,"original_dependencies":original.source_dependencies,"dependencies_equal_as_sets":built.prepared.dependencies.iter().collect::<std::collections::BTreeSet<_>>()==original.source_dependencies.iter().collect::<std::collections::BTreeSet<_>>(),"modules":module_rows}));
+                rows.push(json!({"file":name,"source":source,"defines":spec.defines.0,"recipe_defines":recipe_defines.0,"recipe_defines_are_original":false,"original_config_evidence":native_config.map(|config|config["evidence"].clone()),"variant_config_recovered":variant_config_recovered,"original_artifact_key":original_artifact_key,"fresh_defines_hash":format!("{:x}",spec.defines.artifact_hash()),"variant_validation_scope":if variant_config_recovered{"observed original define tuple"}else if zero_key_compatible_with_empty{"zero artifact key compatible with empty baseline; original tuple not independently proven"}else{"baseline without original nonzero compute defines"},"status":"fresh_package_generated","fresh_package":bin_path,"elapsed_ms":u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),"semantic_schema_equal":schema_equal,"original_schema":old_schema,"fresh_schema":new_schema,"dependencies":built.prepared.dependencies,"original_dependencies":original.source_dependencies,"dependencies_equal_as_sets":built.prepared.dependencies.iter().collect::<std::collections::BTreeSet<_>>()==original.source_dependencies.iter().collect::<std::collections::BTreeSet<_>>(),"modules":module_rows}));
             }
             Err(error) => {
                 let prepared_file = work.join("prepared.hlsl");
@@ -255,7 +318,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         stage_attempts.push(json!({"index":index,"entry":entry,"status":"blocked_by_preprocessing"}));
                     }
                 }
-                rows.push(json!({"file":name,"source":source,"defines":spec.defines.0,"variant_config_recovered":variant_config_recovered,"original_artifact_key":original_artifact_key,"fresh_defines_hash":format!("{:x}",spec.defines.artifact_hash()),"variant_validation_scope":if variant_config_recovered{"observed original define tuple"}else if zero_key_compatible_with_empty{"zero artifact key compatible with empty baseline; original tuple not independently proven"}else{"baseline without original nonzero compute defines"},"original_dependencies":original.source_dependencies,"status":"build_failed","elapsed_ms":u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),"error":error,"work_directory":work,"stage_attempts":stage_attempts}));
+                rows.push(json!({"file":name,"source":source,"defines":spec.defines.0,"recipe_defines":recipe_defines.0,"recipe_defines_are_original":false,"original_config_evidence":native_config.map(|config|config["evidence"].clone()),"variant_config_recovered":variant_config_recovered,"original_artifact_key":original_artifact_key,"fresh_defines_hash":format!("{:x}",spec.defines.artifact_hash()),"variant_validation_scope":if variant_config_recovered{"observed original define tuple"}else if zero_key_compatible_with_empty{"zero artifact key compatible with empty baseline; original tuple not independently proven"}else{"baseline without original nonzero compute defines"},"original_dependencies":original.source_dependencies,"status":"build_failed","elapsed_ms":u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),"error":error,"work_directory":work,"stage_attempts":stage_attempts}));
             }
         }
         if rows.len() % 20 == 0 {
@@ -267,7 +330,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
     }
-    let summary = json!({"assets_attempted":rows.len(),"original_modules":selected_original_modules,"full_original_corpus_modules":638,"unknown_original_compute_define_assets":original_define_tuple_unknown,"unknown_nonzero_compute_define_assets":nonzero_compute_define_tuple_unknown,"selection":args.get(3),"packages_generated":compiled_bins,"fresh_modules_generated":fresh_modules,"failed_assets":rows.len()-compiled_bins,"dxc_module_successes_including_unpacked":fresh_modules+failed_pipeline_stage_successes,"original_stage_compile_attempts_or_preprocessing_failures":fresh_modules+failed_pipeline_stage_attempts+stage_preprocessing_failures,"stage_preprocessing_failures":stage_preprocessing_failures,"public_interface_equal_modules":interface_matches,"capability_equal_modules":capability_matches,"non_debug_opcode_histogram_equal_modules":code_histogram_matches,"semantic_schema_equal_assets":schema_matches,"actual_dxc":dxc,"original_full_shader_semantics_verified":false,"original_dxc_version":null});
+    let summary = json!({"assets_attempted":rows.len(),"original_modules":selected_original_modules,"full_original_corpus_modules":638,"unknown_original_compute_define_assets":original_define_tuple_unknown,"unknown_nonzero_compute_define_assets":nonzero_compute_define_tuple_unknown,"selection":args.get(3),"packages_generated":compiled_bins,"fresh_modules_generated":fresh_modules,"failed_assets":rows.len()-compiled_bins,"dxc_module_successes_including_unpacked":fresh_modules+failed_pipeline_stage_successes,"original_stage_compile_attempts_or_preprocessing_failures":fresh_modules+failed_pipeline_stage_attempts+stage_preprocessing_failures,"stage_preprocessing_failures":stage_preprocessing_failures,"public_interface_equal_modules":interface_matches,"capability_equal_modules":capability_matches,"non_debug_opcode_histogram_equal_modules":code_histogram_matches,"semantic_schema_equal_assets":schema_matches,"actual_dxc":dxc,"original_config_manifest":config_path,"source_recipes_manifest":recipe_path,"source_recipe_defines_are_original":false,"original_full_shader_semantics_verified":false,"original_dxc_version":null});
     let report = json!({"summary":summary,"rows":rows});
     std::fs::write(
         output.join("report.json"),

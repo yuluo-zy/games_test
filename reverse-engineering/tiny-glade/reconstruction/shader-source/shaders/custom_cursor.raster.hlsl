@@ -82,8 +82,8 @@ struct CustomCursor
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_window_size_pixels : packoffset(c0);
-    uint2 _Globals_cursor_tex_dims : packoffset(c0.z);
+    uint2 window_size_pixels : packoffset(c0);
+    uint2 cursor_tex_dims : packoffset(c0.z);
 };
 
 ByteAddressBuffer cursor_buf : register(t14, space0);
@@ -160,7 +160,7 @@ void vert_main()
     _85.pos = cursor_buf.Load<float2>(0);
     _85.enabled = cursor_buf.Load<uint>(8);
     _85.size_px = cursor_buf.Load<float>(12);
-    float4 _103 = float4(((((((_83.xy * float2(1.0f, -1.0f)) + 0.5f.xx) * _85.size_px) + (_85.pos - 1.0f.xx)) / float2(_Globals_window_size_pixels)) - 0.5f.xx) * float2(2.0f, -2.0f), 1.0f, 1.0f);
+    float4 _103 = float4(((((((_83.xy * float2(1.0f, -1.0f)) + 0.5f.xx) * _85.size_px) + (_85.pos - 1.0f.xx)) / float2(window_size_pixels)) - 0.5f.xx) * float2(2.0f, -2.0f), 1.0f, 1.0f);
     bool4 _106 = (0u == _85.enabled).xxxx;
     gl_Position = float4(_106.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _103.x, _106.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _103.y, _106.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _103.z, _106.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _103.w);
     out_var_C0 = _83.zw;
@@ -193,8 +193,8 @@ struct CustomCursor
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_window_size_pixels : packoffset(c0);
-    uint2 _Globals_cursor_tex_dims : packoffset(c0.z);
+    uint2 window_size_pixels : packoffset(c0);
+    uint2 cursor_tex_dims : packoffset(c0.z);
 };
 
 ByteAddressBuffer cursor_buf : register(t14, space0);
@@ -271,7 +271,7 @@ void vert_main()
     _85.pos = cursor_buf.Load<float2>(0);
     _85.enabled = cursor_buf.Load<uint>(8);
     _85.size_px = cursor_buf.Load<float>(12);
-    float4 _103 = float4(((((((_83.xy * float2(1.0f, -1.0f)) + 0.5f.xx) * _85.size_px) + (_85.pos - 1.0f.xx)) / float2(_Globals_window_size_pixels)) - 0.5f.xx) * float2(2.0f, -2.0f), 1.0f, 1.0f);
+    float4 _103 = float4(((((((_83.xy * float2(1.0f, -1.0f)) + 0.5f.xx) * _85.size_px) + (_85.pos - 1.0f.xx)) / float2(window_size_pixels)) - 0.5f.xx) * float2(2.0f, -2.0f), 1.0f, 1.0f);
     bool4 _106 = (0u == _85.enabled).xxxx;
     gl_Position = float4(_106.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _103.x, _106.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _103.y, _106.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _103.z, _106.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _103.w);
     out_var_C0 = _83.zw;

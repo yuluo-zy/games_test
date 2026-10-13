@@ -1,0 +1,3 @@
+use std::hash::{DefaultHasher,Hash,Hasher};
+fn h(p:&[(&str,&str)])->u64{p.iter().fold(0,|v,x|{let mut h=DefaultHasher::new();x.hash(&mut h);v^h.finish()})}
+fn main(){for name in ["PERM_quality","PERM_oc_pass","PERM_photomode","PERM_write"]{for value in ["0","1","2","3"]{println!("{}={} {:x}",name,value,h(&[(name,value)]));}} for wave in ["0","1"]{for sharpen in ["0","1"]{println!("TGSR {},{} {:x}",wave,sharpen,h(&[("PERM_wave32",wave),("PERM_sharpen",sharpen)]));}} for ty in ["float","float4"]{for fmt in ["rgba32f","r16"]{println!("Gauss {},{} {:x}",fmt,ty,h(&[("PERM_fmt",&format!("\"{}\"",fmt)),("PERM_ty",ty)]));}}}

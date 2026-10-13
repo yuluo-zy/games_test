@@ -73,8 +73,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -91,9 +91,9 @@ static float out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -134,7 +134,7 @@ void vert_main()
     }
     float3x4 _141 = transpose(float4x3(float3(_98.data[0], _98.data[1], _98.data[2]), float3(_98.data[3], _98.data[4], _98.data[5]), float3(_98.data[6], _98.data[7], _98.data[8]), float3(_98.data[9], _98.data[10], _98.data[11])));
     float3 _146 = mul(_141, float4(_134, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_146, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_146, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_141, float4(_135, 0.0f));
     out_var_C2 = _146;
@@ -273,8 +273,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -291,9 +291,9 @@ static float out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -334,7 +334,7 @@ void vert_main()
     }
     float3x4 _141 = transpose(float4x3(float3(_98.data[0], _98.data[1], _98.data[2]), float3(_98.data[3], _98.data[4], _98.data[5]), float3(_98.data[6], _98.data[7], _98.data[8]), float3(_98.data[9], _98.data[10], _98.data[11])));
     float3 _146 = mul(_141, float4(_134, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_146, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_146, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_141, float4(_135, 0.0f));
     out_var_C2 = _146;

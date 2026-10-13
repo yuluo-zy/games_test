@@ -26,8 +26,8 @@ float rain_strength;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    int id : TEXCOORD1;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] int id: id;
 };
 
 struct VsOut
@@ -139,9 +139,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_rain_strength : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float rain_strength : packoffset(c5);
 };
 
 
@@ -153,8 +153,8 @@ static float out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] int in_var_id : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] int in_var_id: id;
 };
 
 struct SPIRV_Cross_Output
@@ -189,9 +189,9 @@ void vert_main()
     uint _146 = _144 ^ (_144 >> 11u);
     float3 _171 = float3(lerp(0.0f, 60.0f, asfloat(((_112 + (_112 << 15u)) & 8388607u) | 1065353216u) - 1.0f), _136, lerp(0.0f, 60.0f, asfloat(((_146 + (_146 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
     _171.y = frac(_136 - (((float(frame_constants_game_time_sec) + frame_constants_game_time_frac) * 0.5f) * lerp(0.60000002384185791015625f, 1.2000000476837158203125f, asfloat(((_92 + (_92 << 15u)) & 8388607u) | 1065353216u) - 1.0f))) * 50.0f;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4((((float3(0.0f, 1.0f, 0.0f) * in_var_Vertex_Position.y) * 1.0f) + ((normalize(mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz) * in_var_Vertex_Position.x) * (0.039999999105930328369140625f * _Globals_rain_strength))) + (_171 + float3(-30.0f, 0.0f, -30.0f)), 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4((((float3(0.0f, 1.0f, 0.0f) * in_var_Vertex_Position.y) * 1.0f) + ((normalize(mul(frame_constants_view_constants[current_view_index].view_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz) * in_var_Vertex_Position.x) * (0.039999999105930328369140625f * rain_strength))) + (_171 + float3(-30.0f, 0.0f, -30.0f)), 1.0f));
     out_var_C0 = 1.0f.xxx;
-    out_var_C1 = lerp(0.300000011920928955078125f, 0.0f, in_var_Vertex_Position.y + 0.5f) * pow(_Globals_rain_strength, 0.5f);
+    out_var_C1 = lerp(0.300000011920928955078125f, 0.0f, in_var_Vertex_Position.y + 0.5f) * pow(rain_strength, 0.5f);
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
@@ -267,9 +267,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_rain_strength : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float rain_strength : packoffset(c5);
 };
 
 
@@ -281,8 +281,8 @@ static float out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] int in_var_id : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] int in_var_id: id;
 };
 
 struct SPIRV_Cross_Output
@@ -317,9 +317,9 @@ void vert_main()
     uint _146 = _144 ^ (_144 >> 11u);
     float3 _171 = float3(lerp(0.0f, 60.0f, asfloat(((_112 + (_112 << 15u)) & 8388607u) | 1065353216u) - 1.0f), _136, lerp(0.0f, 60.0f, asfloat(((_146 + (_146 << 15u)) & 8388607u) | 1065353216u) - 1.0f));
     _171.y = frac(_136 - (((float(frame_constants_game_time_sec) + frame_constants_game_time_frac) * 0.5f) * lerp(0.60000002384185791015625f, 1.2000000476837158203125f, asfloat(((_92 + (_92 << 15u)) & 8388607u) | 1065353216u) - 1.0f))) * 50.0f;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4((((float3(0.0f, 1.0f, 0.0f) * in_var_Vertex_Position.y) * 1.0f) + ((normalize(mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz) * in_var_Vertex_Position.x) * (0.039999999105930328369140625f * _Globals_rain_strength))) + (_171 + float3(-30.0f, 0.0f, -30.0f)), 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4((((float3(0.0f, 1.0f, 0.0f) * in_var_Vertex_Position.y) * 1.0f) + ((normalize(mul(frame_constants_view_constants[current_view_index].view_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz) * in_var_Vertex_Position.x) * (0.039999999105930328369140625f * rain_strength))) + (_171 + float3(-30.0f, 0.0f, -30.0f)), 1.0f));
     out_var_C0 = 1.0f.xxx;
-    out_var_C1 = lerp(0.300000011920928955078125f, 0.0f, in_var_Vertex_Position.y + 0.5f) * pow(_Globals_rain_strength, 0.5f);
+    out_var_C1 = lerp(0.300000011920928955078125f, 0.0f, in_var_Vertex_Position.y + 0.5f) * pow(rain_strength, 0.5f);
 }
 
 SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)

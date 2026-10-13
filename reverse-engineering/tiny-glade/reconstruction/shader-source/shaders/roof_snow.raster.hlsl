@@ -93,9 +93,9 @@ float flag_noise(float2 p)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float2 Vertex_UV : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
 };
 
 struct VsOut

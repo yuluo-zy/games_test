@@ -85,12 +85,12 @@ float4 ps_main(float2 uv : TEXCOORD0) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b14, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float2 _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.z);
-    uint _Globals_thumbnail_index : packoffset(c1.w);
-    uint _Globals_is_black_and_white : packoffset(c2);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float2 thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.z);
+    uint thumbnail_index : packoffset(c1.w);
+    uint is_black_and_white : packoffset(c2);
 };
 
 
@@ -165,8 +165,8 @@ void vert_main()
     } while(false);
     float4 _91 = _88;
     _91.w = 1.0f - _88.w;
-    float2 _106 = ((_91.xy * 1.0499999523162841796875f) * _Globals_thumbnail_size) + _Globals_first_thumbnail_center;
-    _106.x = _106.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _106 = ((_91.xy * 1.0499999523162841796875f) * thumbnail_size) + first_thumbnail_center;
+    _106.x = _106.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float2 _116 = lerp(_91.zw, 0.5f.xx, (-0.0500000007450580596923828125f).xx);
     _116.y = 1.0f - _116.y;
     gl_Position = float4((_106 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
@@ -193,12 +193,12 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b14, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float2 _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.z);
-    uint _Globals_thumbnail_index : packoffset(c1.w);
-    uint _Globals_is_black_and_white : packoffset(c2);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float2 thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.z);
+    uint thumbnail_index : packoffset(c1.w);
+    uint is_black_and_white : packoffset(c2);
 };
 
 
@@ -273,8 +273,8 @@ void vert_main()
     } while(false);
     float4 _91 = _88;
     _91.w = 1.0f - _88.w;
-    float2 _106 = ((_91.xy * 1.0499999523162841796875f) * _Globals_thumbnail_size) + _Globals_first_thumbnail_center;
-    _106.x = _106.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _106 = ((_91.xy * 1.0499999523162841796875f) * thumbnail_size) + first_thumbnail_center;
+    _106.x = _106.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float2 _116 = lerp(_91.zw, 0.5f.xx, (-0.0500000007450580596923828125f).xx);
     _116.y = 1.0f - _116.y;
     gl_Position = float4((_106 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);

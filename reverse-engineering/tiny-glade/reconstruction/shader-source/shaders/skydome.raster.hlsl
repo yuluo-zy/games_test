@@ -33,9 +33,9 @@ Texture2D<float4> moon_tex : register(t14, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD2;
-    float bbx_y : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float bbx_y: bbx_y;
 };
 
 struct VsOut
@@ -166,10 +166,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moon_tex_dims : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_framebuffer_dims : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint2 moon_tex_dims : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 framebuffer_dims : packoffset(c5);
 };
 
 
@@ -183,9 +183,9 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_bbx_y : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_bbx_y: bbx_y;
 };
 
 struct SPIRV_Cross_Output
@@ -199,8 +199,8 @@ struct SPIRV_Cross_Output
 void vert_main()
 {
     float3 _67 = in_var_Vertex_Position * 5000.0f;
-    float4 _80 = mul(_Globals_model_to_world, float4(_67.x, _67.y * 0.5f, _67.z, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _80);
+    float4 _80 = mul(model_to_world, float4(_67.x, _67.y * 0.5f, _67.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _80);
     out_var_C0 = in_var_bbx_y;
     out_var_C1 = in_var_Vertex_Normal;
     out_var_C2 = _80.xyz;
@@ -281,10 +281,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moon_tex_dims : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_framebuffer_dims : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint2 moon_tex_dims : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 framebuffer_dims : packoffset(c5);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -307,7 +307,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    float4 _129 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _129 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _135 = normalize((_129.xyz / _129.w.xxx) - in_var_C2);
     float _140 = acos(-dot(frame_constants_dir_to_sun, _135));
     float _145 = max(0.0f, _140 - 0.0261799395084381103515625f);
@@ -414,10 +414,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_moon_tex_dims : packoffset(c0.y);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_framebuffer_dims : packoffset(c5);
+    uint current_view_index : packoffset(c0);
+    uint2 moon_tex_dims : packoffset(c0.y);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 framebuffer_dims : packoffset(c5);
 };
 
 
@@ -431,9 +431,9 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float in_var_bbx_y : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float in_var_bbx_y: bbx_y;
 };
 
 struct SPIRV_Cross_Output
@@ -447,8 +447,8 @@ struct SPIRV_Cross_Output
 void vert_main()
 {
     float3 _67 = in_var_Vertex_Position * 5000.0f;
-    float4 _80 = mul(_Globals_model_to_world, float4(_67.x, _67.y * 0.5f, _67.z, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _80);
+    float4 _80 = mul(model_to_world, float4(_67.x, _67.y * 0.5f, _67.z, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _80);
     out_var_C0 = in_var_bbx_y;
     out_var_C1 = in_var_Vertex_Normal;
     out_var_C2 = _80.xyz;

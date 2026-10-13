@@ -75,13 +75,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_highlight_bricks_to_delete : packoffset(c5);
-    float3 _Globals_brush_position : packoffset(c5.y);
-    float _Globals_eraser_mult : packoffset(c6);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c6.y);
-    uint2 _Globals_wood_roughness_dims : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int highlight_bricks_to_delete : packoffset(c5);
+    float3 brush_position : packoffset(c5.y);
+    float eraser_mult : packoffset(c6);
+    uint2 dirthpath_heightmap_dims : packoffset(c6.y);
+    uint2 wood_roughness_dims : packoffset(c7);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -106,10 +106,10 @@ static int out_var_C10;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_bevel: is_bevel;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -379,7 +379,7 @@ void vert_main()
     uint _919 = _917 ^ (_917 >> 6u);
     uint _921 = _919 + (_919 << 3u);
     uint _923 = _921 ^ (_921 >> 11u);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_857.x, _857.y, _857.z, _308.w));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_857.x, _857.y, _857.z, _308.w));
     out_var_C0 = _857.xyz;
     out_var_C1 = normalize(mul(transpose(float3x3(cross(_867, _868) * _874, cross(_868, _866) * _874, _871 * _874)), in_var_Vertex_Normal));
     out_var_C3 = _191;
@@ -476,13 +476,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_highlight_bricks_to_delete : packoffset(c5);
-    float3 _Globals_brush_position : packoffset(c5.y);
-    float _Globals_eraser_mult : packoffset(c6);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c6.y);
-    uint2 _Globals_wood_roughness_dims : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int highlight_bricks_to_delete : packoffset(c5);
+    float3 brush_position : packoffset(c5.y);
+    float eraser_mult : packoffset(c6);
+    uint2 dirthpath_heightmap_dims : packoffset(c6.y);
+    uint2 wood_roughness_dims : packoffset(c7);
 };
 
 ByteAddressBuffer halftimber_color_ids : register(t17, space0);
@@ -531,7 +531,7 @@ void frag_main()
     bool _172;
     if (in_var_C9 == 0)
     {
-        _172 = _Globals_highlight_bricks_to_delete == 1;
+        _172 = highlight_bricks_to_delete == 1;
     }
     else
     {
@@ -541,7 +541,7 @@ void frag_main()
     float3 _191;
     if (_172)
     {
-        bool _184 = distance(_Globals_brush_position.xz, in_var_C0.xz) < ((1.88900005817413330078125f * _Globals_eraser_mult) - 0.20000000298023223876953125f);
+        bool _184 = distance(brush_position.xz, in_var_C0.xz) < ((1.88900005817413330078125f * eraser_mult) - 0.20000000298023223876953125f);
         float3 _188;
         if (_184)
         {
@@ -680,13 +680,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_highlight_bricks_to_delete : packoffset(c5);
-    float3 _Globals_brush_position : packoffset(c5.y);
-    float _Globals_eraser_mult : packoffset(c6);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c6.y);
-    uint2 _Globals_wood_roughness_dims : packoffset(c7);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int highlight_bricks_to_delete : packoffset(c5);
+    float3 brush_position : packoffset(c5.y);
+    float eraser_mult : packoffset(c6);
+    uint2 dirthpath_heightmap_dims : packoffset(c6.y);
+    uint2 wood_roughness_dims : packoffset(c7);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -711,10 +711,10 @@ static int out_var_C10;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_bevel: is_bevel;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -984,7 +984,7 @@ void vert_main()
     uint _919 = _917 ^ (_917 >> 6u);
     uint _921 = _919 + (_919 << 3u);
     uint _923 = _921 ^ (_921 >> 11u);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_857.x, _857.y, _857.z, _308.w));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_857.x, _857.y, _857.z, _308.w));
     out_var_C0 = _857.xyz;
     out_var_C1 = normalize(mul(transpose(float3x3(cross(_867, _868) * _874, cross(_868, _866) * _874, _871 * _874)), in_var_Vertex_Normal));
     out_var_C3 = _191;

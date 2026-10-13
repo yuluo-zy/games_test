@@ -156,16 +156,16 @@ static uint _119;
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_garden_mask_dims : packoffset(c1.z);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c2);
-    int2 _Globals_grid_dims : packoffset(c2.z);
-    uint2 _Globals_path_mask_dims : packoffset(c3);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c3.z);
-    uint2 _Globals_water_mask_dims : packoffset(c4);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c4.z);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 garden_mask_dims : packoffset(c1.z);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c2);
+    int2 grid_dims : packoffset(c2.z);
+    uint2 path_mask_dims : packoffset(c3);
+    uint2 rocky_terrain_dims : packoffset(c3.z);
+    uint2 water_mask_dims : packoffset(c4);
+    uint2 foliage_exclusion_mask_dims : packoffset(c4.z);
 };
 
 RWByteAddressBuffer __alias_flower_buffer : register(u19, space0);
@@ -189,7 +189,7 @@ void comp_main()
 {
     float2 _204;
     float2 _228;
-    float2 _152 = (((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims)) - 0.5f.xx) * 130.0f.xx;
+    float2 _152 = (((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims)) - 0.5f.xx) * 130.0f.xx;
     uint _157 = ((gl_GlobalInvocationID.x * gl_GlobalInvocationID.y) + gl_GlobalInvocationID.x) + 100u;
     uint _159 = _157 + (_157 << 10u);
     uint _161 = _159 ^ (_159 >> 6u);
@@ -214,10 +214,10 @@ void comp_main()
         do
         {
             _201 = (_174 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx;
-            _204 = float2(_Globals_path_mask_dims);
+            _204 = float2(path_mask_dims);
             uint2 _206 = uint2(_201 * _204);
             float4 _224 = terrain_heightmap.GatherRed(sampler_default, _201, int2(0, 0));
-            _228 = 130.0f.xx / float2(_Globals_terrain_heightmap_dims);
+            _228 = 130.0f.xx / float2(terrain_heightmap_dims);
             float _229 = _224.z;
             float _230 = _224.y;
             float _232 = _224.w;

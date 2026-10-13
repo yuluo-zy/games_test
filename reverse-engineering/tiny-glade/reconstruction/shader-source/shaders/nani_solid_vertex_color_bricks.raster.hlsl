@@ -75,14 +75,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_highlight_mode : packoffset(c1.z);
-    int _Globals_highlight_bricks_to_delete : packoffset(c1.w);
-    float3 _Globals_brush_position : packoffset(c2);
-    uint _Globals_bool_render_shadows : packoffset(c2.w);
-    float _Globals_eraser_mult : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint highlight_mode : packoffset(c1.z);
+    int highlight_bricks_to_delete : packoffset(c1.w);
+    float3 brush_position : packoffset(c2);
+    uint bool_render_shadows : packoffset(c2.w);
+    float eraser_mult : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -107,9 +107,9 @@ static uint out_var_C14;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -358,7 +358,7 @@ void vert_main()
         _851 = _845;
     }
     bool2 _852 = _752.xx;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_750, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_750, 1.0f));
     out_var_C0 = _169.seed;
     out_var_C1 = mul(_198, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _750;
@@ -471,14 +471,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_highlight_mode : packoffset(c1.z);
-    int _Globals_highlight_bricks_to_delete : packoffset(c1.w);
-    float3 _Globals_brush_position : packoffset(c2);
-    uint _Globals_bool_render_shadows : packoffset(c2.w);
-    float _Globals_eraser_mult : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint highlight_mode : packoffset(c1.z);
+    int highlight_bricks_to_delete : packoffset(c1.w);
+    float3 brush_position : packoffset(c2);
+    uint bool_render_shadows : packoffset(c2.w);
+    float eraser_mult : packoffset(c3);
 };
 
 ByteAddressBuffer nani_instance_data : register(t15, space0);
@@ -827,14 +827,14 @@ void frag_main()
     {
         bool _499;
         float3 _500;
-        if (_Globals_highlight_mode == 1u)
+        if (highlight_mode == 1u)
         {
             _499 = true;
             _500 = lerp(_481, float3(0.699999988079071044921875f, 0.2100000083446502685546875f, 0.0f), 0.5f.xxx);
         }
         else
         {
-            bool _492 = _Globals_highlight_mode == 2u;
+            bool _492 = highlight_mode == 2u;
             float3 _496;
             if (_492)
             {
@@ -849,9 +849,9 @@ void frag_main()
         }
         bool _519;
         float3 _520;
-        if (_Globals_highlight_bricks_to_delete == 1)
+        if (highlight_bricks_to_delete == 1)
         {
-            bool _513 = distance(_Globals_brush_position.xz, in_var_C12) < (1.88900005817413330078125f * _Globals_eraser_mult);
+            bool _513 = distance(brush_position.xz, in_var_C12) < (1.88900005817413330078125f * eraser_mult);
             float3 _517;
             if (_513)
             {
@@ -1032,14 +1032,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint _Globals_highlight_mode : packoffset(c1.z);
-    int _Globals_highlight_bricks_to_delete : packoffset(c1.w);
-    float3 _Globals_brush_position : packoffset(c2);
-    uint _Globals_bool_render_shadows : packoffset(c2.w);
-    float _Globals_eraser_mult : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint highlight_mode : packoffset(c1.z);
+    int highlight_bricks_to_delete : packoffset(c1.w);
+    float3 brush_position : packoffset(c2);
+    uint bool_render_shadows : packoffset(c2.w);
+    float eraser_mult : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -1063,9 +1063,9 @@ static uint out_var_C14;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1261,7 +1261,7 @@ void vert_main()
     float3 _735 = _187 + (float3(_730.x, 0.0f, _730.y) * 0.0599999986588954925537109375f);
     bool _737 = (nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 56) & 2147483648u) != 0u;
     bool2 _753 = _737.xx;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_735, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_735, 1.0f));
     out_var_C0 = nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 52);
     out_var_C1 = mul(_182, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _735;

@@ -61,36 +61,36 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_buildings_mask_dims : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_paths_visual_dims : packoffset(c2.z);
-    uint2 _Globals_water_mask_dims : packoffset(c3);
-    uint2 _Globals_highlight_active_hill_dims : packoffset(c3.z);
-    uint2 _Globals_mud_dims : packoffset(c4);
-    uint2 _Globals_noise_debug_dims : packoffset(c4.z);
-    uint2 _Globals_floor_heightmap_dims : packoffset(c5);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_dirt_1_dims : packoffset(c6);
-    uint2 _Globals_dirt_2_dims : packoffset(c6.z);
-    uint2 _Globals_grass_dims : packoffset(c7);
-    uint2 _Globals_dirt_mask_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c13);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13.z);
-    uint2 _Globals_garden_mask_dims : packoffset(c14);
-    uint _Globals_force_top_down_render : packoffset(c14.z);
+    uint current_view_index : packoffset(c0);
+    uint2 buildings_mask_dims : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 paths_visual_dims : packoffset(c2.z);
+    uint2 water_mask_dims : packoffset(c3);
+    uint2 highlight_active_hill_dims : packoffset(c3.z);
+    uint2 mud_dims : packoffset(c4);
+    uint2 noise_debug_dims : packoffset(c4.z);
+    uint2 floor_heightmap_dims : packoffset(c5);
+    uint2 dirthpath_heightmap_dims : packoffset(c5.z);
+    uint2 dirt_1_dims : packoffset(c6);
+    uint2 dirt_2_dims : packoffset(c6.z);
+    uint2 grass_dims : packoffset(c7);
+    uint2 dirt_mask_dims : packoffset(c7.z);
+    uint2 stone_floor_normal_dims : packoffset(c8);
+    uint2 stone_floor_seed_dims : packoffset(c8.z);
+    uint2 stone_floor_height_dims : packoffset(c9);
+    uint2 stone_floor_roughness_dims : packoffset(c9.z);
+    uint2 stone_floor_seed_2_dims : packoffset(c10);
+    uint2 stone_floor_normal_2_dims : packoffset(c10.z);
+    uint2 stone_floor_height_2_dims : packoffset(c11);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11.z);
+    uint2 stone_floor_seed_3_dims : packoffset(c12);
+    uint2 stone_floor_normal_3_dims : packoffset(c12.z);
+    uint2 stone_floor_height_3_dims : packoffset(c13);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13.z);
+    uint2 garden_mask_dims : packoffset(c14);
+    uint force_top_down_render : packoffset(c14.z);
 };
 
 SamplerState sampler_llc : register(s3, space0);
@@ -212,7 +212,7 @@ void vert_main()
         break; // unreachable workaround
     } while(false);
     float4 _202 = terrain_heightmap.GatherRed(sampler_default, _147, int2(0, 0));
-    float2 _206 = 130.0f.xx / float2(_Globals_terrain_heightmap_dims);
+    float2 _206 = 130.0f.xx / float2(terrain_heightmap_dims);
     float _207 = _202.z;
     float _208 = _202.y;
     float _210 = _202.w;
@@ -239,13 +239,13 @@ void vert_main()
     _267.y = _266;
     float4 _270 = float4(_253.x, _266, _253.z, 1.0f);
     float4 _290;
-    if (_Globals_force_top_down_render != 0u)
+    if (force_top_down_render != 0u)
     {
         _290 = float4(_270.xz * float2(0.015384615398943424224853515625f, -0.015384615398943424224853515625f), clamp((_266 - (-2.5f)) * 0.0377358496189117431640625f, 0.0f, 1.0f), 1.0f);
     }
     else
     {
-        _290 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _270);
+        _290 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _270);
     }
     gl_Position = _290;
     out_var_C0 = _227;
@@ -327,36 +327,36 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_buildings_mask_dims : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_paths_visual_dims : packoffset(c2.z);
-    uint2 _Globals_water_mask_dims : packoffset(c3);
-    uint2 _Globals_highlight_active_hill_dims : packoffset(c3.z);
-    uint2 _Globals_mud_dims : packoffset(c4);
-    uint2 _Globals_noise_debug_dims : packoffset(c4.z);
-    uint2 _Globals_floor_heightmap_dims : packoffset(c5);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_dirt_1_dims : packoffset(c6);
-    uint2 _Globals_dirt_2_dims : packoffset(c6.z);
-    uint2 _Globals_grass_dims : packoffset(c7);
-    uint2 _Globals_dirt_mask_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c13);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13.z);
-    uint2 _Globals_garden_mask_dims : packoffset(c14);
-    uint _Globals_force_top_down_render : packoffset(c14.z);
+    uint current_view_index : packoffset(c0);
+    uint2 buildings_mask_dims : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 paths_visual_dims : packoffset(c2.z);
+    uint2 water_mask_dims : packoffset(c3);
+    uint2 highlight_active_hill_dims : packoffset(c3.z);
+    uint2 mud_dims : packoffset(c4);
+    uint2 noise_debug_dims : packoffset(c4.z);
+    uint2 floor_heightmap_dims : packoffset(c5);
+    uint2 dirthpath_heightmap_dims : packoffset(c5.z);
+    uint2 dirt_1_dims : packoffset(c6);
+    uint2 dirt_2_dims : packoffset(c6.z);
+    uint2 grass_dims : packoffset(c7);
+    uint2 dirt_mask_dims : packoffset(c7.z);
+    uint2 stone_floor_normal_dims : packoffset(c8);
+    uint2 stone_floor_seed_dims : packoffset(c8.z);
+    uint2 stone_floor_height_dims : packoffset(c9);
+    uint2 stone_floor_roughness_dims : packoffset(c9.z);
+    uint2 stone_floor_seed_2_dims : packoffset(c10);
+    uint2 stone_floor_normal_2_dims : packoffset(c10.z);
+    uint2 stone_floor_height_2_dims : packoffset(c11);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11.z);
+    uint2 stone_floor_seed_3_dims : packoffset(c12);
+    uint2 stone_floor_normal_3_dims : packoffset(c12.z);
+    uint2 stone_floor_height_3_dims : packoffset(c13);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13.z);
+    uint2 garden_mask_dims : packoffset(c14);
+    uint force_top_down_render : packoffset(c14.z);
 };
 
 cbuffer color_library : register(b14, space0)
@@ -515,7 +515,7 @@ void frag_main()
     float _406 = _399.x;
     float _409 = 1.0f / ((_402 * _403) - (_405 * _406));
     float3x3 _419 = transpose(float3x3(((_400 * _402) + (_401 * _406)) * _409, ((_400 * _405) + (_401 * _403)) * _409, in_var_C0));
-    float4 _424 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _424 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _430 = mul(_419, float3(1.0f, 0.0f, 0.0f));
     float3 _431 = mul(_419, float3(0.0f, 1.0f, 0.0f));
     float3 _432 = mul(_419, float3(0.0f, 0.0f, 1.0f));
@@ -642,7 +642,7 @@ void frag_main()
     float3 _625 = _453 * _624;
     float2 _627 = _351 + _625.xy;
     float3 _629 = in_var_C1 + mul(_419, _625);
-    float4 _639 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_clip, mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(_629, 1.0f)));
+    float4 _639 = mul(frame_constants_view_constants[current_view_index].view_to_clip, mul(frame_constants_view_constants[current_view_index].world_to_view, float4(_629, 1.0f)));
     float3 _701;
     do
     {
@@ -1178,36 +1178,36 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_buildings_mask_dims : packoffset(c0.y);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c2);
-    uint2 _Globals_paths_visual_dims : packoffset(c2.z);
-    uint2 _Globals_water_mask_dims : packoffset(c3);
-    uint2 _Globals_highlight_active_hill_dims : packoffset(c3.z);
-    uint2 _Globals_mud_dims : packoffset(c4);
-    uint2 _Globals_noise_debug_dims : packoffset(c4.z);
-    uint2 _Globals_floor_heightmap_dims : packoffset(c5);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c5.z);
-    uint2 _Globals_dirt_1_dims : packoffset(c6);
-    uint2 _Globals_dirt_2_dims : packoffset(c6.z);
-    uint2 _Globals_grass_dims : packoffset(c7);
-    uint2 _Globals_dirt_mask_dims : packoffset(c7.z);
-    uint2 _Globals_stone_floor_normal_dims : packoffset(c8);
-    uint2 _Globals_stone_floor_seed_dims : packoffset(c8.z);
-    uint2 _Globals_stone_floor_height_dims : packoffset(c9);
-    uint2 _Globals_stone_floor_roughness_dims : packoffset(c9.z);
-    uint2 _Globals_stone_floor_seed_2_dims : packoffset(c10);
-    uint2 _Globals_stone_floor_normal_2_dims : packoffset(c10.z);
-    uint2 _Globals_stone_floor_height_2_dims : packoffset(c11);
-    uint2 _Globals_stone_floor_roughness_2_dims : packoffset(c11.z);
-    uint2 _Globals_stone_floor_seed_3_dims : packoffset(c12);
-    uint2 _Globals_stone_floor_normal_3_dims : packoffset(c12.z);
-    uint2 _Globals_stone_floor_height_3_dims : packoffset(c13);
-    uint2 _Globals_stone_floor_roughness_3_dims : packoffset(c13.z);
-    uint2 _Globals_garden_mask_dims : packoffset(c14);
-    uint _Globals_force_top_down_render : packoffset(c14.z);
+    uint current_view_index : packoffset(c0);
+    uint2 buildings_mask_dims : packoffset(c0.y);
+    uint2 terrain_heightmap_dims : packoffset(c1);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1.z);
+    uint2 rocky_terrain_dims : packoffset(c2);
+    uint2 paths_visual_dims : packoffset(c2.z);
+    uint2 water_mask_dims : packoffset(c3);
+    uint2 highlight_active_hill_dims : packoffset(c3.z);
+    uint2 mud_dims : packoffset(c4);
+    uint2 noise_debug_dims : packoffset(c4.z);
+    uint2 floor_heightmap_dims : packoffset(c5);
+    uint2 dirthpath_heightmap_dims : packoffset(c5.z);
+    uint2 dirt_1_dims : packoffset(c6);
+    uint2 dirt_2_dims : packoffset(c6.z);
+    uint2 grass_dims : packoffset(c7);
+    uint2 dirt_mask_dims : packoffset(c7.z);
+    uint2 stone_floor_normal_dims : packoffset(c8);
+    uint2 stone_floor_seed_dims : packoffset(c8.z);
+    uint2 stone_floor_height_dims : packoffset(c9);
+    uint2 stone_floor_roughness_dims : packoffset(c9.z);
+    uint2 stone_floor_seed_2_dims : packoffset(c10);
+    uint2 stone_floor_normal_2_dims : packoffset(c10.z);
+    uint2 stone_floor_height_2_dims : packoffset(c11);
+    uint2 stone_floor_roughness_2_dims : packoffset(c11.z);
+    uint2 stone_floor_seed_3_dims : packoffset(c12);
+    uint2 stone_floor_normal_3_dims : packoffset(c12.z);
+    uint2 stone_floor_height_3_dims : packoffset(c13);
+    uint2 stone_floor_roughness_3_dims : packoffset(c13.z);
+    uint2 garden_mask_dims : packoffset(c14);
+    uint force_top_down_render : packoffset(c14.z);
 };
 
 SamplerState sampler_llc : register(s3, space0);
@@ -1329,7 +1329,7 @@ void vert_main()
         break; // unreachable workaround
     } while(false);
     float4 _202 = terrain_heightmap.GatherRed(sampler_default, _147, int2(0, 0));
-    float2 _206 = 130.0f.xx / float2(_Globals_terrain_heightmap_dims);
+    float2 _206 = 130.0f.xx / float2(terrain_heightmap_dims);
     float _207 = _202.z;
     float _208 = _202.y;
     float _210 = _202.w;
@@ -1356,13 +1356,13 @@ void vert_main()
     _267.y = _266;
     float4 _270 = float4(_253.x, _266, _253.z, 1.0f);
     float4 _290;
-    if (_Globals_force_top_down_render != 0u)
+    if (force_top_down_render != 0u)
     {
         _290 = float4(_270.xz * float2(0.015384615398943424224853515625f, -0.015384615398943424224853515625f), clamp((_266 - (-2.5f)) * 0.0377358496189117431640625f, 0.0f, 1.0f), 1.0f);
     }
     else
     {
-        _290 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _270);
+        _290 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _270);
     }
     gl_Position = _290;
     out_var_C0 = _227;

@@ -73,14 +73,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.y);
-    float3 _Globals_brush_position : packoffset(c1);
-    float _Globals_eraser_mult : packoffset(c1.w);
-    uint _Globals_highlight_mode : packoffset(c2);
-    uint _Globals_highlighted_wall_id : packoffset(c2.y);
-    uint2 _Globals_normal_map_dims : packoffset(c2.z);
-    uint2 _Globals_mortar_dims : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    int highlight_bricks_to_delete : packoffset(c0.y);
+    float3 brush_position : packoffset(c1);
+    float eraser_mult : packoffset(c1.w);
+    uint highlight_mode : packoffset(c2);
+    uint highlighted_wall_id : packoffset(c2.y);
+    uint2 normal_map_dims : packoffset(c2.z);
+    uint2 mortar_dims : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t18, space0);
@@ -395,7 +395,7 @@ void vert_main()
         float4 _940 = float4(_939.x, _939.y, _939.z, _937.w);
         _178 = _940;
         float3 _947 = cross(_318, float3(0.0f, 1.0f, 0.0f));
-        _958 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _940);
+        _958 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _940);
         _959 = instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0);
         _960 = _318;
         _961 = _939.xyz;
@@ -465,14 +465,14 @@ static uint _173;
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.y);
-    float3 _Globals_brush_position : packoffset(c1);
-    float _Globals_eraser_mult : packoffset(c1.w);
-    uint _Globals_highlight_mode : packoffset(c2);
-    uint _Globals_highlighted_wall_id : packoffset(c2.y);
-    uint2 _Globals_normal_map_dims : packoffset(c2.z);
-    uint2 _Globals_mortar_dims : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    int highlight_bricks_to_delete : packoffset(c0.y);
+    float3 brush_position : packoffset(c1);
+    float eraser_mult : packoffset(c1.w);
+    uint highlight_mode : packoffset(c2);
+    uint highlighted_wall_id : packoffset(c2.y);
+    uint2 normal_map_dims : packoffset(c2.z);
+    uint2 mortar_dims : packoffset(c3);
 };
 
 ByteAddressBuffer wall_color_ids : register(t15, space0);
@@ -516,9 +516,9 @@ struct SPIRV_Cross_Output
 void frag_main()
 {
     uint _223;
-    if (nani_instance_data.Load<uint>(in_var_C0 * 48 + 16) == _Globals_highlighted_wall_id)
+    if (nani_instance_data.Load<uint>(in_var_C0 * 48 + 16) == highlighted_wall_id)
     {
-        _223 = _Globals_highlight_mode;
+        _223 = highlight_mode;
     }
     else
     {
@@ -1515,9 +1515,9 @@ void frag_main()
     }
     float3 _2191;
     bool _2192;
-    if (_Globals_highlight_bricks_to_delete == 1)
+    if (highlight_bricks_to_delete == 1)
     {
-        bool _2185 = distance(_Globals_brush_position.xz, in_var_C2.xz) < ((1.88900005817413330078125f * _Globals_eraser_mult) - 0.2700000107288360595703125f);
+        bool _2185 = distance(brush_position.xz, in_var_C2.xz) < ((1.88900005817413330078125f * eraser_mult) - 0.2700000107288360595703125f);
         float3 _2189;
         if (_2185)
         {
@@ -1634,14 +1634,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_highlight_bricks_to_delete : packoffset(c0.y);
-    float3 _Globals_brush_position : packoffset(c1);
-    float _Globals_eraser_mult : packoffset(c1.w);
-    uint _Globals_highlight_mode : packoffset(c2);
-    uint _Globals_highlighted_wall_id : packoffset(c2.y);
-    uint2 _Globals_normal_map_dims : packoffset(c2.z);
-    uint2 _Globals_mortar_dims : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    int highlight_bricks_to_delete : packoffset(c0.y);
+    float3 brush_position : packoffset(c1);
+    float eraser_mult : packoffset(c1.w);
+    uint highlight_mode : packoffset(c2);
+    uint highlighted_wall_id : packoffset(c2.y);
+    uint2 normal_map_dims : packoffset(c2.z);
+    uint2 mortar_dims : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t18, space0);
@@ -1956,7 +1956,7 @@ void vert_main()
         float4 _940 = float4(_939.x, _939.y, _939.z, _937.w);
         _178 = _940;
         float3 _947 = cross(_318, float3(0.0f, 1.0f, 0.0f));
-        _958 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _940);
+        _958 = mul(frame_constants_view_constants[current_view_index].world_to_sample, _940);
         _959 = instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0);
         _960 = _318;
         _961 = _939.xyz;

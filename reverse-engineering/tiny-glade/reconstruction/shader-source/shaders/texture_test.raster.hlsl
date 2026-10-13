@@ -29,8 +29,8 @@ Texture2D<float4> test_texture : register(t14, space0);
 
 struct VSIn
 {
-    float3 position : TEXCOORD0;
-    float3 color : TEXCOORD1;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(1)]] float3 color: Vertex_Color;
 };
 
 struct VSOut

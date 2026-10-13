@@ -288,19 +288,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c0);
-    uint _Globals_history_valid : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    uint2 _Globals_depth_tex_dims : packoffset(c1.z);
-    uint2 _Globals_ice_roughness_tex_dims : packoffset(c2);
-    uint2 _Globals_refl_hit_tex_dims : packoffset(c2.z);
-    uint2 _Globals_refl_hit_radiance_tex_dims : packoffset(c3);
-    uint2 _Globals_color_tex_dims : packoffset(c3.z);
-    uint2 _Globals_refl_refr_radiance_history_tex_dims : packoffset(c4);
-    uint2 _Globals_refl_refr_radiance_out_tex_dims : packoffset(c4.z);
-    uint2 _Globals_ray_len_history_tex_dims : packoffset(c5);
-    uint2 _Globals_ray_len_out_tex_dims : packoffset(c5.z);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c6);
+    uint2 brdf_fg_lut_dims : packoffset(c0);
+    uint history_valid : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    uint2 depth_tex_dims : packoffset(c1.z);
+    uint2 ice_roughness_tex_dims : packoffset(c2);
+    uint2 refl_hit_tex_dims : packoffset(c2.z);
+    uint2 refl_hit_radiance_tex_dims : packoffset(c3);
+    uint2 color_tex_dims : packoffset(c3.z);
+    uint2 refl_refr_radiance_history_tex_dims : packoffset(c4);
+    uint2 refl_refr_radiance_out_tex_dims : packoffset(c4.z);
+    uint2 ray_len_history_tex_dims : packoffset(c5);
+    uint2 ray_len_out_tex_dims : packoffset(c5.z);
+    uint2 reprojection_tex_dims : packoffset(c6);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -330,7 +330,7 @@ void comp_main()
             refl_refr_radiance_out_tex[gl_GlobalInvocationID.xy] = 0.0f.xxx;
             break;
         }
-        float2 _168 = (float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(_Globals_depth_tex_dims);
+        float2 _168 = (float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(depth_tex_dims);
         float4 _187 = ((blue_noise_texture.Load(int3((gl_GlobalInvocationID.xy + uint2(frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(frame_constants_frame_index & 255u)) + 0.5f.xx) * 256.0f.xx)) % uint2(256u, 256u), 0u)) * 255.0f) * 0.00390625f.xxxx) + 0.001953125f.xxxx;
         float2 _193 = (_168 - 0.5f.xx) * float2(2.0f, -2.0f);
         float _194 = _193.x;
@@ -375,7 +375,7 @@ void comp_main()
         float _323 = 1.0f - _221;
         float3 _327 = (_323 * (sqrt(_323) + _221)).xxx;
         float3 _331 = reflect(-normalize(lerp(float3(0.0f, 1.0f, 0.0f), reflect(_224, float3(0.0f, 1.0f, 0.0f)), _327)), float3(0.0f, 1.0f, 0.0f));
-        float3 _334 = normalize(cross(float3(0.0f, 1.0f, 0.0f), _331)) * max(min((((_306 / (_306 + _243)) * _243) * _247) * (sqrt(_221) * 0.25f), 0.100000001490116119384765625f * _313), (4.0f / float(_Globals_color_tex_dims.y)) * _313);
+        float3 _334 = normalize(cross(float3(0.0f, 1.0f, 0.0f), _331)) * max(min((((_306 / (_306 + _243)) * _243) * _247) * (sqrt(_221) * 0.25f), 0.100000001490116119384765625f * _313), (4.0f / float(color_tex_dims.y)) * _313);
         float3 _335 = cross(_331, _334);
         float _339 = float((frame_constants_frame_index * 59u) % 128u) * 1.324717998504638671875f;
         float4 _341;
@@ -390,7 +390,7 @@ void comp_main()
         {
             float _359 = ((float(_348) + _339) * 2.3999631404876708984375f) + (float(_241) * 1.57079637050628662109375f);
             float4 _378 = mul(frame_constants_view_constants[0u].view_to_sample, mul(frame_constants_view_constants[0u].world_to_view, float4(_205 + (((_334 * cos(_359)) + (_335 * sin(_359))) * (pow(_344 + _187.y, 1.0f) * 0.125f)), 1.0f)));
-            uint2 _392 = uint2(int2(floor((((_378.xyz / _378.w.xxx).xy * float2(0.5f, -0.5f)) + 0.5f.xx) * float2(_Globals_refl_hit_tex_dims))));
+            uint2 _392 = uint2(int2(floor((((_378.xyz / _378.w.xxx).xy * float2(0.5f, -0.5f)) + 0.5f.xx) * float2(refl_hit_tex_dims))));
             float4 _393 = refl_hit_tex.Load(int3(_392, 0u));
             float _394 = _393.x;
             float _395 = _393.y;
@@ -410,7 +410,7 @@ void comp_main()
         float3 _441 = normalize(lerp(float3(0.0f, 0.0f, 1.0f), reflect(-_234, float3(0.0f, 0.0f, 1.0f)), _327));
         float3 _454 = (((_341.xyz / _428.xxx).xyz * lerp(0.100000001490116119384765625f, 1.0f, exp2((-1.0f) - (8.656169891357421875f * dot(_441, _234 + _441))))) * (1.0f + _221)) + refl_refr_radiance_out_tex[gl_GlobalInvocationID.xy].xyzz.xyz;
         bool _464;
-        if (_Globals_history_valid != 0u)
+        if (history_valid != 0u)
         {
             _464 = !(0u == frame_constants_frame_index);
         }

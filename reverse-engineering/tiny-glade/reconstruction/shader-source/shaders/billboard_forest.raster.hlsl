@@ -340,12 +340,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.y);
-    uint2 _Globals_cloud1_dims : packoffset(c1);
-    uint2 _Globals_cloud2_dims : packoffset(c1.z);
-    uint2 _Globals_cloud3_dims : packoffset(c2);
-    uint2 _Globals_cloud4_dims : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.y);
+    uint2 cloud1_dims : packoffset(c1);
+    uint2 cloud2_dims : packoffset(c1.z);
+    uint2 cloud3_dims : packoffset(c2);
+    uint2 cloud4_dims : packoffset(c2.z);
 };
 
 
@@ -475,7 +475,7 @@ void vert_main()
         _285 = _174;
         _286 = _274;
     }
-    float4 _296 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_271, 1.0f));
+    float4 _296 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_271, 1.0f));
     bool4 _301 = (uint(gl_InstanceIndex) > 500u).xxxx;
     gl_Position = float4(_301.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _296.x, _301.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _296.y, _301.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _296.z, _301.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _296.w);
     out_var_C0 = _286;
@@ -809,12 +809,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.y);
-    uint2 _Globals_cloud1_dims : packoffset(c1);
-    uint2 _Globals_cloud2_dims : packoffset(c1.z);
-    uint2 _Globals_cloud3_dims : packoffset(c2);
-    uint2 _Globals_cloud4_dims : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.y);
+    uint2 cloud1_dims : packoffset(c1);
+    uint2 cloud2_dims : packoffset(c1.z);
+    uint2 cloud3_dims : packoffset(c2);
+    uint2 cloud4_dims : packoffset(c2.z);
 };
 
 
@@ -944,7 +944,7 @@ void vert_main()
         _285 = _174;
         _286 = _274;
     }
-    float4 _296 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_271, 1.0f));
+    float4 _296 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_271, 1.0f));
     bool4 _301 = (uint(gl_InstanceIndex) > 500u).xxxx;
     gl_Position = float4(_301.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _296.x, _301.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _296.y, _301.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _296.z, _301.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _296.w);
     out_var_C0 = _286;

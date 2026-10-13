@@ -64,12 +64,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_half_depth_tex_dims : packoffset(c0);
-    uint2 _Globals_half_view_normal_tex_dims : packoffset(c0.z);
-    uint2 _Globals_ssgi_tex_dims : packoffset(c1);
-    uint2 _Globals_input_tex_dims : packoffset(c1.z);
-    uint2 _Globals_output_tex_dims : packoffset(c2);
-    uint2 _Globals_temporal_stats_out_tex_dims : packoffset(c2.z);
+    uint2 half_depth_tex_dims : packoffset(c0);
+    uint2 half_view_normal_tex_dims : packoffset(c0.z);
+    uint2 ssgi_tex_dims : packoffset(c1);
+    uint2 input_tex_dims : packoffset(c1.z);
+    uint2 output_tex_dims : packoffset(c2);
+    uint2 temporal_stats_out_tex_dims : packoffset(c2.z);
 };
 
 Texture2D<float4> half_depth_tex : register(t14, space0);
@@ -111,7 +111,7 @@ void comp_main()
             float _175 = (exp2(-min(30.0f, 80.0f * (_105 * abs(1.0f - (half_depth_tex.Load(int3(_146, 0u)).x / _101))))) * exp2((-20.0f) * abs(ssgi_tex.Load(int3((_146 * uint2(2u, 2u)) + _92[_109], 0u)).x - _115))) * (0.010000000707805156707763671875f / (_172 * _172));
             for (uint _177 = 0u; _177 < 3u; )
             {
-                _96[_177] += (input_tex.Load(int3(_146 + uint2(_177 * _Globals_half_depth_tex_dims.x, 0u), 0u)) * _175);
+                _96[_177] += (input_tex.Load(int3(_146 + uint2(_177 * half_depth_tex_dims.x, 0u), 0u)) * _175);
                 _177++;
                 continue;
             }
@@ -126,7 +126,7 @@ void comp_main()
     }
     for (uint _205 = 0u; _205 < 3u; )
     {
-        output_tex[gl_GlobalInvocationID.xy + uint2(_205 * _Globals_half_depth_tex_dims.x, 0u)] = _96[_205];
+        output_tex[gl_GlobalInvocationID.xy + uint2(_205 * half_depth_tex_dims.x, 0u)] = _96[_205];
         _205++;
         continue;
     }

@@ -58,13 +58,13 @@ float flag_noise(float2 p)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
-    float3 rest_pos : TEXCOORD4;
-    float3 rest_normal : TEXCOORD5;
-    float3 uv2 : TEXCOORD6;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] float3 rest_pos: rest_pos;
+    [[vk::location(5)]] float3 rest_normal: rest_normal;
+    [[vk::location(6)]] float3 uv2: uv2;
     uint vertex_id : SV_VertexID;
 };
 
@@ -230,16 +230,16 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_seed : packoffset(c0.y);
-    int _Globals_color_id : packoffset(c0.z);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_flag_color_dims : packoffset(c5);
-    uint2 _Globals_anim_texture_dims : packoffset(c5.z);
-    uint2 _Globals_anim_normal_texture_dims : packoffset(c6);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    int seed : packoffset(c0.y);
+    int color_id : packoffset(c0.z);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 flag_color_dims : packoffset(c5);
+    uint2 anim_texture_dims : packoffset(c5.z);
+    uint2 anim_normal_texture_dims : packoffset(c6);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -264,13 +264,13 @@ static float2 out_var_C5;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
-    [[vk::location(5)]] float3 in_var_rest_normal : TEXCOORD5;
-    [[vk::location(6)]] float3 in_var_uv2 : TEXCOORD6;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
+    [[vk::location(5)]] float3 in_var_rest_normal: rest_normal;
+    [[vk::location(6)]] float3 in_var_uv2: uv2;
     uint gl_VertexIndex : SV_VertexID;
 };
 
@@ -288,7 +288,7 @@ struct SPIRV_Cross_Output
 void vert_main()
 {
     uint2 _139 = uint2(uint(gl_VertexIndex), 0u);
-    uint _145 = uint(_Globals_seed);
+    uint _145 = uint(seed);
     uint _147 = _145 + (_145 << 10u);
     uint _149 = _147 ^ (_147 >> 6u);
     uint _151 = _149 + (_149 << 3u);
@@ -296,7 +296,7 @@ void vert_main()
     float _159 = asfloat(((_153 + (_153 << 15u)) & 8388607u) | 1065353216u) - 1.0f;
     float _165 = float(frame_constants_game_time_sec) + frame_constants_game_time_frac;
     float2 _172 = float2((float(uint(gl_VertexIndex)) + 0.5f) * 0.012500000186264514923095703125f, (_165 * 0.1500000059604644775390625f) + (_159 * 0.20000000298023223876953125f));
-    float2 _196 = (mul(_Globals_model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_165, 0.0f) * 1.2000000476837158203125f);
+    float2 _196 = (mul(model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_165, 0.0f) * 1.2000000476837158203125f);
     int2 _198 = int2(floor(_196));
     float2 _199 = frac(_196);
     uint2 _200 = uint2(_198);
@@ -344,10 +344,10 @@ void vert_main()
     float _332 = 1.0f - _331;
     float _334 = _330.y;
     float3 _355 = clamp(smoothstep(0.0f, 1.0f, (((sin((((((1.0f - _334) * (((asfloat(((_224 ^ (_224 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _332) + ((asfloat(((_256 ^ (_256 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _331))) + (((asfloat(((_288 ^ (_288 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _332) * _334)) + (((asfloat(((_320 ^ (_320 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _331) * _334)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f) * 0.699999988079071044921875f) * lerp(0.699999988079071044921875f, 1.0f, _159)) + 0.699999988079071044921875f), 0.0f, 1.0f).xxx;
-    float4 _363 = mul(_Globals_model_to_world, float4(lerp(in_var_rest_pos * 0.800000011920928955078125f, (in_var_Vertex_Position * 0.800000011920928955078125f) + (((anim_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_texture.Load(int3(_139, 0u)).xyz) * 2.0f) * 0.800000011920928955078125f), _355), 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _363);
+    float4 _363 = mul(model_to_world, float4(lerp(in_var_rest_pos * 0.800000011920928955078125f, (in_var_Vertex_Position * 0.800000011920928955078125f) + (((anim_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_texture.Load(int3(_139, 0u)).xyz) * 2.0f) * 0.800000011920928955078125f), _355), 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _363);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = normalize(mul(_Globals_model_to_world, float4(lerp(in_var_rest_normal, in_var_Vertex_Normal + (anim_normal_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_normal_texture.Load(int3(_139, 0u)).xyz), _355), 0.0f)).xyz);
+    out_var_C1 = normalize(mul(model_to_world, float4(lerp(in_var_rest_normal, in_var_Vertex_Normal + (anim_normal_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_normal_texture.Load(int3(_139, 0u)).xyz), _355), 0.0f)).xyz);
     out_var_C2 = _363.xyz;
     out_var_C3 = in_var_Vertex_UV;
     out_var_C4 = float2(((in_var_uv2.x - 0.5f) * 1.2000000476837158203125f) + 0.5f, in_var_uv2.y * 7.0f);
@@ -437,16 +437,16 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_seed : packoffset(c0.y);
-    int _Globals_color_id : packoffset(c0.z);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_flag_color_dims : packoffset(c5);
-    uint2 _Globals_anim_texture_dims : packoffset(c5.z);
-    uint2 _Globals_anim_normal_texture_dims : packoffset(c6);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    int seed : packoffset(c0.y);
+    int color_id : packoffset(c0.z);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 flag_color_dims : packoffset(c5);
+    uint2 anim_texture_dims : packoffset(c5.z);
+    uint2 anim_normal_texture_dims : packoffset(c6);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -478,7 +478,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    float4 _119 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _119 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _131;
     if (dot(normalize((_119.xyz / _119.w.xxx) - in_var_C2), in_var_C1) <= 0.0f)
     {
@@ -488,13 +488,13 @@ void frag_main()
     {
         _131 = in_var_C1;
     }
-    uint _143 = uint(_Globals_seed ^ 234234);
+    uint _143 = uint(seed ^ 234234);
     uint _145 = _143 + (_143 << 10u);
     uint _147 = _145 ^ (_145 >> 6u);
     uint _149 = _147 + (_147 << 3u);
     uint _151 = _149 ^ (_149 >> 11u);
     float4 _170 = flag_patterns.SampleBias(sampler_llr, float3(in_var_C4, float(int(round(lerp(9.0f, 11.0f, asfloat(((_151 + (_151 << 15u)) & 8388607u) | 1065353216u) - 1.0f))))), frame_constants_global_mip_bias);
-    uint _181 = uint(_Globals_color_id);
+    uint _181 = uint(color_id);
     float3 _203;
     if (border_mask.SampleBias(sampler_llc, in_var_C3, frame_constants_global_mip_bias).x > 0.89999997615814208984375f)
     {
@@ -502,7 +502,7 @@ void frag_main()
     }
     else
     {
-        _203 = lerp(lerp(flag_palettes.Load(int3(uint2(0u, _181), 0u)).xyz, flag_palettes.Load(int3(uint2(2u, _181), 0u)).xyz, _170.x.xxx), flag_palettes.Load(int3(uint2(3u, _181), 0u)).xyz, flag_patterns.SampleLevel(sampler_llc, float3(in_var_C5, float((_Globals_seed - 6 * (_Globals_seed / 6)) + 3)), 0.0f).x.xxx);
+        _203 = lerp(lerp(flag_palettes.Load(int3(uint2(0u, _181), 0u)).xyz, flag_palettes.Load(int3(uint2(2u, _181), 0u)).xyz, _170.x.xxx), flag_palettes.Load(int3(uint2(3u, _181), 0u)).xyz, flag_patterns.SampleLevel(sampler_llc, float3(in_var_C5, float((seed - 6 * (seed / 6)) + 3)), 0.0f).x.xxx);
     }
     float3 _205 = (normalize(_131) * 0.5f) + 0.5f.xxx;
     float3 _227 = sqrt(clamp(_203, 0.0f.xxx, 1.0f.xxx));
@@ -586,16 +586,16 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_seed : packoffset(c0.y);
-    int _Globals_color_id : packoffset(c0.z);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_flag_color_dims : packoffset(c5);
-    uint2 _Globals_anim_texture_dims : packoffset(c5.z);
-    uint2 _Globals_anim_normal_texture_dims : packoffset(c6);
-    uint2 _Globals_border_mask_dims : packoffset(c6.z);
-    uint2 _Globals_flag_palettes_dims : packoffset(c7);
-    int _Globals_bool_render_shadows : packoffset(c7.z);
+    uint current_view_index : packoffset(c0);
+    int seed : packoffset(c0.y);
+    int color_id : packoffset(c0.z);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 flag_color_dims : packoffset(c5);
+    uint2 anim_texture_dims : packoffset(c5.z);
+    uint2 anim_normal_texture_dims : packoffset(c6);
+    uint2 border_mask_dims : packoffset(c6.z);
+    uint2 flag_palettes_dims : packoffset(c7);
+    int bool_render_shadows : packoffset(c7.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -620,13 +620,13 @@ static float2 out_var_C5;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
-    [[vk::location(5)]] float3 in_var_rest_normal : TEXCOORD5;
-    [[vk::location(6)]] float3 in_var_uv2 : TEXCOORD6;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
+    [[vk::location(5)]] float3 in_var_rest_normal: rest_normal;
+    [[vk::location(6)]] float3 in_var_uv2: uv2;
     uint gl_VertexIndex : SV_VertexID;
 };
 
@@ -644,7 +644,7 @@ struct SPIRV_Cross_Output
 void vert_main()
 {
     uint2 _139 = uint2(uint(gl_VertexIndex), 0u);
-    uint _145 = uint(_Globals_seed);
+    uint _145 = uint(seed);
     uint _147 = _145 + (_145 << 10u);
     uint _149 = _147 ^ (_147 >> 6u);
     uint _151 = _149 + (_149 << 3u);
@@ -652,7 +652,7 @@ void vert_main()
     float _159 = asfloat(((_153 + (_153 << 15u)) & 8388607u) | 1065353216u) - 1.0f;
     float _165 = float(frame_constants_game_time_sec) + frame_constants_game_time_frac;
     float2 _172 = float2((float(uint(gl_VertexIndex)) + 0.5f) * 0.012500000186264514923095703125f, (_165 * 0.1500000059604644775390625f) + (_159 * 0.20000000298023223876953125f));
-    float2 _196 = (mul(_Globals_model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_165, 0.0f) * 1.2000000476837158203125f);
+    float2 _196 = (mul(model_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f)).xz * 0.100000001490116119384765625f) + (float2(_165, 0.0f) * 1.2000000476837158203125f);
     int2 _198 = int2(floor(_196));
     float2 _199 = frac(_196);
     uint2 _200 = uint2(_198);
@@ -700,10 +700,10 @@ void vert_main()
     float _332 = 1.0f - _331;
     float _334 = _330.y;
     float3 _355 = clamp(smoothstep(0.0f, 1.0f, (((sin((((((1.0f - _334) * (((asfloat(((_224 ^ (_224 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _332) + ((asfloat(((_256 ^ (_256 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _331))) + (((asfloat(((_288 ^ (_288 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _332) * _334)) + (((asfloat(((_320 ^ (_320 >> 18u)) & 8388607u) | 1065353216u) - 1.0f) * _331) * _334)) * 3.1400001049041748046875f) - 1.57000005245208740234375f) + 0.300000011920928955078125f) * 0.699999988079071044921875f) * lerp(0.699999988079071044921875f, 1.0f, _159)) + 0.699999988079071044921875f), 0.0f, 1.0f).xxx;
-    float4 _363 = mul(_Globals_model_to_world, float4(lerp(in_var_rest_pos * 0.800000011920928955078125f, (in_var_Vertex_Position * 0.800000011920928955078125f) + (((anim_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_texture.Load(int3(_139, 0u)).xyz) * 2.0f) * 0.800000011920928955078125f), _355), 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _363);
+    float4 _363 = mul(model_to_world, float4(lerp(in_var_rest_pos * 0.800000011920928955078125f, (in_var_Vertex_Position * 0.800000011920928955078125f) + (((anim_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_texture.Load(int3(_139, 0u)).xyz) * 2.0f) * 0.800000011920928955078125f), _355), 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _363);
     out_var_C0 = in_var_Vertex_Color;
-    out_var_C1 = normalize(mul(_Globals_model_to_world, float4(lerp(in_var_rest_normal, in_var_Vertex_Normal + (anim_normal_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_normal_texture.Load(int3(_139, 0u)).xyz), _355), 0.0f)).xyz);
+    out_var_C1 = normalize(mul(model_to_world, float4(lerp(in_var_rest_normal, in_var_Vertex_Normal + (anim_normal_texture.SampleLevel(sampler_llr, _172, 0.0f).xyz - anim_normal_texture.Load(int3(_139, 0u)).xyz), _355), 0.0f)).xyz);
     out_var_C2 = _363.xyz;
     out_var_C3 = in_var_Vertex_UV;
     out_var_C4 = float2(((in_var_uv2.x - 0.5f) * 1.2000000476837158203125f) + 0.5f, in_var_uv2.y * 7.0f);

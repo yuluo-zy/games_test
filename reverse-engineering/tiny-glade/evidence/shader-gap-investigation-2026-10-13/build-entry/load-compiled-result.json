@@ -1,0 +1,105 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "shader-build-gap-1013",
+  "pid": 11520,
+  "project": "D:\\game\\tools\\reverse-runtime\\shader-build-gap-1013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "prepare_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "targets": [
+          {
+            "address": "0x1409e3c50",
+            "size": 847,
+            "bytes_sha256": "4a4131dca631971e7154eed4efb818a8130beb8b2813d49bbf0f5656e0bce21b",
+            "range_basis": "original RNE PE exception directory end_exclusive 0x1409e3f9f"
+          },
+          {
+            "address": "0x1409e4160",
+            "size": 847,
+            "bytes_sha256": "b6bba06dcbb945f9b6d6eaf7f1c6a1f4bf5d2c6842cfb5f2fbd25d9d0604edee",
+            "range_basis": "original RNE PE exception directory end_exclusive 0x1409e44af"
+          }
+        ]
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\build-entry\\load-compiled-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\build-entry\\\\\\\\load-compiled-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 408, \\\"sha256\\\": \\\"5d8dfccf6f1dfd96f86d9cbf277e71b943720b3b1db13d89e26e5a4c3c8023e0\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":5400}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 5.407,
+      "stdout": "{\"prepared\": [{\"address\": \"0x1409e3c50\", \"requested_bytes\": 847, \"body_bytes\": 847, \"range_basis\": \"original RNE PE exception directory end_exclusive 0x1409e3f9f\", \"prototype_changed\": false}, {\"address\": \"0x1409e4160\", \"requested_bytes\": 847, \"body_bytes\": 847, \"range_basis\": \"original RNE PE exception directory end_exclusive 0x1409e44af\", \"prototype_changed\": false}], \"no_whole_program_analysis\": true}\n",
+      "passed": true
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1409e3c50,0x1409e4160",
+        "fields": "signature,decompiled_code,callees"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\build-entry\\load-compiled-result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\build-entry\\\\\\\\load-compiled-result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 8756, \\\"sha256\\\": \\\"efc5537747251067280da930256fa71cb6ab0994cfd09b664d03b34103df4728\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":6975}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 7.0,
+      "stdout": "{\"functions\": [{\"address\": \"0x1409e3c50\", \"name\": \"FUN_1409e3c50\", \"signature\": \"undefined FUN_1409e3c50(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 847, \"prototype_is_not_verified_Rust_ABI\": true, \"callees\": [{\"address\": \"141795d10\", \"name\": \"FUN_141795d10\"}, {\"address\": \"140d76ed0\", \"name\": \"FUN_140d76ed0\"}, {\"address\": \"140d58eb0\", \"name\": \"FUN_140d58eb0\"}, {\"address\": \"1428a83e0\", \"name\": \"FUN_1428a83e0\"}, {\"address\": \"1409e4670\", \"name\": \"FUN_1409e4670\"}, {\"address\": \"140d79f90\", \"name\": \"FUN_140d79f90\"}], \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\nundefined8 * FUN_1409e3c50(undefined8 *param_1,undefined8 param_2)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  undefined8 uVar2;\\r\\n  undefined *puStack_250;\\r\\n  code *pcStack_248;\\r\\n  undefined8 uStack_240;\\r\\n  undefined8 uStack_238;\\r\\n  undefined8 uStack_230;\\r\\n  undefined1 auStack_110 [24];\\r\\n  undefined1 auStack_f8 [24];\\r\\n  longlong lStack_e0;\\r\\n  undefined8 uStack_d8;\\r\\n  code *pcStack_c0;\\r\\n  code *pcStack_b8;\\r\\n  code **ppcStack_b0;\\r\\n  code *pcStack_a8;\\r\\n  undefined8 uStack_a0;\\r\\n  code *pcStack_90;\\r\\n  code *pcStack_88;\\r\\n  code **ppcStack_80;\\r\\n  code *pcStack_78;\\r\\n  longlong lStack_70;\\r\\n  code *pcStack_68;\\r\\n  uint uStack_60;\\r\\n  undefined4 uStack_5c;\\r\\n  undefined8 uStack_58;\\r\\n  undefined8 *puStack_48;\\r\\n  code *pcStack_40;\\r\\n  code *pcStack_38;\\r\\n  code *pcStack_30;\\r\\n  undefined8 uStack_28;\\r\\n  \\r\\n  uStack_28 = 0xfffffffffffffffe;\\r\\n  FUN_141795d10(&lStack_e0);\\r\\n  uVar2 = FUN_140d76ed0(&lStack_e0);\\r\\n  FUN_140d58eb0(&pcStack_90,uVar2,param_2);\\r\\n  if (SBORROW8(0,(longlong)pcStack_90)) {\\r\\n    pcStack_68 = pcStack_88;\\r\\n    pcStack_b8 = FUN_140d61ae0;\\r\\n    ppcStack_b0 = &pcStack_68;\\r\\n    pcStack_a8 = FUN_140d5b010;\\r\\n    puStack_250 = &UNK_142ac45b8;\\r\\n    pcStack_248 = (code *)0x2;\\r\\n    uStack_240 = &pcStack_c0;\\r\\n    uStack_238 = 2;\\r\\n    uStack_230 = 0;\\r\\n    pcStack_c0 = (code *)&lStack_e0;\\r\\n    FUN_140d79f90(auStack_f8,&puStack_250);\\r\\n    uVar2 = FUN_1428a83e0(auStack_f8);\\r\\n    if (((uint)pcStack_68 & 3) == 1) {\\r\\n      pcStack_38 = pcStack_68 + -1;\\r\\n      pcStack_30 = *(code **)(pcStack_68 + -1);\\r\\n      pcStack_40 = *(code **)(pcStack_68 + 7);\\r\\n      if (*(code **)pcStack_40 != (code *)0x0) {\\r\\n        (**(code **)pcStack_40)(pcStack_30);\\r\\n      }\\r\\n      if (*(longlong *)(pcStack_40 + 8) != 0) {\\r\\n        func_0x000140613c20(pcStack_30,*(longlong *)(pcStack_40 + 8),\\r\\n                            *(undefined8 *)(pcStack_40 + 0x10));\\r\\n      }\\r\\n      func_0x000140613c20(pcStack_38,0x18,8);\\r\\n    }\\r\\n    param_1[1] = uVar2;\\r\\n    *param_1 = 0x8000000000000000;\\r\\n  }\\r\\n  else {\\r\\n    pcStack_30 = pcStack_90;\\r\\n    pcStack_40 = pcStack_88;\\r\\n    FUN_1409e4670(&puStack_250,pcStack_88,ppcStack_80);\\r\\n    if (SBORROW8(0,(longlong)puStack_250)) {\\r\\n      uStack_58 = uStack_238;\\r\\n      pcStack_68 = pcStack_248;\\r\\n      uStack_60 = (uint)uStack_240;\\r\\n      uStack_5c = uStack_240._4_4_;\\r\\n      pcStack_88 = FUN_140d61ae0;\\r\\n      ppcStack_80 = &pcStack_68;\\r\\n      pcStack_78 = FUN_1417963e0;\\r\\n      pcStack_c0 = (code *)&UNK_142ac4610;\\r\\n      pcStack_b8 = (code *)0x2;\\r\\n      pcStack_a8 = (code *)0x2;\\r\\n      uStack_a0 = 0;\\r\\n      ppcStack_b0 = &pcStack_90;\\r\\n      pcStack_90 = (code *)&lStack_e0;\\r\\n      FUN_140d79f90(auStack_110,&pcStack_c0);\\r\\n      uVar2 = FUN_1428a83e0(auStack_110);\\r\\n      if (((int)pcStack_68 == 0xf) && (lVar1 = CONCAT44(uStack_5c,uStack_60), (uStack_60 & 3) == 1))\\r\\n      {\\r\\n        lStack_70 = lVar1 + -1;\\r\\n        pcStack_38 = *(code **)(lVar1 + -1);\\r\\n        puStack_48 = *(undefined8 **)(lVar1 + 7);\\r\\n        if ((code *)*puStack_48 != (code *)0x0) {\\r\\n          (*(code *)*puStack_48)(pcStack_38);\\r\\n        }\\r\\n        if (puStack_48[1] != 0) {\\r\\n          func_0x000140613c20(pcStack_38,puStack_48[1],puStack_48[2]);\\r\\n        }\\r\\n        func_0x000140613c20(lStack_70,0x18,8);\\r\\n      }\\r\\n      param_1[1] = uVar2;\\r\\n      *param_1 = 0x8000000000000000;\\r\\n    }\\r\\n    else {\\r\\n      func_0x000142923c00(param_1,&puStack_250,0x140);\\r\\n    }\\r\\n    if (pcStack_30 != (code *)0x0) {\\r\\n      func_0x000140613c20(pcStack_40,pcStack_30,1);\\r\\n    }\\r\\n  }\\r\\n  if (lStack_e0 != 0) {\\r\\n    func_0x000140613c20(uStack_d8,lStack_e0,1);\\r\\n  }\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}, {\"address\": \"0x1409e4160\", \"name\": \"FUN_1409e4160\", \"signature\": \"undefined FUN_1409e4160(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 847, \"prototype_is_not_verified_Rust_ABI\": true, \"callees\": [{\"address\": \"141796080\", \"name\": \"FUN_141796080\"}, {\"address\": \"140d76ed0\", \"name\": \"FUN_140d76ed0\"}, {\"address\": \"140d58eb0\", \"name\": \"FUN_140d58eb0\"}, {\"address\": \"1428a83e0\", \"name\": \"FUN_1428a83e0\"}, {\"address\": \"1409e4670\", \"name\": \"FUN_1409e4670\"}, {\"address\": \"140d79f90\", \"name\": \"FUN_140d79f90\"}], \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\nundefined8 * FUN_1409e4160(undefined8 *param_1,undefined8 param_2)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  undefined8 uVar2;\\r\\n  undefined *puStack_250;\\r\\n  code *pcStack_248;\\r\\n  undefined8 uStack_240;\\r\\n  undefined8 uStack_238;\\r\\n  undefined8 uStack_230;\\r\\n  undefined1 auStack_110 [24];\\r\\n  undefined1 auStack_f8 [24];\\r\\n  longlong lStack_e0;\\r\\n  undefined8 uStack_d8;\\r\\n  code *pcStack_c0;\\r\\n  code *pcStack_b8;\\r\\n  code **ppcStack_b0;\\r\\n  code *pcStack_a8;\\r\\n  undefined8 uStack_a0;\\r\\n  code *pcStack_90;\\r\\n  code *pcStack_88;\\r\\n  code **ppcStack_80;\\r\\n  code *pcStack_78;\\r\\n  longlong lStack_70;\\r\\n  code *pcStack_68;\\r\\n  uint uStack_60;\\r\\n  undefined4 uStack_5c;\\r\\n  undefined8 uStack_58;\\r\\n  undefined8 *puStack_48;\\r\\n  code *pcStack_40;\\r\\n  code *pcStack_38;\\r\\n  code *pcStack_30;\\r\\n  undefined8 uStack_28;\\r\\n  \\r\\n  uStack_28 = 0xfffffffffffffffe;\\r\\n  FUN_141796080(&lStack_e0);\\r\\n  uVar2 = FUN_140d76ed0(&lStack_e0);\\r\\n  FUN_140d58eb0(&pcStack_90,uVar2,param_2);\\r\\n  if (SBORROW8(0,(longlong)pcStack_90)) {\\r\\n    pcStack_68 = pcStack_88;\\r\\n    pcStack_b8 = FUN_140d61ae0;\\r\\n    ppcStack_b0 = &pcStack_68;\\r\\n    pcStack_a8 = FUN_140d5b010;\\r\\n    puStack_250 = &UNK_142ac45b8;\\r\\n    pcStack_248 = (code *)0x2;\\r\\n    uStack_240 = &pcStack_c0;\\r\\n    uStack_238 = 2;\\r\\n    uStack_230 = 0;\\r\\n    pcStack_c0 = (code *)&lStack_e0;\\r\\n    FUN_140d79f90(auStack_f8,&puStack_250);\\r\\n    uVar2 = FUN_1428a83e0(auStack_f8);\\r\\n    if (((uint)pcStack_68 & 3) == 1) {\\r\\n      pcStack_38 = pcStack_68 + -1;\\r\\n      pcStack_30 = *(code **)(pcStack_68 + -1);\\r\\n      pcStack_40 = *(code **)(pcStack_68 + 7);\\r\\n      if (*(code **)pcStack_40 != (code *)0x0) {\\r\\n        (**(code **)pcStack_40)(pcStack_30);\\r\\n      }\\r\\n      if (*(longlong *)(pcStack_40 + 8) != 0) {\\r\\n        func_0x000140613c20(pcStack_30,*(longlong *)(pcStack_40 + 8),\\r\\n                            *(undefined8 *)(pcStack_40 + 0x10));\\r\\n      }\\r\\n      func_0x000140613c20(pcStack_38,0x18,8);\\r\\n    }\\r\\n    param_1[1] = uVar2;\\r\\n    *param_1 = 0x8000000000000000;\\r\\n  }\\r\\n  else {\\r\\n    pcStack_30 = pcStack_90;\\r\\n    pcStack_40 = pcStack_88;\\r\\n    FUN_1409e4670(&puStack_250,pcStack_88,ppcStack_80);\\r\\n    if (SBORROW8(0,(longlong)puStack_250)) {\\r\\n      uStack_58 = uStack_238;\\r\\n      pcStack_68 = pcStack_248;\\r\\n      uStack_60 = (uint)uStack_240;\\r\\n      uStack_5c = uStack_240._4_4_;\\r\\n      pcStack_88 = FUN_140d61ae0;\\r\\n      ppcStack_80 = &pcStack_68;\\r\\n      pcStack_78 = FUN_1417963e0;\\r\\n      pcStack_c0 = (code *)&UNK_142ac4610;\\r\\n      pcStack_b8 = (code *)0x2;\\r\\n      pcStack_a8 = (code *)0x2;\\r\\n      uStack_a0 = 0;\\r\\n      ppcStack_b0 = &pcStack_90;\\r\\n      pcStack_90 = (code *)&lStack_e0;\\r\\n      FUN_140d79f90(auStack_110,&pcStack_c0);\\r\\n      uVar2 = FUN_1428a83e0(auStack_110);\\r\\n      if (((int)pcStack_68 == 0xf) && (lVar1 = CONCAT44(uStack_5c,uStack_60), (uStack_60 & 3) == 1))\\r\\n      {\\r\\n        lStack_70 = lVar1 + -1;\\r\\n        pcStack_38 = *(code **)(lVar1 + -1);\\r\\n        puStack_48 = *(undefined8 **)(lVar1 + 7);\\r\\n        if ((code *)*puStack_48 != (code *)0x0) {\\r\\n          (*(code *)*puStack_48)(pcStack_38);\\r\\n        }\\r\\n        if (puStack_48[1] != 0) {\\r\\n          func_0x000140613c20(pcStack_38,puStack_48[1],puStack_48[2]);\\r\\n        }\\r\\n        func_0x000140613c20(lStack_70,0x18,8);\\r\\n      }\\r\\n      param_1[1] = uVar2;\\r\\n      *param_1 = 0x8000000000000000;\\r\\n    }\\r\\n    else {\\r\\n      func_0x000142923c00(param_1,&puStack_250,0x140);\\r\\n    }\\r\\n    if (pcStack_30 != (code *)0x0) {\\r\\n      func_0x000140613c20(pcStack_40,pcStack_30,1);\\r\\n    }\\r\\n  }\\r\\n  if (lStack_e0 != 0) {\\r\\n    func_0x000140613c20(uStack_d8,lStack_e0,1);\\r\\n  }\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 14.078,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":10}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "d638b32b4b962b0f2d61d0001729fce4",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

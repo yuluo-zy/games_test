@@ -38,10 +38,10 @@ float anim_t;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
 };
 
 struct VsOut
@@ -218,10 +218,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c5);
-    float _Globals_anim_t : packoffset(c5.y);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    int bool_render_shadows : packoffset(c5);
+    float anim_t : packoffset(c5.y);
 };
 
 
@@ -244,7 +244,7 @@ void frag_main()
     {
         discard;
     }
-    float _124 = 1.0f - _Globals_anim_t;
+    float _124 = 1.0f - anim_t;
     float2 _130 = in_var_C3 * 25.6000003814697265625f;
     float _132 = _130.x * 2.0f;
     float _137 = _130.y;

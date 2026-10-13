@@ -78,7 +78,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -539,7 +539,7 @@ void vert_main()
         float _1497 = (_1404 * _1404) * (3.0f - (2.0f * _1404));
         float2 _1507 = ((((((float2(asfloat((_1324 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1332 + (_1332 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * (1.0f - _1392)) + (float2(asfloat((_1369 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1377 + (_1377 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _1392)) * 2.0f) - 1.0f.xx) * 2.0f) - ((((((float2(asfloat((_1429 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1437 + (_1437 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * (1.0f - _1497)) + (float2(asfloat((_1474 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1482 + (_1482 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _1497)) * 2.0f) - 1.0f.xx) * 2.0f) * _1066)) * 0.0500000007450580596923828125f;
         float2 _1509 = ((_686.xz + (_1069 * _837)).xy + (_1288 * _837)).xy + _1507;
-        _1524 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_1509.x, _685, _1509.y, 1.0f));
+        _1524 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_1509.x, _685, _1509.y, 1.0f));
         _1525 = mul(_223, float4(normalize(float3(_195, 0.0f, _197)), 0.0f));
         _1526 = float3(_1509.x, _686.y, _1509.y);
         _1527 = _645;
@@ -881,7 +881,7 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
+    uint current_view_index : packoffset(c0);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -1342,7 +1342,7 @@ void vert_main()
         float _1497 = (_1404 * _1404) * (3.0f - (2.0f * _1404));
         float2 _1507 = ((((((float2(asfloat((_1324 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1332 + (_1332 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * (1.0f - _1392)) + (float2(asfloat((_1369 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1377 + (_1377 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _1392)) * 2.0f) - 1.0f.xx) * 2.0f) - ((((((float2(asfloat((_1429 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1437 + (_1437 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * (1.0f - _1497)) + (float2(asfloat((_1474 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_1482 + (_1482 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _1497)) * 2.0f) - 1.0f.xx) * 2.0f) * _1066)) * 0.0500000007450580596923828125f;
         float2 _1509 = ((_686.xz + (_1069 * _837)).xy + (_1288 * _837)).xy + _1507;
-        _1524 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_1509.x, _685, _1509.y, 1.0f));
+        _1524 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_1509.x, _685, _1509.y, 1.0f));
         _1525 = mul(_223, float4(normalize(float3(_195, 0.0f, _197)), 0.0f));
         _1526 = float3(_1509.x, _686.y, _1509.y);
         _1527 = _645;

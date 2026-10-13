@@ -75,10 +75,10 @@ float hash2_rand(uint h)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float2 Vertex_UV : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    int bush_part_id : TEXCOORD3;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] int bush_part_id: bush_part_id;
     uint instance_id : SV_InstanceID;
 };
 
@@ -262,13 +262,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_bush_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_bush_color_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_grass_object_push_dims : packoffset(c2.z);
-    int _Globals_bool_render_shadows : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 bush_alpha_dims : packoffset(c0.y);
+    uint2 bush_color_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 grass_object_push_dims : packoffset(c2.z);
+    int bool_render_shadows : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -291,10 +291,10 @@ static float out_var_C5;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] int in_var_bush_part_id : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] int in_var_bush_part_id: bush_part_id;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -383,7 +383,7 @@ void vert_main()
     {
         _365 = _172;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_365, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_365, 1.0f));
     out_var_C0 = 0.5f.xxx;
     out_var_C1 = mul(_167, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _365;
@@ -482,13 +482,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_bush_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_bush_color_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_grass_object_push_dims : packoffset(c2.z);
-    int _Globals_bool_render_shadows : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 bush_alpha_dims : packoffset(c0.y);
+    uint2 bush_color_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 grass_object_push_dims : packoffset(c2.z);
+    int bool_render_shadows : packoffset(c3);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -511,10 +511,10 @@ static float out_var_C5;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] int in_var_bush_part_id : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] int in_var_bush_part_id: bush_part_id;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -603,7 +603,7 @@ void vert_main()
     {
         _365 = _172;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_365, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_365, 1.0f));
     out_var_C0 = 0.5f.xxx;
     out_var_C1 = mul(_167, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _365;
@@ -692,13 +692,13 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_bush_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_bush_color_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    uint2 _Globals_grass_object_push_dims : packoffset(c2.z);
-    int _Globals_bool_render_shadows : packoffset(c3);
+    uint current_view_index : packoffset(c0);
+    uint2 bush_alpha_dims : packoffset(c0.y);
+    uint2 bush_color_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    uint2 grass_object_push_dims : packoffset(c2.z);
+    int bool_render_shadows : packoffset(c3);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -721,7 +721,7 @@ void frag_main()
     {
         discard;
     }
-    float4 _95 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _95 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     if (abs(dot(normalize((_95.xyz / _95.w.xxx) - in_var_C2), in_var_C1)) > 0.5f)
     {
         discard;

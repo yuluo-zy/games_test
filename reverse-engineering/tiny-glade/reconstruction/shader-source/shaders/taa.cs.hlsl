@@ -277,15 +277,15 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_color_tex_dims : packoffset(c0);
-    uint2 _Globals_history_tex_dims : packoffset(c0.z);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c1);
-    uint2 _Globals_history_output_tex_dims : packoffset(c1.z);
-    uint2 _Globals_output_tex_dims : packoffset(c2);
-    uint2 _Globals_temp_debug_tex_dims : packoffset(c2.z);
-    uint _Globals_bypass_neighborhood_clamping : packoffset(c3);
-    float _Globals_sharpen_amount : packoffset(c3.y);
-    uint _Globals_history_valid : packoffset(c3.z);
+    uint2 color_tex_dims : packoffset(c0);
+    uint2 history_tex_dims : packoffset(c0.z);
+    uint2 reprojection_tex_dims : packoffset(c1);
+    uint2 history_output_tex_dims : packoffset(c1.z);
+    uint2 output_tex_dims : packoffset(c2);
+    uint2 temp_debug_tex_dims : packoffset(c2.z);
+    uint bypass_neighborhood_clamping : packoffset(c3);
+    float sharpen_amount : packoffset(c3.y);
+    uint history_valid : packoffset(c3.z);
 };
 
 SamplerState sampler_default : register(s9, space0);
@@ -307,9 +307,9 @@ groupshared float tile_luminance[8][8];
 
 void comp_main()
 {
-    float2 _147 = float2(_Globals_output_tex_dims);
+    float2 _147 = float2(output_tex_dims);
     float2 _149 = float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx;
-    float2 _165 = ((_149 / _147) + reprojection_tex.Load(int3(uint2((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) * float2(_Globals_color_tex_dims / _Globals_output_tex_dims)), 0u)).xy) * _147;
+    float2 _165 = ((_149 / _147) + reprojection_tex.Load(int3(uint2((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) * float2(color_tex_dims / output_tex_dims)), 0u)).xy) * _147;
     float2 _167 = floor(_165 - 0.5f.xx);
     float2 _168 = _167 + 0.5f.xx;
     float2 _169 = _165 - _168;
@@ -333,7 +333,7 @@ void comp_main()
     float _251 = _185.y;
     float3 _265 = (((((((float4(history_tex.SampleLevel(sampler_default, float2(_194, _191.y), 0.0f).xyz, 1.0f) * _203) * _205) + ((float4(history_tex.SampleLevel(sampler_default, float2(_191.x, _208), 0.0f).xyz, 1.0f) * _216) * _218)) + ((float4(history_tex.SampleLevel(sampler_default, _193, 0.0f).xyz, 1.0f) * _203) * _218)) + ((float4(history_tex.SampleLevel(sampler_default, float2(_192.x, _208), 0.0f).xyz, 1.0f) * _238) * _218)) + ((float4(history_tex.SampleLevel(sampler_default, float2(_194, _192.y), 0.0f).xyz, 1.0f) * _203) * _251)) / (((((_203 * _205) + (_216 * _218)) + (_203 * _218)) + (_238 * _218)) + (_203 * _251)).xxxx).xyz;
     float3 _266 = mul(float3x3(float3(0.2125999927520751953125f, 0.715200006961822509765625f, 0.072200000286102294921875f), float3(-0.114600002765655517578125f, -0.385399997234344482421875f, 0.5f), float3(0.5f, -0.4541999995708465576171875f, -0.0458000004291534423828125f)), _265);
-    float2 _272 = float2(int2(_Globals_color_tex_dims)) / _147;
+    float2 _272 = float2(int2(color_tex_dims)) / _147;
     int2 _274 = int2(_149 * _272);
     float2 _279 = ((float2(_274) + 0.5f.xx) + (frame_constants_view_constants[0u].sample_offset_pixels * float2(1.0f, -1.0f))) / _272;
     float _280 = _272.x;
@@ -390,7 +390,7 @@ void comp_main()
     float3 _361 = _342 + _359;
     float _384;
     float3 _385;
-    if (!(_Globals_bypass_neighborhood_clamping != 0u))
+    if (!(bypass_neighborhood_clamping != 0u))
     {
         float _370 = _266.x;
         _384 = 0.125f * lerp(0.20000000298023223876953125f, 1.0f, smoothstep(0.0f, 2.0f, min(abs(_370 - _360.x), abs(_370 - _361.x)) / max(max(_370, _353), 9.9999997473787516355514526367188e-06f)));
@@ -402,7 +402,7 @@ void comp_main()
         _385 = _266;
     }
     bool _399;
-    if (_Globals_history_valid != 0u)
+    if (history_valid != 0u)
     {
         _399 = !(0u == frame_constants_frame_index);
     }
@@ -423,7 +423,7 @@ void comp_main()
     { int3 _fe; _406.mantissa = frexp(_405, _fe); _406.exponent = _fe; }
     history_output_tex[gl_GlobalInvocationID.xy] = _405 + exp2(float3(_406.exponent) - float3(8.0f, 8.0f, 7.0f));
     float3 _495;
-    if (_Globals_sharpen_amount > 0.0f)
+    if (sharpen_amount > 0.0f)
     {
         float _418 = dot(_405, float3(0.2125999927520751953125f, 0.715200006961822509765625f, 0.072200000286102294921875f));
         tile_luminance[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = _418;
@@ -440,7 +440,7 @@ void comp_main()
         if (all(bool4(_428.x < uint4(8u, 8u, 8u, 8u).x, _428.y < uint4(8u, 8u, 8u, 8u).y, _428.z < uint4(8u, 8u, 8u, 8u).z, _428.w < uint4(8u, 8u, 8u, 8u).w)))
         {
             float _444 = max(0.0f, 1.0f - (6.0f * (abs(_418 - tile_luminance[_424][_425]) + abs(_418 - tile_luminance[_426][_427]))));
-            float _447 = min(_444, (_Globals_sharpen_amount * _444) * 1.25f);
+            float _447 = min(_444, (sharpen_amount * _444) * 1.25f);
             _451 = _447 * (tile_luminance[_424][_425] + tile_luminance[_426][_427]);
             _452 = _447 * 2.0f;
         }
@@ -461,7 +461,7 @@ void comp_main()
         if (all(bool4(_459.x < uint4(8u, 8u, 8u, 8u).x, _459.y < uint4(8u, 8u, 8u, 8u).y, _459.z < uint4(8u, 8u, 8u, 8u).z, _459.w < uint4(8u, 8u, 8u, 8u).w)))
         {
             float _475 = max(0.0f, 1.0f - (6.0f * (abs(_418 - tile_luminance[_455][_456]) + abs(_418 - tile_luminance[_457][_458]))));
-            float _478 = min(_475, (_Globals_sharpen_amount * _475) * 1.25f);
+            float _478 = min(_475, (sharpen_amount * _475) * 1.25f);
             _485 = (_451 + (tile_luminance[_455][_456] * _478)) + (tile_luminance[_457][_458] * _478);
             _486 = _452 + (_478 * 2.0f);
         }

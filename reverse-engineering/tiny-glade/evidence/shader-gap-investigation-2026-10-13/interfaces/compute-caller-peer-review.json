@@ -1,0 +1,42 @@
+{
+  "reviewer": "shader_runtime",
+  "status": "passed_for_concrete_macro_value_dataflow",
+  "original_exe_identity": "B original RNE, machine-instruction evidence; decompiler placeholder ABI not relied on",
+  "dof": {
+    "caller": "0x1404ec110",
+    "selection": "0x1404ecce7 cmp esi,0x13;0x1404eccea sete [rsp+0x30] produces0or1;0x1404ecd09 calls0x140a5a570",
+    "callee": "0x140a5a570",
+    "stack_check": "8pushes=0x40; sub rsp0x748; rbp=rsp+0x80 =>rbp=entryrsp-0x708; [rbp+0x740]=[entryrsp+0x38]=caller[rsp+0x30]",
+    "zero_extension": "0x140a5afbf movzbl [rbp+0x740],r12d; no signextension or additional remap",
+    "halfres": "0x140a5b9b3/0x140a5bc58 mov r12d,r9d",
+    "fullres": "0x140a5bed4/0x140a5bedb/0x140a5bee2 store same32bit value into three config cells",
+    "unproven": "Meaning/UIlabel of source enumvalue0x13 not independently assigned"
+  },
+  "nani": {
+    "outer": "0x140987dd0",
+    "flag": "0x140987e0a test r8,r8;setne sil produces0or1 from pointerpresence",
+    "storage": "0x14098830c stores sil at[rbp+0x5c0]",
+    "recover": "0x140988500 movzbl byte,eax; xor edx,edx;mov al,dl =>32bit0or1",
+    "call": "0x1409885b3 calls0x140a28950 with edx, tracked unchanged through argument preparation",
+    "forward": "0x140a28976 edx→eax;0x140a289b8 eax→r9d;0x140a289bb passes config to ComputePass::new",
+    "unproven": "Pointee/conceptual meaning not guessed from oc_pass label"
+  },
+  "evidence": [
+    {
+      "path": "../compute/asm/0x1404ec110.txt",
+      "sha256": "babaff0d02d7e8b9f4bed043aaf43ff044e7cc5d79f1a8978c0a191110908589"
+    },
+    {
+      "path": "../compute/asm/0x140a5a570.txt",
+      "sha256": "bb6d6640e687dd593467691291693faa0675822f01102d95798f27e928210b99"
+    },
+    {
+      "path": "../compute/asm/0x140987dd0.txt",
+      "sha256": "14ca3663ca251cb7149cd0c8a222fb4552bb5794c878ff075d0def1dc14ff4ec"
+    },
+    {
+      "path": "../compute/asm/0x140a28950.txt",
+      "sha256": "3f7456c792c4737e4d5582a0c26167e4f341144cebd2d109750ee11053d69f8f"
+    }
+  ]
+}

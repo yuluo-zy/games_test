@@ -174,9 +174,9 @@ float stairs_noise_octave(inout ChainedNoiseState s, inout float amp, inout floa
 
 struct VS_INPUT
 {
-    float3 position : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-    float3 bevel_offset : TEXCOORD2;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(1)]] float3 normal: Vertex_Normal;
+    [[vk::location(2)]] float3 bevel_offset: bevel_offset;
     uint instance_index : SV_InstanceID;
 };
 

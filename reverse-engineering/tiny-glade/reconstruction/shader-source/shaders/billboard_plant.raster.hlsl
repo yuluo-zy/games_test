@@ -51,13 +51,13 @@ Texture2D<float4> terrain_texture : register(t18, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float3 vertex_normal : TEXCOORD1;
-    float2 vertex_uv : TEXCOORD2;
-    float3 uv2 : TEXCOORD3;
-    float bby : TEXCOORD4;
-    int plant_id : TEXCOORD5;
-    int prim_id : TEXCOORD6;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
+    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;
+    [[vk::location(3)]] float3 uv2: uv2;
+    [[vk::location(4)]] float bby: bby;
+    [[vk::location(5)]] int plant_id: plant_id;
+    [[vk::location(6)]] int prim_id: prim_id;
 };
 
 struct VS_OUT

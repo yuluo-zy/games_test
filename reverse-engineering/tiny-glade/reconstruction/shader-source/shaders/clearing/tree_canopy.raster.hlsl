@@ -74,12 +74,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_firstperson_mode : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    float _Globals_cone_angle_mult : packoffset(c1.z);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+    uint current_view_index : packoffset(c0);
+    int is_firstperson_mode : packoffset(c0.y);
+    float wind_strength : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    float cone_angle_mult : packoffset(c1.z);
+    float max_cone_cull_dist_range : packoffset(c1.w);
 };
 
 ByteAddressBuffer nani_instance_data : register(t15, space0);
@@ -110,13 +110,13 @@ static float out_var_C12;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_prim_center : TEXCOORD3;
-    [[vk::location(4)]] float3 in_var_prim_normals : TEXCOORD4;
-    [[vk::location(5)]] float3 in_var_appear_pos : TEXCOORD5;
-    [[vk::location(6)]] float in_var_age : TEXCOORD6;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
+    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
+    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(6)]] float in_var_age: age;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -207,7 +207,7 @@ void vert_main()
         float3 _358 = _351.xyz;
         float _366 = _351.x;
         float _367 = _351.y;
-        float4 _370 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(_366, _367, _351.z, 1.0f));
+        float4 _370 = mul(frame_constants_view_constants[current_view_index].world_to_view, float4(_366, _367, _351.z, 1.0f));
         if (length(_370.xyz) < ((!((frame_constants_render_overrides & 2u) != 0u)) ? (-5.0f) : 5.0f))
         {
             _744 = asfloat(0x7fbfffffu /* nan */).xxxx;
@@ -226,7 +226,7 @@ void vert_main()
             _757 = 0.0f;
             break;
         }
-        float4 _384 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+        float4 _384 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
         float3 _388 = _384.xyz / _384.w.xxx;
         float3 _389 = _358 - _388;
         float _390 = length(_389);
@@ -252,7 +252,7 @@ void vert_main()
         }
         float _404 = 1.0f - smoothstep(0.300000011920928955078125f, -0.199999988079071044921875f, _399);
         float3 _412 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_269 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_303, mul(float4x4(float4(nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_269 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(_251, _226, _267, 1.0f)))).xyz;
-        float _418 = (frame_constants_glade_theme_id == 4u) ? 0.4000000059604644775390625f : _Globals_wind_strength;
+        float _418 = (frame_constants_glade_theme_id == 4u) ? 0.4000000059604644775390625f : wind_strength;
         float3 _423 = (float3(in_var_Vertex_Color.xy, 0.0f) * 2.0f) - 1.0f.xxx;
         float _424 = 3.52941608428955078125f * _418;
         float _432 = 1.53846204280853271484375f * _418;
@@ -276,11 +276,11 @@ void vert_main()
         float _482 = _467 * _472;
         float _485 = _482 * _474;
         float _486 = _468 * _465;
-        float3 _505 = (mul(transpose(float4x4(float4((_469 * _468) + _466, _473 - _475, _478 + _479, 0.0f), float4(_473 + _475, (_482 * _472) + _466, _485 - _486, 0.0f), float4(_478 - _479, _485 + _486, (_477 * _474) + _466, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4((_412 + (mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(mul(float2x2(float2(_440, _441), float2(-_441, _440)), _423.xy), _423.z, 0.0f)).xyz * (asfloat(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 24)) * _219))) - _358, 1.0f)).xyz * ((1.0f - (_404 * _404)) * lerp(0.800000011920928955078125f, 1.0f, clamp(_370.z * (-0.0500000007450580596923828125f), 0.0f, 1.0f)))) + _358;
+        float3 _505 = (mul(transpose(float4x4(float4((_469 * _468) + _466, _473 - _475, _478 + _479, 0.0f), float4(_473 + _475, (_482 * _472) + _466, _485 - _486, 0.0f), float4(_478 - _479, _485 + _486, (_477 * _474) + _466, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4((_412 + (mul(frame_constants_view_constants[current_view_index].view_to_world, float4(mul(float2x2(float2(_440, _441), float2(-_441, _440)), _423.xy), _423.z, 0.0f)).xyz * (asfloat(nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 24)) * _219))) - _358, 1.0f)).xyz * ((1.0f - (_404 * _404)) * lerp(0.800000011920928955078125f, 1.0f, clamp(_370.z * (-0.0500000007450580596923828125f), 0.0f, 1.0f)))) + _358;
         float2 _512 = _505.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * smoothstep(3.0f, 20.0f, in_var_Vertex_Position.y));
-        float4 _520 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_512.x, _505.y, _512.y, 1.0f));
+        float4 _520 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_512.x, _505.y, _512.y, 1.0f));
         float _524 = _520.w;
-        float _527 = -frame_constants_view_constants[_Globals_current_view_index].clip_to_view[3].z;
+        float _527 = -frame_constants_view_constants[current_view_index].clip_to_view[3].z;
         float _529 = (-1.0f) / ((_520.z / _524) * _527);
         float _530 = smoothstep(1.60000002384185791015625f, 3.2000000476837158203125f, _529);
         float4 _537 = _520;
@@ -468,12 +468,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_firstperson_mode : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    float _Globals_cone_angle_mult : packoffset(c1.z);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+    uint current_view_index : packoffset(c0);
+    int is_firstperson_mode : packoffset(c0.y);
+    float wind_strength : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    float cone_angle_mult : packoffset(c1.z);
+    float max_cone_cull_dist_range : packoffset(c1.w);
 };
 
 cbuffer color_library : register(b14, space0)
@@ -585,12 +585,12 @@ void frag_main()
     }
     float4 _199 = canopy_alpha_texture.SampleBias(sampler_llc, in_var_C1.xy, frame_constants_global_mip_bias);
     float _204 = ((frame_constants_render_overrides & 2u) != 0u) ? in_var_C6 : 0.0f;
-    float4 _214 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_view, float4(in_var_C7, 1.0f));
-    float2 _221 = float2(6.659999847412109375f, _Globals_max_cone_cull_dist_range) * frame_constants_view_constants[0u].view_to_clip[1].y;
+    float4 _214 = mul(frame_constants_view_constants[current_view_index].world_to_view, float4(in_var_C7, 1.0f));
+    float2 _221 = float2(6.659999847412109375f, max_cone_cull_dist_range) * frame_constants_view_constants[0u].view_to_clip[1].y;
     bool _227;
     if (_204 > 0.0f)
     {
-        _227 = _Globals_is_firstperson_mode == 0;
+        _227 = is_firstperson_mode == 0;
     }
     else
     {
@@ -606,7 +606,7 @@ void frag_main()
             float2 _238 = _214.xy + (in_var_C1.xy - 0.5f.xx);
             float3 _239 = float3(_238.x, _238.y, _214.z);
             _239.z = min(_230, -10.0f);
-            float _248 = _Globals_cone_angle_mult * smoothstep(_232, _221.x, _231);
+            float _248 = cone_angle_mult * smoothstep(_232, _221.x, _231);
             if ((-normalize(_239 * float3(0.75f, 1.0f, 1.0f)).z) > cos((_248 * _204) + ((min(1.0f, _248 * 16.0f) * 0.07500000298023223876953125f) * (blue_noise_texture.SampleLevel(sampler_llr, ((in_var_C1.xy * 2.0f) * 4.0f) * 0.00390625f.xx, 0.0f).x - 0.5f))))
             {
                 discard;
@@ -959,12 +959,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_is_firstperson_mode : packoffset(c0.y);
-    float _Globals_wind_strength : packoffset(c0.z);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c1);
-    float _Globals_cone_angle_mult : packoffset(c1.z);
-    float _Globals_max_cone_cull_dist_range : packoffset(c1.w);
+    uint current_view_index : packoffset(c0);
+    int is_firstperson_mode : packoffset(c0.y);
+    float wind_strength : packoffset(c0.z);
+    uint2 blue_noise_texture_dims : packoffset(c1);
+    float cone_angle_mult : packoffset(c1.z);
+    float max_cone_cull_dist_range : packoffset(c1.w);
 };
 
 ByteAddressBuffer nani_instance_data : register(t15, space0);
@@ -995,13 +995,13 @@ static float out_var_C12;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_prim_center : TEXCOORD3;
-    [[vk::location(4)]] float3 in_var_prim_normals : TEXCOORD4;
-    [[vk::location(5)]] float3 in_var_appear_pos : TEXCOORD5;
-    [[vk::location(6)]] float in_var_age : TEXCOORD6;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
+    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
+    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
+    [[vk::location(6)]] float in_var_age: age;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1089,7 +1089,7 @@ void vert_main()
         float3 _301 = normalize(float3(cos(_297), 0.0f, sin(_297)));
         float4x4 _324 = transpose(float4x4(float4(_301, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(normalize(cross(_301, float3(0.0f, 1.0f, 0.0f))), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)));
         float4 _331 = mul(float4x4(float4(1.0f, 0.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).x), float4(0.0f, 1.0f, 0.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).y), float4(0.0f, 0.0f, 1.0f, nani_instance_data.Load<float3>(_249 * 48 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_324, mul(float4x4(float4(nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f, 0.0f), float4(0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f, 0.0f), float4(0.0f, 0.0f, nani_instance_data.Load<float>(_249 * 48 + 12), 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)), float4(in_var_prim_center, 1.0f))));
-        if (dot(mul(_324, float4(in_var_prim_normals, 0.0f)).xyz, normalize(mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, -1.0f, 0.0f)).xyz)) >= 0.1500000059604644775390625f)
+        if (dot(mul(_324, float4(in_var_prim_normals, 0.0f)).xyz, normalize(mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, -1.0f, 0.0f)).xyz)) >= 0.1500000059604644775390625f)
         {
             _544 = asfloat(0x7fbfffffu /* nan */).xxxx;
             _545 = 0.0f.xxx;
@@ -1108,7 +1108,7 @@ void vert_main()
             break;
         }
         float2 _360 = _287.xz + (nani_instance_data.Load<float2>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 36) * smoothstep(3.0f, 20.0f, in_var_Vertex_Position.y));
-        float4 _368 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_360.x, _287.y, _360.y, 1.0f));
+        float4 _368 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_360.x, _287.y, _360.y, 1.0f));
         _368.z = (_368.z - (-0.00150000001303851604461669921875f)) * _368.w;
         float2 _395 = nani_instance_data.Load<float3>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 48 + 0).xz * 0.0500000007450580596923828125f;
         int2 _397 = int2(floor(_395));

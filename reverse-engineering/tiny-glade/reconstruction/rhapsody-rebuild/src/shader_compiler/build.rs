@@ -23,6 +23,10 @@ pub struct BuiltPipeline {
     pub compiled: CompiledShaderPipeline,
     pub encoded: Vec<u8>,
     pub prepared: PreparedSource,
+    /// 原请求提供的artifact宏；键只从此集合产生，不能混入复原配方。
+    pub artifact_defines: ShaderDefines,
+    /// 显式的重建源码分支选择宏；不冒认为原作配置。
+    pub recipe_defines: ShaderDefines,
 }
 /// 原variants函数克隆base后分别追加depth-only=0/1，不去重或改写已有defines。
 pub fn raster_variants(base: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
@@ -40,6 +44,15 @@ pub fn build_pipeline(
     spec: &BuildSpec,
     work_directory: &Path,
 ) -> Result<BuiltPipeline, String> {
+    build_pipeline_with_recipe(dxc, spec, &ShaderDefines::default(), work_directory)
+}
+/// 将显式复原配方追加到prepared宏输入；原artifact定义保持独立，不修改spec。
+pub fn build_pipeline_with_recipe(
+    dxc: &Path,
+    spec: &BuildSpec,
+    recipe_defines: &ShaderDefines,
+    work_directory: &Path,
+) -> Result<BuiltPipeline, String> {
     let compute = spec.stages.len() == 1 && spec.stages[0].0 == DxcStage::Compute;
     let raster = spec.stages.len() == 2
         && spec.stages[0].0 == DxcStage::Vertex
@@ -47,11 +60,13 @@ pub fn build_pipeline(
     if !compute && !raster {
         return Err("unobserved pipeline stage list".into());
     }
+    let mut prepared_defines = spec.defines.clone();
+    prepared_defines.0.extend(recipe_defines.0.iter().cloned());
     let prepared = prepare_file(
         &spec.source_root,
         &spec.logical_root,
         &spec.source_path,
-        &spec.defines,
+        &prepared_defines,
     )?;
     std::fs::create_dir_all(work_directory).map_err(|e| e.to_string())?;
     let input = work_directory.join("prepared.hlsl");
@@ -80,5 +95,7 @@ pub fn build_pipeline(
         compiled,
         encoded,
         prepared,
+        artifact_defines: spec.defines.clone(),
+        recipe_defines: recipe_defines.clone(),
     })
 }

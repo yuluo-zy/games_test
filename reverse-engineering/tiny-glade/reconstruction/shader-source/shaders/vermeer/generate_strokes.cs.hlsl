@@ -20,12 +20,12 @@ static float4 _129;
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_max_strokes : packoffset(c0);
-    float _Globals_wall_time_seconds : packoffset(c0.y);
-    float _Globals_progress_t : packoffset(c0.z);
-    uint _Globals_history_valid : packoffset(c0.w);
-    uint2 _Globals_target_tex_dims : packoffset(c1);
-    uint2 _Globals_background_tex_dims : packoffset(c1.z);
+    uint max_strokes : packoffset(c0);
+    float wall_time_seconds : packoffset(c0.y);
+    float progress_t : packoffset(c0.z);
+    uint history_valid : packoffset(c0.w);
+    uint2 target_tex_dims : packoffset(c1);
+    uint2 background_tex_dims : packoffset(c1.z);
 };
 
 RWByteAddressBuffer __alias_strokes_buf : register(u16, space0);
@@ -59,11 +59,11 @@ void comp_main()
     uint _164 = gl_GlobalInvocationID.x + 1u;
     float _171 = float(gl_GlobalInvocationID.x);
     float2 _174 = frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * _171) + 0.5f.xx);
-    float _178 = float(_Globals_target_tex_dims.y);
-    float2 _180 = float2(float(_Globals_target_tex_dims.x) / _178, 1.0f);
+    float _178 = float(target_tex_dims.y);
+    float2 _180 = float2(float(target_tex_dims.x) / _178, 1.0f);
     float _187 = abs(((_174 - 0.5f.xx) * 2.0f.xx).x);
     float _189 = (_187 * _187) * _187;
-    float _191 = lerp(0.0599999986588954925537109375f, 0.13300000131130218505859375f, 1.0f - pow(clamp(float(_164) / float(_Globals_max_strokes), 0.0f, 1.0f), 0.014999999664723873138427734375f)) * lerp(1.0f, 1.5f, _189);
+    float _191 = lerp(0.0599999986588954925537109375f, 0.13300000131130218505859375f, 1.0f - pow(clamp(float(_164) / float(max_strokes), 0.0f, 1.0f), 0.014999999664723873138427734375f)) * lerp(1.0f, 1.5f, _189);
     float _192 = 0.0199999995529651641845703125f * _178;
     float _195 = max(0.0f, log2(_192 * _191));
     float4 _205 = lerp(target_tex.SampleLevel(sampler_lnc, _174, floor(_195)), target_tex.SampleLevel(sampler_lnc, _174, ceil(_195)), frac(_195).xxxx);
@@ -77,7 +77,7 @@ void comp_main()
     float _230 = clamp(20.0f * length(abs(_206 - _217) / (_206 + _217)), 0.0f, 1.0f) * lerp(1.0f, 0.0f, _189);
     float _231 = lerp(1.0f, 2.0f, _189);
     float _235 = _191 * exp2(min(1.5f, 0.0f));
-    float3 _244 = float3(_174 * 128.0f, (_171 * 1.61803400516510009765625f) + (_Globals_wall_time_seconds * 0.100000001490116119384765625f));
+    float3 _244 = float3(_174 * 128.0f, (_171 * 1.61803400516510009765625f) + (wall_time_seconds * 0.100000001490116119384765625f));
     int3 _246 = int3(floor(_244));
     float3 _247 = frac(_244);
     uint3 _248 = uint3(_246);
@@ -243,7 +243,7 @@ void comp_main()
     float2 _787 = _174 + ((((((_771 + (((float2(asfloat((_599 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_607 + (_607 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _747) * _751) * _753)) + (((float2(asfloat((_661 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_669 + (_669 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _748) * _750) * _753)) + (((float2(asfloat((_723 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_731 + (_731 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _747) * _750) * _753)) - 0.5f.xx) * _235) * 0.1500000059604644775390625f);
     float _792 = max(0.0f, log2(_192 * _235));
     bool _799;
-    if (_Globals_history_valid != 0u)
+    if (history_valid != 0u)
     {
         _799 = _156 > 0.0f;
     }
@@ -375,12 +375,12 @@ static uint _122;
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_max_strokes : packoffset(c0);
-    float _Globals_wall_time_seconds : packoffset(c0.y);
-    float _Globals_progress_t : packoffset(c0.z);
-    uint _Globals_history_valid : packoffset(c0.w);
-    uint2 _Globals_target_tex_dims : packoffset(c1);
-    uint2 _Globals_background_tex_dims : packoffset(c1.z);
+    uint max_strokes : packoffset(c0);
+    float wall_time_seconds : packoffset(c0.y);
+    float progress_t : packoffset(c0.z);
+    uint history_valid : packoffset(c0.w);
+    uint2 target_tex_dims : packoffset(c1);
+    uint2 background_tex_dims : packoffset(c1.z);
 };
 
 RWByteAddressBuffer __alias_strokes_buf : register(u16, space0);
@@ -421,7 +421,7 @@ void comp_main()
     if (_173)
     {
         uint _1295 = gl_GlobalInvocationID.x + 1u;
-        float _1301 = float(_Globals_max_strokes) - 600.0f;
+        float _1301 = float(max_strokes) - 600.0f;
         float _1303 = clamp((float(_1295) - 600.0f) / _1301, 0.0f, 1.0f);
         float _1304 = pow(_1303, 0.20000000298023223876953125f);
         uint _1309;
@@ -522,8 +522,8 @@ void comp_main()
         float2 _1472 = (_1325 * 0.5f) + 0.5f.xx;
         bool2 _1473 = _173.xx;
         float2 _1484 = float2(_1473.x ? 0.5f.xx.x : _1472.x, _1473.y ? 0.5f.xx.y : _1472.y) + ((frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float((gl_GlobalInvocationID.x * 11u) % 128u)) + 0.5f.xx) - 0.5f.xx) * (_173 ? 1.0f : (0.300000011920928955078125f * lerp(0.100000001490116119384765625f, 0.5f, _1304 * _1304))));
-        float _1488 = float(_Globals_background_tex_dims.y);
-        float2 _1490 = float2(float(_Globals_background_tex_dims.x) / _1488, 1.0f);
+        float _1488 = float(background_tex_dims.y);
+        float2 _1490 = float2(float(background_tex_dims.x) / _1488, 1.0f);
         float2 _1492 = (_1484 - 0.5f.xx) * 2.0f.xx;
         float _1495 = lerp(0.01600000075995922088623046875f, 0.3300000131130218505859375f, 1.0f - pow(_1303, 0.07999999821186065673828125f));
         float _1496 = float(gl_GlobalInvocationID.x);
@@ -541,7 +541,7 @@ void comp_main()
         float4 _1551 = float4(_1528.xyz, 1.0f);
         bool _1552 = gl_GlobalInvocationID.x >= 600u;
         float _1558 = _1495 * exp2(min(1.5f, lerp(0.0f, 0.300000011920928955078125f, clamp(dot(_1492, _1492), 0.0f, 1.0f))));
-        float3 _1566 = float3(_1484 * 128.0f, _1507 + (_Globals_wall_time_seconds * 0.100000001490116119384765625f));
+        float3 _1566 = float3(_1484 * 128.0f, _1507 + (wall_time_seconds * 0.100000001490116119384765625f));
         int3 _1568 = int3(floor(_1566));
         float3 _1569 = frac(_1566);
         uint3 _1570 = uint3(_1568);
@@ -825,13 +825,13 @@ void comp_main()
         float _2241;
         if (_1504 != 0.0f)
         {
-            _2241 = smoothstep(_1504, _1504 + 0.100000001490116119384765625f, _Globals_progress_t);
+            _2241 = smoothstep(_1504, _1504 + 0.100000001490116119384765625f, progress_t);
         }
         else
         {
             _2241 = 1.0f;
         }
-        float _2246 = _2241 * (1.0f - smoothstep(_1514 - 0.100000001490116119384765625f, min(1.0f, _1514), _Globals_progress_t));
+        float _2246 = _2241 * (1.0f - smoothstep(_1514 - 0.100000001490116119384765625f, min(1.0f, _1514), progress_t));
         float4 _2253;
         if (_1552)
         {
@@ -850,12 +850,12 @@ void comp_main()
         if (_2246 != 0.0f)
         {
             bool _2270;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 bool _2269;
                 if (_173)
                 {
-                    _2269 = _Globals_progress_t > 0.0f;
+                    _2269 = progress_t > 0.0f;
                 }
                 else
                 {
@@ -980,7 +980,7 @@ void comp_main()
     else
     {
         uint _180 = gl_GlobalInvocationID.x + 1u;
-        float _186 = float(_Globals_max_strokes) - 600.0f;
+        float _186 = float(max_strokes) - 600.0f;
         float _188 = clamp((float(_180) - 600.0f) / _186, 0.0f, 1.0f);
         float _189 = pow(_188, 0.20000000298023223876953125f);
         uint _194;
@@ -1081,8 +1081,8 @@ void comp_main()
         float2 _357 = (_210 * 0.5f) + 0.5f.xx;
         bool2 _358 = _173.xx;
         float2 _369 = float2(_358.x ? 0.5f.xx.x : _357.x, _358.y ? 0.5f.xx.y : _357.y) + ((frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float((gl_GlobalInvocationID.x * 11u) % 128u)) + 0.5f.xx) - 0.5f.xx) * (_173 ? 1.0f : (0.300000011920928955078125f * lerp(0.100000001490116119384765625f, 0.5f, _189 * _189))));
-        float _373 = float(_Globals_target_tex_dims.y);
-        float2 _375 = float2(float(_Globals_target_tex_dims.x) / _373, 1.0f);
+        float _373 = float(target_tex_dims.y);
+        float2 _375 = float2(float(target_tex_dims.x) / _373, 1.0f);
         float2 _377 = (_369 - 0.5f.xx) * 2.0f.xx;
         float _380 = lerp(0.01600000075995922088623046875f, 0.3300000131130218505859375f, 1.0f - pow(_188, 0.07999999821186065673828125f));
         float _381 = float(gl_GlobalInvocationID.x);
@@ -1100,7 +1100,7 @@ void comp_main()
         float4 _436 = float4(_413.xyz, 1.0f);
         bool _437 = gl_GlobalInvocationID.x >= 600u;
         float _443 = _380 * exp2(min(1.5f, lerp(0.0f, 0.300000011920928955078125f, clamp(dot(_377, _377), 0.0f, 1.0f))));
-        float3 _451 = float3(_369 * 128.0f, _392 + (_Globals_wall_time_seconds * 0.100000001490116119384765625f));
+        float3 _451 = float3(_369 * 128.0f, _392 + (wall_time_seconds * 0.100000001490116119384765625f));
         int3 _453 = int3(floor(_451));
         float3 _454 = frac(_451);
         uint3 _455 = uint3(_453);
@@ -1384,13 +1384,13 @@ void comp_main()
         float _1126;
         if (_389 != 0.0f)
         {
-            _1126 = smoothstep(_389, _389 + 0.100000001490116119384765625f, _Globals_progress_t);
+            _1126 = smoothstep(_389, _389 + 0.100000001490116119384765625f, progress_t);
         }
         else
         {
             _1126 = 1.0f;
         }
-        float _1131 = _1126 * (1.0f - smoothstep(_399 - 0.100000001490116119384765625f, min(1.0f, _399), _Globals_progress_t));
+        float _1131 = _1126 * (1.0f - smoothstep(_399 - 0.100000001490116119384765625f, min(1.0f, _399), progress_t));
         float4 _1138;
         if (_437)
         {
@@ -1409,12 +1409,12 @@ void comp_main()
         if (_1131 != 0.0f)
         {
             bool _1155;
-            if (_Globals_history_valid != 0u)
+            if (history_valid != 0u)
             {
                 bool _1154;
                 if (_173)
                 {
-                    _1154 = _Globals_progress_t > 0.0f;
+                    _1154 = progress_t > 0.0f;
                 }
                 else
                 {

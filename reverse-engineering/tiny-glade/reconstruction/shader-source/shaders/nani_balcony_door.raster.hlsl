@@ -90,11 +90,11 @@ float2 corner_rand(uint3 cell)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
-    int is_metal_part : TEXCOORD4;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int is_metal_part: is_metal_part;
     uint instance_id : SV_InstanceID;
 };
 
@@ -292,8 +292,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t15, space0);
@@ -316,11 +316,11 @@ static uint out_var_C6;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_metal_part : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_metal_part: is_metal_part;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -511,7 +511,7 @@ void vert_main()
     float2 _698 = ((((((float2(asfloat((_216 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_224 + (_224 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _678) * _681) + (((float2(asfloat((_278 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_286 + (_286 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _678) * _681)) + (((float2(asfloat((_340 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_348 + (_348 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _677) * _681)) + (((float2(asfloat((_402 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_410 + (_410 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _677) * _681)) + (((float2(asfloat((_464 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_472 + (_472 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _678) * _680);
     float2 _713 = clamp(((((_698 + (((float2(asfloat((_526 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_534 + (_534 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _678) * _680)) + (((float2(asfloat((_588 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_596 + (_596 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _677) * _680)) + (((float2(asfloat((_650 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_658 + (_658 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _677) * _680)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _718 = _170 + (float3(_713.x, 0.0f, _713.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_718, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_718, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_165, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _718;
@@ -617,8 +617,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t15, space0);
@@ -641,11 +641,11 @@ static uint out_var_C6;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
-    [[vk::location(4)]] int in_var_is_metal_part : TEXCOORD4;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] int in_var_is_metal_part: is_metal_part;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -836,7 +836,7 @@ void vert_main()
     float2 _698 = ((((((float2(asfloat((_216 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_224 + (_224 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _678) * _681) + (((float2(asfloat((_278 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_286 + (_286 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _678) * _681)) + (((float2(asfloat((_340 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_348 + (_348 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _677) * _681)) + (((float2(asfloat((_402 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_410 + (_410 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _677) * _681)) + (((float2(asfloat((_464 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_472 + (_472 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _678) * _680);
     float2 _713 = clamp(((((_698 + (((float2(asfloat((_526 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_534 + (_534 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _678) * _680)) + (((float2(asfloat((_588 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_596 + (_596 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _675) * _677) * _680)) + (((float2(asfloat((_650 & 8388607u) | 1065353216u) - 1.0f, asfloat(((_658 + (_658 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * _674) * _677) * _680)) - 0.5f.xx) * 2.5f, (-0.5f).xx, 0.5f.xx);
     float3 _718 = _170 + (float3(_713.x, 0.0f, _713.y) * 0.0599999986588954925537109375f);
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_718, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_718, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_165, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _718;
@@ -930,8 +930,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 
@@ -949,7 +949,7 @@ void frag_main()
     bool _85;
     if (in_var_C6 != 0u)
     {
-        _85 = _Globals_bool_render_shadows != 0;
+        _85 = bool_render_shadows != 0;
     }
     else
     {

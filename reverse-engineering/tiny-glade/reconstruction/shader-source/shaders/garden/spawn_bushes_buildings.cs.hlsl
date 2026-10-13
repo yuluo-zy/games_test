@@ -170,17 +170,17 @@ static float _147;
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    uint2 _Globals_garden_mask_dims : packoffset(c1.z);
-    uint2 _Globals_buildings_mask_dims : packoffset(c2);
-    uint2 _Globals_buildings_mask_non_blurred_dims : packoffset(c2.z);
-    int2 _Globals_grid_dims : packoffset(c3);
-    uint2 _Globals_path_mask_dims : packoffset(c3.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c4);
-    uint2 _Globals_water_mask_dims : packoffset(c4.z);
-    uint2 _Globals_foliage_exclusion_mask_dims : packoffset(c5);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    uint2 garden_mask_dims : packoffset(c1.z);
+    uint2 buildings_mask_dims : packoffset(c2);
+    uint2 buildings_mask_non_blurred_dims : packoffset(c2.z);
+    int2 grid_dims : packoffset(c3);
+    uint2 path_mask_dims : packoffset(c3.z);
+    uint2 rocky_terrain_dims : packoffset(c4);
+    uint2 water_mask_dims : packoffset(c4.z);
+    uint2 foliage_exclusion_mask_dims : packoffset(c5);
 };
 
 cbuffer frame_constants : register(b0, space1)
@@ -244,12 +244,12 @@ void comp_main()
         uint _171 = _169 + (_169 << 3u);
         uint _173 = _171 ^ (_171 >> 11u);
         float _179 = asfloat(((_173 + (_173 << 15u)) & 8388607u) | 1065353216u) - 1.0f;
-        float2 _182 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-1.0f, 1.0f, _179).xx;
+        float2 _182 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims)) - 0.5f.xx) * 130.0f.xx) + lerp(-1.0f, 1.0f, _179).xx;
         float2 _184 = (_182 * 0.0076923076994717121124267578125f.xx) + 0.5f.xx;
         bool _252;
         do
         {
-            _191 = uint2(_184 * float2(_Globals_path_mask_dims));
+            _191 = uint2(_184 * float2(path_mask_dims));
             float4 _209 = terrain_heightmap.GatherRed(sampler_default, _184, int2(0, 0));
             float _214 = _209.z;
             float _215 = _209.y;
@@ -258,7 +258,7 @@ void comp_main()
             bool _239;
             if (!(path_mask.Load(int3(_191, 0u)).x > 0.20000000298023223876953125f))
             {
-                _239 = (int(rocky_terrain.Load(int3(_191, 0u)).x > 0.0f) & int(length(((float2((_214 + _215) - (_217 + _218), (_218 + _215) - (_217 + _214)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims))) > 0.89999997615814208984375f)) != 0;
+                _239 = (int(rocky_terrain.Load(int3(_191, 0u)).x > 0.0f) & int(length(((float2((_214 + _215) - (_217 + _218), (_218 + _215) - (_217 + _214)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims))) > 0.89999997615814208984375f)) != 0;
             }
             else
             {

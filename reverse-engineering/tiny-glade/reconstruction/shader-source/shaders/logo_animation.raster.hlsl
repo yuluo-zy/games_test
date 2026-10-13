@@ -25,8 +25,8 @@ Texture2D<float4> animation : register(t15, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float2 Vertex_UV : TEXCOORD1;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
 };
 
 struct VsOut

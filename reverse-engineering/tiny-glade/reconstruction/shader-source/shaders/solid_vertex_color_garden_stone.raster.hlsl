@@ -72,8 +72,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -90,10 +90,10 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_color2 : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_color2: color2;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -115,7 +115,7 @@ void vert_main()
     }
     float3x4 _114 = transpose(float4x3(float3(_90.data[0], _90.data[1], _90.data[2]), float3(_90.data[3], _90.data[4], _90.data[5]), float3(_90.data[6], _90.data[7], _90.data[8]), float3(_90.data[9], _90.data[10], _90.data[11])));
     float3 _119 = mul(_114, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_119, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_119, 1.0f));
     out_var_C0 = lerp(in_var_Vertex_Color, in_var_color2, instance_buffer.Load<float>(uint(gl_InstanceIndex) * 64 + 48).xxx) * lerp(0.60000002384185791015625f, 2.0f, instance_buffer.Load<float>(uint(gl_InstanceIndex) * 64 + 52));
     out_var_C1 = mul(_114, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _119;
@@ -252,8 +252,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_buffer : register(t14, space0);
@@ -270,10 +270,10 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_color2 : TEXCOORD3;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float3 in_var_color2: color2;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -295,7 +295,7 @@ void vert_main()
     }
     float3x4 _114 = transpose(float4x3(float3(_90.data[0], _90.data[1], _90.data[2]), float3(_90.data[3], _90.data[4], _90.data[5]), float3(_90.data[6], _90.data[7], _90.data[8]), float3(_90.data[9], _90.data[10], _90.data[11])));
     float3 _119 = mul(_114, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_119, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_119, 1.0f));
     out_var_C0 = lerp(in_var_Vertex_Color, in_var_color2, instance_buffer.Load<float>(uint(gl_InstanceIndex) * 64 + 48).xxx) * lerp(0.60000002384185791015625f, 2.0f, instance_buffer.Load<float>(uint(gl_InstanceIndex) * 64 + 52));
     out_var_C1 = mul(_114, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _119;

@@ -130,9 +130,9 @@ float3 water_displacement(float2 origin_xz, float t)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float3 Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
     uint instance_id : SV_InstanceID;
 };
 
@@ -326,12 +326,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    int _Globals_bool_render_shadows : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 water_noise_texture_dims : packoffset(c0.y);
+    uint2 grass_object_push_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    int bool_render_shadows : packoffset(c2.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t17, space0);
@@ -351,9 +351,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -572,7 +572,7 @@ void vert_main()
     {
         _672 = _657;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
     out_var_C1 = normalize(mul(_201, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _444;
     out_var_C3 = _672;
@@ -783,12 +783,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    int _Globals_bool_render_shadows : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 water_noise_texture_dims : packoffset(c0.y);
+    uint2 grass_object_push_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    int bool_render_shadows : packoffset(c2.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t17, space0);
@@ -808,9 +808,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1029,7 +1029,7 @@ void vert_main()
     {
         _672 = _657;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
     out_var_C1 = normalize(mul(_201, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _444;
     out_var_C3 = _672;
@@ -1148,12 +1148,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    int _Globals_bool_render_shadows : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 water_noise_texture_dims : packoffset(c0.y);
+    uint2 grass_object_push_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    int bool_render_shadows : packoffset(c2.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t17, space0);
@@ -1173,9 +1173,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1394,7 +1394,7 @@ void vert_main()
     {
         _672 = _657;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
     out_var_C1 = normalize(mul(_201, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _444;
     out_var_C3 = _672;
@@ -1607,12 +1607,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_water_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_grass_object_push_dims : packoffset(c1);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c1.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c2);
-    int _Globals_bool_render_shadows : packoffset(c2.z);
+    uint current_view_index : packoffset(c0);
+    uint2 water_noise_texture_dims : packoffset(c0.y);
+    uint2 grass_object_push_dims : packoffset(c1);
+    uint2 terrain_heightmap_dims : packoffset(c1.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c2);
+    int bool_render_shadows : packoffset(c2.z);
 };
 
 ByteAddressBuffer instance_buffer : register(t17, space0);
@@ -1632,9 +1632,9 @@ static float3 out_var_C3;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -1853,7 +1853,7 @@ void vert_main()
     {
         _672 = _657;
     }
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_646, _233, _443.y, 1.0f));
     out_var_C1 = normalize(mul(_201, float4(in_var_Vertex_Normal, 0.0f)));
     out_var_C2 = _444;
     out_var_C3 = _672;

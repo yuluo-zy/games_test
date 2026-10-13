@@ -57,7 +57,7 @@ Texture2D<float4> dirthpath_heightmap : register(t21);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
     uint vertex_id : SV_VertexID;
     uint instance_id : SV_InstanceID;
 };
@@ -241,11 +241,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_wood_normal_dims : packoffset(c0.y);
-    uint2 _Globals_wood_roughness_dims : packoffset(c1);
-    uint2 _Globals_wood_edge_damage_dims : packoffset(c1.z);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint2 wood_normal_dims : packoffset(c0.y);
+    uint2 wood_roughness_dims : packoffset(c1);
+    uint2 wood_edge_damage_dims : packoffset(c1.z);
+    uint2 dirthpath_heightmap_dims : packoffset(c2);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -266,7 +266,7 @@ static uint out_var_C9;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_VertexIndex : SV_VertexID;
     uint gl_InstanceIndex : SV_InstanceID;
 };
@@ -371,7 +371,7 @@ void vert_main()
             float _422 = (_402.y + (_200.y * nani_instance_data.Load<float>(_155 * 64 + 40))) + ((asfloat(((_414 + (_414 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * 0.00999999977648258209228515625f);
             float3 _423 = _402;
             _423.y = _422;
-            _440 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_402.x, _422, _402.z, 1.0f));
+            _440 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_402.x, _422, _402.z, 1.0f));
             _441 = (_353 * _199.x) + float3(0.0f, _199.y, 0.0f);
             _442 = _423;
             _443 = 0.0f;
@@ -522,7 +522,7 @@ void vert_main()
             float _330 = 0.001953125f * (floor(_322.y * 512.0f) + frac(float(_155) * 1.61803400516510009765625f));
             float3 _331 = _322;
             _331.y = _330;
-            _440 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_322.x, _330, _322.z, 1.0f));
+            _440 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_322.x, _330, _322.z, 1.0f));
             _441 = float3(_276, 1.0f, _278) * float3(_199.xyx);
             _442 = _331;
             _443 = (uint(gl_VertexIndex) == 6u) ? 1.0f : _272;
@@ -882,11 +882,11 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_wood_normal_dims : packoffset(c0.y);
-    uint2 _Globals_wood_roughness_dims : packoffset(c1);
-    uint2 _Globals_wood_edge_damage_dims : packoffset(c1.z);
-    uint2 _Globals_dirthpath_heightmap_dims : packoffset(c2);
+    uint current_view_index : packoffset(c0);
+    uint2 wood_normal_dims : packoffset(c0.y);
+    uint2 wood_roughness_dims : packoffset(c1);
+    uint2 wood_edge_damage_dims : packoffset(c1.z);
+    uint2 dirthpath_heightmap_dims : packoffset(c2);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -907,7 +907,7 @@ static uint out_var_C9;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
     uint gl_VertexIndex : SV_VertexID;
     uint gl_InstanceIndex : SV_InstanceID;
 };
@@ -1012,7 +1012,7 @@ void vert_main()
             float _422 = (_402.y + (_200.y * nani_instance_data.Load<float>(_155 * 64 + 40))) + ((asfloat(((_414 + (_414 << 15u)) & 8388607u) | 1065353216u) - 1.0f) * 0.00999999977648258209228515625f);
             float3 _423 = _402;
             _423.y = _422;
-            _440 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_402.x, _422, _402.z, 1.0f));
+            _440 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_402.x, _422, _402.z, 1.0f));
             _441 = (_353 * _199.x) + float3(0.0f, _199.y, 0.0f);
             _442 = _423;
             _443 = 0.0f;
@@ -1163,7 +1163,7 @@ void vert_main()
             float _330 = 0.001953125f * (floor(_322.y * 512.0f) + frac(float(_155) * 1.61803400516510009765625f));
             float3 _331 = _322;
             _331.y = _330;
-            _440 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_322.x, _330, _322.z, 1.0f));
+            _440 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_322.x, _330, _322.z, 1.0f));
             _441 = float3(_276, 1.0f, _278) * float3(_199.xyx);
             _442 = _331;
             _443 = (uint(gl_VertexIndex) == 6u) ? 1.0f : _272;

@@ -69,12 +69,12 @@ Texture2D<float4> leafy_greens : register(t18, space0);
 
 struct VS_IN
 {
-    float3 vertex_position : TEXCOORD0;
-    float3 vertex_normal : TEXCOORD1;
-    float2 vertex_uv : TEXCOORD2;
-    float3 flower_pivot : TEXCOORD3;
-    int stem : TEXCOORD4;
-    float wind_bend : TEXCOORD5;
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
+    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;
+    [[vk::location(3)]] float3 flower_pivot: flower_pivot;
+    [[vk::location(4)]] int stem: stem;
+    [[vk::location(5)]] float wind_bend: wind_bend;
 };
 
 struct VS_OUT
@@ -304,21 +304,21 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_time : packoffset(c5);
-    uint2 _Globals_path_mask_dims : packoffset(c5.y);
-    uint2 _Globals_albedo_map_dims : packoffset(c6);
-    uint2 _Globals_normal_map_dims : packoffset(c6.z);
-    int _Globals_has_normal_map : packoffset(c7);
-    uint2 _Globals_alpha_map_dims : packoffset(c7.y);
-    uint2 _Globals_leafy_greens_dims : packoffset(c8);
-    uint2 _Globals_grass_object_push_dims : packoffset(c8.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c9);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c9.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c10);
-    uint2 _Globals_water_mask_dims : packoffset(c10.z);
-    int _Globals_bool_render_shadows : packoffset(c11);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float time : packoffset(c5);
+    uint2 path_mask_dims : packoffset(c5.y);
+    uint2 albedo_map_dims : packoffset(c6);
+    uint2 normal_map_dims : packoffset(c6.z);
+    int has_normal_map : packoffset(c7);
+    uint2 alpha_map_dims : packoffset(c7.y);
+    uint2 leafy_greens_dims : packoffset(c8);
+    uint2 grass_object_push_dims : packoffset(c8.z);
+    uint2 terrain_heightmap_dims : packoffset(c9);
+    uint2 visual_terrain_heightmap_dims : packoffset(c9.z);
+    uint2 rocky_terrain_dims : packoffset(c10);
+    uint2 water_mask_dims : packoffset(c10.z);
+    int bool_render_shadows : packoffset(c11);
 };
 
 SamplerState sampler_llb : register(s4, space0);
@@ -345,12 +345,12 @@ static float3x3 out_var_C7;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_flower_pivot : TEXCOORD3;
-    [[vk::location(4)]] int in_var_stem : TEXCOORD4;
-    [[vk::location(5)]] float in_var_wind_bend : TEXCOORD5;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(3)]] float3 in_var_flower_pivot: flower_pivot;
+    [[vk::location(4)]] int in_var_stem: stem;
+    [[vk::location(5)]] float in_var_wind_bend: wind_bend;
 };
 
 struct SPIRV_Cross_Output
@@ -496,7 +496,7 @@ void vert_main()
         float4 _237 = float4(in_var_Vertex_Position, 1.0f);
         _237.y = in_var_Vertex_Position.y + lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, _159, 0.0f).x);
         float2 _246 = in_var_flower_pivot.xz * 0.100000001490116119384765625f;
-        float2 _251 = _246 + (float2(_Globals_time, 0.0f) * 1.2000000476837158203125f);
+        float2 _251 = _246 + (float2(time, 0.0f) * 1.2000000476837158203125f);
         int2 _253 = int2(floor(_251));
         float2 _254 = frac(_251);
         uint2 _255 = uint2(_253);
@@ -555,13 +555,13 @@ void vert_main()
         {
             _423 = _237;
         }
-        _448 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, mul(_Globals_model_to_world, float4(_423.xyz, 1.0f)));
+        _448 = mul(frame_constants_view_constants[current_view_index].world_to_sample, mul(model_to_world, float4(_423.xyz, 1.0f)));
         _449 = _246;
         _450 = _423.xyz;
         _451 = in_var_Vertex_Normal;
         _452 = in_var_stem;
         _453 = in_var_Vertex_UV;
-        _454 = transpose(float3x3(normalize(mul(_Globals_model_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz), normalize(mul(_Globals_model_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f)).xyz), normalize(mul(_Globals_model_to_world, float4(0.0f, 1.0f, 0.0f, 0.0f)).xyz)));
+        _454 = transpose(float3x3(normalize(mul(model_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz), normalize(mul(model_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f)).xyz), normalize(mul(model_to_world, float4(0.0f, 1.0f, 0.0f, 0.0f)).xyz)));
         break;
     } while(false);
     gl_Position = _448;
@@ -654,21 +654,21 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_time : packoffset(c5);
-    uint2 _Globals_path_mask_dims : packoffset(c5.y);
-    uint2 _Globals_albedo_map_dims : packoffset(c6);
-    uint2 _Globals_normal_map_dims : packoffset(c6.z);
-    int _Globals_has_normal_map : packoffset(c7);
-    uint2 _Globals_alpha_map_dims : packoffset(c7.y);
-    uint2 _Globals_leafy_greens_dims : packoffset(c8);
-    uint2 _Globals_grass_object_push_dims : packoffset(c8.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c9);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c9.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c10);
-    uint2 _Globals_water_mask_dims : packoffset(c10.z);
-    int _Globals_bool_render_shadows : packoffset(c11);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float time : packoffset(c5);
+    uint2 path_mask_dims : packoffset(c5.y);
+    uint2 albedo_map_dims : packoffset(c6);
+    uint2 normal_map_dims : packoffset(c6.z);
+    int has_normal_map : packoffset(c7);
+    uint2 alpha_map_dims : packoffset(c7.y);
+    uint2 leafy_greens_dims : packoffset(c8);
+    uint2 grass_object_push_dims : packoffset(c8.z);
+    uint2 terrain_heightmap_dims : packoffset(c9);
+    uint2 visual_terrain_heightmap_dims : packoffset(c9.z);
+    uint2 rocky_terrain_dims : packoffset(c10);
+    uint2 water_mask_dims : packoffset(c10.z);
+    int bool_render_shadows : packoffset(c11);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -706,7 +706,7 @@ void frag_main()
     {
         discard;
     }
-    if (!((_Globals_bool_render_shadows == 1) ? true : false))
+    if (!((bool_render_shadows == 1) ? true : false))
     {
         uint2 _128 = uint2(gl_FragCoord.xy) & uint2(1u, 1u);
         if ((frame_constants_frame_index & 3u) == (_128.x + (_128.y * 2u)))
@@ -725,7 +725,7 @@ void frag_main()
         _150 = _141.xyz;
     }
     float3 _165;
-    if (_Globals_has_normal_map == 1)
+    if (has_normal_map == 1)
     {
         _165 = normalize(mul(in_var_C7, (normal_map.Sample(sampler_llr, in_var_C6).xyz * 2.0f) - 1.0f.xxx));
     }
@@ -814,21 +814,21 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_time : packoffset(c5);
-    uint2 _Globals_path_mask_dims : packoffset(c5.y);
-    uint2 _Globals_albedo_map_dims : packoffset(c6);
-    uint2 _Globals_normal_map_dims : packoffset(c6.z);
-    int _Globals_has_normal_map : packoffset(c7);
-    uint2 _Globals_alpha_map_dims : packoffset(c7.y);
-    uint2 _Globals_leafy_greens_dims : packoffset(c8);
-    uint2 _Globals_grass_object_push_dims : packoffset(c8.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c9);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c9.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c10);
-    uint2 _Globals_water_mask_dims : packoffset(c10.z);
-    int _Globals_bool_render_shadows : packoffset(c11);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float time : packoffset(c5);
+    uint2 path_mask_dims : packoffset(c5.y);
+    uint2 albedo_map_dims : packoffset(c6);
+    uint2 normal_map_dims : packoffset(c6.z);
+    int has_normal_map : packoffset(c7);
+    uint2 alpha_map_dims : packoffset(c7.y);
+    uint2 leafy_greens_dims : packoffset(c8);
+    uint2 grass_object_push_dims : packoffset(c8.z);
+    uint2 terrain_heightmap_dims : packoffset(c9);
+    uint2 visual_terrain_heightmap_dims : packoffset(c9.z);
+    uint2 rocky_terrain_dims : packoffset(c10);
+    uint2 water_mask_dims : packoffset(c10.z);
+    int bool_render_shadows : packoffset(c11);
 };
 
 SamplerState sampler_llb : register(s4, space0);
@@ -855,12 +855,12 @@ static float3x3 out_var_C7;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
-    [[vk::location(3)]] float3 in_var_flower_pivot : TEXCOORD3;
-    [[vk::location(4)]] int in_var_stem : TEXCOORD4;
-    [[vk::location(5)]] float in_var_wind_bend : TEXCOORD5;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
+    [[vk::location(3)]] float3 in_var_flower_pivot: flower_pivot;
+    [[vk::location(4)]] int in_var_stem: stem;
+    [[vk::location(5)]] float in_var_wind_bend: wind_bend;
 };
 
 struct SPIRV_Cross_Output
@@ -1006,7 +1006,7 @@ void vert_main()
         float4 _237 = float4(in_var_Vertex_Position, 1.0f);
         _237.y = in_var_Vertex_Position.y + lerp(-2.5f, 24.0f, terrain_heightmap.SampleLevel(sampler_default, _159, 0.0f).x);
         float2 _246 = in_var_flower_pivot.xz * 0.100000001490116119384765625f;
-        float2 _251 = _246 + (float2(_Globals_time, 0.0f) * 1.2000000476837158203125f);
+        float2 _251 = _246 + (float2(time, 0.0f) * 1.2000000476837158203125f);
         int2 _253 = int2(floor(_251));
         float2 _254 = frac(_251);
         uint2 _255 = uint2(_253);
@@ -1065,13 +1065,13 @@ void vert_main()
         {
             _423 = _237;
         }
-        _448 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, mul(_Globals_model_to_world, float4(_423.xyz, 1.0f)));
+        _448 = mul(frame_constants_view_constants[current_view_index].world_to_sample, mul(model_to_world, float4(_423.xyz, 1.0f)));
         _449 = _246;
         _450 = _423.xyz;
         _451 = in_var_Vertex_Normal;
         _452 = in_var_stem;
         _453 = in_var_Vertex_UV;
-        _454 = transpose(float3x3(normalize(mul(_Globals_model_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz), normalize(mul(_Globals_model_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f)).xyz), normalize(mul(_Globals_model_to_world, float4(0.0f, 1.0f, 0.0f, 0.0f)).xyz)));
+        _454 = transpose(float3x3(normalize(mul(model_to_world, float4(1.0f, 0.0f, 0.0f, 0.0f)).xyz), normalize(mul(model_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f)).xyz), normalize(mul(model_to_world, float4(0.0f, 1.0f, 0.0f, 0.0f)).xyz)));
         break;
     } while(false);
     gl_Position = _448;
@@ -1164,21 +1164,21 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    float _Globals_time : packoffset(c5);
-    uint2 _Globals_path_mask_dims : packoffset(c5.y);
-    uint2 _Globals_albedo_map_dims : packoffset(c6);
-    uint2 _Globals_normal_map_dims : packoffset(c6.z);
-    int _Globals_has_normal_map : packoffset(c7);
-    uint2 _Globals_alpha_map_dims : packoffset(c7.y);
-    uint2 _Globals_leafy_greens_dims : packoffset(c8);
-    uint2 _Globals_grass_object_push_dims : packoffset(c8.z);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c9);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c9.z);
-    uint2 _Globals_rocky_terrain_dims : packoffset(c10);
-    uint2 _Globals_water_mask_dims : packoffset(c10.z);
-    int _Globals_bool_render_shadows : packoffset(c11);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    float time : packoffset(c5);
+    uint2 path_mask_dims : packoffset(c5.y);
+    uint2 albedo_map_dims : packoffset(c6);
+    uint2 normal_map_dims : packoffset(c6.z);
+    int has_normal_map : packoffset(c7);
+    uint2 alpha_map_dims : packoffset(c7.y);
+    uint2 leafy_greens_dims : packoffset(c8);
+    uint2 grass_object_push_dims : packoffset(c8.z);
+    uint2 terrain_heightmap_dims : packoffset(c9);
+    uint2 visual_terrain_heightmap_dims : packoffset(c9.z);
+    uint2 rocky_terrain_dims : packoffset(c10);
+    uint2 water_mask_dims : packoffset(c10.z);
+    int bool_render_shadows : packoffset(c11);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -1199,7 +1199,7 @@ void frag_main()
     {
         discard;
     }
-    if (!((_Globals_bool_render_shadows == 1) ? true : false))
+    if (!((bool_render_shadows == 1) ? true : false))
     {
         uint2 _99 = uint2(gl_FragCoord.xy) & uint2(1u, 1u);
         if ((frame_constants_frame_index & 3u) == (_99.x + (_99.y * 2u)))

@@ -49,8 +49,8 @@ int bool_render_shadows;
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float2 Vertex_UV : TEXCOORD1;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
     uint instance_id : SV_InstanceID;
 };
 
@@ -205,10 +205,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_leaf_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_leaf_colors_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 leaf_alpha_dims : packoffset(c0.y);
+    uint2 leaf_colors_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer leaf_placement_buffer : register(t14, space0);
@@ -224,8 +224,8 @@ static float2 out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -244,7 +244,7 @@ void vert_main()
     float3 _101 = normalize(cross(leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20), normalize(float3(cos(leaf_placement_buffer.Load<float>(uint(gl_InstanceIndex) * 32 + 12)), 0.0f, sin(leaf_placement_buffer.Load<float>(uint(gl_InstanceIndex) * 32 + 12))))));
     float _103 = _93.x;
     float4 _137 = mul(mul(float4x4(float4(1.0f, 0.0f, 0.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).x), float4(0.0f, 1.0f, 0.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).y), float4(0.0f, 0.0f, 1.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(cross(_101, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20)), 0.0f), float4(leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20), 0.0f), float4(_101, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_103, 0.0f, 0.0f, 0.0f), float4(0.0f, _93.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _93.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _137);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _137);
     out_var_C1 = float3(0.0f, 1.0f, 0.0f);
     out_var_C2 = _137.xyz;
     out_var_C3 = in_var_Vertex_UV;
@@ -327,10 +327,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_leaf_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_leaf_colors_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 leaf_alpha_dims : packoffset(c0.y);
+    uint2 leaf_colors_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 SamplerState sampler_llr : register(s1, space0);
@@ -363,7 +363,7 @@ void frag_main()
     {
         discard;
     }
-    float4 _104 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _104 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 _116;
     if (dot(normalize((_104.xyz / _104.w.xxx) - in_var_C2), in_var_C1) < 0.0f)
     {
@@ -462,10 +462,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_leaf_alpha_dims : packoffset(c0.y);
-    uint2 _Globals_leaf_colors_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 leaf_alpha_dims : packoffset(c0.y);
+    uint2 leaf_colors_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer leaf_placement_buffer : register(t14, space0);
@@ -481,8 +481,8 @@ static float2 out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -501,7 +501,7 @@ void vert_main()
     float3 _101 = normalize(cross(leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20), normalize(float3(cos(leaf_placement_buffer.Load<float>(uint(gl_InstanceIndex) * 32 + 12)), 0.0f, sin(leaf_placement_buffer.Load<float>(uint(gl_InstanceIndex) * 32 + 12))))));
     float _103 = _93.x;
     float4 _137 = mul(mul(float4x4(float4(1.0f, 0.0f, 0.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).x), float4(0.0f, 1.0f, 0.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).y), float4(0.0f, 0.0f, 1.0f, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 0).z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(transpose(float4x4(float4(cross(_101, leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20)), 0.0f), float4(leaf_placement_buffer.Load<float3>(uint(gl_InstanceIndex) * 32 + 20), 0.0f), float4(_101, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))), float4x4(float4(_103, 0.0f, 0.0f, 0.0f), float4(0.0f, _93.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _93.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _137);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _137);
     out_var_C1 = float3(0.0f, 1.0f, 0.0f);
     out_var_C2 = _137.xyz;
     out_var_C3 = in_var_Vertex_UV;

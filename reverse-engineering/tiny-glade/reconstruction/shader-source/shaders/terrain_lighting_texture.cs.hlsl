@@ -292,11 +292,11 @@ cbuffer color_library : register(b14, space0)
 
 cbuffer $Globals : register(b15, space0)
 {
-    uint2 _Globals_img_output_dims : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.z);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
-    uint2 _Globals_brdf_fg_lut_dims : packoffset(c2);
+    uint2 img_output_dims : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.z);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
+    uint2 brdf_fg_lut_dims : packoffset(c2);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -318,13 +318,13 @@ void comp_main()
 {
     do
     {
-        if (_Globals_bool_render_shadows == 0)
+        if (bool_render_shadows == 0)
         {
             img_output[uint2(int3(gl_GlobalInvocationID).xy)] = float3(1.0f, 1.0f, 0.0f);
             break;
         }
         float3 _187 = (lerp(color_library_grass_1.xyz, color_library_grass_2.xyz, 0.1500000059604644775390625f.xxx) * 1.2000000476837158203125f) * 0.550000011920928955078125f;
-        float2 _194 = ((((float2(int3(gl_GlobalInvocationID).xy) + 0.5f.xx) / float2(int2(_Globals_img_output_dims))) * 2.0f) - 1.0f.xx) * 65.0f.xx;
+        float2 _194 = ((((float2(int3(gl_GlobalInvocationID).xy) + 0.5f.xx) / float2(int2(img_output_dims))) * 2.0f) - 1.0f.xx) * 65.0f.xx;
         float _195 = _194.x;
         float _196 = _194.y;
         float2 _200 = (float3(_195, 0.0f, _196).xz * 0.0076923076994717121124267578125f.xx) + 0.5f.xx;
@@ -336,7 +336,7 @@ void comp_main()
         float _224 = _218.y;
         float _226 = _218.w;
         float _227 = _218.x;
-        float2 _236 = ((float2((_223 + _224) - (_226 + _227), (_227 + _224) - (_226 + _223)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(_Globals_terrain_heightmap_dims));
+        float2 _236 = ((float2((_223 + _224) - (_226 + _227), (_227 + _224) - (_226 + _223)) * 0.5f.xx) * 26.5f) / (130.0f.xx / float2(terrain_heightmap_dims));
         float3 _243 = cross(normalize(float3(0.0f, _236.y, 1.0f)), normalize(float3(1.0f, _236.x, 0.0f)));
         float4 _246 = mul(frame_constants_view_constants[2u].view_to_world, float4(0.0f, 0.0f, 1.0f, 0.0f));
         float3 _247 = _246.xyz;
@@ -344,7 +344,7 @@ void comp_main()
         float3 _259 = float3(_258.x ? 0.5f.xxx.x : _216.x, _258.y ? 0.5f.xxx.y : _216.y, _258.z ? 0.5f.xxx.z : _216.z);
         float _261 = max(0.0f, dot(_243, _247));
         float _481;
-        if (_Globals_bool_render_shadows == 1)
+        if (bool_render_shadows == 1)
         {
             float2 _479;
             do

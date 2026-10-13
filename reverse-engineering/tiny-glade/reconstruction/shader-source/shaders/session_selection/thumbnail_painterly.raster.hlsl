@@ -150,12 +150,12 @@ float4 ps_main(PsIn pin) : SV_Target0
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b15, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.y);
-    uint _Globals_is_black_and_white : packoffset(c1.z);
-    uint _Globals_thumbnail_index : packoffset(c1.w);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.y);
+    uint is_black_and_white : packoffset(c1.z);
+    uint thumbnail_index : packoffset(c1.w);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -240,7 +240,7 @@ void vert_main()
     float2 _139 = mul(float2x2(float2(_132, _133), float2(-_133, _132)), _129.xy);
     float4 _140 = float4(_139.x, _139.y, _129.z, _129.w);
     _140.w = 1.0f - _129.w;
-    uint _154 = _Globals_thumbnail_index + (_Globals_thumbnail_index << 10u);
+    uint _154 = thumbnail_index + (thumbnail_index << 10u);
     uint _156 = _154 ^ (_154 >> 6u);
     uint _158 = _156 + (_156 << 3u);
     uint _160 = _158 ^ (_158 >> 11u);
@@ -267,8 +267,8 @@ void vert_main()
     {
         _217 = _181 * (((lerp(0.800000011920928955078125f, 1.2000000476837158203125f, asfloat((_176 & 8388607u) | 1065353216u) - 1.0f) * 0.5f) * _184) / max(abs(_181.x), abs(_181.y)));
     }
-    float2 _229 = (((_140.xy * _Globals_thumbnail_size) * (lerp(0.25f, 0.119999997317790985107421875f, _182) * 2.0f)) + (_217 * _Globals_thumbnail_size)) + _Globals_first_thumbnail_center;
-    _229.x = _229.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _229 = (((_140.xy * thumbnail_size) * (lerp(0.25f, 0.119999997317790985107421875f, _182) * 2.0f)) + (_217 * thumbnail_size)) + first_thumbnail_center;
+    _229.x = _229.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float4 _237 = float4((_229 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     bool4 _241 = ((_105 % 2u) != 0u).xxxx;
     float4 _242 = float4(_241.x ? 0.0f.xxxx.x : _237.x, _241.y ? 0.0f.xxxx.y : _237.y, _241.z ? 0.0f.xxxx.z : _237.z, _241.w ? 0.0f.xxxx.w : _237.w);
@@ -328,12 +328,12 @@ SPIRV_Cross_Output vs_main(SPIRV_Cross_Input stage_input)
 #pragma dxc diagnostic ignored "-Wambig-lit-shift"
 cbuffer $Globals : register(b15, space0)
 {
-    uint2 _Globals_framebuffer_dims : packoffset(c0);
-    float2 _Globals_first_thumbnail_center : packoffset(c0.z);
-    float _Globals_thumbnail_size : packoffset(c1);
-    float _Globals_hover : packoffset(c1.y);
-    uint _Globals_is_black_and_white : packoffset(c1.z);
-    uint _Globals_thumbnail_index : packoffset(c1.w);
+    uint2 framebuffer_dims : packoffset(c0);
+    float2 first_thumbnail_center : packoffset(c0.z);
+    float thumbnail_size : packoffset(c1);
+    float hover : packoffset(c1.y);
+    uint is_black_and_white : packoffset(c1.z);
+    uint thumbnail_index : packoffset(c1.w);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -418,7 +418,7 @@ void vert_main()
     float2 _139 = mul(float2x2(float2(_132, _133), float2(-_133, _132)), _129.xy);
     float4 _140 = float4(_139.x, _139.y, _129.z, _129.w);
     _140.w = 1.0f - _129.w;
-    uint _154 = _Globals_thumbnail_index + (_Globals_thumbnail_index << 10u);
+    uint _154 = thumbnail_index + (thumbnail_index << 10u);
     uint _156 = _154 ^ (_154 >> 6u);
     uint _158 = _156 + (_156 << 3u);
     uint _160 = _158 ^ (_158 >> 11u);
@@ -445,8 +445,8 @@ void vert_main()
     {
         _217 = _181 * (((lerp(0.800000011920928955078125f, 1.2000000476837158203125f, asfloat((_176 & 8388607u) | 1065353216u) - 1.0f) * 0.5f) * _184) / max(abs(_181.x), abs(_181.y)));
     }
-    float2 _229 = (((_140.xy * _Globals_thumbnail_size) * (lerp(0.25f, 0.119999997317790985107421875f, _182) * 2.0f)) + (_217 * _Globals_thumbnail_size)) + _Globals_first_thumbnail_center;
-    _229.x = _229.x / (float(_Globals_framebuffer_dims.x) / float(_Globals_framebuffer_dims.y));
+    float2 _229 = (((_140.xy * thumbnail_size) * (lerp(0.25f, 0.119999997317790985107421875f, _182) * 2.0f)) + (_217 * thumbnail_size)) + first_thumbnail_center;
+    _229.x = _229.x / (float(framebuffer_dims.x) / float(framebuffer_dims.y));
     float4 _237 = float4((_229 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f);
     bool4 _241 = ((_105 % 2u) != 0u).xxxx;
     float4 _242 = float4(_241.x ? 0.0f.xxxx.x : _237.x, _241.y ? 0.0f.xxxx.y : _237.y, _241.z ? 0.0f.xxxx.z : _237.z, _241.w ? 0.0f.xxxx.w : _237.w);

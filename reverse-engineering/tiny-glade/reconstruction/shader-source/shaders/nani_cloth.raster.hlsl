@@ -83,12 +83,12 @@ float noise2(float2 p)
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Color : TEXCOORD1;
-    float3 Vertex_Normal : TEXCOORD2;
-    float2 Vertex_UV : TEXCOORD3;
-    float3 tangent : TEXCOORD4;
-    float3 bitangent : TEXCOORD5;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
+    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
+    [[vk::location(4)]] float3 tangent: tangent;
+    [[vk::location(5)]] float3 bitangent: bitangent;
     uint instance_id : SV_InstanceID;
 };
 

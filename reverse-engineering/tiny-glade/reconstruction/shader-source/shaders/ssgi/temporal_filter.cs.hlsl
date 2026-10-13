@@ -170,12 +170,12 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_history_valid : packoffset(c0);
-    uint2 _Globals_input_tex_dims : packoffset(c0.y);
-    uint2 _Globals_history_tex_dims : packoffset(c1);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c1.z);
-    uint2 _Globals_final_output_tex_dims : packoffset(c2);
-    uint2 _Globals_history_output_tex_dims : packoffset(c2.z);
+    uint history_valid : packoffset(c0);
+    uint2 input_tex_dims : packoffset(c0.y);
+    uint2 history_tex_dims : packoffset(c1);
+    uint2 reprojection_tex_dims : packoffset(c1.z);
+    uint2 final_output_tex_dims : packoffset(c2);
+    uint2 history_output_tex_dims : packoffset(c2.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -193,7 +193,7 @@ struct SPIRV_Cross_Input
 
 void comp_main()
 {
-    bool _87 = _Globals_history_valid != 0u;
+    bool _87 = history_valid != 0u;
     bool _94;
     if (_87)
     {
@@ -219,7 +219,7 @@ void comp_main()
         float4 _125;
         if (_115)
         {
-            _125 = history_tex.SampleLevel(sampler_lnc, ((float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(_Globals_input_tex_dims)) + reprojection_tex.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy, 0.0f);
+            _125 = history_tex.SampleLevel(sampler_lnc, ((float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx) / float2(input_tex_dims)) + reprojection_tex.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy, 0.0f);
         }
         else
         {

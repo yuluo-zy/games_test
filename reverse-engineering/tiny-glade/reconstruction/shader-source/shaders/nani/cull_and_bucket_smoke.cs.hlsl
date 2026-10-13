@@ -78,7 +78,7 @@ RWByteAddressBuffer __alias_next_visibility_bitmask : register(u19, space0);
 ByteAddressBuffer draw_list_info : register(t20, space0);
 cbuffer $Globals : register(b22, space0)
 {
-    uint2 _Globals_hzb_tex_inner_dims : packoffset(c0);
+    uint2 hzb_tex_inner_dims : packoffset(c0);
 };
 
 struct PushConstants
@@ -173,7 +173,7 @@ void comp_main()
         float _310 = (_139.z * _139.z) - 56.25f;
         float _316 = sqrt((_139.x * _139.x) + _310);
         float _342 = sqrt((_139.y * _139.y) + _310);
-        float4 _373 = float4(_Globals_hzb_tex_inner_dims.xyxy);
+        float4 _373 = float4(hzb_tex_inner_dims.xyxy);
         float4 _376 = clamp((float4((((_316 * _139.x) - _132.z) / ((_316 * _139.z) + _132.x)) * _301, (-(((_342 * _139.y) + _132.z) / ((_342 * _139.z) - _132.y))) * _304, (((_316 * _139.x) + _132.z) / ((_316 * _139.z) - _132.x)) * _301, (-(((_342 * _139.y) - _132.z) / ((_342 * _139.z) + _132.y))) * _304) + 0.5f.xxxx) * _373, 0.0f.xxxx, _373 - 1.0f.xxxx);
         float4 _138 = _376;
         float2 _140 = float2(_138.z - _138.x, _138.w - _138.y);

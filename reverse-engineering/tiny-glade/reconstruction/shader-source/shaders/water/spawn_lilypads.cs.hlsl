@@ -224,12 +224,12 @@ static uint _137;
 RWByteAddressBuffer __alias_draw_commands : register(u13, space0);
 cbuffer $Globals : register(b14, space0)
 {
-    int _Globals_draw_indirect_buffer_offset : packoffset(c0);
-    uint2 _Globals_water_mask_dims : packoffset(c0.y);
-    uint2 _Globals_path_mask_dims : packoffset(c1);
-    uint2 _Globals_garden_mask_dims : packoffset(c1.z);
-    uint2 _Globals_animation_dims : packoffset(c2);
-    int2 _Globals_grid_dims : packoffset(c2.z);
+    int draw_indirect_buffer_offset : packoffset(c0);
+    uint2 water_mask_dims : packoffset(c0.y);
+    uint2 path_mask_dims : packoffset(c1);
+    uint2 garden_mask_dims : packoffset(c1.z);
+    uint2 animation_dims : packoffset(c2);
+    int2 grid_dims : packoffset(c2.z);
 };
 
 cbuffer frame_constants : register(b0, space1)
@@ -282,7 +282,7 @@ void comp_main()
 {
     do
     {
-        if (any(bool2(gl_GlobalInvocationID.xy.x >= _Globals_animation_dims.x, gl_GlobalInvocationID.xy.y >= _Globals_animation_dims.y)))
+        if (any(bool2(gl_GlobalInvocationID.xy.x >= animation_dims.x, gl_GlobalInvocationID.xy.y >= animation_dims.y)))
         {
             break;
         }
@@ -295,7 +295,7 @@ void comp_main()
         uint _189 = _187 ^ (_187 >> 6u);
         uint _191 = _189 + (_189 << 3u);
         uint _193 = _191 ^ (_191 >> 11u);
-        float2 _205 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(_Globals_grid_dims)) - 0.5f.xx) * 130.0f.xx) + (lerp(-0.25f, 0.25f, ((asfloat(((_178 + (_178 << 15u)) & 8388607u) | 1065353216u) - 1.0f) + (asfloat(((_193 + (_193 << 15u)) & 8388607u) | 1065353216u) - 1.0f)) * 0.5f) * 2.0f).xx;
+        float2 _205 = ((((float2(gl_GlobalInvocationID.xy) + 0.5f.xx) / float2(grid_dims)) - 0.5f.xx) * 130.0f.xx) + (lerp(-0.25f, 0.25f, ((asfloat(((_178 + (_178 << 15u)) & 8388607u) | 1065353216u) - 1.0f) + (asfloat(((_193 + (_193 << 15u)) & 8388607u) | 1065353216u) - 1.0f)) * 0.5f) * 2.0f).xx;
         float _237;
         do
         {
@@ -646,7 +646,7 @@ void comp_main()
             float _925 = _907 * _904;
             float4x4 _936 = mul(mul(float4x4(float4(1.0f, 0.0f, 0.0f, _819.x), float4(0.0f, 1.0f, 0.0f, _819.y), float4(0.0f, 0.0f, 1.0f, _819.z), float4(0.0f, 0.0f, 0.0f, 1.0f)), mul(_899, float4x4(float4(_840.x, 0.0f, 0.0f, 0.0f), float4(0.0f, _840.y, 0.0f, 0.0f), float4(0.0f, 0.0f, _840.z, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)))), transpose(float4x4(float4((_908 * _907) + _905, _912 - _914, _917 + _918, 0.0f), float4(_912 + _914, (_921 * _911) + _905, _924 - _925, 0.0f), float4(_917 - _918, _924 + _925, (_916 * _913) + _905, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f))));
             uint _953;
-            __alias_draw_commands.InterlockedAdd(uint(_Globals_draw_indirect_buffer_offset) * 20 + 4, 1u, _953);
+            __alias_draw_commands.InterlockedAdd(uint(draw_indirect_buffer_offset) * 20 + 4, 1u, _953);
             uint _955 = uint(int(_953));
             float _957[12] = { _936[0].x, _936[1].x, _936[2].x, _936[0].y, _936[1].y, _936[2].y, _936[0].z, _936[1].z, _936[2].z, _936[0].w, _936[1].w, _936[2].w };
             Affine3Packed _958 = { _957 };

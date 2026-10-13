@@ -67,8 +67,8 @@ Texture2D<float4> dirtpath_1 : register(t15, space0);
 
 struct vs_main_input
 {
-    float3 position : TEXCOORD0;
-    float3 normal : TEXCOORD1;
+    [[vk::location(0)]] float3 position: Vertex_Position;
+    [[vk::location(1)]] float3 normal: Vertex_Normal;
     uint instance_id : SV_InstanceID;
 };
 
@@ -202,9 +202,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirtpath_1_dims : packoffset(c0.y);
-    int _Globals_bool_render_shadows : packoffset(c0.w);
+    uint current_view_index : packoffset(c0);
+    uint2 dirtpath_1_dims : packoffset(c0.y);
+    int bool_render_shadows : packoffset(c0.w);
 };
 
 ByteAddressBuffer pebble_placement_buffer : register(t14, space0);
@@ -218,8 +218,8 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -240,7 +240,7 @@ void vert_main()
     }
     float3x4 _99 = transpose(float4x3(float3(_80.data[0], _80.data[1], _80.data[2]), float3(_80.data[3], _80.data[4], _80.data[5]), float3(_80.data[6], _80.data[7], _80.data[8]), float3(_80.data[9], _80.data[10], _80.data[11])));
     float3 _104 = mul(_99, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_104, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_104, 1.0f));
     out_var_C1 = mul(_99, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _104;
 }
@@ -379,9 +379,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_dirtpath_1_dims : packoffset(c0.y);
-    int _Globals_bool_render_shadows : packoffset(c0.w);
+    uint current_view_index : packoffset(c0);
+    uint2 dirtpath_1_dims : packoffset(c0.y);
+    int bool_render_shadows : packoffset(c0.w);
 };
 
 ByteAddressBuffer pebble_placement_buffer : register(t14, space0);
@@ -395,8 +395,8 @@ static float3 out_var_C2;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -417,7 +417,7 @@ void vert_main()
     }
     float3x4 _99 = transpose(float4x3(float3(_80.data[0], _80.data[1], _80.data[2]), float3(_80.data[3], _80.data[4], _80.data[5]), float3(_80.data[6], _80.data[7], _80.data[8]), float3(_80.data[9], _80.data[10], _80.data[11])));
     float3 _104 = mul(_99, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_104, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_104, 1.0f));
     out_var_C1 = mul(_99, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _104;
 }

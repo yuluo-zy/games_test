@@ -226,10 +226,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -278,7 +278,7 @@ void vert_main()
     }
     float3x4 _122 = transpose(float4x3(float3(_103.data[0], _103.data[1], _103.data[2]), float3(_103.data[3], _103.data[4], _103.data[5]), float3(_103.data[6], _103.data[7], _103.data[8]), float3(_103.data[9], _103.data[10], _103.data[11])));
     float3 _127 = mul(_122, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_127, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_127, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_122, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _127;
@@ -381,10 +381,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_terrain_heightmap_dims : packoffset(c0.y);
-    uint2 _Globals_visual_terrain_heightmap_dims : packoffset(c1);
-    int _Globals_bool_render_shadows : packoffset(c1.z);
+    uint current_view_index : packoffset(c0);
+    uint2 terrain_heightmap_dims : packoffset(c0.y);
+    uint2 visual_terrain_heightmap_dims : packoffset(c1);
+    int bool_render_shadows : packoffset(c1.z);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -433,7 +433,7 @@ void vert_main()
     }
     float3x4 _122 = transpose(float4x3(float3(_103.data[0], _103.data[1], _103.data[2]), float3(_103.data[3], _103.data[4], _103.data[5]), float3(_103.data[6], _103.data[7], _103.data[8]), float3(_103.data[9], _103.data[10], _103.data[11])));
     float3 _127 = mul(_122, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_127, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_127, 1.0f));
     out_var_C0 = in_var_Vertex_Color;
     out_var_C1 = mul(_122, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _127;

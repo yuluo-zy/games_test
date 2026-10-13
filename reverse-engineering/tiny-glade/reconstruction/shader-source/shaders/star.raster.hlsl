@@ -159,9 +159,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.y);
-    uint2 _Globals_star_texture_dims : packoffset(c1);
+    uint current_view_index : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.y);
+    uint2 star_texture_dims : packoffset(c1);
 };
 
 
@@ -228,7 +228,7 @@ void vert_main()
     float2 _202 = ((float2(2.0f, 1.0f) * (lerp(1.0f, 0.20000000298023223876953125f, smoothstep(0.699999988079071044921875f, 1.0f, _139)) * 10.0f)) * 3.0f) * (asfloat(((_161 + (_161 << 15u)) & 8388607u) | 1065353216u) - 1.0f);
     float3 _203 = float3(_176, 0.0f, -_177);
     float3 _213 = _186 + ((_203 * (_202.x * _109.x)) + (float3(0.0f, 1.0f, 0.0f) * (_202.y * _109.y)));
-    float4 _226 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_213, 1.0f));
+    float4 _226 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_213, 1.0f));
     bool4 _228 = (uint(gl_InstanceIndex) > 6000u).xxxx;
     gl_Position = float4(_228.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _226.x, _228.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _226.y, _228.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _226.z, _228.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _226.w);
     out_var_C0 = float2(_103, float(1u - _105));
@@ -314,9 +314,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.y);
-    uint2 _Globals_star_texture_dims : packoffset(c1);
+    uint current_view_index : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.y);
+    uint2 star_texture_dims : packoffset(c1);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -339,7 +339,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    float4 _94 = mul(frame_constants_view_constants[_Globals_current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float4 _94 = mul(frame_constants_view_constants[current_view_index].view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float _121;
     do
     {
@@ -442,9 +442,9 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    uint2 _Globals_framebuffer_dims : packoffset(c0.y);
-    uint2 _Globals_star_texture_dims : packoffset(c1);
+    uint current_view_index : packoffset(c0);
+    uint2 framebuffer_dims : packoffset(c0.y);
+    uint2 star_texture_dims : packoffset(c1);
 };
 
 
@@ -511,7 +511,7 @@ void vert_main()
     float2 _202 = ((float2(2.0f, 1.0f) * (lerp(1.0f, 0.20000000298023223876953125f, smoothstep(0.699999988079071044921875f, 1.0f, _139)) * 10.0f)) * 3.0f) * (asfloat(((_161 + (_161 << 15u)) & 8388607u) | 1065353216u) - 1.0f);
     float3 _203 = float3(_176, 0.0f, -_177);
     float3 _213 = _186 + ((_203 * (_202.x * _109.x)) + (float3(0.0f, 1.0f, 0.0f) * (_202.y * _109.y)));
-    float4 _226 = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_213, 1.0f));
+    float4 _226 = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_213, 1.0f));
     bool4 _228 = (uint(gl_InstanceIndex) > 6000u).xxxx;
     gl_Position = float4(_228.x ? asfloat(0x7fbfffffu /* nan */).xxxx.x : _226.x, _228.y ? asfloat(0x7fbfffffu /* nan */).xxxx.y : _226.y, _228.z ? asfloat(0x7fbfffffu /* nan */).xxxx.z : _226.z, _228.w ? asfloat(0x7fbfffffu /* nan */).xxxx.w : _226.w);
     out_var_C0 = float2(_103, float(1u - _105));

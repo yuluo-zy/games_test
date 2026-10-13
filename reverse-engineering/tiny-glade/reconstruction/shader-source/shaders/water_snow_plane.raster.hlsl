@@ -54,7 +54,7 @@ Texture2D<float4> water_mask : register(t14, space0);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
 };
 
 struct VsOut
@@ -204,10 +204,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_water_mask_dims : packoffset(c5);
-    int _Globals_bool_render_shadows : packoffset(c5.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 water_mask_dims : packoffset(c5);
+    int bool_render_shadows : packoffset(c5.z);
 };
 
 
@@ -217,7 +217,7 @@ static float3 out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
 };
 
 struct SPIRV_Cross_Output
@@ -228,11 +228,11 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    float4 _72 = mul(_Globals_model_to_world, float4(in_var_Vertex_Position, 1.0f));
+    float4 _72 = mul(model_to_world, float4(in_var_Vertex_Position, 1.0f));
     float2 _74 = _72.xz * 130.0f.xx;
     float4 _75 = float4(_74.x, _72.y, _74.y, _72.w);
     _75.y = -0.00999999977648258209228515625f;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _75);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _75);
     out_var_C1 = _75.xyz;
 }
 
@@ -403,10 +403,10 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    column_major float4x4 _Globals_model_to_world : packoffset(c1);
-    uint2 _Globals_water_mask_dims : packoffset(c5);
-    int _Globals_bool_render_shadows : packoffset(c5.z);
+    uint current_view_index : packoffset(c0);
+    column_major float4x4 model_to_world : packoffset(c1);
+    uint2 water_mask_dims : packoffset(c5);
+    int bool_render_shadows : packoffset(c5.z);
 };
 
 
@@ -416,7 +416,7 @@ static float3 out_var_C1;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
 };
 
 struct SPIRV_Cross_Output
@@ -427,11 +427,11 @@ struct SPIRV_Cross_Output
 
 void vert_main()
 {
-    float4 _72 = mul(_Globals_model_to_world, float4(in_var_Vertex_Position, 1.0f));
+    float4 _72 = mul(model_to_world, float4(in_var_Vertex_Position, 1.0f));
     float2 _74 = _72.xz * 130.0f.xx;
     float4 _75 = float4(_74.x, _72.y, _74.y, _72.w);
     _75.y = -0.00999999977648258209228515625f;
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, _75);
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, _75);
     out_var_C1 = _75.xyz;
 }
 

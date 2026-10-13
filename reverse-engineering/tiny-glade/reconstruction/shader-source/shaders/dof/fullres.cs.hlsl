@@ -390,14 +390,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    float _Globals_bokeh_anisotropy : packoffset(c0);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_coc_tiles_dilated_tex_dims : packoffset(c1.z);
-    uint2 _Globals_depth_tex_dims : packoffset(c2);
-    uint2 _Globals_coc_tex_dims : packoffset(c2.z);
-    uint2 _Globals_img_output_dims : packoffset(c3);
-    uint2 _Globals_halfres_tex_dims : packoffset(c3.z);
+    float bokeh_anisotropy : packoffset(c0);
+    uint2 blue_noise_texture_dims : packoffset(c0.y);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 coc_tiles_dilated_tex_dims : packoffset(c1.z);
+    uint2 depth_tex_dims : packoffset(c2);
+    uint2 coc_tex_dims : packoffset(c2.z);
+    uint2 img_output_dims : packoffset(c3);
+    uint2 halfres_tex_dims : packoffset(c3.z);
 };
 
 cbuffer spatial_resolve_offsets : register(b21, space0)
@@ -452,8 +452,8 @@ void comp_main()
         _211++;
         continue;
     }
-    float2 _232 = (float2(int2(_201)) + 0.5f.xx) / float2(_Globals_img_output_dims);
-    float _243 = min(float(_Globals_color_tex_dims.y) * 0.0416666679084300994873046875f, coc_tiles_dilated_tex.SampleLevel(sampler_nnc, _232, 0.0f).x);
+    float2 _232 = (float2(int2(_201)) + 0.5f.xx) / float2(img_output_dims);
+    float _243 = min(float(color_tex_dims.y) * 0.0416666679084300994873046875f, coc_tiles_dilated_tex.SampleLevel(sampler_nnc, _232, 0.0f).x);
     float4 _259 = ((blue_noise_texture.Load(int3(((_201 + uint2(13u, 13u)) + uint2(int2(int(frame_constants_frame_index * 59u), int(frame_constants_frame_index * 37u)))) & uint2(255u, 255u), 0u)) * 255.0f) * 0.00390625f.xxxx) + 0.001953125f.xxxx;
     uint2 _260 = uint2(7u, 7u) + _201;
     float _272 = (frac(52.98291778564453125f * frac((0.067110560834407806396484375f * float(_260.x)) + (0.005837149918079376220703125f * float(_260.y)))) - 0.5f) * 0.5f;
@@ -497,21 +497,21 @@ void comp_main()
         float _318 = (float(_307) + _290) * 1.57079637050628662109375f;
         float2 _321 = float2(cos(_318), sin(_318));
         float2 _359;
-        if (_Globals_bokeh_anisotropy > 0.0f)
+        if (bokeh_anisotropy > 0.0f)
         {
             float4 _334 = mul(frame_constants_view_constants[0u].clip_to_view, float4((_232 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f));
             float2 _338 = _334.xy / _334.z.xx;
             _338.y = _338.y * (-1.0f);
             float2 _342 = normalize(_338);
             float2x2 _347 = float2x2(_342, float2(-_342.y, _342.x));
-            float _352 = lerp(0.699999988079071044921875f, 1.0f, exp(((-4.0f) * _Globals_bokeh_anisotropy) * dot(_338, _338)));
+            float _352 = lerp(0.699999988079071044921875f, 1.0f, exp(((-4.0f) * bokeh_anisotropy) * dot(_338, _338)));
             _359 = mul(transpose(_347), mul(_347, _321) * float2(_352, 1.0f / _352));
         }
         else
         {
             _359 = _321;
         }
-        float2 _364 = _359 * (_296.xx / float2(_Globals_color_tex_dims));
+        float2 _364 = _359 * (_296.xx / float2(color_tex_dims));
         float _373 = -_243;
         float _374 = clamp(coc_tex.SampleLevel(sampler_nnc, _232 + (_364 * (((-8.0f) + _274) * _275)), 0.0f).x, _373, _243);
         float _375 = abs(_374);
@@ -712,7 +712,7 @@ void comp_main()
             float2 _890 = frac(frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(_879)) + 0.5f.xx) + _259.xy);
             float _892 = sqrt(_890.x);
             float _894 = _890.y * 6.283185482025146484375f;
-            float2 _905 = _232 + (((float2(cos(_894) * _892, sin(_894) * _892) * 1.0f) / float2(_Globals_color_tex_dims)) * _301);
+            float2 _905 = _232 + (((float2(cos(_894) * _892, sin(_894) * _892) * 1.0f) / float2(color_tex_dims)) * _301);
             float4 _908 = coc_tex.SampleLevel(sampler_nnc, _905, 0.0f);
             float _909 = _908.x;
             if (_909 > (_877 - 10.0f))
@@ -811,14 +811,14 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    float _Globals_bokeh_anisotropy : packoffset(c0);
-    uint2 _Globals_blue_noise_texture_dims : packoffset(c0.y);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_coc_tiles_dilated_tex_dims : packoffset(c1.z);
-    uint2 _Globals_depth_tex_dims : packoffset(c2);
-    uint2 _Globals_coc_tex_dims : packoffset(c2.z);
-    uint2 _Globals_img_output_dims : packoffset(c3);
-    uint2 _Globals_halfres_tex_dims : packoffset(c3.z);
+    float bokeh_anisotropy : packoffset(c0);
+    uint2 blue_noise_texture_dims : packoffset(c0.y);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 coc_tiles_dilated_tex_dims : packoffset(c1.z);
+    uint2 depth_tex_dims : packoffset(c2);
+    uint2 coc_tex_dims : packoffset(c2.z);
+    uint2 img_output_dims : packoffset(c3);
+    uint2 halfres_tex_dims : packoffset(c3.z);
 };
 
 cbuffer spatial_resolve_offsets : register(b21, space0)
@@ -873,8 +873,8 @@ void comp_main()
         _209++;
         continue;
     }
-    float2 _230 = (float2(int2(_199)) + 0.5f.xx) / float2(_Globals_img_output_dims);
-    float _241 = min(float(_Globals_color_tex_dims.y) * 0.0416666679084300994873046875f, coc_tiles_dilated_tex.SampleLevel(sampler_nnc, _230, 0.0f).x);
+    float2 _230 = (float2(int2(_199)) + 0.5f.xx) / float2(img_output_dims);
+    float _241 = min(float(color_tex_dims.y) * 0.0416666679084300994873046875f, coc_tiles_dilated_tex.SampleLevel(sampler_nnc, _230, 0.0f).x);
     float4 _257 = ((blue_noise_texture.Load(int3(((_199 + uint2(13u, 13u)) + uint2(int2(int(frame_constants_frame_index * 59u), int(frame_constants_frame_index * 37u)))) & uint2(255u, 255u), 0u)) * 255.0f) * 0.00390625f.xxxx) + 0.001953125f.xxxx;
     float _258 = _257.z;
     float _259 = _257.y;
@@ -915,21 +915,21 @@ void comp_main()
         float _289 = (float(_278) + _261) * 0.785398185253143310546875f;
         float2 _292 = float2(cos(_289), sin(_289));
         float2 _330;
-        if (_Globals_bokeh_anisotropy > 0.0f)
+        if (bokeh_anisotropy > 0.0f)
         {
             float4 _305 = mul(frame_constants_view_constants[0u].clip_to_view, float4((_230 - 0.5f.xx) * float2(2.0f, -2.0f), 0.0f, 1.0f));
             float2 _309 = _305.xy / _305.z.xx;
             _309.y = _309.y * (-1.0f);
             float2 _313 = normalize(_309);
             float2x2 _318 = float2x2(_313, float2(-_313.y, _313.x));
-            float _323 = lerp(0.699999988079071044921875f, 1.0f, exp(((-4.0f) * _Globals_bokeh_anisotropy) * dot(_309, _309)));
+            float _323 = lerp(0.699999988079071044921875f, 1.0f, exp(((-4.0f) * bokeh_anisotropy) * dot(_309, _309)));
             _330 = mul(transpose(_318), mul(_318, _292) * float2(_323, 1.0f / _323));
         }
         else
         {
             _330 = _292;
         }
-        float2 _335 = _330 * (_267.xx / float2(_Globals_color_tex_dims));
+        float2 _335 = _330 * (_267.xx / float2(color_tex_dims));
         float _344 = -_241;
         float _345 = clamp(coc_tex.SampleLevel(sampler_nnc, _230 + (_335 * (((-8.0f) + _259) * _260)), 0.0f).x, _344, _241);
         float _346 = abs(_345);
@@ -1130,7 +1130,7 @@ void comp_main()
             float2 _860 = frac(frac((float2(0.75487768650054931640625f, 0.56984031200408935546875f) * float(_849)) + 0.5f.xx) + _257.xy);
             float _862 = sqrt(_860.x);
             float _864 = _860.y * 6.283185482025146484375f;
-            float2 _875 = _230 + (((float2(cos(_864) * _862, sin(_864) * _862) * 1.0f) / float2(_Globals_color_tex_dims)) * _272);
+            float2 _875 = _230 + (((float2(cos(_864) * _862, sin(_864) * _862) * 1.0f) / float2(color_tex_dims)) * _272);
             float4 _878 = coc_tex.SampleLevel(sampler_nnc, _875, 0.0f);
             float _879 = _878.x;
             if (_879 > (_847 - 10.0f))

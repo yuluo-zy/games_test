@@ -164,8 +164,8 @@ struct DofTileOffsets
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_coc_tiles_tex_dims : packoffset(c0);
-    uint2 _Globals_coc_tiles_dilated_tex_dims : packoffset(c0.z);
+    uint2 coc_tiles_tex_dims : packoffset(c0);
+    uint2 coc_tiles_dilated_tex_dims : packoffset(c0.z);
 };
 
 ByteAddressBuffer tile_offsets_buffer : register(t16, space0);
@@ -193,8 +193,8 @@ void comp_main()
     uint _126 = (_123 ^ (_123 >> 2u)) & 252645135u;
     uint _129 = (_126 ^ (_126 >> 4u)) & 16711935u;
     uint2 _134 = (gl_GlobalInvocationID.xy & uint2(4294967288u, 4294967288u)) + uint2((_115 ^ (_115 >> 8u)) & 65535u, (_129 ^ (_129 >> 8u)) & 65535u);
-    bool _138 = all(bool2(_134.x < _Globals_coc_tiles_tex_dims.x, _134.y < _Globals_coc_tiles_tex_dims.y));
-    int _147 = int(uint(min(16.0f, ceil(float(_Globals_coc_tiles_tex_dims.y * 8u) * 0.0052083334885537624359130859375f))));
+    bool _138 = all(bool2(_134.x < coc_tiles_tex_dims.x, _134.y < coc_tiles_tex_dims.y));
+    int _147 = int(uint(min(16.0f, ceil(float(coc_tiles_tex_dims.y * 8u) * 0.0052083334885537624359130859375f))));
     int _148 = -_147;
     float _150;
     float _153;
@@ -212,7 +212,7 @@ void comp_main()
         {
             uint2 _171 = _134 + uint2(int2(_155, _164));
             int _176 = (_155 * _155) + (_164 * _164);
-            if (all(bool2(_171.x < _Globals_coc_tiles_tex_dims.x, _171.y < _Globals_coc_tiles_tex_dims.y)) ? (_176 < (_147 * _147)) : false)
+            if (all(bool2(_171.x < coc_tiles_tex_dims.x, _171.y < coc_tiles_tex_dims.y)) ? (_176 < (_147 * _147)) : false)
             {
                 float4 _183 = coc_tiles_tex.Load(int3(_171, 0u));
                 float _184 = _183.y;

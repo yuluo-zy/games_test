@@ -50,9 +50,9 @@ StructuredBuffer<InstanceData> nani_instance_data : register(t15);
 
 struct VsIn
 {
-    float3 Vertex_Position : TEXCOORD0;
-    float3 Vertex_Normal : TEXCOORD1;
-    float2 Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
     uint instance_id : SV_InstanceID;
 };
 
@@ -228,8 +228,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -248,9 +248,9 @@ static uint out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -276,7 +276,7 @@ void vert_main()
     _102.has_albedo_texture = nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 48);
     float3x4 _124 = transpose(float4x3(float3(_100.data[0], _100.data[1], _100.data[2]), float3(_100.data[3], _100.data[4], _100.data[5]), float3(_100.data[6], _100.data[7], _100.data[8]), float3(_100.data[9], _100.data[10], _100.data[11])));
     float3 _129 = mul(_124, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_129, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_129, 1.0f));
     out_var_C0 = in_var_Vertex_UV;
     out_var_C1 = mul(_124, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _129;
@@ -381,8 +381,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 ByteAddressBuffer instance_indirection_buffer : register(t14, space0);
@@ -401,9 +401,9 @@ static uint out_var_C4;
 
 struct SPIRV_Cross_Input
 {
-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
+    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
+    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
     uint gl_InstanceIndex : SV_InstanceID;
 };
 
@@ -429,7 +429,7 @@ void vert_main()
     _102.has_albedo_texture = nani_instance_data.Load<uint>(instance_indirection_buffer.Load<uint>(uint(gl_InstanceIndex) * 4 + 0) * 64 + 48);
     float3x4 _124 = transpose(float4x3(float3(_100.data[0], _100.data[1], _100.data[2]), float3(_100.data[3], _100.data[4], _100.data[5]), float3(_100.data[6], _100.data[7], _100.data[8]), float3(_100.data[9], _100.data[10], _100.data[11])));
     float3 _129 = mul(_124, float4(in_var_Vertex_Position, 1.0f));
-    gl_Position = mul(frame_constants_view_constants[_Globals_current_view_index].world_to_sample, float4(_129, 1.0f));
+    gl_Position = mul(frame_constants_view_constants[current_view_index].world_to_sample, float4(_129, 1.0f));
     out_var_C0 = in_var_Vertex_UV;
     out_var_C1 = mul(_124, float4(in_var_Vertex_Normal, 0.0f));
     out_var_C2 = _129;
@@ -517,8 +517,8 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint _Globals_current_view_index : packoffset(c0);
-    int _Globals_bool_render_shadows : packoffset(c0.y);
+    uint current_view_index : packoffset(c0);
+    int bool_render_shadows : packoffset(c0.y);
 };
 
 
@@ -592,7 +592,7 @@ void frag_main()
     bool _84;
     if (spvBitfieldUExtract(in_var_C3, 1u, 1u) != 0u)
     {
-        _84 = _Globals_bool_render_shadows != 0;
+        _84 = bool_render_shadows != 0;
     }
     else
     {

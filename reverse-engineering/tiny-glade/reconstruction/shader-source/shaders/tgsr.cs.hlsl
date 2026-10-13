@@ -390,19 +390,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_reprojected_history_tex_lum_dims : packoffset(c0);
-    uint2 _Globals_reprojected_history_tex_chroma_dims : packoffset(c0.z);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_blurred_luminance_tex_dims : packoffset(c1.z);
-    uint2 _Globals_history_tex_dims : packoffset(c2);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c2.z);
-    uint2 _Globals_aux_tex_dims : packoffset(c3);
-    uint2 _Globals_history_output_tex_dims : packoffset(c3.z);
-    uint2 _Globals_output_tex_dims : packoffset(c4);
-    uint2 _Globals_aux_output_tex_dims : packoffset(c4.z);
-    uint _Globals_bypass_neighborhood_clamping : packoffset(c5);
-    float _Globals_sharpen_amount : packoffset(c5.y);
-    uint _Globals_history_valid : packoffset(c5.z);
+    uint2 reprojected_history_tex_lum_dims : packoffset(c0);
+    uint2 reprojected_history_tex_chroma_dims : packoffset(c0.z);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 blurred_luminance_tex_dims : packoffset(c1.z);
+    uint2 history_tex_dims : packoffset(c2);
+    uint2 reprojection_tex_dims : packoffset(c2.z);
+    uint2 aux_tex_dims : packoffset(c3);
+    uint2 history_output_tex_dims : packoffset(c3.z);
+    uint2 output_tex_dims : packoffset(c4);
+    uint2 aux_output_tex_dims : packoffset(c4.z);
+    uint bypass_neighborhood_clamping : packoffset(c5);
+    float sharpen_amount : packoffset(c5.y);
+    uint history_valid : packoffset(c5.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -429,14 +429,14 @@ groupshared float tile_luminance[8][8];
 
 void comp_main()
 {
-    float2 _171 = float2(_Globals_output_tex_dims);
+    float2 _171 = float2(output_tex_dims);
     float2 _173 = float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx;
     float2 _174 = _173 / _171;
-    bool _177 = _Globals_bypass_neighborhood_clamping != 0u;
+    bool _177 = bypass_neighborhood_clamping != 0u;
     float _179 = float(_177 ? 16 : 4);
     float4 _183 = reprojection_tex.SampleLevel(sampler_nnc, _174, 0.0f);
     float2 _184 = _183.xy;
-    bool _188 = _Globals_history_valid != 0u;
+    bool _188 = history_valid != 0u;
     bool _195;
     if (_188)
     {
@@ -457,7 +457,7 @@ void comp_main()
     }
     float _208 = _204.y * _179;
     float3 _216 = float3(reprojected_history_tex_lum.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, reprojected_history_tex_chroma.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy);
-    float2 _224 = float2(int2(_Globals_color_tex_dims)) / _171;
+    float2 _224 = float2(int2(color_tex_dims)) / _171;
     int2 _226 = int2(_173 * _224);
     float2 _231 = ((float2(_226) + 0.5f.xx) + (frame_constants_view_constants[0u].sample_offset_pixels * float2(1.0f, -1.0f))) / _224;
     float _232 = _224.x;
@@ -522,7 +522,7 @@ void comp_main()
         for (int _312 = -1; _312 <= 1; )
         {
             float _321 = exp(float((_312 * _312) + (_303 * _303)) * (-0.75f));
-            _299 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _174 + ((float2(float(_312), float(_303)) * 2.0f) / float2(_Globals_color_tex_dims)), 0.0f).x * _321);
+            _299 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _174 + ((float2(float(_312), float(_303)) * 2.0f) / float2(color_tex_dims)), 0.0f).x * _321);
             _302 += _321;
             _312++;
             continue;
@@ -552,7 +552,7 @@ void comp_main()
     float _359 = WaveReadLaneAt(_354, _356);
     float _360 = lerp(_354, _359, 0.5f);
     float3 _364 = sqrt(max(0.0f.xxx, (_240 / _293) - (_294 * _294)));
-    float2 _368 = 0.5f.xx / float2(_Globals_reprojection_tex_dims);
+    float2 _368 = 0.5f.xx / float2(reprojection_tex_dims);
     float3 _369 = _364 * 2.0f;
     float3 _371 = (_294 + _369) + 0.001000000047497451305389404296875f.xxx;
     float3 _373 = (_294 - _369) - 0.001000000047497451305389404296875f.xxx;
@@ -707,7 +707,7 @@ void comp_main()
     if (all(bool4(_623.x < uint4(8u, 8u, 8u, 8u).x, _623.y < uint4(8u, 8u, 8u, 8u).y, _623.z < uint4(8u, 8u, 8u, 8u).z, _623.w < uint4(8u, 8u, 8u, 8u).w)))
     {
         float _639 = max(0.0f, 1.0f - (6.0f * (abs(_588 - tile_luminance[_619][_620]) + abs(_588 - tile_luminance[_621][_622]))));
-        float _644 = min(_639, (_Globals_sharpen_amount * _639) * 1.25f);
+        float _644 = min(_639, (sharpen_amount * _639) * 1.25f);
         _648 = _644 * (tile_luminance[_619][_620] + tile_luminance[_621][_622]);
         _649 = _644 * 2.0f;
     }
@@ -728,7 +728,7 @@ void comp_main()
     if (all(bool4(_656.x < uint4(8u, 8u, 8u, 8u).x, _656.y < uint4(8u, 8u, 8u, 8u).y, _656.z < uint4(8u, 8u, 8u, 8u).z, _656.w < uint4(8u, 8u, 8u, 8u).w)))
     {
         float _672 = max(0.0f, 1.0f - (6.0f * (abs(_588 - tile_luminance[_652][_653]) + abs(_588 - tile_luminance[_654][_655]))));
-        float _677 = min(_672, (_Globals_sharpen_amount * _672) * 1.25f);
+        float _677 = min(_672, (sharpen_amount * _672) * 1.25f);
         _684 = (_648 + (tile_luminance[_652][_653] * _677)) + (tile_luminance[_654][_655] * _677);
         _685 = _649 + (_677 * 2.0f);
     }
@@ -842,19 +842,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_reprojected_history_tex_lum_dims : packoffset(c0);
-    uint2 _Globals_reprojected_history_tex_chroma_dims : packoffset(c0.z);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_blurred_luminance_tex_dims : packoffset(c1.z);
-    uint2 _Globals_history_tex_dims : packoffset(c2);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c2.z);
-    uint2 _Globals_aux_tex_dims : packoffset(c3);
-    uint2 _Globals_history_output_tex_dims : packoffset(c3.z);
-    uint2 _Globals_output_tex_dims : packoffset(c4);
-    uint2 _Globals_aux_output_tex_dims : packoffset(c4.z);
-    uint _Globals_bypass_neighborhood_clamping : packoffset(c5);
-    float _Globals_sharpen_amount : packoffset(c5.y);
-    uint _Globals_history_valid : packoffset(c5.z);
+    uint2 reprojected_history_tex_lum_dims : packoffset(c0);
+    uint2 reprojected_history_tex_chroma_dims : packoffset(c0.z);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 blurred_luminance_tex_dims : packoffset(c1.z);
+    uint2 history_tex_dims : packoffset(c2);
+    uint2 reprojection_tex_dims : packoffset(c2.z);
+    uint2 aux_tex_dims : packoffset(c3);
+    uint2 history_output_tex_dims : packoffset(c3.z);
+    uint2 output_tex_dims : packoffset(c4);
+    uint2 aux_output_tex_dims : packoffset(c4.z);
+    uint bypass_neighborhood_clamping : packoffset(c5);
+    float sharpen_amount : packoffset(c5.y);
+    uint history_valid : packoffset(c5.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -877,14 +877,14 @@ struct SPIRV_Cross_Input
 
 void comp_main()
 {
-    float2 _152 = float2(_Globals_output_tex_dims);
+    float2 _152 = float2(output_tex_dims);
     float2 _154 = float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx;
     float2 _155 = _154 / _152;
-    bool _158 = _Globals_bypass_neighborhood_clamping != 0u;
+    bool _158 = bypass_neighborhood_clamping != 0u;
     float _160 = float(_158 ? 16 : 4);
     float4 _164 = reprojection_tex.SampleLevel(sampler_nnc, _155, 0.0f);
     float2 _165 = _164.xy;
-    bool _169 = _Globals_history_valid != 0u;
+    bool _169 = history_valid != 0u;
     bool _176;
     if (_169)
     {
@@ -905,7 +905,7 @@ void comp_main()
     }
     float _189 = _185.y * _160;
     float3 _197 = float3(reprojected_history_tex_lum.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, reprojected_history_tex_chroma.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy);
-    float2 _205 = float2(int2(_Globals_color_tex_dims)) / _152;
+    float2 _205 = float2(int2(color_tex_dims)) / _152;
     int2 _207 = int2(_154 * _205);
     float2 _212 = ((float2(_207) + 0.5f.xx) + (frame_constants_view_constants[0u].sample_offset_pixels * float2(1.0f, -1.0f))) / _205;
     float _213 = _205.x;
@@ -969,7 +969,7 @@ void comp_main()
         for (int _293 = -1; _293 <= 1; )
         {
             float _302 = exp(float((_293 * _293) + (_284 * _284)) * (-0.75f));
-            _280 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _155 + ((float2(float(_293), float(_284)) * 2.0f) / float2(_Globals_color_tex_dims)), 0.0f).x * _302);
+            _280 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _155 + ((float2(float(_293), float(_284)) * 2.0f) / float2(color_tex_dims)), 0.0f).x * _302);
             _283 += _302;
             _293++;
             continue;
@@ -999,7 +999,7 @@ void comp_main()
     float _340 = WaveReadLaneAt(_335, _337);
     float _341 = lerp(_335, _340, 0.5f);
     float3 _345 = sqrt(max(0.0f.xxx, (_221 / _274) - (_275 * _275)));
-    float2 _349 = 0.5f.xx / float2(_Globals_reprojection_tex_dims);
+    float2 _349 = 0.5f.xx / float2(reprojection_tex_dims);
     float3 _350 = _345 * 2.0f;
     float3 _352 = (_275 + _350) + 0.001000000047497451305389404296875f.xxx;
     float3 _354 = (_275 - _350) - 0.001000000047497451305389404296875f.xxx;
@@ -1238,19 +1238,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_reprojected_history_tex_lum_dims : packoffset(c0);
-    uint2 _Globals_reprojected_history_tex_chroma_dims : packoffset(c0.z);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_blurred_luminance_tex_dims : packoffset(c1.z);
-    uint2 _Globals_history_tex_dims : packoffset(c2);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c2.z);
-    uint2 _Globals_aux_tex_dims : packoffset(c3);
-    uint2 _Globals_history_output_tex_dims : packoffset(c3.z);
-    uint2 _Globals_output_tex_dims : packoffset(c4);
-    uint2 _Globals_aux_output_tex_dims : packoffset(c4.z);
-    uint _Globals_bypass_neighborhood_clamping : packoffset(c5);
-    float _Globals_sharpen_amount : packoffset(c5.y);
-    uint _Globals_history_valid : packoffset(c5.z);
+    uint2 reprojected_history_tex_lum_dims : packoffset(c0);
+    uint2 reprojected_history_tex_chroma_dims : packoffset(c0.z);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 blurred_luminance_tex_dims : packoffset(c1.z);
+    uint2 history_tex_dims : packoffset(c2);
+    uint2 reprojection_tex_dims : packoffset(c2.z);
+    uint2 aux_tex_dims : packoffset(c3);
+    uint2 history_output_tex_dims : packoffset(c3.z);
+    uint2 output_tex_dims : packoffset(c4);
+    uint2 aux_output_tex_dims : packoffset(c4.z);
+    uint bypass_neighborhood_clamping : packoffset(c5);
+    float sharpen_amount : packoffset(c5.y);
+    uint history_valid : packoffset(c5.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -1273,14 +1273,14 @@ struct SPIRV_Cross_Input
 
 void comp_main()
 {
-    float2 _152 = float2(_Globals_output_tex_dims);
+    float2 _152 = float2(output_tex_dims);
     float2 _154 = float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx;
     float2 _155 = _154 / _152;
-    bool _158 = _Globals_bypass_neighborhood_clamping != 0u;
+    bool _158 = bypass_neighborhood_clamping != 0u;
     float _160 = float(_158 ? 16 : 4);
     float4 _164 = reprojection_tex.SampleLevel(sampler_nnc, _155, 0.0f);
     float2 _165 = _164.xy;
-    bool _169 = _Globals_history_valid != 0u;
+    bool _169 = history_valid != 0u;
     bool _176;
     if (_169)
     {
@@ -1301,7 +1301,7 @@ void comp_main()
     }
     float _189 = _185.y * _160;
     float3 _197 = float3(reprojected_history_tex_lum.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, reprojected_history_tex_chroma.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy);
-    float2 _205 = float2(int2(_Globals_color_tex_dims)) / _152;
+    float2 _205 = float2(int2(color_tex_dims)) / _152;
     int2 _207 = int2(_154 * _205);
     float2 _212 = ((float2(_207) + 0.5f.xx) + (frame_constants_view_constants[0u].sample_offset_pixels * float2(1.0f, -1.0f))) / _205;
     float _213 = _205.x;
@@ -1365,7 +1365,7 @@ void comp_main()
         for (int _293 = -1; _293 <= 1; )
         {
             float _302 = exp(float((_293 * _293) + (_284 * _284)) * (-0.75f));
-            _280 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _155 + ((float2(float(_293), float(_284)) * 2.0f) / float2(_Globals_color_tex_dims)), 0.0f).x * _302);
+            _280 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _155 + ((float2(float(_293), float(_284)) * 2.0f) / float2(color_tex_dims)), 0.0f).x * _302);
             _283 += _302;
             _293++;
             continue;
@@ -1395,7 +1395,7 @@ void comp_main()
     float _340 = WaveReadLaneAt(_335, _337);
     float _341 = lerp(_335, _340, 0.5f);
     float3 _345 = sqrt(max(0.0f.xxx, (_221 / _274) - (_275 * _275)));
-    float2 _349 = 0.5f.xx / float2(_Globals_reprojection_tex_dims);
+    float2 _349 = 0.5f.xx / float2(reprojection_tex_dims);
     float3 _350 = _345 * 2.0f;
     float3 _352 = (_275 + _350) + 0.001000000047497451305389404296875f.xxx;
     float3 _354 = (_275 - _350) - 0.001000000047497451305389404296875f.xxx;
@@ -1634,19 +1634,19 @@ cbuffer frame_constants : register(b0, space1)
 
 cbuffer $Globals : register(b13, space0)
 {
-    uint2 _Globals_reprojected_history_tex_lum_dims : packoffset(c0);
-    uint2 _Globals_reprojected_history_tex_chroma_dims : packoffset(c0.z);
-    uint2 _Globals_color_tex_dims : packoffset(c1);
-    uint2 _Globals_blurred_luminance_tex_dims : packoffset(c1.z);
-    uint2 _Globals_history_tex_dims : packoffset(c2);
-    uint2 _Globals_reprojection_tex_dims : packoffset(c2.z);
-    uint2 _Globals_aux_tex_dims : packoffset(c3);
-    uint2 _Globals_history_output_tex_dims : packoffset(c3.z);
-    uint2 _Globals_output_tex_dims : packoffset(c4);
-    uint2 _Globals_aux_output_tex_dims : packoffset(c4.z);
-    uint _Globals_bypass_neighborhood_clamping : packoffset(c5);
-    float _Globals_sharpen_amount : packoffset(c5.y);
-    uint _Globals_history_valid : packoffset(c5.z);
+    uint2 reprojected_history_tex_lum_dims : packoffset(c0);
+    uint2 reprojected_history_tex_chroma_dims : packoffset(c0.z);
+    uint2 color_tex_dims : packoffset(c1);
+    uint2 blurred_luminance_tex_dims : packoffset(c1.z);
+    uint2 history_tex_dims : packoffset(c2);
+    uint2 reprojection_tex_dims : packoffset(c2.z);
+    uint2 aux_tex_dims : packoffset(c3);
+    uint2 history_output_tex_dims : packoffset(c3.z);
+    uint2 output_tex_dims : packoffset(c4);
+    uint2 aux_output_tex_dims : packoffset(c4.z);
+    uint bypass_neighborhood_clamping : packoffset(c5);
+    float sharpen_amount : packoffset(c5.y);
+    uint history_valid : packoffset(c5.z);
 };
 
 SamplerState sampler_lnc : register(s0, space0);
@@ -1673,14 +1673,14 @@ groupshared float tile_luminance[8][4];
 
 void comp_main()
 {
-    float2 _172 = float2(_Globals_output_tex_dims);
+    float2 _172 = float2(output_tex_dims);
     float2 _174 = float2(int2(gl_GlobalInvocationID.xy)) + 0.5f.xx;
     float2 _175 = _174 / _172;
-    bool _178 = _Globals_bypass_neighborhood_clamping != 0u;
+    bool _178 = bypass_neighborhood_clamping != 0u;
     float _180 = float(_178 ? 16 : 4);
     float4 _184 = reprojection_tex.SampleLevel(sampler_nnc, _175, 0.0f);
     float2 _185 = _184.xy;
-    bool _189 = _Globals_history_valid != 0u;
+    bool _189 = history_valid != 0u;
     bool _196;
     if (_189)
     {
@@ -1701,7 +1701,7 @@ void comp_main()
     }
     float _209 = _205.y * _180;
     float3 _217 = float3(reprojected_history_tex_lum.Load(int3(gl_GlobalInvocationID.xy, 0u)).x, reprojected_history_tex_chroma.Load(int3(gl_GlobalInvocationID.xy, 0u)).xy);
-    float2 _225 = float2(int2(_Globals_color_tex_dims)) / _172;
+    float2 _225 = float2(int2(color_tex_dims)) / _172;
     int2 _227 = int2(_174 * _225);
     float2 _232 = ((float2(_227) + 0.5f.xx) + (frame_constants_view_constants[0u].sample_offset_pixels * float2(1.0f, -1.0f))) / _225;
     float _233 = _225.x;
@@ -1766,7 +1766,7 @@ void comp_main()
         for (int _313 = -1; _313 <= 1; )
         {
             float _322 = exp(float((_313 * _313) + (_304 * _304)) * (-0.75f));
-            _300 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _175 + ((float2(float(_313), float(_304)) * 2.0f) / float2(_Globals_color_tex_dims)), 0.0f).x * _322);
+            _300 += (reprojected_history_tex_lum.SampleLevel(sampler_lnc, _175 + ((float2(float(_313), float(_304)) * 2.0f) / float2(color_tex_dims)), 0.0f).x * _322);
             _303 += _322;
             _313++;
             continue;
@@ -1796,7 +1796,7 @@ void comp_main()
     float _360 = WaveReadLaneAt(_355, _357);
     float _361 = lerp(_355, _360, 0.5f);
     float3 _365 = sqrt(max(0.0f.xxx, (_241 / _294) - (_295 * _295)));
-    float2 _369 = 0.5f.xx / float2(_Globals_reprojection_tex_dims);
+    float2 _369 = 0.5f.xx / float2(reprojection_tex_dims);
     float3 _370 = _365 * 2.0f;
     float3 _372 = (_295 + _370) + 0.001000000047497451305389404296875f.xxx;
     float3 _374 = (_295 - _370) - 0.001000000047497451305389404296875f.xxx;
@@ -1951,7 +1951,7 @@ void comp_main()
     if (all(bool4(_624.x < uint4(8u, 4u, 8u, 4u).x, _624.y < uint4(8u, 4u, 8u, 4u).y, _624.z < uint4(8u, 4u, 8u, 4u).z, _624.w < uint4(8u, 4u, 8u, 4u).w)))
     {
         float _640 = max(0.0f, 1.0f - (6.0f * (abs(_589 - tile_luminance[_620][_621]) + abs(_589 - tile_luminance[_622][_623]))));
-        float _645 = min(_640, (_Globals_sharpen_amount * _640) * 1.25f);
+        float _645 = min(_640, (sharpen_amount * _640) * 1.25f);
         _649 = _645 * (tile_luminance[_620][_621] + tile_luminance[_622][_623]);
         _650 = _645 * 2.0f;
     }
@@ -1972,7 +1972,7 @@ void comp_main()
     if (all(bool4(_657.x < uint4(8u, 4u, 8u, 4u).x, _657.y < uint4(8u, 4u, 8u, 4u).y, _657.z < uint4(8u, 4u, 8u, 4u).z, _657.w < uint4(8u, 4u, 8u, 4u).w)))
     {
         float _673 = max(0.0f, 1.0f - (6.0f * (abs(_589 - tile_luminance[_653][_654]) + abs(_589 - tile_luminance[_655][_656]))));
-        float _678 = min(_673, (_Globals_sharpen_amount * _673) * 1.25f);
+        float _678 = min(_673, (sharpen_amount * _673) * 1.25f);
         _685 = (_649 + (tile_luminance[_653][_654] * _678)) + (tile_luminance[_655][_656] * _678);
         _686 = _650 + (_678 * 2.0f);
     }
