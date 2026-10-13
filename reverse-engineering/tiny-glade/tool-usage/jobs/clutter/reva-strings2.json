@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\n\nprog = currentProgram\nout = {}\ndef read_cstr(addr_str, maxlen=64):\n    addr = prog.getAddressFactory().getAddress(addr_str)\n    mem = prog.getMemory()\n    buf = bytearray(maxlen)\n    n = mem.getBytes(addr, buf)\n    s = bytes(buf[:n])\n    z = s.find(b\"\\x00\")\n    s = s[:z] if z != -1 else s\n    return s.decode(\"utf-8\", \"replace\")\ndef read_hex(addr_str, nbytes=64):\n    addr = prog.getAddressFactory().getAddress(addr_str)\n    mem = prog.getMemory()\n    buf = bytearray(nbytes)\n    n = mem.getBytes(addr, buf)\n    return bytes(buf[:n]).hex()\nfor a in [\"0x143042260\",\"0x143042d28\",\"0x143042d91\",\"0x143042618\",\"0x143042660\",\"0x1430425d0\",\"0x1430423a0\",\"0x143042370\"]:\n    try:\n        out[a] = read_cstr(a)\n    except Exception as e:\n        out[a] = \"ERR \" + str(e)\nout[\"0x143042370_hex\"] = read_hex(\"0x143042370\", 80)\nout[\"0x142925904_hex\"] = read_hex(\"0x142925904\", 8)\nout[\"0x1429cd0c0_hex\"] = read_hex(\"0x1429cd0c0\", 16)\nopen(\"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/strings.json\",\"w\").write(json.dumps(out, indent=1))\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

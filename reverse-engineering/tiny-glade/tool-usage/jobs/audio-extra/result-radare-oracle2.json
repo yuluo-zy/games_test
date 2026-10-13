@@ -1,0 +1,1879 @@
+{
+  "backend": "radare2",
+  "worker": "audio-extra-owner",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "open_file",
+      "requested_args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      },
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "show_info",
+      "requested_args": {},
+      "args": {},
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "fd       3\nfile     /Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne\nsize     0x37c0800\nhumansz  55.8M\nmode     r-x\nformat   pe64\niorw     true\nblock    0x100\ntype     EXEC (Executable file)\narch     x86\nbaddr    0x140000000\nbinsz    58460160\nbintype  pe\nbits     64\ncanary   true\ninjprot  false\nretguard false\nclass    PE32+\ncmp.csum 0x037c2f11\ncompiled Wed Oct  8 10:36:14 2025\ncrypto   false\ndbg_file tiny_glade.pdb\nendian   little\nhavecode true\nhdr.csum 0x00000000\nguid     09F1A02A49F2F8C84C4C44205044422E1\nladdr    0x0\nlang     c\nlinenum  false\nlsyms    false\nmachine  AMD 64\nnx       true\nos       windows\noverlay  false\ncc       ms\npic      true\nrelocs   false\nsigned   false\nsanitize false\nstatic   false\nstripped false\nuncaps   false\nsubsys   Windows GUI\nva       true\nPE file header:\nIMAGE_NT_HEADERS\n  Signature : 0x4550\nIMAGE_FILE_HEADERS\n  Machine : 0x8664\n  NumberOfSections : 0x7\n  TimeDateStamp : 0x68e63e9e\n  PointerToSymbolTable : 0x0\n  NumberOfSymbols : 0x0\n  SizeOfOptionalHeader : 0xf0\n  Characteristics : 0x22\nIMAGE_OPTIONAL_HEADERS\n  Magic : 0x20b\n  MajorLinkerVersion : 0xe\n  MinorLinkerVersion : 0x0\n  SizeOfCode : 0x2923200\n  SizeOfInitializedData : 0xe9d200\n  SizeOfUninitializedData : 0x0\n  AddressOfEntryPoint : 0x289aeac\n  BaseOfCode : 0x1000\n  ImageBase : 0x140000000\n  SectionAlignment : 0x1000\n  FileAlignment : 0x200\n  MajorOperatingSystemVersion : 0x6\n  MinorOperatingSystemVersion : 0x0\n  MajorImageVersion : 0x0\n  MinorImageVersion : 0x0\n  MajorSubsystemVersion : 0x6\n  MinorSubsystemVersion : 0x0\n  Win32VersionValue : 0x0\n  SizeOfImage : 0x37cd000\n  SizeOfHeaders : 0x400\n  CheckSum : 0x0\n  Subsystem : 0x2\n  DllCharacteristics : 0x8160\n  SizeOfStackReserve : 0x100000\n  SizeOfStackCommit : 0x1000\n  SizeOfHeapReserve : 0x100000\n  SizeOfHeapCommit : 0x1000\n  LoaderFlags : 0x0\n  NumberOfRvaAndSizes : 0x10\nRICH_FIELDS\nIMAGE_DIRECTORY_ENTRY_IMPORT\n  VirtualAddress : 0x3191200\n  Size : 0x294\nIMAGE_DIRECTORY_ENTRY_EXCEPTION\n  VirtualAddress : 0x363c000\n  Size : 0x154a1c\nIMAGE_DIRECTORY_ENTRY_BASERELOC\n  VirtualAddress : 0x3793000\n  Size : 0x391c4\nIMAGE_DIRECTORY_ENTRY_DEBUG\n  VirtualAddress : 0x3191118\n  Size : 0x1c\nIMAGE_DIRECTORY_ENTRY_TLS\n  VirtualAddress : 0x318b428\n  Size : 0x28\nIMAGE_DIRECTORY_ENTRY_LOAD_CONFIG\n  VirtualAddress : 0x318b2f0\n  Size : 0x138\nIMAGE_DIRECTORY_ENTRY_IAT\n  VirtualAddress : 0x31923e0\n  Size : 0xf48\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac2cc8",
+        "size": "128"
+      },
+      "args": {
+        "address": "0x142ac2cc8",
+        "size": "128"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C8C9 CACB CCCD CECF D0D1 D2D3 D4D5 D6D7  89ABCDEF01234567\n0x142ac2cc8  9833 f1fd 2833 f1fd 4c33 f1fd 5833 f1fd  .3..(3..L3..X3..\n0x142ac2cd8  e834 f1fd 3a33 f1fd 6a33 f1fd 7c33 f1fd  .4..:3..j3..|3..\n0x142ac2ce8  f042 f1fd 924e f1fd 7953 f1fd 3d53 f1fd  .B...N..yS..=S..\n0x142ac2cf8  0f54 f1fd 5b53 f1fd e352 f1fd 0153 f1fd  .T..[S...R...S..\n0x142ac2d08  b553 f1fd ff54 f1fd 1f53 f1fd 9753 f1fd  .S...T...S...S..\n0x142ac2d18  c354 f1fd a752 f1fd 2d54 f1fd 8952 f1fd  .T...R..-T...R..\n0x142ac2d28  6954 f1fd e154 f1fd 7755 f1fd f042 f1fd  iT...T..wU...B..\n0x142ac2d38  8754 f1fd a554 f1fd 5955 f1fd 9555 f1fd  .T...T..YU...U..\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac706c",
+        "size": "256"
+      },
+      "args": {
+        "address": "0x142ac706c",
+        "size": "256"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   6C6D 6E6F 7071 7273 7475 7677 7879 7A7B  CDEF0123456789AB\n0x142ac706c  e045 f4fd 9047 f4fd ee46 f4fd 2447 f4fd  .E...G...F..$G..\n0x142ac707c  4c46 f4fd c647 f4fd fc47 f4fd 5a47 f4fd  LF...G...G..ZG..\n0x142ac708c  6848 f4fd b846 f4fd 3248 f4fd 1646 f4fd  hH...F..2H...F..\n0x142ac709c  8246 f4fd 0100 0000 e100 0000 e100 0000  .F..............\n0x142ac70ac  0100 0000 5f65 7870 616e 7369 6f6e 5f73  ...._expansion_s\n0x142ac70bc  6361 6c65 6269 6c6c 626f 6172 645f 6578  calebillboard_ex\n0x142ac70cc  7061 6e73 7061 7274 6963 6c65 5f65 6d69  pansparticle_emi\n0x142ac70dc  7474 6572 5265 736f 7572 6365 2064 6f65  tterResource doe\n0x142ac70ec  7320 6e6f 7420 6578 6973 7463 6f75 6e74  s not existcount\n0x142ac70fc  7279 5f63 6f72 653a 3a61 7373 6574 5f6c  ry_core::asset_l\n0x142ac710c  6962 7261 7269 6573 3a3a 6d65 7368 5f6c  ibraries::mesh_l\n0x142ac711c  6962 7261 7279 3a3a 4173 7365 744d 6573  ibrary::AssetMes\n0x142ac712c  684c 6962 7261 7279 5265 736f 7572 6365  hLibraryResource\n0x142ac713c  2072 6571 7565 7374 6564 2062 7920 2064   requested by  d\n0x142ac714c  6f65 7320 6e6f 7420 6578 6973 743a 2000  oes not exist: .\n0x142ac715c  0000 0000 3471 ac42 0100 0000 1600 0000  ....4q.B........\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142aa1688",
+        "size": "192"
+      },
+      "args": {
+        "address": "0x142aa1688",
+        "size": "192"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8889 8A8B 8C8D 8E8F 9091 9293 9495 9697  89ABCDEF01234567\n0x142aa1688  08f3 e1fd 01f0 e1fd 45f1 e1fd 71f1 e1fd  ........E...q...\n0x142aa1698  ddf0 e1fd dff1 e1fd 21f2 e1fd 87f1 e1fd  ........!.......\n0x142aa16a8  63f2 e1fd 03f1 e1fd 4df2 e1fd c7f0 e1fd  c.......M.......\n0x142aa16b8  f3f0 e1fd 0bf2 e1fd 9bf0 e1fd 5bf1 e1fd  ............[...\n0x142aa16c8  85f0 e1fd b3f1 e1fd 78ef e1fd 37f2 e1fd  ........x...7...\n0x142aa16d8  aff2 e1fd c9f1 e1fd f5f1 e1fd 9cf2 e1fd  ................\n0x142aa16e8  bcf2 e1fd 2ff1 e1fd 19f1 e1fd eff2 e1fd  ..../...........\n0x142aa16f8  59f0 e1fd cff2 e1fd e2f2 e1fd 73f2 e1fd  Y...........s...\n0x142aa1708  9df1 e1fd 89f2 e1fd b1f0 e1fd 6ff0 e1fd  ............o...\n0x142aa1718  2df0 e1fd 43f0 e1fd 17f0 e1fd 5265 736f  -...C.......Reso\n0x142aa1728  7572 6365 2064 6f65 7320 6e6f 7420 6578  urce does not ex\n0x142aa1738  6973 7462 6576 795f 6563 733a 3a65 7665  istbevy_ecs::eve\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a9dfc7",
+        "size": "96"
+      },
+      "args": {
+        "address": "0x142a9dfc7",
+        "size": "96"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C7C8 C9CA CBCC CDCE CFD0 D1D2 D3D4 D5D6  789ABCDEF0123456\n0x142a9dfc7  636f 756e 7472 795f 636f 7265 3a3a 7379  country_core::sy\n0x142a9dfd7  7374 656d 733a 3a61 7564 696f 3a3a 7465  stems::audio::te\n0x142a9dfe7  7272 6169 6e5f 7374 6169 7273 5f61 7564  rrain_stairs_aud\n0x142a9dff7  696f 3a3a 5374 6169 7273 436f 756e 7465  io::StairsCounte\n0x142a9e007  7253 7362 6f63 6f75 6e74 7279 5f63 6f72  rSsbocountry_cor\n0x142a9e017  653a 3a72 656e 6465 723a 3a6e 616e 693a  e::render::nani:\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62e70",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142c62e70",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   7071 7273 7475 7677 7879 7A7B 7C7D 7E7F  0123456789ABCDEF\n0x142c62e70  6576 656e 743a 2f53 4658 2f53 7461 6972  event:/SFX/Stair\n0x142c62e80  4472 6177 5f4f 6e65 5368 6f74 0000 0000  Draw_OneShot....\n0x142c62e90  e52d c642 0100 0000 3d00 0000 0000 0000  .-.B....=.......\n0x142c62ea0  7700 0000 1600 0000 e52d c642 0100 0000  w........-.B....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62e90",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142c62e90",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9091 9293 9495 9697 9899 9A9B 9C9D 9E9F  0123456789ABCDEF\n0x142c62e90  e52d c642 0100 0000 3d00 0000 0000 0000  .-.B....=.......\n0x142c62ea0  7700 0000 1600 0000 e52d c642 0100 0000  w........-.B....\n0x142c62eb0  3d00 0000 0000 0000 7c00 0000 1600 0000  =.......|.......\n0x142c62ec0  6576 656e 743a 2f53 4658 2f54 7265 652f  event:/SFX/Tree/\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62240",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142c62240",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   4041 4243 4445 4647 4849 4A4B 4C4D 4E4F  0123456789ABCDEF\n0x142c62240  6361 6c6c 6564 2060 5265 7375 6c74 3a3a  called `Result::\n0x142c62250  756e 7772 6170 2829 6020 6f6e 2061 6e20  unwrap()` on an \n0x142c62260  6045 7272 6020 7661 6c75 6500 0000 0000  `Err` value.....\n0x142c62270  0000 0000 0000 0000 0800 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62220",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142c62220",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   2021 2223 2425 2627 2829 2A2B 2C2D 2E2F  0123456789ABCDEF\n0x142c62220  1066 5e40 0100 0000 0800 0000 0000 0000  .f^@............\n0x142c62230  0800 0000 0000 0000 20cc d440 0100 0000  ........ ..@....\n0x142c62240  6361 6c6c 6564 2060 5265 7375 6c74 3a3a  called `Result::\n0x142c62250  756e 7772 6170 2829 6020 6f6e 2061 6e20  unwrap()` on an \n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62943",
+        "size": "32"
+      },
+      "args": {
+        "address": "0x142c62943",
+        "size": "32"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   4344 4546 4748 494A 4B4C 4D4E 4F50 5152  3456789ABCDEF012\n0x142c62943  6564 6974 696e 675f 7370 6565 6457 616c  editing_speedWal\n0x142c62953  6c48 6569 6768 7465 7665 6e74 3a2f 5346  lHeightevent:/SF\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c62ea8",
+        "size": "32"
+      },
+      "args": {
+        "address": "0x142c62ea8",
+        "size": "32"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   A8A9 AAAB ACAD AEAF B0B1 B2B3 B4B5 B6B7  89ABCDEF01234567\n0x142c62ea8  e52d c642 0100 0000 3d00 0000 0000 0000  .-.B....=.......\n0x142c62eb8  7c00 0000 1600 0000 6576 656e 743a 2f53  |.......event:/S\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac5298",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac5298",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9899 9A9B 9C9D 9E9F A0A1 A2A3 A4A5 A6A7  89ABCDEF01234567\n0x142ac5298  6576 656e 743a 2f53 4658 2f57 6174 6572  event:/SFX/Water\n0x142ac52a8  2f41 6d62 0000 0000 e151 ac42 0100 0000  /Amb.....Q.B....\n0x142ac52b8  3d00 0000 0000 0000 5c00 0000 1600 0000  =.......\\.......\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac52c8",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac52c8",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C8C9 CACB CCCD CECF D0D1 D2D3 D4D5 D6D7  89ABCDEF01234567\n0x142ac52c8  e151 ac42 0100 0000 3d00 0000 0000 0000  .Q.B....=.......\n0x142ac52d8  5700 0000 1a00 0000 e151 ac42 0100 0000  W........Q.B....\n0x142ac52e8  3d00 0000 0000 0000 5f00 0000 1800 0000  =......._.......\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac52e0",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac52e0",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   E0E1 E2E3 E4E5 E6E7 E8E9 EAEB ECED EEEF  0123456789ABCDEF\n0x142ac52e0  e151 ac42 0100 0000 3d00 0000 0000 0000  .Q.B....=.......\n0x142ac52f0  5f00 0000 1800 0000 7061 7274 6961 6c20  _.......partial \n0x142ac5300  626c 7572 2070 7972 616d 6964 626c 7572  blur pyramidblur\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac5268",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac5268",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   6869 6A6B 6C6D 6E6F 7071 7273 7475 7677  89ABCDEF01234567\n0x142ac5268  e151 ac42 0100 0000 3d00 0000 0000 0000  .Q.B....=.......\n0x142ac5278  6700 0000 0e00 0000 e151 ac42 0100 0000  g........Q.B....\n0x142ac5288  3d00 0000 0000 0000 6800 0000 0e00 0000  =.......h.......\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac5280",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac5280",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8081 8283 8485 8687 8889 8A8B 8C8D 8E8F  0123456789ABCDEF\n0x142ac5280  e151 ac42 0100 0000 3d00 0000 0000 0000  .Q.B....=.......\n0x142ac5290  6800 0000 0e00 0000 6576 656e 743a 2f53  h.......event:/S\n0x142ac52a0  4658 2f57 6174 6572 2f41 6d62 0000 0000  FX/Water/Amb....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac52b0",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac52b0",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B0B1 B2B3 B4B5 B6B7 B8B9 BABB BCBD BEBF  0123456789ABCDEF\n0x142ac52b0  e151 ac42 0100 0000 3d00 0000 0000 0000  .Q.B....=.......\n0x142ac52c0  5c00 0000 1600 0000 e151 ac42 0100 0000  \\........Q.B....\n0x142ac52d0  3d00 0000 0000 0000 5700 0000 1a00 0000  =.......W.......\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142c77bb0",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142c77bb0",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B0B1 B2B3 B4B5 B6B7 B8B9 BABB BCBD BEBF  0123456789ABCDEF\n0x142c77bb0  587b c742 0100 0000 5800 0000 0000 0000  X{.B....X.......\n0x142c77bc0  b307 0000 0900 0000 0000 0000 0000 0000  ................\n0x142c77bd0  0800 0000 0000 0000 0800 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac4d00",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac4d00",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -    0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0123456789ABCDEF\n0x142ac4d00  0000 803c 0000 0000 0000 0000 0000 0000  ...<............\n0x142ac4d10  0000 503f 0000 503f 0000 0000 0000 0000  ..P?..P?........\n0x142ac4d20  0000 2942 0000 0000 0000 0000 0000 0000  ..)B............\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac4d20",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x142ac4d20",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   2021 2223 2425 2627 2829 2A2B 2C2D 2E2F  0123456789ABCDEF\n0x142ac4d20  0000 2942 0000 0000 0000 0000 0000 0000  ..)B............\n0x142ac4d30  0000 0000 0000 0000 3800 0000 0000 0000  ........8.......\n0x142ac4d40  7000 0000 0000 0000 a800 0000 0000 0000  p...............\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac6340",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac6340",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   4041 4243 4445 4647 4849 4A4B 4C4D 4E4F  0123456789ABCDEF\n0x142ac6340  1066 5e40 0100 0000 0800 0000 0000 0000  .f^@............\n0x142ac6350  0800 0000 0000 0000 20cc d440 0100 0000  ........ ..@....\n0x142ac6360  6361 6c6c 6564 2060 5265 7375 6c74 3a3a  called `Result::\n0x142ac6370  756e 7772 6170 2829 6020 6f6e 2061 6e20  unwrap()` on an \n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac6360",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac6360",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   6061 6263 6465 6667 6869 6A6B 6C6D 6E6F  0123456789ABCDEF\n0x142ac6360  6361 6c6c 6564 2060 5265 7375 6c74 3a3a  called `Result::\n0x142ac6370  756e 7772 6170 2829 6020 6f6e 2061 6e20  unwrap()` on an \n0x142ac6380  6045 7272 6020 7661 6c75 652f 7275 7374  `Err` value/rust\n0x142ac6390  632f 3035 6639 3834 3666 3839 3362 3039  c/05f9846f893b09\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac6db8",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac6db8",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B8B9 BABB BCBD BEBF C0C1 C2C3 C4C5 C6C7  89ABCDEF01234567\n0x142ac6db8  736e 6170 7368 6f74 3a2f 5061 7573 654d  snapshot:/PauseM\n0x142ac6dc8  656e 7563 7261 7465 732f 636f 756e 7472  enucrates/countr\n0x142ac6dd8  792d 636f 7265 2f73 7263 2f73 7973 7465  y-core/src/syste\n0x142ac6de8  6d73 2f61 7564 696f 2f6d 656e 755f 6175  ms/audio/menu_au\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac6e00",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac6e00",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -    0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0123456789ABCDEF\n0x142ac6e00  cb6d ac42 0100 0000 3300 0000 0000 0000  .m.B....3.......\n0x142ac6e10  2500 0000 4d00 0000 cb6d ac42 0100 0000  %...M....m.B....\n0x142ac6e20  3300 0000 0000 0000 2400 0000 0e00 0000  3.......$.......\n0x142ac6e30  6576 656e 743a 2f55 492f 4d65 6e75 2f48  event:/UI/Menu/H\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac6e18",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac6e18",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   1819 1A1B 1C1D 1E1F 2021 2223 2425 2627  89ABCDEF01234567\n0x142ac6e18  cb6d ac42 0100 0000 3300 0000 0000 0000  .m.B....3.......\n0x142ac6e28  2400 0000 0e00 0000 6576 656e 743a 2f55  $.......event:/U\n0x142ac6e38  492f 4d65 6e75 2f48 6f76 6572 6576 656e  I/Menu/Hovereven\n0x142ac6e48  743a 2f55 492f 5569 3264 486f 7665 7265  t:/UI/Ui2dHovere\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac23b0",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac23b0",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B0B1 B2B3 B4B5 B6B7 B8B9 BABB BCBD BEBF  0123456789ABCDEF\n0x142ac23b0  6576 656e 743a 2f53 4658 2f53 6865 6570  event:/SFX/Sheep\n0x142ac23c0  2f41 7777 6576 656e 743a 2f53 4658 2f53  /Awwevent:/SFX/S\n0x142ac23d0  6865 6570 2f54 6869 6e6b 6576 656e 743a  heep/Thinkevent:\n0x142ac23e0  2f53 4658 2f53 6865 6570 2f53 6f62 6576  /SFX/Sheep/Sobev\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ac2cc8",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ac2cc8",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C8C9 CACB CCCD CECF D0D1 D2D3 D4D5 D6D7  89ABCDEF01234567\n0x142ac2cc8  9833 f1fd 2833 f1fd 4c33 f1fd 5833 f1fd  .3..(3..L3..X3..\n0x142ac2cd8  e834 f1fd 3a33 f1fd 6a33 f1fd 7c33 f1fd  .4..:3..j3..|3..\n0x142ac2ce8  f042 f1fd 924e f1fd 7953 f1fd 3d53 f1fd  .B...N..yS..=S..\n0x142ac2cf8  0f54 f1fd 5b53 f1fd e352 f1fd 0153 f1fd  .T..[S...R...S..\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x1409d5f9c",
+        "num_instructions": 30
+      },
+      "args": {
+        "address": "0x1409d5f9c",
+        "num_instructions": 30
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x1409d5f9c      jmp rcx\n0x1409d5f9e      nop\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1409d5fa0      test r13, r13\n   ; likely\n0x1409d5fa3      je 0x1409d61bb\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1409d5fa9      cmp r13, qword [rbp - 0x40]\n   ; unlikely\n0x1409d5fad      je 0x1409d61bb\n0x1409d5fb3      mov rax, qword [rbp - 0x38]\n0x1409d5fb7      inc qword [rax]\n0x1409d5fba      lea rdi, [r13 + 8]\n0x1409d5fbe      movzx eax, byte [r13 + 0x18]\n0x1409d5fc3      mov rbx, r13\n; 32\n0x1409d5fc6      add r13, 0x20\n; 0x14\n; 20\n0x1409d5fca      mov r15d, setsockopt\n0x1409d5fd0      lea rdx, [0x142ac2cc8]\n0x1409d5fd7      movsxd rcx, dword [rdx + rax*4]\n0x1409d5fdb      add rcx, rdx\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1409d5fde      xor eax, eax\n   ; reloc.WS2_32.dll_recv\n0x1409d5fe0      lea r14, [rbp + 0x10]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1409d5fe4      xor r9d, r9d\n; \"event:/SFX/Sheep/Awwevent:/SFX/Sheep/Thinkevent:/SFX/Sheep/Sobevent:/SFX/Sheep/Angryevent:/SFX/Sheep/Ideaevent:/SFX/Sheep/Eyese\"\n0x1409d5fe7      lea r12, [0x142ac23b0]\n0x1409d5fee      jmp rcx\n; 0x16\n   ; reloc.WS2_32.dll_shutdown\n0x1409d5ff0      mov r15d, reloc.WS2_32.dll_shutdown\n0x1409d5ff6      mov r9, rax\n; \"event:/SFX/Sheep/Thinkevent:/SFX/Sheep/Sobevent:/SFX/Sheep/Angryevent:/SFX/Sheep/Ideaevent:/SFX/Sheep/Eyesevent:/SFX/Sheep/Conf\"\n0x1409d5ff9      lea r12, [0x142ac23c4]\n0x1409d6000      jmp 0x1409d6060\n; 0x15\n   ; reloc.WS2_32.dll_setsockopt\n0x1409d6002      mov r15d, reloc.WS2_32.dll_setsockopt\n0x1409d6008      mov r9, rax\n; \"event:/SFX/Sheep/Ideaevent:/SFX/Sheep/Eyesevent:/SFX/Sheep/Confused\"\n0x1409d600b      lea r12, [0x142ac2404]\n0x1409d6012      jmp 0x1409d6060\n0x1409d6014      mov r9, rax\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x140a0b660",
+        "num_instructions": 60
+      },
+      "args": {
+        "address": "0x140a0b660",
+        "num_instructions": 60
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b660      add byte [rax], al\n0x140a0b662      lea rcx, [rbp - 0x50]\n; \"event:/UI/Menu/Hoverevent:/UI/Ui2dHoverevent:/UI/Menu/Selectevent:/UI/Menu/Settingsevent:/UI/Menu/SettingsTabevent:/UI/Menu/Sli\"\n0x140a0b666      lea r8, [0x142ac6e30]\n   ; 0x140a54440(0x0, 0x0, 0x0, 0xffffffffffffffb0)\n0x140a0b66d      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b672      cmp qword [rbp - 0x50], 2\n   ; likely\n0x140a0b677      jne 0x140a0be4b\n0x140a0b67d      jmp 0x140a0c3c6\n0x140a0b682      mov rdx, qword [rbx]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b685      test rdx, rdx\n   ; unlikely\n0x140a0b688      je 0x140a0b90a\n; reloc.WS2_32.dll_recv\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b68e      add rdx, 0x10\n; 0x14\n; 20\n0x140a0b692      mov r9d, setsockopt\n0x140a0b698      lea rcx, [rbp - 0x50]\n; \"event:/UI/Menu/Closeevent:/UI/Ui2dLockedClickNew\"\n0x140a0b69c      lea r8, [0x142ac6f2b]\n   ; 0x140a54440(0x0, 0x0, 0xf, 0xffffffffffffffb0)\n0x140a0b6a3      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b6a8      cmp qword [rbp - 0x50], 2\n   ; likely\n0x140a0b6ad      jne 0x140a0b95a\n0x140a0b6b3      jmp 0x140a0c3fb\n0x140a0b6b8      mov rdx, qword [rbx]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b6bb      test rdx, rdx\n   ; unlikely\n0x140a0b6be      je 0x140a0b9bb\n; reloc.WS2_32.dll_recv\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b6c4      add rdx, 0x10\n; 26\n0x140a0b6c8      mov r9d, 0x1a\n0x140a0b6ce      lea rcx, [rbp - 0x50]\n; \"event:/UI/Menu/SettingsTabevent:/UI/Menu/SliderTickevent:/UI/Menu/ShowSessionsevent:/UI/Menu/NewSessionevent:/UI/Menu/StartSess\"\n0x140a0b6d2      lea r8, [0x142ac6e83]\n   ; 0x140a54440(0x0, 0x0, 0xf, 0xffffffffffffffb0)\n0x140a0b6d9      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b6de      cmp qword [rbp - 0x50], 2\n   ; likely\n0x140a0b6e3      jne 0x140a0ba0f\n0x140a0b6e9      jmp 0x140a0c2bd\n0x140a0b6ee      mov rdx, qword [rbx]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b6f1      test rdx, rdx\n   ; unlikely\n0x140a0b6f4      je 0x140a0ba70\n; reloc.WS2_32.dll_recv\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b6fa      add rdx, 0x10\n; 28\n0x140a0b6fe      mov r9d, 0x1c\n0x140a0b704      lea rcx, [rbp - 0x50]\n; \"event:/UI/Ui2dLockedClickNew\"\n0x140a0b708      lea r8, [0x142ac6f3f]\n   ; 0x140a54440(0x0, 0x0, 0xf, 0xffffffffffffffb0)\n0x140a0b70f      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b714      cmp qword [rbp - 0x50], 2\n   ; likely\n0x140a0b719      jne 0x140a0bac4\n0x140a0b71f      jmp 0x140a0c391\n0x140a0b724      mov rdx, qword [rbx]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b727      test rdx, rdx\n   ; unlikely\n0x140a0b72a      je 0x140a0bb25\n; reloc.WS2_32.dll_recv\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b730      add rdx, 0x10\n; 0x13\n   ; reloc.WS2_32.dll_send\n0x140a0b734      mov r9d, reloc.WS2_32.dll_send\n0x140a0b73a      lea rcx, [rbp - 0x50]\n; \"event:/UI/Menu/Backevent:/UI/Menu/Openevent:/UI/Menu/Closeevent:/UI/Ui2dLockedClickNew\"\n0x140a0b73e      lea r8, [0x142ac6f05]\n   ; 0x140a54440(0x0, 0x0, 0xf, 0xffffffffffffffb0)\n0x140a0b745      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b74a      cmp qword [rbp - 0x50], 2\n   ; likely\n0x140a0b74f      jne 0x140a0bb75\n0x140a0b755      jmp 0x140a0c465\n0x140a0b75a      mov rdx, qword [rbx]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b75d      test rdx, rdx\n   ; unlikely\n0x140a0b760      je 0x140a0bbd6\n; reloc.WS2_32.dll_recv\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x140a0b766      add rdx, 0x10\n; 0x15\n   ; reloc.WS2_32.dll_setsockopt\n0x140a0b76a      mov r9d, reloc.WS2_32.dll_setsockopt\n0x140a0b770      lea rcx, [rbp - 0x50]\n; \"event:/UI/Menu/Selectevent:/UI/Menu/Settingsevent:/UI/Menu/SettingsTabevent:/UI/Menu/SliderTickevent:/UI/Menu/ShowSessionsevent\"\n0x140a0b774      lea r8, [0x142ac6e57]\n   ; 0x140a54440(0x0, 0x0, 0xf, 0xffffffffffffffb0)\n0x140a0b77b      call 0x140a54440\n   ; reloc.WS2_32.dll_accept\n0x140a0b780      cmp qword [rbp - 0x50], 2\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x1408c0690",
+        "num_instructions": 80
+      },
+      "args": {
+        "address": "0x1408c0690",
+        "num_instructions": 80
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x1408c0690      mov dword [rbp + 0x78], ecx\n; \"event:/SFX/Cosmetics/Boxevent:/SFX/Cosmetics/BoxSackevent:/SFX/Cosmetics/BoxWaterCanevent:/SFX/Cosmetics/Bucketevent:/SFX/Cosme\"\n0x1408c0693      lea r8, [0x142aa0e6a]\n0x1408c069a      jmp 0x1408c0990\n; 29\n0x1408c069f      mov r9d, 0x1d\n0x1408c06a5      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/DoorBell\"\n0x1408c06a9      lea r8, [0x142aa1299]\n0x1408c06b0      jmp 0x1408c0990\n; 28\n0x1408c06b5      mov r9d, 0x1c\n0x1408c06bb      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/BoxFishevent:/SFX/Cosmetics/RackBroomsevent:/SFX/Cosmetics/DoorBell\"\n0x1408c06bf      lea r8, [0x142aa125e]\n0x1408c06c6      jmp 0x1408c0990\n; 31\n0x1408c06cb      mov r9d, 0x1f\n0x1408c06d1      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/RackBroomsevent:/SFX/Cosmetics/DoorBell\"\n0x1408c06d5      lea r8, [0x142aa127a]\n0x1408c06dc      jmp 0x1408c0990\n; 29\n0x1408c06e1      mov r9d, 0x1d\n0x1408c06e7      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/OldenLogevent:/SFX/Cosmetics/OldenStumpevent:/SFX/Cosmetics/OldenRockevent:/SFX/Cosmetics/WindowFlowerbede\"\n0x1408c06eb      lea r8, [0x142aa1167]\n0x1408c06f2      jmp 0x1408c0990\n; 32\n0x1408c06f7      mov r9d, 0x20\n0x1408c06fd      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Veggiestallevent:/SFX/Cosmetics/BoxFishevent:/SFX/Cosmetics/RackBroomsevent:/SFX/Cosmetics/DoorBell\"\n0x1408c0701      lea r8, [0x142aa123e]\n0x1408c0708      jmp 0x1408c0990\n; '.'\n; 46\n0x1408c070d      mov r9d, 0x2e\n0x1408c0713      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/ClothlineConnectionAppearevent:/SFX/Cosmetics/WaterPlantevent:/SFX/Cosmetics/Benchevent:/SFX/Cosmetics/Bir\"\n0x1408c0717      lea r8, [0x142aa1013]\n0x1408c071e      jmp 0x1408c0990\n; 29\n0x1408c0723      mov r9d, 0x1d\n0x1408c0729      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Shuttersevent:/SFX/Cosmetics/ClothlineAppearevent:/SFX/Cosmetics/ClothlineConnectionAppearevent:/SFX/Cosme\"\n0x1408c072d      lea r8, [0x142aa0fd2]\n0x1408c0734      jmp 0x1408c0990\n; 31\n0x1408c0739      mov r9d, 0x1f\n0x1408c073f      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/BreadStallevent:/SFX/Cosmetics/Veggiestallevent:/SFX/Cosmetics/BoxFishevent:/SFX/Cosmetics/RackBroomsevent\"\n0x1408c0743      lea r8, [0x142aa121f]\n0x1408c074a      jmp 0x1408c0990\n; 29\n0x1408c074f      mov r9d, 0x1d\n0x1408c0755      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Firewoodevent:/SFX/Cosmetics/Pitchforkevent:/SFX/Cosmetics/Shovelevent:/SFX/Cosmetics/Shuttersevent:/SFX/C\"\n0x1408c0759      lea r8, [0x142aa0f7c]\n0x1408c0760      jmp 0x1408c0990\n; 27\n0x1408c0765      mov r9d, 0x1b\n0x1408c076b      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Bucketevent:/SFX/Cosmetics/Cartevent:/SFX/Cosmetics/Chairsevent:/SFX/Cosmetics/ClayPotevent:/SFX/Cosmetics\"\n0x1408c076f      lea r8, [0x142aa0ebe]\n0x1408c0776      jmp 0x1408c0990\n0x1408c077b      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Pitchforkevent:/SFX/Cosmetics/Shovelevent:/SFX/Cosmetics/Shuttersevent:/SFX/Cosmetics/ClothlineAppearevent\"\n0x1408c077f      lea r8, [0x142aa0f99]\n0x1408c0786      jmp 0x1408c0990\n; 27\n0x1408c078b      mov r9d, 0x1b\n0x1408c0791      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Ladderevent:/SFX/Cosmetics/Wheelevent:/SFX/Cosmetics/Firewoodevent:/SFX/Cosmetics/Pitchforkevent:/SFX/Cosm\"\n0x1408c0795      lea r8, [0x142aa0f47]\n0x1408c079c      jmp 0x1408c0990\n; 28\n0x1408c07a1      mov r9d, 0x1c\n0x1408c07a7      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Pumpkinevent:/SFX/Cosmetics/PumpkinWithFaceevent:/SFX/Cosmetics/OldenLogevent:/SFX/Cosmetics/OldenStumpeve\"\n0x1408c07ab      lea r8, [0x142aa1127]\n0x1408c07b2      jmp 0x1408c0990\n; 27\n0x1408c07b7      mov r9d, 0x1b\n0x1408c07bd      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Basketevent:/SFX/Cosmetics/Pumpkinevent:/SFX/Cosmetics/PumpkinWithFaceevent:/SFX/Cosmetics/OldenLogevent:/\"\n0x1408c07c1      lea r8, [0x142aa110c]\n0x1408c07c8      jmp 0x1408c0990\n; 28\n0x1408c07cd      mov r9d, 0x1c\n0x1408c07d3      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/BoxSackevent:/SFX/Cosmetics/BoxWaterCanevent:/SFX/Cosmetics/Bucketevent:/SFX/Cosmetics/Cartevent:/SFX/Cosm\"\n0x1408c07d7      lea r8, [0x142aa0e82]\n0x1408c07de      jmp 0x1408c0990\n; '$'\n; 36\n0x1408c07e3      mov r9d, 0x24\n0x1408c07e9      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/ClothlineAppearevent:/SFX/Cosmetics/ClothlineConnectionAppearevent:/SFX/Cosmetics/WaterPlantevent:/SFX/Cos\"\n0x1408c07ed      lea r8, [0x142aa0fef]\n0x1408c07f4      jmp 0x1408c0990\n; 32\n0x1408c07f9      mov r9d, 0x20\n0x1408c07ff      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/BoxWaterCanevent:/SFX/Cosmetics/Bucketevent:/SFX/Cosmetics/Cartevent:/SFX/Cosmetics/Chairsevent:/SFX/Cosme\"\n0x1408c0803      lea r8, [0x142aa0e9e]\n0x1408c080a      jmp 0x1408c0990\n; 28\n0x1408c080f      mov r9d, 0x1c\n0x1408c0815      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/ClayPotevent:/SFX/Cosmetics/FlowerPotevent:/SFX/Cosmetics/Ladderevent:/SFX/Cosmetics/Wheelevent:/SFX/Cosme\"\n0x1408c0819      lea r8, [0x142aa0f0d]\n0x1408c0820      jmp 0x1408c0990\n; 26\n0x1408c0825      mov r9d, 0x1a\n0x1408c082b      mov qword [rbp + 0x78], rcx\n; \"event:/SFX/Cosmetics/Anvilevent:/SFX/Cosmetics/FabricStackevent:/SFX/Cosmetics/BreadStallevent:/SFX/Cosmetics/Veggiestallevent:\"\n0x1408c082f      lea r8, [0x142aa11e5]\n0x1408c0836      jmp 0x1408c0990\n; 31\n0x1408c083b      mov r9d, 0x1f\n0x1408c0841      mov qword [rbp + 0x78], rcx\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_file",
+      "requested_args": {},
+      "args": {},
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "open_file",
+        "title": null,
+        "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to open"
+            },
+            "baddr": {
+              "type": "string",
+              "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+            },
+            "arch": {
+              "type": "string",
+              "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+            },
+            "bits": {
+              "type": "string",
+              "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+            },
+            "cpu": {
+              "type": "string",
+              "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "sql",
+        "title": null,
+        "description": "Runs one SQL statement through a loaded SQL core plugin such as r2xsql; supports reads and writes",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "SQL statement to pass to the loaded SQL core plugin (r2xsql)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "close_file",
+        "title": null,
+        "description": "Close the currently open file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions",
+        "title": null,
+        "description": "Lists all functions discovered during analysis",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "only_named": {
+              "type": "boolean",
+              "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "start": {
+              "type": "integer",
+              "description": "Starting index for pagination (default: 0)"
+            },
+            "max_length": {
+              "type": "integer",
+              "description": "Maximum number of results to return, -1 for all (default: 50)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions_tree",
+        "title": null,
+        "description": "Lists functions and successors (aflmu)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_libraries",
+        "title": null,
+        "description": "Lists all shared libraries linked to the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_imports",
+        "title": null,
+        "description": "Lists imported symbols (note: use list_symbols for addresses with sym.imp. prefix)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_exports",
+        "title": null,
+        "description": "Lists exported symbols from the binary or process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_sections",
+        "title": null,
+        "description": "Displays memory sections and segments from the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_memory_maps",
+        "title": null,
+        "description": "Lists memory regions of the process with addresses and permissions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_function_details",
+        "title": null,
+        "description": "Displays detailed information about the current function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_current_address",
+        "title": null,
+        "description": "Shows the current position and function name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_info",
+        "title": null,
+        "description": "Displays information about the binary or target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_symbols",
+        "title": null,
+        "description": "Shows all symbols (functions, variables, imports) with addresses",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_entrypoints",
+        "title": null,
+        "description": "Displays program entrypoints, constructors and main function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_methods",
+        "title": null,
+        "description": "Lists all methods belonging to the specified class",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "classname": {
+              "type": "string",
+              "description": "Name of the class to list methods for"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "classname"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_classes",
+        "title": null,
+        "description": "Lists class names from various languages (C++, ObjC, Swift, Java, Dalvik)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_decompilers",
+        "title": null,
+        "description": "Shows all available decompiler backends",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_function",
+        "title": null,
+        "description": "Renames the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "New function name"
+            },
+            "address": {
+              "type": "string",
+              "description": "Address of the function to rename"
+            }
+          },
+          "required": [
+            "name",
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_flag",
+        "title": null,
+        "description": "Renames a local variable or data reference within the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the flag containing the variable or data reference"
+            },
+            "name": {
+              "type": "string",
+              "description": "Current variable name or data reference"
+            },
+            "new_name": {
+              "type": "string",
+              "description": "New variable name or data reference"
+            }
+          },
+          "required": [
+            "address",
+            "name",
+            "new_name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "use_decompiler",
+        "title": null,
+        "description": "Selects which decompiler backend to use (default: pdc)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the decompiler"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_function_prototype",
+        "title": null,
+        "description": "Retrieves the function signature at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_function_prototype",
+        "title": null,
+        "description": "Sets the function signature (return type, name, arguments)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            },
+            "prototype": {
+              "type": "string",
+              "description": "Function signature in C-like syntax"
+            }
+          },
+          "required": [
+            "address",
+            "prototype"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_comment",
+        "title": null,
+        "description": "Adds a comment at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to put the comment in"
+            },
+            "message": {
+              "type": "string",
+              "description": "Comment text to use"
+            }
+          },
+          "required": [
+            "address",
+            "message"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_strings",
+        "title": null,
+        "description": "Lists strings from data sections with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_all_strings",
+        "title": null,
+        "description": "Scans the entire binary for strings with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "analyze",
+        "title": null,
+        "description": "Runs binary analysis with optional depth level",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "number",
+              "description": "Analysis level (0-4, higher is more thorough)"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "xrefs_to",
+        "title": null,
+        "description": "Finds all code references to the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to check for cross-references"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "decompile_function",
+        "title": null,
+        "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to decompile"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_files",
+        "title": null,
+        "description": "Lists files in the specified path using radare2's ls -q command. Files ending with / are directories, otherwise they are files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to list files from"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Shows assembly listing of the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to disassemble"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble",
+        "title": null,
+        "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to start disassembly"
+            },
+            "num_instructions": {
+              "type": "integer",
+              "description": "Number of instructions to disassemble (default: 10)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "calculate",
+        "title": null,
+        "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_pid",
+        "title": null,
+        "description": "Get the process ID of the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_threads",
+        "title": null,
+        "description": "List all threads in the target process with their IDs and state",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "dump_registers",
+        "title": null,
+        "description": "Show register values for the target process threads",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "integer",
+              "description": "Optional thread ID to show registers for a specific thread"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "hexdump",
+        "title": null,
+        "description": "Print memory contents in hexdump style at the given address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to hexdump"
+            },
+            "size": {
+              "type": "string",
+              "description": "Number of bytes to dump (empty string for default size)"
+            }
+          },
+          "required": [
+            "address",
+            "size"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "memory_map_here",
+        "title": null,
+        "description": "Show memory map information at the current address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_heap_allocations",
+        "title": null,
+        "description": "List malloc/heap memory ranges in the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search",
+        "title": null,
+        "description": "Search for strings, hex patterns, wide strings, or numeric values",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query (string, hex bytes, or numeric value)"
+            },
+            "type": {
+              "type": "string",
+              "description": "Search type: string (default), hex, wide, or value"
+            },
+            "value_size": {
+              "type": "integer",
+              "description": "For value search: byte width 1, 2, 4 (default), or 8"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_address",
+        "title": null,
+        "description": "Describe what is at a given address (flag name, symbol, module)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to describe"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_export",
+        "title": null,
+        "description": "Resolve an export name to its implementation address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Export name to look up"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_symbol",
+        "title": null,
+        "description": "Resolve an address to its symbol name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to resolve"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 2,
+  "ok": true
+}

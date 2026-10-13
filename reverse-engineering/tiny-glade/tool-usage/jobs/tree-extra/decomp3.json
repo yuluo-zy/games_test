@@ -1,0 +1,55 @@
+[
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x142269170",
+      "offset": 1,
+      "limit": 4000,
+      "includeCallers": true
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x14226b1a0",
+      "offset": 1,
+      "limit": 4000,
+      "includeCallers": true
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x141bd2510",
+      "offset": 1,
+      "limit": 4000,
+      "includeCallers": true
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x14226be70",
+      "offset": 1,
+      "limit": 4000,
+      "includeCallers": true
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\naddr = prog.getAddressFactory().getAddress(\"0x141bb19d0\")\nf = fm.getFunctionContaining(addr)\nif f is None:\n    raise RuntimeError(\"no fn at 141bb19d0\")\nout = {\"name\": str(f.getName()), \"entry\": str(f.getEntryPoint()), \"body\": str(f.getBody())}\nlisting = prog.getListing()\nit = listing.getInstructions(f.getBody(), True)\nrefmgr = prog.getReferenceManager()\ninsns = []\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"MOV\", \"LEA\", \"CMP\", \"TEST\", \"XOR\", \"MOVQ\", \"MOVSD\", \"MOVSS\", \"MOVUPS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                data_refs.append([str(a), mnem, str(to := r.getToAddress()), str(rt)])\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nwith open(\"/tmp/tree-extra-reset_run_unsafe.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"body\": out[\"body\"],\n                  \"insn_count\": len(insns), \"call_targets\": call_targets,\n                  \"data_refs\": data_refs}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

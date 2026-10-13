@@ -1,0 +1,395 @@
+{
+  "module": "system tree-tool / forest (S15 树/植被/园景 CPU 状态)",
+  "date": "2026-10-13",
+  "method": "llvm-pdbutil 22.1.2 dump -files/-symbols 解析；B=主基线(0x140001000)，A=首发对照；base=0x140001000",
+  "source_files": [
+    {
+      "path": "crates/systems/tree-tool/src/lib.rs",
+      "b_sha8": "FCF7F71F",
+      "a_sha8": "A36480DB"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/startup_tree_tool.rs",
+      "b_sha8": "933B7488",
+      "a_sha8": "933B7488"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/replay_tree.rs",
+      "b_sha8": "31AA53AB",
+      "a_sha8": "AE2BED0C"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "b_sha8": "ECF8CD21",
+      "a_sha8": "59FCEBF4"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs",
+      "b_sha8": "1B6A31F7",
+      "a_sha8": "95B45806"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/tree_move_bend.rs",
+      "b_sha8": "3EDEF6C4",
+      "a_sha8": "3EDEF6C4"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/hide_trees.rs",
+      "b_sha8": "DFACC668",
+      "a_sha8": "2040CF2D"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/convert_preplaced_trees.rs",
+      "b_sha8": "09DEE48C",
+      "a_sha8": "7D4759F8"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/ui_place_tree.rs",
+      "b_sha8": "8D4D056E",
+      "a_sha8": "50AEA75D"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/ui_move_tree.rs",
+      "b_sha8": "4FB3F207",
+      "a_sha8": "20A3B928"
+    },
+    {
+      "path": "crates/systems/tree-tool/src/ui_delete_tree.rs",
+      "b_sha8": "ED2A55CE",
+      "a_sha8": "73095616"
+    },
+    {
+      "path": "crates/systems/forest/src/lib.rs",
+      "b_sha8": "F3C0950A",
+      "a_sha8": "7F05418E"
+    },
+    {
+      "path": "crates/systems/forest/src/manage_tree_prefabs.rs",
+      "b_sha8": "F772174B",
+      "a_sha8": "316689C2"
+    },
+    {
+      "path": "crates/systems/forest/src/tree_animation.rs",
+      "b_sha8": "AA780112",
+      "a_sha8": "0B91ACEA"
+    }
+  ],
+  "modules": {
+    "b_system_tree_rcgu": [
+      303,
+      2445,
+      2446,
+      2449,
+      2454,
+      2456,
+      2457,
+      2458,
+      2460,
+      2461,
+      2462,
+      2467,
+      3654,
+      3660,
+      3661,
+      3662,
+      3663,
+      3664,
+      3665,
+      3666,
+      3671,
+      4438
+    ],
+    "b_forest_rcgu": [
+      305,
+      1037,
+      2490,
+      2492,
+      3699,
+      3701,
+      3707,
+      3709
+    ],
+    "a_system_tree_rcgu": [
+      290,
+      2109,
+      2110,
+      2116,
+      2121,
+      2122,
+      3379,
+      3380,
+      3381,
+      3382,
+      3383,
+      3384,
+      3385,
+      3386,
+      4216,
+      4222
+    ],
+    "a_forest_rcgu": [
+      292,
+      871,
+      2154,
+      3423,
+      3425
+    ]
+  },
+  "functions_b": {
+    "cpu_chain": [
+      {
+        "name": "system_tree::process_tree_cmds::process_tree_cmds",
+        "va": "0x142267430",
+        "size": 4758
+      },
+      {
+        "name": "system_tree::process_tree_cmds::despawn_trees",
+        "va": "0x1422686d0",
+        "size": 751
+      },
+      {
+        "name": "system_tree::recalc_tree_position_on_terrain_height_change::recalc_tree_position_on_terrain_height_change",
+        "va": "0x142268dc0",
+        "size": 902
+      },
+      {
+        "name": "system_tree::tree_move_bend::tree_move_bend",
+        "va": "0x1422689c0",
+        "size": 1019
+      },
+      {
+        "name": "system_tree::convert_preplaced_trees::convert_preplaced_trees",
+        "va": "0x14226be70",
+        "size": 4827
+      },
+      {
+        "name": "system_tree::hide_trees::hide_trees",
+        "va": "0x14226a260",
+        "size": 3644
+      },
+      {
+        "name": "forest::manage_tree_prefabs::manage_tree_prefabs",
+        "va": "0x141bf16c0",
+        "size": 5342
+      },
+      {
+        "name": "forest::tree_animation::handplaced_tree_animation",
+        "va": "0x142279500",
+        "size": 3017
+      },
+      {
+        "name": "forest::tree_animation::forest_tree_animation",
+        "va": "0x14227a0d0",
+        "size": 2228
+      },
+      {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::convert_preplaced_trees::convert_preplaced_trees::closure_env$0>",
+        "va": "0x1425defd0",
+        "size": 837
+      },
+      {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::hide_trees::hide_trees::closure_env$0>",
+        "va": "0x1425df320",
+        "size": 1079
+      },
+      {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<forest::manage_tree_prefabs::manage_tree_prefabs::closure_env$0>",
+        "va": "0x1422785d0",
+        "size": 837
+      },
+      {
+        "name": "country_core::components::impl$13::fmt",
+        "va": null,
+        "size": 56,
+        "va_unknown": true
+      }
+    ],
+    "history_replay": [
+      {
+        "name": "system_tree::replay_tree::replay_tree",
+        "va": "0x141bc34f0",
+        "size": 2722
+      }
+    ],
+    "ui_later": [
+      {
+        "name": "system_tree::ui_place_tree::ui_place_tree",
+        "va": "0x142269170",
+        "size": 1441
+      },
+      {
+        "name": "system_tree::ui_place_tree::place_tree",
+        "va": "0x142269970",
+        "size": 2038
+      },
+      {
+        "name": "system_tree::ui_place_tree::random_tree_prefab",
+        "va": "0x14226a170",
+        "size": 225
+      },
+      {
+        "name": "system_tree::ui_place_tree::ui_place_tree::closure$1",
+        "va": "0x142269720",
+        "size": 584
+      },
+      {
+        "name": "system_tree::ui_move_tree::ui_move_tree",
+        "va": "0x14226b1a0",
+        "size": 3268
+      },
+      {
+        "name": "system_tree::ui_move_tree::ui_move_tree::closure$0",
+        "va": "0x141bd4120",
+        "size": 457
+      },
+      {
+        "name": "system_tree::ui_delete_tree::ui_delete_tree",
+        "va": "0x141bd2510",
+        "size": 1871
+      }
+    ],
+    "plugin_build": [
+      {
+        "name": "system_tree::impl$0::build",
+        "va": "0x140650520",
+        "size": 1413
+      },
+      {
+        "name": "forest::impl$0::build",
+        "va": "0x140650c50",
+        "size": 243
+      }
+    ]
+  },
+  "functions_a": {
+    "cpu_chain": {
+      "process_tree_cmds": {
+        "name": "system_tree::process_tree_cmds::process_tree_cmds",
+        "va": "0x141a8fca0",
+        "size": 5468
+      },
+      "despawn_trees": {
+        "name": "system_tree::process_tree_cmds::despawn_trees",
+        "va": "0x141a91200",
+        "size": 356
+      },
+      "recalc_tree_position_on_terrain_height_change": {
+        "name": "system_tree::recalc_tree_position_on_terrain_height_change::recalc_tree_position_on_terrain_height_change",
+        "va": "0x141a91370",
+        "size": 465
+      },
+      "tree_move_bend": {
+        "name": "system_tree::tree_move_bend::tree_move_bend",
+        "va": "0x141a8f930",
+        "size": 724
+      },
+      "convert_preplaced_trees": {
+        "name": "system_tree::convert_preplaced_trees::convert_preplaced_trees",
+        "va": "0x141a93ac0",
+        "size": 4337
+      },
+      "hide_trees": {
+        "name": "system_tree::hide_trees::hide_trees",
+        "va": "0x141a924b0",
+        "size": 2969
+      },
+      "manage_tree_prefabs": {
+        "name": "forest::manage_tree_prefabs::manage_tree_prefabs",
+        "va": "0x14143f6f0",
+        "size": 5602
+      },
+      "handplaced_tree_animation": {
+        "name": "forest::tree_animation::handplaced_tree_animation",
+        "va": "0x141a9aa70",
+        "size": 1442
+      },
+      "forest_tree_animation": {
+        "name": "forest::tree_animation::forest_tree_animation",
+        "va": "0x141a9b020",
+        "size": 1017
+      },
+      "query_with_circle_callback_convert": {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::convert_preplaced_trees::convert_preplaced_trees::closure_env$0>",
+        "va": "0x141dbb850",
+        "size": 844
+      },
+      "query_with_circle_callback_hide": {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<system_tree::hide_trees::hide_trees::closure_env$0>",
+        "va": "0x141dbbba0",
+        "size": 1080
+      },
+      "query_with_circle_callback_manage_prefabs": {
+        "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query_with_circle_callback<forest::manage_tree_prefabs::manage_tree_prefabs::closure_env$0>",
+        "va": "0x141a9a2a0",
+        "size": 844
+      }
+    },
+    "history_replay": {
+      "replay_tree": {
+        "name": "system_tree::replay_tree::replay_tree",
+        "va": "0x141425ee0",
+        "size": 2591
+      }
+    },
+    "ui_later": {
+      "ui_place_tree": {
+        "name": "system_tree::ui_place_tree::ui_place_tree",
+        "va": "0x141a91570",
+        "size": 1117
+      },
+      "place_tree": {
+        "name": "system_tree::ui_place_tree::place_tree",
+        "va": "0x141a91c10",
+        "size": 1958
+      },
+      "random_tree_prefab": {
+        "name": "system_tree::ui_place_tree::random_tree_prefab",
+        "va": "0x141a923c0",
+        "size": 239
+      },
+      "ui_place_tree_closure1": {
+        "name": "system_tree::ui_place_tree::ui_place_tree::closure$1",
+        "va": "0x141a919d0",
+        "size": 568
+      },
+      "ui_move_tree": {
+        "name": "system_tree::ui_move_tree::ui_move_tree",
+        "va": "0x141a930e0",
+        "size": 2528
+      },
+      "ui_move_tree_closure0": {
+        "name": "system_tree::ui_move_tree::ui_move_tree::closure$0",
+        "va": "0x14142b020",
+        "size": 457
+      },
+      "ui_delete_tree": {
+        "name": "system_tree::ui_delete_tree::ui_delete_tree",
+        "va": "0x141429f00",
+        "size": 1572
+      }
+    },
+    "plugin_build": {
+      "system_tree_build": {
+        "name": "system_tree::impl$0::build",
+        "va": "0x14040e580",
+        "size": 2382
+      },
+      "forest_build": {
+        "name": "forest::impl$0::build",
+        "va": "0x14040f1a0",
+        "size": 243
+      }
+    }
+  },
+  "notes": [
+    "A/B 地址不通用：rcgu 名不同（A: system_tree-f8b2dfc58b1644c7 / B: system_tree-98fd63dc8dae9178），同函数 A/B VA 与 code size 均不同；仅角色对照有效，机器码差分需按版本重取",
+    "startup_tree_tool 被内联，无独立顶层符号：其 ResMut<TreeStorage> FunctionSystem 体落在 bevy wrapper 内（B mod 2462 run_unsafe<ResMut<TreeStorage>> size=1130；A mod 2110 run_unsafe size=427）",
+    "replay_tree 主逻辑有独立符号（B 0x169108440 size=2722）；其生成 InsertTreeCmd/MoveTreeCmd/DeleteTreeCmd 的事件写回与命令生成闭包多为内联，仅 convert_preplaced_trees::convert_preplaced_trees::closure_env$1 在 core::iter::map::fold 泛型实例中有边界符号",
+    "依赖过滤边界：bevy_ecs::system::schedule_system/function_system 包装、alloc::raw_vec/RawVec::grow_one<EventInstance<MoveTreeCmd|PlaceTreeCmd|DespawnPrefabCmd|TreeEdit>>、core::iter::map::fold、puffin、core::str 全部排除；glam/fastrand/noise/ECS 复用不恢复其实现",
+    "WallSpatialHash::query_with_circle_callback<...closure_env$0> 是 country_core wall_spatial_hash 泛型被树闭包特化的共享实例（tree-tool/forest 调用墙系统查询工具），保留为游戏自有边界点；其定义属 country_core 墙系统而非本模块",
+    "country_core 侧命中关键字的 billboard_forest.rs（GPU 绘制）与 forest_audio.rs（音频）后置，不在 CPU 状态链内",
+    "startup_tree_tool.rs 与 tree_move_bend.rs 两版 SHA8 相同（933B7488 / 3EDEF6C4），其余源文件随版本演进",
+    "CPU 状态优先入口：process_tree_cmds(命令入口)→replay_tree(回放)→recalc_tree_position_on_terrain_height_change(地形衔接)→tree_move_bend(弯曲)；forest 的 manage_tree_prefabs/tree_animation 为 prefab 生命周期与动画 CPU 状态；ui_place_tree/ui_move_tree/ui_delete_tree 标注为后置"
+  ],
+  "address_note": "VA 按 dump_pdb_functions.py 修正(off 十进制+0x140001000)"
+}

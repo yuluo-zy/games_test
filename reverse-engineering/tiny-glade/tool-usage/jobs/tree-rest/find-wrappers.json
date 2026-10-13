@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {}\nfm = prog.getFunctionManager()\nit = fm.getFunctions(True)\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    if \"FunctionSystem\" not in nm:\n        continue\n    low = nm.lower()\n    for key in (\"tree_move_bend\", \"recalc_tree_position_on_terrain_height_change\",\n                \"despawn_trees\", \"replay_tree\", \"convert_preplaced_trees\",\n                \"process_tree_cmds\", \"startup_tree_tool\", \"reset_tree_tool\"):\n        if key in low:\n            out.setdefault(key, []).append(\n                [str(fn.getEntryPoint()), str(fn.getBody()), nm[:600]])\nfor k, v in out.items():\n    print(k, len(v))\nprint(\"===\")\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 240
+  }
+]

@@ -1,0 +1,81 @@
+
+void __cdecl
+country_core::systems::ui_clutter::defered_autoclutter_history::history_record_auto_clutter(void)
+
+{
+  undefined4 uVar1;
+  ulonglong *puVar2;
+  ulonglong uVar3;
+  undefined4 *puVar4;
+  undefined8 uVar5;
+  longlong lVar6;
+  longlong lVar7;
+  undefined8 *extraout_RAX;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  ulonglong uVar8;
+  longlong lVar9;
+  longlong lVar10;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  longlong lVar13;
+  
+  puVar2 = (ulonglong *)*in_RDX;
+  lVar7 = in_RDX[1];
+  uVar3 = *puVar2;
+  uVar11 = 0;
+  uVar8 = uVar3 - *(ulonglong *)(lVar7 + 0x18);
+  if (uVar3 < *(ulonglong *)(lVar7 + 0x18)) {
+    uVar8 = uVar11;
+  }
+  uVar12 = uVar3 - *(ulonglong *)(lVar7 + 0x38);
+  if (uVar3 < *(ulonglong *)(lVar7 + 0x38)) {
+    uVar12 = uVar11;
+  }
+  lVar6 = uVar8 * 0x10 + *(longlong *)(lVar7 + 8);
+  uVar3 = *(ulonglong *)(lVar7 + 0x10) - uVar8;
+  if (*(ulonglong *)(lVar7 + 0x10) < uVar8) {
+    lVar6 = 8;
+    uVar3 = uVar11;
+  }
+  lVar9 = uVar12 * 0x10 + *(longlong *)(lVar7 + 0x28);
+  uVar8 = *(ulonglong *)(lVar7 + 0x30) - uVar12;
+  if (*(ulonglong *)(lVar7 + 0x30) < uVar12) {
+    lVar9 = 8;
+    uVar8 = uVar11;
+  }
+  *puVar2 = (*(longlong *)(lVar7 + 0x40) - uVar8) - uVar3;
+  lVar10 = uVar8 * 0x10 + lVar9;
+  uVar1 = *(undefined4 *)(in_RCX + 0x1c);
+  puVar4 = *(undefined4 **)(in_RCX + 0x10);
+  lVar7 = lVar6;
+  if (lVar6 == 0) goto LAB_1409a9210;
+  do {
+    if (lVar7 == uVar3 * 0x10 + lVar6) goto LAB_1409a9210;
+    lVar13 = lVar7 + 0x10;
+    while( true ) {
+      *puVar2 = *puVar2 + 1;
+      *puVar4 = uVar1;
+      uVar5 = *(undefined8 *)(lVar7 + 8);
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX == (undefined8 *)0x0) {
+                    /* WARNING: Subroutine does not return */
+        alloc::alloc::handle_alloc_error();
+      }
+      *extraout_RAX = 1;
+      extraout_RAX[1] = 1;
+      extraout_RAX[2] = uVar5;
+      resources::history::History::add();
+      lVar7 = lVar13;
+      if (lVar13 != 0) break;
+LAB_1409a9210:
+      lVar7 = lVar9;
+      if ((lVar7 == 0) || (lVar7 == lVar10)) {
+        return;
+      }
+      lVar9 = lVar7 + 0x10;
+      lVar13 = 0;
+    }
+  } while( true );
+}
+

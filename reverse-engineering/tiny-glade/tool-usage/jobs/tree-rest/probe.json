@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nout = {}\nfor a in ['0x1422686d0', '0x141bc34f0', '0x1422689c0', '0x142268dc0', '0x14226be70', '0x141bb2110']:\n    addr = prog.getAddressFactory().getAddress(a)\n    f = fm.getFunctionAt(addr)\n    containing = fm.getFunctionContaining(addr)\n    rec = {}\n    if f is not None:\n        rec[\"at_name\"] = str(f.getName())\n        rec[\"at_entry\"] = str(f.getEntryPoint())\n        rec[\"at_body\"] = str(f.getBody())\n        rec[\"at_sig\"] = str(f.getSignature())\n    if containing is not None:\n        rec[\"cont_name\"] = str(containing.getName())\n        rec[\"cont_entry\"] = str(containing.getEntryPoint())\n        rec[\"cont_body\"] = str(containing.getBody())\n    out[a] = rec\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 240
+  }
+]

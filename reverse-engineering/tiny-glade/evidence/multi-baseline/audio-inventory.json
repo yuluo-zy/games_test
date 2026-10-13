@@ -1,0 +1,859 @@
+{
+  "module": "system-audio (S18 音频游戏事件, country-core systems/audio)",
+  "date": "2026-10-13",
+  "method": "llvm-pdbutil 22.1.2 dump -files/-symbols 解析；B=主基线(0x140001000)，A=首发对照；pdb_sources_by_module.py + dump_pdb_functions.py，过滤 bevy_ecs::/core::/alloc::/std::/zeno::/fmod:: 依赖命名空间",
+  "source_files": [
+    {
+      "path": "crates/country-core/src/asset_libraries/audio_trigger_library.rs",
+      "b_sha8": "570C5456",
+      "a_sha8": "A8C9C169"
+    },
+    {
+      "path": "crates/country-core/src/resources/audio_resources.rs",
+      "b_sha8": "C7B31C0F",
+      "a_sha8": "9CA2D8BB"
+    },
+    {
+      "path": "crates/country-core/src/resources/audio_settings.rs",
+      "b_sha8": "5BBC1F3A",
+      "a_sha8": "EF8056E7"
+    },
+    {
+      "path": "crates/country-core/src/startup/load_audio.rs",
+      "b_sha8": "DDAB2F45",
+      "a_sha8": "16526621"
+    },
+    {
+      "path": "crates/country-core/src/startup/load_glade_audio.rs",
+      "b_sha8": "67CEA611",
+      "a_sha8": "39FC8C0C"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/mod.rs",
+      "b_sha8": "0C7BA7A8",
+      "a_sha8": "908B99FF"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/audio_update.rs",
+      "b_sha8": "1A14C707",
+      "a_sha8": "D26CBD2F"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/building_audio.rs",
+      "b_sha8": "2C2B0465",
+      "a_sha8": "20713935"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/clutter_audio.rs",
+      "b_sha8": "8F9A9D69",
+      "a_sha8": "AE933DF4"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/decorator_audio.rs",
+      "b_sha8": "8FFD1188",
+      "a_sha8": "FEE28432"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/elevation_supports_audio.rs",
+      "b_sha8": "9078CB79",
+      "a_sha8": "1C68A266"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/firstperson_steps.rs",
+      "b_sha8": "7B534EEE",
+      "a_sha8": "718B7D18"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/forest_audio.rs",
+      "b_sha8": "648A3B3F",
+      "a_sha8": "7E7ECD1E"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/game_loading_audio.rs",
+      "b_sha8": "9A9377A4",
+      "a_sha8": "7644551E"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/garden_audio.rs",
+      "b_sha8": "CEF043BE",
+      "a_sha8": "6650A4CE"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/ivy_audio.rs",
+      "b_sha8": "E30682A5",
+      "a_sha8": "4A5BAA81"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/menu_audio.rs",
+      "b_sha8": "08841AE5",
+      "a_sha8": "4F588AB9"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/path_audio.rs",
+      "b_sha8": "093F0B1E",
+      "a_sha8": "0E535BCB"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/replay_audio.rs",
+      "b_sha8": "8EBFDF94",
+      "a_sha8": "C4B9D61A"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/roof_audio.rs",
+      "b_sha8": "C7E232E1",
+      "a_sha8": "20EA75CA"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/sheep_audio.rs",
+      "b_sha8": "6080B320",
+      "a_sha8": "04E92AE5"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/signifier_audio.rs",
+      "b_sha8": "A786EEBF",
+      "a_sha8": "E315E209"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/terrain_audio.rs",
+      "b_sha8": "B8F1B11A",
+      "a_sha8": "8623187E"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/timberframe_audio.rs",
+      "b_sha8": "C9450776",
+      "a_sha8": "45393EB0"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/tree_audio.rs",
+      "b_sha8": "649C41F5",
+      "a_sha8": "4C68AF02"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/trigger_audio.rs",
+      "b_sha8": "771A6D7D",
+      "a_sha8": "B325E091"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_audio_fmod.rs",
+      "b_sha8": "63CC262B",
+      "a_sha8": "E8E5DDAC"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_audio_orchestrator.rs",
+      "b_sha8": "4DFAE6D5",
+      "a_sha8": "BDE06817"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_audio_path.rs",
+      "b_sha8": "350F5D68",
+      "a_sha8": "6CD77023"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_audio_ui.rs",
+      "b_sha8": "9E0826B4",
+      "a_sha8": "20859420"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_audio_utils.rs",
+      "b_sha8": "C48EF5AD",
+      "a_sha8": "C48EF5AD"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/water_ambience_audio.rs",
+      "b_sha8": "24F86DBD",
+      "a_sha8": "3D012C15"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/water_audio.rs",
+      "b_sha8": "195802C3",
+      "a_sha8": "C4D008EB"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/weather_audio.rs",
+      "b_sha8": "FC273003",
+      "a_sha8": "806B8C55"
+    },
+    {
+      "path": "crates/country-core/src/systems/wall/snapping/snapping_audio.rs",
+      "b_sha8": "70D595F7",
+      "a_sha8": "5E2D4395"
+    },
+    {
+      "path": "crates/country-core/src/utils/audio_utils.rs",
+      "b_sha8": "04324E4F",
+      "a_sha8": "890687E4"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/music/music_debug_gui.rs",
+      "b_sha8": "F63D03BC",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/music/music_player.rs",
+      "b_sha8": "4258B6FA",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/music/music_system.rs",
+      "b_sha8": "FBB1F2D2",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/playermade_stairs_audio.rs",
+      "b_sha8": "DE2D547D",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/terrain_stairs_audio.rs",
+      "b_sha8": "A713CBD0",
+      "a_sha8": null
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/audio_ui.rs",
+      "b_sha8": null,
+      "a_sha8": "E3AABC36"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/music_audio.rs",
+      "b_sha8": null,
+      "a_sha8": "EA97482B"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/music_fade_in_on_start.rs",
+      "b_sha8": null,
+      "a_sha8": "1F0A2B83"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/sound_style.rs",
+      "b_sha8": null,
+      "a_sha8": "249C1BD5"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/stairs_audio.rs",
+      "b_sha8": null,
+      "a_sha8": "4ECA9173"
+    }
+  ],
+  "modules": {
+    "b_country_core_audio_modules": [
+      67,
+      155,
+      188,
+      197,
+      240,
+      468,
+      476,
+      477,
+      484,
+      485,
+      491,
+      493,
+      507,
+      511,
+      513,
+      530,
+      531,
+      532,
+      535,
+      537,
+      547,
+      548,
+      551,
+      553,
+      554,
+      556,
+      561,
+      567,
+      571,
+      574,
+      577,
+      579,
+      582,
+      583,
+      597,
+      598,
+      1175,
+      1451,
+      1585,
+      1592,
+      1596,
+      1600,
+      1606,
+      1610,
+      1611,
+      1613,
+      1617,
+      1618,
+      1619,
+      1623,
+      1629,
+      1640,
+      1643,
+      1654,
+      1691,
+      1734,
+      1736,
+      1738,
+      3208
+    ],
+    "a_country_core_audio_modules": [
+      117,
+      168,
+      197,
+      207,
+      256,
+      387,
+      389,
+      392,
+      395,
+      403,
+      405,
+      409,
+      418,
+      419,
+      420,
+      425,
+      429,
+      432,
+      440,
+      452,
+      459,
+      472,
+      477,
+      480,
+      494,
+      495,
+      496,
+      497,
+      499,
+      500,
+      1207,
+      1216,
+      1258,
+      1306,
+      1308,
+      1321,
+      1325,
+      1328,
+      1336,
+      1342,
+      1355,
+      1359,
+      1364,
+      1368,
+      1370,
+      1374,
+      1378,
+      1396,
+      1410,
+      1430,
+      1465,
+      2810,
+      2825
+    ],
+    "b_libfmod_dependency_rcgu": [
+      1601,
+      3100,
+      3103,
+      3104,
+      3105
+    ],
+    "b_libfmod_inlined_into_country_core": [
+      485,
+      548,
+      1623
+    ]
+  },
+  "functions_b": {
+    "event_systems": [
+      {
+        "name": "country_core::systems::audio::audio_update::audio_update_system",
+        "va": "0x1409c8dd0",
+        "size": 1356
+      },
+      {
+        "name": "country_core::systems::audio::building_audio::building_audio",
+        "va": "0x1417d2ad0",
+        "size": 5183
+      },
+      {
+        "name": "country_core::systems::audio::clutter_audio::clutter_audio_system",
+        "va": "0x1408c02f0",
+        "size": 2710
+      },
+      {
+        "name": "country_core::systems::audio::decorator_audio::decorator_audio_system",
+        "va": "0x14145dc20",
+        "size": 14269
+      },
+      {
+        "name": "country_core::systems::audio::elevation_supports_audio::elevation_supports_audio",
+        "va": "0x140ad51c0",
+        "size": 389
+      },
+      {
+        "name": "country_core::systems::audio::firstperson_steps::firstperson_steps",
+        "va": "0x140a889b0",
+        "size": 1509
+      },
+      {
+        "name": "country_core::systems::audio::forest_audio::forest_audio_system",
+        "va": "0x140aa1f00",
+        "size": 4295
+      },
+      {
+        "name": "country_core::systems::audio::garden_audio::garden_audio_system",
+        "va": "0x140a89480",
+        "size": 1838
+      },
+      {
+        "name": "country_core::systems::audio::game_loading_audio::loading_audio",
+        "va": "0x140b1b1b0",
+        "size": 1707
+      },
+      {
+        "name": "country_core::systems::audio::menu_audio::menu_audio",
+        "va": "0x140a0b4c0",
+        "size": 7111
+      },
+      {
+        "name": "country_core::systems::audio::path_audio::path_audio_system",
+        "va": "0x1409d0f80",
+        "size": 1928
+      },
+      {
+        "name": "country_core::systems::audio::playermade_stairs_audio::stairs_audio_system",
+        "va": "0x140f880a0",
+        "size": 3031
+      },
+      {
+        "name": "country_core::systems::audio::replay_audio::replay_audio_system",
+        "va": "0x140ad5800",
+        "size": 2640
+      },
+      {
+        "name": "country_core::systems::audio::roof_audio::roof_audio_system",
+        "va": "0x140aa3860",
+        "size": 4599
+      },
+      {
+        "name": "country_core::systems::audio::sheep_audio::sheep_audio_system",
+        "va": "0x1409d5ea0",
+        "size": 1143
+      },
+      {
+        "name": "country_core::systems::audio::signifier_audio::signifier_audio_system",
+        "va": "0x1409d6b90",
+        "size": 8893
+      },
+      {
+        "name": "country_core::systems::audio::terrain_audio::terrain_audio_system",
+        "va": "0x1414618c0",
+        "size": 5367
+      },
+      {
+        "name": "country_core::systems::audio::terrain_stairs_audio::terrain_stairs_audio_system",
+        "va": "0x141462dc0",
+        "size": 1558
+      },
+      {
+        "name": "country_core::systems::audio::timberframe_audio::timberframe_audio",
+        "va": "0x140a67b90",
+        "size": 2195
+      },
+      {
+        "name": "country_core::systems::audio::tree_audio::tree_audio_system",
+        "va": "0x1414638e0",
+        "size": 4465
+      },
+      {
+        "name": "country_core::systems::audio::trigger_audio::trigger_audio_system",
+        "va": "0x1409eafa0",
+        "size": 3804
+      },
+      {
+        "name": "country_core::systems::audio::wall_audio_fmod::wall_audio_fmod",
+        "va": "0x140950920",
+        "size": 4698
+      },
+      {
+        "name": "country_core::systems::audio::wall_audio_orchestrator::wall_audio_orchestrator",
+        "va": "0x141234bf0",
+        "size": 3014
+      },
+      {
+        "name": "country_core::systems::audio::wall_audio_path::wall_audio_path",
+        "va": "0x140a89bb0",
+        "size": 1235
+      },
+      {
+        "name": "country_core::systems::audio::water_audio::water_audio_system",
+        "va": "0x140873630",
+        "size": 1966
+      },
+      {
+        "name": "country_core::systems::audio::water_ambience_audio::water_ambience_audio_system",
+        "va": "0x1409ecea0",
+        "size": 2494
+      },
+      {
+        "name": "country_core::systems::audio::path_audio::update_draw_audio<country_core::systems::audio::garden_audio::garden_audio_system::closure_env$1>",
+        "va": "0x14166d9f0",
+        "size": 256
+      },
+      {
+        "name": "country_core::systems::audio::path_audio::update_draw_audio<country_core::systems::audio::path_audio::path_audio_system::closure_env$5>",
+        "va": "0x14166d890",
+        "size": 341
+      },
+      {
+        "name": "country_core::systems::audio::roof_audio::instantiate_audio_w_position",
+        "va": "0x140aa3360",
+        "size": 559
+      },
+      {
+        "name": "country_core::systems::audio::roof_audio::instantiate_audio_w_position_and_volume",
+        "va": "0x140aa3590",
+        "size": 719
+      },
+      {
+        "name": "country_core::systems::audio::water_ambience_audio::impl$0::load_index_unchecked",
+        "va": "0x1409ebe80",
+        "size": 151
+      },
+      {
+        "name": "country_core::systems::audio::building_audio::get_building_size_01",
+        "va": "0x1417d3f10",
+        "size": 82
+      },
+      {
+        "name": "country_core::systems::audio::wall_audio_utils::AudioLoopPlayer::request_play",
+        "va": "0x1409285a0",
+        "size": 330
+      },
+      {
+        "name": "country_core::systems::audio::signifier_audio::signifier_audio_system::closure$0",
+        "va": "0x1409d8e50",
+        "size": 539
+      },
+      {
+        "name": "country_core::systems::wall::snapping::snapping_audio::snapping_audio",
+        "va": "0x140a6a480",
+        "size": 223
+      },
+      {
+        "name": "country_core::resources::critters::ButterflyAudio::set_position",
+        "va": "0x140f85ba0",
+        "size": 5
+      }
+    ],
+    "music": [
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::update",
+        "va": "0x1408b5500",
+        "size": 3406
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::init",
+        "va": "0x1408b63c0",
+        "size": 1861
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::load_tracks",
+        "va": "0x1408b6b10",
+        "size": 1463
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::switch_track",
+        "va": "0x1408b70d0",
+        "size": 518
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::stop_immediately",
+        "va": "0x1408b72e0",
+        "size": 431
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::pause",
+        "va": "0x1408b7490",
+        "size": 387
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::MusicPlayer::stop_photomode_snapshots",
+        "va": "0x1408b6250",
+        "size": 355
+      },
+      {
+        "name": "country_core::systems::audio::music::music_player::get_timeline_beat_properties",
+        "va": "0x1408b7620",
+        "size": 98
+      },
+      {
+        "name": "country_core::systems::audio::music::music_system::music_audio_init_system",
+        "va": "0x140a71f20",
+        "size": 2288
+      },
+      {
+        "name": "country_core::systems::audio::music::music_system::music_audio_system",
+        "va": "0x140a72810",
+        "size": 3143
+      }
+    ],
+    "init": [
+      {
+        "name": "country_core::systems::audio::audio_update::boot_audio_update_system",
+        "va": "0x1409c9320",
+        "size": 1292
+      },
+      {
+        "name": "country_core::systems::audio::building_audio::building_audio_init_system",
+        "va": "0x1417d21a0",
+        "size": 2344
+      },
+      {
+        "name": "country_core::systems::audio::decorator_audio::decorator_audio_init_system",
+        "va": "0x14145c6b0",
+        "size": 5482
+      },
+      {
+        "name": "country_core::systems::audio::forest_audio::forest_audio_init_system",
+        "va": "0x140aa18f0",
+        "size": 1543
+      },
+      {
+        "name": "country_core::systems::audio::garden_audio::garden_audio_init_system",
+        "va": "0x140a88fa0",
+        "size": 1237
+      },
+      {
+        "name": "country_core::systems::audio::game_loading_audio::init_game_loading_audio",
+        "va": "0x140b1ae70",
+        "size": 819
+      },
+      {
+        "name": "country_core::systems::audio::ivy_audio::ivy_audio_init_system",
+        "va": "0x140ad5350",
+        "size": 371
+      },
+      {
+        "name": "country_core::systems::audio::menu_audio::menu_audio_init_system",
+        "va": "0x140a0b340",
+        "size": 371
+      },
+      {
+        "name": "country_core::systems::audio::path_audio::path_audio_init_system",
+        "va": "0x1409d08d0",
+        "size": 1701
+      },
+      {
+        "name": "country_core::systems::audio::playermade_stairs_audio::stairs_audio_init_system",
+        "va": "0x140f878d0",
+        "size": 1992
+      },
+      {
+        "name": "country_core::systems::audio::replay_audio::replay_audio_init_system",
+        "va": "0x140ad54d0",
+        "size": 805
+      },
+      {
+        "name": "country_core::systems::audio::roof_audio::roof_audio_init_system",
+        "va": "0x140aa2fd0",
+        "size": 901
+      },
+      {
+        "name": "country_core::systems::audio::signifier_audio::signifier_audio_init_system",
+        "va": "0x1409d6320",
+        "size": 2149
+      },
+      {
+        "name": "country_core::systems::audio::terrain_audio::terrain_audio_init_system",
+        "va": "0x1414613e0",
+        "size": 1237
+      },
+      {
+        "name": "country_core::systems::audio::timberframe_audio::timberframe_audio_init_system",
+        "va": "0x140a67810",
+        "size": 885
+      },
+      {
+        "name": "country_core::systems::audio::tree_audio::tree_audio_init_system",
+        "va": "0x1414633e0",
+        "size": 1274
+      },
+      {
+        "name": "country_core::systems::audio::trigger_audio::trigger_audio_init_system",
+        "va": "0x1409ea8d0",
+        "size": 1736
+      },
+      {
+        "name": "country_core::systems::audio::wall_audio_fmod::wall_audio_init_system",
+        "va": "0x14094fb80",
+        "size": 3480
+      },
+      {
+        "name": "country_core::systems::audio::water_audio::water_audio_init_system",
+        "va": "0x140873140",
+        "size": 1253
+      },
+      {
+        "name": "country_core::systems::audio::water_ambience_audio::water_ambience_audio_init_system",
+        "va": "0x1409ebf20",
+        "size": 3955
+      },
+      {
+        "name": "country_core::startup::load_glade_audio::load_glade_audio",
+        "va": "0x1408be360",
+        "size": 3927
+      },
+      {
+        "name": "country_core::startup::load_glade_audio::GladeAudio::load",
+        "va": "0x1408bf460",
+        "size": 1363
+      },
+      {
+        "name": "country_core::startup::load_glade_audio::impl$0::default",
+        "va": "0x1408bf2c0",
+        "size": 402
+      },
+      {
+        "name": "country_core::startup::load_audio::load_audio",
+        "va": "0x140b0e0f0",
+        "size": 642
+      },
+      {
+        "name": "country_core::systems::audio::impl$1::add_audio_events",
+        "va": "0x140941450",
+        "size": 1495
+      },
+      {
+        "name": "country_core::systems::audio::impl$1::add_audio_systems",
+        "va": "0x1409411a0",
+        "size": 680
+      },
+      {
+        "name": "country_core::systems::audio::AsyncLoadedAudioResources::new",
+        "va": "0x140a7abb0",
+        "size": 24
+      },
+      {
+        "name": "country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary::get_triggers",
+        "va": "0x14157ce90",
+        "size": 42
+      },
+      {
+        "name": "country_core::asset_libraries::audio_trigger_library::AudioTriggerCollection::boxes",
+        "va": "0x14157ce40",
+        "size": 67
+      },
+      {
+        "name": "country_core::asset_libraries::audio_trigger_library::impl$3::from",
+        "va": "0x140833250",
+        "size": 3
+      }
+    ],
+    "ui_later": [
+      {
+        "name": "country_core::systems::audio::wall_audio_ui::wall_audio_ui",
+        "va": "0x1408b7690",
+        "size": 3386
+      },
+      {
+        "name": "country_core::systems::audio::music::music_debug_gui::music_debug_gui",
+        "va": "0x14083c4a0",
+        "size": 381
+      }
+    ],
+    "events_and_state_types": [
+      "PlayBuildingAudio / BuildingAudioState",
+      "PlayClutterSoundCmd",
+      "PlayDecoratorSoundCmd / DecoratorAudioState",
+      "PlayElevationSupportSoundCmd",
+      "FirstPersonViewAudioState",
+      "ForestAudioState",
+      "GameLoadingAudioState",
+      "GardenAudioState",
+      "PlayMenuUiSound / MenuAudioState",
+      "PathAudioState",
+      "PlayStairsAudioCmd / StairsAudioState",
+      "PlayReplayAudio / ReplayAudioState",
+      "RoofAudioState",
+      "PlaySheepReactSound / SheepAudioState",
+      "SignifierAudioState",
+      "PlayTerrainSound / TerrainAudioState",
+      "TerrainStairsAudioState / StairsCounter / SuppressPathSound",
+      "PlayTimberframeSound / TimberframeAudioState",
+      "PlayTreeSoundCmd / TreeAudioState",
+      "TriggerAudioState",
+      "PlayWallAudio / WallAudioState",
+      "RequestWallMaterialAudio",
+      "PlayWallUiSound",
+      "WaterAmbienceAudio / WaterAudioGrid",
+      "WaterAudioState",
+      "MusicAudioState / MusicPlayer",
+      "CmdSuppressMusic (country_core::resources::events)",
+      "AudioCore (audio_resources)",
+      "GladeAudio (load_glade_audio)"
+    ]
+  },
+  "functions_a": {
+    "audio_ui": [
+      {
+        "name": "country_core::systems::audio::audio_ui::audio_ui",
+        "va": "0x140f0fa80",
+        "size": 328
+      }
+    ],
+    "music_audio": [
+      {
+        "name": "country_core::systems::audio::music_audio::music_audio_init_system",
+        "va": "0x140e90930",
+        "size": 2300
+      },
+      {
+        "name": "country_core::systems::audio::music_audio::music_audio_system",
+        "va": "0x140e91230",
+        "size": 2875
+      },
+      {
+        "name": "country_core::systems::audio::music_audio::generate_track_playlist",
+        "va": "0x140e906f0",
+        "size": 575
+      }
+    ],
+    "sound_style": [
+      {
+        "name": "country_core::systems::audio::sound_style::sound_style_init_system",
+        "va": "0x141087070",
+        "size": 467
+      }
+    ],
+    "stairs_audio": [
+      {
+        "name": "country_core::systems::audio::stairs_audio::stairs_audio_system",
+        "va": "0x14059e310",
+        "size": 1398
+      }
+    ],
+    "music_fade_in_on_start": [
+      {
+        "name": "music_fade_in_on_start::music_fade_in_on_start",
+        "va": null,
+        "size": null,
+        "note": "完全内联进 bevy FunctionSystem wrapper(mod 1410 inlinee=0x5AA9),无独立顶层 S_GPROC32；A 模块 403/1325/1410",
+        "va_unknown": true
+      }
+    ]
+  },
+  "notes": [
+    "音频游戏事件胶水为每系统 Event(PlayXxxSound/Cmd/Audio)→FMOD 调用；顶层 system 函数除个别外都带 _system 后缀，building_audio/timberframe_audio/elevation_supports_audio/firstperson_steps/wall_audio_* 直接以模块名命名",
+    "weather_audio_system 完全内联(mod 1617 inlinee=0x11B52)，无独立 S_GPROC32；instantiate_audio 被 69 处内联(roof/terrain/tree 共用)，set_music_volume/update_music_richness_based_on_time 内联，terrain_stairs_audio_init_system/sheep_audio_init_system/add_audio_startup_systems 内联",
+    "FMOD 复用边界：B 用 libfmod-2.222.6(crates.io, /home/h3/.cargo/registry/...)，A 用 libfmod git checkout(/home/h3/.cargo/git/.../a7e37a5)；libfmod 自建 rcgu [1601,3100,3103,3104,3105] 且内联进 country_core [485,548,1623]，只标注不复原；墙/音乐/加载/audio_update 的调用点为边界",
+    "A 独有 5 前身：audio_ui(0x155789672)、music_audio(0x155269144 init / 0x155271448 system / generate_track_playlist 0x155268568)、sound_style(0x157327192)、stairs_audio(0x145887736)、music_fade_in_on_start(仅内联,无顶层函数)。B 中对应演进为 music/music_system、playermade_stairs_audio+terrain_stairs_audio、wall_audio_ui+music_debug_gui",
+    "B 独有新文件：music/{music_debug_gui,music_player,music_system}.rs、playermade_stairs_audio.rs、terrain_stairs_audio.rs；stairs_audio 的 StairsCounter/SuppressPathSound 迁到 terrain_stairs_audio，StairsAudioState 迁到 playermade_stairs_audio；A 的 IvyAudioState 在 B 已移除(仅 ivy_audio_init_system)",
+    "wall_audio_utils.rs A/B SHA8 相同(C48EF5AD)，为跨版未改文件",
+    "A/B 同源文件 SHA 均不同(版本演进)，地址不通用；函数角色对照有效，机器码差分需按版本重取",
+    "其他 crate 音频胶水(非本模块)：decorator op_confirm/preview/stairs_audio、timberframe_beam_count_change_audio、roof simulate_roof_tile_for_audio、toolbar mei/audio、clutter inter_roof_merlons_audio、water water_audio_grid(已在 water 清单)",
+    "入口优先：mod.rs impl$1::add_audio_events/add_audio_systems、audio_update_system/boot_audio_update_system、load_glade_audio/load_audio、wall_audio_fmod::wall_audio_init_system、music music_audio_init_system"
+  ],
+  "address_note": "VA 按 dump_pdb_functions.py 修正(off 十进制+0x140001000)"
+}

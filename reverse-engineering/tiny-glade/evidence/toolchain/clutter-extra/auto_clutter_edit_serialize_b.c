@@ -1,0 +1,70 @@
+
+/* WARNING: Removing unreachable block (ram,0x000140a18422) */
+
+void __cdecl
+country_core::resources::history::auto_clutter_edit::_::impl$0::
+serialize<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>
+          (void)
+
+{
+  longlong *plVar1;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong *in_RDX;
+  longlong lVar2;
+  
+  plVar1 = (longlong *)*in_RDX;
+  lVar2 = plVar1[2];
+  if (*plVar1 == lVar2) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar2 = plVar1[2];
+  }
+  *(undefined1 *)(plVar1[1] + lVar2) = 0x7b;
+  plVar1[2] = lVar2 + 1;
+  serde_json::ser::
+  format_escaped_str<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>
+            ();
+  if (extraout_RAX == 0) {
+    plVar1 = (longlong *)*in_RDX;
+    lVar2 = plVar1[2];
+    if (*plVar1 == lVar2) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      lVar2 = plVar1[2];
+    }
+    *(undefined1 *)(plVar1[1] + lVar2) = 0x3a;
+    plVar1[2] = lVar2 + 1;
+    plVar1 = (longlong *)*in_RDX;
+    lVar2 = plVar1[2];
+    if (*plVar1 == lVar2) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      lVar2 = plVar1[2];
+    }
+    *(undefined1 *)(plVar1[1] + lVar2) = 0x7b;
+    plVar1[2] = lVar2 + 1;
+    serde::ser::SerializeMap::
+    serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,u64>
+              ();
+    if (extraout_RAX_00 == 0) {
+      plVar1 = (longlong *)*in_RDX;
+      lVar2 = plVar1[2];
+      if (*plVar1 == lVar2) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        lVar2 = plVar1[2];
+      }
+      *(undefined1 *)(plVar1[1] + lVar2) = 0x7d;
+      lVar2 = lVar2 + 1;
+      plVar1[2] = lVar2;
+      if (*plVar1 == lVar2) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        lVar2 = plVar1[2];
+      }
+      *(undefined1 *)(plVar1[1] + lVar2) = 0x7d;
+      plVar1[2] = lVar2 + 1;
+    }
+  }
+  else {
+    serde_json::error::Error::io();
+  }
+  return;
+}
+

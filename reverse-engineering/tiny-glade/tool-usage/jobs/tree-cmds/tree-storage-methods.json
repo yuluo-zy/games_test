@@ -1,0 +1,38 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x140a38460\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout[\"tag\"] = \"TreeStorage_get\"\nif f is None:\n    raise RuntimeError(\"function absent at 0x140a38460\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"size\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nit = prog.getListing().getInstructions(f.getBody(), True)\ninsns = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x140a38560\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout[\"tag\"] = \"TreeStorage_insert\"\nif f is None:\n    raise RuntimeError(\"function absent at 0x140a38560\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"size\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nit = prog.getListing().getInstructions(f.getBody(), True)\ninsns = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x140a385a0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout[\"tag\"] = \"TreeStorage_remove\"\nif f is None:\n    raise RuntimeError(\"function absent at 0x140a385a0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"size\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nit = prog.getListing().getInstructions(f.getBody(), True)\ninsns = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {}\nfor a in [\"0x143035018\", \"0x14303504e8\", \"0x143035000\", \"0x143035030\"]:\n    addr = prog.getAddressFactory().getAddress(a)\n    mem = prog.getMemory().getBytes(addr, 0x60)\n    out[a] = \"\".join(\"%02x\" % (b & 0xFF) for b in mem)\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "program": "tiny-glade.exe",
+  "name": "new",
+  "entry": "140f909f0",
+  "body": "[[140f909f0, 140f90a70] [140f90a80, 140f90ac2] [140f90ad0, 140f90b73]]",
+  "signature": "void __cdecl new(void)",
+  "decompiled": "\nvoid __cdecl system_critters::fish::FishSpawnLocations::new(void)\n\n{\n  float fVar1;\n  float fVar2;\n  float fVar3;\n  undefined8 *in_RCX;\n  longlong lVar4;\n  longlong lVar5;\n  longlong lVar6;\n  longlong lVar7;\n  float fVar8;\n  float fVar9;\n  \n  fVar3 = __real_42500000;\n  fVar2 = __real_41c00000;\n  fVar1 = __real_3f800000;\n  lVar6 = 0;\n  lVar7 = 0;\n  do {\n    fVar8 = (float)lVar7;\n    lVar7 = lVar7 + 1;\n    fVar8 = fVar8 / fVar2;\n    lVar4 = lVar6 * 0xc;\n    lVar5 = 0;\n    do {\n      fVar9 = (float)lVar5 / fVar2;\n      if (lVar6 == 0) {\n        alloc::raw_vec::RawVec::\n        grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>\n                  ();\n      }\n      lVar5 = lVar5 + 1;\n      *(float *)(lVar4 + 4) = fVar8 * fVar3 - (fVar1 - fVar8) * fVar3;\n      *(float *)(lVar4 + 8) = fVar9 * fVar3 - (fVar1 - fVar9) * fVar3;\n      *(undefined1 *)(lVar4 + 0xc) = 0;\n      lVar6 = lVar6 + 1;\n      lVar4 = lVar4 + 0xc;\n    } while (lVar5 != 0x19);\n  } while (lVar7 != 0x19);\n  in_RCX[2] = lVar6;\n  *in_RCX = 0;\n  in_RCX[1] = 4;\n  return;\n}\n\n"
+}

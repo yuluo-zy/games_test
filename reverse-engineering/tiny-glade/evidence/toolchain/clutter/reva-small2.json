@@ -1,0 +1,558 @@
+{
+  "backend": "reva",
+  "worker": "clutter-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/decomp/\"\nprog = currentProgram\nADDRS = {\"0x1422ce260\":\"process_autoclutter_candidates\",\"0x1422cc390\":\"add_autoclutter_around_gates\",\"0x1422cefe0\":\"add_autoclutter_around_windows\",\"0x1422cd7d0\":\"add_autoclutter_on_windows\",\"0x1422c9c70\":\"add_birdnests\",\"0x1422d2fa0\":\"add_lantern_water_setdresssing\",\"0x1422d3800\":\"add_tree_setdressing\",\"0x1422d04e0\":\"manage_autoclutter_entities\"}\nmeta = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    fm = prog.getFunctionManager()\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        meta[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    rec[\"body\"] = str(f.getBody())\n    rec[\"signature\"] = str(f.getSignature())\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        res = d.decompileFunction(f, 60, monitor)\n        if not res.decompileCompleted():\n            rec[\"error\"] = str(res.getErrorMessage())\n        else:\n            c = res.getDecompiledFunction().getC()\n            open(OUT + label + \".c\", \"w\").write(c)\n            rec[\"c_len\"] = len(c)\n    finally:\n        d.dispose()\n    meta[s] = rec\nopen(OUT + \"meta.json\", \"w\").write(json.dumps(meta, indent=1))\nprint(json.dumps(meta))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/decomp/\"\nprog = currentProgram\nADDRS = {\"0x1422ce260\":\"process_autoclutter_candidates\",\"0x1422cc390\":\"add_autoclutter_around_gates\",\"0x1422cefe0\":\"add_autoclutter_around_windows\",\"0x1422cd7d0\":\"add_autoclutter_on_windows\",\"0x1422c9c70\":\"add_birdnests\",\"0x1422d2fa0\":\"add_lantern_water_setdresssing\",\"0x1422d3800\":\"add_tree_setdressing\",\"0x1422d04e0\":\"manage_autoclutter_entities\"}\nmeta = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    fm = prog.getFunctionManager()\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        meta[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    rec[\"body\"] = str(f.getBody())\n    rec[\"signature\"] = str(f.getSignature())\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        res = d.decompileFunction(f, 60, monitor)\n        if not res.decompileCompleted():\n            rec[\"error\"] = str(res.getErrorMessage())\n        else:\n            c = res.getDecompiledFunction().getC()\n            open(OUT + label + \".c\", \"w\").write(c)\n            rec[\"c_len\"] = len(c)\n    finally:\n        d.dispose()\n    meta[s] = rec\nopen(OUT + \"meta.json\", \"w\").write(json.dumps(meta, indent=1))\nprint(json.dumps(meta))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"0x1422ce260\\\": {\\\"addr\\\": \\\"0x1422ce260\\\", \\\"label\\\": \\\"process_autoclutter_candidates\\\", \\\"name\\\": \\\"process_autoclutter_candidates\\\", \\\"body\\\": \\\"[[1422ce260, 1422ce392] [1422ce3a0, 1422ce66e] [1422ce670, 1422ce714] [1422ce849, 1422ce99d] [1422ce9a0, 1422ce9b3] [1422ce9b6, 1422ce9c9]]\\\", \\\"signature\\\": \\\"void __cdecl process_autoclutter_candidates(void)\\\", \\\"c_len\\\": 14553}, \\\"0x1422cc390\\\": {\\\"addr\\\": \\\"0x1422cc390\\\", \\\"label\\\": \\\"add_autoclutter_around_gates\\\", \\\"name\\\": \\\"add_autoclutter_around_gates\\\", \\\"body\\\": \\\"[[1422cc390, 1422cc502] [1422cc510, 1422cc739] [1422cc740, 1422ccc53]]\\\", \\\"signature\\\": \\\"void __cdecl add_autoclutter_around_gates(void)\\\", \\\"c_len\\\": 13073}, \\\"0x1422cefe0\\\": {\\\"addr\\\": \\\"0x1422cefe0\\\", \\\"label\\\": \\\"add_autoclutter_around_windows\\\", \\\"name\\\": \\\"add_autoclutter_around_windows\\\", \\\"body\\\": \\\"[[1422cefe0, 1422cf162] [1422cf170, 1422cf43a] [1422cf440, 1422cf7c7] [1422cf7d0, 1422cfcb8] [1422cfcbe, 1422cfdc6] [1422cfdc9, 1422cfdec] [1422cfdef, 1422cfdfa] [1422cfdfd, 1422cfe0b] [1422cfe0e, 1422cfe1c]]\\\", \\\"signature\\\": \\\"void __cdecl add_autoclutter_around_windows(void)\\\", \\\"c_len\\\": 23647}, \\\"0x1422cd7d0\\\": {\\\"addr\\\": \\\"0x1422cd7d0\\\", \\\"label\\\": \\\"add_autoclutter_on_windows\\\", \\\"name\\\": \\\"add_autoclutter_on_windows\\\", \\\"body\\\": \\\"[[1422cd7d0, 1422cd8b9] [1422cd959, 1422cd9b6] [1422cdd34, 1422cdd57]]\\\", \\\"signature\\\": \\\"void __cdecl add_autoclutter_on_windows(void)\\\", \\\"c_len\\\": 892}, \\\"0x1422c9c70\\\": {\\\"addr\\\": \\\"0x1422c9c70\\\", \\\"label\\\": \\\"add_birdnests\\\", \\\"name\\\": \\\"add_birdnests\\\", \\\"body\\\": \\\"[[1422c9c70, 1422c9db2] [1422c9dc0, 1422ca07c] [1422ca080, 1422ca0f2] [1422ca100, 1422ca170] [1422ca180, 1422ca232] [1422ca240, 1422ca30e] [1422ca310, 1422ca674] [1422ca677, 1422ca68f]]\\\", \\\"signature\\\": \\\"void __cdecl add_birdnests(void)\\\", \\\"c_len\\\": 28697}, \\\"0x1422d2fa0\\\": {\\\"addr\\\": \\\"0x1422d2fa0\\\", \\\"label\\\": \\\"add_lantern_water_setdresssing\\\", \\\"name\\\": \\\"add_lantern_water_setdresssing\\\", \\\"body\\\": \\\"[[1422d2fa0, 1422d31f6] [1422d3200, 1422d3250] [1422d3260, 1422d3412] [1422d3420, 1422d367e] [1422d3680, 1422d37f5]]\\\", \\\"signature\\\": \\\"void __cdecl add_lantern_water_setdresssing(void)\\\", \\\"c_len\\\": 14345}, \\\"0x1422d3800\\\": {\\\"addr\\\": \\\"0x1422d3800\\\", \\\"label\\\": \\\"add_tree_setdressing\\\", \\\"name\\\": \\\"add_tree_setdressing\\\", \\\"body\\\": \\\"[[1422d3800, 1422d39d9] [1422d39e0, 1422d3aa5] [1422d3ab0, 1422d3c98] [1422d3ca0, 1422d3d3b] [1422d3d40, 1422d4220]]\\\", \\\"signature\\\": \\\"void __cdecl add_tree_setdressing(void)\\\", \\\"c_len\\\": 12164}, \\\"0x1422d04e0\\\": {\\\"addr\\\": \\\"0x1422d04e0\\\", \\\"label\\\": \\\"manage_autoclutter_entities\\\", \\\"name\\\": \\\"manage_autoclutter_entities\\\", \\\"body\\\": \\\"[[1422d04e0, 1422d0662] [1422d0670, 1422d0941] [1422d0950, 1422d09fc] [1422d0a00, 1422d0a35] [1422d0a40, 1422d0e38] [1422d0e40, 1422d14a0] [1422d14b0, 1422d1506] [1422d1510, 1422d15d2] [1422d15e0, 1422d1741] [1422d1750, 1422d1802] [1422d1810, 1422d1977] [1422d1980, 1422d1a64] [1422d1a70, 1422d1a91] [1422d1aa0, 1422d1c54] [1422d1d43, 1422d1e37] [1422d1e40, 1422d2053] [1422d2060, 1422d2657] [1422d265a, 1422d2665]]\\\", \\\"signature\\\": \\\"void __cdecl manage_autoclutter_entities(void)\\\", \\\"c_len\\\": 55690}}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":5106}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/disasm/\"\nprog = currentProgram\nADDRS = {\"0x1422ce260\":\"process_autoclutter_candidates\",\"0x1422cc390\":\"add_autoclutter_around_gates\",\"0x1422cefe0\":\"add_autoclutter_around_windows\",\"0x1422cd7d0\":\"add_autoclutter_on_windows\",\"0x1422c9c70\":\"add_birdnests\",\"0x1422d2fa0\":\"add_lantern_water_setdresssing\",\"0x1422d3800\":\"add_tree_setdressing\",\"0x1422d04e0\":\"manage_autoclutter_entities\"}\nfm = prog.getFunctionManager()\nlisting = prog.getListing()\nrefmgr = prog.getReferenceManager()\nres = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        res[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    body = f.getBody()\n    it = listing.getInstructions(body, True)\n    insns = []\n    calls = {}\n    while it.hasNext():\n        monitor.checkCancelled()\n        ins = it.next()\n        a = ins.getAddress()\n        mnem = ins.getMnemonicString()\n        ops = []\n        for i in range(ins.getNumOperands()):\n            r = ins.getDefaultOperandRepresentation(i)\n            ops.append(r if r is not None else \"\")\n        raw = ins.getBytes()\n        hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n        insns.append([str(a), mnem, ops, hexb])\n        if mnem == \"CALL\":\n            for r in refmgr.getReferencesFrom(a):\n                if r.getReferenceType().isCall():\n                    to = r.getToAddress()\n                    tgt = fm.getFunctionAt(to)\n                    nm = str(tgt.getName()) if tgt else str(to)\n                    key = nm + \"@\" + str(to)\n                    if key not in calls:\n                        calls[key] = 0\n                    calls[key] += 1\n    rec[\"insn_count\"] = len(insns)\n    rec[\"insns\"] = insns\n    rec[\"call_counts\"] = calls\n    open(OUT + label + \".json\", \"w\").write(json.dumps(rec, indent=1))\n    res[s] = {\"addr\": s, \"label\": label, \"name\": rec.get(\"name\"), \"insn_count\": len(insns), \"calls\": calls}\nprint(json.dumps(res))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/disasm/\"\nprog = currentProgram\nADDRS = {\"0x1422ce260\":\"process_autoclutter_candidates\",\"0x1422cc390\":\"add_autoclutter_around_gates\",\"0x1422cefe0\":\"add_autoclutter_around_windows\",\"0x1422cd7d0\":\"add_autoclutter_on_windows\",\"0x1422c9c70\":\"add_birdnests\",\"0x1422d2fa0\":\"add_lantern_water_setdresssing\",\"0x1422d3800\":\"add_tree_setdressing\",\"0x1422d04e0\":\"manage_autoclutter_entities\"}\nfm = prog.getFunctionManager()\nlisting = prog.getListing()\nrefmgr = prog.getReferenceManager()\nres = {}\nfor s, label in ADDRS.items():\n    monitor.checkCancelled()\n    addr = prog.getAddressFactory().getAddress(s)\n    f = fm.getFunctionAt(addr)\n    rec = {\"addr\": s, \"label\": label}\n    if f is None:\n        rec[\"error\"] = \"absent\"\n        res[s] = rec\n        continue\n    rec[\"name\"] = str(f.getName())\n    body = f.getBody()\n    it = listing.getInstructions(body, True)\n    insns = []\n    calls = {}\n    while it.hasNext():\n        monitor.checkCancelled()\n        ins = it.next()\n        a = ins.getAddress()\n        mnem = ins.getMnemonicString()\n        ops = []\n        for i in range(ins.getNumOperands()):\n            r = ins.getDefaultOperandRepresentation(i)\n            ops.append(r if r is not None else \"\")\n        raw = ins.getBytes()\n        hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n        insns.append([str(a), mnem, ops, hexb])\n        if mnem == \"CALL\":\n            for r in refmgr.getReferencesFrom(a):\n                if r.getReferenceType().isCall():\n                    to = r.getToAddress()\n                    tgt = fm.getFunctionAt(to)\n                    nm = str(tgt.getName()) if tgt else str(to)\n                    key = nm + \"@\" + str(to)\n                    if key not in calls:\n                        calls[key] = 0\n                    calls[key] += 1\n    rec[\"insn_count\"] = len(insns)\n    rec[\"insns\"] = insns\n    rec[\"call_counts\"] = calls\n    open(OUT + label + \".json\", \"w\").write(json.dumps(rec, indent=1))\n    res[s] = {\"addr\": s, \"label\": label, \"name\": rec.get(\"name\"), \"insn_count\": len(insns), \"calls\": calls}\nprint(json.dumps(res))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"0x1422ce260\\\": {\\\"addr\\\": \\\"0x1422ce260\\\", \\\"label\\\": \\\"process_autoclutter_candidates\\\", \\\"name\\\": \\\"process_autoclutter_candidates\\\", \\\"insn_count\\\": 373, \\\"calls\\\": {\\\"are_scopes_on@140c16a00\\\": 1, \\\"rfind<ref$<str$>_>@1422cde30\\\": 2, \\\"slice_error_fail@1428d9940\\\": 3, \\\"VAL@140c18130\\\": 2, \\\"begin_scope@140c16d40\\\": 1, \\\"from_iter<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,core::iter::adapters::filter_map::FilterMap<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<system_clutter::autoclutter::AutoClutterCandidate>_>,system_clutter::autoclutter::process_autoclutter_candidates::process_autoclutter_candidates::closure_env$0>_>@141cea460\\\": 1, \\\"__rust_alloc@140613c10\\\": 1, \\\"overlaps_rectangle3d@140c98580\\\": 1, \\\"grow_one<enum2$<toolbar::mei::config::NodeLayoutConfigAttrib>,alloc::alloc::Global>@14068d550\\\": 1, \\\"new@140b02e10\\\": 1, \\\"color@140b02e40\\\": 1, \\\"show@140b02ed0\\\": 1, \\\"__rust_dealloc@140613c20\\\": 2, \\\"end_scope@140c170f0\\\": 1, \\\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>@14291a780\\\": 2, \\\"panic_access_error@1428d80d0\\\": 1, \\\"insertion_sort_shift_left<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,alloc::slice::impl$0::sort_by::closure_env$0<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,system_clutter::autoclutter::process_autoclutter_candidates::process_autoclutter_candidates::closure_env$1>_>@141cf9b50\\\": 1, \\\"panic_already_borrowed@1428d9250\\\": 1, \\\"panic_bounds_check@1428d9518\\\": 1, \\\"handle_error@1428d8fe3\\\": 1, \\\"driftsort_main<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,alloc::slice::impl$0::sort_by::closure_env$0<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,system_clutter::autoclutter::process_autoclutter_candidates::process_autoclutter_candidates::closure_env$1>,alloc::vec::Vec<system_clutter::autoclutter::process_autoclutter_candidates::OrderedCandidate,alloc::alloc::Global>_>@141cf4370\\\": 1}}, \\\"0x1422cc390\\\": {\\\"addr\\\": \\\"0x1422cc390\\\", \\\"label\\\": \\\"add_autoclutter_around_gates\\\", \\\"name\\\": \\\"add_autoclutter_around_gates\\\", \\\"insn_count\\\": 477, \\\"calls\\\": {\\\"are_scopes_on@140c16a00\\\": 1, \\\"rfind<ref$<str$>_>@1422cbf60\\\": 2, \\\"slice_error_fail@1428d9940\\\": 3, \\\"VAL@140c18130\\\": 2, \\\"begin_scope@140c16d40\\\": 1, \\\"x0y@140c9cdc0\\\": 3, \\\"calculate_hash<tuple$<ref$<str$>,u32,country_core::resources::walls::WallId>_>@141cf7440\\\": 1, \\\"add_region@140ee3fd0\\\": 1, \\\"end_scope@140c170f0\\\": 1, \\\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>@14291a780\\\": 2, \\\"panic_access_error@1428d80d0\\\": 1, \\\"panic_already_borrowed@1428d9250\\\": 1, \\\"unwrap_failed@1428d9310\\\": 1}}, \\\"0x1422cefe0\\\": {\\\"addr\\\": \\\"0x1422cefe0\\\", \\\"label\\\": \\\"add_autoclutter_around_windows\\\", \\\"name\\\": \\\"add_autoclutter_around_windows\\\", \\\"insn_count\\\": 737, \\\"calls\\\": {\\\"are_scopes_on@140c16a00\\\": 1, \\\"rfind<ref$<str$>_>@1422cebb0\\\": 2, \\\"slice_error_fail@1428d9940\\\": 3, \\\"VAL@140c18130\\\": 2, \\\"begin_scope@140c16d40\\\": 1, \\\"from@140b26a70\\\": 1, \\\"iter_removed_ids@140a1b100\\\": 1, \\\"get@140a91ef0\\\": 1, \\\"spawns_clutter@140833170\\\": 1, \\\"subtype@140b26970\\\": 1, \\\"transform@140a1aa20\\\": 1, \\\"calculate_hash<tuple$<ref$<str$>,i32,usize,u32>_>@141cf6d60\\\": 1, \\\"xvy@140c9cde0\\\": 3, \\\"x0y@140c9cdc0\\\": 3, \\\"add_region@140ee3fd0\\\": 3, \\\"extend_right_until<glam::f32::vec3::Vec3,slice2$<glam::f32::vec3::Vec3>,utils::curve::CurveCoordSemantic3D,glam::f32::vec2::Vec2,glam::f32::vec2::Vec2_(*)(usize,ref$<glam::f32::vec3::Vec3>),utils::curve::curve_slice::impl$6::extend_right::closure_env$0<glam::f32::vec3::Vec3,slice2$<glam::f32::vec3::Vec3>,utils::curve::CurveCoordSemantic3D,glam::f32::vec2::Vec2,glam::f32::vec2::Vec2_(*)(usize,ref$<glam::f32::vec3::Vec3>)>_>@1422e1e40\\\": 1, \\\"calculate_hash<tuple$<ref$<str$>,usize,u32>_>@141cf77c0\\\": 2, \\\"unwrap_failed@1428d9310\\\": 1, \\\"end_scope@140c170f0\\\": 1, \\\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>@14291a780\\\": 2, \\\"panic_access_error@1428d80d0\\\": 1, \\\"panic@1428d9430\\\": 2, \\\"panic_already_borrowed@1428d9250\\\": 1, \\\"panic_bounds_check@1428d9518\\\": 3}}, \\\"0x1422cd7d0\\\": {\\\"addr\\\": \\\"0x1422cd7d0\\\", \\\"label\\\": \\\"add_autoclutter_on_windows\\\", \\\"name\\\": \\\"add_autoclutter_on_windows\\\", \\\"insn_count\\\": 91, \\\"calls\\\": {}}, \\\"0x1422c9c70\\\": {\\\"addr\\\": \\\"0x1422c9c70\\\", \\\"label\\\": \\\"add_birdnests\\\", \\\"name\\\": \\\"add_birdnests\\\", \\\"insn_count\\\": 565, \\\"calls\\\": {\\\"are_scopes_on@140c16a00\\\": 1, \\\"rfind<ref$<str$>_>@1422c9840\\\": 2, \\\"slice_error_fail@1428d9940\\\": 3, \\\"VAL@140c18130\\\": 2, \\\"begin_scope@140c16d40\\\": 1, \\\"take<country_core::utils::dirty_tiles::DirtyTiles>@141247c90\\\": 1, \\\"memcpy@142923c00\\\": 2, \\\"new_clear@140960ac0\\\": 1, \\\"release_resource@140c81e10\\\": 2, \\\"drop_slow<lock_api::rwlock::RwLock<parking_lot::raw_rwlock::RawRwLock,tabloid::Publication<country_core::utils::dirty_tiles::DirtyTiles>_>,alloc::alloc::Global>@140b5cb30\\\": 1, \\\"hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>@1405b0d70\\\": 2, \\\"cell_from_world_space@140960b20\\\": 1, \\\"closure$0@1422ca8c0\\\": 2, \\\"insert<u64,bool,std::hash::random::RandomState,alloc::alloc::Global>@140eec230\\\": 1, \\\"grow_one<country_core::resources::walls::wall_path_segment::WallPathSegment,alloc::alloc::Global>@14078c880\\\": 1, \\\"reserve_rehash<tuple$<country_core::asset_libraries::Handle<country_core::render::shader::ComputeShaderProgram>,alloc::boxed::Box<country_core::render::shader::ComputeShaderProgram,alloc::alloc::Global>_>,alloc::alloc::Global,hashbrown::map::make_hasher::closure_env$0<country_core::asset_libraries::Handle<country_core::render::shader::ComputeShaderProgram>,alloc::boxed::Box<country_core::render::shader::ComputeShaderProgram,alloc::alloc::Global>,std::hash::random::RandomState>_>@1428aa250\\\": 1, \\\"end_scope@140c170f0\\\": 1, \\\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>@14291a780\\\": 2, \\\"panic_access_error@1428d80d0\\\": 1, \\\"panic_already_borrowed@1428d9250\\\": 1, \\\"unlock_shared_slow@1428ccf50\\\": 1, \\\"panic_bounds_check@1428d9518\\\": 2}}, \\\"0x1422d2fa0\\\": {\\\"addr\\\": \\\"0x1422d2fa0\\\", \\\"label\\\": \\\"add_lantern_water_setdresssing\\\", \\\"name\\\": \\\"add_lantern_water_setdresssing\\\", \\\"insn_count\\\": 407, \\\"calls\\\": {\\\"as_inner_mut@14067dd80\\\": 1, \\\"is_corrupted@140ae8320\\\": 1, \\\"iter_terrain_decorators@140a1e280\\\": 1, \\\"transform@140a1aa20\\\": 1, \\\"new@140c97540\\\": 1, \\\"init_rng@140c96240\\\": 1, \\\"f32@140caf380\\\": 6, \\\"fmodf@142923f10\\\": 1, \\\"get_pos_at_u@140c975a0\\\": 1, \\\"bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>@140a14df0\\\": 1, \\\"x0y@140c9cdc0\\\": 2, \\\"calculate_hash<tuple$<u32,usize,ref$<str$>_>_>@141cf7980\\\": 1, \\\"is_started@14092e6c0\\\": 1, \\\"grow_one<country_core::resources::walls::wall_path_segment::WallPathSegment,alloc::alloc::Global>@14078c880\\\": 1, \\\"panic@1428d9430\\\": 2, \\\"panic_fmt@1428d9390\\\": 1}}, \\\"0x1422d3800\\\": {\\\"addr\\\": \\\"0x1422d3800\\\", \\\"label\\\": \\\"add_tree_setdressing\\\", \\\"name\\\": \\\"add_tree_setdressing\\\", \\\"insn_count\\\": 505, \\\"calls\\\": {\\\"as_inner_mut@14067dd80\\\": 1, \\\"is_dragging@14092e6a0\\\": 1, \\\"position@140ad51a0\\\": 2, \\\"is_started@14092e6c0\\\": 4, \\\"is_corrupted@140ae8320\\\": 4, \\\"new@140c97540\\\": 1, \\\"init_rng@140c96240\\\": 1, \\\"f32@140caf380\\\": 6, \\\"fmodf@142923f10\\\": 1, \\\"get_pos_at_u@140c975a0\\\": 1, \\\"bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>@140a14df0\\\": 1, \\\"x0y@140c9cdc0\\\": 2, \\\"calculate_hash<tuple$<country_core::components::TreeStorageIndex,usize,ref$<str$>_>_>@141cf7600\\\": 1, \\\"grow_one<country_core::resources::walls::wall_path_segment::WallPathSegment,alloc::alloc::Global>@14078c880\\\": 1, \\\"panic@1428d9430\\\": 2, \\\"panic_fmt@1428d9390\\\": 1}}, \\\"0x1422d04e0\\\": {\\\"addr\\\": \\\"0x1422d04e0\\\", \\\"label\\\": \\\"manage_autoclutter_entities\\\", \\\"name\\\": \\\"manage_autoclutter_entities\\\", \\\"insn_count\\\": 1706, \\\"calls\\\": {\\\"are_scopes_on@140c16a00\\\": 1, \\\"rfind<ref$<str$>_>@1422d00b0\\\": 2, \\\"slice_error_fail@1428d9940\\\": 3, \\\"VAL@140c18130\\\": 2, \\\"begin_scope@140c16d40\\\": 1, \\\"from_iter<u64,ref$<system_clutter::autoclutter::AutoClutterObject>,std::hash::random::RandomState,core::iter::adapters::map::Map<core::slice::iter::Iter<system_clutter::autoclutter::AutoClutterObject>,system_clutter::autoclutter::manage_autoclutter_entities::manage_autoclutter_entities::closure_env$1>_>@142612aa0\\\": 1, \\\"hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>@1405b0d70\\\": 2, \\\"do_reserve_and_handle<alloc::alloc::Global>@1429108f0\\\": 11, \\\"closure$0@1422d2d20\\\": 2, \\\"init_rng@140c96240\\\": 1, \\\"from_iter<u64,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<tuple$<bevy_ecs::entity::Entity,ref$<country_core::components::AutoClutter>,enum2$<core::option::Option<ref$<system_clutter::autoclutter::WindowShutter>_>_>,ref$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::clutter_meshes::ClutterMarkedForDeletion>_>,system_clutter::autoclutter::manage_autoclutter_entities::manage_autoclutter_entities::closure_env$4>_>@141ceaad0\\\": 1, \\\"grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>@140562630\\\": 1, \\\"f32@140caf380\\\": 4, \\\"spawn_empty@140d146a0\\\": 1, \\\"finish<country_core::systems::main_camera::MainCameraPlugin>@14003bb80\\\": 5, \\\"compute@140c9cd80\\\": 4, \\\"eq@140c9cd70\\\": 4, \\\"__rust_dealloc@140613c20\\\": 3, \\\"end_scope@140c170f0\\\": 1, \\\"initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>@14291a780\\\": 2, \\\"panic_access_error@1428d80d0\\\": 1, \\\"panic_already_borrowed@1428d9250\\\": 1, \\\"unwrap_failed@1428d9310\\\": 2}}}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":831}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get functions from"
+            },
+            "filterDefaultNames": {
+              "default": true,
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "signature": {
+              "type": "string",
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name where the function is located"
+            },
+            "createIfNotExists": {
+              "default": true,
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location"
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "type": "string",
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled."
+            },
+            "includeCallers": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program containing the function"
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1."
+            },
+            "includeDisassembly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync"
+            },
+            "includeIncomingReferences": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line"
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed."
+            },
+            "includeReferenceContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)"
+            },
+            "includeComments": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output"
+            },
+            "includeCallees": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation."
+            },
+            "signatureOnly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens."
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references"
+            },
+            "contextLines": {
+              "default": 2,
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets"
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get references from"
+            },
+            "offset": {
+              "default": 0,
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)"
+            },
+            "includeFlow": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)"
+            },
+            "limit": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum number of references to return per direction"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')"
+            },
+            "includeData": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include data references (reads, writes)"
+            },
+            "direction": {
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "dataTypeString": {
+              "type": "string",
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')"
+            },
+            "archiveName": {
+              "default": "",
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched."
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to an existing .py script to run."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path to the program in the Ghidra Project"
+            },
+            "code": {
+              "type": "string",
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories."
+            },
+            "timeoutSeconds": {
+              "default": 60,
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script absolute path"
+            },
+            "startIndex": {
+              "default": 0,
+              "type": "integer",
+              "description": "Pagination start (0-indexed)"
+            },
+            "nameFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script file name"
+            },
+            "maxCount": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum entries to return"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName."
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "1-indexed starting line"
+            },
+            "limit": {
+              "default": 2000,
+              "type": "integer",
+              "description": "Maximum lines to return"
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved across registered script directories."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path; must resolve under a writeable script directory."
+            },
+            "code": {
+              "type": "string",
+              "description": "Script source to write."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory."
+            },
+            "overwrite": {
+              "default": false,
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists."
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script to edit (must be writeable)."
+            },
+            "old_string": {
+              "type": "string",
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved under the default writeable scripts directory."
+            },
+            "replace_all": {
+              "default": false,
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location."
+            },
+            "new_string": {
+              "type": "string",
+              "description": "Replacement text. Must differ from old_string."
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

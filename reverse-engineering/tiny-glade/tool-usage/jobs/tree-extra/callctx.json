@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nlisting = prog.getListing()\nout = {}\n\ndef disasm(key, entry, calladdr, before=70, after=25):\n    e = prog.getAddressFactory().getAddress(entry)\n    ca = prog.getAddressFactory().getAddress(calladdr)\n    f = fm.getFunctionContaining(e)\n    if f is None:\n        f = fm.getFunctionAt(e)\n    body = f.getBody()\n    rows = []\n    it = listing.getInstructions(body, True)\n    seq = []\n    while it.hasNext():\n        monitor.checkCancelled()\n        ins = it.next()\n        seq.append(ins)\n    idx = None\n    for i, ins in enumerate(seq):\n        if ins.getAddress().equals(ca):\n            idx = i\n            break\n    start = max(0, idx - before)\n    end = min(len(seq), idx + after)\n    for i in range(start, end):\n        ins = seq[i]\n        a = ins.getAddress()\n        ops = [ins.getDefaultOperandRepresentation(j) if ins.getDefaultOperandRepresentation(j) is not None else \"\" for j in range(ins.getNumOperands())]\n        raw = ins.getBytes()\n        hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n        mark = \" >>>\" if i == idx else \"\"\n        rows.append([str(a), ins.getMnemonicString(), ops, hexb, mark])\n    out[key] = rows\n    return str(f.getName())\n\nout[\"meta1\"] = disasm(\"ctx1\", \"0x141bca200\", \"0x141bca978\")\nout[\"meta2\"] = disasm(\"ctx2\", \"0x141bda260\", \"0x141bda9d4\")\n\nwith open(\"/tmp/tree-extra-callctx.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"meta1\": out[\"meta1\"], \"meta2\": out[\"meta2\"],\n                  \"len1\": len(out[\"ctx1\"]), \"len2\": len(out[\"ctx2\"])}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

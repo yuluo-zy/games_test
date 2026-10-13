@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nkeys = (\"tree_move_bend\", \"recalc_tree_position\", \"replay_tree\", \"recalc_\",\n        \"startup_tree_tool\")\nfound = []\nit = fm.getFunctions(True)\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    low = nm.lower()\n    for key in keys:\n        if key in low:\n            found.append([key, str(fn.getEntryPoint()), str(fn.getBody()), nm[:700]])\n            break\nwith open(\"/tmp/tree-rest-names2.json\", \"w\") as fh:\n    json.dump(found, fh)\nprint(json.dumps({\"count\": len(found),\n                  \"summaries\": [[f[0], f[1], f[2]] for f in found]}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

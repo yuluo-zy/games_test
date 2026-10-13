@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {}\nfor a in ['0x142925904', '0x14295a0e8', '0x142934694', '0x142ad58e8', '0x142a7b658', '0x1429258f4', '0x1429258f8', '0x1429258fc', '0x142925870', '0x142a7c88c', '0x1429edb90', '0x1429cd030']:\n    try:\n        addr = prog.getAddressFactory().getAddress(a)\n        out[a + \"_float\"] = prog.getMemory().getFloat(addr)\n        buf = bytearray(8)\n        prog.getMemory().getBytes(addr, buf)\n        out[a + \"_hex\"] = \"\".join(\"%02x\" % (b & 0xFF) for b in buf)\n    except Exception as e:\n        out[a] = \"ERR:\" + str(e)[:80]\nfor a in ['0x141246fb0', '0x140a14df0', '0x14261f0c0', '0x141625ae0', '0x140c90700', '0x140c90770', '0x140c90940', '0x1408cc680', '0x1408ccc90', '0x14090e070', '0x14261ed20', '0x140911df0', '0x140911dd0', '0x140911230', '0x140a12650', '0x14261ef90', '0x14230eb00', '0x14230ecf0', '0x14230e780']:\n    try:\n        addr = prog.getAddressFactory().getAddress(a)\n        f = prog.getFunctionManager().getFunctionAt(addr)\n        out[a + \"_fn\"] = str(f.getName()) if f else \"no-func\"\n    except Exception as e:\n        out[a] = \"ERR:\" + str(e)[:80]\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 180
+  }
+]

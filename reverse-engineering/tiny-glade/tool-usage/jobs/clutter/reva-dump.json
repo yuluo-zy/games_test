@@ -1,0 +1,20 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/\"\nprog = currentProgram\naddr = prog.getAddressFactory().getAddress(\"0x1422d6ed0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"absent\")\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    c = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nopen(OUT + \"populate_decompiled_full.c\", \"w\").write(c)\nopen(OUT + \"populate_decompiled_marker\", \"w\").write(str(len(c)))\nprint(json.dumps({\"chars\": len(c)}))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/\"\nprog = currentProgram\naddr = prog.getAddressFactory().getAddress(\"0x1422d6ed0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"absent\")\nlisting = prog.getListing()\nbody = f.getBody()\nit = listing.getInstructions(body, True)\nrefmgr = prog.getReferenceManager()\ncalls = {}\nbranches = []\nleas = []\ninsn_count = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    insn_count += 1\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                key = nm + \"@\" + str(to)\n                if key not in calls:\n                    calls[key] = [0, []]\n                calls[key][0] += 1\n                calls[key][1].append(str(a))\n    elif mnem.startswith(\"J\"):\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isJump():\n                branches.append([str(a), mnem, str(r.getToAddress())])\n    elif mnem == \"LEA\":\n        # record lea with memory reference target if any\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isData() or r.getReferenceType().isUninitialized():\n                leas.append([str(a), str(r.getToAddress())])\nout = {\"insn_count\": insn_count, \"calls\": calls, \"branches\": branches, \"leas\": leas}\nopen(OUT + \"populate_calls_branches.json\", \"w\").write(json.dumps(out, indent=1))\nprint(json.dumps({\"insn_count\": insn_count, \"n_calls\": len(calls), \"n_branches\": len(branches), \"n_leas\": len(leas)}))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]

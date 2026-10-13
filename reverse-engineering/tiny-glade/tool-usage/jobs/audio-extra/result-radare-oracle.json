@@ -1,0 +1,1783 @@
+{
+  "backend": "radare2",
+  "worker": "audio-extra-owner",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "open_file",
+      "requested_args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      },
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "show_info",
+      "requested_args": {},
+      "args": {},
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "fd       3\nfile     /Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne\nsize     0x37c0800\nhumansz  55.8M\nmode     r-x\nformat   pe64\niorw     true\nblock    0x100\ntype     EXEC (Executable file)\narch     x86\nbaddr    0x140000000\nbinsz    58460160\nbintype  pe\nbits     64\ncanary   true\ninjprot  false\nretguard false\nclass    PE32+\ncmp.csum 0x037c2f11\ncompiled Wed Oct  8 10:36:14 2025\ncrypto   false\ndbg_file tiny_glade.pdb\nendian   little\nhavecode true\nhdr.csum 0x00000000\nguid     09F1A02A49F2F8C84C4C44205044422E1\nladdr    0x0\nlang     c\nlinenum  false\nlsyms    false\nmachine  AMD 64\nnx       true\nos       windows\noverlay  false\ncc       ms\npic      true\nrelocs   false\nsigned   false\nsanitize false\nstatic   false\nstripped false\nuncaps   false\nsubsys   Windows GUI\nva       true\nPE file header:\nIMAGE_NT_HEADERS\n  Signature : 0x4550\nIMAGE_FILE_HEADERS\n  Machine : 0x8664\n  NumberOfSections : 0x7\n  TimeDateStamp : 0x68e63e9e\n  PointerToSymbolTable : 0x0\n  NumberOfSymbols : 0x0\n  SizeOfOptionalHeader : 0xf0\n  Characteristics : 0x22\nIMAGE_OPTIONAL_HEADERS\n  Magic : 0x20b\n  MajorLinkerVersion : 0xe\n  MinorLinkerVersion : 0x0\n  SizeOfCode : 0x2923200\n  SizeOfInitializedData : 0xe9d200\n  SizeOfUninitializedData : 0x0\n  AddressOfEntryPoint : 0x289aeac\n  BaseOfCode : 0x1000\n  ImageBase : 0x140000000\n  SectionAlignment : 0x1000\n  FileAlignment : 0x200\n  MajorOperatingSystemVersion : 0x6\n  MinorOperatingSystemVersion : 0x0\n  MajorImageVersion : 0x0\n  MinorImageVersion : 0x0\n  MajorSubsystemVersion : 0x6\n  MinorSubsystemVersion : 0x0\n  Win32VersionValue : 0x0\n  SizeOfImage : 0x37cd000\n  SizeOfHeaders : 0x400\n  CheckSum : 0x0\n  Subsystem : 0x2\n  DllCharacteristics : 0x8160\n  SizeOfStackReserve : 0x100000\n  SizeOfStackCommit : 0x1000\n  SizeOfHeapReserve : 0x100000\n  SizeOfHeapCommit : 0x1000\n  LoaderFlags : 0x0\n  NumberOfRvaAndSizes : 0x10\nRICH_FIELDS\nIMAGE_DIRECTORY_ENTRY_IMPORT\n  VirtualAddress : 0x3191200\n  Size : 0x294\nIMAGE_DIRECTORY_ENTRY_EXCEPTION\n  VirtualAddress : 0x363c000\n  Size : 0x154a1c\nIMAGE_DIRECTORY_ENTRY_BASERELOC\n  VirtualAddress : 0x3793000\n  Size : 0x391c4\nIMAGE_DIRECTORY_ENTRY_DEBUG\n  VirtualAddress : 0x3191118\n  Size : 0x1c\nIMAGE_DIRECTORY_ENTRY_TLS\n  VirtualAddress : 0x318b428\n  Size : 0x28\nIMAGE_DIRECTORY_ENTRY_LOAD_CONFIG\n  VirtualAddress : 0x318b2f0\n  Size : 0x138\nIMAGE_DIRECTORY_ENTRY_IAT\n  VirtualAddress : 0x31923e0\n  Size : 0xf48\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ab4998",
+        "size": "120"
+      },
+      "args": {
+        "address": "0x142ab4998",
+        "size": "120"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9899 9A9B 9C9D 9E9F A0A1 A2A3 A4A5 A6A7  89ABCDEF01234567\n0x142ab4998  36c4 e9fd 40c7 e9fd 87c5 e9fd 64c6 e9fd  6...@.......d...\n0x142ab49a8  dfc4 e9fd 40c8 e9fd eac8 e9fd 9cc6 e9fd  ....@...........\n0x142ab49b8  e4c9 e9fd 4fc5 e9fd 5ec9 e9fd a7c4 e9fd  ....O...^.......\n0x142ab49c8  17c5 e9fd b0c8 e9fd 6fc4 e9fd 2cc6 e9fd  ........o...,...\n0x142ab49d8  adc3 e9fd cec7 e9fd 24c9 e9fd 54ca e9fd  ........$...T...\n0x142ab49e8  06c8 e9fd 78c8 e9fd 1cca e9fd 8cca e9fd  ....x...........\n0x142ab49f8  32d8 e9fd b9d8 e9fd 68d8 e9fd 83d8 e9fd  2.......h.......\n0x142ab4a08  97d7 e9fd d4d8 e9fd                      ........\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ab41c8",
+        "size": "360"
+      },
+      "args": {
+        "address": "0x142ab41c8",
+        "size": "360"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C8C9 CACB CCCD CECF D0D1 D2D3 D4D5 D6D7  89ABCDEF01234567\n0x142ab41c8  5761 6c6c 4865 6967 6874 4665 6e63 654c  WallHeightFenceL\n0x142ab41d8  656e 6774 6865 7665 6e74 3a2f 5346 582f  engthevent:/SFX/\n0x142ab41e8  4665 6e63 6541 7070 6561 7265 7665 6e74  FenceAppearevent\n0x142ab41f8  3a2f 5346 582f 4665 6e63 654d 6572 6765  :/SFX/FenceMerge\n0x142ab4208  6576 656e 743a 2f53 4658 2f46 656e 6365  event:/SFX/Fence\n0x142ab4218  5265 6172 7261 6e67 6565 7665 6e74 3a2f  Rearrangeevent:/\n0x142ab4228  5346 582f 4c69 6e74 656c 4170 7065 6172  SFX/LintelAppear\n0x142ab4238  6576 656e 743a 2f53 4658 2f4c 696e 7465  event:/SFX/Linte\n0x142ab4248  6c52 6561 7272 616e 6765 4861 7342 7269  lRearrangeHasBri\n0x142ab4258  636b 7365 7665 6e74 3a2f 5346 582f 4c69  cksevent:/SFX/Li\n0x142ab4268  6e74 656c 4d65 7267 6565 7665 6e74 3a2f  ntelMergeevent:/\n0x142ab4278  5346 582f 5374 6f6e 6541 7263 6841 7070  SFX/StoneArchApp\n0x142ab4288  6561 7265 7665 6e74 3a2f 5346 582f 5069  earevent:/SFX/Pi\n0x142ab4298  6c6c 6172 5374 6f6e 6541 7070 6561 7265  llarStoneAppeare\n0x142ab42a8  7665 6e74 3a2f 5346 582f 5069 6c6c 6172  vent:/SFX/Pillar\n0x142ab42b8  576f 6f64 4170 7065 6172 6576 656e 743a  WoodAppearevent:\n0x142ab42c8  2f53 4658 2f47 6174 6541 7070 6561 7265  /SFX/GateAppeare\n0x142ab42d8  7665 6e74 3a2f 5346 582f 506c 6174 666f  vent:/SFX/Platfo\n0x142ab42e8  726d 5374 6169 7273 4170 7065 6172 6576  rmStairsAppearev\n0x142ab42f8  656e 743a 2f53 4658 2f57 616c 6c53 706c  ent:/SFX/WallSpl\n0x142ab4308  6974 6576 656e 743a 2f53 4658 2f53 6577  itevent:/SFX/Sew\n0x142ab4318  6572 4761 7465 4170 7065 6172 6372 6174  erGateAppearcrat\n0x142ab4328  6573 2f63 6f75 6e74                      es/count\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ce4c88",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ce4c88",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8889 8A8B 8C8D 8E8F 9091 9293 9495 9697  89ABCDEF01234567\n0x142ce4c88  2200 0000 0000 0000 2000 0000 0000 0000  \"....... .......\n0x142ce4c98  1d00 0000 0000 0000 f848 ce42 0100 0000  .........H.B....\n0x142ce4ca8  1a49 ce42 0100 0000 3a49 ce42 0100 0000  .I.B....:I.B....\n0x142ce4cb8  0600 0000 0000 0000 0f00 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ce4ca0",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ce4ca0",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   A0A1 A2A3 A4A5 A6A7 A8A9 AAAB ACAD AEAF  0123456789ABCDEF\n0x142ce4ca0  f848 ce42 0100 0000 1a49 ce42 0100 0000  .H.B.....I.B....\n0x142ce4cb0  3a49 ce42 0100 0000 0600 0000 0000 0000  :I.B............\n0x142ce4cc0  0f00 0000 0000 0000 0c00 0000 0000 0000  ................\n0x142ce4cd0  0c00 0000 0000 0000 0400 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ce48f8",
+        "size": "96"
+      },
+      "args": {
+        "address": "0x142ce48f8",
+        "size": "96"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   F8F9 FAFB FCFD FEFF  0 1  2 3  4 5  6 7  89ABCDEF01234567\n0x142ce48f8  6576 656e 743a 2f53 4658 2f53 6861 7065  event:/SFX/Shape\n0x142ce4908  732f 4465 7461 6368 4672 6f6d 4772 6f75  s/DetachFromGrou\n0x142ce4918  6e64 6576 656e 743a 2f53 4658 2f53 6861  ndevent:/SFX/Sha\n0x142ce4928  7065 732f 4174 7461 6368 546f 4772 6f75  pes/AttachToGrou\n0x142ce4938  6e64 6576 656e 743a 2f53 4658 2f53 6861  ndevent:/SFX/Sha\n0x142ce4948  7065 732f 5065 616b 5265 6163 6865 6400  pes/PeakReached.\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ce4d30",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ce4d30",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3031 3233 3435 3637 3839 3A3B 3C3D 3E3F  0123456789ABCDEF\n0x142ce4d30  45e3 aefe 70e3 aefe 57e3 aefe 5de3 aefe  E...p...W...]...\n0x142ce4d40  4be3 aefe 51e3 aefe 3eeb aefe 3eeb aefe  K...Q...>...>...\n0x142ce4d50  3eeb aefe 63e3 aefe 0000 0000 0000 0000  >...c...........\n0x142ce4d60  0800 0000 0000 0000 0800 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ce4632",
+        "size": "400"
+      },
+      "args": {
+        "address": "0x142ce4632",
+        "size": "400"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3233 3435 3637 3839 3A3B 3C3D 3E3F 4041  23456789ABCDEF01\n0x142ce4632  6576 656e 743a 2f53 4658 2f42 7569 6c64  event:/SFX/Build\n0x142ce4642  696e 672f 4275 696c 6469 6e67 5265 7369  ing/BuildingResi\n0x142ce4652  7a65 6372 6174 6573 2f63 6f75 6e74 7279  zecrates/country\n0x142ce4662  2d63 6f72 652f 7372 632f 7379 7374 656d  -core/src/system\n0x142ce4672  732f 6175 6469 6f2f 6275 696c 6469 6e67  s/audio/building\n0x142ce4682  5f61 7564 696f 2e72 7300 0000 0000 5446  _audio.rs.....TF\n0x142ce4692  ce42 0100 0000 3700 0000 0000 0000 2b00  .B....7.......+.\n0x142ce46a2  0000 0e00 0000 6576 656e 743a 2f53 4658  ......event:/SFX\n0x142ce46b2  2f42 7569 6c64 696e 672f 4275 696c 6469  /Building/Buildi\n0x142ce46c2  6e67 526f 7461 7465 5265 6374 616e 676c  ngRotateRectangl\n0x142ce46d2  6500 0000 0000 5446 ce42 0100 0000 3700  e.....TF.B....7.\n0x142ce46e2  0000 0000 0000 3000 0000 0e00 0000 6576  ......0.......ev\n0x142ce46f2  656e 743a 2f53 4658 2f42 7569 6c64 696e  ent:/SFX/Buildin\n0x142ce4702  672f 4275 696c 6469 6e67 526f 7461 7465  g/BuildingRotate\n0x142ce4712  4369 7263 6c65 5446 ce42 0100 0000 3700  CircleTF.B....7.\n0x142ce4722  0000 0000 0000 3500 0000 0e00 0000 6576  ......5.......ev\n0x142ce4732  656e 743a 2f53 4658 2f42 7569 6c64 696e  ent:/SFX/Buildin\n0x142ce4742  672f 4275 696c 6469 6e67 4368 616e 6765  g/BuildingChange\n0x142ce4752  4865 6967 6874 5446 ce42 0100 0000 3700  HeightTF.B....7.\n0x142ce4762  0000 0000 0000 3a00 0000 0e00 0000 6576  ......:.......ev\n0x142ce4772  656e 743a 2f53 4658 2f42 7569 6c64 696e  ent:/SFX/Buildin\n0x142ce4782  672f 4275 696c 6469 6e67 4d6f 7665 5446  g/BuildingMoveTF\n0x142ce4792  ce42 0100 0000 3700 0000 0000 0000 3f00  .B....7.......?.\n0x142ce47a2  0000 0e00 0000 6576 656e 743a 2f53 4658  ......event:/SFX\n0x142ce47b2  2f50 6c61 7374 6572 4368 616e 6765 4c6f  /PlasterChangeLo\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ad6398",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x142ad6398",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9899 9A9B 9C9D 9E9F A0A1 A2A3 A4A5 A6A7  89ABCDEF01234567\n0x142ad6398  4d75 7369 6352 6963 686e 6573 734e 6577  MusicRichnessNew\n0x142ad63a8  476c 6164 6554 696d 6550 7265 7669 6577  GladeTimePreview\n0x142ad63b8  476c 6164 6554 7970 6563 7261 7465 732f  GladeTypecrates/\n0x142ad63c8  636f 756e 7472 792d 636f 7265 2f73 7263  country-core/src\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429cd0f8",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x1429cd0f8",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   F8F9 FAFB FCFD FEFF  0 1  2 3  4 5  6 7  89ABCDEF01234567\n0x1429cd0f8  0000 f042 a59b 8c3e                      ...B...>\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a7fdf8",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142a7fdf8",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   F8F9 FAFB FCFD FEFF  0 1  2 3  4 5  6 7  89ABCDEF01234567\n0x142a7fdf8  8fc2 753e 0000 c0ff                      ..u>....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925950",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142925950",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   5051 5253 5455 5657 5859 5A5B 5C5D 5E5F  0123456789ABCDEF\n0x142925950  0000 803e 0050 c347                      ...>.P.G\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ad58d4",
+        "size": "16"
+      },
+      "args": {
+        "address": "0x142ad58d4",
+        "size": "16"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   D4D5 D6D7 D8D9 DADB DCDD DEDF E0E1 E2E3  456789ABCDEF0123\n0x142ad58d4  48e1 fa3e a470 3d3f 8941 403f 8941 003f  H..>.p=?.A@?.A.?\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925870",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142925870",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   7071 7273 7475 7677 7879 7A7B 7C7D 7E7F  0123456789ABCDEF\n0x142925870  0000 003f c10f fc3e                      ...?...>\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429edb90",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x1429edb90",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9091 9293 9495 9697 9899 9A9B 9C9D 9E9F  0123456789ABCDEF\n0x1429edb90  0000 403f 0000 b442                      ..@?...B\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a948d8",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142a948d8",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   D8D9 DADB DCDD DEDF E0E1 E2E3 E4E5 E6E7  89ABCDEF01234567\n0x142a948d8  a470 7d3f 0000 0000                      .p}?....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a16cb8",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142a16cb8",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B8B9 BABB BCBD BEBF C0C1 C2C3 C4C5 C6C7  89ABCDEF01234567\n0x142a16cb8  cdcc 4c3f 6372 6174                      ..L?crat\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925904",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142925904",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -    4 5  6 7  8 9  A B  C D  E F 1011 1213  456789ABCDEF0123\n0x142925904  0000 803f 9a99 193f                      ...?...?\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a7de00",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142a7de00",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -    0 1  2 3  4 5  6 7  8 9  A B  C D  E F  0123456789ABCDEF\n0x142a7de00  0000 6041 2f72 7573                      ..`A/rus\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142ad58e4",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142ad58e4",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   E4E5 E6E7 E8E9 EAEB ECED EEEF F0F1 F2F3  456789ABCDEF0123\n0x142ad58e4  1283 803e 0000 40c0                      ...>..@.\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925988",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142925988",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8889 8A8B 8C8D 8E8F 9091 9293 9495 9697  89ABCDEF01234567\n0x142925988  0000 a040 7b14 4e40                      ...@{.N@\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925984",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x142925984",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8485 8687 8889 8A8B 8C8D 8E8F 9091 9293  456789ABCDEF0123\n0x142925984  cdcc cc3d 0000 a040                      ...=...@\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429d18cc",
+        "size": "8"
+      },
+      "args": {
+        "address": "0x1429d18cc",
+        "size": "8"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   CCCD CECF D0D1 D2D3 D4D5 D6D7 D8D9 DADB  CDEF0123456789AB\n0x1429d18cc  0000 7042 0000 af43                      ..pB...C\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142bad9f0",
+        "size": "104"
+      },
+      "args": {
+        "address": "0x142bad9f0",
+        "size": "104"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   F0F1 F2F3 F4F5 F6F7 F8F9 FAFB FCFD FEFF  0123456789ABCDEF\n0x142bad9f0  90ab 3dfe a5a9 3dfe 8ea9 3dfe 64a9 3dfe  ..=...=...=.d.=.\n0x142bada00  aea9 3dfe caa9 3dfe 97a9 3dfe 89ab 3dfe  ..=...=...=...=.\n0x142bada10  80a9 3dfe 83ab 3dfe 7dab 3dfe 56a9 3dfe  ..=...=.}.=.V.=.\n0x142bada20  72a9 3dfe bca9 3dfe 34a9 3dfe 45a9 3dfe  r.=...=.4.=.E.=.\n0x142bada30  6ea8 3dfe 34a9 3dfe 34a9 3dfe c7ab 3dfe  n.=.4.=.4.=...=.\n0x142bada40  f4ac 3dfe 91ad 3dfe 22a8 3dfe 22a8 3dfe  ..=...=.\".=.\".=.\n0x142bada50  22a8 3dfe 22a8 3dfe                      \".=.\".=.\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142bad6c8",
+        "size": "160"
+      },
+      "args": {
+        "address": "0x142bad6c8",
+        "size": "160"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C8C9 CACB CCCD CECF D0D1 D2D3 D4D5 D6D7  89ABCDEF01234567\n0x142bad6c8  6576 656e 743a 2f53 4658 2f53 7461 6972  event:/SFX/Stair\n0x142bad6d8  732f 5374 6169 7250 6c61 6365 6576 656e  s/StairPlaceeven\n0x142bad6e8  743a 2f53 4658 2f53 7461 6972 732f 5374  t:/SFX/Stairs/St\n0x142bad6f8  6169 7244 656c 6574 6565 7665 6e74 3a2f  airDeleteevent:/\n0x142bad708  5346 582f 5374 6169 7273 2f53 7461 6972  SFX/Stairs/Stair\n0x142bad718  734d 6572 6765 6576 656e 743a 2f53 4658  sMergeevent:/SFX\n0x142bad728  2f53 7461 6972 732f 5374 6169 7273 4d65  /Stairs/StairsMe\n0x142bad738  7267 6543 6f6e 6669 726d 6576 656e 743a  rgeConfirmevent:\n0x142bad748  2f53 4658 2f53 7461 6972 732f 4c61 6464  /SFX/Stairs/Ladd\n0x142bad758  6572 4170 7065 6172 6576 656e 743a 2f53  erAppearevent:/S\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142bad818",
+        "size": "136"
+      },
+      "args": {
+        "address": "0x142bad818",
+        "size": "136"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   1819 1A1B 1C1D 1E1F 2021 2223 2425 2627  89ABCDEF01234567\n0x142bad818  7374 6169 725f 7769 6474 6873 697a 6565  stair_widthsizee\n0x142bad828  6469 7469 6e67 5f73 7065 6564 6578 7465  diting_speedexte\n0x142bad838  6e64 5f61 6d6f 756e 7468 5f6f 6666 7365  nd_amounth_offse\n0x142bad848  7461 7667 5f61 7263 685f 7375 7070 6f72  tavg_arch_suppor\n0x142bad858  7473 5f68 6569 6768 745f 6162 6f76 655f  ts_height_above_\n0x142bad868  6772 6f75 6e64 696e 5f77 6174 6572 7374  groundin_waterst\n0x142bad878  6169 725f 6564 6765 5f6c 656e 6774 6869  air_edge_lengthi\n0x142bad888  735f 7374 7562 5f70 7265 7669 6577 6d6f  s_stub_previewmo\n0x142bad898  7665 5f61 6c6c 0000                      ve_all..\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_file",
+      "requested_args": {},
+      "args": {},
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "open_file",
+        "title": null,
+        "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to open"
+            },
+            "baddr": {
+              "type": "string",
+              "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+            },
+            "arch": {
+              "type": "string",
+              "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+            },
+            "bits": {
+              "type": "string",
+              "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+            },
+            "cpu": {
+              "type": "string",
+              "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "sql",
+        "title": null,
+        "description": "Runs one SQL statement through a loaded SQL core plugin such as r2xsql; supports reads and writes",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "SQL statement to pass to the loaded SQL core plugin (r2xsql)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "close_file",
+        "title": null,
+        "description": "Close the currently open file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions",
+        "title": null,
+        "description": "Lists all functions discovered during analysis",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "only_named": {
+              "type": "boolean",
+              "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "start": {
+              "type": "integer",
+              "description": "Starting index for pagination (default: 0)"
+            },
+            "max_length": {
+              "type": "integer",
+              "description": "Maximum number of results to return, -1 for all (default: 50)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions_tree",
+        "title": null,
+        "description": "Lists functions and successors (aflmu)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_libraries",
+        "title": null,
+        "description": "Lists all shared libraries linked to the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_imports",
+        "title": null,
+        "description": "Lists imported symbols (note: use list_symbols for addresses with sym.imp. prefix)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_exports",
+        "title": null,
+        "description": "Lists exported symbols from the binary or process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_sections",
+        "title": null,
+        "description": "Displays memory sections and segments from the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_memory_maps",
+        "title": null,
+        "description": "Lists memory regions of the process with addresses and permissions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_function_details",
+        "title": null,
+        "description": "Displays detailed information about the current function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_current_address",
+        "title": null,
+        "description": "Shows the current position and function name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_info",
+        "title": null,
+        "description": "Displays information about the binary or target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_symbols",
+        "title": null,
+        "description": "Shows all symbols (functions, variables, imports) with addresses",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_entrypoints",
+        "title": null,
+        "description": "Displays program entrypoints, constructors and main function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_methods",
+        "title": null,
+        "description": "Lists all methods belonging to the specified class",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "classname": {
+              "type": "string",
+              "description": "Name of the class to list methods for"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "classname"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_classes",
+        "title": null,
+        "description": "Lists class names from various languages (C++, ObjC, Swift, Java, Dalvik)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_decompilers",
+        "title": null,
+        "description": "Shows all available decompiler backends",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_function",
+        "title": null,
+        "description": "Renames the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "New function name"
+            },
+            "address": {
+              "type": "string",
+              "description": "Address of the function to rename"
+            }
+          },
+          "required": [
+            "name",
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_flag",
+        "title": null,
+        "description": "Renames a local variable or data reference within the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the flag containing the variable or data reference"
+            },
+            "name": {
+              "type": "string",
+              "description": "Current variable name or data reference"
+            },
+            "new_name": {
+              "type": "string",
+              "description": "New variable name or data reference"
+            }
+          },
+          "required": [
+            "address",
+            "name",
+            "new_name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "use_decompiler",
+        "title": null,
+        "description": "Selects which decompiler backend to use (default: pdc)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the decompiler"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_function_prototype",
+        "title": null,
+        "description": "Retrieves the function signature at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_function_prototype",
+        "title": null,
+        "description": "Sets the function signature (return type, name, arguments)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            },
+            "prototype": {
+              "type": "string",
+              "description": "Function signature in C-like syntax"
+            }
+          },
+          "required": [
+            "address",
+            "prototype"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_comment",
+        "title": null,
+        "description": "Adds a comment at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to put the comment in"
+            },
+            "message": {
+              "type": "string",
+              "description": "Comment text to use"
+            }
+          },
+          "required": [
+            "address",
+            "message"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_strings",
+        "title": null,
+        "description": "Lists strings from data sections with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_all_strings",
+        "title": null,
+        "description": "Scans the entire binary for strings with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "analyze",
+        "title": null,
+        "description": "Runs binary analysis with optional depth level",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "number",
+              "description": "Analysis level (0-4, higher is more thorough)"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "xrefs_to",
+        "title": null,
+        "description": "Finds all code references to the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to check for cross-references"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "decompile_function",
+        "title": null,
+        "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to decompile"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_files",
+        "title": null,
+        "description": "Lists files in the specified path using radare2's ls -q command. Files ending with / are directories, otherwise they are files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to list files from"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Shows assembly listing of the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to disassemble"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble",
+        "title": null,
+        "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to start disassembly"
+            },
+            "num_instructions": {
+              "type": "integer",
+              "description": "Number of instructions to disassemble (default: 10)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "calculate",
+        "title": null,
+        "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_pid",
+        "title": null,
+        "description": "Get the process ID of the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_threads",
+        "title": null,
+        "description": "List all threads in the target process with their IDs and state",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "dump_registers",
+        "title": null,
+        "description": "Show register values for the target process threads",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "integer",
+              "description": "Optional thread ID to show registers for a specific thread"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "hexdump",
+        "title": null,
+        "description": "Print memory contents in hexdump style at the given address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to hexdump"
+            },
+            "size": {
+              "type": "string",
+              "description": "Number of bytes to dump (empty string for default size)"
+            }
+          },
+          "required": [
+            "address",
+            "size"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "memory_map_here",
+        "title": null,
+        "description": "Show memory map information at the current address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_heap_allocations",
+        "title": null,
+        "description": "List malloc/heap memory ranges in the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search",
+        "title": null,
+        "description": "Search for strings, hex patterns, wide strings, or numeric values",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query (string, hex bytes, or numeric value)"
+            },
+            "type": {
+              "type": "string",
+              "description": "Search type: string (default), hex, wide, or value"
+            },
+            "value_size": {
+              "type": "integer",
+              "description": "For value search: byte width 1, 2, 4 (default), or 8"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_address",
+        "title": null,
+        "description": "Describe what is at a given address (flag name, symbol, module)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to describe"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_export",
+        "title": null,
+        "description": "Resolve an export name to its implementation address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Export name to look up"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_symbol",
+        "title": null,
+        "description": "Resolve an address to its symbol name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to resolve"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 2,
+  "ok": true
+}
