@@ -1,0 +1,1457 @@
+{
+ "owner": "F-D",
+ "generated": "2026-10-13",
+ "scope": "depth/shadow/post/primitives + blur/prefix_scan/lut/rdi/ssgi families",
+ "method": "behavior-equivalent HLSL reconstruction from SPIR-V; validate via tools/render-passes/recompile_check.py (structural fingerprint: entries/stage/LocalSize/capabilities/bindings/opcode histogram + normalized sha256)",
+ "toolchain_note": "installed dxc c4d8f4f9 (generator 0x000e) != game dxc 16ceb560 (generator 0x000f); systematic unfixable diffs: RuntimeDescriptorArray cap + SPV_EXT_descriptor_indexing OpExtension, OpLine/OpSource/OpString/OpNoLine debug counts, OpBitcast/OpExtInstImport/OpConstantNull/OpSwitch codegen patterns, RWTexture2D<float3> storage-image format caps (game R11fG11fB10f/ExtendedFormats vs installed Unknown/Read-Without-Format).",
+ "shaders": {
+  "blur.cs.hlsl": {
+   "bin": "_blur.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 3,
+    "OpLine": 45,
+    "OpLoad": 4,
+    "OpTypeVector": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 4,
+    "OpLine": 47,
+    "OpLoad": 5,
+    "OpTypeVector": 6
+   }
+  },
+  "blur_downsample.cs.hlsl": {
+   "bin": "_blur_downsample.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 10,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 4,
+    "OpLine": 77,
+    "OpTypeVector": 4,
+    "OpVectorShuffle": 2
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 9,
+    "OpCompositeConstruct": 5,
+    "OpCompositeExtract": 6,
+    "OpLine": 78,
+    "OpTypeVector": 5,
+    "OpVectorShuffle": 3
+   }
+  },
+  "blur_downsample.cs.hlsl [cs_main_multisampled]": {
+   "bin": "_blur_downsample.cs.hlsl_cs_main_multisampled_0.bin",
+   "entry": "cs_main_multisampled",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 10,
+    "OpLine": 77
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 6,
+    "OpLine": 75
+   }
+  },
+  "blur_pyramid/blur.cs.hlsl": {
+   "bin": "_blur_pyramid_blur.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 10,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 4,
+    "OpTypeVector": 4,
+    "OpVectorShuffle": 2
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 4,
+    "OpCompositeConstruct": 5,
+    "OpCompositeExtract": 6,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 4
+   }
+  },
+  "blur_pyramid/rev_blur.cs.hlsl": {
+   "bin": "_blur_pyramid_rev_blur.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "Shader",
+     "StorageImageExtendedFormats",
+     "StorageImageWriteWithoutFormat"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpCapability": 3,
+    "OpLine": 34,
+    "OpSource": 6,
+    "OpString": 6
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpCapability": 2,
+    "OpLine": 37,
+    "OpSource": 1,
+    "OpString": 1
+   }
+  },
+  "calculate_reprojection_map.cs.hlsl": {
+   "bin": "_calculate_reprojection_map.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 11,
+    "OpBitcast": 6,
+    "OpBranch": 9,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 15,
+    "OpCompositeExtract": 27,
+    "OpConstantComposite": 14,
+    "OpConstantNull": 1,
+    "OpExtInst": 10,
+    "OpExtension": 1,
+    "OpFAdd": 9,
+    "OpFMul": 17,
+    "OpIEqual": 1,
+    "OpINotEqual": 1,
+    "OpLabel": 19,
+    "OpLine": 168,
+    "OpLoad": 18,
+    "OpLogicalNot": 1,
+    "OpNoLine": 4,
+    "OpSGreaterThan": 2,
+    "OpSelect": 8,
+    "OpSelectionMerge": 9,
+    "OpSource": 13,
+    "OpString": 13,
+    "OpSwitch": 1,
+    "OpTypePointer": 10,
+    "OpTypeVector": 8
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 17,
+    "OpBitcast": 7,
+    "OpBranch": 12,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 17,
+    "OpCompositeExtract": 30,
+    "OpConstantComposite": 13,
+    "OpExtInst": 9,
+    "OpFAdd": 8,
+    "OpFMul": 16,
+    "OpINotEqual": 2,
+    "OpLabel": 21,
+    "OpLine": 202,
+    "OpLoad": 25,
+    "OpNoLine": 2,
+    "OpSelect": 6,
+    "OpSelectionMerge": 8,
+    "OpSource": 9,
+    "OpString": 9,
+    "OpTypePointer": 11,
+    "OpTypeVector": 9
+   }
+  },
+  "copy_depth_to_r.cs.hlsl": {
+   "bin": "_copy_depth_to_r.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpLine": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpLine": 6
+   }
+  },
+  "extract_half_res_depth_normals.cs.hlsl": {
+   "bin": "_extract_half_res_depth_normals.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 3,
+    "OpBranch": 3,
+    "OpCapability": 2,
+    "OpCompositeConstruct": 3,
+    "OpConstant": 20,
+    "OpExtension": 1,
+    "OpIEqual": 4,
+    "OpLabel": 6,
+    "OpLine": 55,
+    "OpLoad": 10,
+    "OpLogicalNot": 1,
+    "OpNoLine": 4,
+    "OpTypePointer": 10,
+    "OpTypeVector": 7,
+    "OpVectorShuffle": 3
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 5,
+    "OpBranch": 4,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 4,
+    "OpConstant": 23,
+    "OpIEqual": 3,
+    "OpINotEqual": 1,
+    "OpLabel": 7,
+    "OpLine": 59,
+    "OpLoad": 11,
+    "OpNoLine": 3,
+    "OpTypePointer": 11,
+    "OpTypeVector": 8,
+    "OpVectorShuffle": 5
+   }
+  },
+  "fill_buffer.cs.hlsl": {
+   "bin": "_fill_buffer.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "PASS_STRUCTURAL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": null,
+   "opcode_histogram_diff_candidate_only": null
+  },
+  "gauss_blur.cs.hlsl": {
+   "bin": "_gauss_blur.cs.hlsl_cs_main_b9dd0465835cd591.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 2,
+    "OpBranch": 6,
+    "OpFMul": 4,
+    "OpINotEqual": 1,
+    "OpLabel": 11,
+    "OpLine": 45,
+    "OpLogicalNot": 2,
+    "OpSource": 9,
+    "OpString": 9,
+    "OpTypeVector": 5,
+    "OpVectorShuffle": 1
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 5,
+    "OpBranch": 8,
+    "OpFMul": 3,
+    "OpIEqual": 1,
+    "OpLabel": 13,
+    "OpLine": 52,
+    "OpLogicalNot": 1,
+    "OpSource": 8,
+    "OpString": 8,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 3
+   }
+  },
+  "gauss_blur_building_mask.cs.hlsl": {
+   "bin": "_gauss_blur_building_mask.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 2,
+    "OpBranch": 5,
+    "OpCompositeConstruct": 3,
+    "OpCompositeExtract": 2,
+    "OpINotEqual": 1,
+    "OpLabel": 9,
+    "OpLine": 41,
+    "OpLogicalNot": 1,
+    "OpSource": 7,
+    "OpString": 7,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 1
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 7,
+    "OpBranch": 6,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 4,
+    "OpIEqual": 1,
+    "OpLabel": 10,
+    "OpLine": 45,
+    "OpSource": 8,
+    "OpString": 8,
+    "OpTypeVector": 7,
+    "OpVectorShuffle": 4
+   }
+  },
+  "gauss_blur_mask.cs.hlsl": {
+   "bin": "_gauss_blur_mask.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 3,
+    "OpBranch": 10,
+    "OpCompositeConstruct": 2,
+    "OpCompositeExtract": 2,
+    "OpFAdd": 3,
+    "OpFMul": 6,
+    "OpLabel": 17,
+    "OpLine": 57,
+    "OpTypeVector": 5,
+    "OpVectorShuffle": 1
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 7,
+    "OpBranch": 11,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 6,
+    "OpFAdd": 2,
+    "OpFMul": 4,
+    "OpLabel": 18,
+    "OpLine": 62,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 6
+   }
+  },
+  "gauss_blur_r16f.cs.hlsl": {
+   "bin": "_gauss_blur_r16f.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 2,
+    "OpBranch": 4,
+    "OpCapability": 2,
+    "OpCompositeConstruct": 2,
+    "OpCompositeExtract": 1,
+    "OpFMul": 5,
+    "OpINotEqual": 1,
+    "OpLabel": 7,
+    "OpLine": 36,
+    "OpLogicalNot": 1,
+    "OpTypeVector": 4,
+    "OpVectorShuffle": 1
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 7,
+    "OpBranch": 5,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 3,
+    "OpCompositeExtract": 3,
+    "OpFMul": 4,
+    "OpIEqual": 1,
+    "OpLabel": 8,
+    "OpLine": 41,
+    "OpTypeVector": 5,
+    "OpVectorShuffle": 4
+   }
+  },
+  "generate_hzb.cs.hlsl": {
+   "bin": "_generate_hzb.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 37,
+    "OpBitcast": 148,
+    "OpBitwiseAnd": 10,
+    "OpCompositeConstruct": 84,
+    "OpCompositeExtract": 205,
+    "OpConstant": 26,
+    "OpLine": 1107,
+    "OpLoad": 135,
+    "OpNoLine": 4,
+    "OpSource": 4,
+    "OpSourceContinued": 2,
+    "OpString": 4,
+    "OpVectorShuffle": 1
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 38,
+    "OpBitcast": 267,
+    "OpBitwiseAnd": 7,
+    "OpCompositeConstruct": 148,
+    "OpCompositeExtract": 324,
+    "OpConstant": 32,
+    "OpLine": 1303,
+    "OpLoad": 144,
+    "OpNoLine": 1,
+    "OpSource": 1,
+    "OpString": 1,
+    "OpVectorShuffle": 65
+   }
+  },
+  "generate_mips.cs.hlsl": {
+   "bin": "_generate_mips.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 92,
+    "OpBitcast": 132,
+    "OpBitwiseAnd": 10,
+    "OpCompositeExtract": 101,
+    "OpConstant": 23,
+    "OpLine": 727,
+    "OpLoad": 94,
+    "OpNoLine": 4,
+    "OpSource": 4,
+    "OpSourceContinued": 2,
+    "OpString": 4
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 93,
+    "OpBitcast": 95,
+    "OpBitwiseAnd": 7,
+    "OpCompositeExtract": 92,
+    "OpConstant": 30,
+    "OpLine": 691,
+    "OpLoad": 95,
+    "OpNoLine": 1,
+    "OpSource": 1,
+    "OpString": 1
+   }
+  },
+  "lut/brdf_fg.cs.hlsl": {
+   "bin": "_lut_brdf_fg.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBranch": 13,
+    "OpBranchConditional": 8,
+    "OpCompositeConstruct": 6,
+    "OpCompositeExtract": 12,
+    "OpConstant": 29,
+    "OpConstantComposite": 6,
+    "OpDot": 2,
+    "OpExtInst": 26,
+    "OpFAdd": 22,
+    "OpFDiv": 8,
+    "OpFMul": 42,
+    "OpFNegate": 3,
+    "OpFOrdGreaterThan": 1,
+    "OpFOrdLessThanEqual": 5,
+    "OpFSub": 9,
+    "OpLabel": 24,
+    "OpLine": 189,
+    "OpLogicalNot": 3,
+    "OpNoLine": 2,
+    "OpPhi": 12,
+    "OpSelectionMerge": 9,
+    "OpSource": 10,
+    "OpString": 10,
+    "OpSwitch": 2,
+    "OpVectorTimesScalar": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBranch": 8,
+    "OpBranchConditional": 5,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 9,
+    "OpConstant": 27,
+    "OpConstantComposite": 2,
+    "OpExtInst": 18,
+    "OpFAdd": 14,
+    "OpFDiv": 4,
+    "OpFMul": 25,
+    "OpFNegate": 2,
+    "OpFOrdLessThanEqual": 2,
+    "OpFSub": 5,
+    "OpFUnordGreaterThan": 1,
+    "OpLabel": 14,
+    "OpLine": 133,
+    "OpLogicalNot": 1,
+    "OpNoLine": 1,
+    "OpPhi": 8,
+    "OpSelectionMerge": 4,
+    "OpSource": 15,
+    "OpString": 15,
+    "OpVectorTimesScalar": 4
+   }
+  },
+  "lut/water_noise.cs.hlsl": {
+   "bin": "_lut_water_noise.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 1,
+    "OpConstant": 11,
+    "OpLine": 453,
+    "OpLoad": 5,
+    "OpNoLine": 3,
+    "OpTypeVector": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 2,
+    "OpConstant": 12,
+    "OpLine": 545,
+    "OpLoad": 94,
+    "OpNoLine": 1,
+    "OpTypeVector": 6
+   }
+  },
+  "normal_debug.raster.hlsl [vs_main]": {
+   "bin": "_normal_debug.raster.hlsl_b903e43ffb3da915.bin",
+   "entry": "vs_main",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 5,
+    "OpCapability": 2,
+    "OpExtension": 1,
+    "OpLine": 18,
+    "OpNoLine": 2,
+    "OpSource": 11,
+    "OpString": 11,
+    "OpTypePointer": 9
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 4,
+    "OpCapability": 1,
+    "OpLine": 19,
+    "OpNoLine": 1,
+    "OpSource": 9,
+    "OpString": 9,
+    "OpTypePointer": 8
+   }
+  },
+  "normal_debug.raster.hlsl [ps_main]": {
+   "bin": "_normal_debug.raster.hlsl_b903e43ffb3da915.bin",
+   "entry": "ps_main",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpCapability": 2,
+    "OpExtension": 1,
+    "OpSource": 11,
+    "OpString": 11
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpCapability": 1,
+    "OpSource": 9,
+    "OpString": 9
+   }
+  },
+  "prefix_scan/inclusive_prefix_scan.cs.hlsl": {
+   "bin": "_prefix_scan_inclusive_prefix_scan.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 2,
+    "OpExtInstImport": 1,
+    "OpIMul": 3,
+    "OpLine": 127,
+    "OpShiftRightLogical": 11
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpIMul": 5,
+    "OpLine": 131,
+    "OpShiftRightLogical": 12
+   }
+  },
+  "prefix_scan/inclusive_prefix_scan_merge.cs.hlsl": {
+   "bin": "_prefix_scan_inclusive_prefix_scan_merge.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 4,
+    "OpIMul": 4,
+    "OpLine": 28,
+    "OpNoLine": 1,
+    "OpShiftRightLogical": 2
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpIMul": 7,
+    "OpLine": 31,
+    "OpNoLine": 2,
+    "OpShiftRightLogical": 5
+   }
+  },
+  "prefix_scan/inclusive_prefix_scan_subtotals.cs.hlsl": {
+   "bin": "_prefix_scan_inclusive_prefix_scan_subtotals.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 6,
+    "OpExtInstImport": 1,
+    "OpIMul": 6,
+    "OpLine": 138,
+    "OpShiftRightLogical": 13
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpIMul": 10,
+    "OpLine": 142,
+    "OpShiftRightLogical": 16
+   }
+  },
+  "read_mouse_depth_value.cs.hlsl": {
+   "bin": "_read_mouse_depth_value.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 18,
+    "OpBitcast": 14,
+    "OpCapability": 2,
+    "OpCompositeConstruct": 14,
+    "OpCompositeExtract": 28,
+    "OpConstant": 21,
+    "OpConvertSToF": 4,
+    "OpConvertUToF": 3,
+    "OpExtension": 1,
+    "OpFOrdLessThanEqual": 1,
+    "OpLine": 154,
+    "OpLoad": 16,
+    "OpNoLine": 2,
+    "OpSelect": 2,
+    "OpStore": 7,
+    "OpTypePointer": 15,
+    "OpVectorShuffle": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 30,
+    "OpBitcast": 30,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 16,
+    "OpCompositeExtract": 40,
+    "OpConstant": 33,
+    "OpConvertSToF": 2,
+    "OpConvertUToF": 5,
+    "OpFOrdLessThanEqual": 2,
+    "OpLine": 171,
+    "OpLoad": 19,
+    "OpNoLine": 3,
+    "OpSelect": 4,
+    "OpStore": 19,
+    "OpTypePointer": 14,
+    "OpVectorShuffle": 9
+   }
+  },
+  "shadow_mask_mean.cs.hlsl": {
+   "bin": "_shadow_mask_mean.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpBranch": 6,
+    "OpCapability": 2,
+    "OpConstant": 16,
+    "OpDecorate": 13,
+    "OpExtension": 1,
+    "OpIEqual": 2,
+    "OpLabel": 11,
+    "OpLine": 50,
+    "OpLogicalNot": 1,
+    "OpMemberDecorate": 69,
+    "OpName": 9,
+    "OpNoLine": 2,
+    "OpShiftRightLogical": 1,
+    "OpSource": 10,
+    "OpString": 10,
+    "OpTypePointer": 9,
+    "OpTypeRuntimeArray": 2,
+    "OpTypeStruct": 4
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 2,
+    "OpBranch": 7,
+    "OpCapability": 1,
+    "OpConstant": 17,
+    "OpDecorate": 11,
+    "OpIEqual": 1,
+    "OpIMul": 1,
+    "OpINotEqual": 1,
+    "OpLabel": 12,
+    "OpLine": 49,
+    "OpMemberDecorate": 68,
+    "OpName": 8,
+    "OpNoLine": 1,
+    "OpShiftRightLogical": 2,
+    "OpSource": 9,
+    "OpString": 9,
+    "OpTypePointer": 8,
+    "OpTypeRuntimeArray": 1,
+    "OpTypeStruct": 3
+   }
+  },
+  "shader_refactoring.cs.hlsl [capture]": {
+   "bin": "_shader_refactoring.cs.hlsl_capture_0.bin",
+   "entry": "capture",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "Shader",
+     "StorageImageExtendedFormats",
+     "StorageImageWriteWithoutFormat"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpCapability": 3,
+    "OpLine": 5
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpCapability": 2,
+    "OpLine": 6
+   }
+  },
+  "shader_refactoring.cs.hlsl [compare]": {
+   "bin": "_shader_refactoring.cs.hlsl_compare_0.bin",
+   "entry": "compare",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "Shader",
+     "StorageImageExtendedFormats",
+     "StorageImageWriteWithoutFormat"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageReadWithoutFormat",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpLine": 13,
+    "OpNoLine": 2
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpLine": 16,
+    "OpNoLine": 1
+   }
+  },
+  "texture_test.raster.hlsl [vs_main]": {
+   "bin": "_texture_test.raster.hlsl_b903e43ffb3da915.bin",
+   "entry": "vs_main",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpCapability": 2,
+    "OpExtension": 1,
+    "OpLine": 20,
+    "OpNoLine": 2,
+    "OpSource": 14,
+    "OpString": 14
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpCapability": 1,
+    "OpLine": 21,
+    "OpNoLine": 1,
+    "OpSource": 12,
+    "OpString": 12
+   }
+  },
+  "texture_test.raster.hlsl [ps_main]": {
+   "bin": "_texture_test.raster.hlsl_b903e43ffb3da915.bin",
+   "entry": "ps_main",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpCapability": 2,
+    "OpExtension": 1,
+    "OpSource": 14,
+    "OpString": 14
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpCapability": 1,
+    "OpSource": 12,
+    "OpString": 12
+   }
+  },
+  "apply_screen_shadows.cs.hlsl": {
+   "bin": "_apply_screen_shadows.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 13,
+    "OpBitcast": 3,
+    "OpBranch": 19,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 17,
+    "OpCompositeExtract": 39,
+    "OpConstant": 55,
+    "OpConstantComposite": 13,
+    "OpConstantNull": 3,
+    "OpConvertFToU": 3,
+    "OpConvertSToF": 5,
+    "OpConvertUToF": 13,
+    "OpExtension": 1,
+    "OpFMul": 35,
+    "OpFSub": 13,
+    "OpIEqual": 3,
+    "OpINotEqual": 1,
+    "OpLabel": 35,
+    "OpLine": 288,
+    "OpLogicalNot": 1,
+    "OpNoLine": 7,
+    "OpSelect": 4,
+    "OpSource": 23,
+    "OpSourceContinued": 1,
+    "OpString": 23,
+    "OpTypeVector": 8,
+    "OpVectorShuffle": 10,
+    "OpVectorTimesScalar": 15
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 12,
+    "OpBitcast": 4,
+    "OpBranch": 22,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 22,
+    "OpCompositeExtract": 45,
+    "OpConstant": 63,
+    "OpConstantComposite": 8,
+    "OpConvertFToU": 2,
+    "OpConvertSToF": 7,
+    "OpConvertUToF": 12,
+    "OpCopyObject": 8,
+    "OpFMul": 27,
+    "OpFSub": 12,
+    "OpIEqual": 2,
+    "OpINotEqual": 2,
+    "OpLabel": 38,
+    "OpLine": 313,
+    "OpNoLine": 5,
+    "OpSelect": 8,
+    "OpSource": 26,
+    "OpString": 26,
+    "OpTypeVector": 9,
+    "OpVectorShuffle": 9,
+    "OpVectorTimesScalar": 19
+   }
+  },
+  "apply_volumetrics.cs.hlsl": {
+   "bin": "_apply_volumetrics.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats",
+     "StorageImageWriteWithoutFormat"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageReadWithoutFormat",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 18,
+    "OpBitcast": 1,
+    "OpCapability": 4,
+    "OpCompositeConstruct": 12,
+    "OpConstant": 60,
+    "OpConstantComposite": 15,
+    "OpConstantNull": 1,
+    "OpExtension": 1,
+    "OpFMul": 45,
+    "OpFSub": 11,
+    "OpLine": 273,
+    "OpLoad": 25,
+    "OpNoLine": 10,
+    "OpPhi": 12,
+    "OpSource": 24,
+    "OpSourceContinued": 1,
+    "OpString": 24,
+    "OpTypeVector": 7,
+    "OpVectorShuffle": 17,
+    "OpVectorTimesScalar": 15
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 21,
+    "OpBitcast": 5,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 14,
+    "OpConstant": 59,
+    "OpConstantComposite": 12,
+    "OpFMul": 42,
+    "OpFSub": 10,
+    "OpLine": 279,
+    "OpLoad": 28,
+    "OpNoLine": 6,
+    "OpPhi": 11,
+    "OpSource": 27,
+    "OpString": 27,
+    "OpTypeVector": 8,
+    "OpVectorShuffle": 19,
+    "OpVectorTimesScalar": 18
+   }
+  },
+  "primary_rt_debug.cs.hlsl": {
+   "bin": "_primary_rt_debug.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats",
+     "StorageImageWriteWithoutFormat"
+    ],
+    "candidate": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageReadWithoutFormat",
+     "StorageImageWriteWithoutFormat"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 40,
+    "OpBitcast": 16,
+    "OpBitwiseAnd": 112,
+    "OpBitwiseOr": 12,
+    "OpBranch": 96,
+    "OpBranchConditional": 63,
+    "OpCompositeConstruct": 63,
+    "OpCompositeExtract": 175,
+    "OpCompositeInsert": 6,
+    "OpConstant": 146,
+    "OpConstantNull": 5,
+    "OpDecorate": 51,
+    "OpDot": 25,
+    "OpExtInst": 164,
+    "OpFAdd": 99,
+    "OpFDiv": 32,
+    "OpFMul": 155,
+    "OpFOrdGreaterThan": 12,
+    "OpFOrdGreaterThanEqual": 3,
+    "OpFSub": 37,
+    "OpIAdd": 26,
+    "OpIMul": 12,
+    "OpINotEqual": 8,
+    "OpLabel": 175,
+    "OpLine": 1452,
+    "OpLoad": 62,
+    "OpLogicalNot": 5,
+    "OpLoopMerge": 9,
+    "OpMemberDecorate": 122,
+    "OpMemberName": 92,
+    "OpName": 35,
+    "OpNoLine": 34,
+    "OpPhi": 100,
+    "OpSelect": 32,
+    "OpSelectionMerge": 65,
+    "OpShiftRightLogical": 77,
+    "OpSource": 36,
+    "OpSourceContinued": 2,
+    "OpString": 36,
+    "OpSwitch": 11,
+    "OpTypeArray": 7,
+    "OpTypePointer": 25,
+    "OpTypeRuntimeArray": 3,
+    "OpTypeStruct": 9,
+    "OpTypeVector": 9,
+    "OpUndef": 3,
+    "OpUnreachable": 4,
+    "OpVectorShuffle": 49
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 64,
+    "OpBitcast": 18,
+    "OpBitwiseAnd": 103,
+    "OpBitwiseOr": 10,
+    "OpBranch": 171,
+    "OpBranchConditional": 73,
+    "OpCompositeConstruct": 81,
+    "OpCompositeExtract": 186,
+    "OpCompositeInsert": 5,
+    "OpConstant": 160,
+    "OpConstantNull": 2,
+    "OpDecorate": 44,
+    "OpDot": 23,
+    "OpExtInst": 162,
+    "OpFAdd": 95,
+    "OpFDiv": 30,
+    "OpFMul": 147,
+    "OpFOrdGreaterThan": 16,
+    "OpFOrdGreaterThanEqual": 5,
+    "OpFSub": 39,
+    "OpIAdd": 50,
+    "OpIMul": 16,
+    "OpINotEqual": 6,
+    "OpLabel": 254,
+    "OpLine": 1553,
+    "OpLoad": 88,
+    "OpLogicalNot": 1,
+    "OpLoopMerge": 20,
+    "OpMemberDecorate": 115,
+    "OpMemberName": 89,
+    "OpName": 32,
+    "OpNoLine": 12,
+    "OpPhi": 107,
+    "OpSelect": 44,
+    "OpSelectionMerge": 68,
+    "OpShiftRightLogical": 73,
+    "OpSource": 15,
+    "OpString": 15,
+    "OpTypeArray": 4,
+    "OpTypePointer": 21,
+    "OpTypeRuntimeArray": 1,
+    "OpTypeStruct": 5,
+    "OpTypeVector": 10,
+    "OpUndef": 2,
+    "OpUnreachable": 9,
+    "OpVectorShuffle": 41
+   }
+  },
+  "rdi/temporal.cs.hlsl": {
+   "bin": "_rdi_temporal.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": null,
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 18,
+    "OpBitcast": 9,
+    "OpBitwiseOr": 5,
+    "OpBranch": 51,
+    "OpBranchConditional": 32,
+    "OpCompositeConstruct": 31,
+    "OpCompositeExtract": 51,
+    "OpConstant": 81,
+    "OpConstantComposite": 26,
+    "OpExtInst": 61,
+    "OpFAdd": 26,
+    "OpFDiv": 37,
+    "OpFMul": 32,
+    "OpFOrdGreaterThanEqual": 4,
+    "OpFOrdLessThan": 7,
+    "OpIEqual": 10,
+    "OpINotEqual": 1,
+    "OpLabel": 107,
+    "OpLine": 557,
+    "OpLoad": 30,
+    "OpLogicalNot": 3,
+    "OpLoopMerge": 3,
+    "OpNoLine": 22,
+    "OpPhi": 68,
+    "OpSelect": 24,
+    "OpSelectionMerge": 39,
+    "OpShiftLeftLogical": 23,
+    "OpSource": 25,
+    "OpSourceContinued": 1,
+    "OpString": 25,
+    "OpSwitch": 10,
+    "OpTypePointer": 13,
+    "OpTypeVector": 8,
+    "OpUndef": 2,
+    "OpUnreachable": 13,
+    "OpVectorShuffle": 14
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 17,
+    "OpBitcast": 15,
+    "OpBitwiseOr": 7,
+    "OpBranch": 69,
+    "OpBranchConditional": 29,
+    "OpCompositeConstruct": 29,
+    "OpCompositeExtract": 61,
+    "OpConstant": 84,
+    "OpConstantComposite": 24,
+    "OpExtInst": 52,
+    "OpFAdd": 24,
+    "OpFDiv": 27,
+    "OpFMul": 31,
+    "OpFOrdGreaterThanEqual": 6,
+    "OpFOrdLessThan": 8,
+    "OpIEqual": 9,
+    "OpINotEqual": 2,
+    "OpLabel": 100,
+    "OpLine": 586,
+    "OpLoad": 37,
+    "OpLogicalNot": 1,
+    "OpLoopMerge": 7,
+    "OpNoLine": 13,
+    "OpPhi": 64,
+    "OpSelect": 30,
+    "OpSelectionMerge": 26,
+    "OpShiftLeftLogical": 24,
+    "OpSource": 28,
+    "OpString": 28,
+    "OpTypePointer": 14,
+    "OpTypeVector": 9,
+    "OpUndef": 1,
+    "OpUnreachable": 1,
+    "OpVectorShuffle": 18
+   }
+  },
+  "ssgi/ssgi.cs.hlsl": {
+   "bin": "_ssgi_ssgi.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageExtendedFormats"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpAccessChain": 9,
+    "OpBitcast": 7,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 8,
+    "OpCompositeExtract": 17,
+    "OpConstant": 44,
+    "OpExtension": 1,
+    "OpFAdd": 25,
+    "OpFDiv": 18,
+    "OpIEqual": 2,
+    "OpIMul": 4,
+    "OpLine": 266,
+    "OpLoad": 14,
+    "OpNoLine": 7,
+    "OpSelect": 2,
+    "OpSource": 15,
+    "OpSourceContinued": 1,
+    "OpString": 15,
+    "OpTypePointer": 11,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 6
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpAccessChain": 10,
+    "OpBitcast": 8,
+    "OpCapability": 2,
+    "OpCompositeConstruct": 9,
+    "OpCompositeExtract": 13,
+    "OpConstant": 43,
+    "OpConstantFalse": 1,
+    "OpConstantTrue": 1,
+    "OpCopyObject": 6,
+    "OpFAdd": 24,
+    "OpFDiv": 16,
+    "OpIMul": 3,
+    "OpLine": 270,
+    "OpLoad": 21,
+    "OpNoLine": 6,
+    "OpSelect": 3,
+    "OpSource": 23,
+    "OpString": 23,
+    "OpTypePointer": 12,
+    "OpTypeVector": 7,
+    "OpULessThanEqual": 1,
+    "OpVectorShuffle": 7
+   }
+  },
+  "ssgi/temporal_filter.cs.hlsl": {
+   "bin": "_ssgi_temporal_filter.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 1,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 1,
+    "OpCompositeExtract": 1,
+    "OpConstant": 16,
+    "OpConstantComposite": 13,
+    "OpExtension": 1,
+    "OpFMul": 12,
+    "OpIEqual": 2,
+    "OpINotEqual": 1,
+    "OpLine": 104,
+    "OpLoad": 12,
+    "OpLogicalNot": 2,
+    "OpNoLine": 1,
+    "OpTypeVector": 6,
+    "OpVectorShuffle": 2
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 11,
+    "OpCapability": 1,
+    "OpCompositeConstruct": 10,
+    "OpCompositeExtract": 31,
+    "OpConstant": 17,
+    "OpConstantComposite": 14,
+    "OpFMul": 13,
+    "OpINotEqual": 3,
+    "OpLine": 128,
+    "OpLoad": 21,
+    "OpNoLine": 2,
+    "OpTypeVector": 7,
+    "OpVectorShuffle": 13
+   }
+  },
+  "ssgi/upsample.cs.hlsl": {
+   "bin": "_ssgi_upsample.cs.hlsl_cs_main_0.bin",
+   "entry": "(default)",
+   "verdict": "FAIL",
+   "bindings_match": true,
+   "entries_match": true,
+   "local_size_match": true,
+   "capabilities_diff": {
+    "target": [
+     "RuntimeDescriptorArray",
+     "Shader",
+     "StorageImageExtendedFormats"
+    ],
+    "candidate": [
+     "Shader",
+     "StorageImageExtendedFormats"
+    ]
+   },
+   "opcode_histogram_diff_target_only": {
+    "OpBitcast": 3,
+    "OpBranch": 9,
+    "OpCapability": 3,
+    "OpCompositeConstruct": 4,
+    "OpCompositeExtract": 7,
+    "OpExtension": 1,
+    "OpLabel": 16,
+    "OpLine": 76,
+    "OpLoad": 11,
+    "OpLoopMerge": 1,
+    "OpName": 14,
+    "OpNoLine": 3,
+    "OpSelectionMerge": 4,
+    "OpSource": 11,
+    "OpString": 11,
+    "OpSwitch": 1,
+    "OpTypeVector": 7,
+    "OpUndef": 1,
+    "OpVectorShuffle": 4
+   },
+   "opcode_histogram_diff_candidate_only": {
+    "OpBitcast": 4,
+    "OpBranch": 11,
+    "OpCapability": 2,
+    "OpCompositeConstruct": 5,
+    "OpCompositeExtract": 17,
+    "OpLabel": 17,
+    "OpLine": 82,
+    "OpLoad": 12,
+    "OpLoopMerge": 2,
+    "OpName": 13,
+    "OpNoLine": 2,
+    "OpSelectionMerge": 3,
+    "OpSource": 13,
+    "OpString": 13,
+    "OpTypeVector": 8,
+    "OpVectorShuffle": 6
+   }
+  }
+ }
+}

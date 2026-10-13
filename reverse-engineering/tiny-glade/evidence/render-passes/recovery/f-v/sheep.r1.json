@@ -1,0 +1,33 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/sheep.raster.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_sheep.raster.hlsl_b903e43ffb3da915.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "vs_main",
+      "profile": "vs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpoPagbW -E vs_main -T vs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpEFXBzG -Qembed_debug",
+      "dxc_returncode": 5,
+      "dxc_stderr": "./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:12:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_1.xyz;\n            ^\n./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:14:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_2.xyz;\n            ^\n./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:16:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_3.xyz;\n            ^",
+      "verdict": "FAIL_DXC"
+    },
+    {
+      "module_index": 17218,
+      "entry": "ps_main",
+      "profile": "ps_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpq2TdYp -E ps_main -T ps_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpDUbtRN -Qembed_debug",
+      "dxc_returncode": 5,
+      "dxc_stderr": "./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:12:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_1.xyz;\n            ^\n./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:14:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_2.xyz;\n            ^\n./reconstruction/shader-source/shaders/inc/material/../highlight_color.hlsl:16:13: error: use of undeclared identifier 'color_library'\n        c = color_library.temp_color_3.xyz;\n            ^",
+      "verdict": "FAIL_DXC"
+    }
+  ],
+  "summary": {
+    "checked": 2,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 2
+  }
+}

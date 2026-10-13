@@ -1,0 +1,24 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_roof_tiles_gravity.cs.hlsl_cs_main_0.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpEcXTn0 -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpN2lTsg -Qembed_debug",
+      "dxc_returncode": 5,
+      "dxc_stderr": "reconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:68:36: error: use of undeclared identifier 'instance_count'\n    if (gl_GlobalInvocationID.x >= instance_count)\n                                   ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:73:18: error: use of undeclared identifier 'first_instance'\n    uint index = first_instance + gl_GlobalInvocationID.x;\n                 ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:77:9: error: use of undeclared identifier 'wall_height_delta'\n    if (wall_height_delta < 0.0f)\n        ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:79:22: error: use of undeclared identifier 'wall_height_delta'\n        wall_clip = (wall_height_delta / frame_constants_storage_buffer[0].delta_time_seconds) > -120.0f;\n                     ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:89:43: error: use of undeclared identifier 'roof_pivot_y'\n        below_roof = s.current_height <= (roof_pivot_y - wall_height_delta);\n                                          ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:89:58: error: use of undeclared identifier 'wall_height_delta'\n        below_roof = s.current_height <= (roof_pivot_y - wall_height_delta);\n                                                         ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:100:38: error: use of undeclared identifier 'roof_pivot_y'\n    float new_height = (below_roof ? roof_pivot_y : s.current_height)\n                                     ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:105:23: error: use of undeclared identifier 'roof_pivot_y'\n    if (new_height <= roof_pivot_y)\n                      ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:107:44: error: use of undeclared identifier 'wall_height_delta'\n        clamped_velocity = min(15.0f, max((wall_height_delta / frame_constants_storage_buffer[0].delta_time_seconds) * 0.166f, velocity));\n                                           ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:108:34: error: use of undeclared identifier 'roof_pivot_y'\n        height = max(new_height, roof_pivot_y);\n                                 ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:119:24: error: use of undeclared identifier 'roof_pivot_y'\n        eased_height = roof_pivot_y;\n                       ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:127:37: error: use of undeclared identifier 'roof_pivot_y'\n        eased_height = lerp(height, roof_pivot_y, delay);\n                                    ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:130:23: error: use of undeclared identifier 'roof_pivot_y'\n    float delta = abs(roof_pivot_y - eased_height);\n                      ^\nreconstruction/shader-source/shaders/roof_tiles_gravity.cs.hlsl:152:25: error: use of undeclared identifier 'animation_t'\n    out_s.animation_t = animation_t;\n                        ^",
+      "verdict": "FAIL_DXC"
+    }
+  ],
+  "summary": {
+    "checked": 1,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 1
+  }
+}

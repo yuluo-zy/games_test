@@ -1,0 +1,179 @@
+// ==RECONSTRUCTED== shaders/gi/reproject_screen_radiance.cs.hlsl (candidate gi-deferred-b)
+// Evidence: _gi_reproject_screen_radiance.cs.hlsl_cs_main_0.bin (SPIR-V offset 23).
+//   bindings: sampler_lnc s0, sampler_nnc s2, $Globals b13 {history_valid, 7 tex dims,
+//     allow_non_determinism}, half_depth_tex t14, half_view_normal_tex t15,
+//     reprojection_tex t16, history_tex t17, temporal_stats_tex t18, output_tex u19,
+//     temporal_stats_out_tex u20, frame_constants set1/b0. LocalSize [8,8,1], entry cs_main.
+//   spirv-cross: temporal reprojection of the 3-slab screen radiance. Cube-face
+//   direction stored in temporal stats; history sampled via the reprojection motion
+//   vector + 2x2 jitter; on valid history blend with current frame (count clamp 1..48,
+//   yzw clamp +-1024); on invalid history run a 5x5 bilateral spatial filter over the
+//   current frame when allow_non_determinism is set. Stats byte is count/255.
+// Status: O (structure from disassembly); I (early-return lowered to do/while+break).
+
+#include "inc/common.hlsl"
+#include "inc/frame_constants.hlsl"
+#include "inc/ray_cone.hlsl"
+#include "inc/math_const.hlsl"
+#include "inc/brdf.hlsl"
+#include "inc/math.hlsl"
+#include "inc/pack_unpack.hlsl"
+#include "gi_settings.inc.hlsl"
+#include "inc/history_valid.hlsl"
+
+cbuffer $Globals : register(b13, space0)
+{
+    uint history_valid;
+    uint2 half_depth_tex_dims;
+    uint2 half_view_normal_tex_dims;
+    uint2 reprojection_tex_dims;
+    uint2 history_tex_dims;
+    uint2 temporal_stats_tex_dims;
+    uint2 output_tex_dims;
+    uint2 temporal_stats_out_tex_dims;
+    uint allow_non_determinism;
+};
+
+Texture2D<float4> half_depth_tex : register(t14, space0);
+Texture2D<float4> half_view_normal_tex : register(t15, space0);
+Texture2D<float4> reprojection_tex : register(t16, space0);
+Texture2D<float4> history_tex : register(t17, space0);
+Texture2D<float4> temporal_stats_tex : register(t18, space0);
+RWTexture2D<float4> output_tex : register(u19, space0);
+RWTexture2D<unorm float4> temporal_stats_out_tex : register(u20, space0);
+
+[numthreads(8, 8, 1)]
+void cs_main(uint3 globalThreadID : SV_DispatchThreadID)
+{
+    uint2 xy = globalThreadID.xy;
+
+    float4 n4 = half_view_normal_tex.Load(int3(xy, 0u));
+    float3 n = n4.xyz;
+    float nw = n4.w;
+    float nz = n4.z;
+
+    float3 p = n / (abs(n.x) + abs(n.y) + abs(n.z)).xxx;
+    bool flip = p.z < 0.0f;
+    float3 q;
+    if (flip) {
+        float2 s = (1.0f.xx - abs(p.yx)) * ((step(0.0f.xx, p.xy) * 2.0f) - 1.0f.xx);
+        q = float3(s.x, s.y, p.z);
+    } else {
+        q = p;
+    }
+    float2 reproj_uv = (q.xy * 0.5f) + 0.5f.xx;
+    float4 stats = float4(0.0f, reproj_uv.x, reproj_uv.y, 0.0f);
+
+    if (!(history_valid != 0u && frame_index != 0u)) {
+        temporal_stats_out_tex[xy] = stats;
+        return;
+    }
+
+    float2 dims = float2(half_depth_tex_dims);
+    float4 reproj = reprojection_tex.Load(int3((xy * uint2(2u, 2u)) + uint2(uint(abs(nw) > 0.75f), uint(nw >= 0.0f)), 0u));
+    float2 uv = ((float2(int2(xy)) + 0.5f.xx) / dims) + reproj.xy;
+    float rjz = reproj.z;
+
+    float4 stats_out;
+    bool updated;
+    if (rjz > 0.0f) {
+        float2 uv2;
+        if (rjz != 1.0f) {
+            uint mask = uint((rjz * 15.0f) + 0.5f);
+            uint4 sel = uint4(mask, mask, mask, mask) & uint4(1u, 2u, 4u, 8u);
+            float4 fsel = float4(sel != uint4(0u, 0u, 0u, 0u));
+            uv2 = uv + (((((-0.5f).xx * fsel.x) + (float2(0.5f, -0.5f) * fsel.y)) + (float2(-0.5f, 0.5f) * fsel.z)) + (0.5f.xx * fsel.w)) * 2.0f / dims;
+        } else {
+            uv2 = uv;
+        }
+        float2 uv_clamped = clamp(uv2, float2(0.5f / float(half_depth_tex_dims.x), 0.0f), 1.0f.xx - float2(0.5f / float(half_depth_tex_dims.x), 0.0f));
+
+        float4 hist[3] = { 0.0f.xxxx, 0.0f.xxxx, 0.0f.xxxx };
+        for (uint c0 = 0u; c0 < 3u; ++c0) {
+            hist[c0] = history_tex.SampleLevel(sampler_lnc, (uv_clamped * float2(0.3333333432674407958984375f, 1.0f)) + float2(float(c0) * 0.3333333432674407958984375f, 0.0f), 0.0f);
+        }
+
+        float3 q2;
+        if (flip) {
+            float2 s2 = (1.0f.xx - abs(p.yx)) * ((step(0.0f.xx, p.xy) * 2.0f) - 1.0f.xx);
+            q2 = float3(s2.x, s2.y, p.z);
+        } else {
+            q2 = p;
+        }
+        float2 uv_q2 = (q2.xy * 0.5f) + 0.5f.xx;
+        float4 gv = abs(uv_q2.xxxx - temporal_stats_tex.GatherGreen(sampler_nnc, uv_clamped, int2(0, 0)));
+        float4 gb = abs(uv_q2.yyyy - temporal_stats_tex.GatherBlue(sampler_nnc, uv_clamped, int2(0, 0)));
+        bool valid = (min(min(gv.x, gv.y), min(gv.z, gv.w)) + min(min(gb.x, gb.y), min(gb.z, gb.w))) < 0.20000000298023223876953125f;
+
+        if (valid) {
+            float cnt = clamp((temporal_stats_tex.SampleLevel(sampler_nnc, uv_clamped, 0.0f) * float4(255.0f, 1.0f, 1.0f, 1.0f)).x + 1.0f, 1.0f, 48.0f);
+            stats_out = stats;
+            stats_out.x = cnt;
+            float inv = 1.0f / cnt;
+            float4 out_slab[3];
+            for (uint c1 = 0u; c1 < 3u; ++c1) {
+                float4 v = lerp(hist[c1], output_tex[xy + uint2(c1 * half_depth_tex_dims.x, 0u)], inv.xxxx);
+                v.x = max(0.0f, v.x);
+                v.yzw = clamp(v.yzw, (-1024.0f).xxx, 1024.0f.xxx);
+                out_slab[c1] = v;
+            }
+            for (uint c2 = 0u; c2 < 3u; ++c2) {
+                output_tex[xy + uint2(c2 * half_depth_tex_dims.x, 0u)] = out_slab[c2];
+            }
+            updated = false;
+        } else {
+            stats_out = stats;
+            updated = true;
+        }
+    } else {
+        stats_out = stats;
+        updated = true;
+    }
+
+    if (updated) {
+        temporal_stats_out_tex[xy] = stats_out;
+    }
+
+    float4 result;
+    if (updated && allow_non_determinism != 0u) {
+        float depth = half_depth_tex.Load(int3(xy, 0u)).x;
+        float normal_z = max(0.300000011920928955078125f, nz);
+        float4 sum[3] = { 0.0f.xxxx, 0.0f.xxxx, 0.0f.xxxx };
+        float4 accw = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        float wsum = 0.0f;
+        float wsum2 = 0.0f;
+        for (int yy = -2; yy <= 2; ++yy) {
+            for (int xx = -2; xx <= 2; ++xx) {
+                uint2 off = xy + uint2(int2(xx, yy) * int2(2, 2));
+                if (any(bool2(off.x >= half_depth_tex_dims.x, off.y >= half_depth_tex_dims.y))) {
+                    continue;
+                }
+                float nd = dot(n, half_view_normal_tex.Load(int3(off, 0u)).xyz);
+                float w = exp2(-min(30.0f, 80.0f * (normal_z * abs(1.0f - (half_depth_tex.Load(int3(off, 0u)).x / depth))))) * (0.010000000707805156707763671875f / ((1.0f - 0.89999997615814208984375f * nd * nd) * (1.0f - 0.89999997615814208984375f * nd * nd)));
+                float4 ts = temporal_stats_out_tex[off] * float4(255.0f, 1.0f, 1.0f, 1.0f);
+                float tw = max(ts.x, 1.0f);
+                float4 tsw = ts;
+                tsw.x = tw;
+                for (uint c3 = 0u; c3 < 3u; ++c3) {
+                    sum[c3] += (output_tex[off + uint2(c3 * half_depth_tex_dims.x, 0u)] * w) * tw;
+                }
+                accw += tsw * w;
+                wsum += w;
+                wsum2 += w * tw;
+            }
+        }
+        float inv2 = max(9.9999996826552253889678874634872e-21f, wsum2);
+        for (uint c4 = 0u; c4 < 3u; ++c4) {
+            float4 v = sum[c4] / inv2.xxxx;
+            v.x = max(0.0f, v.x);
+            v.yzw = clamp(v.yzw, (-1024.0f).xxx, 1024.0f.xxx);
+            output_tex[xy + uint2(c4 * half_depth_tex_dims.x, 0u)] = v;
+        }
+        result = accw * (1.0f / max(9.9999996826552253889678874634872e-21f, wsum));
+        result.x = min(result.x, 24.0f);
+    } else {
+        result = stats_out;
+    }
+
+    temporal_stats_out_tex[xy] = result * float4(0.0039215688593685626983642578125f, 1.0f, 1.0f, 1.0f);
+}

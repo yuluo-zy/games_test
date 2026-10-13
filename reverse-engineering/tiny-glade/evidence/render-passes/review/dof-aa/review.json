@@ -1,0 +1,128 @@
+{
+  "review": "dof-aa A vs B",
+  "date": "2026-10-13",
+  "method": "Independent cross-review. Both candidates recompiled with tools/render-passes/recompile_check.py against the 26 in-scope ground-truth .bin (hard gate = bindings/entry/LocalSize/caps; opcode histogram as secondary). Candidate B's sources use bare includes (\"tiles.inc.hlsl\") that do not resolve under the canonical single `-I shaders` layout, so B was validated through a merged include root (inc + dof/*.inc + flat files) that reproduces its claimed layout; A validates with `-I candidates/dof-aa-a/shaders`. Target modules disassembled (spirv-cross + word-level) to adjudicate ring-table unpack, loop structure, image formats, near-branch ramps and the accumulator semantics. Verified targets: all 26 bins (analyze, autofocus, clear_halfres, fullres x2 variants, lod0 x2, lod1 x2, fullres_upsample, fused, halfres x4, init_buffers, prepare, fsr_copy_history, fsr_init_reactive, taa, tgsr x4, tgsr_blur_lum, tgsr_reproject).",
+  "hard_gate_coverage": {
+    "targets_in_scope": "26 bins / 26 modules",
+    "candidate_A": "22/26 gate PASS. Residuals (documented dxc-version/format): analyze +ComputeDerivativeGroupQuadsKHR (QuadRead, dxc 1.10), tgsr_blur_lum -StorageImageWriteWithoutFormat, tgsr b303/f7ef LocalSize (8x4 variant). fused gate PASS via [[vk::ext_capability(49)]].",
+    "candidate_B": "gate PASS on the same 22 bins under the merged include root; additionally fused FAILS capabilities (RWTexture2D<float3> without the forced cap emits no StorageImageWriteWithoutFormat). analyze/tgsr_blur_lum/tgsr 8x4 residuals identical to A.",
+    "note": "The hard gate does NOT compare storage-image FORMAT (OpTypeImage format operand) nor OpSource closure parity. B's halfres/fullres/fused output images are declared float4/float3 (Rgba32f/Unknown) where the target is Rgba16f/R11fG11fB10f, so B's gate PASS understates its divergence on the gather family."
+  },
+  "per_file": {
+    "dof/analyze.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Semantics verified against target disassembly: the target accumulates max(sample.y) init 0.0 and min(sample.x) init 1e10, writes the MAX-over-y to coc_tiles_dilated_tex and uses max<=7 for near, min>11 for far. A matches exactly. B inverts the accumulator inits (max_abs_coc=1e10 then max() -> stuck 1e10; min_coc=0 then min() -> stuck 0), so B's dilated tex is always 0 and both quad classes always pass: behaviorally broken. Histogram: A 615/630, B 678/697. A's morton_decode() (inc/morton.hlsl) matches the target's XOR-swap decode opcode-for-opcode; B's inline is equivalent. Minor: target bounds-check is per-sample (all(sample<dims) inside the loop) which B mirrors; A uses the tile-level in_bounds ternary (same result, one all() fewer).",
+      "fidelity_notes": "Adopt A's body. Keep the per-sample all() bounds form if strict histogram parity is chased (one OpAny/OpAll difference)."
+    },
+    "dof/autofocus.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Target disassembly pins the mapping: focus0's lerp target = MIN(focus0 dists)/median0, focus1's = MAX/median1 under tilt-shift (asfloat(group_focus0_dists[0/63/32]) at offsets, _402/_403 roles), and the locked branch focus1 = lock_dist + lerped(focus0). A matches (near/far and focus0/focus1 targets exact). B swaps near<->far in the tilt mapping and routes focus0->near, focus1->far: inverted autofocus convergence. Histogram: A 770/810, B 699/758 (B numerically closer but semantically wrong). Both use the bitonic sort (A via BITONIC_SORT_UINT macro from inc/bitonic_sort.hlsl, B via an explicit duplicated loop).",
+      "fidelity_notes": "Adopt A's body. DofFocusReadback member is lock_reponse in the bin (see inc fixes)."
+    },
+    "dof/clear_halfres.cs.hlsl": {
+      "winner": "A (tie, include form)",
+      "evidence": "Histogram identical (A 25/25, B 25/25; OpLine/OpSource/OpString residuals only). Bodies behavior-equivalent. A includes \"dof/tiles.inc.hlsl\" which resolves under the canonical `-I shaders`; B's bare \"tiles.inc.hlsl\" does not compile with the wave-1 include layout (needs an extra `-I shaders/dof`).",
+      "fidelity_notes": "Either body; adopt A's path-qualified include and the explicit float4(0,0,0,0) write."
+    },
+    "dof/fullres.cs.hlsl": {
+      "winner": "merge (B structure + A semantics/format)",
+      "evidence": "Compiled counts vs target 6f1d: B matches OpLoopMerge 7=7, OpBitwiseAnd 19=19, OpBranchConditional 19=19, OpSelectionMerge 12=12, OpFDiv 13=13, OpShiftLeftLogical 10~9, OpExtInst 154~153; A sits at OpLoopMerge 5, OpExtInst 170, OpBitwiseAnd 21, OpBranchConditional 24, OpSelectionMerge 20. B's f16x2 unpack uses the target's masking form (spvUnpackHalf2x16(v&0xFFFF).x twice). BUT the target's near-branch is the DECREASING ramp: if(abs(coc)>=11) continue; sample_weight*smoothstep(11,8,abs) - A's fullres matches, B's fullres uses the halfres-style increasing ramp (smoothstep(8,11), abs<8), i.e. semantically wrong for this pass. Target img_output is Rgba16f (RWTexture2D<half4>): A correct, B float4 (Rgba32f) wrong. Histogram: A 1412/1751 & 1428/1821, B 1371/1550 & 1345/1578.",
+      "fidelity_notes": "Base = B's loop/pack structure, but apply A's decreasing near/else ramp and RWTexture2D<half4> img_output. 6f1d/72a2 noise-scheme: both reconstruct 6f1d only (see review.md)."
+    },
+    "dof/fullres_all_lod0.cs.hlsl": {
+      "winner": "B (structure; with A's half4 format)",
+      "evidence": "Histogram B 1079/1194 & 1047/1218 vs A 1170/1304 & 1075/1265. Target lod0 is the reduced 9-tap x 4-bin variant; near-branch has NO 8/11 guard (near -> weight_acc/sample_weight directly, else -> depth-gate), and both A and B correctly omit the guard here. B's mask loop keeps the target loop structure; A [unroll]s more aggressively. Format: target Rgba16f (half4) - A correct, B float4 wrong.",
+      "fidelity_notes": "Base = B body, change img_output to RWTexture2D<half4>."
+    },
+    "dof/fullres_all_lod1.cs.hlsl": {
+      "winner": "A (tie/slight A)",
+      "evidence": "Histogram A 1042/1079 & 951/1044 vs B 911/1003 & 932/1080 (mixed by variant; no per-opcode structural break for either). Near-branch (no 8/11 guard) correct in both. Format: A half4 correct, B float4 wrong.",
+      "fidelity_notes": "Prefer A (correct format, marginally closer histogram)."
+    },
+    "dof/fullres_upsample.cs.hlsl": {
+      "winner": "tie (slight B)",
+      "evidence": "Histogram A 81/91, B 77/81. Bodies behavior-equivalent (8-tap spatial resolve, alpha-normalized). A inlines the loop in cs_main; B calls the upsample_halfres() helper from upsample_halfres.inc (inlined identically). Residual classes differ (A: bitcast/composite/shuffle; B: accesschain/extract/pointer) - neither clean.",
+      "fidelity_notes": "Either; if upsample_halfres.inc carries the helper (B), keep A's `dof/`-qualified includes."
+    },
+    "dof/fused.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Compiled counts vs target: A matches OpExtInst 146~145, OpImageFetch 4=4, OpPhi 23=23 and passes the capability gate (RWTexture2D<float3> + [[vk::ext_capability(49)]] matches R11fG11fB10f + StorageImageWriteWithoutFormat). B misses OpExtInst (74 vs 145), OpImageFetch (2 vs 4), OpPhi (15 vs 23) and fails the capability gate (float3 without the forced cap). Semantics: target near-branch is `add_weight=weight_acc; add_color_weight=sample_weight` with NO 8/11 guard - A matches; B adds the abs<8+smoothstep(8,11) guard (wrong for fused). 21-tap x 6-bin structure identical. Histogram A 1311/1571, B 1366/1295 (B's total lower only on OpLine 546 vs target 571; A 690).",
+      "fidelity_notes": "Adopt A. Note B's masking unpack is the target form if B's body were preferred, but A's semantic/format/gate correctness decides."
+    },
+    "dof/halfres.cs.hlsl": {
+      "winner": "B (structure; with A's half4 format)",
+      "evidence": "Compiled counts vs target (entry cs_halfres 6f1d): B matches OpLoopMerge 6=6, OpBitwiseAnd 18=18, OpBranchConditional 18=18, OpSelectionMerge 12=12, OpFDiv 12=12, OpShiftLeftLogical 10~9, OpExtInst 154~153; A sits at OpLoopMerge 4, OpExtInst 170, OpBitwiseAnd 20, OpBranchConditional 23, OpSelectionMerge 20. Both near-branches match the target (abs<8 continue + smoothstep(8,11) increasing for cs_halfres). Target img_output is Rgba16f: A's RWTexture2D<half4> correct, B's float4 (Rgba32f) wrong. OpImageSampleExplicitLod 22=22 both. Histogram A 1410/1739 & 1357/1740, B 1316/1492 & 1286/1516.",
+      "fidelity_notes": "Base = B body (loop/pack structure, halfres_core shared by cs_halfres/cs_halfres_all via an offsets_slot+occlude_gate parameter - structurally matches the single-body 2-entry target), change img_output to RWTexture2D<half4>."
+    },
+    "dof/init_buffers.cs.hlsl": {
+      "winner": "tie (slight B)",
+      "evidence": "Histogram A 50/54, B 48/50. B matches target OpStore count via whole-struct copy tile_offsets_buffer[0] = tile_offsets_initial_values; A's [unroll] 2-member loop overshoots OpStore by 1. Both behavior-equivalent (seed dispatch args + initial DofTileOffsetsPacked).",
+      "fidelity_notes": "Either; note B's decisions already document the dxc member-wise-copy residual on the whole-struct form."
+    },
+    "dof/prepare.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Histogram A 213/232 vs B 318/334. A's read-only StructuredBuffer<DofFocus> at t15 is faithful (target StorageBuffer SSBO, read-only use); B's RWStructuredBuffer u15 adds no NonWritable but is gate-equivalent. A's member-wise reads avoid the OpMemberDecorate/OpTypePointer/OpAccessChain drift B's whole-struct `DofFocus focus = autofocus_buf[camera_idx]` load introduces (B +84/-83 OpMemberDecorate, +13/-14 OpTypePointer). CoC math identical and matches target (inv-focus piecewise + tilt flatten + 1/720 vertical scale).",
+      "fidelity_notes": "Adopt A body. BOTH candidates declare coc_out_tex as RWTexture2D<float> and tile_output_tex as RWTexture2D<float2>; the target formats are R16f and Rg16f -> change to RWTexture2D<half> and RWTexture2D<half2> (shared fix)."
+    },
+    "dof/multires.inc.hlsl": {
+      "winner": "B",
+      "evidence": "The gather consumers inline an f16x2 pack/unpack; the target's unpack is the masking form (spvUnpackHalf2x16(v&0xFFFF).x / (v>>16&0xFFFF).x). B carries dof_pack_half2/dof_unpack_half2 here (matching the observed constants/opcodes); A keeps the header empty and defines local PackRingPair/UnpackRingPair in each consumer. Compiled output identical either way; B's placement better reflects an include that is embedded first in the consumers.",
+      "fidelity_notes": "Keep B's helpers (pack/unpack); consumers must call them with the masking form (& 0xFFFF) to match the target's OpBitwiseAnd count."
+    },
+    "dof/tiles.inc.hlsl": {
+      "winner": "tie",
+      "evidence": "Identical struct content (DofTileOffsets uint offsets[8]; DofTileOffsetsPacked uint4 offsets[2]); only the header comment differs.",
+      "fidelity_notes": "Either."
+    },
+    "dof/upsample_halfres.inc.hlsl": {
+      "winner": "B (content)",
+      "evidence": "B carries the 8-tap upsample_halfres() helper; A keeps the header empty and inlines the loop in fullres/fullres_upsample. The include edge exists in the 3 consumer bins, so a live helper here is more faithful; compiled output identical after inlining.",
+      "fidelity_notes": "Keep B's helper, or document A's inline as the source of truth. Must be included as \"dof/upsample_halfres.inc.hlsl\" when adopting."
+    },
+    "taa.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Target Catmull-Rom weight w1 = (1 + f^2*(-2.5+1.5f)) + w2 and center_uv = (base_c + w2/w1) - A matches exactly (verified in target decompile: _186, _193). B uses the standard w1 without the +w2 term -> numerically different history filter. Histogram A 605/726 vs B 765/890. Both gate-PASS (A uses [[vk::ext_capability(49)]] for the R11fG11fB10f history output; B uses [[vk::image_format(\"r11g11b10f\")]] - equivalent). history_valid gating, YCoCg, 3x3 variance clamp, tile-luminance sharpen all identical.",
+      "fidelity_notes": "Adopt A (esp. the w1-includes-w2 bicubic form)."
+    },
+    "tgsr.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Target blend lerp divides the current-frame wide sum by the WIDE weight (wc_sum): _584 = _247.xxx, total_weight = _247 + blend_t. A does wide_result/max(1e-6,sum_w2); B divides by the NARROW weight (wg_sum) -> wrong blend. Target hist-sample middle component is the constant 0.5 (A uses 0.5f; B uses 0.0f). Histogram A 1132/1082 & 1090/1224 vs B 1110/1322 & 1089/1485. 8x4 LocalSize variants (b303/f7ef) are a documented compile-time variant for both. Rest (aux tier, history_inconsistency, reproj_occlusion, depth_static, sharpen, aux_output) identical.",
+      "fidelity_notes": "Adopt A (blend divides by wide weight; 0.5f chroma dummy)."
+    },
+    "tgsr_reproject.cs.hlsl": {
+      "winner": "A",
+      "evidence": "Same 5-tap bicubic-cross as taa; A uses the w1-includes-w2 form that matches the taa/tgsr target family, B uses the standard w1. A uses rgb_to_ycbcr from inc/color/ycbcr.hlsl; B uses tgsr_rgb_to_ycocg from tgsr_common.inc (duplicating the matrix). Histogram A 294/350 vs B 356/454. 2x2 motion-range + wave-OR (^2/^16) + 3x3 deepest-depth search identical.",
+      "fidelity_notes": "Adopt A. A includes fewer files (no debug_utils/tracked_buffer/math drift); B's include closure is wider than the target's."
+    },
+    "tgsr_blur_lum.cs.hlsl": {
+      "winner": "tie",
+      "evidence": "Histogram residual identical (A 96/94, B 96/94); bodies equivalent (3x3 exp(-0.75 r^2) luminance blur, unjittered by sample_offset_clip*0.5, sqrt(lum/weight)). A forces R8 via [[vk::ext_capability(49)]], B via [[vk::image_format(\"r8\")]] - both miss StorageImageWriteWithoutFormat the same way (documented).",
+      "fidelity_notes": "Either; keep one ext_capability/image_format convention."
+    },
+    "tgsr_common.inc.hlsl": {
+      "winner": "A",
+      "evidence": "A keeps the header empty (status U) - correct: every TGSR helper body is inlined into the consumers, so the header only contributes the OpSource/OpString debug entries, and adding declarations risks extra opcodes. B fills it with a YCoCg matrix macro + tgsr_rgb_to_ycocg/tgsr_ycocg_to_rgb, which duplicates inc/color/ycbcr.hlsl (already included by the same consumers). Compiled output for the 6 consumer bins is unaffected (unused/dead inlined), but the source duplicates an existing helper.",
+      "fidelity_notes": "Keep A's empty header; YCoCg lives in inc/color/ycbcr.hlsl."
+    },
+    "fsr_copy_history.cs.hlsl": {
+      "winner": "B",
+      "evidence": "Target histogram: OpImageFetch 1 + OpVectorShuffle 1 (texel-fetch via indexing). B's input_tex[gl_GlobalInvocationID.xy] compiles to exactly that - B's only residuals are OpLine/OpSource/OpString (17/16). A's input_tex.Load(int3(id.xy,0)) adds OpBitcast/OpCompositeConstruct/OpCompositeExtract/extra OpVectorShuffle (22/32).",
+      "fidelity_notes": "Adopt B's texel-fetch indexing form."
+    },
+    "fsr_init_reactive.cs.hlsl": {
+      "winner": "tie",
+      "evidence": "Residuals identical (17/16; OpLine/OpSource/OpString only). Both declare RWTexture2D<half> u14 (R16f) + $Globals b13 {output_tex_dims, value}; both write output_tex[id.xy] = value.",
+      "fidelity_notes": "Either."
+    }
+  },
+  "inc_fixes": {
+    "coc.hlsl ring_samples": "Shared inc/coc.hlsl exports `static const float2 ring_samples[16]` (+ unused gaussian_weights[16]). The bin embeds `ring_samples` exactly once per gather consumer (their own groupshared); coc.hlsl evidently did NOT export it (both candidates had to rename the consumer groupshared to dof_ring_samples to compile). Fix: remove ring_samples (and the unused gaussian_weights) from inc/coc.hlsl so consumers can use the bin-embedded name `ring_samples`.",
+    "coc.hlsl DofFocusReadback member": "Bin embeds DofFocusReadback member 1 as `lock_reponse` (typo) in the autofocus module; the $Globals member `focus_lock_request` is separate and correct. Shared inc/coc.hlsl names the readback member `focus_lock_request` - rename it to `lock_reponse` to match the bin (autofocus then writes readback.lock_reponse = focus_lock_request).",
+    "prepare storage formats": "Both candidates declare prepare's coc_out_tex as RWTexture2D<float> and tile_output_tex as RWTexture2D<float2>; the target formats are R16f and Rg16f. Change to RWTexture2D<half> / RWTexture2D<half2>.",
+    "include form": "B's dof sources use bare includes (\"tiles.inc.hlsl\", \"multires.inc.hlsl\", \"upsample_halfres.inc.hlsl\") that require an extra `-I shaders/dof`; A's \"dof/...\" form matches the wave-1 convention and the canonical single-root validator. Normalize adopted files to the dof/-qualified form."
+  },
+  "noise_scheme": {
+    "6f1d_vs_72a2": "fullres/halfres/lod0/lod1 each ship two compile-time variants (6f1dd5dd8a66e104, 72a2a95d73e37edc). 6f1d = hash-jitter ring phase (frac(52.9829*frac(0.0671x+0.0058y))), spoke_seed = 5.588*float(frame%64), spoke angle = (spoke+rot)*pi/2. 72a2 = blue-noise.z phase, ring offset noise.y, spoke angle = (spoke+noise.x)*pi/4, no hash frac and no OpUMod (frame_index%64 absent). Both candidates reconstructed the 6f1d scheme only; the 72a2 bins remain a documented residual (opcode deltas OpUMod 1/0, OpConvertUToF 11/6, ~5 FMul/FAdd) for BOTH.",
+    "recommendation": "Record the 72a2 scheme as an unimplemented compile-time variant (needs a #if-style dual-path) unless the main agent prioritizes 72a2 convergence."
+  }
+}

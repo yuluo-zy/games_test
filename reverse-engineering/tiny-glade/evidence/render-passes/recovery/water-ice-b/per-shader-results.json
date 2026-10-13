@@ -1,0 +1,411 @@
+{
+ "generated": "2026-10-13",
+ "agent": "water-ice-b",
+ "scope": "water/ice surface + software-BVH deferred RT family (B build)",
+ "files": [
+  "water/calc_deferred_rt_args.cs.hlsl",
+  "water/deferred_rt.cs.hlsl",
+  "water/ice_deferred_rt.cs.hlsl",
+  "water/ice_refl_march.cs.hlsl",
+  "water/ice_refl_resolve.cs.hlsl",
+  "water/ice_refr_resolve.cs.hlsl",
+  "water_plane.raster.hlsl",
+  "water_plane_refraction_copy.raster.hlsl",
+  "water_snow_plane.raster.hlsl",
+  "water_x_paths.raster.hlsl",
+  "waterfall.raster.hlsl",
+  "waterfall_refraction_copy.raster.hlsl",
+  "ice_plane.raster.hlsl",
+  "water_ice_cracks.raster.hlsl"
+ ],
+ "validation": {
+  "water/calc_deferred_rt_args.cs.hlsl": [
+   {
+    "bin": "_water_calc_deferred_rt_args.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water/deferred_rt.cs.hlsl": [
+   {
+    "bin": "_water_deferred_rt.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "capabilities"
+    ],
+    "hist_diff": true,
+    "caps": {
+     "target": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats",
+      "StorageImageWriteWithoutFormat"
+     ],
+     "candidate": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats"
+     ]
+    }
+   }
+  ],
+  "water/ice_deferred_rt.cs.hlsl": [
+   {
+    "bin": "_water_ice_deferred_rt.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water/ice_refl_march.cs.hlsl": [
+   {
+    "bin": "_water_ice_refl_march.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water/ice_refl_resolve.cs.hlsl": [
+   {
+    "bin": "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "capabilities"
+    ],
+    "hist_diff": true,
+    "caps": {
+     "target": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats",
+      "StorageImageWriteWithoutFormat"
+     ],
+     "candidate": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats",
+      "StorageImageReadWithoutFormat",
+      "StorageImageWriteWithoutFormat"
+     ]
+    }
+   }
+  ],
+  "water/ice_refr_resolve.cs.hlsl": [
+   {
+    "bin": "_water_ice_refr_resolve.cs.hlsl_cs_main_0.bin",
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "capabilities"
+    ],
+    "hist_diff": true,
+    "caps": {
+     "target": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats",
+      "StorageImageWriteWithoutFormat"
+     ],
+     "candidate": [
+      "RuntimeDescriptorArray",
+      "Shader",
+      "StorageImageExtendedFormats"
+     ]
+    }
+   }
+  ],
+  "water_plane.raster.hlsl": [
+   {
+    "bin": "_water_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water_plane_refraction_copy.raster.hlsl": [
+   {
+    "bin": "_water_plane_refraction_copy.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane_refraction_copy.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane_refraction_copy.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_plane_refraction_copy.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water_snow_plane.raster.hlsl": [
+   {
+    "bin": "_water_snow_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_snow_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_snow_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_snow_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water_x_paths.raster.hlsl": [
+   {
+    "bin": "_water_x_paths.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_x_paths.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_x_paths.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_x_paths.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "waterfall.raster.hlsl": [
+   {
+    "bin": "_waterfall.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "waterfall_refraction_copy.raster.hlsl": [
+   {
+    "bin": "_waterfall_refraction_copy.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall_refraction_copy.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall_refraction_copy.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_waterfall_refraction_copy.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "ice_plane.raster.hlsl": [
+   {
+    "bin": "_ice_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_ice_plane.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_ice_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_ice_plane.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   }
+  ],
+  "water_ice_cracks.raster.hlsl": [
+   {
+    "bin": "_water_ice_cracks.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_ice_cracks.raster.hlsl_b903e43ffb3da915.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_ice_cracks.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "hist_diff": true,
+    "caps": null
+   },
+   {
+    "bin": "_water_ice_cracks.raster.hlsl_f0adff76827e73ff.bin",
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "bindings"
+    ],
+    "hist_diff": true,
+    "caps": null
+   }
+  ]
+ }
+}

@@ -1,0 +1,796 @@
+{
+  "generated": "2026-10-13",
+  "agent": "final-post-painterly-single",
+  "scope": "final_post.raster.hlsl + painterly/ (acquire_target, generate_strokes, convolve_target, raster_strokes, debug_target, stroke.inc) + vermeer/ (acquire_target, generate_strokes, convolve_target, raster_strokes, combine, stroke.inc)",
+  "target_variants": {
+    "raster": "b903e43ffb3da915",
+    "vermeer_generate_strokes": "2f7da8dc0793466b"
+  },
+  "validation": {
+    "_final_post.raster.hlsl_b903e43ffb3da915": [
+      {
+        "entry": "vs_main",
+        "profile": "vs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 57,
+        "histogram_candidate_only_total": 52,
+        "histogram_target_total": 130,
+        "histogram_candidate_total": 125,
+        "top_target_only": [
+          [
+            "OpSource",
+            28
+          ],
+          [
+            "OpString",
+            28
+          ],
+          [
+            "OpSourceContinued",
+            1
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpSource",
+            26
+          ],
+          [
+            "OpString",
+            26
+          ]
+        ]
+      },
+      {
+        "entry": "ps_main",
+        "profile": "ps_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 3447,
+        "histogram_candidate_only_total": 3610,
+        "histogram_target_total": 4046,
+        "histogram_candidate_total": 4209,
+        "top_target_only": [
+          [
+            "OpLine",
+            1632
+          ],
+          [
+            "OpFMul",
+            360
+          ],
+          [
+            "OpFAdd",
+            222
+          ],
+          [
+            "OpCompositeExtract",
+            176
+          ],
+          [
+            "OpFSub",
+            171
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            1721
+          ],
+          [
+            "OpFMul",
+            345
+          ],
+          [
+            "OpFAdd",
+            212
+          ],
+          [
+            "OpFSub",
+            173
+          ],
+          [
+            "OpCompositeExtract",
+            167
+          ]
+        ]
+      }
+    ],
+    "_painterly_acquire_target.cs.hlsl_cs_main_0": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 143,
+        "histogram_candidate_only_total": 162,
+        "histogram_target_total": 306,
+        "histogram_candidate_total": 325,
+        "top_target_only": [
+          [
+            "OpLine",
+            67
+          ],
+          [
+            "OpConstant",
+            18
+          ],
+          [
+            "OpSource",
+            13
+          ],
+          [
+            "OpString",
+            13
+          ],
+          [
+            "OpLoad",
+            11
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            75
+          ],
+          [
+            "OpConstant",
+            17
+          ],
+          [
+            "OpLoad",
+            12
+          ],
+          [
+            "OpSource",
+            12
+          ],
+          [
+            "OpString",
+            12
+          ]
+        ]
+      }
+    ],
+    "_painterly_convolve_target.cs.hlsl_cs_main_0": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 63,
+        "histogram_candidate_only_total": 62,
+        "histogram_target_total": 206,
+        "histogram_candidate_total": 205,
+        "top_target_only": [
+          [
+            "OpLine",
+            43
+          ],
+          [
+            "OpSource",
+            10
+          ],
+          [
+            "OpString",
+            10
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            44
+          ],
+          [
+            "OpSource",
+            9
+          ],
+          [
+            "OpString",
+            9
+          ]
+        ]
+      }
+    ],
+    "_painterly_debug_target.raster.hlsl_b903e43ffb3da915": [
+      {
+        "entry": "vs_main",
+        "profile": "vs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 16,
+        "histogram_candidate_only_total": 14,
+        "histogram_target_total": 87,
+        "histogram_candidate_total": 85,
+        "top_target_only": [
+          [
+            "OpSource",
+            8
+          ],
+          [
+            "OpString",
+            8
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpSource",
+            7
+          ],
+          [
+            "OpString",
+            7
+          ]
+        ]
+      },
+      {
+        "entry": "ps_main",
+        "profile": "ps_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 16,
+        "histogram_candidate_only_total": 14,
+        "histogram_target_total": 38,
+        "histogram_candidate_total": 36,
+        "top_target_only": [
+          [
+            "OpSource",
+            8
+          ],
+          [
+            "OpString",
+            8
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpSource",
+            7
+          ],
+          [
+            "OpString",
+            7
+          ]
+        ]
+      }
+    ],
+    "_painterly_generate_strokes.cs.hlsl_cs_main_0": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 470,
+        "histogram_candidate_only_total": 528,
+        "histogram_target_total": 672,
+        "histogram_candidate_total": 730,
+        "top_target_only": [
+          [
+            "OpLine",
+            209
+          ],
+          [
+            "OpConstant",
+            45
+          ],
+          [
+            "OpLabel",
+            32
+          ],
+          [
+            "OpBranch",
+            20
+          ],
+          [
+            "OpName",
+            14
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            237
+          ],
+          [
+            "OpConstant",
+            47
+          ],
+          [
+            "OpLabel",
+            39
+          ],
+          [
+            "OpBranch",
+            25
+          ],
+          [
+            "OpCompositeExtract",
+            16
+          ]
+        ]
+      }
+    ],
+    "_painterly_raster_strokes.raster.hlsl_b903e43ffb3da915": [
+      {
+        "entry": "vs_main",
+        "profile": "vs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 265,
+        "histogram_candidate_only_total": 270,
+        "histogram_target_total": 420,
+        "histogram_candidate_total": 425,
+        "top_target_only": [
+          [
+            "OpLine",
+            104
+          ],
+          [
+            "OpLabel",
+            27
+          ],
+          [
+            "OpSource",
+            15
+          ],
+          [
+            "OpString",
+            15
+          ],
+          [
+            "OpBranch",
+            12
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            115
+          ],
+          [
+            "OpLabel",
+            22
+          ],
+          [
+            "OpBranch",
+            14
+          ],
+          [
+            "OpSource",
+            14
+          ],
+          [
+            "OpString",
+            14
+          ]
+        ]
+      },
+      {
+        "entry": "ps_main",
+        "profile": "ps_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 64,
+        "histogram_candidate_only_total": 81,
+        "histogram_target_total": 139,
+        "histogram_candidate_total": 156,
+        "top_target_only": [
+          [
+            "OpLine",
+            21
+          ],
+          [
+            "OpSource",
+            15
+          ],
+          [
+            "OpString",
+            15
+          ],
+          [
+            "OpLoad",
+            5
+          ],
+          [
+            "OpLabel",
+            3
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            30
+          ],
+          [
+            "OpSource",
+            14
+          ],
+          [
+            "OpString",
+            14
+          ],
+          [
+            "OpLoad",
+            7
+          ],
+          [
+            "OpCompositeExtract",
+            6
+          ]
+        ]
+      }
+    ],
+    "_vermeer_acquire_target.cs.hlsl_cs_main_0": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 40,
+        "histogram_candidate_only_total": 41,
+        "histogram_target_total": 121,
+        "histogram_candidate_total": 122,
+        "top_target_only": [
+          [
+            "OpLine",
+            14
+          ],
+          [
+            "OpSource",
+            13
+          ],
+          [
+            "OpString",
+            13
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            17
+          ],
+          [
+            "OpSource",
+            12
+          ],
+          [
+            "OpString",
+            12
+          ]
+        ]
+      }
+    ],
+    "_vermeer_combine.raster.hlsl_b903e43ffb3da915": [
+      {
+        "entry": "vs_main",
+        "profile": "vs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 34,
+        "histogram_candidate_only_total": 32,
+        "histogram_target_total": 107,
+        "histogram_candidate_total": 105,
+        "top_target_only": [
+          [
+            "OpSource",
+            17
+          ],
+          [
+            "OpString",
+            17
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpSource",
+            16
+          ],
+          [
+            "OpString",
+            16
+          ]
+        ]
+      },
+      {
+        "entry": "ps_main",
+        "profile": "ps_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 92,
+        "histogram_candidate_only_total": 94,
+        "histogram_target_total": 215,
+        "histogram_candidate_total": 217,
+        "top_target_only": [
+          [
+            "OpLine",
+            42
+          ],
+          [
+            "OpSource",
+            17
+          ],
+          [
+            "OpString",
+            17
+          ],
+          [
+            "OpLabel",
+            5
+          ],
+          [
+            "OpVectorShuffle",
+            5
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            43
+          ],
+          [
+            "OpSource",
+            16
+          ],
+          [
+            "OpString",
+            16
+          ],
+          [
+            "OpLabel",
+            6
+          ],
+          [
+            "OpCompositeExtract",
+            4
+          ]
+        ]
+      }
+    ],
+    "_vermeer_convolve_target.cs.hlsl_cs_main_0": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 63,
+        "histogram_candidate_only_total": 62,
+        "histogram_target_total": 206,
+        "histogram_candidate_total": 205,
+        "top_target_only": [
+          [
+            "OpLine",
+            43
+          ],
+          [
+            "OpSource",
+            10
+          ],
+          [
+            "OpString",
+            10
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            44
+          ],
+          [
+            "OpSource",
+            9
+          ],
+          [
+            "OpString",
+            9
+          ]
+        ]
+      }
+    ],
+    "_vermeer_generate_strokes.cs.hlsl_cs_main_2f7da8dc0793466b": [
+      {
+        "entry": "cs_main",
+        "profile": "cs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 1373,
+        "histogram_candidate_only_total": 1348,
+        "histogram_target_total": 1891,
+        "histogram_candidate_total": 1866,
+        "top_target_only": [
+          [
+            "OpLine",
+            792
+          ],
+          [
+            "OpShiftRightLogical",
+            70
+          ],
+          [
+            "OpConstant",
+            61
+          ],
+          [
+            "OpExtInst",
+            58
+          ],
+          [
+            "OpCompositeExtract",
+            44
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            798
+          ],
+          [
+            "OpShiftRightLogical",
+            74
+          ],
+          [
+            "OpConstant",
+            63
+          ],
+          [
+            "OpFMul",
+            53
+          ],
+          [
+            "OpExtInst",
+            51
+          ]
+        ]
+      }
+    ],
+    "_vermeer_raster_strokes.raster.hlsl_b903e43ffb3da915": [
+      {
+        "entry": "vs_main",
+        "profile": "vs_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 395,
+        "histogram_candidate_only_total": 397,
+        "histogram_target_total": 593,
+        "histogram_candidate_total": 595,
+        "top_target_only": [
+          [
+            "OpLine",
+            159
+          ],
+          [
+            "OpConstant",
+            42
+          ],
+          [
+            "OpLabel",
+            41
+          ],
+          [
+            "OpBranch",
+            21
+          ],
+          [
+            "OpSource",
+            17
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            169
+          ],
+          [
+            "OpConstant",
+            43
+          ],
+          [
+            "OpLabel",
+            36
+          ],
+          [
+            "OpBranch",
+            23
+          ],
+          [
+            "OpSource",
+            16
+          ]
+        ]
+      },
+      {
+        "entry": "ps_main",
+        "profile": "ps_6_4",
+        "verdict": "FAIL",
+        "hard_gate": "PASS",
+        "hard_diffs": [],
+        "opcode_histogram_match": false,
+        "histogram_target_only_total": 109,
+        "histogram_candidate_only_total": 126,
+        "histogram_target_total": 256,
+        "histogram_candidate_total": 273,
+        "top_target_only": [
+          [
+            "OpLine",
+            52
+          ],
+          [
+            "OpSource",
+            17
+          ],
+          [
+            "OpString",
+            17
+          ],
+          [
+            "OpLoad",
+            8
+          ],
+          [
+            "OpLabel",
+            5
+          ]
+        ],
+        "top_candidate_only": [
+          [
+            "OpLine",
+            62
+          ],
+          [
+            "OpSource",
+            16
+          ],
+          [
+            "OpString",
+            16
+          ],
+          [
+            "OpLoad",
+            10
+          ],
+          [
+            "OpCompositeExtract",
+            8
+          ]
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "bins_checked": 11,
+    "modules_checked": 16,
+    "hard_gate_pass": 16,
+    "opcode_histogram_full_match": 0,
+    "note": "All modules FAIL structural only on opcode_histogram. Systematic +1 OpSource/OpString in target (original built from /tmp temp input path, unreproducible by recompile_check) affects every module; remaining diffs are dxc-version codegen (OpLine/FMul/Load folding) and source-layout line attribution."
+  }
+}

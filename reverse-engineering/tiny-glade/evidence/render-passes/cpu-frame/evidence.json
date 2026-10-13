@@ -1,0 +1,1246 @@
+{
+ "source_files": {
+  "render_world": "evidence/render-architecture/0x1404ec110.c",
+  "render": "evidence/render-architecture/0x1404e8010.c",
+  "compile_instance": "evidence/render-architecture/0x140161cd0.c",
+  "execute_compiled": "evidence/render-architecture/0x1400fa190.c",
+  "gpu_generate_draw_lists": "evidence/render-architecture/0x140987dd0.c",
+  "resolved_calls": "evidence/render-architecture/resolved-calls.json",
+  "findings": "evidence/render-architecture/findings.md"
+ },
+ "render_world_passes_ordered": [
+  [
+   "upload_world_raster#0",
+   "0x1403d8bd0",
+   "country_core::systems::render_loop::compute_passes::upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   "upload CPU raster staging to texture"
+  ],
+  [
+   "upload_world_raster#1",
+   "0x1403da050",
+   "upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   ""
+  ],
+  [
+   "upload_world_raster#2",
+   "0x1403da570",
+   "upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   ""
+  ],
+  [
+   "upload_world_raster#3",
+   "0x1403d90f0",
+   "upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   ""
+  ],
+  [
+   "upload_world_raster#4",
+   "0x1403d9610",
+   "upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   ""
+  ],
+  [
+   "upload_world_raster#5",
+   "0x1403d9b30",
+   "upload_world_raster::upload_raster_staging_to_texture",
+   "compute",
+   ""
+  ],
+  [
+   "water_rasterize_from_cpu",
+   "0x140a12680",
+   "compute_water::water_rasterize_from_cpu",
+   "compute",
+   ""
+  ],
+  [
+   "rasterize_terrain_stroke",
+   "0x1408c7120",
+   "rasterize_terrain_stroke::rasterize_terrain_stroke",
+   "compute",
+   ""
+  ],
+  [
+   "displace_rocky_terrain",
+   "0x140a3ee80",
+   "displace_rocky_terrain::displace_rocky_terrain",
+   "compute",
+   ""
+  ],
+  [
+   "read_terrain_data",
+   "0x14098c680",
+   "read_terrain_data::read_terrain_data",
+   "compute",
+   ""
+  ],
+  [
+   "mouse_read_terrain_stroke_index",
+   "0x1409768b0",
+   "mouse_read_terrain_stroke_index::mouse_read_terrain_stroke_index",
+   "compute",
+   ""
+  ],
+  [
+   "rasterize_foliage_exclusion_mask",
+   "0x1409cb7b0",
+   "draw_passes::foliage_exclusion_mask::rasterize_foliage_exclusion_mask",
+   "draw",
+   ""
+  ],
+  [
+   "highlight_active_terrain_stroke",
+   "0x140a58450",
+   "highlight_active_terrain_stroke::highlight_active_terrain_stroke",
+   "compute",
+   ""
+  ],
+  [
+   "object_grass_push_pass",
+   "0x1409daaa0",
+   "draw_passes::object_grass_push::object_grass_push_pass",
+   "draw",
+   ""
+  ],
+  [
+   "compute_path_masks",
+   "0x1409014e0",
+   "compute_path_masks::compute_path_masks",
+   "compute",
+   ""
+  ],
+  [
+   "rasterize_buildings",
+   "0x140a32770",
+   "rasterize_buildings::rasterize_buildings",
+   "compute",
+   ""
+  ],
+  [
+   "garden_rasterize_from_cpu",
+   "0x140a22140",
+   "compute_garden::garden_rasterize_from_cpu",
+   "compute",
+   ""
+  ],
+  [
+   "water_spawn_vegetation",
+   "0x140a13970",
+   "compute_water::water_spawn_vegetation",
+   "compute",
+   ""
+  ],
+  [
+   "spawn_vegetation_around_buildings",
+   "0x1408e4cc0",
+   "spawn_vegetation_around_buildings::spawn_vegetation_around_buildings",
+   "compute",
+   ""
+  ],
+  [
+   "read_bush_positions_for_cpu",
+   "0x140866540",
+   "read_bush_positions_for_cpu::read_bush_positions_for_cpu",
+   "compute",
+   ""
+  ],
+  [
+   "garden_spawn_vegetation",
+   "0x140a22b80",
+   "compute_garden::garden_spawn_vegetation",
+   "compute",
+   ""
+  ],
+  [
+   "path_pebbles_compute",
+   "0x140958f70",
+   "path_pebbles::path_pebbles_compute",
+   "compute",
+   ""
+  ],
+  [
+   "leaf_particles_compute",
+   "0x1408f4d00",
+   "leaf_particles::leaf_particles_compute",
+   "compute",
+   ""
+  ],
+  [
+   "roof_tiles_gravity_compute",
+   "0x140a29b10",
+   "roof_tiles_gravity::roof_tiles_gravity_compute",
+   "compute",
+   ""
+  ],
+  [
+   "stairs",
+   "0x140a68a50",
+   "stairs::stairs",
+   "compute",
+   ""
+  ],
+  [
+   "generate_wall_draw_lists",
+   "0x14098aaf0",
+   "gpu_generate_draw_lists::generate_wall_draw_lists",
+   "compute",
+   "round1 wall draw lists"
+  ],
+  [
+   "gpu_generate_draw_lists#1",
+   "0x140987dd0",
+   "gpu_generate_draw_lists::gpu_generate_draw_lists",
+   "compute",
+   "third arg 0 = first round; creates gpu-only buffers, clears draw lists, cull_and_bucket"
+  ],
+  [
+   "shadow_pass",
+   "0x1409cc270",
+   "draw_passes::shadow_pass::shadow_pass",
+   "draw",
+   "draws shadow map (callees: render/bind_common/get_rg_texture/extent_2d)"
+  ],
+  [
+   "calc_terrain_lighting_texture",
+   "0x140a51440",
+   "terrain_lighting_texture::calc_terrain_lighting_texture",
+   "compute",
+   ""
+  ],
+  [
+   "main_pass",
+   "0x140833bc0",
+   "draw_passes::main_pass::main_pass",
+   "draw",
+   "main depth/albedo/velocity draw; two create_raw_resource (depth+hzb) precede it"
+  ],
+  [
+   "generate_hzb",
+   "0x1409286f0",
+   "generate_hzb::generate_hzb",
+   "compute",
+   "bind_individual_mips + write_rg_storage_buffer + get_or_create_temporal; all_mip_levels"
+  ],
+  [
+   "generate_wall_draw_lists_pass2",
+   "0x14098b2a0",
+   "gpu_generate_draw_lists::generate_wall_draw_lists_pass2",
+   "compute",
+   "CONDITIONAL: global *0x14362c0d8 == 0"
+  ],
+  [
+   "gpu_generate_draw_lists#2",
+   "0x140987dd0",
+   "gpu_generate_draw_lists::gpu_generate_draw_lists",
+   "compute",
+   "CONDITIONAL: same global; third arg != 0 = second round (post-HZB)"
+  ],
+  [
+   "grass_compute",
+   "0x140a60280",
+   "grass::grass_compute",
+   "compute",
+   "dispatch_indirect_raw; writes DrawIndexedIndirectBuffer/DrawIndirectBuffer/AtomicCounterBuffer; inclusive_prefix_scan_u32_1m"
+  ],
+  [
+   "main_pass_oc2",
+   "0x140835a40",
+   "draw_passes::main_pass::main_pass_oc2",
+   "draw",
+   "second main pass after HZB"
+  ],
+  [
+   "run_visibility_queries",
+   "0x140a2f2e0",
+   "visibility_queries::run_visibility_queries",
+   "compute",
+   ""
+  ],
+  [
+   "calculate_dof_autofocus",
+   "0x140a17880",
+   "dof_autofocus::calculate_dof_autofocus",
+   "compute",
+   ""
+  ],
+  [
+   "mouse_depth_compute",
+   "0x140a01620",
+   "mouse_depth_value::mouse_depth_compute",
+   "compute",
+   ""
+  ],
+  [
+   "late_forward_and_deferred_pass",
+   "0x1408373b0",
+   "draw_passes::main_pass::late_forward_and_deferred_pass",
+   "draw",
+   "lighting pass (bind_common+render)"
+  ],
+  [
+   "extract_half_res_depth_normals",
+   "0x1408f6180",
+   "half_res::extract_half_res_depth_normals",
+   "compute",
+   ""
+  ],
+  [
+   "calculate_reprojection_map",
+   "0x140a0d190",
+   "reprojection::calculate_reprojection_map",
+   "compute",
+   ""
+  ],
+  [
+   "calculate_ssgi",
+   "0x1408743b0",
+   "ssgi::calculate_ssgi",
+   "compute",
+   ""
+  ],
+  [
+   "ray_trace_gi",
+   "0x140a01cf0",
+   "ray_trace_gi::ray_trace_gi",
+   "compute",
+   "get_or_create_temporal_pair; bind_ray_tracing(ComputePass); div_up_extent"
+  ],
+  [
+   "eval_gi_screen_radiance",
+   "0x140a44cd0",
+   "eval_gi_screen_radiance::eval_gi_screen_radiance",
+   "compute",
+   ""
+  ],
+  [
+   "bin_lights",
+   "0x1409e7770",
+   "bin_lights::bin_lights",
+   "compute",
+   ""
+  ],
+  [
+   "restir_sample_direct_lights",
+   "0x140a6fec0",
+   "restir_di::restir_sample_direct_lights",
+   "compute",
+   ""
+  ],
+  [
+   "apply_screen_shadows",
+   "0x140a39e70",
+   "apply_screen_shadows::apply_screen_shadows",
+   "compute",
+   ""
+  ],
+  [
+   "deferred_raster",
+   "0x1409d20b0",
+   "draw_passes::deferred_raster::deferred_raster",
+   "draw",
+   "draw_no_vao; bind_color_library; reads LanternSsbo+SpatialResolveOffsetsSsbo; bind_ray_tracing(DrawBuilder)"
+  ],
+  [
+   "refraction_copy_pass",
+   "0x1409bf320",
+   "draw_passes::transparency_pass::refraction_copy_pass",
+   "draw",
+   "CONDITIONAL: global *0x14362c098 == 0"
+  ],
+  [
+   "water_surface_pass OR ice_surface_pass",
+   "0x1409bf800 / 0x1409c08d0",
+   "water_surface_pass / ice_surface_pass",
+   "draw+compute",
+   "CONDITIONAL dispatch by is_winter flag (0x140ae8320): non-winter water_surface_pass, winter ice_surface_pass; both use dispatch_indirect_raw + bind_ray_tracing"
+  ],
+  [
+   "pre_taa_transparency_pass",
+   "0x1409c3a80",
+   "transparency_pass::pre_taa_transparency_pass",
+   "draw",
+   ""
+  ],
+  [
+   "compute_shadow_mask_mean",
+   "0x140a3a6f0",
+   "apply_screen_shadows::compute_shadow_mask_mean",
+   "compute",
+   ""
+  ],
+  [
+   "apply_volumetrics",
+   "0x1408a44c0",
+   "apply_volumetrics::apply_volumetrics",
+   "compute",
+   ""
+  ],
+  [
+   "dof_prepare",
+   "0x140a5a020",
+   "dof::dof_prepare",
+   "compute",
+   "reads DofAutofocusSsbo"
+  ],
+  [
+   "generate_mips",
+   "0x1400fb890",
+   "generate_mips::generate_mips",
+   "compute",
+   "CONDITIONAL: config byte param6[0xa9 + (res_type==0x13)] != 0"
+  ],
+  [
+   "calc_dof",
+   "0x140a5a570",
+   "dof::calc_dof",
+   "compute",
+   "CONDITIONAL: same byte; uses half_res"
+  ],
+  [
+   "calculate_taa OR calculate_tgsr",
+   "0x140a3b2f0 / 0x140a3ba60",
+   "taa::calculate_taa / taa::calculate_tgsr",
+   "compute",
+   "TAA vs TGSR choice by byte param6[0xab]: 0->TAA else TGSR (tgsr uses min_subgroup_size + get_or_create_temporal_pair)"
+  ],
+  [
+   "post_taa_transparency_pass",
+   "0x1409c40b0",
+   "transparency_pass::post_taa_transparency_pass",
+   "draw",
+   ""
+  ],
+  [
+   "render_shader_refactoring",
+   "0x14098f9f0",
+   "shader_refactoring::render_shader_refactoring",
+   "unknown",
+   "callees only RwLock read (read_contended/wake_writer_or_readers) + unwrap; role unknown"
+  ]
+ ],
+ "render_frame_steps_ordered": [
+  [
+   "get_resource_id",
+   "0x1400dd6f0",
+   "bevy_ecs::component::Components::get_resource_id",
+   "fetch Arc settings resource (hashes 0x2ed189581b92decf, 0x3d7b56e787d47c40; mode byte at +0xac)"
+  ],
+  [
+   "DrawLists::new",
+   "0x1409ba340",
+   "draw_lists::DrawLists::new",
+   "CPU draw list build"
+  ],
+  [
+   "build_draw_lists",
+   "0x1409ba540",
+   "draw_lists::build_draw_lists",
+   ""
+  ],
+  [
+   "DrawLists::sort",
+   "0x1409ba4b0",
+   "draw_lists::DrawLists::sort",
+   ""
+  ],
+  [
+   "Swapchain::format/extent",
+   "0x140c0e7e0 / 0x140c0ea90",
+   "raw::swapchain::Swapchain::format / extent",
+   "only if swapchain present"
+  ],
+  [
+   "RenderGraphState::compile",
+   "0x1401647b0",
+   "rg::state::RenderGraphState::compile::h1edf2b06c104b210",
+   "mode byte==0 branch"
+  ],
+  [
+   "RenderGraphState::compile",
+   "0x140161cd0",
+   "rg::state::RenderGraphState::compile::h1404e5612569a6e5",
+   "mode byte!=0 branch; contains render_world closure + ResourceInfo::calculate + registry + CompiledRenderGraph::new"
+  ],
+  [
+   "GraphExecutor::begin_frame",
+   "0x140beabd0",
+   "rg::executor::GraphExecutor::begin_frame",
+   ""
+  ],
+  [
+   "retrieve_results",
+   "0x140294cf0",
+   "gpu_profiler::backend::ash::ProfilerSubmittedFrame::retrieve_results",
+   "profiler"
+  ],
+  [
+   "PassResources::new_from",
+   "0x140909310",
+   "pass_resources::PassResources::new_from",
+   ""
+  ],
+  [
+   "execute_compiled",
+   "0x1400fa190",
+   "rg::executor::GraphExecutionRecorder::execute_compiled",
+   "BatchCompiler::new->flush_batch loop->submit_pending_cbs->per-pass ensure_active_cb+record_batch->into_exports->ExecutedRenderGraph::new"
+  ],
+  [
+   "retire",
+   "0x140be9d00",
+   "rg::executor::ExecutedRenderGraph::retire",
+   ""
+  ],
+  [
+   "take_resource",
+   "0x140be9c80",
+   "rg::executor::ExportedRenderGraphResources::take_resource",
+   ""
+  ],
+  [
+   "from_owned_rg_resource",
+   "0x140bd63f0",
+   "import_export::ImportExportToRenderGraph::from_owned_rg_resource",
+   "re-import exported resource"
+  ],
+  [
+   "validate_swapchain_and_acquire_image",
+   "0x140bfd9d0",
+   "raw::swapchain::GraphicsDevice::validate_swapchain_and_acquire_image",
+   "CONDITIONAL: compile ok (flag 0x113c==1) and swapchain present; result byte==7 skips present"
+  ],
+  [
+   "TrackedSwapchainTextureLease::image",
+   "0x140c0f120",
+   "raw::swapchain::TrackedSwapchainTextureLease::image",
+   ""
+  ],
+  [
+   "GraphExecutionRecorder::execute",
+   "0x1400fb5b0",
+   "rg::executor::GraphExecutionRecorder::execute",
+   "execute final graph with acquired image (UI etc.)"
+  ],
+  [
+   "into_present_source",
+   "0x140c0f170",
+   "raw::swapchain::TrackedSwapchainTextureLease::into_present_source",
+   ""
+  ],
+  [
+   "end_frame",
+   "0x140bec400",
+   "rg::executor::GraphExecutionRecorder::end_frame",
+   ""
+  ],
+  [
+   "Swapchain::present",
+   "0x140c0ef80",
+   "raw::swapchain::Swapchain::present",
+   "only if acquired"
+  ],
+  [
+   "finish_screenshot_capture",
+   "0x14031ea20",
+   "tiny_glade::screenshot::finish_screenshot_capture",
+   ""
+  ],
+  [
+   "RenderStats::snapshot_and_reset",
+   "0x140c02da0",
+   "raw::stats::RenderStats::snapshot_and_reset",
+   ""
+  ],
+  [
+   "refresh_memory_budget",
+   "0x140bf8f80",
+   "raw::device::GraphicsDevice::refresh_memory_budget",
+   ""
+  ],
+  [
+   "wait_gpu_queue_trim",
+   "0x140bea680",
+   "rg::executor::GraphExecutor::wait_gpu_queue_trim",
+   "after last_known_frame_duration_ns 0x140beaae0"
+  ]
+ ],
+ "compile_instance_order": [
+  [
+   "render_world call",
+   "0x1404ec110",
+   "tiny_glade::render_loop::render_world",
+   "called at 0x140161cd0.c line 835"
+  ],
+  [
+   "ResourceInfo::calculate",
+   "0x140530430",
+   "rg::resource_info::ResourceInfo::calculate",
+   "called at 0x140161cd0.c line 1736, after world pass closure"
+  ],
+  [
+   "populate/CompiledRenderGraph::new",
+   "0x140be7ba0 / 0x1402c4280",
+   "rg::resource_registry / rg::compiled",
+   "follows ResourceInfo::calculate; 0x218-byte result copied out"
+  ]
+ ],
+ "ghidra_callee_check": {
+  "shadow_pass": {
+   "address": "0x1409cc270",
+   "signature": "void __cdecl shadow_pass(void)",
+   "callees": [
+    "VAL",
+    "are_scopes_on",
+    "begin_scope",
+    "bind_common",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "end_scope",
+    "extent_2d",
+    "get_resource_id",
+    "get_rg_texture",
+    "initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "panic_already_borrowed",
+    "render",
+    "rfind<ref$<str$>_>",
+    "slice_error_fail",
+    "unwrap_failed"
+   ]
+  },
+  "main_pass": {
+   "address": "0x140833bc0",
+   "signature": "void __cdecl main_pass(void)",
+   "callees": [
+    "VAL",
+    "are_scopes_on",
+    "begin_scope",
+    "bind_common",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "end_scope",
+    "extent_2d",
+    "get_resource_id",
+    "initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "panic_already_borrowed",
+    "render",
+    "rfind<ref$<str$>_>",
+    "slice_error_fail",
+    "unwrap_failed"
+   ]
+  },
+  "generate_hzb": {
+   "address": "0x1409286f0",
+   "signature": "void __cdecl generate_hzb(void)",
+   "callees": [
+    "__rust_alloc",
+    "__rust_dealloc",
+    "all_mip_levels",
+    "base_mip_level",
+    "bind_individual_mips",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "create_raw_resource",
+    "drop",
+    "extent_2d",
+    "format_inner",
+    "from",
+    "from",
+    "get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$>_>",
+    "handle_error",
+    "level_count",
+    "memcpy",
+    "new",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "new_gpu_only",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "view_type",
+    "write_rg_storage_buffer"
+   ]
+  },
+  "grass_compute": {
+   "address": "0x140a60280",
+   "signature": "void __cdecl grass_compute(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "clear_rg_buffer",
+    "create_raw_resource",
+    "dispatch_indirect_raw",
+    "drop",
+    "from",
+    "get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$>_>",
+    "get_resource_id",
+    "inclusive_prefix_scan_u32_1m",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "new_gpu_only",
+    "read_rg_storage_buffer",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "unwrap_failed",
+    "write_rg_storage_buffer",
+    "write_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>",
+    "write_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>",
+    "write_storage_buffer<country_core::systems::render_loop::indirect_params::DrawIndirectBuffer>",
+    "write_storage_buffer_concurrent<country_core::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer>",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<array$<u32,2>_>,array$<u32,2>_>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>"
+   ]
+  },
+  "main_pass_oc2": {
+   "address": "0x140835a40",
+   "signature": "void __cdecl main_pass_oc2(void)",
+   "callees": [
+    "VAL",
+    "are_scopes_on",
+    "begin_scope",
+    "bind_common",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "end_scope",
+    "extent_2d",
+    "get_resource_id",
+    "initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "panic_already_borrowed",
+    "render",
+    "rfind<ref$<str$>_>",
+    "slice_error_fail",
+    "unwrap_failed"
+   ]
+  },
+  "late_forward_and_deferred_pass": {
+   "address": "0x1408373b0",
+   "signature": "void __cdecl late_forward_and_deferred_pass(void)",
+   "callees": [
+    "bind_common",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "render",
+    "unwrap_failed"
+   ]
+  },
+  "ray_trace_gi": {
+   "address": "0x140a01cf0",
+   "signature": "void __cdecl ray_trace_gi(void)",
+   "callees": [
+    "bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "create_raw_resource",
+    "div_up_extent",
+    "drop",
+    "extent_2d",
+    "from",
+    "get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$>_>",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "sampled",
+    "storage",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>"
+   ]
+  },
+  "deferred_raster": {
+   "address": "0x1409d20b0",
+   "signature": "void __cdecl deferred_raster(void)",
+   "callees": [
+    "assert_failed<ref$<str$>,ref$<str$>_>",
+    "bind_color_library<country_core::render::pass_builder::draw_builder::DrawBuilder>",
+    "bind_ray_tracing<country_core::render::pass_builder::draw_builder::DrawBuilder>",
+    "bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "draw_no_vao",
+    "extent_2d",
+    "get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>",
+    "get_resource_id",
+    "memcmp",
+    "memcpy",
+    "new",
+    "new_impl",
+    "optional_uniform<array$<u32,2>_>",
+    "optional_uniform<f32>",
+    "panic_access_error",
+    "panic_bounds_check",
+    "read_rg_storage_buffer",
+    "read_storage_buffer<country_core::resources::render::lantern::LanternSsbo>",
+    "read_storage_buffer<country_core::resources::render::spatial_resolve_offsets::SpatialResolveOffsetsSsbo>",
+    "render",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>"
+   ]
+  },
+  "refraction_copy_pass": {
+   "address": "0x1409bf320",
+   "signature": "void __cdecl refraction_copy_pass(void)",
+   "callees": [
+    "bind_common",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "render",
+    "unwrap_failed"
+   ]
+  },
+  "pre_taa_transparency_pass": {
+   "address": "0x1409c3a80",
+   "signature": "void __cdecl pre_taa_transparency_pass(void)",
+   "callees": [
+    "bind_common",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "render",
+    "unwrap_failed"
+   ]
+  },
+  "calc_dof": {
+   "address": "0x140a5a570",
+   "signature": "void __cdecl calc_dof(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "create_raw_resource",
+    "drop",
+    "extent_2d",
+    "format",
+    "from",
+    "get_resource_id",
+    "half_res",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>"
+   ]
+  },
+  "calculate_taa": {
+   "address": "0x140a3b2f0",
+   "signature": "void __cdecl calculate_taa(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "drop",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>"
+   ]
+  },
+  "calculate_tgsr": {
+   "address": "0x140a3ba60",
+   "signature": "void __cdecl calculate_tgsr(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "create_raw_resource",
+    "drop",
+    "extent_2d",
+    "from",
+    "get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$>_>",
+    "get_resource_id",
+    "memcpy",
+    "min_subgroup_size",
+    "new<country_core::systems::render_loop::compute_passes::taa::TgsrMain>",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "sampled",
+    "storage",
+    "unwrap_failed",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>"
+   ]
+  },
+  "post_taa_transparency_pass": {
+   "address": "0x1409c40b0",
+   "signature": "void __cdecl post_taa_transparency_pass(void)",
+   "callees": [
+    "bind_common",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "default",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new",
+    "new_impl",
+    "panic_access_error",
+    "render",
+    "unwrap_failed"
+   ]
+  },
+  "render_shader_refactoring": {
+   "address": "0x14098f9f0",
+   "signature": "void __cdecl render_shader_refactoring(void)",
+   "callees": [
+    "read_contended",
+    "unwrap_failed",
+    "wake_writer_or_readers"
+   ]
+  },
+  "apply_volumetrics": {
+   "address": "0x1408a44c0",
+   "signature": "void __cdecl apply_volumetrics(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "drop",
+    "extent_2d",
+    "get_resource_id",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>"
+   ]
+  },
+  "dof_prepare": {
+   "address": "0x140a5a020",
+   "signature": "void __cdecl dof_prepare(void)",
+   "callees": [
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "create_raw_resource",
+    "div_up_extent",
+    "drop",
+    "extent_2d",
+    "format",
+    "from",
+    "memcpy",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "read_storage_buffer<country_core::systems::render_loop::compute_passes::dof_autofocus::DofAutofocusSsbo>",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>"
+   ]
+  },
+  "water_surface_pass": {
+   "address": "0x1409bf800",
+   "signature": "void __cdecl water_surface_pass(void)",
+   "callees": [
+    "bind_common",
+    "bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "clear_rg_buffer",
+    "create_raw_resource",
+    "default",
+    "dispatch_indirect_raw",
+    "drop",
+    "extent_2d",
+    "from",
+    "get_resource_id",
+    "memcpy",
+    "new",
+    "new<ref$<str$>_>",
+    "new_gpu_only",
+    "new_impl",
+    "panic_access_error",
+    "read_rg_storage_buffer",
+    "render",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "unwrap_failed",
+    "write_rg_storage_buffer",
+    "write_rg_storage_buffer",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>"
+   ]
+  },
+  "ice_surface_pass": {
+   "address": "0x1409c08d0",
+   "signature": "void __cdecl ice_surface_pass(void)",
+   "callees": [
+    "bind_common",
+    "bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>",
+    "bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref$<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_compute_pass<ref_mut$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>",
+    "bind_texture_to_draw_builder<ref$<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>",
+    "call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>",
+    "clear_rg_color_image",
+    "color_attachment",
+    "create_raw_resource",
+    "default",
+    "dispatch_indirect_raw",
+    "drop",
+    "extent_2d",
+    "format",
+    "from",
+    "from",
+    "get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$>_>",
+    "get_resource_id",
+    "half_res",
+    "memcpy",
+    "new",
+    "new",
+    "new<ref$<str$>_>",
+    "new_2d",
+    "new_gpu_only",
+    "new_impl",
+    "panic_access_error",
+    "read_rg_storage_buffer",
+    "render",
+    "render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl$0::dispatch_impl::closure_env$0>",
+    "rg_buffer_copy_from_slice<u32>",
+    "sampled",
+    "sampled_with_different_format",
+    "storage",
+    "unwrap_failed",
+    "unwrap_failed",
+    "usage",
+    "write_rg_storage_buffer",
+    "write_rg_storage_buffer",
+    "write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>",
+    "write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>"
+   ]
+  }
+ },
+ "shader_crosscheck": {
+  "shadow_pass": [
+   "_mei_shadow.raster.*.bin"
+  ],
+  "main_pass/main_pass_oc2": [
+   "_nani_*.raster.*.bin (uber, velocity_only, solid_vertex_color, instanced_roof, ...)"
+  ],
+  "generate_hzb": [
+   "_generate_hzb.cs.hlsl_cs_main_0.bin"
+  ],
+  "gpu_generate_draw_lists": [
+   "_nani_generate_draw_lists.cs.hlsl_cs_main_0.bin",
+   "_nani_clear_draw_lists.cs.hlsl_cs_main_0.bin",
+   "_nani_cull_and_bucket*.cs.hlsl_cs_main_*.bin",
+   "_nani_histogram_prefix_sum.cs.hlsl_cs_main_0.bin",
+   "_nani_subtotal_prefix_sum.cs.hlsl_cs_main_0.bin",
+   "_nani_allocate_draw_commands.cs.hlsl_cs_main_0.bin",
+   "_nani_draw_indexed_indirect_to_dispatch.cs.hlsl_cs_main_0.bin"
+  ],
+  "grass_compute": [
+   "_generate_grass.cs.hlsl_cs_main_0.bin",
+   "_grass_calc_tiles.cs.hlsl_cs_main_0.bin",
+   "_grass_tile_bundle_*.cs.hlsl_cs_main_0.bin",
+   "_grass_bundles_prefix.cs.hlsl_cs_main_0.bin",
+   "_grass_calc_dispatch_args.cs.hlsl_cs_main_0.bin"
+  ],
+  "extract_half_res_depth_normals": [
+   "_extract_half_res_depth_normals.cs.hlsl_cs_main_0.bin"
+  ],
+  "calculate_reprojection_map": [
+   "_calculate_reprojection_map.cs.hlsl_cs_main_0.bin"
+  ],
+  "calculate_ssgi": [
+   "_ssgi_ssgi.cs.hlsl_cs_main_0.bin",
+   "_ssgi_temporal_filter.cs.hlsl_cs_main_0.bin",
+   "_ssgi_upsample.cs.hlsl_cs_main_0.bin"
+  ],
+  "ray_trace_gi": [
+   "_gi_trace_gi_candidates.cs.hlsl_cs_main_0.bin",
+   "_gi_update_gi_radiance.cs.hlsl_cs_main_0.bin",
+   "_gi_reproject_screen_radiance.cs.hlsl_cs_main_0.bin",
+   "_gi_blur_screen_radiance.cs.hlsl_cs_main_0.bin"
+  ],
+  "eval_gi_screen_radiance": [
+   "_gi_eval_screen_radiance.cs.hlsl_cs_main_0.bin"
+  ],
+  "bin_lights": [
+   "_light_binning_bin_lights_to_cells.cs.hlsl_cs_main_*.bin",
+   "_light_binning_cell_prefix_sum.cs.hlsl_cs_main_0.bin"
+  ],
+  "apply_screen_shadows": [
+   "_apply_screen_shadows.cs.hlsl_cs_main_0.bin"
+  ],
+  "deferred_raster": [
+   "_deferred_solid_light_sun_sky.raster.*.bin",
+   "_deferred_grass_light_sun_sky.raster.*.bin",
+   "_deferred_plant_light_sun_sky.raster.*.bin",
+   "_deferred_canopy_light_sun_sky.raster.*.bin"
+  ],
+  "refraction_copy_pass": [
+   "_water_plane_refraction_copy.raster.*.bin",
+   "_waterfall_refraction_copy.raster.*.bin"
+  ],
+  "water_surface_pass": [
+   "_water_plane.raster.*.bin",
+   "_water_calc_deferred_rt_args.cs.hlsl_cs_main_0.bin",
+   "_water_deferred_rt.cs.hlsl_cs_main_0.bin",
+   "_water_draw_water_mask.cs.hlsl_cs_main_0.bin"
+  ],
+  "ice_surface_pass": [
+   "_water_ice_refl_march.cs.hlsl_cs_main_0.bin",
+   "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin",
+   "_water_ice_refr_resolve.cs.hlsl_cs_main_0.bin",
+   "_water_ice_deferred_rt.cs.hlsl_cs_main_0.bin",
+   "_water_ice_cracks.raster.*.bin"
+  ],
+  "compute_shadow_mask_mean": [
+   "_shadow_mask_mean.cs.hlsl_cs_main_0.bin"
+  ],
+  "apply_volumetrics": [
+   "_apply_volumetrics.cs.hlsl_cs_main_0.bin"
+  ],
+  "dof_prepare": [
+   "_dof_prepare.cs.hlsl_cs_main_0.bin",
+   "_dof_clear_halfres.cs.hlsl_cs_main_0.bin",
+   "_dof_init_buffers.cs.hlsl_cs_main_0.bin"
+  ],
+  "generate_mips": [
+   "_generate_mips.cs.hlsl_cs_main_0.bin"
+  ],
+  "calc_dof": [
+   "_dof_fused.cs.hlsl_cs_main_0.bin",
+   "_dof_halfres.cs.hlsl_cs_halfres_*.bin",
+   "_dof_fullres.cs.hlsl_cs_main_*.bin",
+   "_dof_fullres_upsample.cs.hlsl_cs_main_0.bin"
+  ],
+  "calculate_taa": [
+   "_taa.cs.hlsl_cs_main_0.bin"
+  ],
+  "calculate_tgsr": [
+   "_tgsr.cs.hlsl_cs_main_*.bin",
+   "_tgsr_blur_lum.cs.hlsl_cs_main_0.bin",
+   "_tgsr_reproject.cs.hlsl_cs_main_0.bin"
+  ],
+  "stairs": [
+   "_rocky_terrain_stairs_stairs.cs.hlsl_cs_main_0.bin",
+   "_rocky_terrain_stairs_stairs_indirect.raster.*.bin"
+  ],
+  "roof_tiles_gravity_compute": [
+   "_roof_tiles_gravity.cs.hlsl_cs_main_0.bin"
+  ],
+  "path_pebbles_compute": [
+   "_path_pebbles.cs.hlsl_cs_main_0.bin"
+  ],
+  "leaf_particles_compute": [
+   "_leaf_particles.cs.hlsl_cs_main_0.bin"
+  ],
+  "rasterize_buildings": [
+   "_rasterize_buildings.cs.hlsl_cs_main_0.bin",
+   "_rasterize_buildings_animate.cs.hlsl_cs_main_0.bin"
+  ],
+  "rasterize_terrain_stroke": [
+   "_terrain_editing_rasterize_terrain_stroke.cs.hlsl_cs_main_0.bin"
+  ],
+  "displace_rocky_terrain": [
+   "_rocky_terrain_displace_rocky_terrain.cs.hlsl_cs_main_0.bin"
+  ],
+  "mouse_depth_compute": [
+   "_read_mouse_depth_value.cs.hlsl_cs_main_0.bin"
+  ],
+  "calc_terrain_lighting_texture": [
+   "_terrain_lighting_texture.cs.hlsl_cs_main_0.bin"
+  ],
+  "garden_spawn_vegetation": [
+   "_garden_spawn_bushes_garden.cs.hlsl_cs_main_0.bin",
+   "_garden_spawn_flowers_garden.cs.hlsl_cs_main_0.bin",
+   "_garden_spawn_small_flowers_garden.cs.hlsl_cs_main_0.bin"
+  ]
+ },
+ "branches": [
+  [
+   "render_world",
+   "discriminant cStack_154",
+   "line 200: if !=2 run whole frame body else panic unwrap_failed; ==2 treated as error tag (Inference)"
+  ],
+  [
+   "render_world",
+   "is_winter",
+   "0x140ae8320 (GladeType::is_winter / BackupSaveFileKind::is_corrupted alias) selects water_surface_pass vs ice_surface_pass (CONFIRMED dispatch)"
+  ],
+  [
+   "render_world",
+   "global *0x14362c0d8",
+   "==0 gates generate_wall_draw_lists_pass2 + gpu_generate_draw_lists round 2 (post-HZB) (CONFIRMED)"
+  ],
+  [
+   "render_world",
+   "global *0x14362c098",
+   "==0 gates refraction_copy_pass + water/ice surface dispatch (CONFIRMED)"
+  ],
+  [
+   "render_world",
+   "byte param_6+0xa9[+(res_type==0x13?1:0)]",
+   "!=0 gates generate_mips + calc_dof (CONFIRMED DoF switch)"
+  ],
+  [
+   "render_world",
+   "byte param_6+0xab",
+   "==0 -> calculate_taa else calculate_tgsr (CONFIRMED TAA/TGSR choice); also picks GI temporal-pair extent source"
+  ],
+  [
+   "render",
+   "mode byte settings+0xac",
+   "selects compile instance 0x1401647b0 (==0) vs 0x140161cd0 render_world graph (!=0)"
+  ],
+  [
+   "render",
+   "acquire result byte == 7",
+   "skips present this frame (validate_swapchain_and_acquire_image result)"
+  ]
+ ]
+}
