@@ -15,10 +15,44 @@ pub struct ExecutionChain {
     queue_failure: bool,
     graph_queue_domain: Option<sequence::Queue>,
     pool_family_count: u32,
+    /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
+    pub parallel: crate::rg::parallel::ParallelRecording,
+    /// 原作双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
+    pub pgo: PassPgoFrames,
+}
+
+/// 一个 batch 的并行录制输入。
+struct ChunkedBatch<'a, C> {
+    recorder: &'a mut record::Recorder,
+    passes: &'a mut [record::Pass],
+    callbacks: &'a mut [C],
+    first_pass: usize,
+    chunks: &'a [std::ops::Range<usize>],
+    final_batch: bool,
+    compiled: &'a crate::rg::graph::CompiledGraph,
+    logical_handles: &'a [Option<sequence::ResourceHandle>],
+    managed: Option<&'a std::sync::Arc<crate::rg::pass_bindings::ManagedPassResources>>,
+    pass_names: &'a [PassPgoNameId],
+    family: u32,
+    queue: sequence::Queue,
+}
+/// 单块的独占工作单元。
+struct ChunkWork<'a, C> {
+    command: &'a sequence::Command,
+    start: usize,
+    callbacks: &'a mut [C],
+    transitions: &'a [Vec<ChunkTransition>],
+}
+struct ChunkResult {
+    ok: bool,
+    durations: Vec<PassPgoDuration>,
+    owners: Vec<crate::raw::binding::ResourceOwner>,
 }
 
 #[derive(Debug)]
 pub enum Error {
+    /// 并行录制的分块或规划无效，或后端未提供并行视图。
+    ChunkPlan,
     Begin(sequence::BeginFailure),
     Lifecycle(sequence::Failure),
     Record(record::Outcome),
@@ -80,6 +114,49 @@ impl GraphBatchSync {
     }
 }
 
+/// 并行块内发出的一条 pass 前屏障；`token` 为物理资源 token。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChunkTransition {
+    pub token: u64,
+    pub from: u8,
+    pub to: u8,
+}
+
+/// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方独占的命令缓冲。
+pub trait ChunkRecorder: Sync {
+    /// 把一个 pass 的全部屏障合成一次屏障命令写入 `command`；返回 false 表示资源或访问码无效。
+    fn record_transitions(&self, command: u64, transitions: &[ChunkTransition]) -> bool;
+}
+
+/// 一次图执行的阶段耗时与分块统计（性能追踪用）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ExecutionStats {
+    pub compile_ns: u64,
+    pub record_ns: u64,
+    pub submit_ns: u64,
+    pub batches: u32,
+    /// 走并行路径的 batch 数及其总块数（串行 batch 不计块）。
+    pub parallel_batches: u32,
+    pub chunks: u32,
+    /// 本次执行发出的屏障命令数（每个非空屏障作用域一次 `vkCmdPipelineBarrier`）。
+    pub barrier_commands: u32,
+    /// 本次执行包含的访问转换总数（屏障命令里的 buffer/image 屏障条目）。
+    pub barrier_transitions: u32,
+}
+impl ExecutionStats {
+    /// 从录制器事件统计屏障：`barrier:*` 是一个转换，`emit:*` 是一次非空屏障命令。
+    /// 串行与并行录制共用同一套事件，所以两条路径的计数必须相同。
+    fn count_barriers(&mut self, events: &[String]) {
+        for event in events {
+            if event.starts_with("barrier:") {
+                self.barrier_transitions += 1;
+            } else if event.starts_with("emit:") {
+                self.barrier_commands += 1;
+            }
+        }
+    }
+}
+
 pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     /// 包括 Pool 命中与导入资源；运行回调前重新发布真实物理映射。
     fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::CompiledGraph) -> bool {
@@ -118,6 +195,10 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     ) -> Option<sequence::ResourceHandle>;
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
     fn command_handle(&mut self) -> Result<u64, sequence::Failure>;
+    /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块来自不同命令池。
+    fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, sequence::Failure> {
+        self.command_handle()
+    }
     fn begin_command(&mut self, handle: u64) -> Result<(), sequence::Failure>;
     fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
     /// CPU 后端可只记录投影；实际后端必须发出 Vulkan 屏障。
@@ -128,6 +209,10 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         true
     }
     fn submit(&mut self, queue: vk::Queue, prepared: &[submit::PreparedSubmit]) -> (i32, bool);
+    /// 支持并行录制的后端返回只读视图；返回 None 时执行器始终走串行路径。
+    fn chunk_recorder(&self) -> Option<Box<dyn ChunkRecorder + '_>> {
+        None
+    }
 }
 
 pub struct GraphExecution {
@@ -135,6 +220,7 @@ pub struct GraphExecution {
     pub receipts: Vec<sequence::SubmissionReceipt>,
     pub resources: Vec<sequence::ResourceHandle>,
     pub recorder_events: Vec<String>,
+    pub stats: ExecutionStats,
 }
 
 /// 本次录制的命令和编译图；绑定消费者不能另外分配序号或重新构造资源映射。
@@ -159,14 +245,10 @@ impl PassContext<'_> {
     }
 }
 
-fn access(
-    record: &crate::rg::graph::ResourceAccessRecord,
-    dependency: &mut impl crate::rg::graph::AccessDependency,
-) -> crate::raw::barrier::Access {
+fn access(record: &crate::rg::graph::ResourceAccessRecord) -> crate::raw::barrier::Access {
     crate::raw::barrier::Access {
         code: record.access_code,
         group: record.synchronization_group,
-        write: dependency.is_write(record.access_code),
     }
 }
 
@@ -178,7 +260,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(u64) -> bool],
+        callbacks: &mut [impl FnMut(u64) -> bool + Send],
     ) -> Result<GraphExecution, Error> {
         let mut contextual = callbacks
             .iter_mut()
@@ -194,8 +276,23 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool],
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
     ) -> Result<GraphExecution, Error> {
+        let result = self.execute_graph_inner(graph, pool, dependency, backend, callbacks);
+        // 原 end_frame：本帧耗时成为下一帧的分块依据。
+        self.pgo.end_frame();
+        result
+    }
+
+    fn execute_graph_inner(
+        &mut self,
+        graph: crate::rg::graph::GraphDeclaration,
+        pool: &mut crate::rg::graph::Pool,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+    ) -> Result<GraphExecution, Error> {
+        let mut stats = ExecutionStats::default();
         if callbacks.len() != graph.passes.len() {
             return Err(Error::CallbackCount);
         }
@@ -215,8 +312,16 @@ impl ExecutionChain {
             return Err(Error::UnsupportedQueueDomainSwitch);
         }
         self.graph_queue_domain = Some(queue);
+        let compile_start = std::time::Instant::now();
         let compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)
             .map_err(Error::Compile)?;
+        stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
+        let pass_names = compiled
+            .declarations
+            .passes
+            .iter()
+            .map(|pass| PassPgoNameId::from_name(&pass.name))
+            .collect::<Vec<_>>();
         if !backend.prepare_compiled_resources(&compiled) {
             return Err(Error::ResourceUnavailable(usize::MAX));
         }
@@ -227,9 +332,9 @@ impl ExecutionChain {
         if synchronization.iter().any(|s| !s.valid()) {
             return Err(Error::InvalidSynchronization);
         }
-        let resolve_access = |index: u32, dependency: &mut _| {
+        let resolve_access = |index: u32| {
             (index != crate::rg::graph::NO_ACCESS)
-                .then(|| access(&compiled.info.accesses[index as usize], dependency))
+                .then(|| access(&compiled.info.accesses[index as usize]))
         };
         let mut resources = Vec::new();
         let mut logical_handles = Vec::new();
@@ -269,8 +374,8 @@ impl ExecutionChain {
                     reused: mapping.reused,
                     validity: 0,
                 },
-                first: resolve_access(lifetime.first_access_index, dependency),
-                last: resolve_access(lifetime.last_access_index, dependency),
+                first: resolve_access(lifetime.first_access_index),
+                last: resolve_access(lifetime.last_access_index),
                 export_access: compiled
                     .declarations
                     .exports
@@ -289,8 +394,8 @@ impl ExecutionChain {
                     .iter()
                     .map(|current| record::PassAccess {
                         resource: current.resource_index as usize,
-                        previous: resolve_access(current.previous_access_index, dependency),
-                        current: access(current, dependency),
+                        previous: resolve_access(current.previous_access_index),
+                        current: access(current),
                     })
                     .collect(),
                 callback_present: true,
@@ -302,6 +407,7 @@ impl ExecutionChain {
                 receipts: vec![],
                 resources,
                 recorder_events: vec![],
+                stats,
             });
         }
         let first_handle = backend.command_handle().map_err(Error::Lifecycle)?;
@@ -341,61 +447,114 @@ impl ExecutionChain {
                     }
                 }
             }
-            let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-            let new = self.begin(handle, family, queue, backend.begin_command(handle))?;
-            backend.command_started(&new).map_err(Error::Lifecycle)?;
-            let start = batch.pass_range.start;
-            let owners = std::cell::RefCell::new(Vec::new());
-            if let Some(resources) = &managed {
-                owners
-                    .borrow_mut()
-                    .push(resources.clone() as crate::raw::binding::ResourceOwner);
-            }
-            let outcome = self.record_optional_resources(
-                &mut recorder,
-                &mut passes[batch.pass_range.clone()],
-                batch.export_barriers,
-                &new,
-                &logical_handles,
-                |action| match action {
-                    record::RecordAction::Pass(offset) => {
-                        if !backend.flush_barriers(handle) {
-                            return false;
+            let record_start = std::time::Instant::now();
+            stats.batches += 1;
+            let worth_it = self.pgo.previous.total_ns() >= self.parallel.min_total_ns
+                && (self.parallel.min_total_ns == 0 || !self.pgo.previous.is_empty());
+            let chunks = if worth_it && backend.chunk_recorder().is_some() {
+                crate::rg::parallel::plan_chunks(
+                    self.parallel.strategy,
+                    &pass_names[batch.pass_range.clone()],
+                    &self.pgo.previous,
+                    // 候选约束位：当前每个图 pass 自成完整 render pass 实例，任意边界都可切。
+                    &[],
+                )
+            } else {
+                std::iter::once(0..batch.pass_range.len()).collect()
+            };
+            let last_command = if chunks.len() > 1 {
+                stats.parallel_batches += 1;
+                stats.chunks += chunks.len() as u32;
+                let outcome = self.record_chunked_batch(
+                    ChunkedBatch {
+                        recorder: &mut recorder,
+                        passes: &mut passes[batch.pass_range.clone()],
+                        callbacks: &mut callbacks[batch.pass_range.clone()],
+                        first_pass: batch.pass_range.start,
+                        chunks: &chunks,
+                        final_batch: batch.export_barriers,
+                        compiled: &compiled,
+                        logical_handles: &logical_handles,
+                        managed: managed.as_ref(),
+                        pass_names: &pass_names,
+                        family,
+                        queue,
+                    },
+                    backend,
+                )?;
+                stats.count_barriers(&outcome.1.events);
+                events.extend(outcome.1.events);
+                outcome.0
+            } else {
+                let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+                let new = self.begin(handle, family, queue, backend.begin_command(handle))?;
+                backend.command_started(&new).map_err(Error::Lifecycle)?;
+                let start = batch.pass_range.start;
+                let owners = std::cell::RefCell::new(Vec::new());
+                let mut durations = Vec::new();
+                if let Some(resources) = &managed {
+                    owners
+                        .borrow_mut()
+                        .push(resources.clone() as crate::raw::binding::ResourceOwner);
+                }
+                let outcome = self.record_optional_resources(
+                    &mut recorder,
+                    &mut passes[batch.pass_range.clone()],
+                    batch.export_barriers,
+                    &new,
+                    &logical_handles,
+                    |action| match action {
+                        record::RecordAction::Pass(offset) => {
+                            if !backend.flush_barriers(handle) {
+                                return false;
+                            }
+                            let pass_index = start + offset;
+                            let timer = std::time::Instant::now();
+                            let ok = callbacks[pass_index](PassContext {
+                                pass_index,
+                                command: &new,
+                                compiled: &compiled,
+                                logical_resources: &logical_handles,
+                                managed: managed.as_deref(),
+                                owners: &owners,
+                            });
+                            durations.push(PassPgoDuration::new(
+                                pass_names[pass_index],
+                                timer.elapsed().as_nanos() as u64,
+                            ));
+                            ok
                         }
-                        let pass_index = start + offset;
-                        callbacks[pass_index](PassContext {
-                            pass_index,
-                            command: &new,
-                            compiled: &compiled,
-                            logical_resources: &logical_handles,
-                            managed: managed.as_deref(),
-                            owners: &owners,
-                        })
-                    }
-                    record::RecordAction::End(command) => {
-                        backend.end_command(vk::CommandBuffer::from_raw(command))
-                    }
-                    record::RecordAction::Transition {
-                        command,
-                        resource,
-                        from,
-                        to,
-                    } => {
-                        let backing = compiled.registry.resources[resource].backing_index;
-                        let token = crate::rg::graph::payload_projection(
-                            &compiled.registry.backing_resources[backing as usize],
-                        )
-                        .1
-                        .unwrap();
-                        backend.transition(command, token, from, to)
-                    }
-                },
-            );
-            if !backend.retain_command_owners(handle, owners.into_inner()) {
-                return Err(Error::MissingCommand(handle));
-            }
-            let outcome = outcome?;
+                        record::RecordAction::End(command) => {
+                            backend.end_command(vk::CommandBuffer::from_raw(command))
+                        }
+                        record::RecordAction::Transition {
+                            command,
+                            resource,
+                            from,
+                            to,
+                        } => {
+                            let backing = compiled.registry.resources[resource].backing_index;
+                            let token = crate::rg::graph::payload_projection(
+                                &compiled.registry.backing_resources[backing as usize],
+                            )
+                            .1
+                            .unwrap();
+                            backend.transition(command, token, from, to)
+                        }
+                    },
+                );
+                if !backend.retain_command_owners(handle, owners.into_inner()) {
+                    return Err(Error::MissingCommand(handle));
+                }
+                for duration in durations {
+                    self.pgo.current.record(duration);
+                }
+                let outcome = outcome?;
+                stats.count_barriers(&outcome.events);
             events.extend(outcome.events);
+                new
+            };
+            stats.record_ns += record_start.elapsed().as_nanos() as u64;
             if batch.export_barriers {
                 for export in &compiled.declarations.exports {
                     self.lifecycle
@@ -403,7 +562,7 @@ impl ExecutionChain {
                             logical_handles[export.resource_index as usize].ok_or(
                                 Error::ResourceUnavailable(export.resource_index as usize),
                             )?,
-                            &new,
+                            &last_command,
                         )
                         .map_err(Error::Lifecycle)?;
                 }
@@ -414,6 +573,7 @@ impl ExecutionChain {
                 .last()
                 .map(|c| c.handle)
                 .ok_or(Error::EmptyCommands)?;
+            let submit_start = std::time::Instant::now();
             let end_ok = backend.end_command(vk::CommandBuffer::from_raw(ended));
             let (receipt, _) = self.submit_recorded_with_sync(
                 &mut recorder,
@@ -421,6 +581,7 @@ impl ExecutionChain {
                 |_| end_ok,
                 |queue, prepared| backend.submit(queue, prepared),
             )?;
+            stats.submit_ns += submit_start.elapsed().as_nanos() as u64;
             receipts.push(receipt);
             if !backend.collect_managed_waste() {
                 return Err(Error::ManagedResourceUnresolved(usize::MAX));
@@ -437,6 +598,7 @@ impl ExecutionChain {
             receipts,
             resources,
             recorder_events: events,
+            stats,
         })
     }
     pub fn new(auxiliary_count: u32, family_count: u32, device: submit::DeviceState) -> Self {
@@ -448,6 +610,8 @@ impl ExecutionChain {
             queue_failure: false,
             graph_queue_domain: None,
             pool_family_count: family_count,
+            parallel: Default::default(),
+            pgo: Default::default(),
         }
     }
 
@@ -503,7 +667,16 @@ impl ExecutionChain {
         }
         let outcome =
             recorder.record_batch(passes, final_batch, command.record_command(), boundary);
-        // 回调失败仍导入之前已发生的资源跟踪，不回滚。
+        self.finish_record(recorder, outcome, resources)
+    }
+
+    /// 录制后处理：导入资源跟踪（回调失败也不回滚）、panic 转错误、同步命令状态快照。
+    fn finish_record(
+        &mut self,
+        recorder: &record::Recorder,
+        outcome: record::Outcome,
+        resources: &[Option<sequence::ResourceHandle>],
+    ) -> Result<record::Outcome, Error> {
         for (logical, handle) in recorder.resources.iter().zip(resources) {
             let Some(handle) = handle else {
                 continue;
@@ -523,6 +696,177 @@ impl ExecutionChain {
             snapshot.set_state(recorded.state);
         }
         Ok(outcome)
+    }
+
+    /// 并行录制一个 batch：串行开命令并规划屏障 → 任务池按块并行录制 → 串行收尾。
+    /// 与原 `record_batch` 同形：串行段构造屏障，每块一条命令缓冲，块内逐 pass 发屏障、调回调、计时。
+    fn record_chunked_batch<C>(
+        &mut self,
+        batch: ChunkedBatch<'_, C>,
+        backend: &mut impl ExecutionBackend,
+    ) -> Result<(sequence::Command, record::Outcome), Error>
+    where
+        C: FnMut(PassContext<'_>) -> bool + Send,
+    {
+        let ChunkedBatch {
+            recorder,
+            passes,
+            callbacks,
+            first_pass,
+            chunks,
+            final_batch,
+            compiled,
+            logical_handles,
+            managed,
+            pass_names,
+            family,
+            queue,
+        } = batch;
+        if chunks.iter().map(|r| r.len()).sum::<usize>() != passes.len()
+            || chunks.iter().any(|r| r.is_empty())
+        {
+            return Err(Error::ChunkPlan);
+        }
+        let token_of = |resource: usize| {
+            let backing = compiled.registry.resources[resource].backing_index;
+            crate::rg::graph::payload_projection(&compiled.registry.backing_resources[backing as usize])
+                .1
+                .unwrap()
+        };
+        // 串行：每块一条命令缓冲（每块一个独立命令池，Vulkan 要求命令池外部同步）。
+        let mut begun = Vec::with_capacity(chunks.len());
+        for index in 0..chunks.len() {
+            let handle = backend.chunk_command_handle(index).map_err(Error::Lifecycle)?;
+            let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
+            backend.command_started(&command).map_err(Error::Lifecycle)?;
+            begun.push(command);
+        }
+        let record_commands = begun.iter().map(|c| c.record_command()).collect::<Vec<_>>();
+        let mut chunk_of_pass = vec![0usize; passes.len()];
+        for (index, range) in chunks.iter().enumerate() {
+            for pass in range.clone() {
+                chunk_of_pass[pass] = index;
+            }
+        }
+        // 串行：初始屏障、资源跟踪、pass 前屏障规划。
+        let (plan, mut outcome) = recorder.plan_chunked_batch(
+            passes,
+            &record_commands,
+            &chunk_of_pass,
+            |action| match action {
+                record::RecordAction::Transition {
+                    command,
+                    resource,
+                    from,
+                    to,
+                } => backend.transition(command, token_of(resource), from, to),
+                _ => true,
+            },
+        );
+        if outcome.panic {
+            self.finish_record(recorder, outcome, logical_handles)?;
+            return Err(Error::ChunkPlan);
+        }
+        let transitions = plan
+            .iter()
+            .map(|list| {
+                list.iter()
+                    .map(|t| ChunkTransition {
+                        token: token_of(t.resource),
+                        from: t.from,
+                        to: t.to,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        // 并行：块间互不重叠，各自独占命令缓冲、回调切片与 owner 列表。
+        let mut work = Vec::with_capacity(chunks.len());
+        let mut rest = callbacks;
+        for (range, command) in chunks.iter().zip(&begun) {
+            let (head, tail) = std::mem::take(&mut rest).split_at_mut(range.len());
+            rest = tail;
+            work.push(ChunkWork {
+                command,
+                start: range.start,
+                callbacks: head,
+                transitions: &transitions[range.clone()],
+            });
+        }
+        let results = {
+            let view = backend.chunk_recorder().ok_or(Error::ChunkPlan)?;
+            let view = &*view;
+            self.parallel.runner.map_chunks(&mut work, |_, work| {
+                let owners = std::cell::RefCell::new(Vec::new());
+                if let Some(resources) = managed {
+                    owners
+                        .borrow_mut()
+                        .push(resources.clone() as crate::raw::binding::ResourceOwner);
+                }
+                let mut durations = Vec::new();
+                let mut ok = true;
+                for (offset, callback) in work.callbacks.iter_mut().enumerate() {
+                    if !view.record_transitions(work.command.handle(), &work.transitions[offset]) {
+                        ok = false;
+                        break;
+                    }
+                    let pass_index = first_pass + work.start + offset;
+                    let timer = std::time::Instant::now();
+                    let good = callback(PassContext {
+                        pass_index,
+                        command: work.command,
+                        compiled,
+                        logical_resources: logical_handles,
+                        managed: managed.map(|m| &**m),
+                        owners: &owners,
+                    });
+                    durations.push(PassPgoDuration::new(
+                        pass_names[pass_index],
+                        timer.elapsed().as_nanos() as u64,
+                    ));
+                    if !good {
+                        ok = false;
+                        break;
+                    }
+                }
+                ChunkResult {
+                    ok,
+                    durations,
+                    owners: owners.into_inner(),
+                }
+            })
+        };
+        // 串行：按块顺序合并耗时与 owner。
+        let mut failed = false;
+        for (command, result) in begun.iter().zip(results) {
+            for duration in result.durations {
+                self.pgo.current.record(duration);
+            }
+            if !backend.retain_command_owners(command.handle(), result.owners) {
+                return Err(Error::MissingCommand(command.handle()));
+            }
+            failed |= !result.ok;
+        }
+        if failed {
+            outcome.panic = true;
+        } else {
+            recorder.finish_chunked_batch(&mut outcome, record_commands, final_batch, |action| {
+                match action {
+                    record::RecordAction::End(command) => {
+                        backend.end_command(vk::CommandBuffer::from_raw(command))
+                    }
+                    record::RecordAction::Transition {
+                        command,
+                        resource,
+                        from,
+                        to,
+                    } => backend.transition(command, token_of(resource), from, to),
+                    record::RecordAction::Pass(_) => true,
+                }
+            });
+        }
+        let outcome = self.finish_record(recorder, outcome, logical_handles)?;
+        let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
+        Ok((last, outcome))
     }
 
     /// 接管命令所有权、结束最后开放命令、构造队列契约，再转移真实每命令阈值。
@@ -696,34 +1040,70 @@ impl PassPgoDuration {
     }
 }
 
-/// 跨帧聚合的 pass PGO 统计；reset 清空、extend 合并另一份统计。
-#[derive(Debug, Default)]
+/// 一帧的 pass PGO 统计。原作布局（0x40 字节）：按名字的耗时表、`total_ns@0x30`、`max_ns@0x38`；
+/// `record_batch` 读上一帧统计做分块，合并各块耗时时 `total += d`、`max = max(max, d)`。
+#[derive(Clone, Debug, Default)]
 pub struct PassPgoStats {
     counts: std::collections::HashMap<PassPgoNameId, u64>,
-    total_ns: std::collections::HashMap<PassPgoNameId, u64>,
+    durations: std::collections::HashMap<PassPgoNameId, u64>,
+    total_ns: u64,
+    max_ns: u64,
 }
 impl PassPgoStats {
     pub fn reset(&mut self) {
         self.counts.clear();
-        self.total_ns.clear();
+        self.durations.clear();
+        self.total_ns = 0;
+        self.max_ns = 0;
     }
     pub fn extend(&mut self, other: &Self) {
         for (id, count) in &other.counts {
             *self.counts.entry(*id).or_default() += count;
         }
-        for (id, ns) in &other.total_ns {
-            *self.total_ns.entry(*id).or_default() += ns;
+        for (id, ns) in &other.durations {
+            *self.durations.entry(*id).or_default() += ns;
         }
+        self.total_ns = self.total_ns.saturating_add(other.total_ns);
+        self.max_ns = self.max_ns.max(other.max_ns);
     }
+    /// 原 `duration_ns`：没有记录时返回 0（原作分块按 0 计）。
     pub fn duration_ns(&self, id: PassPgoNameId) -> u64 {
-        self.total_ns.get(&id).copied().unwrap_or(0)
+        self.get(id).unwrap_or(0)
+    }
+    pub fn get(&self, id: PassPgoNameId) -> Option<u64> {
+        self.durations.get(&id).copied()
     }
     pub fn call_count(&self, id: PassPgoNameId) -> u64 {
         self.counts.get(&id).copied().unwrap_or(0)
     }
+    pub fn is_empty(&self) -> bool {
+        self.durations.is_empty()
+    }
+    pub fn total_ns(&self) -> u64 {
+        self.total_ns
+    }
+    pub fn max_ns(&self) -> u64 {
+        self.max_ns
+    }
     pub fn record(&mut self, duration: PassPgoDuration) {
         *self.counts.entry(duration.name).or_default() += 1;
-        *self.total_ns.entry(duration.name).or_default() += duration.duration_ns;
+        *self.durations.entry(duration.name).or_default() += duration.duration_ns;
+        self.total_ns = self.total_ns.saturating_add(duration.duration_ns);
+        self.max_ns = self.max_ns.max(duration.duration_ns);
+    }
+}
+
+/// 原 `GraphExecutionRecorder::end_frame`（0x140bec400）交换两份统计并清空新的本帧：
+/// 分块严格依据上一帧，统计不跨帧累积。
+#[derive(Clone, Debug, Default)]
+pub struct PassPgoFrames {
+    pub previous: PassPgoStats,
+    pub current: PassPgoStats,
+}
+impl PassPgoFrames {
+    pub fn end_frame(&mut self) {
+        std::mem::swap(&mut self.previous, &mut self.current);
+        self.current.reset();
     }
 }
 

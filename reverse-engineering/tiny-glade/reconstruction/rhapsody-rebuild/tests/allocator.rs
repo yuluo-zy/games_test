@@ -152,3 +152,31 @@ fn wrapper_disabled_peak_and_counter_overflow_are_explicit() {
     );
     assert_eq!(stats.report(), before);
 }
+
+#[test]
+fn lazy_peak_snapshot_matches_state_at_the_moment_of_peak() {
+    use ash::vk;
+    use rhapsody::raw::allocator::AllocatorStats;
+    let stats = AllocatorStats::default();
+    let reg = |size| {
+        stats
+            .register(size, 0, 0, vk::MemoryPropertyFlags::DEVICE_LOCAL, String::new())
+            .unwrap()
+    };
+    let (a, b, c) = (reg(100), reg(200), reg(300));
+    // 到达峰值(600)后尚未物化即释放：快照必须仍是三条记录。
+    stats.release(b).unwrap();
+    let peak = stats.peak_allocator_report().unwrap();
+    assert_eq!(peak.totals.total_allocated_bytes, 600);
+    assert_eq!(peak.allocations.iter().map(|r| r.id).collect::<Vec<_>>(), vec![a, b, c]);
+    // 未超过峰值的登记不改写快照。
+    let d = reg(50);
+    assert_eq!(stats.peak_allocator_report().unwrap(), peak);
+    // 超过峰值：快照更新为当刻状态（a, c, d, e），且不被后续释放污染。
+    let e = reg(400);
+    stats.release(a).unwrap();
+    let new_peak = stats.peak_allocator_report().unwrap();
+    assert_eq!(new_peak.totals.total_allocated_bytes, 850);
+    assert_eq!(new_peak.allocations.iter().map(|r| r.id).collect::<Vec<_>>(), vec![a, c, d, e]);
+    assert_eq!(stats.peak_totals().total_allocated_bytes, 850);
+}

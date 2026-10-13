@@ -29,7 +29,7 @@ impl TimelineSemaphore {
 }
 impl Drop for TimelineSemaphore {
     fn drop(&mut self) {
-        let _ = self.device.wait_idle();
-        unsafe { self.device.device.destroy_semaphore(self.handle, None) }
+        self.device
+            .bury(super::graveyard::Doomed::Semaphore(self.handle));
     }
 }

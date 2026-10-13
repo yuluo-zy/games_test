@@ -17,9 +17,10 @@ use crate::raw::{
     submit, texture,
 };
 use ash::vk::{self, Handle};
+use parking_lot::{RwLock};
 use std::{
     collections::{BTreeMap, VecDeque},
-    sync::{Arc, RwLock},
+    sync::{Arc},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -95,7 +96,6 @@ impl ResourceResolver {
     pub fn get(&self, name: &str) -> Option<RawResource> {
         self.0
             .read()
-            .unwrap_or_else(|e| e.into_inner())
             .get(name)
             .copied()
     }
@@ -139,6 +139,10 @@ pub struct VulkanGraphBackend {
     frame_borrows: bool,
     frame_handles: Vec<lifecycle::ResourceHandle>,
     recycled_commands: Vec<u64>,
+    /// 每块一个命令池（Vulkan 要求录制命令的命令池外部同步）。槽 0 用主池，槽 k≥1 用 `chunk_pools[k-1]`。
+    chunk_pools: Vec<Arc<VulkanCommandPool>>,
+    /// 命令句柄所属的池槽，回收后仍回到同一个池。
+    command_slot: BTreeMap<u64, usize>,
     pub stores: ManagedResources,
     pass_resources: Option<Arc<super::pass_bindings::ManagedPassResources>>,
     managed_prefix: u64,
@@ -157,6 +161,93 @@ pub type TimelineSignal = (Arc<TimelineSemaphore>, u64);
 struct OwnedBatchSync {
     waits: Vec<TimelineWait>,
     signals: Vec<TimelineSignal>,
+}
+/// 把一次访问转换加入屏障作用域；串行 `transition` 与并行块共用，保证两条路径发出的屏障一致。
+fn add_transition(
+    scope: &mut crate::raw::barrier::SynchronizationScope,
+    accesses: &AccessTable,
+    resources: &BTreeMap<u64, GpuResource>,
+    token: u64,
+    from: u8,
+    to: u8,
+) -> bool {
+    let Some(source) = accesses.0.get(&from) else {
+        return false;
+    };
+    let Some(target) = accesses.0.get(&to) else {
+        return false;
+    };
+    scope.source_stages |= source.stages;
+    scope.destination_stages |= target.stages;
+    match resources.get(&token) {
+        Some(GpuResource::Buffer(buffer)) => {
+            let barrier = vk::BufferMemoryBarrier::default()
+                .src_access_mask(source.access)
+                .dst_access_mask(target.access)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .buffer(buffer.handle)
+                .offset(0)
+                .size(vk::WHOLE_SIZE);
+            scope.buffers.push(barrier);
+        }
+        Some(GpuResource::Image(image)) => {
+            let range = vk::ImageSubresourceRange::default()
+                .aspect_mask(crate::raw::format::vk_format_valid_aspect_flags(
+                    image.desc.format,
+                ))
+                .level_count(image.desc.mip_levels)
+                .layer_count(image.desc.array_layers);
+            let barrier = vk::ImageMemoryBarrier::default()
+                .src_access_mask(source.access)
+                .dst_access_mask(target.access)
+                .old_layout(source.layout)
+                .new_layout(target.layout)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .image(image.handle)
+                .subresource_range(range);
+            scope.images.push(barrier);
+        }
+        None => return false,
+    }
+    true
+}
+/// 并行录制时各块共享的只读视图：只读访问表与资源表，直接把每个 pass 的屏障写入块自己的命令缓冲。
+struct VulkanChunkView<'a> {
+    device: &'a ash::Device,
+    accesses: &'a AccessTable,
+    resources: &'a BTreeMap<u64, GpuResource>,
+}
+impl super::executor::ChunkRecorder for VulkanChunkView<'_> {
+    fn record_transitions(
+        &self,
+        command: u64,
+        transitions: &[super::executor::ChunkTransition],
+    ) -> bool {
+        if transitions.is_empty() {
+            return true;
+        }
+        let mut scope = crate::raw::barrier::SynchronizationScope::default();
+        for t in transitions {
+            if !add_transition(&mut scope, self.accesses, self.resources, t.token, t.from, t.to) {
+                return false;
+            }
+        }
+        // 与串行路径相同：每个 pass 一次屏障命令。
+        unsafe {
+            self.device.cmd_pipeline_barrier(
+                vk::CommandBuffer::from_raw(command),
+                scope.source_stages,
+                scope.destination_stages,
+                vk::DependencyFlags::empty(),
+                &scope.memory,
+                &scope.buffers,
+                &scope.images,
+            );
+        }
+        true
+    }
 }
 impl VulkanGraphBackend {
     pub fn new(device: Arc<VulkanDevice>, accesses: AccessTable) -> Result<Self, vk::Result> {
@@ -202,6 +293,8 @@ impl VulkanGraphBackend {
             frame_borrows: false,
             frame_handles: vec![],
             recycled_commands: vec![],
+            chunk_pools: vec![],
+            command_slot: BTreeMap::new(),
             stores: ManagedResources::new(),
             pass_resources: None,
             managed_prefix: 0,
@@ -209,6 +302,42 @@ impl VulkanGraphBackend {
             top_level_pool: None,
             top_level_started: false,
         })
+    }
+    /// 取第 `slot` 个命令池的命令：优先复用该池已完成的命令，否则新分配。
+    fn command_for_slot(&mut self, slot: usize) -> Result<u64, lifecycle::Failure> {
+        let position = self
+            .recycled_commands
+            .iter()
+            .rposition(|handle| self.command_slot.get(handle).copied().unwrap_or(0) == slot);
+        if let Some(position) = position {
+            let handle = self.recycled_commands.remove(position);
+            // recycled_commands 只在对应时间线 wait 完成后入池（见 wait/wait_frame），无需整设备 idle。
+            unsafe {
+                self.commands
+                    .get_mut(&handle)
+                    .ok_or(lifecycle::Failure::InvalidPendingState)?
+                    .reset_after_completion()
+            }
+            .map_err(|_| lifecycle::Failure::BackendReset)?;
+            return Ok(handle);
+        }
+        let pool = if slot == 0 {
+            self.pool.clone()
+        } else {
+            while self.chunk_pools.len() < slot {
+                let pool = VulkanCommandPool::new_for_family(self.device.clone(), self.family)
+                    .map_err(|_| lifecycle::Failure::InvalidPendingState)?;
+                self.chunk_pools.push(pool);
+            }
+            self.chunk_pools[slot - 1].clone()
+        };
+        let command = pool
+            .allocate()
+            .map_err(|_| lifecycle::Failure::InvalidPendingState)?;
+        let handle = command.handle.as_raw();
+        self.commands.insert(handle, command);
+        self.command_slot.insert(handle, slot);
+        Ok(handle)
     }
     pub fn selected_queue(&self) -> lifecycle::Queue {
         self.queue
@@ -411,7 +540,6 @@ impl VulkanGraphBackend {
         self.resolver
             .0
             .write()
-            .unwrap_or_else(|e| e.into_inner())
             .insert(name.into(), raw);
         Ok(())
     }
@@ -589,7 +717,6 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         self.resolver
             .0
             .write()
-            .unwrap_or_else(|e| e.into_inner())
             .insert(name.into(), raw);
         Ok(self.bind_import_owned_by(resource, self.family))
     }
@@ -610,7 +737,7 @@ impl ExecutionBackend for VulkanGraphBackend {
             };
             resolver.insert(declaration.name.clone(), raw);
         }
-        *self.resolver.0.write().unwrap_or_else(|e| e.into_inner()) = resolver;
+        *self.resolver.0.write() = resolver;
         self.pass_resources = match super::pass_bindings::ManagedPassResources::from_registry(
             self.device.clone(),
             &compiled.registry,
@@ -697,21 +824,17 @@ impl ExecutionBackend for VulkanGraphBackend {
         Some(handle)
     }
     fn command_handle(&mut self) -> Result<u64, lifecycle::Failure> {
-        if let Some(handle) = self.recycled_commands.pop() {
-            self.commands
-                .get_mut(&handle)
-                .ok_or(lifecycle::Failure::InvalidPendingState)?
-                .reset()
-                .map_err(|_| lifecycle::Failure::BackendReset)?;
-            return Ok(handle);
-        }
-        let command = self
-            .pool
-            .allocate()
-            .map_err(|_| lifecycle::Failure::InvalidPendingState)?;
-        let handle = command.handle.as_raw();
-        self.commands.insert(handle, command);
-        Ok(handle)
+        self.command_for_slot(0)
+    }
+    fn chunk_command_handle(&mut self, chunk: usize) -> Result<u64, lifecycle::Failure> {
+        self.command_for_slot(chunk)
+    }
+    fn chunk_recorder(&self) -> Option<Box<dyn super::executor::ChunkRecorder + '_>> {
+        Some(Box::new(VulkanChunkView {
+            device: &self.device.device,
+            accesses: &self.accesses,
+            resources: &self.resources,
+        }))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), lifecycle::Failure> {
         self.commands
@@ -751,53 +874,11 @@ impl ExecutionBackend for VulkanGraphBackend {
         true
     }
     fn transition(&mut self, command: u64, token: u64, from: u8, to: u8) -> bool {
-        let Some(source) = self.accesses.0.get(&from) else {
-            return false;
-        };
-        let Some(target) = self.accesses.0.get(&to) else {
-            return false;
-        };
         if !self.commands.contains_key(&command) {
             return false;
         }
         let scope = self.barriers.entry(command).or_default();
-        scope.source_stages |= source.stages;
-        scope.destination_stages |= target.stages;
-        {
-            match self.resources.get(&token) {
-                Some(GpuResource::Buffer(buffer)) => {
-                    let barrier = vk::BufferMemoryBarrier::default()
-                        .src_access_mask(source.access)
-                        .dst_access_mask(target.access)
-                        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .buffer(buffer.handle)
-                        .offset(0)
-                        .size(vk::WHOLE_SIZE);
-                    scope.buffers.push(barrier);
-                }
-                Some(GpuResource::Image(image)) => {
-                    let range = vk::ImageSubresourceRange::default()
-                        .aspect_mask(crate::raw::format::vk_format_valid_aspect_flags(
-                            image.desc.format,
-                        ))
-                        .level_count(image.desc.mip_levels)
-                        .layer_count(image.desc.array_layers);
-                    let barrier = vk::ImageMemoryBarrier::default()
-                        .src_access_mask(source.access)
-                        .dst_access_mask(target.access)
-                        .old_layout(source.layout)
-                        .new_layout(target.layout)
-                        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                        .image(image.handle)
-                        .subresource_range(range);
-                    scope.images.push(barrier);
-                }
-                None => return false,
-            }
-        }
-        true
+        add_transition(scope, &self.accesses, &self.resources, token, from, to)
     }
     fn submit(&mut self, queue: vk::Queue, prepared: &[submit::PreparedSubmit]) -> (i32, bool) {
         let mut timelines = prepared
@@ -823,8 +904,8 @@ impl ExecutionBackend for VulkanGraphBackend {
         let _guard = self
             .device
             .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+            .lock();
+        self.device.note_submit();
         let result = match unsafe {
             self.device
                 .device
@@ -916,6 +997,8 @@ pub struct SessionFrameReceipt {
     pub receipts: Vec<lifecycle::SubmissionReceipt>,
     pub snapshot: graph::Snapshot,
     pub command_sequences: Vec<u64>,
+    /// 本帧编译/录制/提交耗时与并行分块统计。
+    pub stats: super::executor::ExecutionStats,
 }
 struct PendingSessionFrame {
     frame: u64,
@@ -926,6 +1009,19 @@ struct PendingSessionFrame {
 
 /// 顺序录制的持久帧队列：同一个 backend、队列时间线、counter、资源池跨帧存活。
 /// 不扩张为原游戏并行调度策略；回调/提交失败进入停态，显式关闭后才释放拥有者。
+/// 执行期间若发生 panic 展开，把会话标记为已停止。
+struct PoisonOnUnwind<'a> {
+    poisoned: &'a mut Option<String>,
+    armed: bool,
+}
+impl Drop for PoisonOnUnwind<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            log::error!("渲染回调 panic，图会话被标记为 poisoned");
+            *self.poisoned = Some("渲染回调 panic，命令缓冲可能处于未完成录制状态".into());
+        }
+    }
+}
 pub struct VulkanGraphSession {
     pub backend: VulkanGraphBackend,
     pub chain: ExecutionChain,
@@ -940,7 +1036,9 @@ pub struct VulkanGraphSession {
 impl VulkanGraphSession {
     pub fn new(mut backend: VulkanGraphBackend) -> Self {
         backend.frame_borrows = true;
-        let chain = backend.new_execution_chain();
+        let mut chain = backend.new_execution_chain();
+        // 会话默认：原分块算法 + 轻帧退回串行（见 parallel.rs 的实测门槛）。
+        chain.parallel = super::parallel::ParallelRecording::ADAPTIVE;
         Self {
             backend,
             chain,
@@ -996,7 +1094,6 @@ impl VulkanGraphSession {
             .resolver
             .0
             .write()
-            .unwrap_or_else(|e| e.into_inner())
             .clear();
         self.backend.synchronization.clear();
         self.backend.graph_waits.clear();
@@ -1018,13 +1115,22 @@ impl VulkanGraphSession {
         self.backend.validate_graph(&declaration)?;
         let start = self.chain.lifecycle.events.len();
         let mut access = self.backend.accesses.clone();
-        match self.chain.execute_graph_with_context(
+        // 回调 panic 是展开而不是 Err，会绕过下面的 poisoned 处理并留下半录制的命令缓冲；
+        // 守卫在展开时把会话标记为已停止，后续 begin/execute 会明确拒绝而不是静默继续。
+        let mut guard = PoisonOnUnwind {
+            poisoned: &mut self.poisoned,
+            armed: true,
+        };
+        let executed = self.chain.execute_graph_with_context(
             declaration,
             &mut self.pool,
             &mut access,
             &mut self.backend,
             &mut callbacks,
-        ) {
+        );
+        guard.armed = false;
+        drop(guard);
+        match executed {
             Ok(execution) => {
                 self.backend.frame_handles.clear();
                 let frame = self.next_frame;
@@ -1046,6 +1152,7 @@ impl VulkanGraphSession {
                     receipts: execution.receipts.clone(),
                     snapshot: execution.compiled.snapshot.clone(),
                     command_sequences,
+                    stats: execution.stats,
                 };
                 self.end_frame(PendingSessionFrame {
                     frame,
@@ -1192,7 +1299,6 @@ impl VulkanGraphSession {
             .resolver
             .0
             .write()
-            .unwrap_or_else(|e| e.into_inner())
             .clear();
         for callback in self.failed_retire.drain(..) {
             callback();

@@ -1,11 +1,17 @@
 //! 七类 store 共用退役来源及销毁桶；CPU dispose 不直接代表 GPU 销毁。
-//! Arc/Vec 是安全候选布局，原 slab/Treiber 栈布局仍需另行还原。
+//! 槽位表用 `append_only_vec::AppendOnlyVec`（原作 `ManagedResourceStore::allocate` 经 `AppendOnlyVec::push`
+//! 追加 `ManagedResource<T>`，`get_maybe_tracked` 经其 `Index`/`len` 读取，PDB 注解可证）；
+//! 读取（`get`/`generation_at`）因此完全无锁。空闲链表与槽位内的句柄弱引用是候选布局：
+//! 原作 slot 内部布局未恢复（见 DEPENDENCY_AUDIT.md）。
 use super::handle::{Managed, ManagedInner};
 use super::tracking::{CommandKey, CommandState, ControlBlock, Failure, dispose_control_kind};
 use crate::raw::disposal::{CommandBufferDisposalBuckets, DestroyAction};
+use append_only_vec::AppendOnlyVec;
+use arc_swap::ArcSwapWeak;
+use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
 static NEXT_STORE: AtomicU64 = AtomicU64::new(1);
 static NEXT_GROUP: AtomicU32 = AtomicU32::new(1);
 
@@ -14,16 +20,17 @@ pub struct ResourceKey {
     /// 安全句柄代理，不冒充原 store/inner 指针 ABI。
     pub store: u64,
     pub index: u32,
-    pub generation: u32,
-    pub store_id: u16,
+    pub resource_checksum: u32,
+    pub device_id: u16,
     pub resource_tag: u8,
 }
 struct Slot<T: Send + Sync + 'static> {
-    control: Arc<Mutex<ControlBlock>>,
-    handle: Weak<ManagedInner<T>>,
+    control: Arc<ControlBlock>,
+    /// 当前占用该槽位的句柄；`ArcSwapWeak` 让读者无锁 `load`，复用槽位时 `store` 换入新句柄。
+    handle: ArcSwapWeak<ManagedInner<T>>,
 }
 
-/// 资源元数据投影；`checksum` 以 generation 为校验语义。
+/// 资源元数据投影；`checksum` 以 resource_checksum 为校验语义。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ManagedResourceMeta {
     pub key: ResourceKey,
@@ -46,7 +53,7 @@ pub trait AccessManagedResource {
 type DisposeTask = Box<dyn FnOnce(&SharedResources) -> Result<(), Failure> + Send>;
 struct Dropped {
     key: ResourceKey,
-    control: Arc<Mutex<ControlBlock>>,
+    control: Arc<ControlBlock>,
     task: Option<DisposeTask>,
 }
 impl Drop for Dropped {
@@ -63,7 +70,7 @@ struct LegacyReceipts {
     submitted: u64,
     completed: u64,
     commands: BTreeMap<u64, u64>,
-    trackers: Vec<Weak<Mutex<ControlBlock>>>,
+    trackers: Vec<Weak<ControlBlock>>,
 }
 impl LegacyReceipts {
     fn prune(&mut self) {
@@ -72,13 +79,7 @@ impl LegacyReceipts {
             let Some(control) = weak.upgrade() else {
                 return false;
             };
-            required.insert(
-                control
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .last_sequence
-                    .load(Ordering::SeqCst),
-            );
+            required.insert(control.last_sequence.load(Ordering::SeqCst));
             true
         });
         self.commands.retain(|sequence, threshold| {
@@ -87,7 +88,7 @@ impl LegacyReceipts {
     }
 }
 pub(crate) struct SharedResources {
-    store_id: u16,
+    device_id: u16,
     dropped: Mutex<Vec<Dropped>>,
     buckets: Mutex<CommandBufferDisposalBuckets>,
     /// 只接收现有 lifecycle 的连续已排出序号，不能从 timeline 猜造。
@@ -98,7 +99,7 @@ pub(crate) struct SharedResources {
 impl SharedResources {
     fn new() -> Arc<Self> {
         Arc::new(Self {
-            store_id: u16::try_from(NEXT_GROUP.fetch_add(1, Ordering::Relaxed))
+            device_id: u16::try_from(NEXT_GROUP.fetch_add(1, Ordering::Relaxed))
                 .expect("store id 超过 u16"),
             dropped: Mutex::new(Vec::new()),
             buckets: Mutex::new(CommandBufferDisposalBuckets::default()),
@@ -110,27 +111,21 @@ impl SharedResources {
         if sequence == 0 || sequence <= self.drained_prefix.load(Ordering::SeqCst) {
             return true;
         }
-        let legacy = self.legacy.lock().unwrap_or_else(|e| e.into_inner());
+        let legacy = self.legacy.lock();
         legacy
             .commands
             .get(&sequence)
             .is_some_and(|&threshold| threshold <= legacy.completed)
     }
     fn take_out_dropped_waste(&self) -> Result<usize, Failure> {
-        let mut dropped = self.dropped.lock().unwrap_or_else(|e| e.into_inner());
+        let mut dropped = self.dropped.lock();
         // 缺失 begin 桶是接线缺口；先检查，保留完整退役记录，不能静默提前析构。
         for record in dropped.iter() {
-            let sequence = record
-                .control
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .last_sequence
-                .load(Ordering::SeqCst);
+            let sequence = record.control.last_sequence.load(Ordering::SeqCst);
             if !self.already_drained(sequence)
                 && !self
                     .buckets
                     .lock()
-                    .unwrap_or_else(|e| e.into_inner())
                     .contains(sequence)
             {
                 return Err(Failure::MissingBucket);
@@ -147,7 +142,6 @@ impl SharedResources {
     fn begin_command_bucket(&self, sequence: u64) -> Result<(), Failure> {
         self.buckets
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .begin_command_bucket(sequence)
     }
     fn drain_completed_sequence(&self, sequence: u64) -> Result<usize, Failure> {
@@ -157,7 +151,6 @@ impl SharedResources {
         let actions = self
             .buckets
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .remove(sequence)
             .ok_or(Failure::MissingBucket)?;
         self.drained_prefix.store(sequence, Ordering::SeqCst);
@@ -173,7 +166,7 @@ impl SharedResources {
         timeline: u64,
         commands: &[CommandKey],
     ) -> Result<(), Failure> {
-        let mut state = self.legacy.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.legacy.lock();
         if commands.iter().any(|key| key.domain != 0) || state.queue.is_some_and(|old| old != queue)
         {
             return Err(Failure::CrossDomainMappingUnknown);
@@ -198,7 +191,6 @@ impl SharedResources {
             if !self
                 .buckets
                 .lock()
-                .unwrap_or_else(|e| e.into_inner())
                 .contains(key.sequence)
             {
                 self.begin_command_bucket(key.sequence)?;
@@ -210,7 +202,7 @@ impl SharedResources {
         Ok(())
     }
     fn complete(&self, queue: u32, timeline: u64) -> Result<(), Failure> {
-        let mut state = self.legacy.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.legacy.lock();
         if state.queue.is_some_and(|old| old != queue) {
             return Err(Failure::CrossDomainMappingUnknown);
         }
@@ -230,7 +222,6 @@ impl SharedResources {
             let actions = self
                 .buckets
                 .lock()
-                .unwrap_or_else(|e| e.into_inner())
                 .remove(sequence)
                 .unwrap_or_default();
             for action in actions {
@@ -244,9 +235,16 @@ impl SharedResources {
 pub(crate) struct ResourceState<T: Send + Sync + 'static> {
     store: u64,
     tag: u8,
-    slots: Vec<Slot<T>>,
-    available: Vec<u32>,
+    slots: AppendOnlyVec<Slot<T>>,
+    /// 空闲链表：只在分配/退役时短暂加锁，读路径不碰它。
+    available: Mutex<Vec<u32>>,
     shared: Arc<SharedResources>,
+}
+impl<T: Send + Sync + 'static> ResourceState<T> {
+    fn slot(&self, index: u32) -> Option<&Slot<T>> {
+        // `AppendOnlyVec` 的 `Index` 越界会 panic；`len` 只计入已完整写入的元素。
+        ((index as usize) < self.slots.len()).then(|| &self.slots[index as usize])
+    }
 }
 pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedInner<T>>) {
     let key = inner.key;
@@ -254,27 +252,22 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
     let resource = inner.resource.clone();
     let owner = inner.state.clone();
     let task: DisposeTask = Box::new(move |shared| {
-        let mut state = owner.lock().unwrap_or_else(|e| e.into_inner());
-        if key.store != state.store || key.store_id != shared.store_id {
+        let state = &*owner;
+        if key.store != state.store || key.device_id != shared.device_id {
             return Err(Failure::DeviceMismatch);
         }
         if key.resource_tag != state.tag {
             return Err(Failure::ResourceKindMismatch);
         }
-        let sequence = control
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .last_sequence
-            .load(Ordering::SeqCst);
+        let sequence = control.last_sequence.load(Ordering::SeqCst);
         let already_drained = shared.already_drained(sequence);
-        let mut control = control.lock().unwrap_or_else(|e| e.into_inner());
         let mut action: Option<DestroyAction> = Some(Box::new(move || drop(resource)));
         let mut immediate = None;
         dispose_control_kind(
-            &mut control,
-            key.generation,
-            key.store_id,
-            shared.store_id,
+            &control,
+            key.resource_checksum,
+            key.device_id,
+            shared.device_id,
             key.resource_tag,
             state.tag,
             || {
@@ -284,7 +277,6 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
                 } else if let Err(action) = shared
                     .buckets
                     .lock()
-                    .unwrap_or_else(|e| e.into_inner())
                     .append_existing(sequence, action)
                 {
                     std::mem::forget(action);
@@ -293,10 +285,8 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
                 Ok(())
             },
         )?;
-        // 原 dispose<T> 在 inner 内递增 generation，然后把该 inner 回 free-list。
-        state.available.push(key.index);
-        drop(control);
-        drop(state);
+        // 原 dispose<T> 在 inner 内递增 resource_checksum，然后把该 inner 回 free-list。
+        state.available.lock().push(key.index);
         if let Some(action) = immediate {
             action();
         }
@@ -306,7 +296,6 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
         .shared
         .dropped
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
         .push(Dropped {
             key,
             control: inner.control.clone(),
@@ -315,7 +304,7 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
 }
 
 pub struct ResourceManager<T: Send + Sync + 'static> {
-    state: Arc<Mutex<ResourceState<T>>>,
+    state: Arc<ResourceState<T>>,
 }
 impl<T: Send + Sync + 'static> Clone for ResourceManager<T> {
     fn clone(&self) -> Self {
@@ -361,52 +350,38 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
     }
     fn with_shared(shared: Arc<SharedResources>, tag: u8) -> Self {
         Self {
-            state: Arc::new(Mutex::new(ResourceState {
+            state: Arc::new(ResourceState {
                 store: NEXT_STORE.fetch_add(1, Ordering::Relaxed),
                 tag,
-                slots: Vec::new(),
-                available: Vec::new(),
+                slots: AppendOnlyVec::new(),
+                available: Mutex::new(Vec::new()),
                 shared,
-            })),
+            }),
         }
     }
     fn shared(&self) -> Arc<SharedResources> {
-        self.state
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .shared
-            .clone()
+        self.state.shared.clone()
     }
     pub fn allocate(&self, resource: T) -> Managed<T> {
         self.allocate_shared(Arc::new(resource))
     }
     pub fn allocate_shared(&self, resource: Arc<T>) -> Managed<T> {
-        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        let index = state.available.pop().unwrap_or_else(|| {
-            let index = u32::try_from(state.slots.len()).expect("托管资源槽位超过 u32");
-            state.slots.push(Slot {
-                control: Arc::new(Mutex::new(ControlBlock {
-                    last_sequence: AtomicU64::new(0),
-                    references: AtomicU32::new(1),
-                    generation: 0,
-                })),
-                handle: Weak::new(),
+        let state = &*self.state;
+        let reused = state.available.lock().pop();
+        let index = reused.unwrap_or_else(|| {
+            let index = state.slots.push(Slot {
+                control: Arc::new(ControlBlock::new(0)),
+                handle: ArcSwapWeak::new(Weak::new()),
             });
-            index
+            u32::try_from(index).expect("托管资源槽位超过 u32")
         });
-        let control = state.slots[index as usize].control.clone();
-        let generation = {
-            let control = control.lock().unwrap_or_else(|e| e.into_inner());
-            control.last_sequence.store(0, Ordering::SeqCst);
-            control.references.store(1, Ordering::SeqCst);
-            control.generation
-        };
+        let control = state.slot(index).expect("刚分配的槽位必须可见").control.clone();
+        // 槽位在 free-list 上时没有任何存活句柄，复用时重置序号与引用数不会与其他线程竞争。
+        control.last_sequence.store(0, Ordering::SeqCst);
+        control.references.store(1, Ordering::SeqCst);
+        let resource_checksum = control.checksum();
         {
-            let mut legacy = state
-                .shared
-                .legacy
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut legacy = state.shared.legacy.lock();
             if !legacy
                 .trackers
                 .iter()
@@ -418,8 +393,8 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         let key = ResourceKey {
             store: state.store,
             index,
-            generation,
-            store_id: state.shared.store_id,
+            resource_checksum,
+            device_id: state.shared.device_id,
             resource_tag: state.tag,
         };
         let inner = Arc::new(ManagedInner {
@@ -429,24 +404,25 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
             state: self.state.clone(),
             shared: state.shared.clone(),
         });
-        state.slots[index as usize].handle = Arc::downgrade(&inner);
+        state.slots[index as usize]
+            .handle
+            .store(Arc::downgrade(&inner));
         Managed(inner)
     }
     pub fn get(&self, key: ResourceKey) -> Option<Managed<T>> {
-        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let state = &*self.state;
         if key.store != state.store
-            || key.store_id != state.shared.store_id
+            || key.device_id != state.shared.device_id
             || key.resource_tag != state.tag
         {
             return None;
         }
-        let slot = state.slots.get(key.index as usize)?;
-        let control = slot.control.lock().unwrap_or_else(|e| e.into_inner());
-        if control.generation != key.generation || control.references.load(Ordering::SeqCst) == 0 {
+        let slot = state.slot(key.index)?;
+        // 先 upgrade 再 CAS 克隆：引用数为 0（已进入退役）或校验和已变都会失败，不复活句柄。
+        let inner = slot.handle.load().upgrade()?;
+        if !super::tracking::clone_if_live(&slot.control, key.resource_checksum) {
             return None;
         }
-        let inner = slot.handle.upgrade()?;
-        super::tracking::clone_reference(&control);
         Some(Managed(inner))
     }
     pub fn get_tracked(
@@ -489,17 +465,15 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         self.shared()
             .legacy
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .commands
             .len()
     }
     pub fn pending_disposals(&self) -> usize {
-        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let state = &*self.state;
         state
             .shared
             .dropped
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .iter()
             .filter(|record| record.key.store == state.store)
             .count()
@@ -508,25 +482,15 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         self.shared()
             .buckets
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .pending()
     }
     pub fn generation_at(&self, index: u32) -> Option<u32> {
-        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        Some(
-            state
-                .slots
-                .get(index as usize)?
-                .control
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .generation,
-        )
+        Some(self.state.slot(index)?.control.checksum())
     }
     pub fn take_out_dropped_waste_checked(&self) -> Result<usize, Failure> {
         self.shared().take_out_dropped_waste()
     }
-    /// 返回 CPU dispose 数，generation/槽位已回收；不代表 vkDestroy 数。
+    /// 返回 CPU dispose 数，resource_checksum/槽位已回收；不代表 vkDestroy 数。
     pub fn take_out_dropped_waste(&self) -> usize {
         self.take_out_dropped_waste_checked()
             .expect("退役记录的命令桶生产者必须接通")
@@ -544,7 +508,6 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         let actions = shared
             .buckets
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .drain_after_idle();
         let pending = actions.len();
         for action in actions {
@@ -635,14 +598,12 @@ impl ManagedResources {
         self.shared
             .dropped
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .len()
     }
     pub fn pending_destroy(&self) -> usize {
         self.shared
             .buckets
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
             .pending()
     }
 }
@@ -664,7 +625,7 @@ mod tests {
         let buffers = ResourceManager::with_shared(shared, 1);
         let texture = textures.allocate(7_u64);
         let buffer = buffers.allocate(8_u32);
-        assert_eq!(texture.key().store_id, buffer.key().store_id);
+        assert_eq!(texture.key().device_id, buffer.key().device_id);
         assert_eq!(
             (texture.key().resource_tag, buffer.key().resource_tag),
             (0, 1)

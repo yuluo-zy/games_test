@@ -26,13 +26,13 @@ impl PassBuilder<'_> {
         Ok(self)
     }
     /// 完成一个 pass 才提交声明；丢弃 builder 不产生半成品 pass。
-    pub fn render(self, callback: impl FnOnce(u64) -> bool + 'static) {
+    pub fn render(self, callback: impl FnOnce(u64) -> bool + Send + 'static) {
         self.render_with_context(move |context| callback(context.command.handle()));
     }
     /// 原 FnOnce 的消费顺序不变；上下文来自当前 recorder，不能由外部 counter 仿造。
     pub fn render_with_context(
         self,
-        callback: impl FnOnce(super::executor::PassContext<'_>) -> bool + 'static,
+        callback: impl FnOnce(super::executor::PassContext<'_>) -> bool + Send + 'static,
     ) {
         let mut callback = Some(callback);
         let callback: RenderCallback = Box::new(move |context| {
@@ -111,7 +111,7 @@ impl<'graph> PassBuilder<'graph> {
     pub fn render_bound(
         self,
         bindings: std::collections::BTreeMap<String, Vec<super::pass_bindings::PassBinding>>,
-        callback: impl FnOnce(u64, &super::pass_bindings::BoundPassBindings) -> bool + 'static,
+        callback: impl FnOnce(u64, &super::pass_bindings::BoundPassBindings) -> bool + Send + 'static,
     ) {
         let plan = super::pass_bindings::BoundPassBindings {
             pass: self.declaration.clone(),
@@ -126,6 +126,7 @@ impl<'graph> PassBuilder<'graph> {
             super::executor::PassContext<'_>,
             &super::pass_bindings::BoundPassBindings,
         ) -> bool
+        + Send
         + 'static,
     ) {
         let plan = super::pass_bindings::BoundPassBindings {

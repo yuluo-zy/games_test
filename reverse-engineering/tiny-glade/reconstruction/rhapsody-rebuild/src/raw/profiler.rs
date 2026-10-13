@@ -1,7 +1,8 @@
 //! 可运行的 GPU 时间戳候选实现；原 puffin 输出格式与跨帧生产者尚未对照。
 use crate::raw::device::VulkanDevice;
 use ash::vk;
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::{Arc};
 
 #[derive(Clone, Debug)]
 pub struct TimedFrame {
@@ -58,7 +59,7 @@ impl GpuProfiler {
     /// # Safety
     /// 上一帧的查询使用必须已完成，command 必须在合法录制状态。
     pub unsafe fn reset(&self, command: vk::CommandBuffer) {
-        self.spans.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        self.spans.lock().clear();
         unsafe {
             self.device
                 .device
@@ -68,7 +69,7 @@ impl GpuProfiler {
     /// # Safety
     /// command 必须处于合法录制状态且本帧已经 reset；必须用同一个编号结束。
     pub unsafe fn begin(&self, command: vk::CommandBuffer, name: &str) -> Result<u32, vk::Result> {
-        let mut spans = self.spans.lock().unwrap_or_else(|p| p.into_inner());
+        let mut spans = self.spans.lock();
         if spans.len() >= self.max_spans as usize {
             return Err(vk::Result::ERROR_OUT_OF_POOL_MEMORY);
         }
@@ -98,7 +99,7 @@ impl GpuProfiler {
     }
     /// 未完成时返回 NOT_READY，让上层选择下一帧再读，不强制等待。
     pub fn results(&self) -> Result<Vec<TimedFrame>, vk::Result> {
-        let spans = self.spans.lock().unwrap_or_else(|p| p.into_inner());
+        let spans = self.spans.lock();
         if spans.is_empty() {
             return Ok(Vec::new());
         }
@@ -129,9 +130,7 @@ impl GpuProfiler {
 }
 impl Drop for GpuProfiler {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.device.wait_idle();
-            self.device.device.destroy_query_pool(self.pool, None)
-        }
+        self.device
+            .bury(super::graveyard::Doomed::QueryPool(self.pool));
     }
 }

@@ -1,7 +1,11 @@
 //! 物理设备能力查询；不伪造原作偏好和兼容性名单。
 use super::{error::Result, instance::VulkanInstance};
+use arc_swap::ArcSwapOption;
 use ash::vk;
-use std::{ffi::CStr, sync::Arc};
+use std::{
+    ffi::CStr,
+    sync::{Arc, OnceLock},
+};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriverVendor {
     Nvidia,
@@ -161,6 +165,11 @@ pub struct PhysicalDevice {
     pub properties: vk::PhysicalDeviceProperties,
     pub memory: vk::PhysicalDeviceMemoryProperties,
     pub queues: Vec<vk::QueueFamilyProperties>,
+    /// 最近一次预算快照。原作 `refresh_memory_budget` 经 `ArcSwapAny::store/swap` 写入，
+    /// `*_memory_budget_bytes` 经 `ArcSwapAny::load` 读取（PDB 注解）；快照的字段内容是候选。
+    budget_snapshot: ArcSwapOption<PerformanceInfo>,
+    /// 设备扩展集合在物理设备生命周期内不变，只枚举一次。
+    memory_budget_extension: OnceLock<bool>,
 }
 impl PhysicalDevice {
     pub fn driver_version(&self) -> DeviceDriverVersion {
@@ -191,9 +200,16 @@ impl PhysicalDevice {
         })
         .collect())
     }
+    /// 向驱动重新查询并发布新快照。
     pub fn performance_info(&self) -> Result<PerformanceInfo> {
         let budget = self.refresh_memory_budget()?;
-        Ok(self.memory_snapshot(budget.as_ref()))
+        let info = self.memory_snapshot(budget.as_ref());
+        self.budget_snapshot.store(Some(Arc::new(info.clone())));
+        Ok(info)
+    }
+    /// 无锁读取最近一次快照；从未刷新过则为 `None`。
+    pub fn cached_performance_info(&self) -> Option<Arc<PerformanceInfo>> {
+        self.budget_snapshot.load_full()
     }
     pub(crate) fn memory_snapshot(
         &self,
@@ -243,11 +259,21 @@ impl PhysicalDevice {
             vendor_specific: None,
         }
     }
+    /// 读快照；只有从未刷新过才会查询驱动。要最新值先调 `performance_info`/`refresh_memory_budget`。
+    fn snapshot_or_refresh(&self) -> Result<Arc<PerformanceInfo>> {
+        match self.cached_performance_info() {
+            Some(info) => Ok(info),
+            None => {
+                self.performance_info()?;
+                Ok(self.cached_performance_info().expect("刚发布过快照"))
+            }
+        }
+    }
     pub fn device_local_memory_budget_bytes(&self) -> Result<Option<u64>> {
-        Ok(self.performance_info()?.device_local_budget)
+        Ok(self.snapshot_or_refresh()?.device_local_budget)
     }
     pub fn host_memory_budget_bytes(&self) -> Result<Option<u64>> {
-        Ok(self.performance_info()?.host_budget)
+        Ok(self.snapshot_or_refresh()?.host_budget)
     }
     pub fn name(&self) -> String {
         unsafe { CStr::from_ptr(self.properties.device_name.as_ptr()) }
@@ -265,12 +291,9 @@ impl PhysicalDevice {
     pub fn refresh_memory_budget(
         &self,
     ) -> Result<Option<vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>> {
-        let extensions = unsafe {
-            self.instance
-                .instance
-                .enumerate_device_extension_properties(self.handle)
-        }?;
-        if !extensions.iter().any(|e|unsafe {CStr::from_ptr(e.extension_name.as_ptr())}==ash::ext::memory_budget::NAME) {return Ok(None);}
+        if !self.supports_memory_budget()? {
+            return Ok(None);
+        }
         let mut budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
         let mut properties = vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut budget);
         unsafe {
@@ -279,6 +302,21 @@ impl PhysicalDevice {
                 .get_physical_device_memory_properties2(self.handle, &mut properties);
         }
         Ok(Some(budget))
+    }
+    fn supports_memory_budget(&self) -> Result<bool> {
+        if let Some(&supported) = self.memory_budget_extension.get() {
+            return Ok(supported);
+        }
+        let extensions = unsafe {
+            self.instance
+                .instance
+                .enumerate_device_extension_properties(self.handle)
+        }?;
+        let supported = extensions.iter().any(|e| {
+            let name = unsafe { CStr::from_ptr(e.extension_name.as_ptr()) };
+            name == ash::ext::memory_budget::NAME
+        });
+        Ok(*self.memory_budget_extension.get_or_init(|| supported))
     }
     pub fn with_presentation_support(&self, surface: vk::SurfaceKHR) -> Result<Vec<u32>> {
         if surface == vk::SurfaceKHR::null() {
@@ -365,6 +403,8 @@ pub fn enumerate_physical_devices(instance: Arc<VulkanInstance>) -> Result<Vec<P
                     .get_physical_device_queue_family_properties(handle)
             },
             instance: Arc::clone(&instance),
+            budget_snapshot: ArcSwapOption::empty(),
+            memory_budget_extension: OnceLock::new(),
             handle,
         })
         .collect())

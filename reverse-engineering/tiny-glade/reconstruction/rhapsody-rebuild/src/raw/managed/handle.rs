@@ -1,4 +1,4 @@
-//! 实际托管句柄消费单个原子 tracker/refcount/generation，保留 raw 对象拥有权。
+//! 实际托管句柄消费单个原子 tracker/refcount/resource_checksum，保留 raw 对象拥有权。
 use super::resources::{ResourceKey, ResourceState, SharedResources, enqueue_retirement};
 use super::tracking::{
     CommandKey, CommandState, ControlBlock, Failure, clone_reference, drop_reference, track_handle,
@@ -6,14 +6,14 @@ use super::tracking::{
 use std::{
     fmt,
     ops::Deref,
-    sync::{Arc, Mutex, atomic::Ordering},
+    sync::{Arc, atomic::Ordering},
 };
 
 pub(crate) struct ManagedInner<T: Send + Sync + 'static> {
     pub(crate) key: ResourceKey,
     pub(crate) resource: Arc<T>,
-    pub(crate) control: Arc<Mutex<ControlBlock>>,
-    pub(crate) state: Arc<Mutex<ResourceState<T>>>,
+    pub(crate) control: Arc<ControlBlock>,
+    pub(crate) state: Arc<ResourceState<T>>,
     pub(crate) shared: Arc<SharedResources>,
 }
 /// Arc 保障 Rust 内存安全；CPU 句柄数量由控制块的 references 独立维护。
@@ -30,16 +30,10 @@ impl<T: Send + Sync + 'static> Managed<T> {
         self.track(command)
     }
     pub fn track(&self, command: CommandState) -> Result<(), Failure> {
-        let control = self.0.control.lock().unwrap_or_else(|e| e.into_inner());
-        track_handle(&control, self.0.key.generation, command).map(|_| ())
+        track_handle(&self.0.control, self.0.key.resource_checksum, command).map(|_| ())
     }
     pub fn tracked_sequence(&self) -> u64 {
-        self.0
-            .control
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .last_sequence
-            .load(Ordering::SeqCst)
+        self.0.control.last_sequence.load(Ordering::SeqCst)
     }
     /// 仅供旧候选适配。domain=0 不是恢复出的原 ABI 字段。
     pub fn tracked_commands(&self) -> Vec<CommandKey> {
@@ -54,12 +48,7 @@ impl<T: Send + Sync + 'static> Managed<T> {
         }
     }
     pub fn reference_count(&self) -> u32 {
-        self.0
-            .control
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .references
-            .load(Ordering::SeqCst)
+        self.0.control.references.load(Ordering::SeqCst)
     }
     pub fn resource(&self) -> &T {
         &self.0.resource
@@ -67,7 +56,7 @@ impl<T: Send + Sync + 'static> Managed<T> {
 }
 impl<T: Send + Sync + 'static> Clone for Managed<T> {
     fn clone(&self) -> Self {
-        clone_reference(&self.0.control.lock().unwrap_or_else(|e| e.into_inner()));
+        clone_reference(&self.0.control);
         Self(self.0.clone())
     }
 }
@@ -93,11 +82,7 @@ impl<T: Send + Sync + 'static> fmt::Debug for Managed<T> {
 }
 impl<T: Send + Sync + 'static> Drop for Managed<T> {
     fn drop(&mut self) {
-        let last = drop_reference(
-            &self.0.control.lock().unwrap_or_else(|e| e.into_inner()),
-            false,
-        )
-        .expect("存活句柄的控制块必须有效");
+        let last = drop_reference(&self.0.control, false).expect("存活句柄的控制块必须有效");
         if last {
             enqueue_retirement(&self.0);
         }
@@ -105,7 +90,7 @@ impl<T: Send + Sync + 'static> Drop for Managed<T> {
 }
 pub type RawManagedHandle<T> = Managed<T>;
 
-/// 资源校验和；候选以 generation 为校验语义，`invalidate` 使旧句柄失效。
+/// 资源校验和；候选以 resource_checksum 为校验语义，`invalidate` 使旧句柄失效。
 /// 原字段来自 `.rdata` 的 `resource_checksum@+0x10`；这里只包装 u32 不伪造布局。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ManagedResourceChecksum(pub u32);

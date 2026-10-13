@@ -121,7 +121,8 @@ pub trait AccessDependency {
     fn is_write(&mut self, code: u8) -> bool;
 }
 
-pub type RenderCallback = Box<dyn for<'a> FnMut(super::executor::PassContext<'a>) -> bool>;
+/// 渲染回调须为 `Send`：并行录制时不同块的回调在任务池线程上执行（原作 `par_chunk_map_mut`）。
+pub type RenderCallback = Box<dyn for<'a> FnMut(super::executor::PassContext<'a>) -> bool + Send>;
 pub type RetireCallback = Box<dyn FnOnce()>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

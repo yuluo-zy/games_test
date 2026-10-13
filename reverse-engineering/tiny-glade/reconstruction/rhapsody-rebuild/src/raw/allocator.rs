@@ -6,9 +6,10 @@ use super::{
 };
 use ash::vk;
 use serde::{Deserialize, Serialize};
+use parking_lot::Mutex;
 use std::{
     collections::BTreeMap,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
 pub fn choose_memory_type(
     memory: &vk::PhysicalDeviceMemoryProperties,
@@ -34,27 +35,45 @@ pub fn choose_memory_type(
 pub struct MemoryBlock {
     pub device: Arc<VulkanDevice>,
     pub handle: vk::DeviceMemory,
+    /// 在 `handle` 所指内存对象内的偏移；专用分配恒为 0，子分配时绑定资源必须带上它。
+    pub offset: u64,
     pub size: u64,
     pub properties: vk::MemoryPropertyFlags,
-    accounting_id: u64,
+    pub(crate) accounting_id: u64,
+    /// 子分配时持有 gpu-allocator 的分配；专用分配为 None。
+    pub(crate) sub: Option<gpu_allocator::vulkan::Allocation>,
 }
 impl MemoryBlock {
+    /// 图像（最优平铺）的分配入口；设备启用子分配时走 gpu-allocator。
     pub fn allocate(
         device: Arc<VulkanDevice>,
         requirements: vk::MemoryRequirements,
         required: vk::MemoryPropertyFlags,
         preferred: vk::MemoryPropertyFlags,
     ) -> Result<Self> {
-        Self::allocate_with_flags(
-            device,
-            requirements,
-            required,
-            preferred,
-            vk::MemoryAllocateFlags::empty(),
-        )
+        let flags = vk::MemoryAllocateFlags::empty();
+        if device.suballocation_enabled() {
+            return Self::allocate_sub(device, requirements, required, preferred, flags, false);
+        }
+        Self::allocate_dedicated(device, requirements, required, preferred, flags)
     }
 
+    /// 缓冲（线性）的分配入口；设备启用子分配时走 gpu-allocator。
     pub fn allocate_with_flags(
+        device: Arc<VulkanDevice>,
+        requirements: vk::MemoryRequirements,
+        required: vk::MemoryPropertyFlags,
+        preferred: vk::MemoryPropertyFlags,
+        flags: vk::MemoryAllocateFlags,
+    ) -> Result<Self> {
+        if device.suballocation_enabled() {
+            return Self::allocate_sub(device, requirements, required, preferred, flags, true);
+        }
+        Self::allocate_dedicated(device, requirements, required, preferred, flags)
+    }
+
+    /// 每次一块专用 `VkDeviceMemory`，不经子分配器（`DirectMemoryBackend` 与专用模式使用）。
+    pub fn allocate_dedicated(
         device: Arc<VulkanDevice>,
         requirements: vk::MemoryRequirements,
         required: vk::MemoryPropertyFlags,
@@ -103,16 +122,62 @@ impl MemoryBlock {
         Ok(Self {
             device,
             handle,
+            offset: 0,
             size: requirements.size,
             properties,
             accounting_id,
+            sub: None,
         })
+    }
+}
+impl MemoryBlock {
+    /// 脱离设备 Arc，把显存所有权转交延迟销毁场；之后由设备在确认 GPU 不再使用后释放。
+    pub fn into_deferred(mut self) -> super::graveyard::DeferredMemory {
+        let sub = self.sub.take();
+        let me = std::mem::ManuallyDrop::new(self);
+        // SAFETY: `me` 不会再被 Drop，Arc 只在此处读出并释放一次；调用者仍持有另一个设备 Arc。
+        drop(unsafe { std::ptr::read(&me.device) });
+        match sub {
+            Some(allocation) => super::graveyard::DeferredMemory::Sub {
+                allocation,
+                accounting_id: me.accounting_id,
+            },
+            None => super::graveyard::DeferredMemory::Dedicated {
+                handle: me.handle,
+                accounting_id: me.accounting_id,
+            },
+        }
+    }
+    pub fn accounting_id(&self) -> u64 {
+        self.accounting_id
+    }
+    pub fn is_suballocated(&self) -> bool {
+        self.sub.is_some()
+    }
+    /// 子分配且宿主可见时，gpu-allocator 已持久映射整块并给出本分配起点的指针（已含偏移）。
+    /// 返回 None 表示需要调用者自己 `vkMapMemory`（专用分配）。
+    pub fn host_ptr(&self) -> Option<*mut u8> {
+        self.sub
+            .as_ref()
+            .and_then(|a| a.mapped_ptr())
+            .map(|p| p.as_ptr().cast::<u8>())
+    }
+    /// 刷新/失效范围 `(偏移, 大小)`：专用分配覆盖整个内存对象；子分配只覆盖本分配自己的范围
+    /// （创建时已按非一致性粒度对齐，不会波及邻居）。
+    pub fn host_range(&self) -> (u64, u64) {
+        match &self.sub {
+            Some(allocation) => (allocation.offset(), allocation.size()),
+            None => (0, vk::WHOLE_SIZE),
+        }
     }
 }
 impl Drop for MemoryBlock {
     fn drop(&mut self) {
-        unsafe {
-            self.device.device.free_memory(self.handle, None);
+        match self.sub.take() {
+            Some(allocation) => self.device.free_suballocation(allocation),
+            None => unsafe {
+                self.device.device.free_memory(self.handle, None);
+            },
         }
         self.device
             .allocator_stats
@@ -183,7 +248,12 @@ struct StatisticsState {
     totals: AllocationTotals,
     peak: AllocationTotals,
     peak_report: Option<AllocatorReport>,
+    /// 峰值刚被刷新、快照尚未物化。峰值之后只可能出现登记（继续刷新峰值）或释放；
+    /// 因此在首次释放前或被查询时物化，得到的状态与“刷新当刻”完全一致，登记路径保持 O(1)。
+    peak_dirty: bool,
     heap_budgets: BTreeMap<u32, u64>,
+    /// 各堆当前占用，增量维护，避免每次登记遍历全部记录。
+    heap_used: BTreeMap<u32, u64>,
 }
 impl StatisticsState {
     fn report(&self) -> AllocatorReport {
@@ -192,33 +262,35 @@ impl StatisticsState {
             allocations: self.records.values().cloned().collect(),
         }
     }
+    fn materialize_peak(&mut self) {
+        if self.peak_dirty {
+            self.peak_report = Some(self.report());
+            self.peak_dirty = false;
+        }
+    }
 }
 impl AllocatorStats {
     pub fn report(&self) -> AllocatorReport {
         self.state
             .lock()
-            .unwrap_or_else(|p| p.into_inner())
             .report()
     }
     pub fn peak_allocator_report(&self) -> Option<AllocatorReport> {
-        self.state
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .peak_report
-            .clone()
+        let mut state = self.state.lock();
+        state.materialize_peak();
+        state.peak_report.clone()
+    }
+    /// 累计登记过的分配数（等于 vkAllocateMemory 成功次数），性能追踪用。
+    pub fn total_registered(&self) -> u64 {
+        self.state.lock().next_id
     }
     pub fn peak_totals(&self) -> AllocationTotals {
-        self.state.lock().unwrap_or_else(|p| p.into_inner()).peak
+        self.state.lock().peak
     }
     /// 显式候选预算策略。设置失败不改变旧预算或任何统计；不声称原游戏采用此限制。
     pub fn set_heap_budget(&self, heap: u32, bytes: u64) -> Result<()> {
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
-        let used = state
-            .records
-            .values()
-            .filter(|record| record.heap == heap)
-            .try_fold(0u64, |total, record| total.checked_add(record.size))
-            .ok_or(Error::Invalid("内存统计溢出"))?;
+        let mut state = self.state.lock();
+        let used = state.heap_used.get(&heap).copied().unwrap_or(0);
         if used > bytes {
             return Err(Error::Invalid("预算小于当前分配"));
         }
@@ -236,17 +308,18 @@ impl AllocatorStats {
         if size == 0 {
             return Err(Error::Invalid("不能登记零大小分配"));
         }
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let mut state = self.state.lock();
         let total = state
             .totals
             .total_allocated_bytes
             .checked_add(size)
             .ok_or(Error::Invalid("内存统计溢出"))?;
         let used = state
-            .records
-            .values()
-            .filter(|record| record.heap == heap)
-            .try_fold(size, |total, record| total.checked_add(record.size))
+            .heap_used
+            .get(&heap)
+            .copied()
+            .unwrap_or(0)
+            .checked_add(size)
             .ok_or(Error::Invalid("内存统计溢出"))?;
         if state
             .heap_budgets
@@ -285,21 +358,30 @@ impl AllocatorStats {
             },
         );
         state.totals = totals;
+        state.heap_used.insert(heap, used);
         state.peak.device_local_bytes =
             state.peak.device_local_bytes.max(totals.device_local_bytes);
         state.peak.system_bytes = state.peak.system_bytes.max(totals.system_bytes);
         if total > state.peak.total_allocated_bytes {
             state.peak.total_allocated_bytes = total;
-            state.peak_report = Some(state.report());
+            state.peak_dirty = true;
         }
         Ok(id)
     }
     pub fn release(&self, id: u64) -> Result<()> {
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let mut state = self.state.lock();
+        if !state.records.contains_key(&id) {
+            return Err(Error::Invalid("未知或已释放的内存ID"));
+        }
+        // 释放会改变状态：先把刚到达的峰值物化。
+        state.materialize_peak();
         let record = state
             .records
             .remove(&id)
             .ok_or(Error::Invalid("未知或已释放的内存ID"))?;
+        if let Some(used) = state.heap_used.get_mut(&record.heap) {
+            *used -= record.size;
+        }
         state.totals.total_allocated_bytes -= record.size;
         if record.properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
             state.totals.device_local_bytes -= record.size;
@@ -308,15 +390,16 @@ impl AllocatorStats {
         }
         Ok(())
     }
-    fn rename(&self, id: u64, name: String) {
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+    pub(crate) fn rename(&self, id: u64, name: String) {
+        let mut state = self.state.lock();
         if let Some(record) = state.records.get_mut(&id) {
             record.name = name.clone();
         }
         // 名称在分配成功后立即生产；同步补齐刚捕获的峰值快照中对应记录。
+        // 快照未物化时，之后物化会直接带上新名字；已物化时按 id（有序）二分定位。
         if let Some(report) = &mut state.peak_report {
-            if let Some(record) = report.allocations.iter_mut().find(|record| record.id == id) {
-                record.name = name;
+            if let Ok(index) = report.allocations.binary_search_by_key(&id, |record| record.id) {
+                report.allocations[index].name = name;
             }
         }
     }
@@ -399,7 +482,7 @@ impl AllocationBackend for DirectMemoryBackend {
     type Allocation = MemoryBlock;
     fn allocate(&mut self, request: &AllocationRequest) -> Result<MemoryBlock> {
         let (required, preferred) = request.location.properties();
-        let block = MemoryBlock::allocate_with_flags(
+        let block = MemoryBlock::allocate_dedicated(
             self.device.clone(),
             request.requirements,
             required,

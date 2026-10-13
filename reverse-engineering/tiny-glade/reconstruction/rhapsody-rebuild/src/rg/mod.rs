@@ -7,6 +7,7 @@ pub mod graph;
 pub mod import_export;
 pub mod pass_api;
 pub mod pass_bindings;
+pub mod parallel;
 pub mod pass_builder;
 pub mod recorder;
 pub mod resource;

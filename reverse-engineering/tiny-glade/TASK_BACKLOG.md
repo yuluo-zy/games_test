@@ -10,7 +10,7 @@
 
 后续实施：共享 `ExecutionChain::execute_graph` 已接通graph声明→compiled→record→counter→实际queue数组→receipt/completion；正常、callback失败、queue失败3个候选链场景通过。下一任务为原shader/interface选择生产者→descriptor共享callback及真实wait/signal生产者；managed资源物理生产者、temporal跨帧和country-core consumer仍待接线。候选链不等同原完整compile ABI/原整链oracle，GPU未运行。详见 [共享入口验证](evidence/render-recovery/parallel-batch-06/shared-entry-validation.json)。
 
-最新功能范围：用户授权的新目录 `reconstruction/rhapsody-rebuild` 已统一通过64测试/13真实GPU探针/25验收命令，其 [MODULE_STATUS](reconstruction/rhapsody-rebuild/MODULE_STATUS.md) 是当前功能进度依据。旧共享入口新增带当前Command和compiled资源的callback上下文，4链级场景通过。下一功能链为主图registry→真实recording Command→managed descriptor→首个shader callback→同一submit/回收；新目录仍为两阶段桥。原并行/跨族、缓存淘汰、资产pass关联和本地分叉等价性继续保留。详情见 [消费链复核](evidence/render-recovery/consumer-chain-review-2026-10-12/README.md)；前段“GPU未运行”仅是旧共享CPU范围。
+最新功能范围：用户授权的新目录 `reconstruction/rhapsody-rebuild` 于 2026-10-13 在 lavapipe 复验 132 测试通过（2026-10-12 的 64 测试/13 探针/25 验收命令快照已过时），其 [MODULE_STATUS](reconstruction/rhapsody-rebuild/MODULE_STATUS.md) 是当前功能进度依据。旧共享入口新增带当前Command和compiled资源的callback上下文，4链级场景通过。下一功能链为主图registry→真实recording Command→managed descriptor→首个shader callback→同一submit/回收；新目录仍为两阶段桥。并行录制（`record_batch` 分块）已恢复、命令池来源等未恢复；跨队列所有权转移已查明原作没有（见 evidence/render-recovery/multi-queue）；缓存淘汰未调查；资产pass关联和本地分叉等价性继续保留。详情见 [消费链复核](evidence/render-recovery/consumer-chain-review-2026-10-12/README.md)；前段“GPU未运行”仅是旧共享CPU范围。
 
 当前用户指定先审计逆向工具、再创建多个agent继续 `rhapsody`。已完成审计与3个agent本轮交付：第四批统一门禁50/50、第五批27/27通过。第五批新增Primary调用者180、非空资源record/submit774、descriptor layout/pool/compute创建边界5184原指令案例零差异；5+2候选测试通过。工具runner27个本地协议测试通过，不计作游戏源码恢复。
 

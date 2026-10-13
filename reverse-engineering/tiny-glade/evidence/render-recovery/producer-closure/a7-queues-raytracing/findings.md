@@ -57,7 +57,7 @@ end_frame(0x140bec400) 同路径
 ## 4. 并行录制（观察）
 
 - 观测到 `CommandBufferSeqTracker::track` (`0x140becfd0`)、`CommandBuffer::begin`/`end`、`ensure_active_cb` 单活跃 CB、recorder 单命令 `Vec`。
-- **未见**多线程 / 多 CB 并行录制的证据。
+- ~~**未见**多线程 / 多 CB 并行录制的证据。~~ **更正（2026-10-13）**：`record_batch` 经 `bevy_tasks` 按上一帧耗时分块并行录制，见 [parallel-recording/FINDINGS.md](../../parallel-recording/FINDINGS.md)；本节的"单活跃 CB"只描述 `ensure_active_cb` 的串行路径。多队列使用另见 [multi-queue/FINDINGS.md](../../multi-queue/FINDINGS.md)。
 - 命令→时间线映射：`queue_submit` 为每命令追加队列时间线信号量的递增信号值 + pending 环。
 
 ## 5. ray tracing 结论：本构建无硬件光追

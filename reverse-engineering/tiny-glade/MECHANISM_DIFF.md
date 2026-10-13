@@ -23,6 +23,19 @@
 
 ---
 
+## 〇之二、第三次修订（2026-10-13，P4 取证 + 实现后）
+
+| 项 | 现状 |
+|---|---|
+| A1 帧边界 | **已补**：`rg/vulkan.rs` 的 `begin_frame`/`end_frame`/`wait_gpu_queue_trim` |
+| A2 同步来源 | **判断修正**：真实后端的内部时间线已由提交生产者管理（`check_synchronization` 拒绝把队列内部时间线作为外部输入）；`GraphBatchSync` 只承载**外部**信号量。PE 取证见 [p4-sync-setup-cb](evidence/render-recovery/p4-sync-setup-cb/FINDINGS.md)：原 `queue_submit` 为 `(device, Option<queue>) -> {queue, seq}`，设备级计数器 `device+0x7f8` 一次预留连续区间。剩余偏差在于签名/入口形态，不是"同步被外部注入" |
+| A3 `BufferDesc` | **已对齐** 16 字节与 `memory_location` 枚举 |
+| A4 raw 释放 | **改为候选优化**：延迟销毁场（epoch），去掉 13 类 Drop 的整设备 idle；仍非原作序列号桶 |
+| A5 swapchain retire | **有意偏差**，见 MODULE_STATUS |
+| B3 `Access.write` | **已删除** |
+| C1 `ray_tracing.rs` | **已删除** |
+| C17/C18 | C17 已解（`Option<u32>` 拆两寄存器）；C18 的 20ms 阈值在 PE 中不存在，判为反编译失真 |
+
 ## 一、结论
 
 > **当前真正剩下的核心差异只有 5 处 A 类（必须修）+ 1 处 C 类（应删除），外加 3 处 B 类（不用管）。**

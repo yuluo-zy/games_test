@@ -97,7 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cbs = [cb];
         let submits = [vk::SubmitInfo::default().command_buffers(&cbs)];
         {
-            let _lock = device.queue_lock.lock().unwrap();
+            let _lock = device.queue_lock.lock();
+            device.note_submit();
             device
                 .device
                 .queue_submit(device.queue, &submits, vk::Fence::null())?;

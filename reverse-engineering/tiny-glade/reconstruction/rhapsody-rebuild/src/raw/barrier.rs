@@ -4,7 +4,6 @@
 pub struct Access {
     pub code: u8,
     pub group: u32,
-    pub write: bool,
 }
 
 /// 一个原同步scope汇总三类数组与阶段掩码，在phase边界一次提交。

@@ -1,9 +1,10 @@
 // 候选实现迁移来源：reconstruction/render/work-packages/device-counters-r6/src/lib.rs.
 // 这是行为重建，不是原作者源码。
 use ash::vk;
+use parking_lot::Mutex;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 
 /// 记录实际启用的功能，不能以驱动支持代替设备已启用。
 #[derive(Clone, Copy, Debug, Default)]
@@ -29,6 +30,9 @@ pub struct VulkanDevice {
     pub capabilities: DeviceCapabilities,
     pub additional_queues: Vec<DeviceQueue>,
     pub allocator_stats: Arc<super::allocator::AllocatorStats>,
+    pub graveyard: super::graveyard::Graveyard,
+    /// 启用子分配时的 gpu-allocator 适配；None 表示每资源一块专用内存。
+    pub suballocator: Option<super::suballoc::SubAllocator>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -111,6 +115,18 @@ impl VulkanDevice {
                     });
                 }
             }
+            let suballocator = match super::suballoc::default_allocation_mode() {
+                super::suballoc::AllocationMode::Dedicated => None,
+                super::suballoc::AllocationMode::Suballocated => Some(
+                    super::suballoc::SubAllocator::new(
+                        &instance.instance,
+                        &device,
+                        physical,
+                        capabilities.buffer_device_address,
+                    )
+                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?,
+                ),
+            };
             Ok(Arc::new(Self {
                 device,
                 physical,
@@ -122,20 +138,26 @@ impl VulkanDevice {
                 capabilities,
                 additional_queues,
                 allocator_stats: Arc::new(super::allocator::AllocatorStats::default()),
+                graveyard: Default::default(),
+                suballocator,
             }))
         }
     }
 
     pub fn wait_idle(&self) -> Result<(), vk::Result> {
-        let _lock = self.queue_lock.lock().unwrap_or_else(|e| e.into_inner());
-        unsafe { self.device.device_wait_idle() }
+        self.wait_idle_and_collect().map(|_| ())
     }
 }
 
 impl Drop for VulkanDevice {
     fn drop(&mut self) {
+        // 所有拥有的 Vulkan 子对象都持有设备 Arc，因此会先于设备销毁；延迟场在此排空。
+        self.drain_graveyard_for_drop();
+        // 子分配器的内存块必须先于设备销毁释放。
+        if let Some(sub) = &self.suballocator {
+            sub.shutdown();
+        }
         unsafe {
-            // 所有拥有的 Vulkan 子对象都持有设备 Arc，因此会先于设备销毁。
             let _ = self.device.device_wait_idle();
             self.device.destroy_device(None);
         }
@@ -347,8 +369,7 @@ impl GraphicsDevice {
         self.inner.wait_idle()?;
         let mut disposal = self
             .disposal
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+            .lock();
         let keys = disposal.pending_sequences();
         for key in keys {
             let _ = disposal.immediate_empty_bucket(key);
@@ -363,8 +384,8 @@ impl GraphicsDevice {
     }
     pub fn disposal(
         &self,
-    ) -> std::sync::MutexGuard<'_, super::disposal::CommandBufferDisposalBuckets> {
-        self.disposal.lock().unwrap_or_else(|e| e.into_inner())
+    ) -> parking_lot::MutexGuard<'_, super::disposal::CommandBufferDisposalBuckets> {
+        self.disposal.lock()
     }
     /// 创建可映射（HOST_VISIBLE）缓冲。
     pub fn create_mapped_buffer(
@@ -396,24 +417,20 @@ impl GraphicsDevice {
             ),
         )
     }
-    /// 初始化纹理数据（候选：经暂存缓冲复制；仅覆盖已存在的图像）。
+    /// 初始化纹理数据：经暂存缓冲 + setup 命令缓冲同步上传（见 `raw::setup`）。
     pub fn init_texture_data(
         &self,
-        _texture: &super::texture::Texture,
-        _bytes: &[u8],
+        texture: &super::texture::Texture,
+        bytes: &[u8],
     ) -> super::error::Result<()> {
-        Err(super::error::Error::Unsupported(
-            "init_texture_data 暂存上传路径未接入真实队列",
-        ))
+        super::setup::init_texture_data(&self.inner, texture, bytes)
     }
     pub fn update_texture(
         &self,
-        _texture: &super::texture::Texture,
-        _bytes: &[u8],
+        texture: &super::texture::Texture,
+        bytes: &[u8],
     ) -> super::error::Result<()> {
-        Err(super::error::Error::Unsupported(
-            "update_texture 上传路径未接入真实队列",
-        ))
+        super::setup::update_texture(&self.inner, texture, bytes)
     }
     /// 创建一组内置采样器（最近邻/线性/深度比较）。
     pub fn create_samplers(&mut self) -> Result<(), vk::Result> {
@@ -575,16 +592,17 @@ impl GraphicsDevice {
     ) -> Result<std::sync::Arc<super::descriptor_set::VulkanDescriptorSet>, vk::Result> {
         unsafe { state.allocate_descriptor_set(writes) }
     }
-    /// setup 命令缓冲体系尚未恢复；返回 typed gap，不伪造提交参数。
+    /// 原作返回“一条命令、无同步”的 setup 提交信息并并入下一次图提交；
+    /// 候选版本是同步的（`with_setup_cb` 内部提交并等待），因此没有可并入的提交信息。
     pub fn get_setup_cb_submit_info(&self) -> Result<(), &'static str> {
-        Err("setup 命令缓冲生产者未恢复")
+        Err("候选 setup 命令缓冲为同步提交，不产出可并入图提交的信息")
     }
-    /// 以 setup 命令缓冲执行一次回调；未恢复时直接拒绝。
+    /// 在 setup 命令缓冲上录制并同步执行一次回调；结尾自动补全量内存屏障。
     pub fn with_setup_cb<R>(
         &self,
-        _body: impl FnOnce(vk::CommandBuffer) -> R,
-    ) -> Result<R, &'static str> {
-        Err("setup 命令缓冲生产者未恢复")
+        body: impl FnOnce(vk::CommandBuffer) -> R,
+    ) -> super::error::Result<R> {
+        super::setup::with_setup_cb(&self.inner, body)
     }
 }
 

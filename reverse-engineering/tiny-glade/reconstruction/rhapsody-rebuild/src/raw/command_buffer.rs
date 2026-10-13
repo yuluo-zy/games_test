@@ -53,7 +53,8 @@ impl CommandBackend for FixtureBackend {
 
 use super::device::VulkanDevice;
 use ash::vk;
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::{Arc};
 
 /// 实际命令池与命令缓冲持有关系；默认采用可单独重置的主命令缓冲。
 pub struct VulkanCommandPool {
@@ -85,7 +86,7 @@ impl VulkanCommandPool {
         }))
     }
     pub fn allocate(self: &Arc<Self>) -> Result<VulkanCommandBuffer, vk::Result> {
-        let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = self.lock.lock();
         let info = vk::CommandBufferAllocateInfo::default()
             .command_pool(self.handle)
             .level(vk::CommandBufferLevel::PRIMARY)
@@ -146,8 +147,8 @@ impl CbGraphicsState {
 }
 impl Drop for VulkanCommandPool {
     fn drop(&mut self) {
-        let _ = self.device.wait_idle();
-        unsafe { self.device.device.destroy_command_pool(self.handle, None) }
+        self.device
+            .bury(super::graveyard::Doomed::CommandPool(self.handle));
     }
 }
 
@@ -169,7 +170,29 @@ impl VulkanCommandBuffer {
         }
         self.pool.device.wait_idle()?;
         {
-            let _guard = self.pool.lock.lock().unwrap_or_else(|e| e.into_inner());
+            let _guard = self.pool.lock.lock();
+            unsafe {
+                self.pool
+                    .device
+                    .device
+                    .reset_command_buffer(self.handle, vk::CommandBufferResetFlags::empty())?;
+            }
+        }
+        self.recording = false;
+        self.executable = false;
+        self.owners.clear();
+        Ok(())
+    }
+    /// 与 `reset` 相同但不做整设备 idle，用于帧循环复用。
+    ///
+    /// # Safety
+    /// 调用者必须已等待覆盖此命令缓冲全部提交的时间线/fence（与 `release_completed_owners` 同一契约）。
+    pub unsafe fn reset_after_completion(&mut self) -> Result<(), vk::Result> {
+        if self.recording {
+            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+        }
+        {
+            let _guard = self.pool.lock.lock();
             unsafe {
                 self.pool
                     .device
@@ -290,7 +313,8 @@ impl VulkanCommandBuffer {
             .signal_semaphores(&signal_handles)
             .push_next(&mut timeline)];
         let result = {
-            let _guard = device.queue_lock.lock().unwrap_or_else(|e| e.into_inner());
+            let _guard = device.queue_lock.lock();
+            device.note_submit();
             unsafe { device.device.queue_submit(queue.handle, &submits, fence) }
         };
         if let Err(error) = result {
@@ -310,7 +334,7 @@ impl VulkanCommandBuffer {
 }
 impl Drop for VulkanCommandBuffer {
     fn drop(&mut self) {
-        let _guard = self.pool.lock.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = self.pool.lock.lock();
         unsafe {
             self.pool
                 .device

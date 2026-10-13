@@ -293,7 +293,7 @@ pub struct Texture {
     pub device: Arc<VulkanDevice>,
     pub handle: vk::Image,
     pub desc: TextureDesc,
-    allocation: MemoryBlock,
+    allocation: std::mem::ManuallyDrop<MemoryBlock>,
 }
 impl Texture {
     pub fn new(device: Arc<VulkanDevice>, desc: &TextureDesc) -> Result<Self> {
@@ -325,7 +325,7 @@ impl Texture {
         if let Err(error) = unsafe {
             device
                 .device
-                .bind_image_memory(handle, allocation.handle, 0)
+                .bind_image_memory(handle, allocation.handle, allocation.offset)
         } {
             unsafe {
                 device.device.destroy_image(handle, None);
@@ -336,7 +336,7 @@ impl Texture {
             device,
             handle,
             desc: *desc,
-            allocation,
+            allocation: std::mem::ManuallyDrop::new(allocation),
         })
     }
     pub fn image_view(self: &Arc<Self>, desc: &TextureViewDesc) -> Result<TextureView> {
@@ -377,15 +377,10 @@ impl Texture {
 }
 impl Drop for Texture {
     fn drop(&mut self) {
-        let _guard = self
-            .device
-            .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            let _ = self.device.device.device_wait_idle();
-            self.device.device.destroy_image(self.handle, None);
-        }
+        // SAFETY: allocation 只在此处取出一次，之后不会再被访问。
+        let memory = unsafe { std::mem::ManuallyDrop::take(&mut self.allocation) }.into_deferred();
+        self.device
+            .bury(super::graveyard::Doomed::Image(self.handle, memory));
     }
 }
 pub struct TextureView {
@@ -395,19 +390,9 @@ pub struct TextureView {
 }
 impl Drop for TextureView {
     fn drop(&mut self) {
-        let _guard = self
-            .texture
+        self.texture
             .device
-            .queue_lock
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            let _ = self.texture.device.device.device_wait_idle();
-            self.texture
-                .device
-                .device
-                .destroy_image_view(self.handle, None);
-        }
+            .bury(super::graveyard::Doomed::ImageView(self.handle));
     }
 }
 pub struct MipChainIter {

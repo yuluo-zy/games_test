@@ -14,8 +14,9 @@ pub struct Binding {
 // 以下为可运行 Vulkan 候选路径；上方原 CPU layout/pool 规则保持独立证据范围。
 use crate::raw::binding::{DescriptorSetBinding, ResourceOwner};
 use crate::raw::device::VulkanDevice;
+use parking_lot::Mutex;
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
 
 pub struct VulkanDescriptorSetLayout {
     pub device: Arc<VulkanDevice>,
@@ -105,12 +106,8 @@ impl VulkanDescriptorSetLayout {
 }
 impl Drop for VulkanDescriptorSetLayout {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.device.wait_idle();
-            self.device
-                .device
-                .destroy_descriptor_set_layout(self.handle, None);
-        }
+        self.device
+            .bury(super::graveyard::Doomed::DescriptorSetLayout(self.handle));
     }
 }
 
@@ -190,7 +187,7 @@ impl VulkanDescriptorPool {
         if !Arc::ptr_eq(&self.device, &layout.device) {
             return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
         }
-        let _guard = self.lock.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = self.lock.lock();
         let layouts = [layout.handle];
         let variable_count = layout
             .plan
@@ -222,7 +219,7 @@ impl VulkanDescriptorPool {
 
     /// 仅空闲池调用：调用方必须已经释放所有已提交集合的 GPU 持有引用。
     fn reset(&self) -> Result<(), vk::Result> {
-        let _guard = self.lock.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = self.lock.lock();
         unsafe {
             self.device
                 .device
@@ -232,12 +229,8 @@ impl VulkanDescriptorPool {
 }
 impl Drop for VulkanDescriptorPool {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.device.wait_idle();
-            self.device
-                .device
-                .destroy_descriptor_pool(self.handle, None);
-        }
+        self.device
+            .bury(super::graveyard::Doomed::DescriptorPool(self.handle));
     }
 }
 
@@ -285,7 +278,7 @@ impl Drop for VulkanDescriptorSet {
             // 瞬时 set 随整池 reset 回收，不能单独 free，更不能重用仍在录制的 set。
             return;
         }
-        let _guard = self.pool.lock.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = self.pool.lock.lock();
         unsafe {
             let _ = self.pool.device.wait_idle();
             let _ = self
@@ -541,7 +534,6 @@ impl<P> Drop for DescriptorPoolLease<P> {
             source
                 .returned
                 .lock()
-                .unwrap_or_else(|p| p.into_inner())
                 .push(self.pool.take().unwrap());
         }
     }
@@ -606,8 +598,7 @@ impl<P> DescriptorPoolQueue<P> {
                     &mut *self
                         .source
                         .returned
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner()),
+                        .lock(),
                 );
                 for pool in returned {
                     // reset 只对来源返还的整池执行，新建池无需 reset。
@@ -677,7 +668,7 @@ impl DescriptorSetState {
         retired: &mut Vec<RetiredDescriptorPool>,
     ) -> Result<Arc<VulkanDescriptorSet>, vk::Result> {
         self.validate_writes(writes)?;
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let mut state = self.state.lock();
         let mut retired_leases = Vec::new();
         let result = state.allocate(
             &mut retired_leases,
@@ -746,7 +737,7 @@ impl DescriptorSetState {
     }
     /// 移出当前池；仍被 set/command 持有的池只能在最后租约释放后归还来源。
     pub fn invalidate(&self) {
-        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let mut state = self.state.lock();
         state.pools.clear();
     }
     /// 兼容旧观测接口；内容缓存已经移除，始终为 0。
@@ -754,12 +745,11 @@ impl DescriptorSetState {
         0
     }
     pub fn free_pool_count(&self) -> usize {
-        let state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let state = self.state.lock();
         state
             .source
             .returned
             .lock()
-            .unwrap_or_else(|p| p.into_inner())
             .len()
     }
 }
@@ -845,13 +835,13 @@ mod descriptor_pool_tests {
             )
             .unwrap();
         retired.clear();
-        assert!(queue.source.returned.lock().unwrap().is_empty());
+        assert!(queue.source.returned.lock().is_empty());
         drop(first_owner);
-        assert_eq!(*queue.source.returned.lock().unwrap(), [1]);
+        assert_eq!(*queue.source.returned.lock(), [1]);
         queue.pools.clear();
         // 对应调用方提交完成后释放最后集合；否则第二个池仍不能进入来源。
         drop(second_owner);
-        assert_eq!(*queue.source.returned.lock().unwrap(), [1, 2]);
+        assert_eq!(*queue.source.returned.lock(), [1, 2]);
         let resets = RefCell::new(Vec::new());
         let (set, _) = queue
             .allocate(
@@ -913,6 +903,6 @@ mod descriptor_pool_tests {
             Err(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY)
         ));
         assert_eq!(retired.len(), 1);
-        assert!(queue.source.returned.lock().unwrap().is_empty());
+        assert!(queue.source.returned.lock().is_empty());
     }
 }

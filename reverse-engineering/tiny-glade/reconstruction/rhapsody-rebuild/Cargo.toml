@@ -12,5 +12,31 @@ ron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }
 ash = "=0.38.0"
 serde = { version = "=1.0.200", features = ["derive"] }
 serde_json = "=1.0.85"
+# 原作 rhapsody 的 record_batch 经 ComputeTaskPool::par_chunk_map_mut 并行录制；版本取自原 Cargo.lock。
+bevy_tasks = { version = "=0.16.0", default-features = false, features = ["std", "async_executor", "multi_threaded"] }
+
+# 以下四个依赖取自原作 Cargo.lock 与 rhapsody 源码注解（见 DEPENDENCY_AUDIT.md）：
+# parking_lot 用于全部互斥/读写锁；log 用于诊断；arc-swap 用于显存预算快照；
+# append-only-vec 是原 ManagedResourceStore 的槽位表（原作用 h3r2tic 分叉 rev 4031d67）。
+parking_lot = "=0.12.1"
+log = "=0.4.27"
+arc-swap = { version = "=1.7.1", features = ["weak"] }
+append-only-vec = { git = "https://github.com/h3r2tic/append-only-vec.git", rev = "4031d674025f4765ad8fdd7fd41ef3bc7bea65e8" }
+
+# 公开 gpu-allocator 作候选后端。原作锁的 0.26.0 是本地分叉（改到 ash 0.38，另依赖 arc-swap/egui/puffin），
+# 与公开 0.26.0（ash <=0.37）不是同一份代码；公开 0.27.0 是最接近且与 ash 0.38 类型兼容的版本。只开 vulkan。
+gpu-allocator = { version = "=0.27.0", default-features = false, features = ["vulkan"] }
 
 [workspace]
+
+[[bench]]
+name = "perf"
+harness = false
+
+# 集成测试/示例很多，每个都是独立二进制；完整调试信息会让 target/ 膨胀到近 10G。
+# 只保留行表（回溯仍有文件与行号），依赖不带调试信息。不影响行为与测试结果。
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
