@@ -20,22 +20,52 @@
 //!
 //! SSBO 名（O：SsboId 与 xxh3_64 比对一致）："ShadowMaskHistogramSsbo" / "ShadowMaskMeanSsbo"。
 
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::pass_resource_access::RgTexture;
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 use crate::resources::texture_presets::TexturePreset;
 use crate::rhapsody_types::TextureDesc;
 use crate::systems::render_loop::compute_passes::pass_kit::{
-    PassEnv, TEX_READ, TEX_WRITE, binding_hash, ssbo_carrier,
+    PassEnv, TEX_READ, TEX_WRITE, binding_hash,
 };
-use crate::typed_gap::Gap;
 
-/// 屏幕阴影直方图（O 名；布局 U）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ShadowMaskHistogramSsbo(pub Gap);
-/// 屏幕阴影均值（O 名；布局 U）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ShadowMaskMeanSsbo(pub Gap);
-ssbo_carrier!(ShadowMaskHistogramSsbo, "ShadowMaskHistogramSsbo");
-ssbo_carrier!(ShadowMaskMeanSsbo, "ShadowMaskMeanSsbo");
+/// 屏幕阴影直方图（O：`apply_screen_shadows.cs` 的 `RWStructuredBuffer<uint>`，`InterlockedAdd(hist[clamp(.., 0, 255)], 1)`）。
+///
+/// 机器码（O，`new_storage_buffer<ShadowMaskHistogramSsbo>` 0x141612170）：`BufferDesc::new(0x400, 0x22, 1).alignment(4)`，
+/// 元素 4（`cmp rbx, 0x404`）→ `BUFFER_LEN` = 256；`SsboId` 立即数 0xdec66ec37fabbb05 = xxh3("ShadowMaskHistogramSsbo")。
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ShadowMaskHistogramSsbo(pub u32);
+/// 屏幕阴影均值（O：`shadow_mask_mean.cs` 的 `RWByteAddressBuffer`，`Load<float>(0)`；`final_post` 读它缩放曝光）。
+///
+/// 机器码（O，0x141613720）：`BufferDesc::new(4, 0x22, 1).alignment(4)`——**`BUFFER_LEN == 1` 也是 0x22**（不是 uniform 0x12），
+/// 元素 4（`cmp r14, 8`）；`SsboId` 立即数 0x480eafc7a5a8a812 = xxh3("ShadowMaskMeanSsbo")。
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ShadowMaskMeanSsbo(pub f32);
+
+impl StorageElement for ShadowMaskHistogramSsbo {
+    const NAME: &'static str = "ShadowMaskHistogramSsbo";
+    /// 0x400 / 4。
+    const BUFFER_LEN: usize = 256;
+}
+impl StorageElement for ShadowMaskMeanSsbo {
+    const NAME: &'static str = "ShadowMaskMeanSsbo";
+    const BUFFER_LEN: usize = 1;
+}
+impl LibrarySsbo for ShadowMaskHistogramSsbo {
+    type Storage = TypedStorageBuffer<ShadowMaskHistogramSsbo>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::<ShadowMaskHistogramSsbo>::new_storage_buffer(device, initial)
+    }
+}
+impl LibrarySsbo for ShadowMaskMeanSsbo {
+    type Storage = TypedStorageBuffer<ShadowMaskMeanSsbo>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::<ShadowMaskMeanSsbo>::new_storage_buffer(device, initial)
+    }
+}
 
 pub const APPLY_NAME: &str = "Apply screen shadows";
 pub const APPLY_URI: &str = "/apply_screen_shadows.cs.hlsl";
@@ -256,5 +286,74 @@ mod tests {
         assert_eq!(MEAN_NAME.len(), 0x10);
         assert_eq!(MEAN_URI.len(), 0x19);
         assert_eq!(TEMPORAL_NAME.len(), 0x17);
+    }
+}
+
+#[cfg(test)]
+mod ssbo_layout_tests {
+    use super::*;
+    use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+    use crate::render::ssbo::tests::MockDevice;
+    use core::mem::{align_of, size_of};
+    use xxhash_rust::xxh3::xxh3_64;
+
+    #[test]
+    fn element_sizes_and_buffer_lens_match_buffer_desc() {
+        assert_eq!(
+            (
+                size_of::<ShadowMaskHistogramSsbo>(),
+                align_of::<ShadowMaskHistogramSsbo>()
+            ),
+            (4, 4)
+        );
+        assert_eq!(
+            (
+                size_of::<ShadowMaskMeanSsbo>(),
+                align_of::<ShadowMaskMeanSsbo>()
+            ),
+            (4, 4)
+        );
+        // 256 个 u32 = 0x400 B（`InterlockedAdd(hist[clamp(.., 0, 255)], 1)`）。
+        assert_eq!(ShadowMaskHistogramSsbo::BUFFER_LEN * 4, 0x400);
+        assert_eq!(ShadowMaskMeanSsbo::BUFFER_LEN * 4, 4);
+    }
+
+    #[test]
+    fn ssbo_ids_are_the_exe_immediates() {
+        assert_eq!(
+            xxh3_64(ShadowMaskHistogramSsbo::NAME.as_bytes()),
+            0xdec6_6ec3_7fab_bb05
+        );
+        assert_eq!(
+            xxh3_64(ShadowMaskHistogramSsbo::NAME.as_bytes()),
+            (-0x2139_913c_8054_44fb_i64) as u64
+        );
+        assert_eq!(
+            xxh3_64(ShadowMaskMeanSsbo::NAME.as_bytes()),
+            0x480e_afc7_a5a8_a812
+        );
+    }
+
+    #[test]
+    fn buffers_are_storage_0x22_even_for_buffer_len_1() {
+        let dev = MockDevice::default();
+        let lib = AssetSsboLibrary::new();
+        lib.add_new::<ShadowMaskHistogramSsbo>(&dev);
+        lib.add_new::<ShadowMaskMeanSsbo>(&dev);
+        let created = dev.created.borrow();
+        let hist = &created[0].0;
+        let mean = &created[1].0;
+        assert_eq!(
+            (hist.size, hist.usage, hist.memory, hist.alignment),
+            (0x400, 0x22, 1, 4)
+        );
+        // `TypedStorageBuffer::new` 对 BUFFER_LEN == 1 会用 uniform 0x12；`new_storage_buffer<ShadowMaskMeanSsbo>` 是 0x22。
+        assert_eq!(
+            (mean.size, mean.usage, mean.memory, mean.alignment),
+            (4, 0x22, 1, 4)
+        );
+        assert_eq!(created[0].1, "ShadowMaskHistogramSsbo");
+        assert_eq!(created[1].1, "ShadowMaskMeanSsbo");
+        assert!(created[0].2.is_none() && created[1].2.is_none());
     }
 }

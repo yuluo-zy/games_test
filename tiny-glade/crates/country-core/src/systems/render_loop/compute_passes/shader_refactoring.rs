@@ -5,9 +5,13 @@
 //! 布局 `{u32 disc @0, u32 payload @4}`；`world+0x5b0` = 当前 change tick（写回资源条目 `+0x5c`，即 `ResMut` 的 changed tick）。
 //!
 //! **第一层 `match disc`**（跳转表 0x142ab9ff0，O）：
-//! `0` → 直接返回（不碰 tick）；`5` → `unreachable!()`（"internal error: entered unreachable code"）；
+//! `0` → 直接返回（不碰 tick）；`5` → **`Result::unwrap()` 失败的 panic**（0x140990721 跳进 ref-temporal 创建结果的 `unwrap_failed`
+//! thunk 中部：`mov edx, 0x2b; call unwrap_failed`，0x2b = 43 = 文案 ``called `Result::unwrap()` on an `Err` value`` 的长度；
+//! 原版文案后还跟 `: {err:?}`，该错误的 Debug 内容 U）。**纠错**：此前写成 `unreachable!()`（`render-gap/DIGEST.md §3.1`）；
 //! `1` → `kind = 2`；`2` → `al = 0`，`3|4` → `al = 1`，后三者 `kind = ((payload & 3) == 3) ? al : 2`；
-//! `6..=9`：机器码里并入别的分支（跳到状态更新/收尾处，寄存器含未定值），**U，不建模**（按 no-op 处理并在测试里标注）。
+//! `6..=9`：编译器把这几个跳转表项合并进共享收尾代码的**退化分支**（帧槽未初始化，写垃圾地址，UB）。但第二张表的更新规则
+//! 只产出 disc ∈ {0, 2, 3, 4}（1→{2,0}；2→{2,payload+1}|{3,0}；3/4→{3|4,payload+1}），所以 disc 5..=9 实际**不可达**；
+//! 按 no-op 处理是安全且正确的近似。
 //!
 //! **公共前置**（`disc ∈ {1,2,3,4}`）：`ext = extent_2d(frame.desc)`，`fmt = frame.desc 格式字`；
 //! `get_or_create_temporal("shader refactoring feedback")`（名长 0x1b）：`new_2d(ext, fmt).storage().sampled()`（`Err` → `Result::unwrap` panic）。
@@ -51,6 +55,8 @@ pub const RENDERED_TEX: u64 = binding_hash("rendered_tex");
 pub const REFERENCE_TEX: u64 = binding_hash("reference_tex");
 pub const FEEDBACK_TEX: u64 = binding_hash("feedback_tex");
 pub const UNREACHABLE_PANIC: &str = "internal error: entered unreachable code";
+/// disc 5 的 panic 文案前缀（O：`unwrap_failed` 的 43 B 消息；其后原版还有 `: {err:?}`，内容 U）。
+pub const DISC5_UNWRAP_PANIC: &str = "called `Result::unwrap()` on an `Err` value";
 /// `ShaderRefactoringState` 的 TypeId（O）。
 pub const STATE_TYPE_ID: TypeId128 = TypeId128 {
     lo: 0xc95e_d87f_4130_70ab,
@@ -100,8 +106,8 @@ pub fn classify(state: RefactoringState) -> Option<u32> {
         1 => Some(2),
         2 => Some(phase(0)),
         3 | 4 => Some(phase(1)),
-        5 => panic!("{UNREACHABLE_PANIC}"),
-        _ => None, // 6..=9：U
+        5 => panic!("{DISC5_UNWRAP_PANIC}"),
+        _ => None, // 6..=9：退化分支，实际不可达（第二表只产出 0/2/3/4）
     }
 }
 
@@ -231,12 +237,16 @@ mod tests {
             (c(3, 3), c(4, 3), c(3, 4), c(4, 5)),
             (Some(1), Some(1), Some(2), Some(2))
         );
-        assert_eq!(c(6, 3), None, "6..=9 are merged arms (U)");
+        assert_eq!(
+            c(6, 3),
+            None,
+            "6..=9: degenerate arms, unreachable in practice"
+        );
     }
 
     #[test]
-    #[should_panic(expected = "internal error: entered unreachable code")]
-    fn state_five_is_unreachable() {
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
+    fn state_five_panics_with_result_unwrap_failed() {
         classify(RefactoringState {
             disc: 5,
             payload: 0,

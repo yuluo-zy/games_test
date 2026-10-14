@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::asset_libraries::mesh_library::MeshAsset;
+use crate::components::{BackgroundTerrain, DontReceiveContactShadows, OverwriteRoughness};
 use crate::render::pass_builder::draw_builder::DrawTransform;
 use crate::render::pass_builder::draw_list::DrawListFn;
 use crate::render::pass_builder::draw_stream::DrawKind;
@@ -349,9 +350,9 @@ fn env27_reads_markers_and_defaults() {
         Env27In {
             semi_transparent: true,
             albedo: Some(7),
-            has_66476a13: false,
-            u192600af: None,
-            has_a6c0fc01: false,
+            background_terrain: false,
+            overwrite_roughness: None,
+            dont_receive_contact_shadows: false,
         }
     );
     let mut rig = Rig::new(&[], &env27_unis());
@@ -377,9 +378,9 @@ fn env27_marker_overrides_the_albedo_key() {
     let e = w
         .spawn((
             AlbedoMapView(7),
-            MarkerU66476a13,
-            FloatU192600af(0.25),
-            MarkerUa6c0fc01,
+            BackgroundTerrain,
+            OverwriteRoughness(0.25),
+            DontReceiveContactShadows,
         ))
         .id();
     let i = read_env27(&w, e);

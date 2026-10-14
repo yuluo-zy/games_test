@@ -6,7 +6,8 @@
 //! * `indirect_params` 四个间接缓冲（`AtomicCounterBuffer` / `DrawIndirectBuffer` / `DispatchIndirectBuffer` /
 //!   `DrawIndexedIndirectBuffer`）= `pub use indirect_params::*`（旧 `(Gap)` 占位已删）。
 //! * [`LanternSsbo`]、[`MouseDepthValueSsbo`]：按机器码补齐 `StorageElement` + 库侧 `SsboType`（下文逐项 O）。
-//! * 其余（`DofAutofocusSsbo` 等）仍是 typed gap（原版由 compute_passes 里的真实类型承担，见各 pass 文件）。
+//! * `DofAutofocusSsbo`、`DofFocusReadbackSsbo`、`ShadowMaskHistogramSsbo`、`ShadowMaskMeanSsbo` 已迁到它们原版 NAME 路径所在的
+//!   `compute_passes::{dof_autofocus, apply_screen_shadows}`（真实元素布局）；这里只剩 `WallColorIdSsbo` 的 typed gap。
 
 use glam::Vec4;
 use xxhash_rust::xxh3::xxh3_64;
@@ -89,10 +90,6 @@ impl SsboType for MouseDepthValueSsbo {
 }
 
 // ---- 仍是 typed gap 的载体
-pub struct DofAutofocusSsbo(pub Gap);
-pub struct DofFocusReadbackSsbo(pub Gap);
-pub struct ShadowMaskHistogramSsbo(pub Gap);
-pub struct ShadowMaskMeanSsbo(pub Gap);
 pub struct WallColorIdSsbo(pub Gap);
 
 #[cfg(test)]

@@ -134,6 +134,33 @@ pub struct MonitorMatch {
     pub physical_size: [u32; 2],
 }
 
+/// `LastKnownGraphicsDevice`（I：名字来自 `render_config` 的序列化串 0x14292b810 区的 `"LastKnownGraphicsDevice"` /
+/// `"uuid"` / `"driver"`；O：0x140968c40 产出 48 B = 两个 `String`，`+0` 是 uuid、`+0x18` 是物理设备的 `Display`）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastKnownGraphicsDevice {
+    pub uuid: String,
+    pub driver: String,
+}
+
+impl LastKnownGraphicsDevice {
+    /// `impl$7::from(&GraphicsDevice)`（O 0x140968c40，只有这一个调用点的小自定义 `From`，不是 derive）。
+    ///
+    /// 原版先 `format!("{}", device.physical_device)`（源 `+0x58`，rhapsody `physical_device::impl$3::fmt`）写进第一个
+    /// `String`，**再** `device.uuid.to_string()`（源 `+0x78`，`uuid::fmt::impl$1::fmt`）写进第二个；写入失败 → panic
+    /// `"a Display implementation returned an error unexpectedly"`（`ToString` 的行为，这里自然继承）。
+    /// 结果里 `+0` 放 uuid、`+0x18` 放物理设备串。
+    ///
+    /// 这里的 `GraphicsDevice`（`rhapsody_contract`）不带这两个字段，所以直接收它们的 `Display` 实现；求值顺序保持原版。
+    pub fn from_display(
+        physical_device: &impl core::fmt::Display,
+        uuid: &impl core::fmt::Display,
+    ) -> Self {
+        let driver = physical_device.to_string();
+        let uuid = uuid.to_string();
+        Self { uuid, driver }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,6 +206,26 @@ mod tests {
             Some(UpscalingPreset::UltraPerformance)
         );
         assert_eq!(UpscalingPreset::UltraPerformance.previous(), None);
+    }
+
+    #[test]
+    fn last_known_graphics_device_formats_physical_device_first_then_uuid() {
+        use core::cell::RefCell;
+        struct Tracer<'a>(&'a RefCell<Vec<&'static str>>, &'static str, &'static str);
+        impl core::fmt::Display for Tracer<'_> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                self.0.borrow_mut().push(self.1);
+                f.write_str(self.2)
+            }
+        }
+        let order = RefCell::new(Vec::new());
+        let d = LastKnownGraphicsDevice::from_display(
+            &Tracer(&order, "physical_device", "Intel(R) UHD Graphics 630"),
+            &Tracer(&order, "uuid", "00112233-4455-6677-8899-aabbccddeeff"),
+        );
+        assert_eq!(*order.borrow(), ["physical_device", "uuid"]);
+        assert_eq!(d.driver, "Intel(R) UHD Graphics 630");
+        assert_eq!(d.uuid, "00112233-4455-6677-8899-aabbccddeeff");
     }
 
     #[test]

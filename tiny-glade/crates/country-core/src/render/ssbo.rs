@@ -305,7 +305,17 @@ impl<T: StorageElement> TypedStorageBuffer<T> {
     ///  * `BufferDesc::new(len, STORAGE|TRANSFER_DST = 0x22, memory = 2).alignment(4)`，名称 `T::NAME`，
     ///    数据整块作为初始内容；`Result::unwrap` 失败即 panic。
     ///  与 `new` 的差别：memory 为 2（`new` 为 1），大小取字节长度而非 `BUFFER_LEN`。
+    ///
+    /// **`BUFFER_LEN > 0` 的单态化形态**（O：`DofAutofocusSsbo` 0x1416101f0、`ShadowMaskHistogramSsbo` 0x141612170、
+    /// `ShadowMaskMeanSsbo` 0x141613720、`BushSsbo` 0x141610b60、`FlowerSsbo` 0x141613b90 等）：固定大小
+    /// `BUFFER_LEN × size_of::<T>()`，`BufferDesc::new(size, 0x22, memory = 1).alignment(4)`——用途**始终 0x22**
+    /// （`ShadowMaskMeanSsbo` 的 `BUFFER_LEN == 1` 也是 0x22，而 [`Self::new`] 对 `BUFFER_LEN == 1` 用 uniform 0x12）；
+    /// 有初始数据时先断言 `len % size_of::<T>() == 0`、指针 4 对齐，`len >= size + size_of::<T>()`（即元素数超过
+    /// `BUFFER_LEN`）→ `panic!("Excessive data size supplied for buffer {type}")`；**无初始数据不上传**。
     pub fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self {
+        if T::BUFFER_LEN > 0 {
+            return Self::new_fixed_storage_buffer(device, initial);
+        }
         let Some(bytes) = initial else {
             panic!(
                 "Storage buffer {} (type {}) has `BUFFER_LEN` of zero. Such buffers must be created with initial data.",
@@ -318,6 +328,30 @@ impl<T: StorageElement> TypedStorageBuffer<T> {
             .alignment(4);
         let buffer = device
             .create_buffer(&desc, T::NAME, Some(bytes))
+            .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
+        Self {
+            buffer,
+            _marker: PhantomData,
+        }
+    }
+
+    /// [`Self::new_storage_buffer`] 的 `BUFFER_LEN > 0` 分支。
+    fn new_fixed_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self {
+        let es = core::mem::size_of::<T>();
+        let size = T::BUFFER_LEN * es;
+        if let Some(bytes) = initial {
+            checked_element_count::<T>(bytes);
+            if bytes.len() >= size + es {
+                panic!(
+                    "Excessive data size supplied for buffer {}",
+                    core::any::type_name::<T>()
+                );
+            }
+        }
+        let desc =
+            BufferDesc::new(size, usage::STORAGE_BUFFER | usage::TRANSFER_DST, 1).alignment(4);
+        let buffer = device
+            .create_buffer(&desc, T::NAME, initial)
             .expect("called `Result::unwrap()` on an `Err` value: create_buffer");
         Self {
             buffer,

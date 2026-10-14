@@ -21,14 +21,84 @@
 //!    = `{mode 1, x 8, y 8, z 1}`；反汇编注释把它显示成 `0.0` 向量是 f32 非规格化数的假象）。
 //!
 //! # 偏离
-//! `DofAutofocusSsbo` / `DofFocusReadbackSsbo` 的真实载体在 `resources` 里是 typed gap，不满足 `LibrarySsbo`；
-//! 这里对两个 SSBO 类型做泛型参数（`A`/`R`），调用方传真实载体。
+//! 本 pass 仍对两个 SSBO 类型做泛型参数（`A`/`R`），由调用方传入；真实类型 [`DofAutofocusSsbo`] /
+//! [`DofFocusReadbackSsbo`] 现在定义在本文件（原版 NAME 路径就是 `compute_passes::dof_autofocus::…`，
+//! 此前放在 `resources::render_ssbo` 里是 typed gap 载体）。
 
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
 use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resource_access::RgTexture;
 
 use super::pass_kit::{PassEnv, binding_hash};
+
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::{
+    MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement, TypedStorageBuffer,
+};
+
+/// 每相机自动对焦参数（O：`resources` 里 `DofAutofocusSsbo`，着色器侧 `DofFocus`，`inc/coc.hlsl:12`，64 B）。
+///
+/// 布局（O：`dof_autofocus.cs` 写 `focus0/focus1/lock_pos_ws/…` 于偏移 0/4/16/28/32/56；HLSL 成员顺序）：
+/// `{focus0 @0, focus1 @4, lock_bias0 @8, lock_bias1 @12, lock_pos_ws @16(12 B), is_locked @28,
+/// interp_lock_pos_ws @32(12 B), use_tilt_shift @44, interp_lock_bias0 @48, interp_lock_bias1 @52, focus_scale @56, pad2 @60}`。
+///
+/// 机器码（O，`new_storage_buffer<DofAutofocusSsbo>` 0x1416101f0）：`BufferDesc::new(0x200, 0x22, 1).alignment(4)`，
+/// 元素 0x40（`cmp rbx, 0x240` = 0x200 + 0x40）→ `BUFFER_LEN` = 8；`SsboId` 立即数 0x530b5658f3632b30 = xxh3("DofAutofocusSsbo")。
+/// 完整类型路径（`get_rg_buffer` 里的断言串，0x53 B）：`country_core::systems::render_loop::compute_passes::dof_autofocus::DofAutofocusSsbo`。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DofAutofocusSsbo {
+    pub focus0: f32,
+    pub focus1: f32,
+    pub lock_bias0: f32,
+    pub lock_bias1: f32,
+    pub lock_pos_ws: [f32; 3],
+    pub is_locked: u32,
+    pub interp_lock_pos_ws: [f32; 3],
+    pub use_tilt_shift: u32,
+    pub interp_lock_bias0: f32,
+    pub interp_lock_bias1: f32,
+    pub focus_scale: f32,
+    pub pad2: u32,
+}
+
+impl StorageElement for DofAutofocusSsbo {
+    const NAME: &'static str = "DofAutofocusSsbo";
+    /// 0x200 / 0x40。
+    const BUFFER_LEN: usize = 8;
+}
+
+impl LibrarySsbo for DofAutofocusSsbo {
+    type Storage = TypedStorageBuffer<DofAutofocusSsbo>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, initial)
+    }
+}
+
+/// CPU 对焦锁定请求的读回结构（O：`DofFocusReadback`，`inc/coc.hlsl:28`，16 B；成员名沿用原版拼写 `lock_reponse`）。
+///
+/// 机器码（O，0x14161ed70）：`BufferDesc::new(0x10, 0x22, 4).alignment(4)`——**映射缓冲，memory 4（回读）**；
+/// 元素 0x10（`cmp rbx, 0x20` = 0x10 + 0x10）→ `BUFFER_LEN` = 1；经 `Buffer::mapped_slice_mut` 写初始数据
+/// （断言 `data.len() >= buffer.byte_size`）。`SsboId` 立即数 0x29faa4608bf58d67 = xxh3("DofFocusReadbackSsbo")。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DofFocusReadbackSsbo {
+    pub lock_pos_ws: [f32; 3],
+    pub lock_reponse: u32,
+}
+
+impl StorageElement for DofFocusReadbackSsbo {
+    const NAME: &'static str = "DofFocusReadbackSsbo";
+    const BUFFER_LEN: usize = 1;
+    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
+}
+
+impl LibrarySsbo for DofFocusReadbackSsbo {
+    type Storage = MappedStorageBuffer<'static, DofFocusReadbackSsbo>;
+    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+        MappedStorageBuffer::<DofFocusReadbackSsbo>::new_storage_buffer(device, initial)
+    }
+}
 
 /// pass 名（O 字符串 `"Mouse Depth Write to SSBO"`，len 0x19）。
 pub const PASS_NAME: &str = "Mouse Depth Write to SSBO";
@@ -346,5 +416,97 @@ mod tests {
         assert_eq!(e.uniform_u32(&rec, H_FOCUS_IS_LOCKED), 1);
         assert_eq!(e.uniform_u32(&rec, H_USE_DUAL_FOCUS), 0);
         assert_eq!(e.uniform_f32(&rec, H_APERTURE_SIZE), 2.8);
+    }
+}
+
+#[cfg(test)]
+mod ssbo_layout_tests {
+    use super::*;
+    use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
+    use crate::render::ssbo::tests::MockDevice;
+    use core::mem::{align_of, offset_of, size_of};
+    use xxhash_rust::xxh3::xxh3_64;
+
+    #[test]
+    fn dof_focus_layout_matches_the_hlsl_and_the_shader_store_offsets() {
+        assert_eq!(size_of::<DofAutofocusSsbo>(), 0x40);
+        assert_eq!(align_of::<DofAutofocusSsbo>(), 4);
+        // `dof_autofocus.cs` 写 focus 字段于 0/4/16/28/32/56（coc.hlsl 头注释，O）。
+        assert_eq!(offset_of!(DofAutofocusSsbo, focus0), 0);
+        assert_eq!(offset_of!(DofAutofocusSsbo, focus1), 4);
+        assert_eq!(offset_of!(DofAutofocusSsbo, lock_pos_ws), 16);
+        assert_eq!(offset_of!(DofAutofocusSsbo, is_locked), 28);
+        assert_eq!(offset_of!(DofAutofocusSsbo, interp_lock_pos_ws), 32);
+        assert_eq!(offset_of!(DofAutofocusSsbo, use_tilt_shift), 44);
+        assert_eq!(offset_of!(DofAutofocusSsbo, interp_lock_bias0), 48);
+        assert_eq!(offset_of!(DofAutofocusSsbo, focus_scale), 56);
+        assert_eq!(offset_of!(DofAutofocusSsbo, pad2), 60);
+        assert_eq!(size_of::<DofFocusReadbackSsbo>(), 0x10);
+        assert_eq!(offset_of!(DofFocusReadbackSsbo, lock_reponse), 12);
+    }
+
+    #[test]
+    fn ssbo_ids_are_the_exe_immediates() {
+        // get_rg_buffer<T> 里的 movabs 立即数。
+        assert_eq!(
+            xxh3_64(DofAutofocusSsbo::NAME.as_bytes()),
+            0x530b_5658_f363_2b30
+        );
+        assert_eq!(
+            xxh3_64(DofFocusReadbackSsbo::NAME.as_bytes()),
+            0x29fa_a460_8bf5_8d67
+        );
+    }
+
+    #[test]
+    fn autofocus_buffer_is_8_elements_device_local_storage() {
+        let dev = MockDevice::default();
+        AssetSsboLibrary::new().add_new::<DofAutofocusSsbo>(&dev);
+        let created = dev.created.borrow();
+        let (desc, name, data) = &created[0];
+        assert_eq!(
+            (desc.size, desc.usage, desc.memory, desc.alignment),
+            (0x200, 0x22, 1, 4)
+        );
+        assert_eq!(name, "DofAutofocusSsbo");
+        assert!(
+            data.is_none(),
+            "BUFFER_LEN > 0 without data uploads nothing (O)"
+        );
+        assert_eq!(
+            DofAutofocusSsbo::BUFFER_LEN * size_of::<DofAutofocusSsbo>(),
+            0x200
+        );
+    }
+
+    #[test]
+    fn readback_buffer_is_mapped_memory_4() {
+        let dev = MockDevice::default();
+        AssetSsboLibrary::new().add_new::<DofFocusReadbackSsbo>(&dev);
+        let created = dev.created.borrow();
+        let (desc, name, _) = &created[0];
+        assert_eq!(
+            (desc.size, desc.usage, desc.memory, desc.alignment),
+            (0x10, 0x22, 4, 4)
+        );
+        assert_eq!(name, "DofFocusReadbackSsbo");
+        assert_eq!(DofFocusReadbackSsbo::MAPPED_MEMORY, MAPPED_MEMORY_READBACK);
+    }
+
+    #[test]
+    #[should_panic(expected = "Excessive data size supplied for buffer")]
+    fn more_than_8_initial_elements_panics() {
+        let dev = MockDevice::default();
+        AssetSsboLibrary::new()
+            .add_new_with_data::<DofAutofocusSsbo>(&dev, &[DofAutofocusSsbo::default(); 9]);
+    }
+
+    #[test]
+    fn exactly_8_initial_elements_are_uploaded_whole() {
+        let dev = MockDevice::default();
+        AssetSsboLibrary::new()
+            .add_new_with_data::<DofAutofocusSsbo>(&dev, &[DofAutofocusSsbo::default(); 8]);
+        let created = dev.created.borrow();
+        assert_eq!(created[0].2.as_ref().map(Vec::len), Some(0x200));
     }
 }

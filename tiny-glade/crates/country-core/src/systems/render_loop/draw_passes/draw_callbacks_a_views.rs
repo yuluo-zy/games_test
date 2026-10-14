@@ -97,22 +97,6 @@ pub struct WallBrickInstancedDrawProxyView {
     pub b2: u8,
 }
 
-/// TypeId 0x66476a13bbcc5e41/0xba435ad0d8465a44：`components` 模块里的 `impl$66`（`register_required_components`），
-/// 只做 `contains`。**U**：类型名只有 TypeId；与它同属 bundle `[KeepOnLevelUnload, DrawableMeshBundle, BackgroundTerrain,
-/// DontReceiveContactShadows, OverwriteRoughness, …]`，候选 `BackgroundTerrain`（I，未证实）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MarkerU66476a13;
-
-/// TypeId 0xa6c0fc01ec67ef4c/0x7a8927565f75e3ef（`components::impl$25`）：取 `Option<&T>`，只看是否存在。
-/// **U**；候选 `DontReceiveContactShadows`（I：同一 bundle、`impl$24 = DashedLineLength` 的字母序后继）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MarkerUa6c0fc01;
-
-/// TypeId 0x192600af2434483b/0x2988839ec6eae656（`components::impl$29`）：`f32 @+0`，缺省 `0.8`。
-/// **U**；候选 `OverwriteRoughness`（I：f32 缺省 0.8，字母序紧随 `NormalMap = impl$28`）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-pub struct FloatU192600af(pub f32);
-
 /// `LogoAnimation`（TypeId 0x98df08dcfa7ea5ba/0x67b117a60e632bc3；真实类型无 `Resource` 派生）：`f32 @+0`、`f32 @+0x10`。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct LogoAnimationView {

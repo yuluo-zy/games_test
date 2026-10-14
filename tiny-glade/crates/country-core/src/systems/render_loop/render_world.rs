@@ -233,9 +233,12 @@ pub trait FramePasses {
     fn display_dims(&mut self) -> Option<[u32; 2]>;
     /// DoF 资源（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）的首个 u32（模式值）。
     fn dof_mode(&mut self) -> Option<u32>;
-    /// `*0x14362c0d8`（全局 bool，语义 U；为 false 时跑第二轮墙体剔除）。
+    /// `*0x14362c0d8` → 0x143634da0：**`freeze_occlusion_culling` 调试开关**（O，grass `B_c2.md` 已命名该地址；`.data` 指针 →
+    /// 零填充区字节，加载时 0）。非 0 → 跳过 `generate_wall_draw_lists_pass2` 与 `gpu_generate_draw_lists`（`render-gap/DIGEST.md §3.4`）。
+    /// 为 false 时跑第二轮墙体剔除。
     fn flag_c0d8(&mut self) -> bool;
-    /// `*0x14362c098`（全局 bool，语义 U；为 false 时跑折射/水面）。
+    /// `*0x14362c098` → 0x143634d90：进程级 **demo 开关**（O，`lut_gallery`/`gpu_lut`/`vermeer` 共用的同一进程布尔）。非 0 → 跳过
+    /// 折射/水面 pass 链（"demo 下跳过水折射"的语义为 I）。为 false 时跑折射/水面。
     fn flag_c098(&mut self) -> bool;
 
     // ---- rhapsody RenderGraph ----

@@ -120,12 +120,12 @@ dof_source!(
 dof_source!(
     FullResAllLod1Dof,
     "/dof/fullres_all_lod1.cs.hlsl:cs_main",
-    "`impl$7`（0x140a5d990）。"
+    "`impl$7`（0x140a5d990；`source_hash` = 0x140a5d960，46 B：`calculate_hash(&(\"/dof/fullres_all_lod1.cs.hlsl:cs_main\", self))`，O）。"
 );
 dof_source!(
     FullResDof,
     "/dof/fullres.cs.hlsl:cs_main",
-    "`impl$11`（0x140a5de30）。"
+    "`impl$11`（0x140a5de30；`source_hash` = 0x140a5de00，46 B：`calculate_hash(&(\"/dof/fullres.cs.hlsl:cs_main\", self))`，O）。"
 );
 dof_source!(
     HalfResDof,

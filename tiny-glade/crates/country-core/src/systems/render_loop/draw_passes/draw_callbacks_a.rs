@@ -42,7 +42,9 @@ use glam::{Mat4, Vec3};
 use crate::asset_libraries::Handle;
 use crate::asset_libraries::mesh_library::AssetMeshLibrary;
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboId};
-use crate::components::SemiTransparent;
+use crate::components::{
+    BackgroundTerrain, DontReceiveContactShadows, OverwriteRoughness, SemiTransparent,
+};
 use crate::name_hash::NameHash;
 use crate::render::mesh::Mesh;
 use crate::render::nani::draw_ext::NaniDrawExt;
@@ -424,9 +426,9 @@ pub fn env6(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
 pub struct Env27In {
     pub semi_transparent: bool,
     pub albedo: Option<u64>,
-    pub has_66476a13: bool,
-    pub u192600af: Option<f32>,
-    pub has_a6c0fc01: bool,
+    pub background_terrain: bool,
+    pub overwrite_roughness: Option<f32>,
+    pub dont_receive_contact_shadows: bool,
 }
 
 pub const E27_ROUGHNESS_DEFAULT: f32 = 0.8;
@@ -442,23 +444,26 @@ pub fn read_env27(w: &World, e: Entity) -> Env27In {
     Env27In {
         semi_transparent: has::<SemiTransparent>(w, e),
         albedo: comp_opt::<AlbedoMapView>(w, e).map(|a| a.0),
-        has_66476a13: has::<MarkerU66476a13>(w, e),
-        u192600af: comp_opt::<FloatU192600af>(w, e).map(|f| f.0),
-        has_a6c0fc01: comp_opt::<MarkerUa6c0fc01>(w, e).is_some(),
+        background_terrain: has::<BackgroundTerrain>(w, e),
+        overwrite_roughness: comp_opt::<OverwriteRoughness>(w, e).map(|f| f.0),
+        dont_receive_contact_shadows: comp_opt::<DontReceiveContactShadows>(w, e).is_some(),
     }
 }
 
 pub fn env27_body<'p>(b: DrawBuilder<'p>, i: &Env27In, end: impl FnOnce(DrawBuilder<'p>)) {
-    let key = if i.has_66476a13 {
+    let key = if i.background_terrain {
         E27_MARKER_KEY
     } else {
         i.albedo.unwrap_or(E27_ALBEDO_DEFAULT)
     };
     let b = bind_disk(b, key, NAME_ALBEDO);
-    let b = b.uniform(E27_BOOL_A, i.has_66476a13);
-    let b = b.uniform(E27_F32, i.u192600af.unwrap_or(E27_ROUGHNESS_DEFAULT));
+    let b = b.uniform(E27_BOOL_A, i.background_terrain);
+    let b = b.uniform(
+        E27_F32,
+        i.overwrite_roughness.unwrap_or(E27_ROUGHNESS_DEFAULT),
+    );
     let b = b.uniform(E27_BOOL_SEMI, i.semi_transparent);
-    let b = b.uniform(E27_BOOL_NO_A6C0, !i.has_a6c0fc01);
+    let b = b.uniform(E27_BOOL_NO_A6C0, !i.dont_receive_contact_shadows);
     end(b);
 }
 
