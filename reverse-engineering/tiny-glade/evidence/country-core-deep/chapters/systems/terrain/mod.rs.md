@@ -8,6 +8,6 @@
 
 | 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `country_core::systems::terrain::impl$0::add_terrain_systems` | 0x1409455f0 | 37 | 构造/注册/生成 | 待证 | terrain-water\decomp\decomp-0x1409455f0.txt |
-| `country_core::systems::terrain::impl$0::insert_terrain_resources` | 0x1409457c0 | 56 | 构造/注册/生成 | 待证 | terrain-water\decomp\decomp-0x1409457c0.txt |
-| `country_core::systems::terrain::impl$0::add_terrain_events` | 0x140945a20 | 65 | 构造/注册/生成 | 待证 | terrain-water\decomp\decomp-0x140945a20.txt |
+| `impl$0::add_terrain_systems` | 0x1409455f0 | 37 | 构造/注册/生成 | O：系统注册（Bevy Plugin 接线；register_required_components 胶水 + add_systems 族） | terrain-water\decomp\decomp-0x1409455f0.txt |
+| `impl$0::insert_terrain_resources` | 0x1409457c0 | 56 | 构造/注册/生成 | O：地形资源插入（TerrainHeightsData 双实例/网格等 init） | terrain-water\decomp\decomp-0x1409457c0.txt |
+| `impl$0::add_terrain_events` | 0x140945a20 | 65 | 构造/注册/生成 | O：地形事件注册（Bevy 事件声明；注册胶水） | terrain-water\decomp\decomp-0x140945a20.txt |
