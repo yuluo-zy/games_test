@@ -1,5 +1,32 @@
 # 游戏自有源码逆向任务与收益排序
 
+## 2026-10-14 country-core 非渲染部分任务包（NR 系列）
+
+范围：country-core 除渲染外的游戏逻辑层。分母取自 `evidence/country-core-deep/SOURCE_MAP.json`（systems/resources 业务函数，非渲染约 1,520）与 `evidence/country-core-audit/AUDIT_REPORT.md`；工作量折算为估计（以渲染 R1–R6 + 21 WP ≈ 17.9k 行为 1 个量级），不是统计值。每包交付须区分“真实代码接线 / candidate 链测试 / 原侧机器码验证”，不以章节文档或 case 数代替；glue/derive/依赖转发不计业务，O 结论使用前必须对照机器码复核（审计中 O 标签仅约 56% 全对）。
+
+| 包 | 内容 | 业务函数 | 当前状态 | 估计 | 依赖 |
+|---|---|---:|---|---|---|
+| NR0 | 纠错前置：FIX-LIST 277 条（FIX 98/WRONG 15/PARTIAL 31/GAP 20/STUB 7）；审计 §3.2/§3.3 合同错误与静默桩（`wall_eraser`、`draw_wall` id、`inner_walls.next_id`、`ShadowedBuffer`）按机器码复核后改代码 | — | 清单已有，未逐条关闭 | 0.5–1 | 无 |
+| NR1 | 墙/屋顶/楼梯/碰撞：`recovered_building` 与 `tg-building-runtime` 的 FIX/WRONG 修复；墙 bound/is_bounded/to_affine3 与 Spline2D 全局查询的真实消费链定位；`update_rapier_colliders 0x1408d0490`（改用 radare2/reva） | ≈633 | 骨架 24k 行，正确性未验 | 1–2 | NR0 |
+| NR2 | 历史/存档/会话/预制件：HistoryCmd 中断与 redo 编码、`nuke_future_states`、`finish_replay`、快照键 `snapshots`、JSON+deflate 存档、timelapse/prefab | ≈195 | 仅 `tg-history` 592 行 | 1 | NR1（墙状态） |
+| NR3 | 相机/时间/天气：`NormalCamera::update` 常量、FreeCamera、TimeOfDay、weather、`remap_hour_to_fmod_hour`；PhotoModeCameraMode↔CameraMode 6..12 映射（写入点在 toolbar，需外部证据） | ≈66 | 无代码，文档齐 | 0.3 | 无，可并行 |
+| NR4 | 地形/水/世界栅格剩余：水 plane/mask、地形笔刷编辑 stroke、STUB 7 项；SubworldIndex 17 槽名序 | ≈93 | 栅格/高度 CPU 侧已做（R5/R5b） | 0.3–0.5 | 无，可并行 |
+| NR5 | 音频：FMOD 事件表、trigger_audio、音频资源与 55% 桩的真实实现、GAP 19 项 | ≈88 | 无代码，文档称已查完 | 0.3–0.5 | 无，可并行 |
+| NR6 | UI/输入/工具栏/模式管理：mode_manager、signifiers、gui/toolbar/ui_settings、拖拽输入与硬编码预览桩；EscMenuState 变体名（无 serde，需另寻证据） | ≈161 | 62% 为桩，无代码 | 0.5–1 | NR1/NR2 部分接口 |
+| NR7 | 生态：ivy、critters（鸭/鱼 `DuckSpawnLocations` 10×10）、steam、clutter、tree/bush | ≈114 | 无代码 | 0.5–1 | 无，可并行 |
+| NR8 | 其它杂项：backend、paths、debug、color_icon、logo_animation、feedback_report、window、startup/`load_*_into_library` | ≈170 | 无代码，56% 启动域未触及 | 0.3–0.5 | 无 |
+| NR9 | 接线与集成：Plugin/系统注册（`add_systems` 现为空）、缺失依赖（`dolly`、glam `mint`、`puffin`）与原版锁定版本对齐、整 crate 编译、与渲染入口 `(rg, world, handles)` 对接、utils 占位替换为共享 `utils` | — | 整 crate 从未整体编译，0 系统注册 | 1 | NR1–NR8 |
+
+估计单位为渲染工作量的倍数；非渲染合计约 4–6 倍。
+
+建议顺序与并行：
+1. NR0 先行（阻塞 NR1/NR2）。
+2. NR3、NR4、NR5、NR7、NR8 互不依赖，可在 NR0/NR1 期间并行分域 agent，每域一个唯一 worker。
+3. NR1 → NR2 → NR6 串行主线。
+4. NR9 最后；场景/GPU 与 A/C 版验收仍后置。
+
+已登记未决卡点（对应包）：SubworldIndex 槽名（NR4）、PhotoMode 映射（NR3）、EscMenuState 变体名（NR6）、`update_rapier_colliders`（NR1）、Events<T> 分叉布局两种 push 形状（NR9，需引擎层裁决）。
+
 ## 2026-10-14 utils B 深挖增量
 
 原楼梯2D dense-segment消费策略、共享标量运算順序及owned Curve XZ投影/stride已恢复并通过限定原指令验收，详情 [REPORT.md](evidence/utils-deep-followup-2026-10-14/REPORT.md)。用户明确只分析B。剩余墙bound/is_bounded/to_affine3、Spline2D全局查询和原借用as_vec2类型未获得正面编译体；已交叉扫描全PDB过程/内联/行号，不能通过复制3D或依据同址标签补造。优先寻找可归属的原消费链与数据流；采样开关写入者与完整消费者仍在队列，完整游戏/GPU后置。
