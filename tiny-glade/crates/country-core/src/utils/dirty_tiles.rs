@@ -16,13 +16,19 @@
 //! 第 `y` 个 u64 字是第 `y` 行瓦片，第 `x` 位是该行第 `x` 列瓦片，瓦片边长 8 px，
 //! 世界边长 130。
 //!
+//! `rasterize_world_space_stroke`（0x140ade620）：`iter_world_space_stroke_cells` 的 `DirtyTiles` 实例，见
+//! [`DirtyTiles::rasterize_world_space_stroke`] 与 `utils::conservative_line_raster`。
+//!
 //! 未恢复：`cell_from_world_space`（0x140960b20）。它有三次 `fmaf` 与一个四通道输出，
 //! 参数/返回布局没有对上，不凭猜测落码（U）。
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::manual_clamp)]
 
+use glam::Vec3;
 use tabloid::{State, StateDelta};
+
+use crate::utils::conservative_line_raster::conservative_plot_line;
 
 /// 瓦片边长（像素）。O：`retain` 里 `shl 0xc`（8 行 × 512 B）与 `lea [rdi*8]`。
 pub const TILE_SIZE: usize = 8;
@@ -163,6 +169,32 @@ impl DirtyTiles {
         cells
     }
 
+    /// 置一个瓦片；`(x | y) as u32 > 63`（含负数）时忽略。O：0x140b1e460 内联回调的 `cmp r9d,0x3f; ja`。
+    pub fn set_cell(&mut self, x: i32, y: i32) {
+        if ((x | y) as u32) <= 63 {
+            self.rows[y as usize] |= 1u64 << x;
+        }
+    }
+
+    /// O：0x140ade620 `iter_world_space_stroke_cells<&[Vec3]>`（`DirtyTiles` 实例）。
+    ///
+    /// 少于 2 个点什么也不做。半径 `r_cells = radius * 0.4923 + 3.846e-4`（0x142925874 = `0x3efc0fc1`、
+    /// 0x142925878 = `0x39c9a634`，普通 `mulss` + `addss`）；每个点取 `(x, z)`，各自 `fmaf(v, 0x3efc0fc1, 32.0)`
+    /// 换成瓦片坐标；相邻两点交给 [`conservative_plot_line`]，回调为 [`Self::set_cell`]。
+    pub fn rasterize_world_space_stroke(&mut self, points: &[Vec3], radius: f32) {
+        if points.len() < 2 {
+            return;
+        }
+        let scale = f32::from_bits(0x3efc0fc1);
+        let radius_cells = radius * scale + f32::from_bits(0x39c9a634);
+        let to_cell = |p: Vec3| (p.x.mul_add(scale, 32.0), p.z.mul_add(scale, 32.0));
+        for pair in points.windows(2) {
+            conservative_plot_line(to_cell(pair[0]), to_cell(pair[1]), radius_cells, |x, y| {
+                self.set_cell(x, y)
+            });
+        }
+    }
+
     /// O：0x140adec50。同一个取整/钳制规则，内循环对每个格 `bt` 测位，命中置标志。
     pub fn intersects_world_rect(&self, rect: [f32; 4]) -> bool {
         let cells = world_rect_cells(rect);
@@ -248,6 +280,36 @@ mod tests {
         assert!(tiles.intersects_world_rect([1.0, 1.0, 1.0, 1.0]));
         // 而恰好落在格线上的零面积矩形（世界 0 → 32.0）为空。
         assert!(!DirtyTiles::new_all_dirty().intersects_world_rect([0.0, 0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn stroke_marks_the_tiles_along_a_world_space_polyline() {
+        let mut tiles = DirtyTiles::new_clear();
+        tiles.rasterize_world_space_stroke(
+            &[Vec3::new(-10.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)],
+            0.0,
+        );
+        // 世界 z = 0 → 行 32；x 从 -10 到 10 → 列约 27..37。
+        for x in 28..=36 {
+            assert!(tiles.contains(x, 32), "tile {x}");
+        }
+        assert!(!tiles.contains(10, 32));
+        assert!(!tiles.contains(32, 10));
+    }
+
+    #[test]
+    fn stroke_needs_two_points_and_clips_to_the_grid() {
+        let mut tiles = DirtyTiles::new_clear();
+        tiles.rasterize_world_space_stroke(&[Vec3::ZERO], 5.0);
+        assert!(tiles.is_empty());
+        tiles.rasterize_world_space_stroke(
+            &[Vec3::new(500.0, 0.0, 0.0), Vec3::new(600.0, 0.0, 0.0)],
+            1.0,
+        );
+        assert!(tiles.is_empty());
+        tiles.set_cell(-1, 3);
+        tiles.set_cell(3, 64);
+        assert!(tiles.is_empty());
     }
 
     #[test]

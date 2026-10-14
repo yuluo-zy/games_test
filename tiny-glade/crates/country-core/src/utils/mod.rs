@@ -1,4 +1,5 @@
 pub mod child_wall;
+pub mod conservative_line_raster;
 pub mod debug_viz;
 pub mod dirty_tiles;
 pub mod float_grid;

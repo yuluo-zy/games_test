@@ -7,9 +7,9 @@
   },
   "author_source_claim": false,
   "summary": {
-    "mapped_source_files": 196,
+    "mapped_source_files": 197,
     "by_classification": {
-      "recovered_functional_module_with_documented_O_I_U_boundaries": 183,
+      "recovered_functional_module_with_documented_O_I_U_boundaries": 184,
       "observed_render_marker_fragment": 1,
       "engineering_stable_reference_container_adapter_not_original_frozen": 1,
       "observed_color_id_fragment": 1,
@@ -1569,7 +1569,7 @@
       "destination": "crates/country-core/src/utils/mod.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/utils/mod.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "576ee9bc053f6949cebca7e1b78c3eb8d463b8e2648db236d9439190c4a5a94d",
+      "destination_sha256": "20bd4a3e7ab37e64221d887a8838aa4ef12639efd3d249f9cb298d2df577df2d",
       "source_commit": "b5965593",
       "source_sha256": "5942f11c7b3164470f77e3da74173838d8800fa23338f00cce6b0ddcebd0aa20",
       "r5_note": "R5 (2026-10-14): added module declarations for the new world-raster/terrain files; no other change. R6: world_space_to_screen_space + project_cursor_onto_ray module."
@@ -1629,7 +1629,7 @@
       "destination": "crates/country-core/src/utils/dirty_tiles.rs",
       "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R5_world_raster_terrain.md",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "684ad1cde23beba1c38bbf1a6d3141e73c001848839e376f5f2556fb10a80046",
+      "destination_sha256": "4356b3e57c916df4b2aac62cff37cefe69eb66348855d7b9c89a8953ffa18e5f",
       "source_commit": null,
       "source_note": "Written 2026-10-14 (R5) directly from B EXE bytes; there is no old-tree counterpart, so the evidence note is recorded as the source. DirtyTiles (new_clear/clear/extend/rasterize/intersects/retain, tabloid State+StateDelta); also the single type behind recovered_building::dirty_tiles::DirtyTiles64. cell_from_world_space (0x140960b20) not recovered.",
       "preservation_note": "Every recovered function carries its B address and O/I/U grading in doc comments; tests assert EXE constants. File-local lint allowances (if any) are listed in lint-preservation.json."
@@ -1734,6 +1734,14 @@
       "destination_sha256": "f2759ccdeb0186fabe00f424fe3769d737ae0df6c0757f774c6ca6bb83afe85d",
       "source_commit": null,
       "source_note": "Written 2026-10-14 from EXE bytes; see R9."
+    },
+    {
+      "destination": "crates/country-core/src/utils/conservative_line_raster.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R10_conservative_line_raster.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "986a36a79189fdf1088f9364e96dfbab55d7d01ab9483c41020735709c15f2b9",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from EXE bytes; see R10."
     }
   ],
   "exclusions": [
@@ -1890,6 +1898,21 @@
         },
         "native-physics": {
           "passed": 1334,
+          "failed": 0
+        }
+      },
+      "strict_clippy_D_warnings_no_deps_all_targets": "passed",
+      "rustfmt_check": "passed"
+    },
+    "r10_conservative_line_raster": {
+      "date": "2026-10-14",
+      "lib_tests": {
+        "default_features": {
+          "passed": 1343,
+          "failed": 0
+        },
+        "native-physics": {
+          "passed": 1343,
           "failed": 0
         }
       },
