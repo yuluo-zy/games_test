@@ -25,6 +25,7 @@ pub mod typed_gap {
 pub use systems::render_loop as render_loop_ctx;
 
 pub mod resources;
+pub mod startup;
 pub mod utils;
 
 pub mod systems {
