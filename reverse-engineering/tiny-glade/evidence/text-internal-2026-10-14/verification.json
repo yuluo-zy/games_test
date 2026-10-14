@@ -1,0 +1,147 @@
+{
+  "baseline": "B Windows x86_64",
+  "before": {
+    "Cargo.lock": "4307fedd90c2ca3700ae9b4e86478030fc386297be315b9cd18e39f86bdad992",
+    "Cargo.toml": "44f1dd4c99972a41ab8f02d37c714bfcd584899c8ca077f8cfc0e14a9a8cb652",
+    "crates/tg-text/Cargo.toml": "5de03382985564d5662134e016775217e88d4dae2caed44ac9ad209025fb8042",
+    "crates/tg-text/examples/text_gpu.rs": "da1abe91cba9d83e6b6e2eaa89c585b1b88a7a2cb616446ac36a20c074c915c4",
+    "crates/tg-text/README.md": "db1c0730094e46b2edf95faa57a2bf63a591049147e1014bb81a6f650a2536a4",
+    "crates/tg-text/src/color.rs": "49cc734560cf450cd6d28388ed2ba737a80930c14e880e4a87d1c31215714825",
+    "crates/tg-text/src/font_table.rs": "4c9e5e7c9c949b06fc00045e7afe1def2d962ac17bfc6eeaf5f2dfb7f91e5574",
+    "crates/tg-text/src/fragment.rs": "19a9e28f5225fcff6e45b7865787f0db7387043c217d56308cd82ae0edd6fb2b",
+    "crates/tg-text/src/gpu.rs": "a5ed310e8fda06bdf20ab59113a90d4310d7f6e5baad6fc0f954b768e55d1d2a",
+    "crates/tg-text/src/lib.rs": "ea50bb3d9c6d88d4007495ef34615c3fddf5642b6587b9d1c1f8018b1c06da2e",
+    "crates/tg-text/src/renderer.rs": "7ed9f9ee89c44775774831d3120f3f87de2b308218c9a7ed1c7e5a321a677be2",
+    "crates/tg-text/src/shape_stream.rs": "0c04c42a4ffb582e5b1fcdb400619607d4d7083fe69691293efc44f35f00851d",
+    "crates/tg-text/tests/behavior.rs": "a0e0a9871f3afcaf6399bfb01730d2ce33b9bb1be0a6140a16a93a10eced3d81",
+    "crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "crates/tg-text/tests/fixtures/internal-native-cache-oracle.json": "6400bccc22e53a66e6d7caa2267a382527b9a99f708b2512350158776fadf003",
+    "crates/tg-text/tests/fixtures/internal-native-font.json": "caf446feb0fae2e9e230c681e5df03e92a1f0b6b638e28755ba78f2fe5509b70",
+    "crates/tg-text/tests/fixtures/internal-native-same-id.json": "fc10192babe059c974872c7d410164b55d83be9b1a0585cd8671701199418f9b",
+    "crates/tg-text/tests/fixtures/native-oracle.json": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+    "crates/tg-text/tests/fixtures/opacity-native-oracle.json": "e8cd9ef3fd5c9b677d61ea9218fd4a2cd3faa0d8b945b268fb4c929dac5c5b1d",
+    "crates/tg-text/tests/fixtures/rect-native-oracle.json": "bbf42eac48cfb817f9993062817c0af0268c2150a9a548f658ff7a39078aecf9",
+    "crates/tg-text/tests/followup_contract.rs": "d6426719c645a01eb1b80c5c3dbbe907fa818cfee58bfe53ac7bfbad2e7ce916",
+    "crates/tg-text/tests/text_pipeline.rs": "e0327a62dc59b4e1869651b9333d8dd0e24f7ce6ecdcfd3c9d9a2f8b9898ef99"
+  },
+  "checks": [
+    {
+      "name": "test",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.679,
+      "log": "test.log",
+      "log_sha256": "025a188f625bcca96a41e51bd13d111cb76b0069f982c957f6d42b70bf4934ce",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "release-test",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets",
+        "--release"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 45.754,
+      "log": "release-test.log",
+      "log_sha256": "eb96777e8ef274610d27ea959a1542434ccc7c4afcbaca3f53aa69c3ff87eda6",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "clippy",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.914,
+      "log": "clippy.log",
+      "log_sha256": "7a06474167e206551ea20de9ea596ca98e174e7e38e53f494bd765fd8091e80b"
+    },
+    {
+      "name": "gpu-api-check",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "check",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--features",
+        "gpu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.668,
+      "log": "gpu-api-check.log",
+      "log_sha256": "7d4778d713a522de7c9a35a52be7afb74c408ebd3910a825d3929d58d50df4ce"
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "fmt",
+        "-p",
+        "tg-text",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.342,
+      "log": "fmt.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "gpu_executed": false,
+  "game_callers_changed": false,
+  "after": {
+    "Cargo.lock": "4307fedd90c2ca3700ae9b4e86478030fc386297be315b9cd18e39f86bdad992",
+    "Cargo.toml": "44f1dd4c99972a41ab8f02d37c714bfcd584899c8ca077f8cfc0e14a9a8cb652",
+    "crates/tg-text/Cargo.toml": "5de03382985564d5662134e016775217e88d4dae2caed44ac9ad209025fb8042",
+    "crates/tg-text/examples/text_gpu.rs": "da1abe91cba9d83e6b6e2eaa89c585b1b88a7a2cb616446ac36a20c074c915c4",
+    "crates/tg-text/README.md": "db1c0730094e46b2edf95faa57a2bf63a591049147e1014bb81a6f650a2536a4",
+    "crates/tg-text/src/color.rs": "49cc734560cf450cd6d28388ed2ba737a80930c14e880e4a87d1c31215714825",
+    "crates/tg-text/src/font_table.rs": "4c9e5e7c9c949b06fc00045e7afe1def2d962ac17bfc6eeaf5f2dfb7f91e5574",
+    "crates/tg-text/src/fragment.rs": "19a9e28f5225fcff6e45b7865787f0db7387043c217d56308cd82ae0edd6fb2b",
+    "crates/tg-text/src/gpu.rs": "a5ed310e8fda06bdf20ab59113a90d4310d7f6e5baad6fc0f954b768e55d1d2a",
+    "crates/tg-text/src/lib.rs": "ea50bb3d9c6d88d4007495ef34615c3fddf5642b6587b9d1c1f8018b1c06da2e",
+    "crates/tg-text/src/renderer.rs": "7ed9f9ee89c44775774831d3120f3f87de2b308218c9a7ed1c7e5a321a677be2",
+    "crates/tg-text/src/shape_stream.rs": "0c04c42a4ffb582e5b1fcdb400619607d4d7083fe69691293efc44f35f00851d",
+    "crates/tg-text/tests/behavior.rs": "a0e0a9871f3afcaf6399bfb01730d2ce33b9bb1be0a6140a16a93a10eced3d81",
+    "crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "crates/tg-text/tests/fixtures/internal-native-cache-oracle.json": "6400bccc22e53a66e6d7caa2267a382527b9a99f708b2512350158776fadf003",
+    "crates/tg-text/tests/fixtures/internal-native-font.json": "caf446feb0fae2e9e230c681e5df03e92a1f0b6b638e28755ba78f2fe5509b70",
+    "crates/tg-text/tests/fixtures/internal-native-same-id.json": "fc10192babe059c974872c7d410164b55d83be9b1a0585cd8671701199418f9b",
+    "crates/tg-text/tests/fixtures/native-oracle.json": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+    "crates/tg-text/tests/fixtures/opacity-native-oracle.json": "e8cd9ef3fd5c9b677d61ea9218fd4a2cd3faa0d8b945b268fb4c929dac5c5b1d",
+    "crates/tg-text/tests/fixtures/rect-native-oracle.json": "bbf42eac48cfb817f9993062817c0af0268c2150a9a548f658ff7a39078aecf9",
+    "crates/tg-text/tests/followup_contract.rs": "d6426719c645a01eb1b80c5c3dbbe907fa818cfee58bfe53ac7bfbad2e7ce916",
+    "crates/tg-text/tests/text_pipeline.rs": "e0327a62dc59b4e1869651b9333d8dd0e24f7ce6ecdcfd3c9d9a2f8b9898ef99"
+  },
+  "source_unchanged_during_checks": true,
+  "ok": true
+}

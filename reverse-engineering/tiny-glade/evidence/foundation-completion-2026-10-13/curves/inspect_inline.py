@@ -12,7 +12,7 @@ def read(va,length):
  for start,count,offset in sections:
   if start<=rva<start+count:return raw[offset+rva-start:offset+rva-start+length]
  raise ValueError(hex(va))
-IDS={0x113ee:'threshold_metric',0x6077:'remove_duplicates',0x11465:'remove_duplicate_predicate',0x17e83:'central_tangent',0x622c:'distance_coord',0x6227:'wall_coord',0x6d78:'deserialize_scalar',0x1372:'to_curve2',0x257c:'reinterpret_curve2'}
+IDS={0x113ee:'threshold_metric',0x6077:'remove_duplicates',0x11465:'remove_duplicate_predicate',0x17e83:'central_tangent',0x622c:'distance_coord',0x6227:'wall_coord',0x6d78:'deserialize_scalar',0x1372:'to_curve2',0x257c:'reinterpret_curve2',0x6d74:'curve_u_clamp',0x6d70:'curve_u_max',0x6d71:'curve_u_min'}
 records=[];md=Cs(CS_ARCH_X86,CS_MODE_64)
 for path in OUT.glob('module-*.txt'):
  text=path.read_text(encoding='utf-8-sig');ms=list(re.finditer(r'^\s*(\d+) \| (S_\w+) \[size = (\d+)\]',text,re.M));rows={}

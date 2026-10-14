@@ -1,0 +1,15 @@
+    Checking tg-terrain v0.1.0 (D:\game\tiny-glade\crates\systems\terrain)
+    Checking tg-building-runtime v0.1.0 (D:\game\tiny-glade\crates\tg-building-runtime)
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+   --> crates\tg-building-runtime\src\nani.rs:146:19
+    |
+146 |     let pitched = !(height <= 0.1);
+    |                   ^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#neg_cmp_op_on_partial_ord
+    = note: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::neg_cmp_op_on_partial_ord)]`
+
+error: could not compile `tg-building-runtime` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `tg-building-runtime` (lib) due to 1 previous error

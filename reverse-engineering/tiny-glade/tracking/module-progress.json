@@ -5958,7 +5958,8 @@
         "evidence/small-libs-batch-01/integration/dependency-validation.json",
         "evidence/small-libs-review-2026-10-13/tg-package-integrity/REVIEW.md",
         "evidence/small-libs-review-2026-10-13/tg-package-integrity/findings.json",
-        "evidence/small-libs-review-2026-10-13/integration/summary.json"
+        "evidence/small-libs-review-2026-10-13/integration/summary.json",
+        "evidence/small-libs-followup-2026-10-14/REPORT.md"
       ],
       "gaps": [
         "完整verify原入口运行对照及报告/crash消费者接线",
@@ -5969,7 +5970,18 @@
       ],
       "next_action": "接真实本地report消费者，再定点核实罕见schema与release性能；哈希/线程池继续复用依赖",
       "full_module_accepted": false,
-      "full_module_acceptance": null
+      "full_module_acceptance": null,
+      "current_development": {
+        "workspace": "../../tiny-glade",
+        "package": "tg-package-integrity",
+        "date": "2026-10-14",
+        "report": "evidence/small-libs-followup-2026-10-14/REPORT.md",
+        "verification": "evidence/small-libs-followup-2026-10-14/verification.json",
+        "source_files": [
+          "crates/tg-package-integrity/src/lib.rs"
+        ],
+        "whole_original_library_accepted": false
+      }
     },
     {
       "module": "crates/tg-text/src",
@@ -5977,7 +5989,7 @@
       "interface_progress": null,
       "business_function_progress": null,
       "ownership": "private_game_source",
-      "recovered_scope": "B FontTable与ShapeStream/RawShapeStream CPU配置→lookup/scaled、builder→resolver→原u32 words子链；lib.rs仅模块glue。",
+      "recovered_scope": "B FontTable/ShapeStream、TextFragment持有Arc字体表/原角色选择/基准与scaled metrics、glyph/atlas/primitive CPU链；u32 frame/stamp、<与回绕、原etagere slot/gen、前缀验证和回收规则已恢复；真实GPU Texture/游戏调用方未接线。",
       "versions": [
         "A",
         "B",
@@ -6098,7 +6110,9 @@
         "evidence/small-libs-review-2026-10-13/tg-text/REVIEW.md",
         "evidence/small-libs-review-2026-10-13/tg-text/findings.json",
         "evidence/small-libs-review-2026-10-13/integration/summary.json",
-        "evidence/small-libs-review-2026-10-13/integration/ERRATA.md"
+        "evidence/small-libs-review-2026-10-13/integration/ERRATA.md",
+        "evidence/small-libs-followup-2026-10-14/REPORT.md",
+        "evidence/text-internal-2026-10-14/REPORT.md"
       ],
       "gaps": [
         "TextFragment/TextRenderer未恢复",
@@ -6109,7 +6123,44 @@
       ],
       "next_action": "沿真实TextFragment consumers恢复attrs/metrics/prepare并复用原cosmic-text/etagere",
       "full_module_accepted": false,
-      "full_module_acceptance": null
+      "full_module_acceptance": null,
+      "current_development": {
+        "workspace": "../../tiny-glade",
+        "package": "tg-text",
+        "date": "2026-10-14",
+        "report": "evidence/small-libs-followup-2026-10-14/REPORT.md",
+        "verification": "evidence/small-libs-followup-2026-10-14/verification.json",
+        "source_files": [
+          "crates/tg-text/src/color.rs",
+          "crates/tg-text/src/font_table.rs",
+          "crates/tg-text/src/fragment.rs",
+          "crates/tg-text/src/gpu.rs",
+          "crates/tg-text/src/lib.rs",
+          "crates/tg-text/src/renderer.rs",
+          "crates/tg-text/src/shape_stream.rs"
+        ],
+        "whole_original_library_accepted": false,
+        "internal_font_cache": {
+          "date": "2026-10-14",
+          "baseline": "B Windows x86_64",
+          "status": "restored_and_verified_scoped_internal_rules",
+          "requested_internal_rules": [
+            "owned shared font table / role selection / base-vs-scaled metrics",
+            "u32 frame/stamp and exact glyph cache validation/reclamation"
+          ],
+          "report": "evidence/text-internal-2026-10-14/REPORT.md",
+          "verification": "evidence/text-internal-2026-10-14/verification.json",
+          "native_cases": {
+            "font": 17,
+            "cache": 791,
+            "same_id": 21
+          },
+          "game_callers_changed": false,
+          "gpu_wiring_changed": false,
+          "remaining_in_requested_scope": [],
+          "whole_library_accepted": false
+        }
+      }
     },
     {
       "module": "crates/theme-defs/src",
@@ -6127,7 +6178,7 @@
         "contract_only": 2
       },
       "ownership": "private_game_source",
-      "recovered_scope": "活动数据PathBuf+两个SystemTime，以及Clone/Eq和错误状态候选。",
+      "recovered_scope": "B 已发射 PathBuf/两个 SystemTime/错误结果身份合同完整静态盘点；作者精确名称和 unit Display 仍未知。",
       "versions": [
         "A",
         "B",
@@ -6146,7 +6197,7 @@
       "function_bindings": [],
       "function_inventory_limit": "known_functions为人工证据摘要；文件Rust定义另列，不是原函数全集或逐函数验收",
       "integration": "typed producer/consumer transport contract; no original plugin replacement yet",
-      "verification_summary": "4个已观察内联类型接口有静态证据；不是完整传输流程验收。",
+      "verification_summary": "2026-10-14 实际 tiny-glade 三库 locked/offline 26测试、all-targets Clippy -D warnings、fmt通过；静态范围与完整原入口验收分开。",
       "evidence": [
         "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
         "evidence/shared-foundation-2026-10-13/paths-language/validation.json",
@@ -6156,15 +6207,20 @@
         "tracking/shared-foundation-code-review.json",
         "evidence/shared-foundation-review-2026-10-13/integration-validation.json",
         "FOUNDATION_BUSINESS_COMPARISON.md",
-        "tracking/shared-foundation-business-comparison.json"
+        "tracking/shared-foundation-business-comparison.json",
+        "evidence/theme-static-2026-10-14/REPORT.md",
+        "tracking/theme-static-recovery.json"
       ],
       "gaps": [
         "错误与交换格式可观察规则尚未核实",
         "原生产/消费全流程未对照"
       ],
-      "next_action": "补生产/消费和错误语义对照",
+      "next_action": "原完整入口oracle与库外游戏主题consumer接线；A/C另验。",
       "full_module_accepted": false,
-      "full_module_acceptance": null
+      "full_module_acceptance": null,
+      "current_recovery_source_root": "tiny-glade/crates/theme-defs",
+      "current_recovery_ledger": "tracking/theme-static-recovery.json",
+      "library_implementation_complete_within_observed_B_surface": true
     },
     {
       "module": "crates/theme-fetcher/src",
@@ -6172,7 +6228,7 @@
       "interface_progress": null,
       "business_function_progress": null,
       "ownership": "private_game_source",
-      "recovered_scope": "B主题HTTP/ETag/date/cache-control、backoff/half-open活动、CAS/ZIP校验与库内producer。",
+      "recovered_scope": "B 已定位 HTTP/CAS/ZIP/活动发布库内逻辑静态补全；恢复处理顺序、分阶段时钟、mtime/ZIP边界与21处原日志。",
       "versions": [
         "A",
         "B",
@@ -6319,19 +6375,24 @@
       ],
       "function_inventory_limit": "known_functions为人工证据摘要；文件Rust定义另列，不是原函数全集或逐函数验收",
       "integration": "shared_foundation_workspace_and_library_adapters_original_game_producer_consumer_pending",
-      "verification_summary": "共享 --offline --locked Cargo测试及all-targets Clippy -D warnings通过；原叶/静态/字段与真实后端范围分别见证据，不接受完整原模块。",
+      "verification_summary": "2026-10-14 实际 tiny-glade 三库 locked/offline 26测试、all-targets Clippy -D warnings、fmt通过；静态范围与完整原入口验收分开。",
       "evidence": [
         "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
         "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
-        "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json"
+        "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json",
+        "evidence/theme-static-2026-10-14/REPORT.md",
+        "tracking/theme-static-recovery.json"
       ],
       "gaps": [
         "完整原run入口oracle和tiny-glade主题plugin/ECS消费",
         "原完整reqwest feature/日志callback与A/C适配"
       ],
-      "next_action": "完整原run入口oracle和tiny-glade主题plugin/ECS消费；原完整reqwest feature/日志callback与A/C适配",
+      "next_action": "原完整入口oracle与库外游戏主题consumer接线；A/C另验。",
       "full_module_accepted": false,
-      "full_module_acceptance": null
+      "full_module_acceptance": null,
+      "current_recovery_source_root": "tiny-glade/crates/theme-fetcher",
+      "current_recovery_ledger": "tracking/theme-static-recovery.json",
+      "library_implementation_complete_within_observed_B_surface": true
     },
     {
       "module": "crates/theme-server-proto/src",
@@ -6339,7 +6400,7 @@
       "interface_progress": null,
       "business_function_progress": null,
       "ownership": "private_project_protocol_contract_not_algorithm",
-      "recovered_scope": "B协议ActiveEvent(start/end i64,cid String)、EventsResponse(events)字段契约；serde派生不算手写算法。",
+      "recovered_scope": "B ActiveEvent/EventsResponse 原 serde 字段及对象/序列/required/duplicate/unknown 分支合同完整复核。",
       "versions": [
         "A",
         "B",
@@ -6358,19 +6419,24 @@
       "function_bindings": [],
       "function_inventory_limit": "known_functions为人工证据摘要；文件Rust定义另列，不是原函数全集或逐函数验收",
       "integration": "shared_foundation_workspace_and_library_adapters_original_game_producer_consumer_pending",
-      "verification_summary": "共享 --offline --locked Cargo测试及all-targets Clippy -D warnings通过；原叶/静态/字段与真实后端范围分别见证据，不接受完整原模块。",
+      "verification_summary": "2026-10-14 实际 tiny-glade 三库 locked/offline 26测试、all-targets Clippy -D warnings、fmt通过；静态范围与完整原入口验收分开。",
       "evidence": [
         "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
         "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
-        "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json"
+        "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json",
+        "evidence/theme-static-2026-10-14/REPORT.md",
+        "tracking/theme-static-recovery.json"
       ],
       "gaps": [
         "原服务兼容/版本契约；未证明独立手写迁移/校验",
         "完整主题plugin消费与A/C适配"
       ],
-      "next_action": "原服务兼容/版本契约；未证明独立手写迁移/校验；完整主题plugin消费与A/C适配",
+      "next_action": "原完整入口oracle与库外游戏主题consumer接线；A/C另验。",
       "full_module_accepted": false,
-      "full_module_acceptance": null
+      "full_module_acceptance": null,
+      "current_recovery_source_root": "tiny-glade/crates/theme-server-proto",
+      "current_recovery_ledger": "tracking/theme-static-recovery.json",
+      "library_implementation_complete_within_observed_B_surface": true
     },
     {
       "module": "crates/tiny-glade/src",

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "exceptions": [
+    {
+      "file": "final_post.raster.hlsl",
+      "bin": "_final_post.raster.hlsl_f0adff76827e73ff.bin",
+      "entry": "ps_main",
+      "stage": "PS",
+      "gate": false,
+      "execution": "SAME",
+      "reason": "Original depth PS has no output. Lifting and new DXC remove dead computations and resources; retain the recovered color implementation and record the unresolved depth interface.",
+      "evidence": "../../reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/GAP_ANALYSIS.md"
+    },
+    {
+      "file": "water/ice_refl_resolve.cs.hlsl",
+      "bin": "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin",
+      "entry": "cs_main",
+      "stage": "CS",
+      "gate": true,
+      "execution": "EDGE",
+      "reason": "Strict/NoContraction and -Gis comparisons identify expression reassociation/FMA as the bounded EDGE. The observed execution status is retained verbatim.",
+      "evidence": "../../reverse-engineering/tiny-glade/reconstruction/shader-source/SHADER_STATUS.md"
+    }
+  ]
+}

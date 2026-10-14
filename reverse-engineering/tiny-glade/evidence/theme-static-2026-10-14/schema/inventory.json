@@ -1,0 +1,143 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "theme-schema-20261014",
+  "pid": 40384,
+  "project": "D:\\game\\tools\\reverse-runtime\\theme-schema-20261014\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\theme-static-2026-10-14\\schema\\inventory.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\theme-static-2026-10-14\\\\\\\\schema\\\\\\\\inventory.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 274, \\\"sha256\\\": \\\"e1ab8352899238e72c78224897f74f16f15ade786ac6c094b3acfacee0640f52\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":12}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.031,
+      "stdout": "{\"name\": \"tiny-glade.exe\", \"sha256\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"path\": \"/tiny-glade.exe\", \"functions\": 116270, \"language\": \"x86:LE:64:default\", \"adapter\": \"Windows ReVa transport / Ghidra engine\", \"preexisting_Mac_overlays\": false}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "theme_defs",
+        "limit": 100
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\theme-static-2026-10-14\\schema\\inventory.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\theme-static-2026-10-14\\\\\\\\schema\\\\\\\\inventory.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 4578, \\\"sha256\\\": \\\"5db11f9a258adad19d47b7d943bce333aeb5241eb68522b5af33d919e07ab9c0\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2057}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 2.078,
+      "stdout": "{\"total_matches\": 16, \"functions\": [{\"address\": \"0x1405e1260\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..counter..Counter$LT$std..sync..mpmc..list..Channel$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h410ee421ab5923b6\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405d2b50\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..counter..Counter$LT$std..sync..mpmc..zero..Channel$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h28623008a767708a\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140d8f840\", \"name\": \"core::ptr::drop_in_place$LT$alloc..sync..ArcInner$LT$core..result..Result$LT$std..path..PathBuf$C$theme_defs..EventDataError$GT$$GT$$GT$::h663395d5759cf74e\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140db8120\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..error..SendTimeoutError$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$::heb4e268efedc7869 (.llvm.13710417818875418593)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140d8f8a0\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpsc..Sender$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$::h00fc77a24fb1ffb3 (.llvm.13932264904519645171)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405d9ae0\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpsc..Sender$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$::hc9a85c70fa2c0441\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405da700\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpsc..Receiver$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$::h9d774edd65767aa8\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1400cddc0\", \"name\": \"core::ptr::drop_in_place$LT$arc_swap..strategy..hybrid..HybridProtection$LT$alloc..sync..Arc$LT$core..result..Result$LT$std..path..PathBuf$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h42d36aa886cc4d49 (.llvm.13863935034104498567)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405e1260\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..counter..Counter$LT$std..sync..mpmc..list..Channel$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h211004cacbb3f6ae\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140d8fac0\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..zero..Packet$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$::h19a4fa664df8cc85\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1400cddc0\", \"name\": \"core::ptr::drop_in_place$LT$arc_swap..Guard$LT$alloc..sync..Arc$LT$core..result..Result$LT$std..path..PathBuf$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h607d56fbe6239590\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1400cddc0\", \"name\": \"core::ptr::drop_in_place$LT$arc_swap..strategy..hybrid..HybridProtection$LT$alloc..sync..Arc$LT$core..result..Result$LT$std..path..PathBuf$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h5145387f4873771c (.llvm.444719132062692353)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405d02f0\", \"name\": \"core::ptr::drop_in_place$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$::h81fdfa55d2b24bba (.llvm.10346396820423203432)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405e1490\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..counter..Counter$LT$std..sync..mpmc..array..Channel$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h41d01dec8e164cc9\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405e1490\", \"name\": \"core::ptr::drop_in_place$LT$std..sync..mpmc..counter..Counter$LT$std..sync..mpmc..array..Channel$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$$GT$$GT$::h4303f29f44bfca5d\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405d02f0\", \"name\": \"core::ptr::drop_in_place$LT$core..result..Result$LT$theme_defs..ActiveEvent$C$theme_defs..EventDataError$GT$$GT$::h84df49d3902ab4e4 (.llvm.13932264904519645171)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "theme_server_proto",
+        "limit": 100
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\theme-static-2026-10-14\\schema\\inventory.artifacts\\002.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\theme-static-2026-10-14\\\\\\\\schema\\\\\\\\inventory.artifacts\\\\\\\\002.stdout.txt\\\", \\\"bytes\\\": 1799, \\\"sha256\\\": \\\"e04cb805f4830bd7f404777395b89b8aa07850e1cf266b087afed4c693a6ffc7\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2156}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 2.172,
+      "stdout": "{\"total_matches\": 7, \"functions\": [{\"address\": \"0x1406145b0\", \"name\": \"core::ptr::drop_in_place$LT$core..result..Result$LT$alloc..vec..Vec$LT$theme_server_proto..ActiveEvent$GT$$C$serde_json..error..Error$GT$$GT$::h19c824c69114afcf (.llvm.14313182790970562035)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x14014a860\", \"name\": \"core::ptr::drop_in_place$LT$theme_server_proto..EventsResponse$GT$::haead0321fc6d14a6\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1419aef60\", \"name\": \"_$LT$theme_server_proto.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$theme_server_proto..ActiveEvent$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$::expecting::h531607c5989b6203\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x14054b290\", \"name\": \"core::ptr::drop_in_place$LT$core..result..Result$LT$theme_server_proto..EventsResponse$C$alloc..string..String$GT$$GT$::h00a274c35a287a31 (.llvm.13932264904519645171)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x14014a860\", \"name\": \"core::ptr::drop_in_place$LT$alloc..vec..Vec$LT$theme_server_proto..ActiveEvent$GT$$GT$::hfd59f7df5d7e57e7\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1419aef80\", \"name\": \"_$LT$theme_server_proto.._..$LT$impl$u20$serde..de..Deserialize$u20$for$u20$theme_server_proto..EventsResponse$GT$..deserialize..__Visitor$u20$as$u20$serde..de..Visitor$GT$::expecting::h9f13c304e63ff7a3\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x14054b290\", \"name\": \"core::ptr::drop_in_place$LT$core..result..Result$LT$theme_server_proto..EventsResponse$C$alloc..string..String$GT$$GT$::h7b3fcbd2cb222991 (.llvm.10346396820423203432)\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    },
+    {
+      "tool": "read_memory",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x142a0a220",
+        "length": 464
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\theme-static-2026-10-14\\schema\\inventory.artifacts\\003.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\theme-static-2026-10-14\\\\\\\\schema\\\\\\\\inventory.artifacts\\\\\\\\003.stdout.txt\\\", \\\"bytes\\\": 981, \\\"sha256\\\": \\\"6cdd75d958f84cf02e7e9c4103effd950bf3d5e4e589c0351b883e16c5955588\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":11}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.015,
+      "stdout": "{\"address\": \"0x142a0a220\", \"length\": 464, \"hex\": \"7374617274656e64636964737472756374204163746976654576656e742077697468203320656c656d656e74730000002ba2a04201000000220000000000000000000000000000001000000000000000080000000000000070a96a40010000006576656e7473737472756374204576656e7473526573706f6e73652077697468203120656c656d656e7400000000000086a2a042010000002400000000000000000000000000000000000000000000000100000000000000e01fd94001000000000000000000000000000000000000000100000000000000e01fd94001000000000000000000000000000000000000000100000000000000c03e4a40010000000000000000000000000000000000000001000000000000002020d940010000000000000000000000000000000000000001000000000000004020d940010000000000000000000000000000000000000001000000000000003020d9400100000073747275637420466f6c646572436865636b73756d496e666f2077697468203220656c656d656e74730000000000000080a3a04201000000290000000000000066696c657363726382a4e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff1da3e9ff\"}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 9.094,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":21}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "f4a6ad28f60900ed321b7937d4d6b322",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

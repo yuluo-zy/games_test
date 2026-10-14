@@ -1,0 +1,36 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140b90ec0: 48 83 ec 28                 	subq	$0x28, %rsp
+140b90ec4: f3 0f 10 81 48 02 00 00     	movss	0x248(%rcx), %xmm0
+140b90ecc: 0f 2e c1                    	ucomiss	%xmm1, %xmm0
+140b90ecf: 75 02                       	jne	0x140b90ed3 <.text+0xb8fed3>
+140b90ed1: 7b 64                       	jnp	0x140b90f37 <.text+0xb8ff37>
+140b90ed3: f3 0f 11 89 48 02 00 00     	movss	%xmm1, 0x248(%rcx)
+140b90edb: 48 8b 51 38                 	movq	0x38(%rcx), %rdx
+140b90edf: 49 b8 01 00 00 00 00 00 00 80       	movabsq	$-0x7fffffffffffffff, %r8 # imm = 0x8000000000000001
+140b90ee9: 49 01 d0                    	addq	%rdx, %r8
+140b90eec: 31 c0                       	xorl	%eax, %eax
+140b90eee: 49 b9 02 00 00 00 00 00 00 80       	movabsq	$-0x7ffffffffffffffe, %r9 # imm = 0x8000000000000002
+140b90ef8: 4c 39 ca                    	cmpq	%r9, %rdx
+140b90efb: 49 0f 4c c0                 	cmovlq	%r8, %rax
+140b90eff: 48 85 c0                    	testq	%rax, %rax
+140b90f02: 74 14                       	je	0x140b90f18 <.text+0xb8ff18>
+140b90f04: 48 83 f8 01                 	cmpq	$0x1, %rax
+140b90f08: 75 17                       	jne	0x140b90f21 <.text+0xb8ff21>
+140b90f0a: b8 38 01 00 00              	movl	$0x138, %eax            # imm = 0x138
+140b90f0f: 48 03 41 40                 	addq	0x40(%rcx), %rax
+140b90f13: 48 89 c1                    	movq	%rax, %rcx
+140b90f16: eb 1c                       	jmp	0x140b90f34 <.text+0xb8ff34>
+140b90f18: 48 81 c1 70 01 00 00        	addq	$0x170, %rcx            # imm = 0x170
+140b90f1f: eb 13                       	jmp	0x140b90f34 <.text+0xb8ff34>
+140b90f21: 48 83 c1 40                 	addq	$0x40, %rcx
+140b90f25: e8 d6 06 c7 00              	callq	0x141801600 <.text+0x1800600>
+140b90f2a: 48 89 c1                    	movq	%rax, %rcx
+140b90f2d: 48 81 c1 38 01 00 00        	addq	$0x138, %rcx            # imm = 0x138
+140b90f34: c6 01 01                    	movb	$0x1, (%rcx)
+140b90f37: 48 83 c4 28                 	addq	$0x28, %rsp
+140b90f3b: c3                          	retq

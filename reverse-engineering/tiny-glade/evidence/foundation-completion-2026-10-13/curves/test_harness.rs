@@ -1,3 +1,7 @@
 use utils::curve::*;
-#[path="sampling_tests.rs"] mod sampling;
-#[path="query_tests.rs"] mod queries;
+#[path = "extra_tests.rs"]
+mod extras;
+#[path = "query_tests.rs"]
+mod queries;
+#[path = "sampling_tests.rs"]
+mod sampling;

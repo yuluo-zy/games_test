@@ -122,8 +122,12 @@ pub fn history_record_wall_changed(
         crate::resources::history::wall_compound_edit::ConcurrentEdits::default(),
     );
         let _ = p;
-        let _ = edit; // wp13 History::add takes EditType (compound payload is typed gap)
-        history.add(crate::resources::history::EditType::Wall);
+        let _ = edit; // compound payload (records/count) is typed gap
+        history.add(crate::resources::history::HistoryEdit {
+            tag: crate::resources::history::HistoryEdit::WALL_COMPOUND_TAG,
+            records: 0,
+            count: 0,
+        });
     }
 }
 
@@ -140,7 +144,11 @@ pub fn history_record_merge_walls(
         crate::resources::history::wall_compound_edit::ConcurrentEdits::default(),
     );
         let _ = p;
-        let _ = edit; // wp13 History::add takes EditType (compound payload is typed gap)
-        history.add(crate::resources::history::EditType::Wall);
+        let _ = edit; // compound payload (records/count) is typed gap
+        history.add(crate::resources::history::HistoryEdit {
+            tag: crate::resources::history::HistoryEdit::WALL_COMPOUND_TAG,
+            records: 0,
+            count: 0,
+        });
     }
 }

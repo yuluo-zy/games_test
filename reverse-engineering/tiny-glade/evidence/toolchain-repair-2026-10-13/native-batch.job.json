@@ -1,0 +1,58 @@
+[
+  {
+    "tool": "get_metadata",
+    "args": {
+      "program": "tiny-glade.exe"
+    }
+  },
+  {
+    "tool": "find_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "pattern": "utils::geometry::circle",
+      "limit": 4
+    }
+  },
+  {
+    "tool": "prepare_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "targets": [
+        {
+          "address": "0x1408e1630",
+          "size": 146,
+          "range_basis": "pe_unwind_contiguous_range",
+          "names": [
+            "utils::curve::curve_u::CurveU$LT$CSem$GT$::new"
+          ],
+          "bytes_sha256": "eae0e3ba59a19e76290df7cc1ddb2a986ebd00bee291309510f42701fe8e5ae9"
+        },
+        {
+          "address": "0x140c975a0",
+          "size": 181,
+          "range_basis": "pe_unwind_contiguous_range",
+          "names": [
+            "utils::geometry::circle::Circle2d::get_pos_at_u"
+          ],
+          "bytes_sha256": "90e7da6e6f7852771fa1f4a0968aa9404885841d36cccd6e0945d9e7c7142a47"
+        }
+      ]
+    }
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x1408e1630,0x140c975a0",
+      "fields": "signature,decompiled_code,callees"
+    }
+  },
+  {
+    "tool": "read_memory",
+    "args": {
+      "program": "tiny-glade.exe",
+      "address": "0x1408e1630",
+      "length": 146
+    }
+  }
+]

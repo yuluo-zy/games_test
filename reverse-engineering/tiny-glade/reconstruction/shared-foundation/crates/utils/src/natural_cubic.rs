@@ -43,6 +43,21 @@ pub struct Spline3D {
     pub max_t: f32,
     pub periodic: bool,
 }
+// Both constructors store cumulative scalar chord knots and their total span.
+// Selection is dimension-independent; the 3D branch below has native evidence.
+fn select_scalar_knot<T>(
+    segments: &[T],
+    min_t: f32,
+    max_t: f32,
+    t: f32,
+    start_t: impl Fn(&T) -> f32,
+) -> (usize, f32) {
+    let t = t.clamp(min_t, max_t);
+    let index = segments
+        .partition_point(|s| start_t(s) <= t)
+        .saturating_sub(1);
+    (index, t - start_t(&segments[index]))
+}
 fn knots<const N: usize>(points: &[[f32; N]], periodic: bool) -> (Vec<f32>, Vec<f32>) {
     let count = points.len() - usize::from(!periodic);
     let mut lengths = Vec::with_capacity(count);
@@ -185,6 +200,21 @@ fn coefficients<const N: usize>(
         .collect()
 }
 impl Spline2D {
+    /// Uses the recovered scalar-knot policy shared with Spline3D. B declares
+    /// this 2D interface but has no emitted entry for a direct 2D comparison.
+    pub fn find_segment_and_dt(&self, t: f32) -> (SplineSegment2D, f32) {
+        let (index, dt) =
+            select_scalar_knot(&self.segments, self.min_t, self.max_t, t, |s| s.start_t);
+        (self.segments[index], dt)
+    }
+    pub fn position_at_t(&self, t: f32) -> Vec2 {
+        let (segment, dt) = self.find_segment_and_dt(t);
+        segment.position_at_local_t(dt)
+    }
+    pub fn tangent_at_t(&self, t: f32) -> Vec2 {
+        let (segment, dt) = self.find_segment_and_dt(t);
+        segment.tangent_at_local_t(dt)
+    }
     pub fn from_control_points_with_tangents(
         points: &[Vec2],
         start: Option<Vec2>,
@@ -305,26 +335,27 @@ impl Spline3D {
             periodic: false,
         }
     }
-    fn segment_at_t(&self, t: f32) -> (SplineSegment3D, f32) {
-        let t = t.clamp(self.min_t, self.max_t);
-        let index = self
-            .segments
-            .partition_point(|s| s.start_t <= t)
-            .saturating_sub(1);
-        let segment = self.segments[index];
-        (segment, t - segment.start_t)
+    pub fn find_segment_and_dt(&self, t: f32) -> (SplineSegment3D, f32) {
+        let (index, dt) =
+            select_scalar_knot(&self.segments, self.min_t, self.max_t, t, |s| s.start_t);
+        (self.segments[index], dt)
     }
     pub fn position_at_t(&self, t: f32) -> Vec3 {
-        let (segment, t) = self.segment_at_t(t);
+        let (segment, t) = self.find_segment_and_dt(t);
         segment.position_at_local_t(t)
     }
     pub fn tangent_at_t(&self, t: f32) -> Vec3 {
-        let (segment, t) = self.segment_at_t(t);
+        let (segment, t) = self.find_segment_and_dt(t);
         segment.tangent_at_local_t(t)
     }
     pub fn to_owned(&self) -> Self {
         self.clone()
     }
+}
+
+#[cfg(test)]
+mod completion_tests {
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../evidence/foundation-completion-2026-10-13/base-assets/spline_selector_tests.rs"));
 }
 
 #[cfg(test)]

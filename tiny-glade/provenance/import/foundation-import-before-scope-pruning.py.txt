@@ -1,0 +1,213 @@
+"""Import audited foundation source units without changing the research tree."""
+from pathlib import Path
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE = ROOT / 'reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates'
+TARGET = ROOT / 'tiny-glade/crates'
+PACKAGES = ['utils', 'paths', 'lang-lib', 'tabloid', 'motomoto',
+            'tg-package-integrity', 'theme-defs', 'tg-text', 'asset', 'asset-pipe',
+            'tg-iced', 'tg-integrity-report', 'crash-reporter-gui', 'tg-gpu-selector',
+            'feedback-reporter', 'geforcenow', 'theme-fetcher', 'theme-server-proto']
+DESCRIPTIONS = {
+    'utils': 'Shared geometry, curves, numeric policies and utility functions',
+    'paths': 'Installation, account storage and application directory policies',
+    'lang-lib': 'Owned localization snapshots, language packs and preferences',
+    'tabloid': 'Delta publication and independent subscriber snapshots',
+    'motomoto': 'Tagged chunk container reader and writer',
+    'tg-package-integrity': 'Package manifest verification and file issue classification',
+    'theme-defs': 'Seasonal theme configuration and data contracts',
+    'tg-text': 'Text editing, font roles, glyph atlas and render stream generation',
+    'asset': 'Prefab and texture asset configuration and archive schemas',
+    'asset-pipe': 'Texture processing, compression and persistent cache policies',
+    'tg-iced': 'Localized dialog options and native GUI adapter',
+    'tg-integrity-report': 'Package integrity issue presentation and repair actions',
+    'crash-reporter-gui': 'Crash diagnostic classification and reporting dialog',
+    'tg-gpu-selector': 'GPU selection, driver advice and workaround policies',
+    'feedback-reporter': 'Feedback collection, ZIP packaging and submission policies',
+    'geforcenow': 'GeForce NOW SDK loading and lifecycle policies',
+    'theme-fetcher': 'Seasonal theme HTTP cache, CAS storage and package validation',
+    'theme-server-proto': 'Theme service event response schemas',
+}
+
+records = []
+source_status = subprocess.check_output(['git', 'status', '--porcelain', '--', str(SOURCE)], cwd=ROOT, text=True)
+dirty_source_paths = {line[3:].replace('\\', '/') for line in source_status.splitlines()}
+for package in PACKAGES:
+    source = SOURCE / package
+    target = TARGET / package
+    target.mkdir(parents=True, exist_ok=True)
+    for file in sorted(source.rglob('*')):
+        if not file.is_file() or any(p in {'target', '.git'} for p in file.relative_to(source).parts):
+            continue
+        if file.name in {'Cargo.lock', 'README.md'}:
+            continue
+        relative = file.relative_to(source)
+        dest = target / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(file, dest)
+        kind = 'test_fixture' if relative.parts[0] in {'tests', 'fixtures'} else 'recovered_with_documented_adapters'
+        transformations = []
+        if relative.as_posix() == 'Cargo.toml':
+            manifest = file.read_text(encoding='utf-8')
+            # Inspection unions are research metadata; formal package manifests use concise exact identities.
+            manifest = '\n'.join(line for line in manifest.splitlines() if not line.startswith('#')) + '\n'
+            manifest = re.sub(r'(?m)^version = "0\.1\.0"$', 'version.workspace = true', manifest, count=1)
+            if 'rust-version.workspace' not in manifest:
+                manifest = manifest.replace('edition.workspace = true', 'edition.workspace = true\nrust-version.workspace = true', 1)
+            manifest = manifest.replace('publish.workspace = true', f'publish.workspace = true\ndescription = "{DESCRIPTIONS[package]}"\nreadme = "README.md"', 1)
+            manifest = manifest.replace('path = "../../../rhapsody-rebuild"', 'path = "../rhapsody"')
+            # Native GUI remains opt-in so core/library development does not require a window backend.
+            manifest = manifest.replace('default = ["native-gui"]', 'default = []')
+            if '[lints]' not in manifest:
+                manifest += '\n[lints]\nworkspace = true\n'
+            dest.write_text(manifest, encoding='utf-8')
+            kind = 'integration_manifest'
+            transformations = ['workspace metadata and lints inherited; native GUI opt-in; optional rhapsody path adapted']
+        source_path = file.relative_to(ROOT).as_posix()
+        commit = subprocess.check_output(['git', 'log', '-1', '--format=%H', '--', source_path], cwd=ROOT, text=True).strip()
+        records.append({'path': dest.relative_to(ROOT / 'tiny-glade').as_posix(), 'source_path': source_path,
+                        'source_commit': commit, 'source_sha256': hashlib.sha256(file.read_bytes()).hexdigest(),
+                        'source_worktree_modified': source_path in dirty_source_paths,
+                        'sha256': hashlib.sha256(dest.read_bytes()).hexdigest(), 'kind': kind, 'transformations': transformations})
+
+# Keep original oracle fixtures local to the development package.
+for module in ['swizzlers.rs', 'index_condenser.rs', 'curve/curve_u_circular.rs']:
+    path = TARGET / 'utils/src' / module
+    content = path.read_text(encoding='utf-8')
+    for match in list(re.finditer(r'#\[path = "([^"]+evidence/[^"]+)"\]', content)):
+        research = (SOURCE / 'utils/src' / module).parent / match.group(1)
+        research = research.resolve()
+        local = TARGET / 'utils/src/oracle' / research.name
+        local.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(research, local)
+        new_path = ('../oracle/' if '/' in module else 'oracle/') + research.name
+        content = content.replace(match.group(1), new_path)
+        records.append({'path': local.relative_to(ROOT / 'tiny-glade').as_posix(),
+                        'source_path': research.relative_to(ROOT).as_posix(), 'kind': 'native_oracle_fixture',
+                        'source_sha256': hashlib.sha256(research.read_bytes()).hexdigest(),
+                        'sha256': hashlib.sha256(local.read_bytes()).hexdigest(), 'transformations': []})
+    path.write_text(content, encoding='utf-8')
+
+# Native fixture includes use package-local files in the formal project.
+for path in [p for package in PACKAGES for p in (TARGET / package).rglob('*.rs')]:
+    content = path.read_text(encoding='utf-8')
+    for relative in set(re.findall(r'"/\.\./\.\./\.\./\.\./evidence/([^"]+)"', content)):
+        research = ROOT / 'reverse-engineering/tiny-glade/evidence' / relative
+        package = path.relative_to(TARGET).parts[0]
+        local = TARGET / package / 'tests/oracle' / relative
+        local.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(research, local)
+        content = content.replace('/../../../../evidence/' + relative, '/tests/oracle/' + relative)
+        records.append({'path': local.relative_to(ROOT / 'tiny-glade').as_posix(),
+                        'source_path': research.relative_to(ROOT).as_posix(), 'kind': 'native_oracle_fixture',
+                        'source_sha256': hashlib.sha256(research.read_bytes()).hexdigest(),
+                        'sha256': hashlib.sha256(local.read_bytes()).hexdigest(), 'transformations': ['package-local fixture include']})
+    path.write_text(content, encoding='utf-8')
+
+# Unknown source-level producer/query contracts remain opt-in development APIs.
+utils = TARGET / 'utils'
+manifest = utils / 'Cargo.toml'
+manifest.write_text(manifest.read_text(encoding='utf-8') + '\n[features]\ndefault = []\nexperimental-reconstruction = []\n', encoding='utf-8')
+path = utils / 'src/index_condenser.rs'
+content = path.read_text(encoding='utf-8').replace('    pub fn insert(', '    #[cfg(feature = "experimental-reconstruction")]\n    pub fn insert(')
+content = content.replace('#[cfg(test)]', '#[cfg(all(test, feature = "experimental-reconstruction"))]')
+path.write_text(content, encoding='utf-8')
+path = utils / 'src/swizzlers.rs'
+content = path.read_text(encoding='utf-8')
+for method in ['get(', 'get_unchecked(', 'iter(']:
+    content = content.replace('    pub fn ' + method, '    #[cfg(feature = "experimental-reconstruction")]\n    pub fn ' + method)
+content = content.replace('#[cfg(test)]\nmod vec3_slice_view2_tests', '#[cfg(all(test, feature = "experimental-reconstruction"))]\nmod vec3_slice_view2_tests')
+path.write_text(content, encoding='utf-8')
+path = utils / 'src/natural_cubic.rs'
+content = path.read_text(encoding='utf-8')
+start = content.index('impl Spline2D {')
+end = content.index('impl Spline3D {', start)
+section = content[start:end]
+if section.count('pub fn find_segment_and_dt') > 1:
+    # Concurrent research work added a second, incompatible query signature.
+    # Keep the tracked index-returning interface; source hashes retain that input.
+    first_constructor = section.index('    pub fn from_control_points_with_tangents')
+    section = 'impl Spline2D {\n' + section[first_constructor:]
+for method in ['fn segment_at_t(', 'pub fn position_at_t(', 'pub fn tangent_at_t(', 'pub fn find_segment_and_dt(']:
+    section = section.replace('    ' + method, '    #[cfg(feature = "experimental-reconstruction")]\n    ' + method)
+content = content[:start] + section + content[end:]
+for name in ['completion_tests', 'spline2d_queries']:
+    content = content.replace('#[cfg(test)]\nmod ' + name, '#[cfg(all(test, feature = "experimental-reconstruction"))]\nmod ' + name)
+path.write_text(content, encoding='utf-8')
+fixture = utils / 'tests/oracle/foundation-completion-2026-10-13/base-assets/spline_selector_tests.rs'
+if fixture.exists():
+    content = fixture.read_text(encoding='utf-8')
+    content = content.replace('segment.start_t', 'spline.segments[segment].start_t')
+    content = content.replace('segment2.start_t', 'spline2.segments[segment2].start_t')
+    fixture.write_text(content, encoding='utf-8')
+
+pending = list(records)
+while pending:
+    record = pending.pop()
+    destination = ROOT / 'tiny-glade' / record['path']
+    if destination.suffix != '.rs':
+        continue
+    for reference in re.findall(r'include(?:_str|_bytes)?!\("([^"]+)"\)', destination.read_text(encoding='utf-8')):
+        fixture_target = destination.parent / reference
+        fixture_source = (ROOT / record['source_path']).parent / reference
+        if fixture_target.exists():
+            continue
+        fixture_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(fixture_source, fixture_target)
+        fixture_record = {'path': fixture_target.relative_to(ROOT / 'tiny-glade').as_posix(),
+                          'source_path': fixture_source.relative_to(ROOT).as_posix(), 'kind': 'native_oracle_fixture',
+                          'source_sha256': hashlib.sha256(fixture_source.read_bytes()).hexdigest(),
+                          'sha256': hashlib.sha256(fixture_target.read_bytes()).hexdigest(), 'transformations': []}
+        records.append(fixture_record)
+        pending.append(fixture_record)
+
+# This committed native fixture is exactly the input recorded in the accepted
+# numeric review. Later unaccepted recapture changed the proven lower bound.
+verified_fixture_source = 'reverse-engineering/tiny-glade/evidence/foundation-completion-2026-10-13/geometry/native_tests.rs'
+verified_fixture = subprocess.check_output(['git', 'show', 'HEAD:' + verified_fixture_source], cwd=ROOT)
+verified_sha = '497528a3f21184aaaf45424db122d268f254c9be844bc8d5cb14949cfe25e0b5'
+if hashlib.sha256(verified_fixture).hexdigest() != verified_sha:
+    raise ValueError('Git fixture no longer matches accepted numeric-review input; review before selecting it')
+verified_target = utils / 'tests/oracle/foundation-completion-2026-10-13/geometry/native_tests.rs'
+verified_target.write_bytes(verified_fixture)
+for record in records:
+    if record['path'] == verified_target.relative_to(ROOT / 'tiny-glade').as_posix():
+        record.update(selected_revision='HEAD verified fixture matches numeric review SHA',
+                      source_sha256=verified_sha,
+                      source_commit=subprocess.check_output(['git', 'log', '-1', '--format=%H', '--', verified_fixture_source], cwd=ROOT, text=True).strip(),
+                      unselected_worktree_sha256=hashlib.sha256((ROOT / verified_fixture_source).read_bytes()).hexdigest())
+        record['transformations'].append('Selected committed native fixture; unverified recapture reverses confirmed lower bound and has unaccepted new cases')
+
+pipeline_test = TARGET / 'asset-pipe/tests/pipeline_contract.rs'
+content = pipeline_test.read_text(encoding='utf-8').replace('std::fs::File::open(&first)', 'std::fs::OpenOptions::new().write(true).open(&first)')
+pipeline_test.write_text(content, encoding='utf-8')
+gfn_source = TARGET / 'geforcenow/src/lib.rs'
+content = gfn_source.read_text(encoding='utf-8').replace('build evidence/feedback-cloud/fixtures/build.ps1 first', 'build tests/fixtures/build.ps1 first')
+content = content.replace('../../../../evidence/foundation-unstarted-2026-10-13/feedback-cloud/fixtures/GfnFixtureRuntime.dll', 'tests/fixtures/GfnFixtureRuntime.dll')
+gfn_source.write_text(content, encoding='utf-8')
+for name in ['gfn_runtime.c', 'build.ps1']:
+    source = ROOT / 'reverse-engineering/tiny-glade/evidence/foundation-unstarted-2026-10-13/feedback-cloud/fixtures' / name
+    dest = TARGET / 'geforcenow/tests/fixtures' / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, dest)
+    records.append({'path': dest.relative_to(ROOT / 'tiny-glade').as_posix(), 'source_path': source.relative_to(ROOT).as_posix(),
+                    'kind': 'native_dll_fixture_source', 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+                    'sha256': hashlib.sha256(dest.read_bytes()).hexdigest(), 'transformations': []})
+
+for record in records:
+    destination = ROOT / 'tiny-glade' / record['path']
+    current_hash = hashlib.sha256(destination.read_bytes()).hexdigest()
+    if current_hash != record['sha256']:
+        record['transformations'].append('local test includes; guessed APIs opt-in; duplicate 2D query definitions reconciled')
+    record['sha256'] = current_hash
+
+report = {'date': '2026-10-14', 'packages': PACKAGES, 'files': records, 'source_git_status': source_status,
+          'selection': 'Current tracked foundation sources; API/product deviations remain documented in each package README.',
+          'excluded': [{'package': 'tg-mods', 'reason': 'Only manifest/skeleton identity; no recovered implementation to import.'}]}
+(ROOT / 'tiny-glade/provenance/foundation-audit.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+print(f'Imported {len(records)} files from {len(PACKAGES)} packages')

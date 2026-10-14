@@ -1,0 +1,40 @@
+[package]
+readme = "README.md"
+name = "country-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Tiny Glade game rendering declarations and recovered domain rules"
+
+[features]
+native-physics = ["dep:rapier3d"]
+
+[dependencies]
+system-roof.workspace = true
+tg-history.workspace = true
+fastrand.workspace = true
+perchance.workspace = true
+rapier3d = { workspace = true, optional = true }
+anyhow.workspace = true
+ash.workspace = true
+bevy_ecs = { version = "=0.16.0", default-features = false }
+bytemuck = "=1.16.0"
+fnv.workspace = true
+glam = { workspace = true, features = ["serde", "bytemuck"] }
+half.workspace = true
+hashbrown = "=0.14.5"
+hotwatch = { git = "https://github.com/h3r2tic/hotwatch.git", rev = "7576ad4ab2535f20d3c59d65b334355d4170cb97" }
+itertools.workspace = true
+log.workspace = true
+nohash-hasher.workspace = true
+parking_lot.workspace = true
+relative-path.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+slotmap = "=1.0.6"
+utils.workspace = true
+xxhash-rust = { workspace = true, features = ["xxh3"] }
+
+[lints]
+workspace = true

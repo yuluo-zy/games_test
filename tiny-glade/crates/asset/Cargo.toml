@@ -1,0 +1,25 @@
+[package]
+name = "asset"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Prefab and texture asset configuration and archive schemas"
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+relative-path = { version = "=1.9.0", features = ["serde"] }
+ron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }
+rkyv = { git = "https://github.com/PounceLight/rkyv.git", rev = "031d58108ccf8c0e125b06b017f72b4afd67e9a3", features = ["validation"] }
+bytecheck = "=0.6.9"
+
+[package.metadata.reconstruction]
+baseline = "B"
+archive_wire_layout_verified = true
+native_type_layout_verified = false
+
+
+[lints]
+workspace = true

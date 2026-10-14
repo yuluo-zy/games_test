@@ -1,0 +1,47 @@
+
+ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+141804ce0: 41 57                       	pushq	%r15
+141804ce2: 41 56                       	pushq	%r14
+141804ce4: 41 55                       	pushq	%r13
+141804ce6: 41 54                       	pushq	%r12
+141804ce8: 56                          	pushq	%rsi
+141804ce9: 57                          	pushq	%rdi
+141804cea: 55                          	pushq	%rbp
+141804ceb: 53                          	pushq	%rbx
+141804cec: 48 83 ec 28                 	subq	$0x28, %rsp
+141804cf0: 8b 6a 18                    	movl	0x18(%rdx), %ebp
+141804cf3: 44 8b 7a 1c                 	movl	0x1c(%rdx), %r15d
+141804cf7: 48 8b 02                    	movq	(%rdx), %rax
+141804cfa: 4c 8d 05 5f 87 4e 01        	leaq	0x14e875f(%rip), %r8    # 0x142ced460
+141804d01: 49 63 04 80                 	movslq	(%r8,%rax,4), %rax
+141804d05: 4c 01 c0                    	addq	%r8, %rax
+141804d08: ff e0                       	jmpq	*%rax
+141804d0a: 48 8b 72 10                 	movq	0x10(%rdx), %rsi
+141804d0e: 48 85 f6                    	testq	%rsi, %rsi
+141804d11: 0f 88 cb 00 00 00           	js	0x141804de2 <.text+0x1803de2>
+141804d17: 49 89 cc                    	movq	%rcx, %r12
+141804d1a: 49 89 d5                    	movq	%rdx, %r13
+141804d1d: 48 8b 5a 08                 	movq	0x8(%rdx), %rbx
+141804d21: 0f 84 a0 00 00 00           	je	0x141804dc7 <.text+0x1803dc7>
+141804d27: 0f b6 05 db fe e2 01        	movzbl	0x1e2fedb(%rip), %eax   # 0x143634c09
+141804d2e: 41 be 01 00 00 00           	movl	$0x1, %r14d
+141804d34: ba 01 00 00 00              	movl	$0x1, %edx
+141804d39: 48 89 f1                    	movq	%rsi, %rcx
+141804d3c: e8 cf ee e0 fe              	callq	0x140613c10 <.text+0x612c10>
+141804d41: 48 85 c0                    	testq	%rax, %rax
+141804d44: 0f 84 9b 00 00 00           	je	0x141804de5 <.text+0x1803de5>
+141804d4a: 48 89 c7                    	movq	%rax, %rdi
+141804d4d: eb 7d                       	jmp	0x141804dcc <.text+0x1803dcc>
+141804d4f: 48 be 03 00 00 00 00 00 00 80       	movabsq	$-0x7ffffffffffffffd, %rsi # imm = 0x8000000000000003
+141804d59: eb 2e                       	jmp	0x141804d89 <.text+0x1803d89>
+141804d5b: 48 be 01 00 00 00 00 00 00 80       	movabsq	$-0x7fffffffffffffff, %rsi # imm = 0x8000000000000001
+141804d65: eb 22                       	jmp	0x141804d89 <.text+0x1803d89>
+141804d67: 48 be 02 00 00 00 00 00 00 80       	movabsq	$-0x7ffffffffffffffe, %rsi # imm = 0x8000000000000002
+141804d71: eb 16                       	jmp	0x141804d89 <.text+0x1803d89>
+141804d73: 48 be 00 00 00 00 00 00 00 80       	movabsq	$-0x8000000000000000, %rsi # imm = 0x8000000000000000
+141804d7d: eb 0a                       	jmp	0x141804d89 <.text+0x1803d89>
+141804d7f: 48 be 04 00 00 00 00 00 00 80       	movabsq	$-0x7ffffffffffffffc, %rsi # imm = 0x8000000000000004

@@ -1,0 +1,27 @@
+{
+  "tests": {
+    "command": "cargo test --offline --locked -p tg-package-integrity -- --nocapture",
+    "status": "passed",
+    "count": 4,
+    "output": "test-final.json"
+  },
+  "clippy": {
+    "command": "cargo clippy --offline --locked -p tg-package-integrity --all-targets -- -D warnings",
+    "status": "passed",
+    "output": "clippy-final.json"
+  },
+  "raw_original_format": {
+    "path": "fixtures/B-manifest.json",
+    "bytes": 264376,
+    "entries": 1792,
+    "checksum_valid": true
+  },
+  "original_entry_executed": false,
+  "candidate_real_package": {
+    "entries": 1792,
+    "missing": 0,
+    "corrupt": 2,
+    "extra": 288,
+    "output": "candidate-real-package-result.json"
+  }
+}

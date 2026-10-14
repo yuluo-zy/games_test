@@ -736,13 +736,9 @@
     "scope": "User explicitly deferred C; recover B own library policies with original dependency reuse",
     "libraries": [
       "tg-iced",
-      "tg-integrity-report",
-      "crash-reporter-gui",
       "tg-gpu-selector",
-      "feedback-reporter",
       "theme-fetcher",
-      "theme-server-proto",
-      "geforcenow"
+      "theme-server-proto"
     ],
     "status": "candidate_partial_shared_workspace",
     "full_module_accepted": false,
@@ -787,5 +783,147 @@
     ],
     "business_catalog": "tracking/foundation-business-functions.json",
     "module_progress": "tracking/module-progress.json"
+  },
+  "scope_exclusions": [
+    {
+      "package": "crash-reporter-gui",
+      "path": "tiny-glade/crates/crash-reporter-gui",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "feedback-reporter",
+      "path": "tiny-glade/crates/feedback-reporter",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "geforcenow",
+      "path": "tiny-glade/crates/geforcenow",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "tg-integrity-report",
+      "path": "tiny-glade/crates/tg-integrity-report",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    }
+  ],
+  "small_libraries_followup": {
+    "date": "2026-10-14",
+    "baseline": "B Windows x86_64",
+    "status": "verified_scoped_followup",
+    "source_workspace": "../../tiny-glade",
+    "packages": [
+      "tg-package-integrity",
+      "tg-text"
+    ],
+    "report": "evidence/small-libs-followup-2026-10-14/REPORT.md",
+    "verification": "evidence/small-libs-followup-2026-10-14/verification.json",
+    "evidence": [
+      "evidence/integrity-followup-2026-10-14/REPORT.md",
+      "evidence/text-followup-2026-10-14/REPORT.md"
+    ],
+    "whole_original_libraries_accepted": false,
+    "original_game_consumers_accepted": false
+  },
+  "theme_static_recovery": {
+    "schema_version": 1,
+    "date": "2026-10-14",
+    "baseline": "B",
+    "packages": [
+      "theme-defs",
+      "theme-fetcher",
+      "theme-server-proto"
+    ],
+    "source_root": "tiny-glade/crates",
+    "historical_shared_foundation_mirror_modified": false,
+    "status": "observed_B_library_surface_statically_completed_and_candidate_tests_passed",
+    "known_unimplemented_observed_B_library_algorithms": [],
+    "full_original_behavior_equivalence_accepted": false,
+    "original_game_consumer_integrated": false,
+    "real_theme_service_requests": 0,
+    "original_game_execution": false,
+    "original_pipeline_oracle_execution": false,
+    "report": "evidence/theme-static-2026-10-14/REPORT.md",
+    "validation": {
+      "tests_passed": 26,
+      "tests_failed": 0,
+      "tests_ignored": 0,
+      "offline_cross_crate_tests": 3,
+      "clippy_all_targets_warnings_denied": true,
+      "fmt_check_passed": true,
+      "offline": true,
+      "locked": true,
+      "test_log": "integration/test-delivery.log",
+      "clippy_log": "integration/clippy-delivery.log",
+      "lock_sha256": "418226d9802e5d98ced64c648c23dfa0d8f29c6a8c56e40d7236a4774db59aaa",
+      "lock_unchanged_during_delivery_gate": true
+    },
+    "dependencies": {
+      "original_lock": "ljxsj_92385/Tiny Glade/build-info/Cargo.lock",
+      "public_packages": 138,
+      "identity_mismatches": 0,
+      "audit": "integration/dependency-audit.json",
+      "gate_audit": "integration/dependency-gate.json",
+      "later_lock_comparison": "integration/post-gate-lock-comparison.json",
+      "later_workspace_lock_sha256": "4307fedd90c2ca3700ae9b4e86478030fc386297be315b9cd18e39f86bdad992",
+      "closure_unchanged_after_gate": true
+    },
+    "remaining_boundaries": [
+      "Unemitted author field/variant names and unit-error Display texts remain reconstruction names.",
+      "Complete original HTTP/CAS/ZIP runtime oracle and all OS failure combinations have not been accepted.",
+      "Real tiny_glade plugin, language/session/history/credits consumption and visuals are outside this three-crate delivery.",
+      "Server-side API/unemitted sources and A/C behavior are not covered."
+    ],
+    "summary": "evidence/theme-static-2026-10-14/integration/summary.json"
+  },
+  "theme_live_probe": {
+    "date": "2026-10-14",
+    "report": "evidence/theme-live-once-2026-10-14/result.json",
+    "live_get_invocations": 1,
+    "redirects": false,
+    "blob_downloads": 0,
+    "http_status": 200,
+    "body_bytes": 123,
+    "parsed_events": 1,
+    "producer_verification": "offline replay of the same captured response",
+    "refresh_seconds": 3600,
+    "full_theme_pipeline_accepted": false
+  },
+  "utils_gap_recovery": {
+    "status": "partial",
+    "report": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+    "tracking": "tracking/utils-gap-recovery.json",
+    "source": "D:/game/tiny-glade/crates/utils",
+    "full_original_module_accepted": false
+  },
+  "tg_text_internal_recovery": {
+    "date": "2026-10-14",
+    "baseline": "B Windows x86_64",
+    "status": "restored_and_verified_scoped_internal_rules",
+    "requested_internal_rules": [
+      "owned shared font table / role selection / base-vs-scaled metrics",
+      "u32 frame/stamp and exact glyph cache validation/reclamation"
+    ],
+    "report": "evidence/text-internal-2026-10-14/REPORT.md",
+    "verification": "evidence/text-internal-2026-10-14/verification.json",
+    "native_cases": {
+      "font": 17,
+      "cache": 791,
+      "same_id": 21
+    },
+    "game_callers_changed": false,
+    "gpu_wiring_changed": false,
+    "remaining_in_requested_scope": [],
+    "whole_library_accepted": false
+  },
+  "utils_deep_followup": {
+    "baseline": "B",
+    "status": "partial",
+    "report": "evidence/utils-deep-followup-2026-10-14/REPORT.md",
+    "validation": "evidence/utils-deep-followup-2026-10-14/validation.json",
+    "user_scope": "Only B"
   }
 }

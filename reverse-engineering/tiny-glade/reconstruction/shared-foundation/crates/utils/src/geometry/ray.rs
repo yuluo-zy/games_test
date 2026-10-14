@@ -28,7 +28,10 @@ impl Ray {
         let far = inverse.z_axis * 0.01 + xy + inverse.w_axis;
         let origin = (near / near.w).truncate();
         let end = (far / far.w).truncate();
-        Self { origin, direction: (end - origin).normalize() }
+        Self {
+            origin,
+            direction: (end - origin).normalize(),
+        }
     }
     pub fn xz(self) -> Ray2 {
         Ray2 {

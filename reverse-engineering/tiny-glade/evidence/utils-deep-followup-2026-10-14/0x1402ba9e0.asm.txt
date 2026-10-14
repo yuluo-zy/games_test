@@ -1,0 +1,128 @@
+0x1402ba9e0: push r15
+0x1402ba9e2: push r14
+0x1402ba9e4: push r13
+0x1402ba9e6: push r12
+0x1402ba9e8: push rsi
+0x1402ba9e9: push rdi
+0x1402ba9ea: push rbx
+0x1402ba9eb: sub rsp, 0x20
+0x1402ba9ef: mov rbx, rdx
+0x1402ba9f2: mov rsi, rcx
+0x1402ba9f5: mov r14, r8
+0x1402ba9f8: sub r14, rdx
+0x1402ba9fb: movabs rcx, 0xaaaaaaaaaaaaaaab
+0x1402baa05: mov rax, r14
+0x1402baa08: mul rcx
+0x1402baa0b: mov r15, rdx
+0x1402baa0e: and r15, 0xfffffffffffffff8
+0x1402baa12: movabs rax, 0xbffffffffffffff4
+0x1402baa1c: cmp r14, rax
+0x1402baa1f: ja 0x1402babbf
+0x1402baa25: cmp r8, rbx
+0x1402baa28: je 0x1402baae9
+0x1402baa2e: mov rdi, rdx
+0x1402baa31: mov r12, r9
+0x1402baa34: movzx eax, byte ptr [rip + 0x337a1ce]
+0x1402baa3b: mov r13d, 4
+0x1402baa41: mov edx, 4
+0x1402baa46: mov rcx, r15
+0x1402baa49: call 0x140613c10
+0x1402baa4e: test rax, rax
+0x1402baa51: je 0x1402babc5
+0x1402baa57: shr rdi, 3
+0x1402baa5b: cmp r14, 0xf0
+0x1402baa62: jae 0x1402bab0e
+0x1402baa68: xor ecx, ecx
+0x1402baa6a: mov rdx, rcx
+0x1402baa6d: or rdx, 1
+0x1402baa71: test dil, 1
+0x1402baa75: je 0x1402baa96
+0x1402baa77: lea r8, [rcx + rcx*2]
+0x1402baa7b: movss xmm0, dword ptr [rbx + r8*4]
+0x1402baa81: movss xmm1, dword ptr [rbx + r8*4 + 8]
+0x1402baa88: movss dword ptr [rax + rcx*8], xmm0
+0x1402baa8d: movss dword ptr [rax + rcx*8 + 4], xmm1
+0x1402baa93: mov rcx, rdx
+0x1402baa96: cmp rdi, rdx
+0x1402baa99: je 0x1402baaf0
+0x1402baa9b: lea rdx, [rcx + rcx*2]
+0x1402baa9f: lea rdx, [rbx + rdx*4]
+0x1402baaa3: add rdx, 0x14
+0x1402baaa7: nop word ptr [rax + rax]
+0x1402baab0: movss xmm0, dword ptr [rdx - 0x14]
+0x1402baab5: movss xmm1, dword ptr [rdx - 0xc]
+0x1402baaba: movss dword ptr [rax + rcx*8], xmm0
+0x1402baabf: movss dword ptr [rax + rcx*8 + 4], xmm1
+0x1402baac5: movss xmm0, dword ptr [rdx - 8]
+0x1402baaca: movss xmm1, dword ptr [rdx]
+0x1402baace: movss dword ptr [rax + rcx*8 + 8], xmm0
+0x1402baad4: movss dword ptr [rax + rcx*8 + 0xc], xmm1
+0x1402baada: add rcx, 2
+0x1402baade: add rdx, 0x18
+0x1402baae2: cmp rdi, rcx
+0x1402baae5: jne 0x1402baab0
+0x1402baae7: jmp 0x1402baaf0
+0x1402baae9: mov eax, 4
+0x1402baaee: xor edi, edi
+0x1402baaf0: mov qword ptr [rsi], rdi
+0x1402baaf3: mov qword ptr [rsi + 8], rax
+0x1402baaf7: mov qword ptr [rsi + 0x10], rdi
+0x1402baafb: mov rax, rsi
+0x1402baafe: add rsp, 0x20
+0x1402bab02: pop rbx
+0x1402bab03: pop rdi
+0x1402bab04: pop rsi
+0x1402bab05: pop r12
+0x1402bab07: pop r13
+0x1402bab09: pop r14
+0x1402bab0b: pop r15
+0x1402bab0d: ret 
+0x1402bab0e: lea rdx, [rax + rdi*8]
+0x1402bab12: add rdx, -8
+0x1402bab16: xor ecx, ecx
+0x1402bab18: cmp rdx, rax
+0x1402bab1b: jb 0x1402baa6a
+0x1402bab21: lea rdx, [rax + rdi*8]
+0x1402bab25: add rdx, -4
+0x1402bab29: mov r8, rax
+0x1402bab2c: add r8, 4
+0x1402bab30: cmp rdx, r8
+0x1402bab33: jb 0x1402baa6a
+0x1402bab39: lea rdx, [rdi - 1]
+0x1402bab3d: shr rdx, 0x3d
+0x1402bab41: jne 0x1402baa6a
+0x1402bab47: mov rcx, rdi
+0x1402bab4a: and rcx, 0xfffffffffffffffc
+0x1402bab4e: lea rdx, [rbx + 0x2c]
+0x1402bab52: xor r8d, r8d
+0x1402bab55: nop word ptr cs:[rax + rax]
+0x1402bab60: movss xmm0, dword ptr [rdx - 0x2c]
+0x1402bab65: movss xmm1, dword ptr [rdx - 0x24]
+0x1402bab6a: unpcklps xmm0, xmm1
+0x1402bab6d: movss xmm1, dword ptr [rdx - 0x20]
+0x1402bab72: movss xmm2, dword ptr [rdx - 0x18]
+0x1402bab77: unpcklps xmm1, xmm2
+0x1402bab7a: movlhps xmm0, xmm1
+0x1402bab7d: movss xmm1, dword ptr [rdx - 0xc]
+0x1402bab82: movss xmm2, dword ptr [rdx - 0x14]
+0x1402bab87: unpcklps xmm2, xmm1
+0x1402bab8a: movss xmm1, dword ptr [rdx]
+0x1402bab8e: movss xmm3, dword ptr [rdx - 8]
+0x1402bab93: unpcklps xmm3, xmm1
+0x1402bab96: movlhps xmm2, xmm3
+0x1402bab99: movups xmmword ptr [rax + r8*8], xmm0
+0x1402bab9e: movups xmmword ptr [rax + r8*8 + 0x10], xmm2
+0x1402baba4: add r8, 4
+0x1402baba8: add rdx, 0x30
+0x1402babac: cmp rcx, r8
+0x1402babaf: jne 0x1402bab60
+0x1402babb1: cmp rdi, rcx
+0x1402babb4: jne 0x1402baa6a
+0x1402babba: jmp 0x1402baaf0
+0x1402babbf: mov r12, r9
+0x1402babc2: xor r13d, r13d
+0x1402babc5: mov rcx, r13
+0x1402babc8: mov rdx, r15
+0x1402babcb: mov r8, r12
+0x1402babce: call 0x1428d8fe3
+0x1402babd3: int3 

@@ -1,0 +1,325 @@
+{
+  "scope": "Windows x64 stable-filesystem original verify in retained DLL loader container, not shipped EXE process",
+  "source": "D:\\game\\ljxsj_92385\\Tiny Glade\\tiny-glade.rne",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "container": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\small-libs-development-2026-10-13\\tg-package-integrity\\original-verify-container.dll",
+  "container_sha256": "281fc876c5543e3553856fdfc0fb925bbf9be72e2dce375b39ec43aec1771772",
+  "patches": [
+    {
+      "offset": 142,
+      "before": "2200",
+      "after": "2220",
+      "reason": "DLL loader container"
+    },
+    {
+      "offset": 160,
+      "before": "acae8902",
+      "after": "00000000",
+      "reason": "No EXE entrypoint or DllMain execution"
+    },
+    {
+      "offset": 51944000,
+      "before": "d011194301000000",
+      "after": "0000000000000000",
+      "reason": "Suppress application TLS callbacks; loader still supplies TLS template/index"
+    }
+  ],
+  "import_descriptors_removed": [
+    "steam_api64.dll",
+    "GFSDK_Aftermath_Lib.x64.dll",
+    "fmodstudio.dll",
+    "fmod.dll"
+  ],
+  "original_ranges": [
+    {
+      "address": "0x14067c3d0",
+      "size": 2447,
+      "range_basis": "original RNE PE RUNTIME_FUNCTION begin/end",
+      "sha256": "5646cdb57855ea9bc2b4e28dd93a21b5465c1f42016a6d6d6d9f85bd602e1a39",
+      "unchanged": true
+    },
+    {
+      "address": "0x140f77f30",
+      "size": 787,
+      "range_basis": "original RNE PE RUNTIME_FUNCTION begin/end",
+      "sha256": "93ba26844db63f275c55a42c080ae869bdc06010e53e0ad21004363d7fa6fb2c",
+      "unchanged": true
+    },
+    {
+      "address": "0x140f79650",
+      "size": 2029,
+      "range_basis": "original RNE PE RUNTIME_FUNCTION begin/end",
+      "sha256": "e3e22148916e5019558b334e3454e12dc052bb52351067d4f435c6fb6ab23f74",
+      "unchanged": true
+    }
+  ],
+  "candidate_source": "D:\\game\\tiny-glade\\crates\\tg-package-integrity\\src\\lib.rs",
+  "candidate_source_sha256": "97fdb958f446cefa46539aff0509693fd7a18c2bf072b2b76f1be5a98785e2f8",
+  "driver_sha256": "969536528935f9105b83b8f1b3295e4a2a08dfecb5ae5647824d24b42d54805b",
+  "case_count": 11,
+  "mismatches": 0,
+  "cases": [
+    {
+      "name": "root-tmp-file",
+      "original": {
+        "kind": "ok"
+      },
+      "candidate": {
+        "kind": "ok"
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"root-tmp-file\"}\n{\"kind\": \"ok\", \"elapsed_ms\": 0.5159000866115093, \"baseline_ws\": 18157568, \"ending_ws\": 18436096, \"process_peak_ws\": 18440192, \"raw_output_words\": [\"0x8000000000000004\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "root-tmp-listed",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "tmp"
+          ],
+          []
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "tmp"
+          ],
+          []
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"root-tmp-listed\"}\n{\"kind\": \"files\", \"lists\": [[], [\"tmp\"], []], \"elapsed_ms\": 13.36920028552413, \"baseline_ws\": 18231296, \"ending_ws\": 18571264, \"process_peak_ws\": 18575360, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x29b2e06fa00\", \"0x1\", \"0x0\", \"0x8\", \"0x0\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "uppercase-tmp",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Tmp/file"
+          ]
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Tmp/file"
+          ]
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"uppercase-tmp\"}\n{\"kind\": \"files\", \"lists\": [[], [], [\"Tmp/file\"]], \"elapsed_ms\": 0.46480027958750725, \"baseline_ws\": 18157568, \"ending_ws\": 18432000, \"process_peak_ws\": 18436096, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x28aaba91b90\", \"0x1\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "known-case",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Case"
+          ]
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Case"
+          ]
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"known-case\"}\n{\"kind\": \"files\", \"lists\": [[], [], [\"Case\"]], \"elapsed_ms\": 0.6248997524380684, \"baseline_ws\": 18333696, \"ending_ws\": 18673664, \"process_peak_ws\": 18677760, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x180df561bf0\", \"0x1\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "separator-alias",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"separator-alias\"}\n{\"kind\": \"files\", \"lists\": [[], [], [\"sub/file\"]], \"elapsed_ms\": 0.8903997950255871, \"baseline_ws\": 18157568, \"ending_ws\": 18505728, \"process_peak_ws\": 18509824, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x209220701e0\", \"0x1\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "dot-alias",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "good"
+          ]
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "good"
+          ]
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"dot-alias\"}\n{\"kind\": \"files\", \"lists\": [[], [], [\"good\"]], \"elapsed_ms\": 0.6294995546340942, \"baseline_ws\": 18087936, \"ending_ws\": 18427904, \"process_peak_ws\": 18432000, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x24c0ea32a90\", \"0x1\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "self-dot-alias",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "./build-info/manifest.json"
+          ],
+          []
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "./build-info/manifest.json"
+          ],
+          []
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"self-dot-alias\"}\n{\"kind\": \"files\", \"lists\": [[], [\"./build-info/manifest.json\"], []], \"elapsed_ms\": 0.6083003245294094, \"baseline_ws\": 18092032, \"ending_ws\": 18440192, \"process_peak_ws\": 18444288, \"raw_output_words\": [\"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x2681a0e0d80\", \"0x1\", \"0x0\", \"0x8\", \"0x0\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "empty-file-name",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [
+            ""
+          ],
+          [],
+          []
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [
+            ""
+          ],
+          [],
+          []
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"empty-file-name\"}\n{\"kind\": \"files\", \"lists\": [[\"\"], [], []], \"elapsed_ms\": 0.871400348842144, \"baseline_ws\": 18350080, \"ending_ws\": 18685952, \"process_peak_ws\": 18690048, \"raw_output_words\": [\"0x4\", \"0x2afeb6617d0\", \"0x1\", \"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "nul-file-name",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [
+            "bad\u0000name"
+          ],
+          [],
+          []
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [
+            "bad\u0000name"
+          ],
+          [],
+          []
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"nul-file-name\"}\n{\"kind\": \"files\", \"lists\": [[\"bad\\u0000name\"], [], []], \"elapsed_ms\": 0.5887001752853394, \"baseline_ws\": 18345984, \"ending_ws\": 18706432, \"process_peak_ws\": 18710528, \"raw_output_words\": [\"0x4\", \"0x28b22c3dba0\", \"0x1\", \"0x0\", \"0x8\", \"0x0\", \"0x0\", \"0x8\", \"0x0\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "directory-known",
+      "original": {
+        "kind": "files",
+        "lists": [
+          [
+            "sub"
+          ],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      },
+      "candidate": {
+        "kind": "files",
+        "lists": [
+          [
+            "sub"
+          ],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"directory-known\"}\n{\"kind\": \"files\", \"lists\": [[\"sub\"], [], [\"sub/file\"]], \"elapsed_ms\": 0.6848000921308994, \"baseline_ws\": 18219008, \"ending_ws\": 18554880, \"process_peak_ws\": 18558976, \"raw_output_words\": [\"0x4\", \"0x1eb112fd580\", \"0x1\", \"0x0\", \"0x8\", \"0x0\", \"0x4\", \"0x1eb112fd7b0\", \"0x1\"]}\n",
+      "stderr": ""
+    },
+    {
+      "name": "unicode-and-surrogate",
+      "original": {
+        "kind": "ok"
+      },
+      "candidate": {
+        "kind": "ok"
+      },
+      "equal": true,
+      "raw_original_stdout": "{\"loaded\": true, \"base\": \"0x7ffd78e80000\", \"fixture\": \"unicode-and-surrogate\"}\n{\"kind\": \"ok\", \"elapsed_ms\": 0.8167000487446785, \"baseline_ws\": 18124800, \"ending_ws\": 18481152, \"process_peak_ws\": 18485248, \"raw_output_words\": [\"0x8000000000000004\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\", \"0xa5a5a5a5a5a5a5a5\"]}\n",
+      "stderr": ""
+    }
+  ]
+}

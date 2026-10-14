@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-13T09:28:43.405Z",
+  "baseline": "B",
+  "status": "scoped_candidates_integrated_verified_partial",
+  "parallel_agents_created": [
+    "small_motomoto",
+    "small_integrity",
+    "small_tg_text"
+  ],
+  "main_owner": "root",
+  "workspace": "reconstruction/shared-foundation",
+  "workspace_members": 10,
+  "scoped_results": [
+    {
+      "module": "motomoto",
+      "scope": "Callable chunk tag/write/backfill/read/iterator chain",
+      "tests": 6,
+      "original_reader_cases": 173,
+      "whole_original_library_accepted": false,
+      "delivery": "motomoto/delivery.json"
+    },
+    {
+      "module": "tg-package-integrity",
+      "scope": "Callable raw manifest gate/version/file-check/extra aggregation chain",
+      "tests": 4,
+      "original_entry_executed": false,
+      "actual_manifest_entries": 1792,
+      "whole_original_library_accepted": false,
+      "delivery": "tg-package-integrity/delivery.json"
+    },
+    {
+      "module": "tg-text",
+      "scope": "FontTable and ShapeStream/RawShapeStream CPU subchain only",
+      "tests": 6,
+      "original_append_cases": 51,
+      "original_metric_cases": 21,
+      "full_crate_complete": false,
+      "delivery": "tg-text/delivery.json"
+    }
+  ],
+  "validation": {
+    "tests": {
+      "passed": 16,
+      "failed": 0,
+      "logs": [
+        "integration/cargo-test.log",
+        "integration/cargo-test-after-schema-review.log"
+      ]
+    },
+    "clippy": {
+      "all_targets": true,
+      "warnings_as_errors": true,
+      "status": "passed",
+      "logs": [
+        "integration/cargo-clippy.log",
+        "integration/cargo-clippy-after-schema-review.log"
+      ]
+    },
+    "formatting": "three crates cargo fmt --check passed",
+    "dependency_identity": {
+      "public_packages": 22,
+      "mismatches": 0,
+      "report": "integration/dependency-validation.json"
+    },
+    "original_fixtures_byte_preserved": {
+      "manifest": true,
+      "font_table": true
+    },
+    "unchanged_native_evidence_reused": true,
+    "all_original_game_consumers_accepted": false,
+    "game_launched": false,
+    "gpu_executed": false,
+    "A_C_accepted": false,
+    "source_inputs_consistent": true,
+    "module_ledger_check": "passed; 2 inherited unrelated missing-path records preserved"
+  },
+  "independent_review": "integration/source-review.json",
+  "intentional_difference": "Integrity checker batches easy-parallel jobs by64; concurrent filesystem mutation timing remains unverified.",
+  "source_inputs": {
+    "reconstruction/shared-foundation/crates/motomoto/BUSINESS_RULES.md": "1fab3f8233bdd1fae23cfe0504952d38757a92cd5390588d7293afa8356b63fa",
+    "reconstruction/shared-foundation/crates/motomoto/Cargo.toml": "948a7d91474658bee2b54a5f3dcaf76379afbc031bd4cf5cf92a61a6017930f7",
+    "reconstruction/shared-foundation/crates/motomoto/src/lib.rs": "7289ac4504d65d0044c148eb420f52e925b8a3c891877508362367565e7d196c",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests/reader_cases.rs": "e629bcf47862f195be6a414913998398e0a7d1fb1271d659b34d252fddcd8ff5",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests.rs": "199f11467bab912f32aede168c69a3dd6dded8a17702ef6dfc9e3ce1a3b31e0d",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/Cargo.toml": "a2a3c34baa93a07ee158a06ed9c39bd5d8f1fc7001c4001d37f1ac7891b60024",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/examples/inspect_package.rs": "47f0996e8072a5bdf202a8737898219b28de269eb07112946070ded78c402481",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/fixtures/B-manifest.json": "3425e76472672b9b7c3d18ed6f7cdc1f21d2c445782845a82528dd4f50bf0a11",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs": "094761f47e50eb4c479fab2ca745468e19d00392206f311a940e30eb286ced8a",
+    "reconstruction/shared-foundation/crates/tg-text/Cargo.toml": "d936546802eaa1f8ebde07616c5e0d07c06678c3f7a645604b9c6acce38066af",
+    "reconstruction/shared-foundation/crates/tg-text/README.md": "2104603c230889b712a775b31cbb34f5afdd15411ecdd0405b3f9bf0b06a9301",
+    "reconstruction/shared-foundation/crates/tg-text/src/font_table.rs": "1b3c199efb935642ed847e38492c445e177946d3007718c66e81974dc76068b8",
+    "reconstruction/shared-foundation/crates/tg-text/src/lib.rs": "12896eb8c1d754d218f9d578aa308d316ecbaa0c790dac4d88be3857324aa6c5",
+    "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs": "f375d41ea85657f6db583bb66a77de438ab4146f60b8dddc1ed1a1567461e474",
+    "reconstruction/shared-foundation/crates/tg-text/tests/behavior.rs": "d309b67940aa4ab9c18b88f29e4c612d74e4e34e986d5933bcc4f9e9ee09eba2",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/native-oracle.json": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+    "reconstruction/shared-foundation/Cargo.toml": "013621f4ec70141a03f5f0b491368df49e0ee3ba17071cb36e4502e6e616ab8a",
+    "reconstruction/shared-foundation/Cargo.lock": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+    "scripts/small-libs-batch-01/audit_dependencies.py": "528d88d79aad4c3d683305aa198305bba272b4d859f9583673a9ebd12aff2b1d",
+    "scripts/small-libs-batch-01/build_scoped.ps1": "3a32e0d9d390fe813f72a7d0e150d99fe1e7ca4e346eb506276c466b33fbbb77"
+  },
+  "persistence": {
+    "independent_workers": [
+      "small-motomoto-20261013",
+      "small-integrity-20261013",
+      "small-text-20261013"
+    ],
+    "stopped": true,
+    "original_database_synchronized": false,
+    "patched_B_only": true,
+    "evidence": [
+      "motomoto/worker-stop-final.log",
+      "tg-package-integrity/worker-final-stop.json",
+      "tg-text/worker-stop.json"
+    ]
+  },
+  "inherited_progress_issues": [
+    {
+      "module": "crates/country-core/src/render",
+      "kind": "missing_recorded_restoration",
+      "path": "reconstruction/country-core/src/render/**/*.rs"
+    },
+    {
+      "module": "crates/country-core/src/systems/render_loop",
+      "kind": "missing_recorded_restoration",
+      "path": "reconstruction/country-core/src/systems/render_loop/**/*.rs"
+    }
+  ],
+  "limitations": [
+    "motomoto Writer/Drop original entry execution and complete save consumer remain",
+    "Integrity original entry execution, rare schema/OS failures, reports consumer remain",
+    "tg-text TextFragment/TextRenderer/shaping/atlas/GPU and true resolver producer remain",
+    "PDB inventory is not a complete author API denominator"
+  ]
+}

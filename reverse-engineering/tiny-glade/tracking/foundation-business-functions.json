@@ -131,10 +131,12 @@
           "name": "地面网格采样",
           "behavior": "把世界XZ映射至网格并做双线性采样，支持已观察采样器",
           "status": "partial",
-          "remaining": "固定/动态网格标志、边界外推与真实资源",
+          "remaining": "512x512 byte-grid 两模式/边界100原指令样例逐位通过，FloatGridCells/RasterBufferRef已接共享入口；flag写入者、其他单态化及完整原运行未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+          "current_source": "D:/game/tiny-glade/crates/utils"
         },
         {
           "id": "utils:10",
@@ -151,10 +153,12 @@
           "name": "对象索引压缩",
           "behavior": "为对象key维护紧凑索引，删除时调整索引并支持缓存解析",
           "status": "partial",
-          "remaining": "insert生产策略、GPUWorld与启动消费者",
+          "remaining": "insert重复拒绝/新key追加52原样例、完整remove78原样例通过；GPUWorld恢复源码已委托共享入口；原Rust泛型/ABI、分配失败、超大索引及完整原GPU进程未验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+          "current_source": "D:/game/tiny-glade/crates/utils"
         },
         {
           "id": "utils:12",
@@ -211,10 +215,12 @@
           "name": "样条位置和切线",
           "behavior": "寻找采样区段，夹紧参数，计算曲线位置及切线",
           "status": "partial",
-          "remaining": "全部区段/端点和真实编辑消费者",
+          "remaining": "2D构造/局部求值和3D真实查询保持；全B PDB扫描未找到2D全局查询过程/内联宿主，未加入镜像实现；实际编辑消费者未全验收",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+          "current_source": "D:/game/tiny-glade/crates/utils"
         },
         {
           "id": "utils:18",
@@ -271,10 +277,12 @@
           "name": "坐标分量适配",
           "behavior": "把XZ等平面分量放入指定3D轴，并桥接借用切片",
           "status": "partial",
-          "remaining": "Vec3SliceAs2投影轴、步长及真实借用消费者",
+          "remaining": "as_vec2 pointer/length传输保持；全B PDB未定位投影轴/stride消费者，不加入猜测投影接口",
           "evidence_scope": "已有合同或限定实现证据，不等于完整功能验收",
           "implementation_task_ready": true,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "review_evidence": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+          "current_source": "D:/game/tiny-glade/crates/utils"
         },
         {
           "id": "utils:24",
@@ -311,11 +319,12 @@
           "name": "墙空间偏移与范围",
           "behavior": "沿墙限制或放开偏移，判断墙空间区域相交并形成变换",
           "status": "partial",
-          "remaining": "bound/is_bounded/to_affine3 仅定位到 PDB 声明，现有记录未找到编译体或内联宿主；不可据此证明未编译，仍需补证",
+          "remaining": "全4894模块PDB扫描+MCP符号复核未定位bound/is_bounded/to_affine3编译体；仅声明不能证明未编译，保持未实现",
           "evidence_scope": "仅入口/命名/结构或局部consumer定位，具体手写规则待证",
           "implementation_task_ready": false,
           "full_feature_accepted": false,
-          "review_evidence": "evidence/foundation-review-fixes-2026-10-14/REPORT.md"
+          "review_evidence": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+          "current_source": "D:/game/tiny-glade/crates/utils"
         },
         {
           "id": "utils:28",
@@ -1867,20 +1876,28 @@
           "name": "活动可用数据",
           "behavior": "活动数据携带目录及开始/结束SystemTime",
           "status": "contract_only",
-          "remaining": "字段契约不等于独立手写算法",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "仅项目数据契约，不登记为手写算法",
           "implementation_task_ready": false,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "library_code_missing_within_observed_B_surface": false,
+          "evidence": [
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ]
         },
         {
           "id": "theme-defs:02",
           "name": "数据准备状态",
           "behavior": "表示pending、无当前活动及准备失败文本等消费者状态",
           "status": "contract_only",
-          "remaining": "原变体名/显示措辞及全交换规则",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "仅项目数据契约，不登记为手写算法",
           "implementation_task_ready": false,
-          "full_feature_accepted": false
+          "full_feature_accepted": false,
+          "library_code_missing_within_observed_B_surface": false,
+          "evidence": [
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ]
         }
       ],
       "module_record": [
@@ -1893,7 +1910,10 @@
             "C"
           ]
         }
-      ]
+      ],
+      "current_recovery_source_root": "tiny-glade/crates/theme-defs",
+      "library_implementation_complete_within_observed_B_surface": true,
+      "current_recovery_ledger": "tracking/theme-static-recovery.json"
     },
     {
       "name": "theme-server-proto",
@@ -1918,7 +1938,7 @@
           "name": "服务响应结构",
           "behavior": "B ActiveEvent start/end=i64,cid=String，EventsResponse events；派生serde复用",
           "status": "contract_only",
-          "remaining": "原服务完整兼容规则；无独立手写验证证据",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原字段契约；serde派生不计算法",
           "implementation_task_ready": false,
           "full_feature_accepted": false,
@@ -1927,15 +1947,17 @@
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-server-proto:02",
           "name": "协议消费者约束",
           "behavior": "时间选择/cache等规则在theme-fetcher消费者，非协议包派生解码器",
           "status": "contract_only",
-          "remaining": "完整游戏主题消费；无独立迁移算法证据",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原字段契约；serde派生不计算法",
           "implementation_task_ready": false,
           "full_feature_accepted": false,
@@ -1944,8 +1966,10 @@
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         }
       ],
       "module_record": [
@@ -1959,7 +1983,10 @@
           ],
           "scope": "B本轮候选；A/C状态不升级"
         }
-      ]
+      ],
+      "current_recovery_source_root": "tiny-glade/crates/theme-server-proto",
+      "library_implementation_complete_within_observed_B_surface": true,
+      "current_recovery_ledger": "tracking/theme-static-recovery.json"
     },
     {
       "name": "theme-fetcher",
@@ -1986,119 +2013,133 @@
           "name": "活动列表获取",
           "behavior": "原endpoint、ETag更新顺序、Date偏移、Cache-Control与304保留Result、backoff不因成功重置",
           "status": "partial",
-          "remaining": "完整原fetch/run入口oracle",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:02",
           "name": "当前活动选择",
           "behavior": "半开时间窗、负时间clamp、重叠最后项获胜、只发布变化结果",
           "status": "partial",
-          "remaining": "实际每日主题plugin消费者",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:03",
           "name": "内容下载",
           "behavior": "目录才命中；200/长度/内容cid hash后提取，失败保留到新列表",
           "status": "partial",
-          "remaining": "完整原download入口及真实服务",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:04",
           "name": "内容缓存验证",
           "behavior": "checksum验证；过期严格>14天，未来时间继续校验；错误条目独立",
           "status": "partial",
-          "remaining": "极端文件系统/整链原入口",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:05",
           "name": "ZIP提取与验证",
           "behavior": "原enclosed_name/顺序/失败保留文件；完整目标path与hash构成CRC；只验证列出的文件",
           "status": "partial",
-          "remaining": "原完整提取/验证入口oracle与路径极端边界",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:06",
           "name": "缓存清理",
           "behavior": "rogue文件移除，老/坏checksum目录删除，条目错误独立",
           "status": "partial",
-          "remaining": "真实cache大规模行为与特殊OS失败",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         },
         {
           "id": "theme-fetcher:07",
           "name": "主题更新消费",
           "behavior": "库内run下载所有Pending含未来事件；sender只发布变化，断开退出",
           "status": "partial",
-          "remaining": "真实tiny-glade主题plugin/ECS consumer",
+          "remaining": "完整原入口验收与库外游戏consumer；未发射作者文本及A/C未覆盖。",
           "evidence_scope": "B原静态/限定叶规则与候选实现；原完整功能/消费者未验收",
-          "implementation_task_ready": true,
+          "implementation_task_ready": false,
           "full_feature_accepted": false,
           "implemented_baselines": [
             "B"
           ],
           "evidence": [
             "evidence/foundation-unstarted-2026-10-13/themes/contract.json",
-            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json"
-          ]
+            "evidence/foundation-unstarted-2026-10-13/themes/handoff.json",
+            "evidence/theme-static-2026-10-14/REPORT.md"
+          ],
+          "library_code_missing_within_observed_B_surface": false
         }
       ],
       "module_record": [
@@ -2112,7 +2153,10 @@
           ],
           "scope": "B本轮候选；A/C状态不升级"
         }
-      ]
+      ],
+      "current_recovery_source_root": "tiny-glade/crates/theme-fetcher",
+      "library_implementation_complete_within_observed_B_surface": true,
+      "current_recovery_ledger": "tracking/theme-static-recovery.json"
     },
     {
       "name": "geforcenow",

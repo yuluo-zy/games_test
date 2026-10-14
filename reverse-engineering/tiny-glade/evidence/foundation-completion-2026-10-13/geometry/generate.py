@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,random,math,struct,collections
+import json,random,math,struct,collections,re
 import oracle as o
 from oracle import *
 rows=[];groups={};src=['use super::*;use glam::{Vec2,Vec3,Mat2,Mat4,Quat};','fn f(b:u32)->f32{f32::from_bits(b)}','fn v2(b:[u32;2])->Vec2{Vec2::from_array(b.map(f))}','fn v3(b:[u32;3])->Vec3{Vec3::from_array(b.map(f))}',
@@ -8,7 +8,10 @@ rows=[];groups={};src=['use super::*;use glam::{Vec2,Vec3,Mat2,Mat4,Quat};','fn 
  'fn rect(b:[u32;6])->Rectangle2d{let b=b.map(f);Rectangle2d{axis:Vec2::new(b[0],b[1]),center:Vec2::new(b[2],b[3]),size:Vec2::new(b[4],b[5])}}']
 rng=random.Random(2026101307)
 def begin(name):groups[name]=0;src.append(f'#[test]fn {name}(){{')
-def row(name,data,code):groups[name]+=1;rows.append({'group':name,**data});src.append(code)
+def row(name,data,code):
+ groups[name]+=1;rows.append({'group':name,**data})
+ code=re.sub(r'assert_eq!\(([^;]+),(true|false)\);',lambda m:'assert!('+('!'if m[2]=='false'else '')+m[1]+');',code)
+ src.append(code)
 def end():src.append('}')
 def rs_curve(expr,expected,dim=2):
  return '{let got='+expr+';assert_eq!(got.points.len(),'+str(len(expected['points']))+');for(p,e)in got.points.iter().zip('+rust(expected['points'])+'){vec_close(p.to_array(),e)}vec_close(got.points_u.iter().copied(),'+rust(expected['u'])+');close(got.length,'+str(expected['length'])+');}'
@@ -85,6 +88,33 @@ for distance in [0,-0.,-10,.001,.5,1,10,100,float('inf'),float('nan')]:
  for scale in [.5,1,2]:
   height=700.;cs=ws(distance,scale);ss=ws(distance,scale,height)
   row(name,{'distance':bits(distance),'scale':bits(scale),'height':bits(height),'cs':cs,'ss':ss},'{let mut p=Mat4::IDENTITY;p.y_axis.y=f('+str(bits(scale))+');close(ws_to_cs(f('+str(bits(distance))+'),p),'+str(cs)+');close(ws_to_ss(f('+str(bits(distance))+'),p,700.0),'+str(ss)+');}')
+end()
+name='original_completion_rectangle_curve3_transform';begin(name)
+for _ in range(40):
+ angle=rng.uniform(-math.pi,math.pi);value=[math.cos(angle),math.sin(angle),rng.uniform(-10,10),rng.uniform(-10,10),rng.uniform(.1,8),rng.uniform(.1,8)];height=rng.uniform(-5,5);curve=rect_curve3(value,height);affine=rect_transform(value)
+ code=rs_curve('rect('+rust(enc(value))+').as_curve3(f('+str(bits(height))+'))',curve,3)
+ code+='{let r=rect('+rust(enc(value))+');let(a,s)=r.as_transformation_and_size();vec_close(a.matrix2.to_cols_array().into_iter().chain(a.translation.to_array()).chain(s.to_array()),'+rust(affine)+');let p=r.as_points3(f('+str(bits(height))+'));for(p,e)in p.iter().zip('+rust(curve['points'][:4])+'){vec_close(p.to_array(),e)}}'
+ row(name,{'rectangle':enc(value),'height':bits(height),'curve':curve,'transformation_size':affine},code)
+end();name='original_completion_rectangle_edge_boundaries';begin(name)
+for value in [[1,0,0,0,2,4],[.6,.8,3,-2,4,2]]:
+ corners=[0,value[5]/(2*(value[4]+value[5])),.5,(2*value[5]+value[4])/(2*(value[4]+value[5])),1]
+ for u in corners:
+  expected=rect_edge_u(value,u);normal=rect_normal(value,u);unnormal=rect_normal(value,u,True)
+  row(name,{'rectangle':enc(value),'u':bits(u),'edge_id':expected,'normal':normal,'unnormal':unnormal},'{let r=rect('+rust(enc(value))+');let u=f('+str(bits(u))+');assert_eq!(r.get_edge_id_at_u(u),'+str(expected)+');vec_close(r.get_normal_at_u(u).to_array(),'+rust(normal)+');vec_close(r.get_normal_at_u_non_normalized_corners(u).to_array(),'+rust(unnormal)+');}')
+for point in [[0,0],[1,2],[1e5,1e5],[-100,-100],[100,0],[0,100]]:
+ value=[1,0,0,0,2,4];expected=rect_distance(value,point)
+ row(name,{'rectangle':enc(value),'point':enc(point),'expected':expected},'{let r=rect('+rust(enc(value))+');let p=v2('+rust(enc(point))+');assert_eq!(r.get_closest_edge_id(p),'+str(expected['edge_id'])+');vec_close(r.closest_edge_normal(p).to_array(),'+rust(expected['closest_normal'])+');close(r.distance_to_closest_edge(p),'+str(expected['distance'])+');close(r.signed_distance_to_closest_edge(p),'+str(expected['signed'])+');}')
+end();name='original_completion_uv_locator_bary2';begin(name)
+base=[[0,0],[1,0],[0,1]]
+cases=[([], [.2,.3]),([base],[.2,.3]),([base,base],[.2,.3]),([[[2,2],[3,2],[2,3]],base],[.2,.3]),([base],[1,1]),([base],[0,0]),([[[0,0]]*3],[0,0]),([base],[float('nan'),.3])]
+cases += [([[[rng.uniform(-4,4),rng.uniform(-4,4)]for _ in range(3)]for _ in range(rng.randint(1,5))],[rng.uniform(-3,3),rng.uniform(-3,3)])for _ in range(60)]
+for triangles,p in cases:
+ expected=uv_coords(triangles,p);ts=rust([[enc(p)for p in t]for t in triangles]);code='{let triangles:Vec<[Vec2;3]>='+ts+'.into_iter().map(|t:[[u32;2];3]|t.map(v2)).collect();let got=position_from_mesh_uvs::get_triangle_coords_from_mesh_uv(&triangles,v2('+rust(enc(p))+'));'
+ code+='assert!(got.is_none());}'if expected is None else 'let(i,w)=got.unwrap();assert_eq!(i,'+str(expected['index'])+');vec_close(w.to_array(),'+rust(expected['weights'])+');}'
+ row(name,{'triangles':[[enc(p)for p in t]for t in triangles],'uv':enc(p),'expected':expected},code)
+for i in range(70):
+ triangle=[[rng.uniform(-4,4),rng.uniform(-4,4)]for _ in range(3)]if i>2 else (base if i==0 else [[0,0]]*3 if i==1 else [[float('nan'),0],[1,0],[0,1]]);point=[rng.uniform(-6,6),rng.uniform(-6,6)];expected=bary2(point,triangle)
+ row(name,{'triangle':[enc(p)for p in triangle],'point':enc(point),'weights':expected},'{let t='+rust([enc(p)for p in triangle])+'.map(v2);vec_close(barycentric::barycentric2(v2('+rust(enc(point))+'),t[0],t[1],t[2]).to_array(),'+rust(expected)+');}')
 end()
 (OUT/'native-fixtures.json').write_text(json.dumps({'baseline':'B','original_binary_sha256':SHA,'full_game_executed':False,'comparison_scope':'unmodified private text; original UCRT delegated; controlled allocator/memory bridges; Aabb from_points controlled original inline blocks; callback payloads captured before foreign sink logic','groups':groups,'rows':rows},indent=2)+'\n',encoding='utf-8')
 (OUT/'native_tests.rs').write_text('\n'.join(src)+'\n',encoding='utf-8')

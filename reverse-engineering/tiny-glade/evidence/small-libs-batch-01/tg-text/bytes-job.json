@@ -1,0 +1,9 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.flatapi import FlatProgramAPI\napi=FlatProgramAPI(currentProgram,monitor)\nfor x,n in [('140b92090',32),('140b92320',32),('140b92590',32),('140b06780',16),('140a82b20',32),('14293ac70',16),('142afc4c8',40)]:\n a=currentProgram.getAddressFactory().getAddress(x)\n print(json.dumps({'address':x,'hex':bytes(y&255 for y in api.getBytes(a,n)).hex()}))\n"
+    }
+  }
+]

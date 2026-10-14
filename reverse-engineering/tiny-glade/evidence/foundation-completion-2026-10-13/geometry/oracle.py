@@ -38,9 +38,34 @@ def rect_slice(rect,start,end):
 def rect_normal(rect,u,unnormal=False):
  setup();blob(DATA,rect);arguments(DATA);cpu.reg_write(UC_X86_REG_XMM1,bits(u));call(0x140c99e20 if unnormal else 0x140c99e10);return [cpu.reg_read(UC_X86_REG_XMM0)&0xffffffff,cpu.reg_read(UC_X86_REG_XMM1)&0xffffffff]
 def rect_expand(rect,edge,amount,limits):
- setup();blob(DATA,rect);arguments(DATA,edge);cpu.reg_write(UC_X86_REG_XMM2,bits(amount));cpu.reg_write(UC_X86_REG_R9,bits(limits[0]));cpu.mem_write(STACK+0x100008+0x28,struct.pack('<f',limits[1]));call(0x140c9c620);return floats(DATA,6)
+ setup();blob(DATA,rect);arguments(DATA,edge);cpu.reg_write(UC_X86_REG_XMM2,bits(amount));cpu.reg_write(UC_X86_REG_XMM3,bits(limits[0]));cpu.mem_write(STACK+0x100008+0x28,struct.pack('<f',limits[1]));call(0x140c9c620);return floats(DATA,6)
 def rect_rotate(rect,m):
  setup();blob(DATA,rect);blob(DATA+0x100,m);arguments(DATA,DATA+0x100);call(0x140c984f0);return floats(DATA,8)
+def rect_curve3(rect,height):
+ setup();blob(DATA,rect);arguments(DATA+0x300,DATA);cpu.reg_write(UC_X86_REG_XMM2,bits(height));call(0x140c991f0)
+ count=u64(DATA+0x310);vals=floats(u64(DATA+0x308),count*3)
+ return {'points':[vals[i:i+3]for i in range(0,len(vals),3)],'u':floats(u64(DATA+0x320),count),'length':floats(DATA+0x330,1)[0]}
+def rect_transform(rect):
+ setup();blob(DATA,rect);arguments(DATA+0x300,DATA);call(0x140c995c0);raw=floats(DATA+0x300,10)
+ return raw[:6]+raw[8:10]
+def rect_edge_u(rect,u):
+ setup();blob(DATA,rect);arguments(DATA);cpu.reg_write(UC_X86_REG_XMM1,bits(u));call(0x140c9acc0);return int(cpu.reg_read(UC_X86_REG_RAX)&0xffffffff)
+uv_result=None
+def uv_hook(c,pc,size,user):
+ global uv_result
+ if pc==0x1416f3598:
+  uv_result={'index':int(c.reg_read(UC_X86_REG_RAX)), 'weights':[c.reg_read(r)&0xffffffff for r in (UC_X86_REG_XMM5,UC_X86_REG_XMM4,UC_X86_REG_XMM3)]};c.emu_stop()
+ elif pc==0x1416f35f1:uv_result=None;c.emu_stop()
+cpu.hook_add(UC_HOOK_CODE,uv_hook)
+def uv_coords(triangles,p):
+ global uv_result
+ setup();uv_result=None;blob(DATA+0x1000,[v for tri in triangles for point in tri for v in point]);arguments(DATA,DATA+0x100,len(triangles));cpu.reg_write(UC_X86_REG_R9,DATA+0x1000)
+ sp=STACK+0x100008;cpu.mem_write(sp+0x28,struct.pack('<Q',len(triangles)));cpu.mem_write(sp+0x30,struct.pack('<f',p[0]));cpu.mem_write(sp+0x38,struct.pack('<f',p[1]));cpu.emu_start(0x1416f34a0,STOP,count=100000)
+ return uv_result
+def bary2(point,triangle):
+ setup();blob(DATA,[v for p in triangle for v in p]);cpu.reg_write(UC_X86_REG_R9,DATA);cpu.reg_write(UC_X86_REG_XMM0,bits(point[0])|(bits(point[1])<<32));cpu.reg_write(UC_X86_REG_XMM1,bits(1));cpu.reg_write(UC_X86_REG_R10,24)
+ cpu.emu_start(0x1416f34f9,0x1416f3569,count=1000);cpu.emu_start(0x1416f3581,0x1416f358c,count=1000)
+ return [cpu.reg_read(r)&0xffffffff for r in (UC_X86_REG_XMM5,UC_X86_REG_XMM4,UC_X86_REG_XMM3)]
 events=[]
 def receiver_hook(c,pc,size,user):
  if pc==0x1412b2540:

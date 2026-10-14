@@ -1,5 +1,11 @@
 # Tiny Glade 原作还原：里程碑与进度
 
+2026-10-14 utils B 深挖增量：原 2D 楼梯分段采样已恢复，143 组原指令样例；共享标量运算顺序修复，原20组3D构造/120查询逐位通过；Curve有所有权XZ/12→8投影获正面证据并接线。Debug/Release各93测试、严格Clippy及country-core1142 CPU回归通过。墙三方法/2D全局查询仍未定位；原借用as_vec2类型/投影未知，旧pointer/length说法已纠正。全4894模块/85322 C13行号段扫描不作死代码定论。用户后续仅B。当前报告：[B深挖](evidence/utils-deep-followup-2026-10-14/REPORT.md)，[台账](tracking/utils-deep-followup.json)；下段90项为历史源码快照。
+
+2026-10-14 utils 当前工程续轮：共享 insert/remove 返回合同与 country-core 索引/512网格消费者合并，230 新原指令样例通过；Windows utils Debug/Release各90测试、country-core 1142测试及两库严格Clippy通过。墙三方法/2D全局查询编译体、投影轴/stride和完整游戏运行仍未恢复/验收，维持 partial。最新范围见 [utils 交付报告](evidence/utils-gap-recovery-2026-10-14/REPORT.md) 与 [台账](tracking/utils-gap-recovery.json)。后文旧“87/3”“B中未编译”或“主线齐全”表述为历史快照，不能覆盖本轮的未定位/未实现边界。
+
+2026-10-14 主题三库更新：实际 `tiny-glade/crates/theme-defs`、`theme-fetcher`、`theme-server-proto` 的 B 已定位库内业务/合同完成静态复核和补全，26项离线测试、all-targets严格Clippy、fmt通过；交付锁138公共依赖身份匹配原B。没有请求真实主题服务。完整原入口oracle、游戏插件/内容消费及A/C尚未验收；维持限定候选口径，详见 [主题交付报告](evidence/theme-static-2026-10-14/REPORT.md) 和 [当前源码/机器台账](tracking/theme-static-recovery.json)。
+
 更新：2026-10-12T10:08:01.154567+00:00。目标：完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为。
 
 **当前不是完整游戏。整体完成百分比暂不报告：完整原作功能清单及验收分母仍在建立。**

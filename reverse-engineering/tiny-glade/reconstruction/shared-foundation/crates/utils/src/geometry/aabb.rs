@@ -111,7 +111,10 @@ impl Aabb3 {
                 max: Vec3::splat(f32::MIN),
             };
         };
-        let mut bounds = Self { min: first, max: first };
+        let mut bounds = Self {
+            min: first,
+            max: first,
+        };
         for point in points {
             bounds.expand_to_contain_point(point);
         }

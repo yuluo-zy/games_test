@@ -42,3 +42,8 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 - [Blender 可编辑素材库](TinyGlade_Blender_Library/README.md)
 - [逆向工具链说明](tools/README.md)
 - [Blender 工具链说明](tools/blender/README.md)
+
+
+## Tiny Glade 报告与云平台功能范围调整
+
+2026-10-14 按用户要求删除 `tiny-glade/crates/tg-integrity-report`、`tiny-glade/crates/crash-reporter-gui`、`tiny-glade/crates/feedback-reporter` 和 `tiny-glade/crates/geforcenow`，不再逆向还原这些功能。安装完整性报告窗口、崩溃报告对话框、反馈文件收集/ZIP 打包/HTTP 提交，以及 GeForce NOW 云平台集成均排除在当前工程范围之外；历史源码和证据保留。删除原因、功能影响和验证入口见 [Tiny Glade README](tiny-glade/README.md#已删除的报告与云平台功能)。

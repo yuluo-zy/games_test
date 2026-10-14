@@ -10,7 +10,7 @@ use glam::{Mat4, Vec3};
 use crate::typed_gap::Gap;
 
 /// `PlacementDataSsbo`（O：放置记录 → Affine3A）。
-#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+#[derive(Resource, Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PlacementDataSsbo {
     /// +0x0 位置（O）。
     pub position: Vec3,
@@ -77,4 +77,12 @@ pub struct DefaultAnimT(pub f32);
 
 pub fn default_anim_t() -> f32 {
     0.0
+}
+
+
+impl crate::render::ssbo::StorageElement for PlacementDataSsbo {
+    /// I：调试名未从机器码恢复（SSBO 元素策略见 ssbo.rs 注释）。
+    const NAME: &'static str = "PlacementData";
+    /// 0 = 长度由初始数据决定（放置数据是可变长数组）。
+    const BUFFER_LEN: usize = 0;
 }

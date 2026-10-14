@@ -1,4 +1,4 @@
-use crate::inheritable::{Inherit, Inheritable, deserialize_inheritable_option};
+use crate::inheritable::{deserialize_inheritable_option, Inherit, Inheritable};
 use serde::Deserialize;
 use std::collections::HashMap;
 /// Original prefab vector fields use RON sequence syntax, unlike texture resize tuples.
@@ -62,8 +62,12 @@ pub struct PrefabRenderConfig {
     pub shader: Inheritable<String>,
 }
 impl PrefabRenderConfig {
-    pub fn concrete_default()->Self {
-        Self {mesh:Inheritable::MissingDefault,shader:Inheritable::MissingDefault,mesh_processor:Inheritable::Value(None)}
+    pub fn concrete_default() -> Self {
+        Self {
+            mesh: Inheritable::MissingDefault,
+            shader: Inheritable::MissingDefault,
+            mesh_processor: Inheritable::Value(None),
+        }
     }
 }
 impl Inherit for PrefabRenderConfig {
@@ -119,14 +123,14 @@ pub struct PrefabRtConfig {
 impl PrefabRtConfig {
     /// Original option finalizer 0x14268a42f..0x14268a4d7. Mesh is required;
     /// scale and all three seasonal albedos default to one, semantic to None.
-    pub fn concrete_default()->Self {
+    pub fn concrete_default() -> Self {
         Self {
-            mesh:Inheritable::MissingDefault,
-            mesh_scale:Inheritable::Value([1.0;3]),
-            summer_albedo:Inheritable::Value([1.0;3]),
-            autumn_albedo:Inheritable::Value([1.0;3]),
-            winter_albedo:Inheritable::Value([1.0;3]),
-            semantic:Inheritable::Value(RtMeshSemantic::None),
+            mesh: Inheritable::MissingDefault,
+            mesh_scale: Inheritable::Value([1.0; 3]),
+            summer_albedo: Inheritable::Value([1.0; 3]),
+            autumn_albedo: Inheritable::Value([1.0; 3]),
+            winter_albedo: Inheritable::Value([1.0; 3]),
+            semantic: Inheritable::Value(RtMeshSemantic::None),
         }
     }
 }
@@ -139,7 +143,9 @@ impl Inherit for PrefabRtConfig {
         self.winter_albedo.inherit_from(&p.winter_albedo);
         self.semantic.inherit_from(&p.semantic);
     }
-    fn finish_inheritance(&mut self) {self.inherit_from(&Self::concrete_default());}
+    fn finish_inheritance(&mut self) {
+        self.inherit_from(&Self::concrete_default());
+    }
 }
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
@@ -147,8 +153,10 @@ pub struct PrefabAudioConfig {
     pub trigger: Inheritable<AudioTriggerConfig>,
 }
 impl PrefabAudioConfig {
-    pub fn concrete_default()->Self {
-        Self {trigger:Inheritable::Value(AudioTriggerConfig::concrete_default())}
+    pub fn concrete_default() -> Self {
+        Self {
+            trigger: Inheritable::Value(AudioTriggerConfig::concrete_default()),
+        }
     }
 }
 impl Inherit for PrefabAudioConfig {
@@ -159,7 +167,10 @@ impl Inherit for PrefabAudioConfig {
         // Original trigger wrapper rejects an already exhausted outer object
         // marker; required fields inside a concrete trigger remain unresolved
         // until extraction, which is a different state.
-        assert!(!matches!(self.trigger,Inheritable::MissingDefault),"cannot finalize an exhausted audio trigger");
+        assert!(
+            !matches!(self.trigger, Inheritable::MissingDefault),
+            "cannot finalize an exhausted audio trigger"
+        );
         self.inherit_from(&Self::concrete_default());
     }
 }
@@ -173,8 +184,12 @@ pub struct AudioTriggerConfig {
 }
 impl AudioTriggerConfig {
     /// Original inline 0x14268a790: required shape/kind markers, unit scale.
-    pub fn concrete_default()->Self {
-        Self {shape:Inheritable::MissingDefault,shape_scale:Inheritable::Value([1.0;3]),kind:Inheritable::MissingDefault}
+    pub fn concrete_default() -> Self {
+        Self {
+            shape: Inheritable::MissingDefault,
+            shape_scale: Inheritable::Value([1.0; 3]),
+            kind: Inheritable::MissingDefault,
+        }
     }
 }
 impl Inherit for AudioTriggerConfig {

@@ -1,0 +1,30 @@
+[package]
+name = "tg-gpu-selector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "GPU selection, driver advice and workaround policies"
+readme = "README.md"
+
+[dependencies]
+tg-iced = { path = "../tg-iced", version = "=0.1.0", default-features = false }
+
+webbrowser = { version = "=0.8.10", optional = true }
+open = { version = "=5.0.0", optional = true }
+
+[package.metadata.reconstruction]
+baseline = "B"
+original_features_known = false
+original_abi_recovered = false
+
+[features]
+default = []
+native-gui = ["tg-iced/native-gui", "dep:webbrowser", "dep:open"]
+
+[[example]]
+name = "tg_gpu_selector_native_probe"
+required-features = ["native-gui"]
+
+[lints]
+workspace = true

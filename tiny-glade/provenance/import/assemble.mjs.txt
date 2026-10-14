@@ -1,0 +1,143 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {execFile} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const repo = path.resolve(import.meta.dirname, '../..');
+const out = path.resolve(import.meta.dirname, '..');
+const base = 'reverse-engineering/tiny-glade/';
+const reconstruction = base+'reconstruction/';
+const revision = 'a205bd8a';
+const hash = s => createHash('sha256').update(s).digest('hex');
+const git = args => new Promise((resolve,reject)=>execFile('git',['-c','safe.directory='+repo.replaceAll('\\','/'),...args],{cwd:repo,encoding:'utf8',maxBuffer:32*1024*1024,windowsHide:true},(e,s,err)=>e?reject(new Error(err)):resolve(s)));
+const head = (await git(['rev-parse',revision])).trim();
+const nativeFoundation = (await git(['rev-parse','326cb236'])).trim();
+const inventory = [];
+const generated = [];
+const exclusions = [];
+async function write(p,s) {const target=path.resolve(out,p);if(!target.startsWith(out+path.sep))throw Error('outside output: '+p);await fs.mkdir(path.dirname(target),{recursive:true});await fs.writeFile(target,s);}
+async function emit(p,s,reason) {await write(p,s);generated.push({path:p,kind:'integration_glue',reason,sha256:hash(s)});}
+const snapshotCache = new Map();
+async function snapshot(src,rev=head) {const key=rev+':'+src;if(!snapshotCache.has(key))snapshotCache.set(key,git(['show',(rev==='index'?'':rev)+':'+src]));return snapshotCache.get(key);}
+async function record(src,dst,s,original,rev,kind,notes=[]) {const commit=rev==='index'?null:src.includes('/human-readable-shaders/')?'81aa0042f16a17e77fa260e8f6b25002f1b95138':rev;await write(dst,s);if(inventory.length%50===0)console.log('copied '+inventory.length+' '+dst);inventory.push({path:dst,source_path:src,selected_revision:rev,source_commit:commit,source_sha256:hash(original),sha256:hash(s),kind,transformations:notes});}
+async function copy(src,dst,{rev=head,transform=s=>s,kind='recovered_body',notes=[]}={}) {const original=await snapshot(src,rev);const s=transform(original.replace(/\r\n/g,'\n'));await record(src,dst,s,original,rev,kind,notes);return s;}
+async function filesAt(src,rev=head) {return (await git(['ls-tree','-r','--name-only',rev,src])).trim().split('\n').filter(Boolean);}
+function dropCli(s) {s=s.replace(/#\[cfg\(not\(feature\s*=\s*"library"\)\)\]\nuse std::io[^;]+;\n/g,'');const i=s.search(/#\[cfg\(not\(feature\s*=\s*"library"\)\)\]/);return i<0?s:s.slice(0,i);}
+function removeFn(s,signature) {const i=s.indexOf(signature);if(i<0)throw Error('missing '+signature);const start=s.indexOf('{',i);let depth=1,end=start+1;for(;depth;end++){if(s[end]==='{')depth++;if(s[end]==='}')depth--;}return s.slice(0,i)+s.slice(end);}
+async function localizeFixtures(s,src,dst,manifestDir) {
+ const refs=[...s.matchAll(/"([^"\n]*evidence\/[^"\n]+\.rs)"/g)].map(m=>m[1]);
+ for(const ref of new Set(refs)) {
+  const sourceAbsolute=path.resolve(repo,ref.startsWith('/')?manifestDir:path.posix.dirname(src),ref.replace(/^\//,''));
+  const sourceRelative=path.relative(repo,sourceAbsolute).replaceAll('\\','/');
+  const evidencePath=sourceRelative.split('/evidence/')[1];
+  const fixture='crates/utils/tests/fixtures/'+evidencePath;
+  const fixtureSource=await copy(sourceRelative,fixture,{kind:'historical_fixture',notes:['Fixture copied into this crate; captured expected values unchanged.']});
+  for(const m of fixtureSource.matchAll(/include_(?:str|bytes)!\(\"([^\"]+)\"\)/g)){const dataSource=path.posix.join(path.posix.dirname(sourceRelative),m[1]);const dataDest=path.posix.join(path.posix.dirname(fixture),m[1]);await copy(dataSource,dataDest,{kind:'historical_fixture'});}
+  const newRef=ref.startsWith('/')?'/tests/fixtures/'+evidencePath:path.posix.relative(path.posix.dirname(dst),fixture);
+  s=s.replaceAll('"'+ref+'"','"'+newRef+'"');
+ }
+ return s;
+}
+const foundation = ['paths','lang-lib','tabloid','motomoto','tg-package-integrity','theme-defs'];
+for(const name of foundation) {
+ const src=reconstruction+'shared-foundation/crates/'+name;
+ const rev=['paths','lang-lib','tabloid'].includes(name)?nativeFoundation:head;
+ for(const f of await filesAt(src,rev)) {
+  const rel=f.slice(src.length+1);
+  if(rel==='Cargo.toml'||rel.startsWith('src/')||rel.startsWith('fixtures/'))await copy(f,'crates/'+name+'/'+rel,{rev,kind:rel==='Cargo.toml'?'integration_glue':rel.startsWith('fixtures/')?'historical_fixture':name==='theme-defs'?'recovered_schema':'recovered_body'});
+ }
+}
+// Only functions with bodies and recovery contracts; omit inferred producer/view interfaces.
+const utilsSrc=reconstruction+'shared-foundation/crates/utils';
+for(const src of await filesAt(utilsSrc)) {
+ const rel=src.slice(utilsSrc.length+1);if(!/^(Cargo\.toml|src\/|tests\/numeric_contract\.rs)/.test(rel))continue;
+ if(rel==='src/index_condenser.rs') {exclusions.push({source_path:src,reason:'Original insert producer/key policy unresolved; no partial substitute copied.'});continue;}
+ let original=await snapshot(src);let s=original.replace(/\r\n/g,'\n');let notes=[];
+ if(rel==='src/lib.rs'){s=s.replace('pub mod index_condenser;\n','');notes.push('Remove excluded IndexCondenser module.');}
+ if(rel==='src/swizzlers.rs'){s=s.slice(0,s.indexOf('/// Explicit borrowed transport'));notes.push('Retain four recovered swizzle operations only; exclude unresolved borrowed view and inferred XZ projection.');}
+ if(rel==='src/natural_cubic.rs') {
+  const i=s.indexOf('    fn segment_at_t(&self, t: f32) -> (SplineSegment2D, f32)');
+  const end=s.indexOf('\n}\nimpl Spline3D',i);
+  if(i<0||end<0)throw Error('Spline2D boundary');s=s.slice(0,i)+s.slice(end);
+  const test=s.indexOf('\n#[cfg(test)]\nmod spline2d_queries');if(test>=0)s=s.slice(0,test);
+  notes.push('Omit inferred Spline2D whole-spline selection/query APIs and their self-consistency tests; retain recovered constructors, local evaluation, and 3D native-tested chain.');
+ }
+ const dst='crates/utils/'+rel;
+ s=await localizeFixtures(s,src,dst,utilsSrc);
+ if(s!==original.replace(/\r\n/g,'\n'))notes.push('Local test fixture paths; LF line endings.');
+ await record(src,dst,s,original,head,rel==='Cargo.toml'?'integration_glue':rel.startsWith('tests/')?'historical_fixture':'recovered_body',notes);
+}
+const roofFiles=['surface','ridge','tiles','rectangular_edges','rectangular_caps','rectangular_faces','pipeline','edit_rules'];
+for(const name of roofFiles)await copy(reconstruction+'roof/'+name+'.rs','crates/systems/roof/src/'+name+'.rs',{transform:dropCli,notes:['Remove command-line oracle harness; recovered algorithms unchanged.']});
+await emit('crates/systems/roof/src/lib.rs','//! 已恢复的屋顶 CPU 算法与已解析编辑规则。ECS、完整生命周期和 GPU 不在本 crate 中。\n'+roofFiles.map(n=>'pub mod '+n+';').join('\n')+'\n','Connect the recovered roof source chain.');
+await emit('crates/systems/roof/Cargo.toml','[package]\nname = "system-roof"\nversion = "0.1.0"\nedition.workspace = true\nrust-version.workspace = true\npublish.workspace = true\n\n[dependencies]\nglam.workspace = true\nfastrand.workspace = true\nhalf.workspace = true\nperchance = "=0.4.0"\n','Original dependency versions; recovery subset manifest.');
+await copy(reconstruction+'math/window_aspect.rs','crates/country-core/src/resources/window.rs',{rev:'index',transform:dropCli,notes:['Remove standalone oracle stdin program.']});
+await copy(reconstruction+'roof/roof_state.rs','crates/country-core/src/resources/roofs/roof_shape.rs',{transform:dropCli,notes:['Remove standalone oracle stdin program.']});
+await copy(reconstruction+'wall/height_rules.rs','crates/country-core/src/resources/walls/height_rules.rs',{transform:dropCli,notes:['Scope is resolved numeric policy and cached height methods; no object query substitute.']});
+await emit('crates/country-core/src/lib.rs','//! B 版已恢复的局部资源规则；不是完整 country-core。\npub mod resources;\n','Subset crate root.');
+await emit('crates/country-core/src/resources/mod.rs','pub mod window;\npub mod roofs;\npub mod walls;\n','Subset module wiring.');
+await emit('crates/country-core/src/resources/roofs/mod.rs','pub mod roof_shape;\n','Subset module wiring.');
+await emit('crates/country-core/src/resources/walls/mod.rs','pub mod height_rules;\n','Subset module wiring.');
+await emit('crates/country-core/Cargo.toml','[package]\nname = "country-core"\nversion = "0.1.0"\nedition.workspace = true\nrust-version.workspace = true\npublish.workspace = true\n','No unimplemented game runtime or fake dependency.');
+// Merge verified render CPU kernels into original rhapsody folders, not work-package crates.
+await copy(reconstruction+'render/resource_info.rs','crates/rhapsody/src/rg/resource_rules.rs');
+await copy(reconstruction+'render/resource_usage.rs','crates/rhapsody/src/rg/resource_usage.rs');
+await copy(reconstruction+'render/graph_info.rs','crates/rhapsody/src/rg/resource_info.rs',{transform:s=>s.replace('crate::resource_info::','crate::rg::resource_rules::').replace('crate::resource_usage::','crate::rg::resource_usage::'),notes:['Unify imports in rhapsody::rg.']});
+await copy(reconstruction+'render/work-packages/compiled-state/lib.rs','crates/rhapsody/src/rg/compiled_graph.rs',{transform:s=>s.slice(0,s.indexOf('#[derive(Clone, Copy, Debug, PartialEq, Eq)]\npub struct ResourceLifetime')),notes:['Retain native-compared BatchCompiler new/flush/finish only; omit candidate snapshot and adapter projections.']});
+await emit('crates/rhapsody/src/rg/mod.rs','pub mod resource_rules;\npub mod resource_usage;\npub mod resource_info;\npub mod compiled_graph;\n','Combine recovered renderer kernels.');
+await copy(reconstruction+'rhapsody-rebuild/src/raw/format.rs','crates/rhapsody/src/raw/format.rs',{transform:s=>s.slice(s.indexOf('pub mod observed {')+'pub mod observed {'.length,s.lastIndexOf('}')).replace('    use super::registry;','    #[path = "format_data.rs"]\n    mod registry;'),notes:['Extract original observed format entries only; exclude public Vulkan registry adapter and candidate convenience APIs.']});
+await copy(reconstruction+'rhapsody-rebuild/src/raw/format_table.rs','crates/rhapsody/src/raw/format_data.rs',{transform:s=>s.slice(s.indexOf('pub const OBSERVED_ASPECTS')),kind:'recovered_schema',notes:['Retain extracted original format tables only; exclude generated public vk.xml implementation.']});
+await emit('crates/rhapsody/src/raw/mod.rs','pub mod format;\n','Expose recovered format leaves.');
+await emit('crates/rhapsody/src/lib.rs','//! 已恢复的 B 版渲染 CPU 规则、格式入口与 shader 资产协议。完整 Vulkan 渲染器尚未纳入。\npub mod rg;\npub mod raw;\npub use shader_pipeline;\n','Renderer subset root.');
+await emit('crates/rhapsody/Cargo.toml','[package]\nname = "rhapsody"\nversion = "0.1.0"\nedition.workspace = true\nrust-version.workspace = true\npublish.workspace = true\n\n[dependencies]\nash = "=0.38.0"\nshader-pipeline = { path = "crates/shader-pipeline" }\n','Renderer subset dependencies; no allocator fork substitute.');
+for(const name of ['compiled','reflection','reflection_ty','shader_defines'])await copy(reconstruction+'rhapsody-rebuild/src/shader_pipeline/'+name+'.rs','crates/rhapsody/crates/shader-pipeline/src/'+name+'.rs',{kind:name==='shader_defines'?'recovered_body':'recovered_schema',transform:s=>s.replace(/super::/g,'crate::'),notes:['Move recovered shader-pipeline module into its original nested crate.']});
+await emit('crates/rhapsody/crates/shader-pipeline/src/lib.rs','//! 已恢复的发行 .bin 协议、绑定 hash 与定义 key；不包含未恢复的编译器策略。\npub mod compiled;\npub mod reflection;\npub mod reflection_ty;\npub mod shader_defines;\n','Original nested package with recovered schema and hashing.');
+await emit('crates/rhapsody/crates/shader-pipeline/Cargo.toml','[package]\nname = "shader-pipeline"\nversion = "0.1.0"\nedition.workspace = true\npublish.workspace = true\n\n[dependencies]\nspeedy = "=0.8.6"\nconst-fnv1a-hash = "=1.1.0"\nspirq = { git = "https://github.com/h3r2tic/spirq-rs.git", rev = "4f22e6f149750401705d47ae15a60e77cd5a6905" }\n','Reuse original serialization/hash dependencies.');
+for(const n of ['color','font_table','shape_stream'])await copy(reconstruction+'shared-foundation/crates/tg-text/src/'+n+'.rs','crates/tg-text/src/'+n+'.rs');
+await emit('crates/tg-text/src/lib.rs','//! 已恢复的字体角色、颜色和 shape-stream 协议；不含待核实的 TextRenderer 装配/API。\npub mod color;\npub mod font_table;\npub mod shape_stream;\npub use color::scale_u32_packed_srgba_color;\npub use font_table::{FontFamily, FontTable, FontTableEntry, ScaledFont};\npub use shape_stream::{ImageScaling, ImageSource, ShapeStream, RawShapeStream, ShapeStreamItem};\n','Expose recovered text leaves only.');
+await emit('crates/tg-text/Cargo.toml','[package]\nname = "tg-text"\nversion = "0.1.0"\nedition.workspace = true\npublish.workspace = true\n\n[dependencies]\nserde.workspace = true\nron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }\n','Text subset without candidate GPU or glyph renderer.');
+// Require every executable shader variant to pass both recovery and readable checks.
+const status=JSON.parse(await snapshot(reconstruction+'shader-source/SHADER_STATUS.json'));
+const readable=JSON.parse(await snapshot(base+'evidence/render-passes/validation/readable-manifest.json'));
+const sweep=JSON.parse(await snapshot(reconstruction+'human-readable-shaders/FINAL_SWEEP.json'));
+const accepted = status.filter(x=>x.modules.length&&x.modules.every(m=>m.gate&&['SAME','空壳'].includes(m.exec))&&sweep.files.some(f=>f.hlsl===x.file&&f.ok&&f.modules.every(m=>m.full_ok)));
+const shaderPaths = new Set();
+const shaderText = new Map();
+async function includeClosure(p) {
+ if(shaderPaths.has(p))return;if(shaderPaths.size%50===0)console.log('shader closure '+shaderPaths.size+' '+p);
+ if(p==='final_post.raster.hlsl'||p==='water/ice_refl_resolve.cs.hlsl')throw Error('excluded shader used as include: '+p);
+ const text=await snapshot(reconstruction+'human-readable-shaders/shaders/'+p);shaderPaths.add(p);shaderText.set(p,text);
+ for(const match of text.matchAll(/^\s*#\s*include\s+"([^"]+)"/gm)) {
+  let include=path.posix.normalize(path.posix.join(path.posix.dirname(p),match[1]));
+  try {await snapshot(reconstruction+'human-readable-shaders/shaders/'+include);}catch{include=path.posix.normalize(match[1]);}
+  await includeClosure(include);
+ }
+}
+for(const item of accepted)await includeClosure(item.file);
+for(const p of [...shaderPaths].sort())await copy(reconstruction+'human-readable-shaders/shaders/'+p,'shaders/'+p,{kind:accepted.some(x=>x.file===p)?'recovered_shader':'validated_include_support'});
+const shaderManifest={schema_version:1,baseline:'B',include_root:'shaders',policy:'Every variant has structural gate and SAME/original-empty recovery status, plus full readable compile equivalence. Header bodies are include support, not independently accepted algorithms.',files:accepted,build:Object.fromEntries(accepted.map(x=>[x.file,readable[x.file]])),include_files:[...shaderPaths].filter(p=>!accepted.some(x=>x.file===p)).sort()};
+await emit('shaders/manifest.json',JSON.stringify(shaderManifest,null,2)+'\n','Filtered shader build inventory; TGV selection macros are not asserted as original artifact macro tuples.');
+for(const item of status.filter(x=>x.modules.length&&!accepted.includes(x)))exclusions.push({source_path:reconstruction+'human-readable-shaders/shaders/'+item.file,reason:item.note||'Recovery/readable gate not satisfied.'});
+const members=['.','crates/country-core','crates/systems/roof','crates/rhapsody','crates/rhapsody/crates/shader-pipeline','crates/utils',...foundation.map(n=>'crates/'+n),'crates/tg-text'];
+await emit('Cargo.toml','[workspace]\nresolver = "2"\nmembers = '+JSON.stringify(members)+'\n\n[workspace.package]\nedition = "2024"\nrust-version = "1.86"\npublish = false\n\n[workspace.dependencies]\nglam = "=0.29.3"\nfastrand = "=1.8.0"\nhalf = "=2.4.1"\nserde = { version = "=1.0.200", features = ["derive"] }\nserde_json = "=1.0.85"\nanyhow = "=1.0.86"\nparking_lot = "=0.12.1"\nslotmap = "=1.0.6"\n\n[package]\nname = "tiny-glade-recovered"\nversion = "0.1.0"\nedition.workspace = true\nrust-version.workspace = true\npublish.workspace = true\ndescription = "Recovered Tiny Glade B source units with provenance"\n\n[dependencies]\ncountry-core = { path = "crates/country-core" }\nsystem-roof = { path = "crates/systems/roof" }\nrhapsody = { path = "crates/rhapsody" }\nutils = { path = "crates/utils" }\n\n[profile.dev]\ndebug = "line-tables-only"\n\n[profile.dev.package."*"]\ndebug = false\n','Formal workspace and library facade; no fake game executable.');
+await emit('src/lib.rs','//! 已恢复源码工程入口；只重导出已纳入的资源规则、CPU 屋顶与渲染内核。\npub use country_core;\npub use system_roof as roof;\npub use rhapsody;\npub use utils;\n','Workspace library facade.');
+await emit('.gitignore','/target/\n','Exclude generated build artifacts.');
+await copy(base+'tracking/original-Cargo.lock','provenance/original-Cargo.lock',{kind:'dependency_baseline'});
+await copy(reconstruction+'shared-foundation/Cargo.lock','Cargo.lock',{kind:'integration_glue',notes:['Seed only; Cargo must resolve/prune to the actual workspace. Original lock remains immutable under provenance/.']});
+exclusions.push(...[
+ ['reconstruction/country-core','Incomplete typed gaps, stubs, partial pass/runtime wiring (b5965593/B_SUMMARY). Only the older verified numeric resources are included.'],
+ ['reconstruction/rhapsody-rebuild','Whole renderer contains candidate allocation/WSI/setup/recording adapters and unsupported APIs. Only verified graph/format/schema units are included.'],
+ ['reconstruction/standalone','Independent Bevy implementations/drafts are not accepted original recovery.'],
+ ['reconstruction/shared-foundation/crates/asset','RT/audio/trigger default policies and native type boundary not completely recovered.'],
+ ['reconstruction/shared-foundation/crates/asset-pipe','Native original image/cache producer closure incomplete; new product cache strategy is outside historical equivalence.'],
+ ['reconstruction/shared-foundation/crates/tg-text/src/renderer.rs','TextRenderer::new and render return contract are unresolved; font/shape/color bodies only included.'],
+ ['reconstruction/shared-foundation/crates/utils/src/wall_space.rs:bound/is_bounded/to_affine3','Compiled bodies not located; no guessed implementations or stubs inserted.'],
+ ['reconstruction/shared-foundation/crates/utils/src/swizzlers.rs:Vec3SliceView2','Original projected axis/stride unknown; inferred view omitted.'],
+ ['reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs:Spline2D queries','2D global segment selection mirrored from 3D without its own body evidence; omitted.'],
+ ['crates/paths,lang-lib,tabloid@c05fad96','Independent product repair policies are not recovery; select 326cb236 snapshot instead.'],
+ ['shader-compiler','Original provider/CLI/temp/cache/failure behavior and original compiler identity remain unknown; no candidate compiler copied.'],
+ ['reconstruction/shared-foundation/crates/theme-fetcher,theme-server-proto,tg-iced,tg-integrity-report,crash-reporter-gui,tg-gpu-selector,feedback-reporter,geforcenow','Candidate_partial/unclosed original interfaces and runtime policies; not whole-module accepted recovery.'],
+ ['reconstruction/building,history,terrain,camera,clutter,audio,critters,tree-tool','Drafts or unclosed original runtime/consumer contracts; not whole-module accepted recovery.']
+].map(([source_path,reason])=>({source_path:source_path.startsWith('reconstruction/')?base+source_path:source_path,reason})));
+await write('provenance/sources.json',JSON.stringify({schema_version:1,baseline:'B',snapshot:head,native_foundation_snapshot:nativeFoundation,policy:'Completed recovery units, not complete game/modules; generated wiring and schemas tracked separately.',files:inventory,generated,excluded:exclusions},null,2)+'\n');
+await write('provenance/git-history.txt',await git(['log','-45','--format=%H%n%ad%n%B','--date=iso-strict','--',base]));
+console.log(JSON.stringify({workspace:out,packages:members.length,rust_files:inventory.filter(x=>x.path.endsWith('.rs')).length,hlsl_files:shaderPaths.size,shader_entry_files:accepted.length,shader_modules:accepted.reduce((n,x)=>n+x.modules.length,0),exclusions:exclusions.length}));

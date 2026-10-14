@@ -1,5 +1,9 @@
 # 性能追踪
 
+真实 GPU 测量入口：Windows 下运行 `powershell -File scripts/measure-hardware-gpu.ps1`；原 blur 单独计时用 `cargo run --locked --release --example blur_gpu_perf`。日志、设备信息、源码哈希和汇总写入 `evidence/hardware-gpu-<时间>/`，正确性失败仍保留测量并返回失败状态。
+
+与通用游戏引擎的比较、帧预算和计时限制见 [真实 GPU 性能分析](HARDWARE_ANALYSIS.md)。
+
 ```bash
 # 本机无显卡时用 lavapipe（软件 Vulkan）跑 GPU 场景；无设备时 GPU 场景自动跳过
 export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json

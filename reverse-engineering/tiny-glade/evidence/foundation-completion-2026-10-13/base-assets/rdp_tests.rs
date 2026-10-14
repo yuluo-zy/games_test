@@ -61,3 +61,35 @@ let fixtures:&[(&[[u32;2]],&[usize])]=&[
 (&[[0, 1069799018], [1065353216, 3208066061], [1073741824, 1076004734], [1077936128, 3222004101], [1082130432, 3223459660], [1084227584, 3204934640], [1086324736, 3196943739], [1088421888, 1076515133], [1090519040, 1076070442], [1091567616, 3200421483], [1092616192, 1077574146], [1093664768, 3217215814], [1094713344, 1075771789], [1095761920, 1075833533], [1096810496, 1057617712], [1097859072, 3213780543], [1098907648, 3222162224], [1099431936, 1060488075], [1099956224, 3207518075], [1100480512, 3196219355], [1101004800, 3204541898], [1101529088, 3206666135], [1102053376, 3224120716], [1102577664, 1056901106], [1103101952, 1073237705], [1103626240, 3222155482], [1104150528, 1067799104], [1104674816, 1076264397], [1105199104, 3223928174], [1105723392, 1072294625], [1106247680, 3214362462]],&[0, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),];
 for &(points,expected) in fixtures { let points:Vec<_>=points.iter().map(|p|Vec2::new(f32::from_bits(p[0]),f32::from_bits(p[1]))).collect();assert_eq!(Rdp::new(&points).indices,expected); }
 }
+
+#[test]
+fn original_b_stitch_prefix_and_index_rebase_all_cuts() {
+{
+let old=Rdp {indices:vec![0, 2, 7, 12],points:vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(12.0,22.0)]};
+let next=Rdp {indices:vec![0, 3, 6],points:vec![Vec2::new(0.0,10.0),Vec2::new(3.0,13.0),Vec2::new(6.0,16.0)]};
+let result=old.stitch_with(0,&next);
+assert_eq!(result.indices,[0, 3, 6]);
+assert_eq!(result.points,vec![Vec2::new(0.0,10.0),Vec2::new(3.0,13.0),Vec2::new(6.0,16.0)]);
+}
+{
+let old=Rdp {indices:vec![0, 2, 7, 12],points:vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(12.0,22.0)]};
+let next=Rdp {indices:vec![0, 3, 6],points:vec![Vec2::new(2.0,12.0),Vec2::new(5.0,15.0),Vec2::new(8.0,18.0)]};
+let result=old.stitch_with(1,&next);
+assert_eq!(result.indices,[0, 2, 5, 8]);
+assert_eq!(result.points,vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(5.0,15.0),Vec2::new(8.0,18.0)]);
+}
+{
+let old=Rdp {indices:vec![0, 2, 7, 12],points:vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(12.0,22.0)]};
+let next=Rdp {indices:vec![0, 3, 6],points:vec![Vec2::new(7.0,17.0),Vec2::new(10.0,20.0),Vec2::new(13.0,23.0)]};
+let result=old.stitch_with(2,&next);
+assert_eq!(result.indices,[0, 2, 7, 10, 13]);
+assert_eq!(result.points,vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(10.0,20.0),Vec2::new(13.0,23.0)]);
+}
+{
+let old=Rdp {indices:vec![0, 2, 7, 12],points:vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(12.0,22.0)]};
+let next=Rdp {indices:vec![0, 3, 6],points:vec![Vec2::new(12.0,22.0),Vec2::new(15.0,25.0),Vec2::new(18.0,28.0)]};
+let result=old.stitch_with(3,&next);
+assert_eq!(result.indices,[0, 2, 7, 12, 15, 18]);
+assert_eq!(result.points,vec![Vec2::new(0.0,10.0),Vec2::new(2.0,12.0),Vec2::new(7.0,17.0),Vec2::new(12.0,22.0),Vec2::new(15.0,25.0),Vec2::new(18.0,28.0)]);
+}
+}

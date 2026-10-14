@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "authorization": "User 2026-10-13: create multiple parallel agents, recover true library business rules first, no source/ABI 1:1 requirement, reuse dependencies instead of reimplementing them.",
+  "baseline": "B",
+  "original_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "workflow": [
+    "original rule extraction",
+    "original locked dependency reuse",
+    "callable Rust chain implementation",
+    "independent original-rule review",
+    "relevant behavior/format/error verification",
+    "integration and explicit gaps"
+  ],
+  "owners": [
+    {
+      "agent": "small_motomoto",
+      "crate": "motomoto",
+      "source": "crates/motomoto/src/lib.rs",
+      "write_scope": "reconstruction/shared-foundation/crates/motomoto",
+      "evidence": "evidence/small-libs-batch-01/motomoto"
+    },
+    {
+      "agent": "small_integrity",
+      "crate": "tg-package-integrity",
+      "source": "crates/tg-package-integrity/src/lib.rs",
+      "write_scope": "reconstruction/shared-foundation/crates/tg-package-integrity",
+      "evidence": "evidence/small-libs-batch-01/tg-package-integrity"
+    },
+    {
+      "agent": "small_tg_text",
+      "crate": "tg-text",
+      "source": "crates/tg-text/src/{font_table,lib,shape_stream}.rs",
+      "write_scope": "reconstruction/shared-foundation/crates/tg-text",
+      "evidence": "evidence/small-libs-batch-01/tg-text"
+    }
+  ],
+  "integration_owner": "root",
+  "shared_workspace": {
+    "manifest": "5eee668f295af90906f3e3cfc054597572f423aef0a9794e98c1aac13820b466",
+    "lock": "6936fdca7c2cd5d2d0e4d1040f14d6db4706b37cea1f7ca7692eb81a98e4cb62",
+    "other_chat_preserved": [
+      "paths",
+      "lang-lib",
+      "tabloid",
+      "theme-defs",
+      "utils",
+      "asset",
+      "asset-pipe"
+    ]
+  },
+  "status": "delivered_scoped_candidates",
+  "acceptance_limits": [
+    "PDB inventory is observed, not complete author API",
+    "Static comparison is not original entry execution",
+    "B evidence does not certify C compatibility",
+    "No full tg-text GPU acceptance without actual renderer integration"
+  ],
+  "windows_operator": "scripts/reverse_tools/reverse_operator.py",
+  "legacy_mac_entry_unavailable": true,
+  "integration_report": "evidence/small-libs-batch-01/REPORT.md",
+  "full_original_libraries_accepted": false
+}

@@ -1,5 +1,33 @@
 # 游戏自有源码逆向任务与收益排序
 
+## 2026-10-14 utils B 深挖增量
+
+原楼梯2D dense-segment消费策略、共享标量运算順序及owned Curve XZ投影/stride已恢复并通过限定原指令验收，详情 [REPORT.md](evidence/utils-deep-followup-2026-10-14/REPORT.md)。用户明确只分析B。剩余墙bound/is_bounded/to_affine3、Spline2D全局查询和原借用as_vec2类型未获得正面编译体；已交叉扫描全PDB过程/内联/行号，不能通过复制3D或依据同址标签补造。优先寻找可归属的原消费链与数据流；采样开关写入者与完整消费者仍在队列，完整游戏/GPU后置。
+
+## 2026-10-14 tg-text 内部指定缺口已关闭
+
+用户限定的字体角色/共享Arc表与原帧缓存规则已直接恢复到当前crate：原角色查表/基准与实际metrics、set_family不写回角色的原行为、u32<及回绕、usage slot/gen/前缀副作用/零哨兵/同rawID接受、consume上传后推进；移除候选epoch/nonce和render隐式重排。原受控829例与Debug/Release各33 tests、严格Clippy/fmt通过。实际来源与验收见 `evidence/text-internal-2026-10-14/REPORT.md`、`tracking/project.json.tg_text_internal_recovery`；作者metrics typename仅元数据未知，不添加未证tuple From。
+
+此前列为待恢复的字体共享模型和u32缓存规则不再作为当前内部缺口。调用方/native GPU按本轮要求不处理，保留后续独立任务；不恢复已排除的四个报告/云平台包，不升级整库/整游戏或A/C验收。
+
+## 2026-10-14 当前 utils 续轮
+
+已关闭原 insert 重复拒绝/新 key 稠密追加、完整 remove 返回值/映射修复，country-core 索引/固定网格消费者委托共享入口；230 条新增原指令样例通过，Windows utils Debug/Release各90、country-core 1142、严格Clippy通过。真实全部游戏消费者不据此升级。剩余为墙 bound/is_bounded/to_affine3、Spline2D全局查询的编译体定位，Vec3SliceView2 投影轴/stride，采样开关写入者和其他grid单态化、原完整进程及A/C。应先获得真实 compiled consumer/类型证据，不恢复已物理移除的猜测API，也不将无xref等同无调用者。交付与具体范围见 `evidence/utils-gap-recovery-2026-10-14/REPORT.md`；实际源码 `tiny-glade/crates/utils`，旧研究目录为历史范围。
+
+## 2026-10-14 当前 integrity / text 续轮
+
+按用户指定直接完善 `tiny-glade/crates/tg-package-integrity` 与 `tg-text`。已关闭：integrity 11 个 Windows 原路径/Unicode/surrogate 样例和诊断 example 提前 panic；text render/consume 数量快照、metrics 重建 Editor、scale 清理保留 overflow、非 Mask 原 RGBA 上传规则。当前工程两库 31 测试通过、0 失败/忽略，严格 all-targets Clippy、fmt 与 text gpu 编译通过；详情 `evidence/small-libs-followup-2026-10-14/REPORT.md`。
+
+仍需逆向：TextFragment 原角色字节/共享 Arc<FontTable> 状态及 setter 完整合同；原 u32 atlas stamp/frame 的同帧顺序和 rollover；真实 rhapsody Texture/toolbar 消费联接。integrity 稳定磁盘原入口容器范围通过，不升级为真实游戏启动、全部 OS/并发或 A/C 验收。当前生产实现位于 tiny-glade，历史 shared-foundation 与历史 hash 保留；模块保持部分恢复。四个已排除报告/云平台包不重新纳入待办。
+
+## 2026-10-14 主题三库当前交付
+
+`theme-defs` / `theme-server-proto` 的B已发射合同及 `theme-fetcher` 已定位库内业务已静态复核补全，实际源码在 `tiny-glade/crates/`。26项离线测试、严格all-targets Clippy与fmt通过；没有请求真实主题服务。当前没有已知缺失的已定位B库内算法，后续工作是原完整入口验收、真实主题plugin与langs/meta/history/credits消费接线、未发射文本和A/C范围。详见 [REPORT.md](evidence/theme-static-2026-10-14/REPORT.md) 与 [机器台账](tracking/theme-static-recovery.json)，不能继续把旧日志/HTTP处理时序缺口当作当前未实现。
+
+2026-10-14 范围调整：用户明确删除 `tiny-glade/crates/tg-integrity-report`、`tiny-glade/crates/crash-reporter-gui`、`tiny-glade/crates/feedback-reporter` 与 `tiny-glade/crates/geforcenow`；四者不需要逆向还原，不计后续恢复缺口。旧恢复与证据仅作历史保留。
+
+
+
 ## 2026-10-14 数值测试合同后续修复
 
 零切线直接构造固定负 quiet NaN；圆形/Elastic 的原样例含 Windows UCRT 舍入，跨平台测试分别采用有界误差，Windows 分支保留逐位。utils debug/release 均 93 项通过、无忽略；这不是 Windows 原版逐位验收，也不升级完整业务恢复。详见 `evidence/foundation-review-fixes-2026-10-14/numeric-followup/REPORT.md`。此前 87/3 为历史断点。

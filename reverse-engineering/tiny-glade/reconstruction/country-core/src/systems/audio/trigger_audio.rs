@@ -15,7 +15,7 @@
 use bevy_ecs::prelude::{Res, ResMut};
 use bevy_ecs::resource::Resource;
 
-use crate::asset_libraries::audio_trigger_library::{AudioTriggerCollectionHandle, AudioTriggerLibrary};
+use crate::asset_libraries::audio_trigger_library::{AudioTriggerCollection, AudioTriggerLibrary};
 use crate::resources::audio_resources::{AudioCore, AudioInstance};
 use crate::typed_gap::Gap;
 

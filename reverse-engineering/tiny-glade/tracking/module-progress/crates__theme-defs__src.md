@@ -1,5 +1,7 @@
 # crates/theme-defs/src
 
+2026-10-14 当前交付以实际 `tiny-glade/crates/theme-defs` 为准：B已定位库内业务/合同静态补全，三库26离线测试、严格Clippy/fmt通过。历史镜像与其旧源SHA不覆盖新代码；完整原入口与库外游戏接线仍未验收。详见 [最新报告](../../evidence/theme-static-2026-10-14/REPORT.md) 和 [机器台账](../theme-static-recovery.json)。
+
 状态：部分候选实现。完整模块验收：未通过。
 
 B原接口已观察/已分析/未触及：0/0/0。[逐接口进度](../../INTERFACE_PROGRESS.md)。

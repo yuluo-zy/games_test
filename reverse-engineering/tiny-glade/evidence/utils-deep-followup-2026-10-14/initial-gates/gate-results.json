@@ -1,0 +1,66 @@
+[
+  {
+    "name": "utils-debug",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "-p",
+      "utils",
+      "--all-targets"
+    ],
+    "exit_code": 0,
+    "seconds": 16.42,
+    "log": "utils-debug.log"
+  },
+  {
+    "name": "utils-release",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "-p",
+      "utils",
+      "--all-targets",
+      "--release"
+    ],
+    "exit_code": 0,
+    "seconds": 170.24,
+    "log": "utils-release.log"
+  },
+  {
+    "name": "utils-clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--offline",
+      "-p",
+      "utils",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "seconds": 12.47,
+    "log": "utils-clippy.log"
+  },
+  {
+    "name": "country-consumer",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "-p",
+      "country-core",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "seconds": 31.93,
+    "log": "country-consumer.log"
+  }
+]

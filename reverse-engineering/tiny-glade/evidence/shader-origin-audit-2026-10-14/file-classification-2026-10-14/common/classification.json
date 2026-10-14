@@ -1,0 +1,5775 @@
+{
+  "schema_version": 1,
+  "summary": {
+    "files_total": 104,
+    "inc_files": 95,
+    "normalized_kajiya_candidates": 35,
+    "counts_by_status": {
+      "generic_unresolved": 70,
+      "game_modified": 3,
+      "likely_derived": 2,
+      "confirmed_upstream": 4,
+      "game_specific": 25
+    }
+  },
+  "files": [
+    {
+      "source": "shaders/blur.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            119
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 15,
+          "emitted_lines": [
+            28,
+            29,
+            45,
+            48,
+            50,
+            53,
+            55,
+            57,
+            59,
+            61,
+            62,
+            63,
+            65,
+            118,
+            119
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "blur.hlsl",
+          "upstream_lf": 56,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/blur.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/calculate_reprojection_map.cs.hlsl",
+      "status": "game_modified",
+      "origin": "Kajiya reprojection-map lineage with changed validity handling",
+      "confidence": "high_for_adapted_core",
+      "scope": "继承15bit运动量化、四样本validity位权打包及-0.2平面偏差设计；游戏调整阈值/资源布局。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            178
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 47,
+          "emitted_lines": [
+            37,
+            38,
+            41,
+            42,
+            43,
+            48,
+            51,
+            52,
+            70,
+            71,
+            72,
+            74,
+            83,
+            84,
+            86,
+            87,
+            91,
+            92,
+            94,
+            95,
+            99,
+            101,
+            112,
+            114,
+            115,
+            129,
+            132,
+            133,
+            134,
+            136,
+            139,
+            140,
+            154,
+            155,
+            158,
+            159,
+            160,
+            162,
+            163,
+            164,
+            165,
+            167,
+            168,
+            171,
+            173,
+            176,
+            178
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "calculate_reprojection_map.hlsl",
+          "upstream_lf": 142,
+          "shared_raw_identifiers": [
+            "clip_to_prev_clip",
+            "clip_to_view",
+            "depth_tex",
+            "frame_constants",
+            "output_tex",
+            "prev_clip_to_prev_view",
+            "prev_depth_tex",
+            "prev_view_to_prev_clip",
+            "sampler_nnc",
+            "velocity_tex",
+            "view_constants",
+            "view_to_clip",
+            "view_to_world"
+          ]
+        },
+        {
+          "type": "raw_instruction_constellation_plus_resources",
+          "motion_quantization": [
+            32767.0,
+            3.0518509447574615e-05
+          ],
+          "quad_validity_weights": [
+            1,
+            2,
+            4,
+            8
+          ],
+          "validity_normalization": 0.06666667014360428,
+          "plane_slope_floor": -0.20000000298023224,
+          "game_thresholds": [
+            -0.004999999888241291,
+            -0.0003000000142492354
+          ],
+          "matching_upstream_resources": [
+            "depth_tex",
+            "prev_depth_tex",
+            "velocity_tex",
+            "output_tex"
+          ],
+          "source_lf_change": [
+            142,
+            178
+          ]
+        }
+      ],
+      "limitations": [
+        "独特组合支持派生；运动重投影本身是通用技术，不把其全部数学判成Kajiya原创。",
+        "没有完整上游原样编译diff；具体forkcommit未知。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/calculate_reprojection_map.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/selected-instruction-traces.json"
+    },
+    {
+      "source": "shaders/copy_depth_to_r.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            9
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "copy_depth_to_r.hlsl",
+          "upstream_lf": 8,
+          "shared_raw_identifiers": [
+            "input_tex",
+            "output_tex"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/copy_depth_to_r.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/atomics.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            5
+          ],
+          "pipeline_count": 5
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/bicubic.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            54
+          ],
+          "pipeline_count": 3
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 26,
+          "emitted_lines": [
+            5,
+            6,
+            11,
+            12,
+            16,
+            21,
+            22,
+            23,
+            24,
+            28,
+            29,
+            32,
+            33,
+            34,
+            36,
+            37,
+            38,
+            41,
+            42,
+            43,
+            45,
+            46,
+            47,
+            49,
+            50,
+            51
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/bilinear.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            43
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 5,
+          "emitted_lines": [
+            8,
+            12,
+            16,
+            20,
+            26
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/bilinear.hlsl",
+          "upstream_lf": 43,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/bilinear.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/bitonic_sort.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            62
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 37,
+          "emitted_lines": [
+            8,
+            10,
+            11,
+            13,
+            14,
+            15,
+            18,
+            19,
+            20,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            30,
+            31,
+            32,
+            38,
+            40,
+            41,
+            43,
+            44,
+            45,
+            48,
+            49,
+            50,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            59,
+            60,
+            61
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/blue_noise.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            14
+          ],
+          "pipeline_count": 44
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            9,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/blue_noise.hlsl",
+          "upstream_lf": 60,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/blue_noise.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/brdf.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            382
+          ],
+          "pipeline_count": 152
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 57,
+          "emitted_lines": [
+            54,
+            68,
+            118,
+            131,
+            132,
+            134,
+            138,
+            139,
+            154,
+            164,
+            165,
+            170,
+            171,
+            213,
+            216,
+            217,
+            220,
+            221,
+            222,
+            223,
+            224,
+            225,
+            228,
+            231,
+            247,
+            249,
+            250,
+            256,
+            257,
+            260,
+            271,
+            286,
+            290,
+            291,
+            294,
+            296,
+            308,
+            318,
+            329,
+            330,
+            331,
+            333,
+            339,
+            340,
+            341,
+            348,
+            350,
+            351,
+            358,
+            359,
+            360,
+            361,
+            362,
+            363,
+            365,
+            375,
+            379
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/brdf.hlsl",
+          "upstream_lf": 317,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/brdf.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/brdf_lut.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            98
+          ],
+          "pipeline_count": 20
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 10,
+          "emitted_lines": [
+            14,
+            15,
+            24,
+            71,
+            72,
+            74,
+            75,
+            76,
+            78,
+            80
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/brdf_lut.hlsl",
+          "upstream_lf": 95,
+          "shared_raw_identifiers": [
+            "sampler_lnc"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/brdf_lut.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/cascades.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            63
+          ],
+          "pipeline_count": 50
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 13,
+          "emitted_lines": [
+            21,
+            24,
+            25,
+            26,
+            27,
+            34,
+            37,
+            51,
+            54,
+            56,
+            57,
+            58,
+            59
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/coc.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            135
+          ],
+          "pipeline_count": 24
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 32,
+          "emitted_lines": [
+            31,
+            33,
+            34,
+            38,
+            39,
+            41,
+            42,
+            43,
+            45,
+            49,
+            50,
+            51,
+            52,
+            53,
+            55,
+            61,
+            62,
+            65,
+            86,
+            88,
+            94,
+            95,
+            97,
+            98,
+            100,
+            101,
+            102,
+            105,
+            108,
+            110,
+            131,
+            132
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/helmholtz_kohlrausch.hlsl",
+      "status": "likely_derived",
+      "origin": "Likely Kajiya color helper source family",
+      "confidence": "medium",
+      "scope": "独特文件布局同源线索；最终shader没有发射此文件函数，不能说当前执行了H-K算法。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            133
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/helmholtz_kohlrausch.hlsl",
+          "upstream_lf": 133,
+          "shared_raw_identifiers": []
+        },
+        {
+          "type": "specific_layout_plus_attribution",
+          "same_source_path": true,
+          "same_lf": 133,
+          "emitted_instruction_lines": [],
+          "original_attribution": "Kajiya0.2.0"
+        }
+      ],
+      "limitations": [
+        "133LF与独特文件名支持候选来源，不能代替源码hash或原指令等价。",
+        "上游自定义16项颜色数组未在原SPIR-V出现；该include当前未形成可核验执行代码。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/helmholtz_kohlrausch.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/luv.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            21
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/luv.hlsl",
+          "upstream_lf": 21,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/luv.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/math.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            23
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/math.hlsl",
+          "upstream_lf": 21,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/math.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/srgb.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            54
+          ],
+          "pipeline_count": 232
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 5,
+          "emitted_lines": [
+            5,
+            31,
+            35,
+            43,
+            47
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/srgb.hlsl",
+          "upstream_lf": 46,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/srgb.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/xyz.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            37
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/xyz.hlsl",
+          "upstream_lf": 37,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/xyz.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color/ycbcr.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            12
+          ],
+          "pipeline_count": 10
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            5,
+            9
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/color/ycbcr.hlsl",
+          "upstream_lf": 12,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/color/ycbcr.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/color_library.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            58
+          ],
+          "pipeline_count": 168
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 1,
+          "emitted_lines": [
+            56
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/common.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            408
+          ],
+          "pipeline_count": 402
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 69,
+          "emitted_lines": [
+            12,
+            14,
+            17,
+            18,
+            22,
+            23,
+            27,
+            46,
+            47,
+            51,
+            99,
+            242,
+            243,
+            244,
+            246,
+            247,
+            248,
+            250,
+            251,
+            253,
+            254,
+            255,
+            256,
+            266,
+            271,
+            272,
+            273,
+            274,
+            275,
+            276,
+            277,
+            278,
+            279,
+            280,
+            281,
+            282,
+            288,
+            292,
+            297,
+            306,
+            328,
+            329,
+            330,
+            333,
+            340,
+            341,
+            342,
+            343,
+            344,
+            345,
+            346,
+            347,
+            348,
+            349,
+            350,
+            351,
+            354,
+            355,
+            356,
+            365,
+            366,
+            367,
+            372,
+            373,
+            374,
+            376,
+            377,
+            378,
+            379
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/consts.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            23
+          ],
+          "pipeline_count": 250
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/current_view.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            9
+          ],
+          "pipeline_count": 178
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 1,
+          "emitted_lines": [
+            8
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/curve.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            26
+          ],
+          "pipeline_count": 11
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/curve.hlsl",
+          "upstream_lf": 28,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/curve.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/debug_utils.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            82
+          ],
+          "pipeline_count": 402
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            73,
+            74,
+            78
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/draw_indirect.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            6
+          ],
+          "pipeline_count": 16
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/draw_indirect_readonly.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            6
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/draw_indirect_types.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            48
+          ],
+          "pipeline_count": 19
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/fbm_noise.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            43
+          ],
+          "pipeline_count": 14
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 6,
+          "emitted_lines": [
+            6,
+            17,
+            20,
+            21,
+            22,
+            23
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/fidelityfx/ffx_a.h",
+      "status": "confirmed_upstream",
+      "origin": "AMD FidelityFX SPD include source family",
+      "confidence": "high_for_spd_family",
+      "scope": "SPD/common支持include实际集成；ffx_a的未执行通用部分不由此全部证实。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            933
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            1065,
+            1067
+          ]
+        },
+        {
+          "type": "existing_original_audit",
+          "original_attribution": "FidelityFX1.0.0",
+          "raw_evidence": "ffx_spd.h1297LF;ffx_a.h933LF; SPD256threads/64x64tile/16x16shared/wave reduction and sync, see root REPORT AMD subsection"
+        }
+      ],
+      "limitations": [
+        "这里复用既有原始SPD核对，不追加全文原样或精确版本声明。"
+      ],
+      "upstream_url": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/REPORT.md"
+    },
+    {
+      "source": "shaders/inc/fidelityfx/ffx_spd.h",
+      "status": "confirmed_upstream",
+      "origin": "AMD FidelityFX SPD include source family",
+      "confidence": "high_for_spd_family",
+      "scope": "SPD/common支持include实际集成；ffx_a的未执行通用部分不由此全部证实。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            1297
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 100,
+          "emitted_lines": [
+            386,
+            394,
+            395,
+            397,
+            399,
+            417,
+            419,
+            420,
+            421,
+            461,
+            462,
+            463,
+            464,
+            472,
+            473,
+            474,
+            480,
+            481,
+            482,
+            483,
+            494,
+            495,
+            496,
+            505,
+            506,
+            507,
+            510,
+            511,
+            512,
+            515,
+            516,
+            517,
+            520,
+            521,
+            522,
+            525,
+            526,
+            533,
+            534,
+            535,
+            536,
+            540,
+            541,
+            545,
+            546,
+            550,
+            551,
+            554,
+            555,
+            646,
+            647,
+            648,
+            649,
+            650,
+            684,
+            685,
+            686,
+            690,
+            691,
+            692,
+            693,
+            694,
+            719,
+            720,
+            721,
+            725,
+            726,
+            727,
+            728,
+            729,
+            749,
+            750,
+            755,
+            756,
+            757,
+            758,
+            764,
+            766,
+            769,
+            770,
+            771,
+            774,
+            775,
+            776,
+            779,
+            781,
+            784,
+            790,
+            794,
+            798,
+            802,
+            806,
+            809,
+            818,
+            819,
+            820,
+            825,
+            827,
+            835,
+            845
+          ]
+        },
+        {
+          "type": "existing_original_audit",
+          "original_attribution": "FidelityFX1.0.0",
+          "raw_evidence": "ffx_spd.h1297LF;ffx_a.h933LF; SPD256threads/64x64tile/16x16shared/wave reduction and sync, see root REPORT AMD subsection"
+        }
+      ],
+      "limitations": [
+        "这里复用既有原始SPD核对，不追加全文原样或精确版本声明。"
+      ],
+      "upstream_url": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/REPORT.md"
+    },
+    {
+      "source": "shaders/inc/find_root.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            23
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 5,
+          "emitted_lines": [
+            9,
+            10,
+            12,
+            19,
+            22
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/foliage_exclusion.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "排除建筑/路径区域的游戏植被遮罩接口",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            10
+          ],
+          "pipeline_count": 3
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 1,
+          "emitted_lines": [
+            8
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "foliage_exclusion_mask",
+                "foliage_exclusion_mask_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 33326,
+              "names": [
+                "foliage_exclusion_mask_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "foliage_exclusion_mask",
+                "foliage_exclusion_mask_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 33326,
+              "names": [
+                "foliage_exclusion_mask_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_generate_grass.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "foliage_exclusion_mask",
+                "foliage_exclusion_mask_dims"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/frame_constants.hlsl",
+      "status": "game_modified",
+      "origin": "Kajiya shared ViewConstants/FrameConstants lineage plus Tiny Glade extensions",
+      "confidence": "high_for_layout_lineage",
+      "scope": "继承相机/帧常量的字段族并增添游戏主题、时间、编辑高亮和楼梯边ID等字段；不是整文件逐字copy。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            439
+          ],
+          "pipeline_count": 307
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 70,
+          "emitted_lines": [
+            31,
+            32,
+            36,
+            40,
+            44,
+            53,
+            57,
+            61,
+            65,
+            69,
+            73,
+            77,
+            78,
+            82,
+            90,
+            91,
+            92,
+            96,
+            97,
+            98,
+            102,
+            103,
+            104,
+            108,
+            109,
+            110,
+            124,
+            137,
+            140,
+            141,
+            143,
+            144,
+            196,
+            200,
+            204,
+            208,
+            220,
+            226,
+            231,
+            236,
+            241,
+            246,
+            258,
+            259,
+            263,
+            288,
+            299,
+            302,
+            319,
+            323,
+            333,
+            337,
+            341,
+            359,
+            360,
+            361,
+            363,
+            364,
+            365,
+            374,
+            375,
+            376,
+            382,
+            383,
+            384,
+            397,
+            398,
+            399,
+            430,
+            431
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/frame_constants.hlsl",
+          "upstream_lf": 252,
+          "shared_raw_identifiers": [
+            "FrameConstants",
+            "ViewConstants",
+            "clip_to_prev_clip",
+            "clip_to_view",
+            "delta_time_seconds",
+            "frame_constants",
+            "frame_index",
+            "hi_px_subpixels",
+            "position",
+            "prev_clip_to_prev_view",
+            "prev_view_to_prev_clip",
+            "prev_view_to_prev_world",
+            "prev_world_to_prev_view",
+            "render_overrides",
+            "sample_offset_clip",
+            "sample_offset_pixels",
+            "sample_to_view",
+            "view_constants",
+            "view_to_clip",
+            "view_to_sample",
+            "view_to_world",
+            "world_to_view"
+          ]
+        },
+        {
+          "type": "raw_unique_layout_lineage",
+          "inherited_fields": [
+            "hi_px_subpixels",
+            "render_overrides",
+            "sample_offset_clip",
+            "prev_clip_to_prev_view",
+            "prev_view_to_prev_clip"
+          ],
+          "game_added_fields": [
+            "glade_theme_id",
+            "game_time_sec",
+            "editing_highlight_color",
+            "highlighted_transient_stair_edge_id"
+          ],
+          "source_lf_change": [
+            252,
+            439
+          ],
+          "raw_fields": [
+            {
+              "file": "compiled-shaders/_apply_screen_shadows.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_apply_volumetrics.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_billboard_forest.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_billboard_forest.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 22238,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_billboard_forest.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_billboard_plant.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "editing_highlight_color",
+                "game_time_sec",
+                "glade_theme_id",
+                "highlighted_transient_stair_edge_id",
+                "prev_clip_to_prev_view",
+                "prev_view_to_prev_clip",
+                "render_overrides",
+                "sample_offset_clip"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/frame_constants.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/frustum.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            53
+          ],
+          "pipeline_count": 22
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 19,
+          "emitted_lines": [
+            17,
+            18,
+            21,
+            22,
+            23,
+            26,
+            27,
+            28,
+            29,
+            30,
+            33,
+            34,
+            35,
+            37,
+            41,
+            45,
+            47,
+            48,
+            49
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/gaussian_rand.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            17
+          ],
+          "pipeline_count": 12
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            8,
+            9,
+            10,
+            16
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/grading_lut.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            17
+          ],
+          "pipeline_count": 4
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            8,
+            9,
+            12
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/grass_blade_data.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏草叶实例的打包布局",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            87
+          ],
+          "pipeline_count": 5
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 9,
+          "emitted_lines": [
+            42,
+            47,
+            55,
+            63,
+            64,
+            67,
+            71,
+            75,
+            81
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_generate_grass.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "GrassBladeDataPacked"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_grass.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "GrassBladeDataPacked"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_grass.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "GrassBladeDataPacked"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_grass_lod1.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "GrassBladeDataPacked"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_grass_lod1.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "GrassBladeDataPacked"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/halfres.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            32
+          ],
+          "pipeline_count": 18
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 1,
+          "emitted_lines": [
+            29
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/hammersley.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            24
+          ],
+          "pipeline_count": 77
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 8,
+          "emitted_lines": [
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            15,
+            23
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/hash.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            157
+          ],
+          "pipeline_count": 250
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 44,
+          "emitted_lines": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            24,
+            27,
+            28,
+            29,
+            30,
+            35,
+            39,
+            50,
+            51,
+            53,
+            54,
+            64,
+            65,
+            84,
+            89,
+            90,
+            91,
+            92,
+            114,
+            115,
+            116,
+            118,
+            124,
+            125,
+            126,
+            128,
+            138,
+            140,
+            141,
+            142,
+            143,
+            144,
+            145,
+            146,
+            147,
+            148,
+            149,
+            154,
+            155
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/hash.hlsl",
+          "upstream_lf": 62,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/hash.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/highlight_color.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏编辑高亮色选择与参数接口",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            15
+          ],
+          "pipeline_count": 34
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            6,
+            11,
+            12,
+            13
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/history_valid.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            9
+          ],
+          "pipeline_count": 23
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/hsv.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            21
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 10,
+          "emitted_lines": [
+            4,
+            5,
+            6,
+            7,
+            9,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/image.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            190
+          ],
+          "pipeline_count": 11
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 22,
+          "emitted_lines": [
+            17,
+            110,
+            111,
+            115,
+            120,
+            121,
+            122,
+            123,
+            127,
+            128,
+            131,
+            132,
+            133,
+            135,
+            136,
+            137,
+            145,
+            151,
+            152,
+            153,
+            159,
+            166
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/image.hlsl",
+          "upstream_lf": 172,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/image.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/lanterns.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏灯笼实例buffer与数量参数",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            109
+          ],
+          "pipeline_count": 13
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 22,
+          "emitted_lines": [
+            21,
+            25,
+            42,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            58,
+            77,
+            78,
+            82,
+            86,
+            87,
+            90,
+            93,
+            97,
+            98,
+            99
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_deferred_canopy_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 21790,
+              "names": [
+                "LanternPacked",
+                "lantern_buf",
+                "lantern_count"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_deferred_canopy_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 21790,
+              "names": [
+                "lantern_count"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_deferred_grass_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 21538,
+              "names": [
+                "LanternPacked",
+                "lantern_buf",
+                "lantern_count"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_deferred_grass_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 21538,
+              "names": [
+                "lantern_count"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_deferred_plant_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 21318,
+              "names": [
+                "LanternPacked",
+                "lantern_buf",
+                "lantern_count"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_deferred_plant_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 21318,
+              "names": [
+                "lantern_count"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/lighting.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            210
+          ],
+          "pipeline_count": 147
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 11,
+          "emitted_lines": [
+            63,
+            88,
+            91,
+            111,
+            160,
+            162,
+            164,
+            165,
+            167,
+            188,
+            199
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/lighting_indirect.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            104
+          ],
+          "pipeline_count": 18
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/lod.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            14
+          ],
+          "pipeline_count": 26
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            6,
+            11
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/canopy_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            75
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            40,
+            41
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/../canopy_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            75
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            45,
+            46,
+            49,
+            50
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/../grass_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            72
+          ],
+          "pipeline_count": 3
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 5,
+          "emitted_lines": [
+            34,
+            35,
+            37,
+            39,
+            40
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/../plant_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            55
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            24,
+            25,
+            27,
+            30
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/../solid_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            95
+          ],
+          "pipeline_count": 18
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 12,
+          "emitted_lines": [
+            50,
+            51,
+            54,
+            57,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/canopy_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            221
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 45,
+          "emitted_lines": [
+            9,
+            14,
+            17,
+            18,
+            46,
+            50,
+            53,
+            55,
+            56,
+            62,
+            72,
+            74,
+            75,
+            79,
+            88,
+            91,
+            94,
+            101,
+            104,
+            108,
+            109,
+            110,
+            111,
+            116,
+            117,
+            119,
+            121,
+            122,
+            123,
+            124,
+            125,
+            154,
+            155,
+            162,
+            177,
+            178,
+            190,
+            198,
+            199,
+            200,
+            205,
+            206,
+            210,
+            211,
+            212
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/grass_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            201
+          ],
+          "pipeline_count": 3
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 30,
+          "emitted_lines": [
+            8,
+            14,
+            15,
+            26,
+            27,
+            28,
+            32,
+            34,
+            41,
+            42,
+            43,
+            52,
+            53,
+            54,
+            81,
+            84,
+            87,
+            94,
+            103,
+            104,
+            107,
+            108,
+            141,
+            150,
+            159,
+            160,
+            161,
+            187,
+            189,
+            195
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/plant_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            114
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 27,
+          "emitted_lines": [
+            7,
+            14,
+            22,
+            23,
+            24,
+            25,
+            27,
+            31,
+            32,
+            33,
+            34,
+            42,
+            47,
+            48,
+            49,
+            50,
+            51,
+            72,
+            74,
+            78,
+            87,
+            88,
+            89,
+            105,
+            106,
+            107,
+            109
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/eval/solid_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            198
+          ],
+          "pipeline_count": 18
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 33,
+          "emitted_lines": [
+            10,
+            23,
+            26,
+            39,
+            40,
+            41,
+            55,
+            56,
+            57,
+            59,
+            60,
+            62,
+            79,
+            83,
+            86,
+            88,
+            109,
+            112,
+            113,
+            119,
+            121,
+            138,
+            149,
+            150,
+            151,
+            167,
+            168,
+            172,
+            176,
+            178,
+            187,
+            188,
+            189
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/grass_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            72
+          ],
+          "pipeline_count": 4
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            29,
+            30
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/plant_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            55
+          ],
+          "pipeline_count": 24
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 2,
+          "emitted_lines": [
+            19,
+            20
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material/solid_material.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质类型、资源和求值组合；BRDF/标准采样数学不因此判为原创。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            95
+          ],
+          "pipeline_count": 104
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 10,
+          "emitted_lines": [
+            33,
+            35,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            46
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/material_eval.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏canopy/grass/plant/solid材质求值的组合接口",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            97
+          ],
+          "pipeline_count": 145
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            17,
+            21,
+            45
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/math.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            493
+          ],
+          "pipeline_count": 253
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 93,
+          "emitted_lines": [
+            6,
+            11,
+            15,
+            20,
+            24,
+            30,
+            39,
+            43,
+            48,
+            53,
+            57,
+            58,
+            63,
+            64,
+            73,
+            74,
+            75,
+            76,
+            77,
+            79,
+            80,
+            81,
+            82,
+            83,
+            85,
+            86,
+            87,
+            88,
+            113,
+            122,
+            127,
+            131,
+            132,
+            134,
+            135,
+            149,
+            150,
+            151,
+            152,
+            153,
+            157,
+            158,
+            159,
+            169,
+            185,
+            186,
+            187,
+            188,
+            189,
+            192,
+            193,
+            219,
+            249,
+            250,
+            251,
+            253,
+            257,
+            268,
+            292,
+            293,
+            295,
+            296,
+            299,
+            300,
+            378,
+            395,
+            397,
+            403,
+            408,
+            424,
+            425,
+            426,
+            427,
+            429,
+            430,
+            431,
+            432,
+            434,
+            438,
+            439,
+            440,
+            443,
+            447,
+            448,
+            464,
+            479,
+            480,
+            482,
+            483,
+            484,
+            485,
+            491,
+            492
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/math.hlsl",
+          "upstream_lf": 194,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/math.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/math_const.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            30
+          ],
+          "pipeline_count": 335
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/math_const.hlsl",
+          "upstream_lf": 33,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/math_const.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/morton.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            18
+          ],
+          "pipeline_count": 19
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 6,
+          "emitted_lines": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            14
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/morton.hlsl",
+          "upstream_lf": 18,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/morton.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/pack_unpack.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            359
+          ],
+          "pipeline_count": 235
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 55,
+          "emitted_lines": [
+            8,
+            13,
+            52,
+            53,
+            54,
+            55,
+            62,
+            67,
+            69,
+            70,
+            71,
+            80,
+            85,
+            89,
+            95,
+            96,
+            97,
+            103,
+            105,
+            106,
+            111,
+            115,
+            116,
+            117,
+            118,
+            119,
+            124,
+            127,
+            128,
+            130,
+            131,
+            135,
+            139,
+            143,
+            144,
+            145,
+            155,
+            156,
+            157,
+            186,
+            190,
+            197,
+            200,
+            201,
+            202,
+            244,
+            245,
+            256,
+            259,
+            272,
+            287,
+            291,
+            292,
+            294,
+            295
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/pack_unpack.hlsl",
+          "upstream_lf": 178,
+          "shared_raw_identifiers": [
+            "exponent"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/pack_unpack.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/parallax_mapping.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            263
+          ],
+          "pipeline_count": 10
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 29,
+          "emitted_lines": [
+            46,
+            51,
+            52,
+            53,
+            76,
+            77,
+            80,
+            98,
+            99,
+            104,
+            105,
+            119,
+            128,
+            129,
+            130,
+            131,
+            134,
+            135,
+            139,
+            140,
+            142,
+            143,
+            145,
+            184,
+            185,
+            194,
+            195,
+            206,
+            260
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/perlin.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            216
+          ],
+          "pipeline_count": 133
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 21,
+          "emitted_lines": [
+            9,
+            28,
+            29,
+            35,
+            45,
+            46,
+            66,
+            67,
+            74,
+            79,
+            86,
+            87,
+            88,
+            111,
+            112,
+            120,
+            126,
+            134,
+            135,
+            136,
+            137
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/prefix_scan.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            176
+          ],
+          "pipeline_count": 10
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 44,
+          "emitted_lines": [
+            17,
+            39,
+            41,
+            42,
+            43,
+            48,
+            49,
+            50,
+            51,
+            52,
+            67,
+            68,
+            69,
+            71,
+            76,
+            77,
+            81,
+            83,
+            91,
+            92,
+            96,
+            106,
+            107,
+            108,
+            110,
+            115,
+            116,
+            120,
+            122,
+            129,
+            130,
+            140,
+            145,
+            147,
+            152,
+            153,
+            157,
+            158,
+            159,
+            161,
+            164,
+            168,
+            169,
+            170
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/projection.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            63
+          ],
+          "pipeline_count": 21
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 33,
+          "emitted_lines": [
+            9,
+            11,
+            12,
+            14,
+            15,
+            17,
+            18,
+            19,
+            21,
+            22,
+            23,
+            25,
+            30,
+            31,
+            32,
+            34,
+            35,
+            36,
+            38,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            49,
+            50,
+            53,
+            54,
+            55,
+            60,
+            62
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/quad_mesh.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            47
+          ],
+          "pipeline_count": 28
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 22,
+          "emitted_lines": [
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            23,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            45
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/ray_cone.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            32
+          ],
+          "pipeline_count": 307
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/ray_cone.hlsl",
+          "upstream_lf": 34,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/ray_cone.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/raymarch.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            620
+          ],
+          "pipeline_count": 43
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 75,
+          "emitted_lines": [
+            85,
+            94,
+            95,
+            102,
+            103,
+            112,
+            114,
+            116,
+            118,
+            120,
+            129,
+            133,
+            135,
+            137,
+            139,
+            143,
+            149,
+            150,
+            151,
+            159,
+            160,
+            161,
+            162,
+            165,
+            178,
+            182,
+            184,
+            185,
+            192,
+            200,
+            204,
+            209,
+            232,
+            234,
+            259,
+            260,
+            261,
+            283,
+            284,
+            290,
+            293,
+            299,
+            300,
+            301,
+            307,
+            501,
+            505,
+            510,
+            511,
+            512,
+            514,
+            515,
+            520,
+            521,
+            522,
+            523,
+            526,
+            529,
+            533,
+            541,
+            570,
+            571,
+            573,
+            574,
+            577,
+            580,
+            595,
+            603,
+            607,
+            609,
+            610,
+            611,
+            612,
+            616,
+            618
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/reservoir.hlsl",
+      "status": "confirmed_upstream",
+      "origin": "Kajiya reservoir helper source lineage",
+      "confidence": "high",
+      "scope": "Reservoir1spp/Reservoir1sppStreamState类型布局及stream初始化/累计/finish_stream；具体源码版本与全文diff未知。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            96
+          ],
+          "pipeline_count": 13
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 19,
+          "emitted_lines": [
+            35,
+            36,
+            37,
+            38,
+            43,
+            47,
+            48,
+            49,
+            51,
+            52,
+            53,
+            55,
+            67,
+            69,
+            70,
+            71,
+            73,
+            93,
+            94
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/reservoir.hlsl",
+          "upstream_lf": 100,
+          "shared_raw_identifiers": [
+            "Reservoir1spp",
+            "Reservoir1sppStreamState",
+            "p_q_sel",
+            "payload"
+          ]
+        },
+        {
+          "type": "raw_spirv_unique_type_and_dataflow",
+          "types": {
+            "Reservoir1spp": [
+              "w_sum",
+              "payload",
+              "M",
+              "W"
+            ],
+            "Reservoir1sppStreamState": [
+              "p_q_sel",
+              "M_sum"
+            ]
+          },
+          "formula": "W = w_sum / max(float32(1e-8), M * p_q_sel)",
+          "module_offset": 21538,
+          "source_line": 94,
+          "float_constant_bits": "0x322bcc77"
+        }
+      ],
+      "limitations": [
+        "确认源码家族的实际复用，不等于全文原样复制；原source96LF，上游100LF。",
+        "原发行版权声明Kajiya0.2.0，无法锁定游戏私有fork的commit。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/reservoir.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/kajiya/reservoir-original-instructions.json"
+    },
+    {
+      "source": "shaders/inc/rocky_terrain.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏岩石地形的共享资源/几何接口",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            50
+          ],
+          "pipeline_count": 16
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 13,
+          "emitted_lines": [
+            13,
+            15,
+            16,
+            18,
+            24,
+            25,
+            27,
+            32,
+            33,
+            34,
+            36,
+            47,
+            48
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/roof_colors_include.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏屋顶颜色ID与实例颜色参数",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            4
+          ],
+          "pipeline_count": 10
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_nani_gothic_window_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 47478,
+              "names": [
+                "roof_color_1",
+                "roof_color_2",
+                "roof_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_instanced_roof.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 70474,
+              "names": [
+                "roof_color_ids",
+                "roof_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_solid_vertex_color_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 44054,
+              "names": [
+                "roof_color_1",
+                "roof_color_2",
+                "roof_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_wall_wall_brick_lod0.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "roof_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_wall_wall_brick_lod0.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 55290,
+              "names": [
+                "roof_color_1",
+                "roof_color_2",
+                "roof_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_wall_wall_brick_lod1.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "roof_color_ids"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/rt.hlsl",
+      "status": "confirmed_upstream",
+      "origin": "GPU-Raytracer BVH8 traversal port plus game integration",
+      "confidence": "high_for_bvh8_core",
+      "scope": "仅compressed-wide BVH8节点解码/遍历已确认；rt.hlsl其他函数和资源接入不能全归为上游。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            720
+          ],
+          "pipeline_count": 18
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 185,
+          "emitted_lines": [
+            39,
+            58,
+            78,
+            81,
+            83,
+            84,
+            87,
+            99,
+            103,
+            104,
+            110,
+            111,
+            117,
+            118,
+            120,
+            121,
+            123,
+            124,
+            125,
+            126,
+            130,
+            131,
+            134,
+            136,
+            139,
+            179,
+            180,
+            181,
+            182,
+            185,
+            186,
+            188,
+            189,
+            191,
+            194,
+            196,
+            197,
+            200,
+            202,
+            208,
+            218,
+            220,
+            225,
+            226,
+            227,
+            228,
+            230,
+            236,
+            238,
+            239,
+            240,
+            241,
+            244,
+            245,
+            247,
+            248,
+            250,
+            251,
+            267,
+            268,
+            271,
+            272,
+            274,
+            275,
+            277,
+            278,
+            282,
+            283,
+            300,
+            311,
+            312,
+            313,
+            315,
+            328,
+            331,
+            334,
+            335,
+            338,
+            341,
+            353,
+            355,
+            356,
+            358,
+            365,
+            366,
+            368,
+            369,
+            373,
+            381,
+            392,
+            393,
+            395,
+            399,
+            401,
+            402,
+            403,
+            404,
+            406,
+            407,
+            409,
+            413,
+            414,
+            416,
+            420,
+            421,
+            434,
+            450,
+            451,
+            457,
+            462,
+            465,
+            466,
+            467,
+            469,
+            472,
+            476,
+            478,
+            480,
+            483,
+            486,
+            487,
+            489,
+            490,
+            499,
+            501,
+            504,
+            505,
+            507,
+            509,
+            511,
+            514,
+            555,
+            556,
+            560,
+            563,
+            564,
+            565,
+            569,
+            570,
+            571,
+            573,
+            574,
+            575,
+            577,
+            578,
+            579,
+            581,
+            583,
+            584,
+            585,
+            587,
+            589,
+            590,
+            592,
+            593,
+            594,
+            598,
+            599,
+            600,
+            602,
+            603,
+            604,
+            609,
+            610,
+            611,
+            614,
+            617,
+            648,
+            651,
+            653,
+            654,
+            659,
+            660,
+            661,
+            662,
+            670,
+            672,
+            700,
+            703,
+            705,
+            706,
+            711,
+            712,
+            713,
+            719
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/rt.hlsl",
+          "upstream_lf": 139,
+          "shared_raw_identifiers": [
+            "payload",
+            "position"
+          ]
+        },
+        {
+          "type": "existing_raw_dataflow_audit",
+          "stride": 80,
+          "formulas": [
+            "(meta & (meta << 1)) & 0x10101010",
+            "(meta ^ (octant & mask)) & 0x1f1f1f1f",
+            "(meta >> 5) & 0x07070707"
+          ],
+          "source_report": "raytracer/REPORT.md"
+        }
+      ],
+      "limitations": [
+        "同名Kajiya rt.hlsl仅候选；确证BVH8核心来源是GPU-Raytracer，不能把原整个rt.hlsl归Kajiya。",
+        "原始include720LF包含适配和其他逻辑，本条范围是指定核心。"
+      ],
+      "upstream_url": "https://github.com/jan-van-bergen/GPU-Raytracer/blob/3525cd4f96fba01c8976c7f1a8465dac7bd3d60f/Src/CUDA/Raytracing/BVH8.h",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/raytracer/raw_spirv_fingerprints.json"
+    },
+    {
+      "source": "shaders/inc/samplers.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            46
+          ],
+          "pipeline_count": 402
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            38,
+            39,
+            40
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/samplers.hlsl",
+          "upstream_lf": 8,
+          "shared_raw_identifiers": [
+            "sampler_llc",
+            "sampler_llr",
+            "sampler_lnc",
+            "sampler_nnc"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/samplers.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/scatter.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            66
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 11,
+          "emitted_lines": [
+            7,
+            9,
+            12,
+            13,
+            15,
+            16,
+            18,
+            20,
+            52,
+            54,
+            55
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/sh.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            210
+          ],
+          "pipeline_count": 146
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 29,
+          "emitted_lines": [
+            53,
+            54,
+            55,
+            56,
+            60,
+            61,
+            62,
+            82,
+            83,
+            104,
+            105,
+            106,
+            117,
+            138,
+            140,
+            141,
+            142,
+            143,
+            145,
+            146,
+            150,
+            162,
+            163,
+            164,
+            198,
+            205,
+            206,
+            207,
+            208
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/sh.hlsl",
+          "upstream_lf": 35,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/sh.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/shadow.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            307
+          ],
+          "pipeline_count": 30
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 67,
+          "emitted_lines": [
+            18,
+            23,
+            28,
+            34,
+            40,
+            42,
+            61,
+            62,
+            64,
+            81,
+            97,
+            100,
+            101,
+            105,
+            109,
+            110,
+            111,
+            112,
+            118,
+            124,
+            128,
+            129,
+            135,
+            148,
+            150,
+            156,
+            157,
+            158,
+            162,
+            163,
+            164,
+            165,
+            166,
+            167,
+            169,
+            171,
+            173,
+            178,
+            181,
+            183,
+            184,
+            197,
+            198,
+            202,
+            203,
+            204,
+            213,
+            217,
+            220,
+            224,
+            230,
+            248,
+            251,
+            252,
+            256,
+            262,
+            284,
+            290,
+            291,
+            292,
+            293,
+            295,
+            301,
+            302,
+            303,
+            304,
+            306
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/simplex_noise.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            32
+          ],
+          "pipeline_count": 38
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 21,
+          "emitted_lines": [
+            5,
+            10,
+            11,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            29,
+            30,
+            31
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/smooth_max.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            45
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/stochastic_tiling.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            60
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 19,
+          "emitted_lines": [
+            9,
+            10,
+            11,
+            13,
+            21,
+            24,
+            25,
+            26,
+            30,
+            31,
+            32,
+            39,
+            44,
+            45,
+            46,
+            52,
+            54,
+            55,
+            56
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/sun.inc.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            164
+          ],
+          "pipeline_count": 167
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 31,
+          "emitted_lines": [
+            13,
+            24,
+            26,
+            28,
+            32,
+            73,
+            74,
+            87,
+            89,
+            90,
+            93,
+            102,
+            103,
+            106,
+            108,
+            109,
+            114,
+            119,
+            120,
+            135,
+            137,
+            138,
+            140,
+            144,
+            153,
+            154,
+            155,
+            156,
+            158,
+            161,
+            162
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/sun.hlsl",
+          "upstream_lf": 43,
+          "shared_raw_identifiers": [
+            "frame_constants"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/sun.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/terrain_heightmap.inc.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏地形高度图资源、采样接口与分辨率参数",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            105
+          ],
+          "pipeline_count": 84
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 29,
+          "emitted_lines": [
+            15,
+            23,
+            25,
+            26,
+            27,
+            28,
+            30,
+            34,
+            38,
+            42,
+            52,
+            58,
+            59,
+            61,
+            67,
+            68,
+            70,
+            74,
+            75,
+            78,
+            85,
+            86,
+            89,
+            90,
+            91,
+            93,
+            98,
+            99,
+            102
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_clearing_meadow_flower.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "terrain_heightmap",
+                "terrain_heightmap_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_flower.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 29010,
+              "names": [
+                "terrain_heightmap_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_flower.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "terrain_heightmap",
+                "terrain_heightmap_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_flower.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 29010,
+              "names": [
+                "terrain_heightmap_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "terrain_heightmap",
+                "terrain_heightmap_dims"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_clearing_meadow_plant.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 33326,
+              "names": [
+                "terrain_heightmap_dims"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/texture_blend.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            33
+          ],
+          "pipeline_count": 8
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 9,
+          "emitted_lines": [
+            10,
+            12,
+            13,
+            15,
+            26,
+            28,
+            29,
+            30,
+            32
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/texture_utils.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            15
+          ],
+          "pipeline_count": 37
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            6,
+            9,
+            10,
+            14
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/tracked_buffer.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            161
+          ],
+          "pipeline_count": 402
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 6,
+          "emitted_lines": [
+            22,
+            32,
+            83,
+            93,
+            123,
+            133
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/unjitter_taa.hlsl",
+      "status": "likely_derived",
+      "origin": "Likely Kajiya unjitter helper with changes",
+      "confidence": "medium_high",
+      "scope": "相同文件族、像素偏移方向约定、颜色权重与统计moment使用不同Gaussian权重；原源码扩展到161LF。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            161
+          ],
+          "pipeline_count": 5
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 23,
+          "emitted_lines": [
+            78,
+            79,
+            80,
+            85,
+            100,
+            105,
+            108,
+            109,
+            110,
+            111,
+            118,
+            120,
+            123,
+            126,
+            136,
+            137,
+            139,
+            140,
+            141,
+            142,
+            143,
+            149,
+            150
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/unjitter_taa.hlsl",
+          "upstream_lf": 127,
+          "shared_raw_identifiers": [
+            "sample_offset_pixels"
+          ]
+        },
+        {
+          "type": "raw_math_constellation_plus_upstream",
+          "observed_constants": [
+            -10.0,
+            -1.0,
+            4.0,
+            0.5
+          ],
+          "upstream_scheme": "Exp2(-10*dist2*scale) for color and Exp2(-dist2*scale) for ex/ex2; jitter sign float2(1,-1)",
+          "raw_source_lines": [
+            105,
+            108,
+            109,
+            110,
+            111,
+            118,
+            120,
+            123,
+            126,
+            136,
+            137,
+            139,
+            140,
+            141,
+            142,
+            143,
+            149,
+            150
+          ]
+        }
+      ],
+      "limitations": [
+        "多重独特设计与原attribution支持派生，但未为全部函数证明指令等价。",
+        "4.0及源LF变化显示可能扩展，未恢复完整diff。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/unjitter_taa.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/selected-instruction-traces.json"
+    },
+    {
+      "source": "shaders/inc/upsample/easu.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            253
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 84,
+          "emitted_lines": [
+            12,
+            30,
+            31,
+            32,
+            33,
+            34,
+            38,
+            54,
+            55,
+            72,
+            74,
+            76,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            92,
+            93,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116,
+            118,
+            119,
+            120,
+            121,
+            122,
+            123,
+            139,
+            140,
+            141,
+            152,
+            155,
+            156,
+            157,
+            160,
+            163,
+            164,
+            165,
+            166,
+            167,
+            168,
+            169,
+            170,
+            171,
+            172,
+            173,
+            174,
+            182,
+            183,
+            184,
+            185,
+            189,
+            190,
+            191,
+            192,
+            194,
+            195,
+            197,
+            198,
+            200,
+            204,
+            207,
+            209,
+            217,
+            218,
+            222,
+            223,
+            224,
+            225,
+            226,
+            227,
+            228,
+            229,
+            230,
+            231,
+            232,
+            233,
+            236,
+            249
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/upsample/lanczos2.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            53
+          ],
+          "pipeline_count": 2
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 0,
+          "emitted_lines": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/utils.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            218
+          ],
+          "pipeline_count": 223
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 66,
+          "emitted_lines": [
+            13,
+            15,
+            16,
+            17,
+            18,
+            20,
+            29,
+            30,
+            42,
+            47,
+            54,
+            55,
+            59,
+            65,
+            66,
+            67,
+            68,
+            70,
+            71,
+            72,
+            79,
+            80,
+            81,
+            82,
+            84,
+            85,
+            86,
+            111,
+            115,
+            116,
+            120,
+            121,
+            122,
+            126,
+            133,
+            134,
+            135,
+            136,
+            140,
+            149,
+            150,
+            152,
+            154,
+            156,
+            167,
+            168,
+            169,
+            170,
+            174,
+            175,
+            176,
+            177,
+            181,
+            182,
+            183,
+            184,
+            188,
+            192,
+            194,
+            195,
+            197,
+            202,
+            203,
+            204,
+            216,
+            217
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/uv.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            29
+          ],
+          "pipeline_count": 339
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 3,
+          "emitted_lines": [
+            4,
+            24,
+            28
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "inc/uv.hlsl",
+          "upstream_lf": 20,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/inc/uv.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/wall_color_customization.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏墙体颜色配置",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            77
+          ],
+          "pipeline_count": 16
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 24,
+          "emitted_lines": [
+            14,
+            20,
+            24,
+            28,
+            32,
+            36,
+            40,
+            44,
+            46,
+            47,
+            54,
+            55,
+            56,
+            59,
+            60,
+            61,
+            62,
+            65,
+            66,
+            69,
+            70,
+            73,
+            74,
+            75
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_nani_gothic_window_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_plaster.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 47214,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_roof_floor.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 24226,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_solid_vertex_color_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_wall_wall_brick_lod0.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_wall_wall_brick_lod1.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/wall_color_ids.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏墙体颜色ID参数",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            50
+          ],
+          "pipeline_count": 34
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            27,
+            44,
+            45,
+            47
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_gi_trace_gi_candidates.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_gothic_window_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_plaster.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 47214,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_roof_floor.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 24226,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_solid_vertex_color_bricks.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_primary_rt_debug.cs.hlsl_cs_main_0.bin",
+              "module_offset": 23,
+              "names": [
+                "wall_color_ids"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/wall_distortion.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "medium_for_domain_scope",
+      "scope": "游戏墙体形变/材质几何接口",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            26
+          ],
+          "pipeline_count": 28
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 7,
+          "emitted_lines": [
+            13,
+            16,
+            17,
+            21,
+            22,
+            24,
+            25
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/wind.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏植被实例风弯曲属性与全局风力参数",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            17
+          ],
+          "pipeline_count": 31
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            9,
+            11,
+            14,
+            16
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_garden_lowpoly_flower.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_garden_lowpoly_flower.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_flower.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_flower.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_preplaced_flower.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_preplaced_flower.raster.hlsl_f0adff76827e73ff.bin",
+              "module_offset": 23,
+              "names": [
+                "in.var.wind_bend"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/inc/window_color_customization.hlsl",
+      "status": "game_specific",
+      "origin": "Tiny Glade game domain data or integration",
+      "confidence": "high_for_named_data_layout_or_parameters",
+      "scope": "游戏窗户颜色配置",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            14
+          ],
+          "pipeline_count": 6
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 4,
+          "emitted_lines": [
+            7,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "type": "raw_named_game_resources_or_types",
+          "hits": [
+            {
+              "file": "compiled-shaders/_nani_balcony_door.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 37694,
+              "names": [
+                "window_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_nani_solid_vertex_color_window.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 37470,
+              "names": [
+                "window_colors"
+              ]
+            },
+            {
+              "file": "compiled-shaders/_solid_vertex_color_wooden_gate.raster.hlsl_b903e43ffb3da915.bin",
+              "module_offset": 15898,
+              "names": [
+                "window_colors"
+              ]
+            }
+          ]
+        }
+      ],
+      "limitations": [
+        "game_specific只判游戏领域数据、参数或组合接口；不宣称文件内所有数学/实现从零编写。",
+        "OpSource正文空白，无法完整排除藏在接口下的外部算法。"
+      ],
+      "upstream_url": null,
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/lut/brdf_fg.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            42
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 13,
+          "emitted_lines": [
+            8,
+            21,
+            25,
+            28,
+            29,
+            30,
+            31,
+            33,
+            37,
+            38,
+            39,
+            41,
+            42
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "lut/brdf_fg.hlsl",
+          "upstream_lf": 46,
+          "shared_raw_identifiers": [
+            "output_tex"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/lut/brdf_fg.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/prefix_scan/inclusive_prefix_scan.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            42
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 12,
+          "emitted_lines": [
+            13,
+            21,
+            24,
+            25,
+            26,
+            28,
+            33,
+            34,
+            36,
+            38,
+            41,
+            42
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "prefix_scan/inclusive_prefix_scan.hlsl",
+          "upstream_lf": 38,
+          "shared_raw_identifiers": [
+            "shared_data"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/prefix_scan/inclusive_prefix_scan.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/prefix_scan/inclusive_prefix_scan_merge.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            23
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 6,
+          "emitted_lines": [
+            10,
+            11,
+            13,
+            21,
+            22,
+            23
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "prefix_scan/inclusive_prefix_scan_merge.hlsl",
+          "upstream_lf": 21,
+          "shared_raw_identifiers": []
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/prefix_scan/inclusive_prefix_scan_merge.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/ssgi/ssgi.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            407
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 17,
+          "emitted_lines": [
+            345,
+            352,
+            356,
+            361,
+            364,
+            366,
+            370,
+            373,
+            374,
+            376,
+            377,
+            378,
+            379,
+            396,
+            400,
+            405,
+            407
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "ssgi/ssgi.hlsl",
+          "upstream_lf": 341,
+          "shared_raw_identifiers": [
+            "depth_tex",
+            "frame_constants",
+            "frame_index",
+            "half_view_normal_tex",
+            "output_tex",
+            "sample_to_view",
+            "view_constants",
+            "view_to_clip",
+            "world_to_view"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/ssgi/ssgi.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    },
+    {
+      "source": "shaders/ssgi/temporal_filter.cs.hlsl",
+      "status": "game_modified",
+      "origin": "Kajiya SSGI temporal-filter design adapted for Tiny Glade",
+      "confidence": "high_for_adapted_core",
+      "scope": "复用同一组历史/双输出资源及Gaussian统计、variance clamp与1/8历史混合设计；游戏改采样邻域和历史有效性接口。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            75
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 24,
+          "emitted_lines": [
+            19,
+            22,
+            23,
+            25,
+            26,
+            30,
+            31,
+            32,
+            44,
+            46,
+            47,
+            52,
+            53,
+            54,
+            59,
+            60,
+            62,
+            64,
+            66,
+            67,
+            70,
+            73,
+            74,
+            75
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "ssgi/temporal_filter.hlsl",
+          "upstream_lf": 61,
+          "shared_raw_identifiers": [
+            "final_output_tex",
+            "history_output_tex",
+            "history_tex",
+            "input_tex",
+            "reprojection_tex",
+            "sampler_lnc"
+          ]
+        },
+        {
+          "type": "raw_instruction_math_constellation",
+          "shared_resources": [
+            "input_tex",
+            "history_tex",
+            "reprojection_tex",
+            "history_output_tex",
+            "final_output_tex"
+          ],
+          "raw_used_constants": [
+            0.125,
+            0.25,
+            0.5,
+            5.0,
+            0.22313016653060913,
+            0.4723665416240692,
+            0.2644112706184387
+          ],
+          "design": "5 sigma at box_size0.5; lerp center/moment by0.25; lerp clamped history/current by0.125",
+          "change": "Upstream k=2 =>5x5, game constants exp(-0.75) and exp(-1.5) and normalized reciprocal0.26441127 correspond k=1=>3x3; original history_valid gate/new dims fields"
+        }
+      ],
+      "limitations": [
+        "确认设计与代码家族派生及具体可见改动，不等于全文逐字copy。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/ssgi/temporal_filter.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/selected-instruction-traces.json"
+    },
+    {
+      "source": "shaders/ssgi/upsample.cs.hlsl",
+      "status": "generic_unresolved",
+      "origin": "Unresolved common graphics helper or pass",
+      "confidence": "insufficient_for_code_origin",
+      "scope": "整个文件的具体源码出处未锁定；仅能识别通用图形任务。",
+      "proof": [
+        {
+          "type": "original_source_dependency",
+          "source_lf": [
+            106
+          ],
+          "pipeline_count": 1
+        },
+        {
+          "type": "raw_spirv_source_lines",
+          "emitted_line_count": 33,
+          "emitted_lines": [
+            16,
+            20,
+            24,
+            25,
+            26,
+            27,
+            29,
+            30,
+            31,
+            32,
+            39,
+            41,
+            43,
+            44,
+            46,
+            51,
+            56,
+            57,
+            71,
+            73,
+            74,
+            75,
+            76,
+            77,
+            79,
+            80,
+            95,
+            98,
+            101,
+            102,
+            104,
+            105,
+            106
+          ]
+        },
+        {
+          "type": "candidate_only",
+          "normalized_same_path": "ssgi/upsample.hlsl",
+          "upstream_lf": 75,
+          "shared_raw_identifiers": [
+            "depth_tex",
+            "gbuffer_tex",
+            "output_tex",
+            "ssgi_tex"
+          ]
+        }
+      ],
+      "limitations": [
+        "通用文件名、标准公式、常见常数或同一目录不足以证明拷贝开源源码；未证明逐字源码一致或从零原创。"
+      ],
+      "upstream_url": "https://github.com/EmbarkStudios/kajiya/blob/9fdec0f074f9f822d395f9cfd041b58749e32303/assets/shaders/ssgi/upsample.hlsl",
+      "proof_file": "D:/game/reverse-engineering/tiny-glade/evidence/shader-origin-audit-2026-10-14/file-classification-2026-10-14/common/raw-source-instruction-stats.json"
+    }
+  ],
+  "method": "Original shipped SPIR-V names/member names, source dependencies, OpLine-associated computational instructions; compare Kajiya public commit; source body blank. Scoped classifications do not measure source-code ownership percentages."
+}

@@ -1,0 +1,78 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tool-repair-isolated",
+  "pid": 12408,
+  "project": "D:\\game\\tools\\reverse-runtime\\tool-repair-isolated\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.program.model.listing import CodeUnit\na=currentProgram.getAddressFactory().getAddress('1408e1630')\nf=currentProgram.getFunctionManager().getFunctionAt(a)\nprint(json.dumps({\"comment\":currentProgram.getListing().getComment(CodeUnit.EOL_COMMENT,a),\"body_bytes\":f.getBody().getNumAddresses()}))\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\toolchain-repair-2026-10-13\\worker-isolation.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\toolchain-repair-2026-10-13\\\\\\\\worker-isolation.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 35, \\\"sha256\\\": \\\"8885d71342bb710f79befee15db782db53ce6a1a7094a08b41f4d430dc97f82d\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":114}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.125,
+      "stdout": "{\"comment\": null, \"body_bytes\": 1}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 56.078,
+  "bootstrap": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"destinationFolder\":\"/\",\"importedFrom\":\"D:\\\\game\\\\ljxsj_92385\\\\Tiny Glade\\\\tiny-glade.exe\",\"success\":true,\"filesDiscovered\":2,\"filesImported\":2,\"importedPrograms\":[\"/tiny-glade.exe\",\"/tiny-glade.exe.0\"],\"programs\":[{\"programPath\":\"/tiny-glade.exe\",\"analyzed\":false,\"analysisRecommended\":true,\"nextSteps\":\"Call analyze-program with programPath '/tiny-glade.exe' to populate functions, strings, and references.\"},{\"programPath\":\"/tiny-glade.exe.0\",\"analyzed\":false,\"analysisRecommended\":true,\"nextSteps\":\"Call analyze-program with programPath '/tiny-glade.exe.0' to populate functions, strings, and references.\"}],\"message\":\"Import completed. 2 of 2 files imported. Imported programs are not analyzed yet -- call analyze-program for each program to populate functions, strings, and references.\"}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":118}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "7edb2935c30a9db57d611747bdc7c3ba",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

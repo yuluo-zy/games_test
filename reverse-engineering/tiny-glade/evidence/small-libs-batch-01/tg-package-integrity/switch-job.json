@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.disassemble import Disassembler\nfrom ghidra.program.model.address import AddressSet\naf=currentProgram.getAddressFactory()\ndef A(s): return af.getAddress(s)\nrows=[]\ntx=currentProgram.startTransaction(\"Integrity original switch branches\")\ntry:\n    d=Disassembler.getDisassembler(currentProgram,monitor,None)\n    for a in [\"14067c9c0\",\"14067c9ee\",\"14067ca34\"]:\n        d.disassemble(A(a),AddressSet(A(\"14067c3d0\"),A(\"14067cd5e\")),True)\n    f=currentProgram.getFunctionManager().getFunctionAt(A(\"14067c3d0\"))\n    f.setBody(AddressSet(A(\"14067c3d0\"),A(\"14067cd5e\")))\nfinally:\n    currentProgram.endTransaction(tx,True)\nfor bounds in [(\"14067c980\",\"14067cb20\"),(\"140f737f0\",\"140f739a0\")]:\n    for i in currentProgram.getListing().getInstructions(AddressSet(A(bounds[0]),A(bounds[1])),True): rows.append({\"address\":str(i.getAddress()),\"asm\":str(i)})\nprint(json.dumps(rows))"
+    }
+  },
+  {
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x14067c3d0",
+      "limit": 600
+    }
+  }
+]

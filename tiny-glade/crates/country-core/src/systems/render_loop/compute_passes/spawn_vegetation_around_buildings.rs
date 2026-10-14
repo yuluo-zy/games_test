@@ -1,0 +1,202 @@
+//! `spawn_vegetation_around_buildings.rs` — 建筑周围生成灌木与花（W14，0x1408e4cc0，3394 B）。
+//!
+//! 机器码（O）：资源（TypeId `0x3dce36237fb50dff / 0x93a27cf4512d885c`，缺失 → `Option::unwrap`），读 `u8 @+0x20`，
+//! **只有等于 1 才声明下面两个 pass**，否则什么都不做直接返回。
+//!
+//! **Pass A**：`ComputePass::new("Spawn bushes around buildings", "/garden/spawn_bushes_buildings.cs.hlsl")`（名长 0x1d、URI 长 0x26）：
+//! `write_storage_buffer_concurrent<BushSsbo>(bush_buffer, 1)` → `write_storage_buffer_concurrent<FlowerSsbo>(0xf3aa86819743c1d8, 1)` →
+//! uniform `[u32;2]`（键 0xfb539f7243dbb832）= `[0x5a, 0x5a]` → 纹理读：预设 9 `terrain_heightmap`、10 `visual_terrain_heightmap` →
+//! `bind_garden_exclusion`（预设 0xe/0x13/5/0x10）→ 0x14 `garden_mask`、0x15 `buildings_mask`、0x16 `buildings_mask_non_blurred` →
+//! `write_storage_buffer_concurrent<DrawIndexedIndirectBuffer>(draw_commands, 1)` → uniform i32 `draw_indirect_buffer_offset = 10` →
+//! `dispatch_2d(0x5a, 0x5a)`（闭包状态 `{1, 0x5a, 0x5a, 1}`）。
+//!
+//! **Pass B**：`("Spawn flowers around buildings", "/garden/spawn_flowers_buildings.cs.hlsl")`（名长 0x1e、URI 长 0x27）：
+//! `write_storage_buffer_concurrent<FlowerSsbo>(0x633d7e34d2dd23f1, 1)` → uniform `[u32;2] = [0x96, 0x96]` → 9、10 →
+//! `bind_garden_exclusion` → 0x14、0x15、0x16 → **再次** 9、10（机器码里确实重复绑定两次）→
+//! `write_storage_buffer_concurrent<DrawIndexedIndirectBuffer>(draw_commands, 1)` → uniform `draw_indirect_buffer_offset = 11` →
+//! `dispatch_2d(0x96, 0x96)`。
+//!
+//! `BushSsbo` / `FlowerSsbo` 属 `compute_garden`（别的模块，NAME U），作泛型参数；
+//! 两个 `0x…` 绑定名（0xf3aa…、0x633d…）与 `[u32;2]` uniform 名不在重建 HLSL 标识符里（名字 U，值取立即数）。
+
+use crate::asset_libraries::ssbo_library::SsboType;
+use crate::render::pass_builder::compute_pass_builder::{ComputePass, RecordedComputePass};
+use crate::render::pass_builder::pass_resources::TypeId128;
+use crate::resources::texture_presets::TexturePreset;
+use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, binding, binding_hash};
+use crate::systems::render_loop::draw_passes::draw_shaders::common_includes_compute::bind_garden_exclusion_compute;
+use crate::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer;
+
+pub const BUSHES_NAME: &str = "Spawn bushes around buildings";
+pub const BUSHES_URI: &str = "/garden/spawn_bushes_buildings.cs.hlsl";
+pub const FLOWERS_NAME: &str = "Spawn flowers around buildings";
+pub const FLOWERS_URI: &str = "/garden/spawn_flowers_buildings.cs.hlsl";
+/// 门控资源 TypeId（O）。
+pub const GATE_TYPE_ID: TypeId128 = TypeId128 {
+    lo: 0x3dce_3623_7fb5_0dff,
+    hi: 0x93a2_7cf4_512d_885c,
+};
+/// 门控字节偏移（O：`+0x20`）。
+pub const GATE_BYTE_OFFSET: usize = 0x20;
+
+pub const BUSH_BUFFER: u64 = binding_hash("bush_buffer");
+/// Pass A 写 `FlowerSsbo` 的绑定名（O 立即数，名 U）。
+pub const FLOWER_BUFFER_A: u64 = 0xf3aa_8681_9743_c1d8;
+/// Pass B 写 `FlowerSsbo` 的绑定名（O 立即数，名 U）。
+pub const FLOWER_BUFFER_B: u64 = 0x633d_7e34_d2dd_23f1;
+/// `[u32;2]` uniform 的键（O 立即数，名 U）。
+pub const GRID_UNIFORM: u64 = binding_hash("grid_dims");
+pub const GARDEN_MASK: u64 = binding_hash("garden_mask");
+pub const BUILDINGS_MASK: u64 = binding_hash("buildings_mask");
+pub const BUILDINGS_MASK_NON_BLURRED: u64 = binding_hash("buildings_mask_non_blurred");
+
+fn bind_terrain(pass: ComputePass) -> ComputePass {
+    pass.bind_texture(binding::TERRAIN_HEIGHTMAP, &TexturePreset(9), 0x19)
+        .bind_texture(binding::VISUAL_TERRAIN_HEIGHTMAP, &TexturePreset(10), 0x19)
+}
+
+fn bind_building_masks(pass: ComputePass) -> ComputePass {
+    pass.bind_texture(GARDEN_MASK, &TexturePreset(0x14), 0x19)
+        .bind_texture(BUILDINGS_MASK, &TexturePreset(0x15), 0x19)
+        .bind_texture(BUILDINGS_MASK_NON_BLURRED, &TexturePreset(0x16), 0x19)
+}
+
+/// W14：门控字节 == 1 时声明两个 pass，否则返回空。
+pub fn spawn_vegetation_around_buildings<Bush: SsboType, Flower: SsboType>(
+    env: &mut PassEnv<'_>,
+    gate: u8,
+) -> Vec<RecordedComputePass> {
+    if gate != 1 {
+        return Vec::new();
+    }
+
+    let bushes = env
+        .pass(BUSHES_NAME, BUSHES_URI)
+        .write_storage_buffer_concurrent::<Bush>(BUSH_BUFFER, 1)
+        .write_storage_buffer_concurrent::<Flower>(FLOWER_BUFFER_A, 1)
+        .uniform(GRID_UNIFORM, [0x5au32, 0x5a]);
+    let bushes = bind_building_masks(bind_garden_exclusion_compute(bind_terrain(bushes)))
+        .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS, 1)
+        .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, 10i32)
+        .dispatch_2d(0x5a, 0x5a);
+
+    let flowers = env
+        .pass(FLOWERS_NAME, FLOWERS_URI)
+        .write_storage_buffer_concurrent::<Flower>(FLOWER_BUFFER_B, 1)
+        .uniform(GRID_UNIFORM, [0x96u32, 0x96]);
+    let flowers = bind_terrain(bind_building_masks(bind_garden_exclusion_compute(
+        bind_terrain(flowers),
+    )))
+    .write_storage_buffer_concurrent::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS, 1)
+    .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, 11i32)
+    .dispatch_2d(0x96, 0x96);
+
+    vec![bushes, flowers]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::systems::render_loop::compute_passes::pass_kit::test_env::{
+        accesses, env_with, test_carrier, threads,
+    };
+
+    test_carrier!(Bush, "Bush");
+    test_carrier!(Flower, "Flower");
+
+    const ALL_BINDINGS: [u64; 13] = [
+        BUSH_BUFFER,
+        FLOWER_BUFFER_A,
+        FLOWER_BUFFER_B,
+        binding::TERRAIN_HEIGHTMAP,
+        binding::VISUAL_TERRAIN_HEIGHTMAP,
+        GARDEN_MASK,
+        BUILDINGS_MASK,
+        BUILDINGS_MASK_NON_BLURRED,
+        binding::DRAW_COMMANDS,
+        0x4ee0_98b3_8612_d2b9,
+        0x6ad6_3ccd_18c8_f041,
+        0xed50_2fff_6dc4_021f,
+        0x0d7e_ab55_ca05_e34c,
+    ];
+
+    fn run(
+        gate: u8,
+    ) -> (
+        crate::systems::render_loop::compute_passes::pass_kit::test_env::Env,
+        Vec<RecordedComputePass>,
+    ) {
+        let mut e = env_with(
+            &ALL_BINDINGS,
+            &[GRID_UNIFORM, binding::DRAW_INDIRECT_BUFFER_OFFSET],
+            |lib, dev| {
+                lib.add_new::<Bush>(dev);
+                lib.add_new::<Flower>(dev);
+                lib.add_new::<DrawIndexedIndirectBuffer>(dev);
+            },
+        );
+        let out = e.run(|env| spawn_vegetation_around_buildings::<Bush, Flower>(env, gate));
+        (e, out)
+    }
+
+    #[test]
+    fn names_match_exe_immediates() {
+        assert_eq!(BUSH_BUFFER, 0x5bae_fac4_a34b_3dee);
+        assert_eq!(GARDEN_MASK, 0x49f4_3a48_7883_738d);
+        assert_eq!(BUILDINGS_MASK, 0x4a9a_ecb3_eff0_f013);
+        assert_eq!(BUILDINGS_MASK_NON_BLURRED, 0x6570_1816_49ac_6420);
+        assert_eq!(
+            binding_hash("foliage_exclusion_mask"),
+            0x0d7e_ab55_ca05_e34c
+        );
+    }
+
+    #[test]
+    fn only_gate_byte_exactly_one_spawns() {
+        for g in [0u8, 2, 3, 0xff] {
+            let (e, out) = run(g);
+            assert!(out.is_empty(), "gate {g}");
+            assert!(
+                e.world.backend.paths.borrow().is_empty(),
+                "no ComputePass::new when gated off"
+            );
+        }
+        assert_eq!(run(1).1.len(), 2);
+    }
+
+    #[test]
+    fn bushes_pass_dispatch_uniforms_and_binding_counts() {
+        let (e, out) = run(1);
+        let p = &out[0];
+        assert_eq!(p.name, BUSHES_NAME);
+        assert_eq!(threads(p), (0x5a, 0x5a, 1));
+        assert_eq!(
+            e.uniform(p, GRID_UNIFORM, 8),
+            [0x5a, 0, 0, 0, 0x5a, 0, 0, 0]
+        );
+        assert_eq!(e.uniform_u32(p, binding::DRAW_INDIRECT_BUFFER_OFFSET), 10);
+        // 2 个并发写 + 2 地形 + 4 排斥 + 3 mask + 1 draw_commands
+        assert_eq!(accesses(p).len(), 12);
+    }
+
+    #[test]
+    fn flowers_pass_rebinds_terrain_twice() {
+        let (e, out) = run(1);
+        let p = &out[1];
+        assert_eq!(p.name, FLOWERS_NAME);
+        assert_eq!(threads(p), (0x96, 0x96, 1));
+        assert_eq!(
+            e.uniform(p, GRID_UNIFORM, 8),
+            [0x96, 0, 0, 0, 0x96, 0, 0, 0]
+        );
+        assert_eq!(e.uniform_u32(p, binding::DRAW_INDIRECT_BUFFER_OFFSET), 11);
+        // 1 并发写 + 2 + 4 + 3 + 2（重复）+ 1
+        assert_eq!(accesses(p).len(), 13);
+    }
+
+    /// `[u32;2]` uniform 的键 = `binding_hash("grid_dims")`（`_dims` 规则：fnv("grid") + 1），与 EXE 立即数一致。
+    #[test]
+    fn grid_uniform_key_is_the_grid_dims_name_hash() {
+        assert_eq!(GRID_UNIFORM, 0xfb53_9f72_43db_b832);
+    }
+}

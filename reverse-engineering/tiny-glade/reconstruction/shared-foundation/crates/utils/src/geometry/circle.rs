@@ -1,9 +1,9 @@
 //! B Circle2d实际还存rotation@12，旧12B局部投影不能表示所有圆采样。
 use super::{Aabb2, Ray2};
-use crate::curve::{Curve2, Curve3XZ, CurveError, CurveU};
 use crate::circular_f32::CircularF32;
-use lerp::Lerp;
+use crate::curve::{Curve2, Curve3XZ, CurveError, CurveU};
 use glam::{Vec2, Vec3};
+use lerp::Lerp;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Circle2d {
     pub center: Vec2,
@@ -17,7 +17,9 @@ impl Circle2d {
         Self {
             center: self.center * complement + other.center * factor,
             radius: self.radius * complement + other.radius * factor,
-            rotation: CircularF32::new(self.rotation).lerp(other.rotation, factor).as_f32(),
+            rotation: CircularF32::new(self.rotation)
+                .lerp(other.rotation, factor)
+                .as_f32(),
         }
     }
     pub fn new(center: Vec2, radius: f32) -> Self {
@@ -192,9 +194,8 @@ impl Iterator for CirclePoints2<'_> {
         }
         let i = self.front;
         self.front += 1;
-        let u = CurveU::<crate::curve::CurveCoordSemantic2D>::new(
-            i as f32 / (self.count as f32 - 1.0),
-        );
+        let u =
+            CurveU::<crate::curve::CurveCoordSemantic2D>::new(i as f32 / (self.count as f32 - 1.0));
         Some(self.circle.get_pos_at_u(u.get()))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {

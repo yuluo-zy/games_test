@@ -1,0 +1,885 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "packages": [
+    {
+      "package": "barrier-record-r5",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/barrier-record-r5/src/lib.rs",
+          "sha256": "a3cda72c6dba88b7ec4e3b78b056ca8299047c81bc12afaa03e78230f01df23f",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/barrier-record-r5/src/main.rs",
+          "sha256": "f390b7c5f8dfae36b0dc53542abe5d35127494173792a7e933cd6780a962e346",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/barrier.rs"
+      ],
+      "source_function_name_candidates": [
+        "access",
+        "concurrent",
+        "concurrent_write_needs_nonzero_equal_group",
+        "empty_command_panics_before_drain",
+        "export",
+        "initial",
+        "main",
+        "pending_is_drained_before_partial_panic",
+        "pre",
+        "resource",
+        "reused_initial_and_pre_have_opposite_roles",
+        "validate"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "concurrent_write_needs_nonzero_equal_group",
+        "empty_command_panics_before_drain",
+        "main",
+        "pending_is_drained_before_partial_panic",
+        "reused_initial_and_pre_have_opposite_roles"
+      ],
+      "explanation": "`raw/barrier.rs`，初始/复用/逐 pass 屏障、先 drain 后失败的规则；旧 runner/事件 fixture 留在证据工程",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "compiled-state",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/compiled-state/lib.rs",
+          "sha256": "36f1837c314eb5c03b55fb79d248fe805b1e59028cf16709603e761f87d1ed98",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/compiled-state/runner.rs",
+          "sha256": "1bffc1e7bac8b6aa2bf4ff77b6a809c98dae7a35d2a08dcec278d265080565a9",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/compiled.rs",
+        "crates/rhapsody/src/rg/compiled_graph.rs"
+      ],
+      "source_function_name_candidates": [
+        "finish",
+        "flush_batch",
+        "main",
+        "new",
+        "pending_initial_transition_resources",
+        "pre_pass_barrier_transitions",
+        "take_initial_transitions"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "main"
+      ],
+      "explanation": "`rg/compiled.rs`，BatchCompiler flush/finish、初始 transition 和 pre-pass 决策；`rg/compiled_graph.rs` 保留上轮叶 API。旧 JSON runner 不作为运行时",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "descriptor-binding-r8",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/descriptor-binding-r8/src/lib.rs",
+          "sha256": "46b08f1326da579c383cd6aa1c35ad4d2e9e85f4dcc1060af113b994f0a4fae8",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/descriptor-binding-r8/src/main.rs",
+          "sha256": "625b8aa87faf347d40ada763b67e1f25a82cc1ae3cd981316725bd7d94a1c1a4",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/descriptor_binding.rs",
+        "crates/rhapsody/src/raw/descriptor_set.rs"
+      ],
+      "source_function_name_candidates": [
+        "capture_write",
+        "compute_pass_bind_plan",
+        "descriptor_bind_plan",
+        "descriptor_write",
+        "execute",
+        "main",
+        "prepare_compute_pass",
+        "sparse_descriptor_set_layout",
+        "sparse_keys_are_not_ordinal_positions",
+        "unsupported_resource_is_an_explicit_candidate_boundary",
+        "with_pipeline_layout"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "capture_write",
+        "main"
+      ],
+      "explanation": "本次补入 `raw/descriptor_binding.rs`：sparse layout key、资源 tag、图像数组、buffer/dynamic offset、set membership、compute slot tuple、update-before-bind。旧单资源 `raw/binding` 不足以覆盖此闭包，现两者分工明确。layout/pool 复用 `raw/descriptor_set`，没有新造另一份公共依赖",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "device-counters-r6",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/device-counters-r6/src/lib.rs",
+          "sha256": "5db02eeae0a212088b8a5286d6df858526f617377e87bca827edaa9b280b499f",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/device-counters-r6/src/runner.rs",
+          "sha256": "42df8a040d199dc6be1a70f8c06fa4b5bb065737098f40316c4c4b06610a09aa",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/device.rs"
+      ],
+      "source_function_name_candidates": [
+        "auxiliary_index_is_not_queue_family_index",
+        "begin_sequence",
+        "constructor_initializes_all_queue_slots_to_one",
+        "counter_slot",
+        "counters",
+        "family_selection_matches_graphics_then_compute_only_scan",
+        "global_bucket_collision_replaces_before_original_assertion",
+        "insert",
+        "is_empty",
+        "len",
+        "main",
+        "new",
+        "next_value",
+        "primary_and_auxiliary_have_independent_sequences",
+        "raw_begin_projection",
+        "raw_counter_addition_wraps",
+        "remove",
+        "select"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "auxiliary_index_is_not_queue_family_index",
+        "constructor_initializes_all_queue_slots_to_one",
+        "family_selection_matches_graphics_then_compute_only_scan",
+        "global_bucket_collision_replaces_before_original_assertion",
+        "main",
+        "primary_and_auxiliary_have_independent_sequences",
+        "raw_counter_addition_wraps"
+      ],
+      "explanation": "`raw/device.rs`：原每队列 slot 起始为 1、counter wrapping、primary/auxiliary 选择、global bucket replacement；runner 非生产代码",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "execution-chain-r8",
+      "source_files": [],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/executor.rs"
+      ],
+      "source_function_name_candidates": [],
+      "names_not_present_in_current_rhapsody_tree": [],
+      "explanation": "当前目录只有 Cargo.lock/target 构建产物，无 Rust 源或 Cargo.toml。真正集成库在 `render/execution.rs`，已迁入 `rg/executor.rs`；不从产物目录补造代码",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "executor-temporal-r4",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/executor-temporal-r4/src/lib.rs",
+          "sha256": "4733208c3d07181dd87589b0d0981c8ab5a3a365e4be319b9a602298991c6242",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/executor.rs",
+        "crates/rhapsody/src/rg/recorder.rs",
+        "crates/rhapsody/src/rg/vulkan.rs",
+        "crates/rhapsody/src/rg/temporal.rs"
+      ],
+      "source_function_name_candidates": [
+        "begin_frame",
+        "default",
+        "end_frame",
+        "ensure_active_cb",
+        "execute_compiled",
+        "export_temporal",
+        "get_and_flip_parity",
+        "last_known_frame_duration_ns",
+        "new",
+        "nonfinal_batches_submit_before_final_cpu_retire",
+        "parity",
+        "retire",
+        "submit",
+        "submit_pending_cbs",
+        "take_resource",
+        "temporal_exports_do_not_flip_parity_or_reexport",
+        "timeline",
+        "wait_gpu_queue_trim"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "execute_compiled",
+        "nonfinal_batches_submit_before_final_cpu_retire",
+        "submit_pending_cbs",
+        "temporal_exports_do_not_flip_parity_or_reexport",
+        "timeline"
+      ],
+      "explanation": "`rg/executor.rs` 的 GraphExecutor/ExecutedRenderGraph/ExportedRenderGraphResources，`rg/recorder.rs`、`rg/vulkan.rs` 和 `rg/temporal.rs`。旧 `BackendEvent` 日志模拟器的 execute_compiled/submit_pending_cbs/timeline 被后续 r7/r8 真实序号/后端调用链替代，不再额外保留一份固定事件状态机",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "gpu-lifecycle",
+      "source_files": [],
+      "formal_modules": [],
+      "source_function_name_candidates": [],
+      "names_not_present_in_current_rhapsody_tree": [],
+      "explanation": "当前目录无 Rust 源，只有旧产物/目录残留；实际原规则见 `gpu-lifecycle-r3`",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "gpu-lifecycle-r3",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/gpu-lifecycle-r3/event_oracle.rs",
+          "sha256": "0cfe65c5c69a6cbe9c67ad8d69c3a81184dffb2a3d583bbdc2bf17674eed60fc",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/gpu-lifecycle-r3/lib.rs",
+          "sha256": "77ee2f1b2007c6a74dd463ad36e834a6bfb857fc3bf0b3bfb7737bc6669e7c47",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/gpu-lifecycle-r3/runner.rs",
+          "sha256": "f5ddd545ce91f16342e1f48224579cf872eb35ed01ea0effe5f40f1b29a5a4e7",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/managed/tracking.rs",
+        "crates/rhapsody/src/raw/managed/handle.rs",
+        "crates/rhapsody/src/raw/managed/lifecycle.rs",
+        "crates/rhapsody/src/raw/managed/resources.rs"
+      ],
+      "source_function_name_candidates": [
+        "begin",
+        "clone_handle",
+        "clone_reference",
+        "complete",
+        "cpu_drop",
+        "cpu_pool_return",
+        "create",
+        "disposal_generation_reuse_and_failure_event_order",
+        "dispose_control",
+        "drop_order_and_max_tracking",
+        "drop_reference",
+        "empty_submission_and_duplicate_bucket",
+        "event_json",
+        "key",
+        "last_drop_waits_for_contiguous_gpu_completion",
+        "late_drop_disposes_after_bucket_is_gone",
+        "main",
+        "number",
+        "stale_generation_skips_even_bad_command_state",
+        "submit",
+        "take_out_waste",
+        "track",
+        "track_handle",
+        "track_sequence"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "cpu_drop",
+        "cpu_pool_return",
+        "disposal_generation_reuse_and_failure_event_order",
+        "drop_order_and_max_tracking",
+        "empty_submission_and_duplicate_bucket",
+        "event_json",
+        "last_drop_waits_for_contiguous_gpu_completion",
+        "late_drop_disposes_after_bucket_is_gone",
+        "main",
+        "number",
+        "stale_generation_skips_even_bad_command_state",
+        "take_out_waste"
+      ],
+      "explanation": "`raw/managed/tracking.rs`、`handle.rs`、`lifecycle.rs`、`resources.rs`：generation/refcount/max last-use、CPU drop、waste 到命令桶、contiguous completion/late drop。`EventOracle`、event_oracle.rs JSON 与固定事件演示留作原验证工具；当前真实 SequenceRuntime 与 managed store 承接规则",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "graph-compiler-r2",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/graph-compiler-r2/src/dsl.rs",
+          "sha256": "40f4ba510b7c10c7f3630e776b3f59b57293cef9f53942354010314d4bc846d3",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/graph-compiler-r2/src/lib.rs",
+          "sha256": "7fa2aa5e31b09d45dccb60724b2d0876a781bdc610cff8c418f067ae88335753",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/graph-compiler-r2/src/snapshot.rs",
+          "sha256": "44e70cd20aa0fd5ffbe81c8f8cfa8bc0b557c92d89f4ec7aaa93784aea199fcd",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/graph-compiler-r2/src/bin/graph-snapshot-oracle.rs",
+          "sha256": "3398ad2c9da64ff7068cfe634c4c36bc36303cab8a2634cf88b76bad022ca738",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/graph.rs",
+        "crates/rhapsody/src/rg/resource_info.rs",
+        "crates/rhapsody/src/rg/resource_rules.rs",
+        "crates/rhapsody/src/rg/compiled.rs",
+        "crates/rhapsody/src/rg/resource_registry.rs",
+        "crates/rhapsody/src/rg/resource_pool.rs"
+      ],
+      "source_function_name_candidates": [
+        "access_mask",
+        "compile_graph",
+        "create_without_initial_data",
+        "export_transitions",
+        "fmt",
+        "info_origin",
+        "initial_transitions",
+        "into_exports",
+        "is_write",
+        "json_string",
+        "kind_code",
+        "main",
+        "parse",
+        "payload_projection",
+        "populate_resources",
+        "pre_pass_transitions",
+        "set_debug_name",
+        "to_json",
+        "transition",
+        "usage",
+        "with_usage"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "json_string",
+        "main",
+        "parse",
+        "to_json"
+      ],
+      "explanation": "`rg/graph.rs`、`resource_info.rs`、`resource_rules.rs`、`compiled.rs`、`resource_registry.rs`/`resource_pool.rs`：population、访问分析、batch、alias、exports。serde runner parse/to_json 是原验证输入输出适配",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "pipeline-descriptors-r7",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-descriptors-r7/src/lib.rs",
+          "sha256": "f77d9bb2332a76f50603d4b99ada8784b0b05933f36fd6f900e28e1c5e9037f5",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-descriptors-r7/src/main.rs",
+          "sha256": "7e6bc69c5933a6ad4791eaca38a70dca0d175c59944988db7682b5820afb3155",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-descriptors-r7/src/bin/boundary-oracle.rs",
+          "sha256": "822be3b6550cf7097a85fb2cda9018d4365fd8f2c19c01c7be58fd4e38b9d938",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/descriptor_set.rs"
+      ],
+      "source_function_name_candidates": [
+        "compute_push_range_is_optional",
+        "descriptor_set_layout",
+        "main",
+        "persistent_pool_plan",
+        "pointers_preserve_array_flags_and_immutable_sampler",
+        "runtime_descriptor_count",
+        "with_allocate_info",
+        "with_compute_pipeline_layout",
+        "with_create_info",
+        "with_pool_create_info"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "compute_push_range_is_optional",
+        "main",
+        "pointers_preserve_array_flags_and_immutable_sampler"
+      ],
+      "explanation": "`raw/descriptor_set.rs` 的 descriptor_set_layout、LayoutPlan::with_create_info、persistent_pool_plan、with_compute_pipeline_layout、pool/allocate backing array 规则",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "pipeline-interfaces-r6",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-interfaces-r6/src/lib.rs",
+          "sha256": "1eeed1d47d31ac2dbad0487d613384c07d08f29ae61d2739eec934d5b7418aa2",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-interfaces-r6/src/bin/reflect-shaders.rs",
+          "sha256": "9e51504d36ecc2639e84eabad9360e8c7fa02cf7c33721d46b9d2f9a43038adf",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/pipeline-interfaces-r6/src/bin/validate-catalog.rs",
+          "sha256": "0f34d7e696fb1a337686fb2f46422edfa638b0737daa374a72a9c9e523ba44e5",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/shader.rs"
+      ],
+      "source_function_name_candidates": [
+        "binding",
+        "conflicting_binding_types_or_counts_are_rejected",
+        "dynamic_count_and_stage_union_remain_explicit",
+        "locations",
+        "main",
+        "merge_bindings",
+        "modules",
+        "push_ranges_validate_alignment_and_overflow",
+        "reflect",
+        "stage_link_rejects_missing_or_incompatible_locations",
+        "strip_names",
+        "type_json",
+        "validate_push_constants",
+        "validate_stage_link"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "conflicting_binding_types_or_counts_are_rejected",
+        "dynamic_count_and_stage_union_remain_explicit",
+        "locations",
+        "main",
+        "merge_bindings",
+        "modules",
+        "push_ranges_validate_alignment_and_overflow",
+        "reflect",
+        "stage_link_rejects_missing_or_incompatible_locations",
+        "strip_names",
+        "type_json",
+        "validate_push_constants",
+        "validate_stage_link"
+      ],
+      "explanation": "`raw/shader.rs` 的 `ShaderInterfaces::from_reflection`：descriptor stage union/conflict、location/component/type link；`PipelineLayout::new` 检查 push alignment/overflow。反射复用原 SpirQ。旧 merge_bindings/validate_* 是分立语义投影，规则已进入实际布局生产；reflect-shaders/validate-catalog 等 CLI 留证据目录，不能当新恢复 shader 算法",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "queue-callers-r7",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/queue-callers-r7/src/lib.rs",
+          "sha256": "303cc12fd7b3472d7abe30a5c3a83a3f366371f698218b9f1814ae5be3659c88",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/queue-callers-r7/src/main.rs",
+          "sha256": "935d7a20f062904a808a9aa24075bd322060d7c5c6d47ca215e7a6a4164d6cdc",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/command_buffer.rs",
+        "crates/rhapsody/src/raw/device.rs"
+      ],
+      "source_function_name_candidates": [
+        "begin",
+        "create",
+        "ensure_active_cb",
+        "main"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "main"
+      ],
+      "explanation": "`raw/command_buffer.rs` 和 `raw/device.rs`：begin/reset、queue slot/counter 来源与异常顺序",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "queue-submit-r8",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/queue-submit-r8/src/lib.rs",
+          "sha256": "9174596b26cc7981a3f7972587e4ca3e4d32f95577aa8103bc9469021763d9e2",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/queue-submit-r8/src/main.rs",
+          "sha256": "ca480270e4c89125f4f50684fede9730267fb94f113c0a75a1c0b406eae6da49",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/submit.rs"
+      ],
+      "source_function_name_candidates": [
+        "fixture",
+        "format_outcome",
+        "main",
+        "packed",
+        "partial_failure_keeps_registered_range_and_prior_moved_command",
+        "prior_flush_current_order_reaches_ash_without_lifetime_loss",
+        "queue_submit",
+        "selected",
+        "with_vk"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "fixture",
+        "format_outcome",
+        "main",
+        "partial_failure_keeps_registered_range_and_prior_moved_command",
+        "prior_flush_current_order_reaches_ash_without_lifetime_loss"
+      ],
+      "explanation": "`raw/submit.rs`：pending flush→当前 batch、最后 open 命令结束、注册移动和失败保留；Vulkan 调用由 SubmissionEngine/后端接线",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "record-resources-r7",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/record-resources-r7/src/lib.rs",
+          "sha256": "679f97fbe39ecc740fe71113d956baaf54dacf42e4f15b617202e521f7226b87",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/record-resources-r7/src/main.rs",
+          "sha256": "2b5d04f2c41aa2d3b7c4a344a23321a5895777f5bc5ed54184a8138cd06d240c",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/recorder.rs"
+      ],
+      "source_function_name_candidates": [
+        "barrier",
+        "close_scope",
+        "created",
+        "empty_pass_export_uses_initial_and_preserves_tracker_sequence",
+        "event",
+        "failure_preserves_earlier_barriers_and_consumes_callback",
+        "fixture",
+        "invalid_later_initial_drains_before_fail_and_skips_create",
+        "main",
+        "record_batch",
+        "reused_initial_is_deferred_until_pass_and_callback_sees_barrier",
+        "submit_error_keeps_last_open_in_taken_storage_and_clears_executor",
+        "submit_pending",
+        "validate"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "created",
+        "empty_pass_export_uses_initial_and_preserves_tracker_sequence",
+        "failure_preserves_earlier_barriers_and_consumes_callback",
+        "fixture",
+        "invalid_later_initial_drains_before_fail_and_skips_create",
+        "main",
+        "reused_initial_is_deferred_until_pass_and_callback_sees_barrier",
+        "submit_error_keeps_last_open_in_taken_storage_and_clears_executor"
+      ],
+      "explanation": "`rg/recorder.rs`：初始化/创建、resource registry、逐 pass barrier、FnOnce callback、export、取出后失败/消费顺序",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "record-submit-r6",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/record-submit-r6/src/lib.rs",
+          "sha256": "600626bb465e50e2c4bb1eac1b633e400b8eeb7e54b6c00ce485a4d4c2651f2e",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/record-submit-r6/src/main.rs",
+          "sha256": "197a15c2f56091a7e12d3aadd45d4c654d132d471888c91bb3c0dfa80ab3e622",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/recorder.rs",
+        "crates/rhapsody/src/rg/executor.rs",
+        "crates/rhapsody/src/raw/submit.rs"
+      ],
+      "source_function_name_candidates": [
+        "callback_failure_does_not_append_command",
+        "empty_wait_only_panics_after_take",
+        "fmt",
+        "main",
+        "queue_call",
+        "record",
+        "submit",
+        "submit_ends_only_last_open_command"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "callback_failure_does_not_append_command",
+        "empty_wait_only_panics_after_take",
+        "main",
+        "queue_call",
+        "submit_ends_only_last_open_command"
+      ],
+      "explanation": "r6 是固定 handle 99/100、receipt 41 的事件语义 fixture，不是原真实设备实现。其 callback failure、end-last、empty wait-only、error/post-submit 顺序进入 `rg/recorder.rs`/`executor.rs` 和 `raw/submit.rs` 后续 r7/r8。旧 fixture 不并入运行时输出",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "registry-pool",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/registry-pool/src/lib.rs",
+          "sha256": "c8bcc549afc55e6fd6e3a595c3705e1a9d1914957b0d59c4a55986f59a3c8ec0",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/resource_registry.rs",
+        "crates/rhapsody/src/rg/resource_pool.rs"
+      ],
+      "source_function_name_candidates": [
+        "accessors_follow_logical_mapping_and_preserve_metadata",
+        "aliased_export_slot_is_empty_after_first_move",
+        "backing",
+        "buffer",
+        "buffer_desc",
+        "clear",
+        "default",
+        "drop",
+        "exports_move_payload_and_keep_remaining_order",
+        "image_from_raw_handle",
+        "insert_buffer",
+        "insert_texture",
+        "into_exports",
+        "moves_nonclone_handles_and_clear_drops_once_retaining_capacity",
+        "pool_is_exact_key_lifo_and_retains_empty_buckets",
+        "registry",
+        "resource",
+        "take_buffer",
+        "take_texture",
+        "texture_desc",
+        "wrong_variant_panics"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "accessors_follow_logical_mapping_and_preserve_metadata",
+        "aliased_export_slot_is_empty_after_first_move",
+        "buffer_desc",
+        "exports_move_payload_and_keep_remaining_order",
+        "moves_nonclone_handles_and_clear_drops_once_retaining_capacity",
+        "pool_is_exact_key_lifo_and_retains_empty_buckets",
+        "registry",
+        "texture_desc",
+        "wrong_variant_panics"
+      ],
+      "explanation": "`rg/resource_registry.rs`、`resource_pool.rs`：logical→physical 访问、payload move、LIFO exact-key pool、export alias 首次移动、clear 保留 capacity",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "resource-info",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/resource-info/lib.rs",
+          "sha256": "0930e6058c032ea19f9706abf29516c00a749e2eee7320d5578902f6622c01d7",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/resource-info/snapshot.rs",
+          "sha256": "471bf1254f59a545bc6732204f779d1ae1ffa1fa1b7857aa390ef6595bd59731",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/resource_info.rs",
+        "crates/rhapsody/src/raw/resource_usage.rs"
+      ],
+      "source_function_name_candidates": [
+        "calculate",
+        "clear",
+        "from",
+        "main",
+        "number",
+        "type_code"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "main",
+        "number"
+      ],
+      "explanation": "`rg/resource_info.rs`：creation/export/pass usage、access chains/lifetime；公共/原 private usage 换算在 `raw/resource_usage` 与兼容 `rg/resource_usage`",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "sequence-domain-r5",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/sequence-domain-r5/src/lib.rs",
+          "sha256": "9c6ab6fc950dc21514a642d40e04a08fac64bee98d904c39736109752297f933",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/device.rs",
+        "crates/rhapsody/src/raw/managed/lifecycle.rs"
+      ],
+      "source_function_name_candidates": [
+        "begin_cb",
+        "complete",
+        "cross_queue_sequence_collision_is_explicit",
+        "dispose",
+        "submit",
+        "timeline_gates_cb"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "begin_cb",
+        "cross_queue_sequence_collision_is_explicit",
+        "timeline_gates_cb"
+      ],
+      "explanation": "早期探索模型的 begin_cb 从 0 起、全局 u64 bucket 碰撞与队列 timeline 实验已由 r6/r8 原 slot 起始 1 和实际 SequenceRuntime 替代；`raw/device.rs`、`raw/managed/lifecycle.rs` 显式保留 collision/cross-domain 缺口。不把已被原码纠正的探索起始值重新放回生产",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "sequence-runtime-r8",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/sequence-runtime-r8/src/lib.rs",
+          "sha256": "4ef42d3e4b8e3832fc4bef045012acad81de278e240240e0888892b5f3fa0686",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/sequence-runtime-r8/src/main.rs",
+          "sha256": "badf6296d26bccb70d404f360c8357a2079e9199c63e910c504ba0d014231f41",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/raw/managed/lifecycle.rs"
+      ],
+      "source_function_name_candidates": [
+        "accept_begun",
+        "accept_queue_success",
+        "accept_submission",
+        "begin",
+        "begin_after_backend",
+        "bucket_keys",
+        "caller_snapshot",
+        "clone_handle",
+        "collect_waste",
+        "cpu_retire",
+        "create_resource",
+        "dispose_sequence",
+        "drain_bucket",
+        "drop_handle",
+        "duplicate_replaces_bucket_before_failure",
+        "failed_reset_does_not_consume_counter",
+        "failure_name",
+        "from_caller_snapshot",
+        "from_raw",
+        "handle",
+        "import_record_tracker",
+        "main",
+        "new",
+        "numbers",
+        "observe_timeline",
+        "out_of_order_recycles_cb_before_resource_gap_closes",
+        "pending_len",
+        "pool_family",
+        "pool_sequences",
+        "prefix",
+        "producer",
+        "queue",
+        "raw",
+        "ready_markers",
+        "real_one_flows_without_fixture_translation",
+        "reclaim_ready",
+        "record_command",
+        "recorder_receives_actual_command_and_tracker",
+        "recycle",
+        "resource_state",
+        "scenario",
+        "sequence",
+        "set_state",
+        "state",
+        "track",
+        "validation_failure_is_after_pending_pop"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "duplicate_replaces_bucket_before_failure",
+        "failed_reset_does_not_consume_counter",
+        "failure_name",
+        "main",
+        "numbers",
+        "out_of_order_recycles_cb_before_resource_gap_closes",
+        "real_one_flows_without_fixture_translation",
+        "recorder_receives_actual_command_and_tracker",
+        "scenario",
+        "validation_failure_is_after_pending_pop"
+      ],
+      "explanation": "`raw/managed/lifecycle.rs`：实际 DeviceCounters→Command、tracker、pending pop/validation、GPU完成到资源回收；r8 runner/failure_name/scenario 只是 oracle 显示适配",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "temporal-lifecycle-r8",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/temporal-lifecycle-r8/src/lib.rs",
+          "sha256": "90f224d69b94d363afcaa4994d0ca7ee2434814ef0c86068833c76e3c33259dd",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/temporal-lifecycle-r8/src/main.rs",
+          "sha256": "a32387dd727e526b70936c1c5e2c69fc9db60d06ed851a40d69cf24b72aa6055",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/state.rs",
+        "crates/country-core/src/render/frame_constants.rs"
+      ],
+      "source_function_name_candidates": [
+        "main",
+        "restore_temporal",
+        "should_reset_temporal",
+        "snapshot_fixture",
+        "take_for_compile"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "main",
+        "should_reset_temporal",
+        "snapshot_fixture"
+      ],
+      "explanation": "`rg/state.rs::PersistentCompileState` 的 take/restore（先取图、后验 temporal、失败不回滚/先安装后drop）；原 `should_reset_temporal` 属于 country-core consumer，已在 `country-core::render::frame_constants::FrameConstants::should_reset_temporal`，+0x80 字等于 0。snapshot_fixture 的 opaque 字节不是运行时类型",
+      "name_matching_is_not_functional_acceptance": true
+    },
+    {
+      "package": "temporal-r5",
+      "source_files": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/render/work-packages/temporal-r5/src/lib.rs",
+          "sha256": "7f5ea1fefdc8f0d49bba572ff3161111cdde8c814cc0f37f0041a6a78479a1c3",
+          "commit": "92b4ca260adacd97ac00f429ca088e8dc6e76887"
+        }
+      ],
+      "formal_modules": [
+        "crates/rhapsody/src/rg/temporal.rs"
+      ],
+      "source_function_name_candidates": [
+        "buffer_descriptor_change_is_not_compared",
+        "create",
+        "default",
+        "desc",
+        "export",
+        "export_temporal",
+        "failed_pair_keeps_first_creation_and_does_not_flip",
+        "fixed_descriptor_mismatch_panics_and_kind_mismatch_returns_error",
+        "get_and_flip_parity",
+        "get_or_create",
+        "get_or_create_pair",
+        "import",
+        "missing_creation_failure_does_not_insert",
+        "multi_frame_texture_create_export_import",
+        "pair_alternates_per_key_over_frames",
+        "texture_extent_recreates_and_replacement_failure_preserves_old"
+      ],
+      "names_not_present_in_current_rhapsody_tree": [
+        "buffer_descriptor_change_is_not_compared",
+        "failed_pair_keeps_first_creation_and_does_not_flip",
+        "fixed_descriptor_mismatch_panics_and_kind_mismatch_returns_error",
+        "get_or_create",
+        "get_or_create_pair",
+        "import",
+        "missing_creation_failure_does_not_insert",
+        "multi_frame_texture_create_export_import",
+        "pair_alternates_per_key_over_frames",
+        "texture_extent_recreates_and_replacement_failure_preserves_old"
+      ],
+      "explanation": "`rg/temporal.rs::get_or_create_temporal/get_or_create_temporal_pair/export_temporal`：原 raw0/raw1/exported2、access0x37、重复请求、extent替换/fixed断言、buffer不比较desc、pair名字/奇偶、失败保留第一次创建；物理持有/释放由 typed owner 接线。原 reset/eviction/ABI 仍不完整",
+      "name_matching_is_not_functional_acceptance": true
+    }
+  ]
+}

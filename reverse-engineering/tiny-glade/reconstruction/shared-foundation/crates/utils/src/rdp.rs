@@ -21,19 +21,25 @@ pub struct Rdp<T> {
 }
 impl<T: RdpPoint> Rdp<T> {
     /// B's emitted Vec2 producer uses epsilon=0.1 and no endpoint spacing.
-    pub fn new(points:&[T])->Self {Self::new_with_opts(points,0.1,0.0)}
+    pub fn new(points: &[T]) -> Self {
+        Self::new_with_opts(points, 0.1, 0.0)
+    }
 
     /// Keep the old result through `at`, drop the new result's first seam point,
     /// then offset its remaining source indices by the old seam source index.
     /// The first point is dropped unconditionally; no distance-based dedup is
     /// introduced. Inputs must contain the seam and matching points/indices.
-    pub fn stitch_with(&self,at:usize,other:&Self)->Self {
-        let mut points=self.points[..=at].to_vec();
+    pub fn stitch_with(&self, at: usize, other: &Self) -> Self {
+        let mut points = self.points[..=at].to_vec();
         points.extend_from_slice(&other.points[1..]);
-        let base=self.indices[at];
-        let mut indices=self.indices[..=at].to_vec();
-        indices.extend(other.indices[1..].iter().map(|&index|index.wrapping_add(base)));
-        Self {indices,points}
+        let base = self.indices[at];
+        let mut indices = self.indices[..=at].to_vec();
+        indices.extend(
+            other.indices[1..]
+                .iter()
+                .map(|&index| index.wrapping_add(base)),
+        );
+        Self { indices, points }
     }
     pub fn new_with_opts(points: &[T], epsilon: f32, min_endpoint_distance: f32) -> Self {
         if points.len() < 3 {
@@ -95,7 +101,10 @@ impl<T: RdpPoint> Rdp<T> {
 
 #[cfg(test)]
 mod completion_tests {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../../evidence/foundation-completion-2026-10-13/base-assets/rdp_tests.rs"));
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../evidence/foundation-completion-2026-10-13/base-assets/rdp_tests.rs"
+    ));
 }
 
 #[cfg(test)]

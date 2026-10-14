@@ -1,0 +1,1 @@
+use std::{fs,path::Path,collections::HashSet};fn main(){let arg=std::env::args().nth(1).unwrap();let root=Path::new(&arg);for name in ["alias","target"]{let kind=fs::symlink_metadata(root.join(name)).unwrap().file_type();println!("{name} symlink={} dir={}",kind.is_symlink(),kind.is_dir());}println!("extra {:?}",tg_package_integrity::find_extra_files(root,&HashSet::new()));}

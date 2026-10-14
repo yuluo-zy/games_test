@@ -1,0 +1,90 @@
+{
+  "schema_version": 2,
+  "date": "2026-10-14",
+  "platform": "Windows x86_64",
+  "baseline": "B",
+  "scope": "Source organization audit, gap documentation and existing validation records; no new whole-game acceptance.",
+  "workspace_packages": 25,
+  "package_readmes": 25,
+  "rustc": "1.97.1 (recorded by module owners)",
+  "declared_rust_version": "1.88",
+  "declared_msrv_tested": false,
+  "hlsl_files": 415,
+  "hlsl_headers": 155,
+  "hlsl_main_files": 260,
+  "shader_original_stage_configs": 638,
+  "checks": [
+    {
+      "command": "cargo check --workspace --all-targets --locked",
+      "exit_code": 0,
+      "log": "check-current.log",
+      "scope": "Completed before subsequent removal of two GUI packages; current25-member layout not revalidated."
+    },
+    {
+      "command": "cargo test --workspace --all-targets --locked --no-fail-fast",
+      "exit_code": 0,
+      "passed": 1480,
+      "failed": 0,
+      "ignored": 1,
+      "log": "tests-current.log",
+      "scope": "Earlier completed full workspace run. Later utility pruning and mechanical Bevy condition changes were not followed by another full test run, per user request."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "clippy-all-features.log",
+      "scope": "Completed compile/lint run; no GPU execution or full original-system acceptance claim."
+    },
+    {
+      "scope": "utils after physical removal of speculative APIs",
+      "check": "passed",
+      "tests_passed": 87,
+      "tests_failed": 0,
+      "clippy": "passed",
+      "evidence": "foundation-audit.json"
+    },
+    {
+      "scope": "country-core native-physics after final Gothic recovery",
+      "tests_passed": 1142,
+      "tests_failed": 0,
+      "strict_clippy": "passed",
+      "evidence": "../crates/country-core/country-source-coverage.json"
+    },
+    {
+      "scope": "render packages all features",
+      "tests_passed": 66,
+      "tests_failed": 0,
+      "strict_clippy": "passed",
+      "evidence": "../crates/rhapsody/migration-validation.json"
+    },
+    {
+      "scope": "Additional final full-workspace default lint/all-feature test sequence",
+      "status": "cancelled at user request",
+      "note": "User requested no reruns and only gap documentation. No completed result claimed for the cancelled sequence."
+    }
+  ],
+  "user_requested_no_reruns": true,
+  "dependency_baseline_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "external_dependencies": 506,
+  "original_B_dependency_identities": 505,
+  "documented_optional_candidate_dependencies": "dependency-exceptions.json",
+  "shader_limits": "shader-exceptions.json; original EDGE/dead depth limits preserved; no new all-DXC execution result claimed.",
+  "remaining_work_documentation": "AUDIT.md, source-coverage.json and every package README.",
+  "limitations": [
+    "Actual GPU/rhapsody game bridge and complete original ECS consumers/schedule remain incomplete.",
+    "Original Bevy fork identity and local allocator fork are unverified.",
+    "Native equality stays scoped to each original report input range; static/body recovery is not full module/game equivalence.",
+    "Final full reruns stopped at user request; completed earlier records retained with their scope."
+  ],
+  "current_workspace_member_count": 25,
+  "historical_validated_workspace_member_count": 27,
+  "subsequent_workspace_change": {
+    "missing_packages": [
+      "tg-integrity-report",
+      "crash-reporter-gui"
+    ],
+    "operation_source": "unconfirmed; not performed by the audit agents",
+    "current_membership_revalidated": false,
+    "reason": "User requested documentation only and no reruns."
+  }
+}

@@ -1,13 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/asset",
-    "crates/asset-pipe",
-    "crates/paths",
-    "crates/lang-lib",
-    "crates/theme-defs",
-    "crates/tabloid",
-    "crates/utils",
+    "crates/geforcenow",
+    "crates/feedback-reporter",
+    "crates/tg-gpu-selector",
+    "crates/crash-reporter-gui",
+    "crates/tg-integrity-report",
+    "crates/tg-iced",
+    "crates/asset", "crates/asset-pipe", "crates/paths", "crates/lang-lib",
+    "crates/theme-defs", "crates/tabloid", "crates/utils",
+    "crates/motomoto",
+    "crates/tg-text",
+    "crates/tg-package-integrity",
+    "crates/theme-fetcher", "crates/theme-server-proto",
     "crates/tg-iced",
     "crates/tg-gpu-selector",
     "crates/theme-fetcher",
@@ -36,3 +41,7 @@ original_lock_sha256 = "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c
 behavior_equivalence_required = true
 author_original_source_claimed = false
 original_features_and_workspace_layout_verified = false
+
+[patch.crates-io]
+winit = { git = "https://github.com/PounceLight/winit.git", rev = "d03de0a0a881be9422c360083151b0e7a8a2582e" }
+cosmic-text = { git = "https://github.com/PounceLight/cosmic-text.git", rev = "3da2a14ea3d063875fdc55695431e74405302b0f" }
