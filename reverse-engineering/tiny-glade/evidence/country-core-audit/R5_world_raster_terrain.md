@@ -11,6 +11,7 @@
 | 6 个命名栅格 + `AllWorldRasterWrite` | `resources/world_raster_defs.rs`：`ordered_names` / `write` | O |
 | `BrushSizes` | `resources/brush_sizes.rs`：6 个方法 | O |
 | `ActiveRasterStroke` / `InProgressRasterStroke` / `ActiveRasterStrokesStorage` | `resources/active_raster_stroke.rs`：`start_new` / `add_point` / `last` / `solidify_fluid_into` / `resample_and_smooth` / `index_mut` | O |
+| `rasterize_stroke` / `StrokeBlendMode` | `resources/world_raster.rs`（依赖 `zeno =0.2.2`） | O |
 | `TerrainHeightsData<T>` | `resources/terrain_height.rs`：`load_index_unchecked` / `sample_at_world_xz` / `copy_from_gpu` / `intersect_ray` | O |
 
 `country-core` 新增依赖 `tabloid`（工作区内已有；`Cargo.lock` 仅多一行依赖边）。
@@ -37,10 +38,19 @@
 全量：默认与 `native-physics` 均 **1284 项通过**（基线 1225）；严格 clippy（`--no-deps -D warnings`）、`cargo fmt --check`、`verify_inventory.py`、`verify_foundation_links.py` 通过；`tabloid`、`tg-building-runtime` 测试不受影响。
 
 ## 未做 / U
-- `rasterize_stroke`（0x140a16960）：依赖 `zeno`（锁文件里有，本机未缓存）的三个 blend 闭包；`rasterize_world_space_stroke`（0x140ade620）依赖 `conservative_line_raster`（锁文件里没有）。**未落码**。
+- `rasterize_world_space_stroke`（0x140ade620）：依赖 `conservative_line_raster`。**它是原版自有的工作区 crate**（`skeleton/B/crates/conservative-line-raster`，不是公开库；3.5 KB 的泛型 `conservative_plot_line` + `assert_delta`），`tiny-glade` 里还没有，需要单独一轮恢复。**未落码**。
 - `WorldRaster` 的 serde（`Expected raster ` / `End of stream while expecting raster `）、`subscribe` 的订阅记录消费方。
 - `+0x29b`（`reupload`）的置位点仍 U（只提供读写口）。
 - `DirtyTilePublisher::shared/secondary` 在原版内联、无独立符号，构造方式按使用面还原（I）。
 - `TerrainHeightsData` 的构造点、+0x00..0x58 里除已知字段外的部分、`TerrainRockMask`、`mouse_terrain_raycast`、`read_mouse_depth_value`、`cell_from_world_space`（0x140960b20：三次 `fmaf`、四通道输出，参数布局没对上）、`draw_raster` 状态机、`ui_terrain_focus_mode`。
 - 工作区里 `recovered_building::wall_collection::TerrainHeightGrid512` 与本包的 `TerrainHeightsData::sample_at_world_xz` 是同一套数学的两份实现（前者带显式 `sampling_fix` 与 `Arc<[u16]>`）；这里没有合并，后续可让前者委托 `FloatGridSampler`。
 - 渲染 pass 里的 `upload_world_raster::{PathRaster,…}`（测试用的旗标替身）与本包 `world_raster_defs` 的同名类型没有接线。
+
+## R5b：`rasterize_stroke`（zeno）
+`zeno =0.2.2`（锁文件原有，经 USTC 镜像取到本机；`Cargo.lock` 仅新增 country-core 的一条依赖边）。原版用的是带 `blend_into` 的 zeno（0.2.2 没有这个 API），所以逐像素混合自己写，覆盖度取自 zeno 的 `render_into`。
+1. 早返回：不足 2 个点（`(end-begin) < 0x18`），在选择混合模式之前（DIGEST 写“<3”）。
+2. 坐标 `((x, z)/130 + 0.5) * 512`（`divps/addps/mulps` 常量 0x1429a3c70/0x1429258e0/0x1429a3c80）；笔刷 `radius/130*512`，线宽为其两倍。
+3. 样式字节（Mask 内存 +0x1c..+0x1f）= `[2,2,2,1]`：`Join::Round`、`Cap::Round`×2、`scale = true`（`Style` 用 `scale` 字节的 2 作 Fill 的 niche，`cmp [r8+0x1f], 2`）；`miter_limit = 4.0`（0x142934694）；`size(512, 512)`；`y_up = 0`（Mask+0x8c）。
+4. 原版 `blend_into` 的 Alpha 路径是 `Rasterizer::rasterize_write`，三个闭包在 Alpha 变体里直读：`closure_env$1` = `dst = min(dst, 255 - cov)`（0x1420c9bd0）、`$0` = `dst = max(dst, cov)`（0x1420c8c80）、`$2` = `dst = dst.saturating_add(((cov * factor) >> 16) as u8)`（0x1420c9420，`factor = clamp(strength,0,1) * 65536`，0x142aa50e0）。stride 为 4 的那几份是 Subpixel 的三遍渲染，本函数不用。
+5. 选择：`flags & 1 == 0` → `draw ? Max : Erase`；`flags & 1 != 0` → `draw ? SaturatingAdd : unimplemented!()`（"not implemented"，源码行 398）。三种闭包对覆盖度 0 都是恒等，所以“先渲染覆盖度再逐像素混合”与原版结果相同。
+测试 +7（净增后全量 1291，默认与 `native-physics` 相同）。

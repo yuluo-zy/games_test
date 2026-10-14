@@ -629,11 +629,11 @@
       "destination": "crates/country-core/src/resources/world_raster.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/resources/world_raster.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "a549be03be98bf2d4a80abeb2fbccdcd5e3fd62a155f13923813640f5430b487",
+      "destination_sha256": "4e4965c5c6c6fea84c6886d5c9c04c29f8a3cdd5d35ff336aafaf22d19e43198",
       "source_commit": "b5965593",
       "source_sha256": "854f03bb5ad0531b9263bfeb7ed672a302c958cabe4df153d11e28f7a7a4446a",
       "preservation_note": "Original expression/API/evidence transcription and file-local lint allowances; see lint-preservation.json.",
-      "r5_note": "R5 (2026-10-14): WorldRaster<512> body, TileHasher, DirtyTilePublisher written directly from B EXE bytes (0x140a15530/0x140a172d0/0x140adfcb0/0x1409393e0); the RasterBufferRef part is the original import. Evidence: reverse-engineering/tiny-glade/evidence/country-core-audit/R5_world_raster_terrain.md"
+      "r5_note": "R5 (2026-10-14): WorldRaster<512> body, TileHasher, DirtyTilePublisher written directly from B EXE bytes (0x140a15530/0x140a172d0/0x140adfcb0/0x1409393e0); the RasterBufferRef part is the original import. Evidence: reverse-engineering/tiny-glade/evidence/country-core-audit/R5_world_raster_terrain.md R5b: rasterize_stroke/StrokeBlendMode (0x140a16960, zeno =0.2.2)."
     },
     {
       "destination": "crates/country-core/src/reused.rs",
@@ -1752,20 +1752,20 @@
       "method": "same as r1_r2_real_workspace; Cargo.lock gained one dependency edge (country-core -> tabloid) via the temporary USTC --config, then --offline --locked builds",
       "lib_tests": {
         "default_features": {
-          "passed": 1284,
+          "passed": 1291,
           "failed": 0
         },
         "native-physics": {
-          "passed": 1284,
+          "passed": 1291,
           "failed": 0
         }
       },
-      "test_breakdown": "1225 (through R4) + 59 R5 (dirty_tiles 7, world_raster 16, world_raster_defs 5, brush_sizes 5, active_raster_stroke 14, terrain_height 12)",
+      "test_breakdown": "1225 (through R4) + 66 R5 (59 + 7 rasterize_stroke)",
       "strict_clippy_D_warnings_no_deps_all_targets": "passed (default features)",
       "rustfmt_check": "passed",
       "other_crates": "tabloid (10 tests) and tg-building-runtime (22 tests) pass unchanged",
       "not_covered": [
-        "rasterize_stroke (zeno) and rasterize_world_space_stroke (conservative_line_raster)",
+        "rasterize_world_space_stroke (needs the in-house conservative-line-raster crate, not yet in the workspace)",
         "GPU/original-binary behaviour",
         "rust 1.88 toolchain"
       ]

@@ -6,16 +6,18 @@
 //!
 //! `WorldRaster<512>` 的字段由 `new`（0x140a15530）、`copy_to_staging`（0x140a172d0）与
 //! `DirtyTiles::retain<…>`（0x140adfcb0）逐条核对 EXE 字节得到，见 [`WorldRaster`]。
-//! `rasterize_stroke` / `rasterize_world_space_stroke`（zeno 与 conservative_line_raster 依赖）
-//! 与存档 serde 另行落码，这里不包含。
+//! `rasterize_stroke`（0x140a16960）见 [`WorldRaster::rasterize_stroke`]；
+//! `rasterize_world_space_stroke`（conservative_line_raster 依赖）与存档 serde 另行落码，这里不包含。
 //! `RasterBufferRef<512>` 是 512×512 光栅的引用（O：preplaced_flower 反编译
 //! `bilinear_sample_at_world_xz<resources::world_raster::RasterBufferRef<512>>`）。
 
 use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
+use glam::Vec3;
 use parking_lot::Mutex;
 use tabloid::{Publisher, Subscriber};
+use zeno::{Cap, Command, Join, Mask, Point, Stroke};
 
 use crate::utils::dirty_tiles::{DirtyTiles, GRID_SIZE, TILE_SIZE};
 
@@ -172,6 +174,49 @@ impl DirtyTilePublisher {
             Self::Shared(publisher) | Self::Secondary(publisher) => publisher.lock().publish(tiles),
         };
         result.expect("tabloid publication sequence exhausted");
+    }
+}
+
+/// `rasterize_stroke` 的三种混合（原版是 `closure_env$0/1/2`，由 `blend_into` 逐像素调用）。
+///
+/// 选择（0x140a16960）：`flags & 1 == 0` 时 `draw` 为真取 [`Max`](Self::Max)、否则取
+/// [`Erase`](Self::Erase)；`flags & 1 != 0` 且 `draw` 为真取 [`SaturatingAdd`](Self::SaturatingAdd)
+/// （`factor = clamp(strength, 0, 1) * 65536`）；`flags & 1 != 0` 且 `draw` 为假落到
+/// `unimplemented!()`（源码行 398）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StrokeBlendMode {
+    /// `closure_env$1`：`dst = min(dst, 255 - coverage)`。
+    Erase,
+    /// `closure_env$0`：`dst = max(dst, coverage)`。
+    Max,
+    /// `closure_env$2`：`dst = dst.saturating_add(((coverage * factor) >> 16) as u8)`。
+    SaturatingAdd { factor: u32 },
+}
+
+impl StrokeBlendMode {
+    pub fn select(draw: bool, flags: u32, strength: f32) -> Self {
+        if flags & 1 == 0 {
+            return if draw { Self::Max } else { Self::Erase };
+        }
+        if !draw {
+            unimplemented!();
+        }
+        // `0.0 <= x ? x : 0.0`，再 `x <= 1.0 ? x : 1.0`：NaN 取 0。
+        let strength = if 0.0 <= strength { strength } else { 0.0 };
+        let strength = if strength <= 1.0 { strength } else { 1.0 };
+        Self::SaturatingAdd {
+            factor: (strength * 65536.0) as u32,
+        }
+    }
+
+    pub fn blend(self, dst: u8, coverage: u8) -> u8 {
+        match self {
+            Self::Erase => dst.min(255 - coverage),
+            Self::Max => dst.max(coverage),
+            Self::SaturatingAdd { factor } => {
+                dst.saturating_add(((u32::from(coverage) * factor) >> 16) as u8)
+            }
+        }
     }
 }
 
@@ -343,6 +388,69 @@ impl<const N: usize> WorldRaster<N> {
         }
         self.dirty.set_all();
         self.staging_dirty = true;
+    }
+
+    /// O：0x140a16960 `rasterize_stroke<512, …>`。把一条折线（取每点的 x、z）画成圆头圆角的粗线，
+    /// 按 `mode` 混进所选缓冲（`selector` 0 = composite，其余 = scratch）。不改脏位图。
+    ///
+    /// - 少于 2 个点直接返回（`(end - begin) < 0x18`），先于混合模式的选择。
+    /// - 栅格坐标 `((x, z) / 130 + 0.5) * N`；笔刷半径 `radius / 130 * N`，线宽为其两倍。
+    /// - `zeno` 样式：`Stroke { width, join: Round, miter_limit: 4.0, start_cap: Round,
+    ///   end_cap: Round, dashes: [], offset: 0, scale: true }`，`Mask` 尺寸 `N × N`，原点左上，
+    ///   格式 Alpha（`blend_into` 的 `y_up = 0`）。
+    /// - 原版 `blend_into` 把覆盖度逐像素交给混合闭包，三种闭包对覆盖度 0 都是恒等，所以这里先把
+    ///   覆盖度渲染进一块零缓冲，再逐像素混合，结果相同。覆盖度函数取自 `zeno` 本身。
+    pub fn rasterize_stroke(
+        &mut self,
+        selector: u8,
+        points: &[Vec3],
+        radius: f32,
+        draw: bool,
+        flags: u32,
+        strength: f32,
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+        let side = N as f32;
+        let to_grid = |point: &Vec3| {
+            Point::new(
+                (point.x / 130.0 + 0.5) * side,
+                (point.z / 130.0 + 0.5) * side,
+            )
+        };
+        let mut commands = Vec::with_capacity(points.len());
+        commands.push(Command::MoveTo(to_grid(&points[0])));
+        commands.extend(
+            points[1..]
+                .iter()
+                .map(|point| Command::LineTo(to_grid(point))),
+        );
+        let grid_radius = radius / 130.0 * side;
+        let stroke = Stroke {
+            width: grid_radius + grid_radius,
+            join: Join::Round,
+            miter_limit: 4.0,
+            start_cap: Cap::Round,
+            end_cap: Cap::Round,
+            dashes: &[],
+            offset: 0.0,
+            scale: true,
+        };
+        let mode = StrokeBlendMode::select(draw, flags, strength);
+        let mut coverage = vec![0u8; N * N];
+        Mask::new(&commands[..])
+            .style(stroke)
+            .size(N as u32, N as u32)
+            .render_into(&mut coverage, None);
+        let target = if selector == 0 {
+            &mut self.composite
+        } else {
+            &mut self.scratch
+        };
+        for (dst, cover) in target.iter_mut().zip(coverage) {
+            *dst = mode.blend(*dst, cover);
+        }
     }
 
     /// O：0x140a172d0。把所选缓冲里变化过的脏瓦片写进暂存区 `out` 并发布脏位图。
@@ -613,5 +721,106 @@ mod tests {
         let mut out = vec![0; 0x40000];
         other.copy_to_staging(0, &mut out);
         assert_eq!(subscriber.take().unwrap().tile_indices().count(), 1);
+    }
+
+    fn line() -> [Vec3; 2] {
+        [Vec3::new(-10.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)]
+    }
+
+    #[test]
+    fn stroke_blend_modes_apply_the_exe_closures() {
+        assert_eq!(StrokeBlendMode::Erase.blend(200, 55), 200);
+        assert_eq!(StrokeBlendMode::Erase.blend(200, 255), 0);
+        assert_eq!(StrokeBlendMode::Erase.blend(10, 0), 10);
+        assert_eq!(StrokeBlendMode::Max.blend(10, 90), 90);
+        assert_eq!(StrokeBlendMode::Max.blend(100, 90), 100);
+        let half = StrokeBlendMode::SaturatingAdd { factor: 32768 };
+        assert_eq!(half.blend(10, 100), 60);
+        assert_eq!(half.blend(250, 255), 255);
+        assert_eq!(
+            StrokeBlendMode::SaturatingAdd { factor: 65536 }.blend(0, 255),
+            255
+        );
+    }
+
+    #[test]
+    fn blend_mode_selection_follows_the_exe_branches() {
+        assert_eq!(
+            StrokeBlendMode::select(false, 0, 1.0),
+            StrokeBlendMode::Erase
+        );
+        assert_eq!(StrokeBlendMode::select(true, 0, 1.0), StrokeBlendMode::Max);
+        assert_eq!(StrokeBlendMode::select(true, 2, 0.5), StrokeBlendMode::Max);
+        assert_eq!(
+            StrokeBlendMode::select(true, 1, 0.5),
+            StrokeBlendMode::SaturatingAdd { factor: 32768 }
+        );
+        assert_eq!(
+            StrokeBlendMode::select(true, 1, 7.0),
+            StrokeBlendMode::SaturatingAdd { factor: 65536 }
+        );
+        assert_eq!(
+            StrokeBlendMode::select(true, 1, -3.0),
+            StrokeBlendMode::SaturatingAdd { factor: 0 }
+        );
+        assert_eq!(
+            StrokeBlendMode::select(true, 1, f32::NAN),
+            StrokeBlendMode::SaturatingAdd { factor: 0 }
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "not implemented")]
+    fn odd_flags_without_draw_hit_unimplemented() {
+        StrokeBlendMode::select(false, 1, 1.0);
+    }
+
+    #[test]
+    fn rasterize_stroke_paints_a_round_line_through_the_centre() {
+        let mut r = raster();
+        r.rasterize_stroke(0, &line(), 1.0, true, 0, 0.0);
+        // 线宽 2 * (1 / 130 * 512) ≈ 7.88 px，中心行 y = 256。
+        assert_eq!(r.composite()[256 * 512 + 256], 255);
+        assert_eq!(r.composite()[254 * 512 + 256], 255);
+        assert_eq!(r.composite()[250 * 512 + 256], 0);
+        assert_eq!(r.composite()[262 * 512 + 256], 0);
+        // 线段 x 从 (-10/130 + .5) * 512 ≈ 217 到 ≈ 295，加半径的圆头。
+        assert_eq!(r.composite()[256 * 512 + 200], 0);
+        assert_eq!(r.composite()[256 * 512 + 300], 0);
+        assert!(r.composite()[256 * 512 + 214] > 0);
+        // 只写所选缓冲，不动脏位图。
+        assert!(r.scratch().iter().all(|b| *b == 0));
+        assert!(r.dirty().is_empty());
+    }
+
+    #[test]
+    fn rasterize_stroke_erase_clears_under_the_stroke_only() {
+        let mut r = raster();
+        r.composite_mut().fill(200);
+        r.rasterize_stroke(0, &line(), 1.0, false, 0, 0.0);
+        assert_eq!(r.composite()[256 * 512 + 256], 0);
+        assert_eq!(r.composite()[250 * 512 + 256], 200);
+    }
+
+    #[test]
+    fn rasterize_stroke_saturating_add_scales_coverage() {
+        let mut r = raster();
+        r.composite_mut().fill(100);
+        r.rasterize_stroke(0, &line(), 1.0, true, 1, 0.5);
+        // 覆盖度 255 * 0.5 = 127 → 100 + 127。
+        assert_eq!(r.composite()[256 * 512 + 256], 227);
+        assert_eq!(r.composite()[250 * 512 + 256], 100);
+    }
+
+    #[test]
+    fn rasterize_stroke_selector_and_short_input() {
+        let mut r = raster();
+        r.rasterize_stroke(1, &line(), 1.0, true, 0, 0.0);
+        assert_eq!(r.scratch()[256 * 512 + 256], 255);
+        assert!(r.composite().iter().all(|b| *b == 0));
+        // 少于 2 个点：不画，且不会走到混合模式的 unimplemented。
+        let mut r = raster();
+        r.rasterize_stroke(0, &line()[..1], 1.0, false, 1, 0.0);
+        assert!(r.composite().iter().all(|b| *b == 0));
     }
 }
