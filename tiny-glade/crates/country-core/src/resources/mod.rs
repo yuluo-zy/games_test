@@ -1,3 +1,5 @@
+pub mod active_raster_stroke;
+pub mod brush_sizes;
 pub mod color_id;
 pub mod gothic_window_profile;
 pub mod grading_lut;
@@ -25,5 +27,7 @@ pub mod cursor_terrain_raycast;
 pub mod image_formation;
 pub mod render;
 pub mod render_ssbo;
+pub mod terrain_height;
 pub mod water_mask;
 pub mod world_raster;
+pub mod world_raster_defs;

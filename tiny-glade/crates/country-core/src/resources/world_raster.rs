@@ -1,16 +1,23 @@
-//! world_raster.rs — 世界光栅缓冲族（WP6 恢复）。
+//! world_raster.rs — 世界光栅缓冲族。
 //!
 //! 源 SHA256（B skeleton）`resources/world_raster.rs`；PDB 命名实体：
 //! `WorldRaster` / `RasterBufferRef` / `DirtyTilePublisher` / `StrokeBlendMode` /
 //! `UploadWorldRasterBuffersToStagingCmd`。
+//!
+//! `WorldRaster<512>` 的字段由 `new`（0x140a15530）、`copy_to_staging`（0x140a172d0）与
+//! `DirtyTiles::retain<…>`（0x140adfcb0）逐条核对 EXE 字节得到，见 [`WorldRaster`]。
+//! `rasterize_stroke` / `rasterize_world_space_stroke`（zeno 与 conservative_line_raster 依赖）
+//! 与存档 serde 另行落码，这里不包含。
 //! `RasterBufferRef<512>` 是 512×512 光栅的引用（O：preplaced_flower 反编译
 //! `bilinear_sample_at_world_xz<resources::world_raster::RasterBufferRef<512>>`）。
 
-#![allow(dead_code, unused_imports)]
+use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
+use parking_lot::Mutex;
+use tabloid::{Publisher, Subscriber};
 
-use crate::typed_gap::Gap;
+use crate::utils::dirty_tiles::{DirtyTiles, GRID_SIZE, TILE_SIZE};
 
 /// 固定尺寸光栅缓冲引用（O：`RasterBufferRef<512>` 泛型）。
 /// 布局（O，preplaced_flower 调用点 + 采样函数 `[rcx]` 取首 qword）：`{ ptr: *const u8, len: usize }`，即一个
@@ -48,14 +55,347 @@ impl crate::utils::float_grid::FloatGridCells for RasterBufferRef<512> {
     }
 }
 
-/// 世界光栅（O：命名实体；`WorldRaster<512>` 512×512 u8 栅格）。WP20
-/// `clear_canvas` / `world_raster` 系统以 `WorldRaster<512>` 参数化。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct WorldRaster<const N: usize>(pub Gap);
+/// `build_tile_hasher`（0x1409393e0）依次写入 +0/+8/+0x10/+0x18 的四个 u64（O，字节直读）。
+pub const TILE_HASH_KEYS: [u64; 4] = [
+    0xbe73_4ee5_71db_45b0,
+    0xfca4_335f_3c9b_800a,
+    0x36de_4a17_09f2_df62,
+    0xee54_97ae_fccb_8a97,
+];
+
+/// 瓦片哈希的初值。O：`WorldRaster::new` 把 4096 个状态字全部填 `0x07954dbb`
+/// （0x142ac7e50 的 4×u32），`clear_all` 的标量尾也写这个立即数。
+/// 它正好等于全零瓦片的哈希（见测试），也就是说“从未上传过的瓦片”按“全空”处理，
+/// 空瓦片因此不会被 `copy_to_staging` 重复写出。
+pub const EMPTY_TILE_HASH: u32 = 0x0795_4dbb;
+
+/// 一个瓦片的字节数：8×8 个 u8。
+pub const TILE_BYTES: usize = TILE_SIZE * TILE_SIZE;
+
+const AHASH_MULTIPLE: u64 = 0x5851_f42d_4c95_7f2d;
+const AHASH_ROT: u32 = 23;
+
+fn folded_multiply(a: u64, b: u64) -> u64 {
+    let product = u128::from(a) * u128::from(b);
+    product as u64 ^ (product >> 64) as u64
+}
+
+/// `build_tile_hasher` 构造的瓦片哈希器。
+///
+/// O：0x140adfcb0 里 `copy_to_staging` 的闭包是对 64 字节切片做 ahash 回退实现的 `write`：
+/// `buffer = (k2 + 64) * MULTIPLE`；先吃尾部 16 字节，再依次吃 0/16/32 处的三个 16 字节块，
+/// 每块 `buffer = rol((buffer + k3) ^ folded_multiply(lo ^ k0, hi ^ k1), 23)`；
+/// 结尾 `rol(folded_multiply(buffer, k3), buffer & 63)`，取低 32 位。
+/// 编译器把 `(k2 + 64) * MULTIPLE + k3` 折成了常量 0x6b229c9255586cd1，
+/// 与 `TILE_HASH_KEYS` 相符（测试里复核）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TileHasher {
+    keys: [u64; 4],
+}
+
+/// O：0x1409393e0。
+pub fn build_tile_hasher() -> TileHasher {
+    TileHasher {
+        keys: TILE_HASH_KEYS,
+    }
+}
+
+impl TileHasher {
+    pub fn keys(&self) -> [u64; 4] {
+        self.keys
+    }
+
+    pub fn hash_tile(&self, tile: &[u8; TILE_BYTES]) -> u32 {
+        let [k0, k1, k2, k3] = self.keys;
+        let word = |index: usize| {
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&tile[index * 8..index * 8 + 8]);
+            u64::from_le_bytes(bytes)
+        };
+        let update = |buffer: u64, lo: u64, hi: u64| {
+            let combined = folded_multiply(lo ^ k0, hi ^ k1);
+            (buffer.wrapping_add(k3) ^ combined).rotate_left(AHASH_ROT)
+        };
+        let mut buffer = k2
+            .wrapping_add(TILE_BYTES as u64)
+            .wrapping_mul(AHASH_MULTIPLE);
+        buffer = update(buffer, word(6), word(7));
+        for pair in 0..3 {
+            buffer = update(buffer, word(pair * 2), word(pair * 2 + 1));
+        }
+        folded_multiply(buffer, k3).rotate_left((buffer & 63) as u32) as u32
+    }
+}
+
+/// 脏瓦片发布器。O：判别式位于首个 u64（`WorldRaster+0x60`），`subscribe`（0x140a158e0）
+/// 用 `cap - 0x7fffffffffffffff` 取 0/1/2：0 = 自有发布器，1 = 共享（`Arc<Mutex<_>>`，
+/// 先抢 parking_lot 锁再订阅），2 = secondary（订阅即 panic）。
+/// `copy_to_staging` 对 1/2 都经锁发布。
+///
+/// `unique`（0x1409393b0）为 O；`shared`/`secondary` 在原版里内联（PDB 源码行 68/72），
+/// 构造方式按 `subscribe`/`copy_to_staging` 的使用面还原（I）。
+pub enum DirtyTilePublisher {
+    Unique(Publisher<DirtyTiles>),
+    Shared(Arc<Mutex<Publisher<DirtyTiles>>>),
+    Secondary(Arc<Mutex<Publisher<DirtyTiles>>>),
+}
+
+impl DirtyTilePublisher {
+    /// O：0x1409393b0（源码行 64）。
+    pub fn unique() -> Self {
+        Self::Unique(Publisher::new())
+    }
+
+    /// 源码行 68。
+    pub fn shared() -> Self {
+        Self::Shared(Arc::new(Mutex::new(Publisher::new())))
+    }
+
+    /// 源码行 72：同一个共享发布器的从属端，只能发布。
+    pub fn secondary(primary: &Arc<Mutex<Publisher<DirtyTiles>>>) -> Self {
+        Self::Secondary(Arc::clone(primary))
+    }
+
+    fn subscribe(&mut self) -> Subscriber<DirtyTiles> {
+        match self {
+            Self::Unique(publisher) => publisher.subscribe(),
+            Self::Shared(publisher) => publisher.lock().subscribe(),
+            Self::Secondary(_) => panic!(
+                "Can't subscribe to a secondary dirty tile publisher. Go for the primary one instead."
+            ),
+        }
+    }
+
+    fn publish(&mut self, tiles: DirtyTiles) {
+        let result = match self {
+            Self::Unique(publisher) => publisher.publish(tiles),
+            Self::Shared(publisher) | Self::Secondary(publisher) => publisher.lock().publish(tiles),
+        };
+        result.expect("tabloid publication sequence exhausted");
+    }
+}
+
+/// 世界光栅（O：`WorldRaster<512>` 512×512 u8 栅格）。字段偏移来自 `new`（0x140a15530）：
+///
+/// | 偏移 | 字段 |
+/// |---|---|
+/// | +0x00 | `composite`：`Vec<u8>`，0x40000 B，`alloc_zeroed` |
+/// | +0x18 | `scratch`：同上 |
+/// | +0x30 | `tile_hashes`：`Vec<u32>`，4096 项，初值 [`EMPTY_TILE_HASH`] |
+/// | +0x48 | `tile_buffer`：`Vec<u8>`，0x40 B 零填，`copy_to_staging` 的瓦片暂存 |
+/// | +0x60 | `publisher`：[`DirtyTilePublisher`]（56 B，由调用方传入并搬入） |
+/// | +0x98 | `dirty`：[`DirtyTiles`]，0x200 B，初始为零 |
+/// | +0x298 | `selector`：最近一次 `copy_to_staging` 的缓冲选择（0 = composite） |
+/// | +0x299 | `staging_dirty` |
+/// | +0x29a | `published` |
+/// | +0x29b | `reupload`（置位点仍 U，见 [`WorldRaster::set_reupload_pending`]） |
+///
+/// `new` 把 +0x98..+0x29c 整段 `memset(0, 0x204)`，所以三个标志与 `reupload` 初值为 0。
+#[derive(Resource)]
+pub struct WorldRaster<const N: usize> {
+    composite: Vec<u8>,
+    scratch: Vec<u8>,
+    tile_hashes: Vec<u32>,
+    tile_buffer: Vec<u8>,
+    publisher: DirtyTilePublisher,
+    dirty: DirtyTiles,
+    selector: u8,
+    staging_dirty: bool,
+    published: bool,
+    reupload: bool,
+}
+
+impl<const N: usize> WorldRaster<N> {
+    /// O：0x140a15530。
+    pub fn new(publisher: DirtyTilePublisher) -> Self {
+        Self {
+            composite: vec![0; N * N],
+            scratch: vec![0; N * N],
+            tile_hashes: vec![EMPTY_TILE_HASH; GRID_SIZE * GRID_SIZE],
+            tile_buffer: vec![0; TILE_BYTES],
+            publisher,
+            dirty: DirtyTiles::new_clear(),
+            selector: 0,
+            staging_dirty: false,
+            published: false,
+            reupload: false,
+        }
+    }
+
+    pub fn composite(&self) -> &[u8] {
+        &self.composite
+    }
+
+    pub fn scratch(&self) -> &[u8] {
+        &self.scratch
+    }
+
+    pub fn composite_mut(&mut self) -> &mut [u8] {
+        &mut self.composite
+    }
+
+    pub fn scratch_mut(&mut self) -> &mut [u8] {
+        &mut self.scratch
+    }
+
+    /// `copy_to_staging` 与 `clear_buffer` 的缓冲选择：0 = composite，其余 = scratch（O：`+8/+0x10` vs `+0x20/+0x28`）。
+    pub fn buffer(&self, selector: u8) -> &[u8] {
+        if selector == 0 {
+            &self.composite
+        } else {
+            &self.scratch
+        }
+    }
+
+    pub fn dirty(&self) -> &DirtyTiles {
+        &self.dirty
+    }
+
+    pub fn dirty_mut(&mut self) -> &mut DirtyTiles {
+        &mut self.dirty
+    }
+
+    pub fn tile_hash(&self, tile_index: usize) -> u32 {
+        self.tile_hashes[tile_index]
+    }
+
+    pub fn staged_selector(&self) -> u8 {
+        self.selector
+    }
+
+    pub fn staging_dirty(&self) -> bool {
+        self.staging_dirty
+    }
+
+    /// `rasterize_world_space_stroke` 与 `AllWorldRasterWrite::write` 置位的 +0x299。
+    pub fn mark_staging_dirty(&mut self) {
+        self.staging_dirty = true;
+    }
+
+    pub fn published(&self) -> bool {
+        self.published
+    }
+
+    pub fn reupload_pending(&self) -> bool {
+        self.reupload
+    }
+
+    /// +0x29b。`water_rasterize_from_cpu` / `garden_rasterize_from_cpu` 读取并清零；
+    /// 原版里 `upload_to_staging` 路径之外的置位点没有定位（U），这里只提供读写口。
+    pub fn set_reupload_pending(&mut self, pending: bool) {
+        self.reupload = pending;
+    }
+
+    /// O：0x140a158e0。
+    pub fn subscribe(&mut self) -> Subscriber<DirtyTiles> {
+        self.publisher.subscribe()
+    }
+
+    /// O：0x140a15a10。按选择字节把整个缓冲 `memset(0)`；不动脏位图。
+    pub fn clear_buffer(&mut self, selector: u8) {
+        if selector == 0 {
+            self.composite.fill(0);
+        } else {
+            self.scratch.fill(0);
+        }
+    }
+
+    /// O：0x140a15da0。清空两个缓冲，位图 `memset(0xff)`，`staging_dirty = 1`，
+    /// 4096 个瓦片哈希复位为 [`EMPTY_TILE_HASH`]。
+    pub fn clear_all(&mut self) {
+        self.composite.fill(0);
+        self.scratch.fill(0);
+        self.dirty.set_all();
+        self.staging_dirty = true;
+        self.tile_hashes.fill(EMPTY_TILE_HASH);
+    }
+
+    /// O：0x140a161a0。长度不等时 panic（`copy_from_slice`），不动脏位图。
+    pub fn copy_composite_to_scratch(&mut self) {
+        self.scratch.copy_from_slice(&self.composite);
+    }
+
+    /// O：0x140a16580。
+    pub fn commit_scratch_to_composite(&mut self) {
+        self.composite.copy_from_slice(&self.scratch);
+    }
+
+    /// `AllWorldRasterWrite::write` 对单个栅格做的事（0x14083ebe0）：`data` 为 `None` 则清空
+    /// composite，否则长度必须相等再整块拷入；随后位图 `memset(0xff)`，`staging_dirty = 1`。
+    /// 长度不符时原版 `Result::unwrap` 一个 `Err(String)`：
+    /// `Length mismatch; expected {composite_len}, but got {data_len}`。
+    pub fn write_composite(&mut self, data: Option<&[u8]>) {
+        match data {
+            None => self.composite.fill(0),
+            Some(data) => {
+                let result: Result<(), String> = if self.composite.len() == data.len() {
+                    self.composite.copy_from_slice(data);
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Length mismatch; expected {}, but got {}",
+                        self.composite.len(),
+                        data.len()
+                    ))
+                };
+                result.unwrap();
+            }
+        }
+        self.dirty.set_all();
+        self.staging_dirty = true;
+    }
+
+    /// O：0x140a172d0。把所选缓冲里变化过的脏瓦片写进暂存区 `out` 并发布脏位图。
+    ///
+    /// 1. `staging_dirty` 置位 → `out` 整块清零（`memset(out, 0, len)`，`len == 0` 时跳过），并清标志。
+    /// 2. 记录选择字节。
+    /// 3. `DirtyTiles::retain`：每个脏瓦片从栅格取 8×8（8 个 u64，行距 `N`），算 [`TileHasher`] 哈希；
+    ///    与状态表相同 → 清位；不同 → 写入 `out[idx*64..idx*64+64]`（`idx = y*64 + x`，
+    ///    `out` 太短则越界 panic）、更新状态表并保留位。
+    /// 4. 发布保留下来的位图，`published = true`。
+    pub fn copy_to_staging(&mut self, selector: u8, out: &mut [u8]) {
+        if self.staging_dirty {
+            out.fill(0);
+            self.staging_dirty = false;
+        }
+        self.selector = selector;
+        let hasher = build_tile_hasher();
+        let source: &[u8] = if selector == 0 {
+            &self.composite
+        } else {
+            &self.scratch
+        };
+        let tile_hashes = &mut self.tile_hashes;
+        let tile: &mut [u8] = &mut self.tile_buffer;
+        self.dirty.retain(|x, y| {
+            let origin = y as usize * TILE_SIZE * N + x as usize * TILE_SIZE;
+            for row in 0..TILE_SIZE {
+                let start = origin + row * N;
+                tile[row * TILE_SIZE..(row + 1) * TILE_SIZE]
+                    .copy_from_slice(&source[start..start + TILE_SIZE]);
+            }
+            let tile_array: &[u8; TILE_BYTES] = (&*tile).try_into().expect("tile buffer is 64 B");
+            let hash = hasher.hash_tile(tile_array);
+            let index = y as usize * GRID_SIZE + x as usize;
+            if tile_hashes[index] == hash {
+                return false;
+            }
+            out[index * TILE_BYTES..(index + 1) * TILE_BYTES].copy_from_slice(tile_array);
+            tile_hashes[index] = hash;
+            true
+        });
+        self.publisher.publish(self.dirty.clone());
+        self.published = true;
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn raster() -> WorldRaster<512> {
+        WorldRaster::new(DirtyTilePublisher::unique())
+    }
 
     #[test]
     fn raster_ref_samples_u8_over_255_with_130_extent() {
@@ -67,5 +407,211 @@ mod tests {
             RasterBufferRef::<512>::new(&ZERO).bilinear_sample_at_world_xz(5.0, -3.0, 130.0, 130.0),
             0.0
         );
+    }
+
+    #[test]
+    fn tile_hash_constants_are_consistent_with_the_compiler_folded_immediate() {
+        let [_, _, k2, k3] = TILE_HASH_KEYS;
+        // 0x140adfd3d..0x140adfd58：`rdx = MULTIPLE * 0x40 + 0x6b229c9255586cd1`，
+        // 即 `(k2 + 64) * MULTIPLE + k3` 的折叠。
+        let folded = k2
+            .wrapping_add(TILE_BYTES as u64)
+            .wrapping_mul(AHASH_MULTIPLE)
+            .wrapping_add(k3);
+        assert_eq!(
+            folded,
+            AHASH_MULTIPLE
+                .wrapping_mul(64)
+                .wrapping_add(0x6b22_9c92_5558_6cd1)
+        );
+    }
+
+    #[test]
+    fn empty_tile_hashes_to_the_initial_state_word() {
+        let hasher = build_tile_hasher();
+        assert_eq!(hasher.hash_tile(&[0; TILE_BYTES]), EMPTY_TILE_HASH);
+    }
+
+    #[test]
+    fn tile_hash_matches_independent_transcription_vectors() {
+        // 向量由与 Rust 无关的 Python 按 0x140adfcb0 汇编逐条转写得到。
+        let hasher = build_tile_hasher();
+        let mut ramp = [0u8; TILE_BYTES];
+        for (i, b) in ramp.iter_mut().enumerate() {
+            *b = i as u8;
+        }
+        assert_eq!(hasher.hash_tile(&ramp), 0x44fd_b575);
+        assert_eq!(hasher.hash_tile(&[255; TILE_BYTES]), 0x5170_679f);
+    }
+
+    #[test]
+    fn new_layout_matches_the_exe_constructor() {
+        let r = raster();
+        assert_eq!(r.composite().len(), 0x40000);
+        assert_eq!(r.scratch().len(), 0x40000);
+        assert!(r.composite().iter().all(|b| *b == 0));
+        assert_eq!(r.tile_hashes.len(), 0x1000);
+        assert!(r.tile_hashes.iter().all(|h| *h == 0x0795_4dbb));
+        assert_eq!(r.tile_buffer.len(), 0x40);
+        assert!(r.dirty().is_empty());
+        assert!(!r.staging_dirty() && !r.published() && !r.reupload_pending());
+        assert_eq!(r.staged_selector(), 0);
+    }
+
+    #[test]
+    fn copy_to_staging_writes_changed_tiles_in_tile_major_order() {
+        let mut r = raster();
+        // 栅格像素 (x=9, y=17) 落在瓦片 (1, 2)，瓦片内 (1, 1)。
+        r.composite_mut()[17 * 512 + 9] = 0xab;
+        r.dirty_mut().set_all();
+        let mut out = vec![0xee; 0x40000];
+        let mut subscriber = r.subscribe();
+        r.copy_to_staging(0, &mut out);
+        // staging_dirty 未置位 → 不先清零 out；空瓦片哈希未变不写出。
+        assert!(out.iter().all(|b| *b == 0xee || *b == 0 || *b == 0xab) && out[0] == 0xee);
+        let index = 2 * 64 + 1;
+        let tile = &out[index * 64..index * 64 + 64];
+        assert_eq!(tile[8 + 1], 0xab);
+        assert_eq!(tile.iter().filter(|b| **b != 0).count(), 1);
+        assert_ne!(r.tile_hash(index), EMPTY_TILE_HASH);
+        // 只保留变化过的那一个位。
+        assert_eq!(r.dirty().tile_indices().collect::<Vec<_>>(), [index]);
+        assert!(r.published());
+        let batch = subscriber.take().unwrap();
+        assert_eq!(batch.tile_indices().collect::<Vec<_>>(), [index]);
+    }
+
+    #[test]
+    fn unchanged_tiles_are_dropped_on_the_next_call() {
+        let mut r = raster();
+        r.composite_mut()[0] = 1;
+        r.dirty_mut().set_all();
+        let mut out = vec![0; 0x40000];
+        r.copy_to_staging(0, &mut out);
+        assert_eq!(r.dirty().tile_indices().count(), 1);
+        out.fill(0x77);
+        r.copy_to_staging(0, &mut out);
+        assert!(r.dirty().is_empty());
+        assert!(out.iter().all(|b| *b == 0x77));
+    }
+
+    #[test]
+    fn staging_dirty_clears_the_output_first_and_resets_the_flag() {
+        let mut r = raster();
+        r.mark_staging_dirty();
+        let mut out = vec![0x55; 0x40000];
+        r.copy_to_staging(1, &mut out);
+        assert!(out.iter().all(|b| *b == 0));
+        assert!(!r.staging_dirty());
+        assert_eq!(r.staged_selector(), 1);
+    }
+
+    #[test]
+    fn selector_chooses_scratch_buffer() {
+        let mut r = raster();
+        r.scratch_mut()[0] = 9;
+        r.dirty_mut().set_all();
+        let mut out = vec![0; 0x40000];
+        r.copy_to_staging(0, &mut out);
+        assert!(out.iter().all(|b| *b == 0));
+        r.dirty_mut().set_all();
+        r.copy_to_staging(1, &mut out);
+        assert_eq!(out[0], 9);
+    }
+
+    #[test]
+    #[should_panic]
+    fn too_short_staging_buffer_panics_like_the_exe_bounds_check() {
+        let mut r = raster();
+        // 最后一个瓦片 (63, 63)：需要 4096 * 64 = 0x40000 B 的暂存区。
+        r.composite_mut()[511 * 512 + 511] = 1;
+        r.dirty_mut().set_all();
+        let mut out = vec![0; 0x3ffff];
+        r.copy_to_staging(0, &mut out);
+    }
+
+    #[test]
+    fn clear_all_resets_buffers_hashes_and_marks_everything_dirty() {
+        let mut r = raster();
+        r.composite_mut()[5] = 3;
+        r.scratch_mut()[6] = 4;
+        r.tile_hashes[10] = 1;
+        r.clear_all();
+        assert!(r.composite().iter().all(|b| *b == 0));
+        assert!(r.scratch().iter().all(|b| *b == 0));
+        assert_eq!(r.tile_hash(10), EMPTY_TILE_HASH);
+        assert_eq!(r.dirty().tile_indices().count(), 4096);
+        assert!(r.staging_dirty());
+    }
+
+    #[test]
+    fn clear_buffer_touches_only_the_selected_buffer_and_not_the_bitmap() {
+        let mut r = raster();
+        r.composite_mut()[0] = 1;
+        r.scratch_mut()[0] = 2;
+        r.clear_buffer(1);
+        assert_eq!(r.composite()[0], 1);
+        assert_eq!(r.scratch()[0], 0);
+        r.clear_buffer(0);
+        assert_eq!(r.composite()[0], 0);
+        assert!(r.dirty().is_empty());
+        assert!(!r.staging_dirty());
+    }
+
+    #[test]
+    fn composite_scratch_copies_do_not_dirty_anything() {
+        let mut r = raster();
+        r.composite_mut()[7] = 8;
+        r.copy_composite_to_scratch();
+        assert_eq!(r.scratch()[7], 8);
+        r.scratch_mut()[7] = 9;
+        r.commit_scratch_to_composite();
+        assert_eq!(r.composite()[7], 9);
+        assert!(r.dirty().is_empty());
+    }
+
+    #[test]
+    fn write_composite_marks_all_dirty_and_staging_dirty() {
+        let mut r = raster();
+        let data = vec![3u8; 0x40000];
+        r.write_composite(Some(&data));
+        assert_eq!(r.composite()[0x3ffff], 3);
+        assert_eq!(r.dirty().tile_indices().count(), 4096);
+        assert!(r.staging_dirty());
+        r.write_composite(None);
+        assert_eq!(r.composite()[0x3ffff], 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Length mismatch; expected 262144, but got 5")]
+    fn write_composite_length_mismatch_unwraps_the_formatted_error() {
+        raster().write_composite(Some(&[0; 5]));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Can't subscribe to a secondary dirty tile publisher. Go for the primary one instead."
+    )]
+    fn subscribing_to_a_secondary_publisher_panics() {
+        let primary = Arc::new(Mutex::new(Publisher::new()));
+        let mut r: WorldRaster<512> = WorldRaster::new(DirtyTilePublisher::secondary(&primary));
+        let _ = r.subscribe();
+    }
+
+    #[test]
+    fn shared_primary_receives_secondary_publications() {
+        let primary = DirtyTilePublisher::shared();
+        let DirtyTilePublisher::Shared(arc) = &primary else {
+            unreachable!()
+        };
+        let secondary = DirtyTilePublisher::secondary(arc);
+        let mut owner: WorldRaster<512> = WorldRaster::new(primary);
+        let mut subscriber = owner.subscribe();
+        let mut other: WorldRaster<512> = WorldRaster::new(secondary);
+        other.composite_mut()[0] = 1;
+        other.dirty_mut().set_all();
+        let mut out = vec![0; 0x40000];
+        other.copy_to_staging(0, &mut out);
+        assert_eq!(subscriber.take().unwrap().tile_indices().count(), 1);
     }
 }
