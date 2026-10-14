@@ -7,9 +7,9 @@
   },
   "author_source_claim": false,
   "summary": {
-    "mapped_source_files": 188,
+    "mapped_source_files": 189,
     "by_classification": {
-      "recovered_functional_module_with_documented_O_I_U_boundaries": 175,
+      "recovered_functional_module_with_documented_O_I_U_boundaries": 176,
       "observed_render_marker_fragment": 1,
       "engineering_stable_reference_container_adapter_not_original_frozen": 1,
       "observed_color_id_fragment": 1,
@@ -1569,10 +1569,10 @@
       "destination": "crates/country-core/src/utils/mod.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/utils/mod.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "d3853e972299d76c01607dabcc795c1948f61d3cef30c6c8896ba882721ba026",
+      "destination_sha256": "de5cd9e2425269c2fe6eeb32b4a8670f3bbefdb5bdd00b2f9b0f2538fb699888",
       "source_commit": "b5965593",
       "source_sha256": "5942f11c7b3164470f77e3da74173838d8800fa23338f00cce6b0ddcebd0aa20",
-      "r5_note": "R5 (2026-10-14): added module declarations for the new world-raster/terrain files; no other change."
+      "r5_note": "R5 (2026-10-14): added module declarations for the new world-raster/terrain files; no other change. R6: world_space_to_screen_space + project_cursor_onto_ray module."
     },
     {
       "destination": "crates/country-core/src/utils_contract.rs",
@@ -1669,6 +1669,15 @@
       "source_commit": null,
       "source_note": "Written 2026-10-14 (R5) directly from B EXE bytes; there is no old-tree counterpart, so the evidence note is recorded as the source. TerrainHeightsData::{load_index_unchecked,sample_at_world_xz,copy_from_gpu,intersect_ray} (0x1408b54c0/0x1409e9640/0x1409ea020/0x1409e9a20).",
       "preservation_note": "Every recovered function carries its B address and O/I/U grading in doc comments; tests assert EXE constants. File-local lint allowances (if any) are listed in lint-preservation.json."
+    },
+    {
+      "destination": "crates/country-core/src/utils/project_cursor_onto_ray.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R6_utils_screen_space.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "657f0211c8c8a49e07f68adb912b4e4d39c4314ba4a0e8adf40609867e85348c",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 (R6) directly from B EXE bytes; evidence note recorded as source. ProportionalScreenSpace::{from_window_size,transform_screen_space}, ProportionalScreenSpaceCoord::project_onto_ray (0x140ac8420/50/a0).",
+      "preservation_note": "Addresses and O/I/U grading in doc comments; constants as EXE bit patterns."
     }
   ],
   "exclusions": [
@@ -1769,6 +1778,22 @@
         "GPU/original-binary behaviour",
         "rust 1.88 toolchain"
       ]
+    },
+    "r6_utils_screen_space": {
+      "date": "2026-10-14",
+      "lib_tests": {
+        "default_features": {
+          "passed": 1300,
+          "failed": 0
+        },
+        "native-physics": {
+          "passed": 1300,
+          "failed": 0
+        }
+      },
+      "strict_clippy_D_warnings_no_deps_all_targets": "passed",
+      "rustfmt_check": "passed",
+      "note": "1300 includes the 1291 of R5b plus 9 from the merged upstream work"
     }
   },
   "coverage_audit": "crates/country-core/country-source-coverage.json"
