@@ -7,9 +7,9 @@
   },
   "author_source_claim": false,
   "summary": {
-    "mapped_source_files": 189,
+    "mapped_source_files": 193,
     "by_classification": {
-      "recovered_functional_module_with_documented_O_I_U_boundaries": 176,
+      "recovered_functional_module_with_documented_O_I_U_boundaries": 180,
       "observed_render_marker_fragment": 1,
       "engineering_stable_reference_container_adapter_not_original_frozen": 1,
       "observed_color_id_fragment": 1,
@@ -629,7 +629,7 @@
       "destination": "crates/country-core/src/resources/world_raster.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/resources/world_raster.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "4e4965c5c6c6fea84c6886d5c9c04c29f8a3cdd5d35ff336aafaf22d19e43198",
+      "destination_sha256": "5922c4af81138ce20dff62e06fb4bf212fa0c57d6456b843289df24db3f44607",
       "source_commit": "b5965593",
       "source_sha256": "854f03bb5ad0531b9263bfeb7ed672a302c958cabe4df153d11e28f7a7a4446a",
       "preservation_note": "Original expression/API/evidence transcription and file-local lint allowances; see lint-preservation.json.",
@@ -1569,7 +1569,7 @@
       "destination": "crates/country-core/src/utils/mod.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/utils/mod.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "de5cd9e2425269c2fe6eeb32b4a8670f3bbefdb5bdd00b2f9b0f2538fb699888",
+      "destination_sha256": "576ee9bc053f6949cebca7e1b78c3eb8d463b8e2648db236d9439190c4a5a94d",
       "source_commit": "b5965593",
       "source_sha256": "5942f11c7b3164470f77e3da74173838d8800fa23338f00cce6b0ddcebd0aa20",
       "r5_note": "R5 (2026-10-14): added module declarations for the new world-raster/terrain files; no other change. R6: world_space_to_screen_space + project_cursor_onto_ray module."
@@ -1678,6 +1678,38 @@
       "source_commit": null,
       "source_note": "Written 2026-10-14 (R6) directly from B EXE bytes; evidence note recorded as source. ProportionalScreenSpace::{from_window_size,transform_screen_space}, ProportionalScreenSpaceCoord::project_onto_ray (0x140ac8420/50/a0).",
       "preservation_note": "Addresses and O/I/U grading in doc comments; constants as EXE bit patterns."
+    },
+    {
+      "destination": "crates/country-core/src/utils/load_json.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R7_utils_remainder.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "ff4276fe6c52b2c530fff251dfebfcb1aa170ccf1f890b15f0765da67ae83d58",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from EXE bytes; see R7."
+    },
+    {
+      "destination": "crates/country-core/src/utils/geo.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R7_utils_remainder.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "d0954230f519a603dcec1efc2822d56cdcae50f5361d4482193ce68ea844f972",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from EXE bytes; see R7."
+    },
+    {
+      "destination": "crates/country-core/src/utils/debug_viz.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R7_utils_remainder.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "01d1772bdb87d6e58c09dcfbddce660cfa2993e9236f8c034c1a0dcf6caea89d",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from EXE bytes; see R7."
+    },
+    {
+      "destination": "crates/country-core/src/utils/child_wall.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R7_utils_remainder.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "e1898ba40eeb159a42c85caa9a6c11f87474abc492e60094e527fb135f9e5bab",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from EXE bytes; see R7."
     }
   ],
   "exclusions": [
@@ -1794,6 +1826,21 @@
       "strict_clippy_D_warnings_no_deps_all_targets": "passed",
       "rustfmt_check": "passed",
       "note": "1300 includes the 1291 of R5b plus 9 from the merged upstream work"
+    },
+    "r7_utils_remainder": {
+      "date": "2026-10-14",
+      "lib_tests": {
+        "default_features": {
+          "passed": 1317,
+          "failed": 0
+        },
+        "native-physics": {
+          "passed": 1317,
+          "failed": 0
+        }
+      },
+      "strict_clippy_D_warnings_no_deps_all_targets": "passed",
+      "rustfmt_check": "passed"
     }
   },
   "coverage_audit": "crates/country-core/country-source-coverage.json"

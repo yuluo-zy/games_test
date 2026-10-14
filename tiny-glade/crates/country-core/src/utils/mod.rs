@@ -1,6 +1,10 @@
+pub mod child_wall;
+pub mod debug_viz;
 pub mod dirty_tiles;
 pub mod float_grid;
+pub mod geo;
 pub mod index_condenser;
+pub mod load_json;
 pub mod project_cursor_onto_ray;
 pub mod components {
     pub mod transform;

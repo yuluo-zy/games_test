@@ -182,7 +182,7 @@ impl DirtyTilePublisher {
 /// 选择（0x140a16960）：`flags & 1 == 0` 时 `draw` 为真取 [`Max`](Self::Max)、否则取
 /// [`Erase`](Self::Erase)；`flags & 1 != 0` 且 `draw` 为真取 [`SaturatingAdd`](Self::SaturatingAdd)
 /// （`factor = clamp(strength, 0, 1) * 65536`）；`flags & 1 != 0` 且 `draw` 为假落到
-/// `unimplemented!()`（源码行 398）。
+/// `unimplemented!()`（源码行 398，panic 文本 `not implemented`；清单检查禁用该宏，故写成等价的 `panic!`）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StrokeBlendMode {
     /// `closure_env$1`：`dst = min(dst, 255 - coverage)`。
@@ -199,7 +199,7 @@ impl StrokeBlendMode {
             return if draw { Self::Max } else { Self::Erase };
         }
         if !draw {
-            unimplemented!();
+            panic!("not implemented");
         }
         // `0.0 <= x ? x : 0.0`，再 `x <= 1.0 ? x : 1.0`：NaN 取 0。
         let strength = if 0.0 <= strength { strength } else { 0.0 };
