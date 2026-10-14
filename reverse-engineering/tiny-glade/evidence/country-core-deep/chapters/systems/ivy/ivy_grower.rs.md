@@ -9,7 +9,7 @@
 | 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
 | `country_core::systems::ivy::ivy_grower::ivy_grower` | 0x14094a910 | 47 | 系统:生长 | O：ivy_grower（0x14094a910..0x14094c7fb，7915B 单函数）——10 相状态机（跳表 0x142ab3be0，索引 world+0x118）；主闭包 0x14094ac20：last_point→get_direction→closest_segment_index→墙跳→add_point | collision-eco\decomp\decomp-0x14094a910.txt |
-| `country_core::systems::ivy::ivy_grower::closest_segment_index` | 0x14094c800 | 401 | 几何/碰撞 | O：closest_segment_index（666B）——28B 步长墙段 {xy0,xy1,h0@+0xc,h1@+0x1c} 投影+高度≤max_ivy_grow_height 过滤 | collision-eco\decomp\decomp-0x14094c800.txt |
+| `country_core::systems::ivy::ivy_grower::closest_segment_index` | 0x14094c800 | 401 | 几何/碰撞 | O：closest_segment_index（666B）——**56B 步长**墙段（循环 `add r9,0x38`；xy0@0/xy1@8/h0@+0x18/h1@+0x1c）+ 高度≤max_ivy_grow_height 过滤（h0<=max 或 h1<=max 跳过）【review-audit 纠错：步长 28→56、h0@+0xc→+0x18】 | collision-eco\decomp\decomp-0x14094c800.txt |
 | `country_core::systems::ivy::ivy_grower::get_wall_double_sided_normal` | 0x14094caa0 | 471 | 几何/碰撞 | O：get_wall_double_sided_normal——双面法线（v2 名址） | collision-eco\decomp\decomp-0x14094caa0.txt |
 | `country_core::systems::ivy::ivy_grower::intersect_ivy_growth_w_wall_segment` | 0x14094cc60 | 513 | 几何/碰撞 | O：intersect_ivy_growth_w_wall_segment——生长线是否穿墙段（v2 名址） | collision-eco\decomp\decomp-0x14094cc60.txt |
 

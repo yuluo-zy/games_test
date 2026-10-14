@@ -1,0 +1,65 @@
+# 原字节手解证据（Ghidra NotFound 小函数，rne-read.py --hex）
+# 逐函数列出反汇编要点（机器码为准）
+
+## meta_commander
+- 0x14091f0c0 peek: `cmp [rcx+0x18],0; jz; mov rax,[rcx]; mov rdx,[rcx+0x10]; xor r8d,r8d;
+  cmp rdx,rax; cmovae r8,rax; sub rdx,r8; imul rax,rdx,0x38; add rax,[rcx+0x08]; ret`
+  = VecDeque front(): len==0->null; ptr + (head-(head>=cap?cap:0))*0x38.
+- 0x14091f0f0 is_profiling: `cmp [rcx+0x38],0; setne al; ret`
+- 0x14091f100 consume: pop_front; head=len-(new>=cap?cap:0)+1; len-1; copy 0x38B
+  (movups xmm0/xmm1/xmm2 + mov qword [r9+rcx+0x30]).
+
+## game_key_bindings
+- 0x14089b110 default: 36 u32 键码 @12B stride from 0x00:
+  0x2a,0x26,0x14,0x17,0x18,0x24,0xc3,0xc3,0xc3,0xc3,
+  0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x23,0x27,0x2d,0x2b,0xc3,0x38,0xab,0xa5,
+  0x1b,0x49,0x3a,0x51,0x52,0x50,0x53,0x4f,0x4e
+  then [0x1b0]=0xc3(u32); [0x1bc]=1,[0x1c0]=2,[0x1c4]=1 (u16 mouse).
+
+## game_profile
+- 0x1400da0c0 fmt: 大函数 prologue `55 41 57 41 56 56 57 53 48 81 ec 38 05 00 00`（0x538 帧）.
+- 0x140916420 default: 委托 FUN_140c102e0.
+
+## input/action_set
+- 0x14093fa70 pressed: `cmp ecx,3; setb al` (idx<3)
+- 0x14093fa80 released: `add ecx,-3; cmp ecx,2; setb al` ((idx-3)<2)
+- 0x14093fa90 just_pressed: jumptable dispatch `lea rcx,[tbl]; movsxd rax,[rcx+rax*4]; add rax,rcx; jmp rax`
+- 0x14093fac0 just_released: `cmp ecx,3; sete al` (idx==3)
+- 0x1409487b0 just_pressed: tag[rcx]==1 && inner[rcx+1]==1 && jumptable on [rcx+4]
+- 0x1409487e0 pressed: tag==1 && inner==1 && [rcx+4]<3
+- 0x140948800 as_analog: tag==0 && byte[rcx+1]==0 -> movsd Vec2@[rdx+4]->out@+4, out[0]=1(Some)
+- 0x140946620 MainActionSet::just_pressed: 短函数
+- 0x14093fa60 impl$0::default: `mov eax,4; ret` (variant 4 = default state)
+
+## input/input_stream
+- 0x140949170 sync_point_count: `mov rax,[rcx+0x18]; ret`
+- 0x140949180 frame_count: `mov rax,[rcx+0x38]; ret`
+- 0x140949480 last_frame_mut: `mov rax,[rcx+0x38]; test; jz; rdx=[rcx+0x20]; r8=[rcx+0x30];
+  add rax,r8; dec; cmp; cmovae r8,rdx; sub; imul 0xd0; add [rcx+0x28]`
+  = ((count+head-1)-(>=cap?cap:0))*0xd0 + ptr; empty->null.
+
+## utils/mod + project_cursor
+- 0x140ac8780 world_space_to_screen_space: 4x4 VP 矩阵列乘（mulps @r8+0x80/0x90/0xa0, +0xb0 offset）+
+  透视除 + 屏幕缩放（原字节）.
+- 0x140ac8420 from_window_size: 16B {size:Vec2(w,h), aspect:f32 w/h @+8, 1.0f @+0xc}
+  （cvtsi2ss w,h; divss; movss 3 次; mov [0xc]=0x3f800000）.
+
+## input/mod + panic_repro
+- 0x140958eb0/ef0 new_default_controller/mouse_keyboard: 构造 0x20B {u64,u32,u64,u32};
+  常量 r9d=0x0ee6b280(250000000).
+- 0x140958f30 mode: 比较 [rcx]vs[rcx+0x10] + [rcx+8]vs[rcx+0x18]; 0xff 哨兵 cmovc.
+- 0x1408c5680 is_controller: `movzx eax,[rcx]; ret`（判别字节，Controller=1）.
+- 0x140833230 is_inactive: `cmp [rcx],0; sete al; ret`.
+
+## utils/debug_viz
+- 0x140b02490 DebugSphere::new: [0x00]=0; [0x10]=0x3dcccccd(0.1f radius); center x@0x14,y@0x18,z@0x1c;
+  [0x20]=0x3f800000(1.0f).
+
+## utils/dirty_tiles
+- 0x140960ac0 new_clear: `push rsi; sub rsp,0x20; mov rsi,rcx; mov r8d,0x200; xor edx,edx; call memset; ret`
+- 0x140960ae0 rasterize_world_space_rect: tail-jmp rasterize 闭包变体.
+- 0x140960af0 intersects_world_space_rect: 栈 bool + 闭包变体, 返 byte.
+- 0x140960b20 cell_from_world_space: 双 fmaf + cvttss2si + 0x7fffffff cmovc + <0x40 判定.
+- 0x140960c20 clear: `mov r8d,0x200; xor edx,edx; jmp memset`.
+- 0x140960c30 extend: 32x `movups/orps` 16B OR.
+- 0x140960ef0 impl$2::apply_to: `movups [rcx] / orps` 16B OR（tabloid StateDelta::apply_to）.

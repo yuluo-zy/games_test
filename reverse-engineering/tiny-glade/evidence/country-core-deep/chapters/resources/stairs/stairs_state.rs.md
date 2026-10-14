@@ -12,7 +12,7 @@
 | `country_core::resources::stairs::stairs_state::_::impl$0::serialize<serde_json::value::ser::Serializer>` | 0x14157d500 | 38 | 派生胶水 | O：serde derive（复用依赖，不计业务） |  |
 | `country_core::resources::stairs::stairs_state::impl$1::from` | 0x1408fe5c0 | 50 | 转换 | I：From 转换 |  |
 | `country_core::resources::stairs::stairs_state::TransientStairEdgeIdAllocator::get_or_allocate` | 0x1408fe5e0 | 79 | 构造 | O：TransientStairEdgeIdAllocator::get_or_allocate——已有返 id，否则插 next+1 | collision-eco\decomp\decomp-0x1408fe5e0.txt |
-| `country_core::resources::stairs::stairs_state::StairsState::try_set_endpoint` | 0x1408fe7b0 | 98 | 系统:写入 | O：try_set_endpoint——候选邻边≥8→Unset，否则 Single | collision-eco\decomp\decomp-0x1408fe7b0.txt |
+| `country_core::resources::stairs::stairs_state::StairsState::try_set_endpoint` | 0x1408fe7b0 | 98 | 系统:写入 | O：try_set_endpoint——候选邻边**≥2**→Unset，否则 Single（`7 < len*8-8`；review-audit 纠错：阈值 8→2） | collision-eco\decomp\decomp-0x1408fe7b0.txt |
 | `country_core::resources::stairs::stairs_state::StairsState::unset_endpoint` | 0x1408fe880 | 107 | 系统:写入 | O：unset_endpoint=写 qword[+0x10]=3 | collision-eco\decomp\decomp-0x1408fe880.txt |
 | `country_core::resources::stairs::stairs_state::StairsState::endpoint` | 0x1408fe890 | 110 | 查询/计算 | O：endpoint getter——拷贝 24B（判别 qword@+0x10+数据@+0x18/+0x20） | collision-eco\decomp\decomp-0x1408fe890.txt |
 | `country_core::resources::stairs::stairs_state::StairsState::graph` | 0x1408fe8b0 | 114 | 查询/计算 | O：graph getter=&self+0x28（GraphMap 起点） | collision-eco\decomp\decomp-0x1408fe8b0.txt |

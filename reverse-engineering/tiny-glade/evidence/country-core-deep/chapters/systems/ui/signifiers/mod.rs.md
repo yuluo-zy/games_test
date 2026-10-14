@@ -18,7 +18,7 @@
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::new` | 0x14089d9b0 | 153 | 构造（SignifierEntityBuilder::new） | O（wp15 b6）：35 callers，默认值序列见文件作用 | wp15/analysis/b6_widgets/new_0x14089d9b0.c |
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass` | 0x14089dad0 | 173 | set_ui_pass | O：字节@0x8a 置位（UI pass 标志） |  |
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader` | 0x14089db00 | 184 | custom_shader | O：String 写 @0x60..0x70 | wp15/analysis/b6_widgets/custom_shader_0x14089db00.c |
-| `country_core::systems::ui::signifiers::SignifierEntityBuilder::position` | 0x14089dc00 | 189 | position | O：Vec2 @0x7c（24 callers） |  |
+| `country_core::systems::ui::signifiers::SignifierEntityBuilder::position` | 0x14089dc00 | 189 | position | O：12B 足迹 @0x7c..0x87（mov [rdx+0x7c],rax(8B)+mov [rdx+0x84],eax(4B)——Vec3 或 Vec2+extra f32；review-audit 纠错：非仅 Vec2）（24 callers） |  |
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation` | 0x14089dc30 | 194 | rotation | O：f32 写（13 callers） | wp15/analysis/b7_signifiers/rotation_0x14089dc30.c |
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::scale` | 0x14089dc60 | 199 | scale | O：f32 写（21 callers） | wp15/analysis/b7_signifiers/scale_0x14089dc60.c |
 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration` | 0x14089dc90 | 211 | animation_duration | O：f32 写（35 callers） | wp15/analysis/b7_signifiers/animation_duration_0x14089dc90.c |

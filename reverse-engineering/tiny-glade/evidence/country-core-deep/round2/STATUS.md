@@ -39,3 +39,14 @@ color_id 默认值、steam user_id、shutdown 签名。
 | camera-time | 21/21 | 5 | 0 | ✅ 完成 |
 | collision-eco | 34/34 | 2（累计 202） | 0 | ✅ 完成 |
 | audio-misc | 59（53 骨架 + 补建 6 零函数章） | 0（全有既有证据） | 0 | ✅ 完成 |
+
+## 第四轮（缺陷清单 4 路并发，2026-10-14 晚）
+
+| 路 | agent | 结果 |
+|---|---|---|
+| startup-components | a1deff4d | ✅ 38 章/138 业务全 O；load_prefabs_impl 154KB 资产链源头；transient_mesh 布局不符建议对齐 |
+| utils-input-config | ab2fc0c4 | ✅ 15 章/O104/I5/U0；DirtyTiles=tabloid State；GameProfile 6 字段修正；load_json 自定义解析器 |
+| render-gap | a6288a9f | ✅ 19 单元核实（3 真实+16 胶水）；§5.2 全闭合（含 B_c3"无写入"纠正）；仍 U 仅 roof_tiles_gravity uniform 名 |
+| review-audit | a5f85a39 | ✅ 36 条抽查 ✓26/⚠5/✗5（3 条严重：closest_segment_index 56B、try_set_endpoint ≥2、DragState==3）；11 条纠正清单 |
+
+待办：回填章节修正（review-audit 5✗ + 可闭合项）→ 统一收口文档。

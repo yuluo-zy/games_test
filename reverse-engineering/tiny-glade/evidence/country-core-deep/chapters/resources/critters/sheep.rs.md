@@ -15,7 +15,7 @@
 | `country_core::resources::critters::sheep::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::PrettyFormatter> > >` | 0x1413ff400 | 29 | 派生胶水 | O：serde derive（复用依赖，不计业务） | collision-eco\decomp\decomp-0x1413ff400.txt |
 | `country_core::resources::critters::sheep::_::impl$0::serialize<serde_json::value::ser::Serializer>` | 0x140080440 | 29 | 派生胶水 | O：serde derive（复用依赖，不计业务） |  |
 | `country_core::resources::critters::sheep::impl$7::register_required_components` | 0x14089f340 | 46 | Bevy 注册胶水 | O：Bevy 组件注册（复用 derive，不计业务） |  |
-| `country_core::resources::critters::sheep::Sheep::being_petted` | 0x14089d4c0 | 102 | 查询/计算 | O：Sheep::being_petted=f32@+0x58>0.0 | collision-eco\decomp\decomp-0x14089d4c0.txt |
+| `country_core::resources::critters::sheep::Sheep::being_petted` | 0x14089d4c0 | 102 | 查询/计算 | O：Sheep::being_petted=f32@+0x58>**0.01**（ucomiss 常量 0x142960674=0.01；review-audit 纠错） | collision-eco\decomp\decomp-0x14089d4c0.txt |
 | `country_core::resources::critters::sheep::impl$8::register_required_components` | 0x14089fa30 | 106 | Bevy 注册胶水 | O：Bevy 组件注册（复用 derive，不计业务） | collision-eco\decomp\decomp-0x14089fa30.txt |
 | `country_core::resources::critters::sheep::impl$9::register_required_components` | 0x1408a0120 | 117 | Bevy 注册胶水 | O：Bevy 组件注册（复用 derive，不计业务） | collision-eco\decomp\decomp-0x1408a0120.txt |
 | `country_core::resources::critters::sheep::impl$10::register_required_components` | 0x1408a0810 | 124 | Bevy 注册胶水 | O：Bevy 组件注册（复用 derive，不计业务） | collision-eco\decomp\decomp-0x1408a0810.txt |

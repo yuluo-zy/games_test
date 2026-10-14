@@ -1,0 +1,72 @@
+
+longlong FUN_1413fed50(longlong param_1,longlong *param_2)
+
+{
+  longlong *plVar1;
+  longlong *plVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  longlong lVar5;
+  longlong lVar6;
+  longlong *plStack_40;
+  char cStack_38;
+  
+  plVar1 = (longlong *)*param_2;
+  param_2[3] = param_2[3] + 1;
+  *(undefined1 *)(param_2 + 4) = 0;
+  lVar4 = plVar1[2];
+  if (*plVar1 == lVar4) {
+    FUN_1428a9a60(plVar1,lVar4,1,1,1);
+    lVar4 = plVar1[2];
+  }
+  *(undefined1 *)(plVar1[1] + lVar4) = 0x7b;
+  plVar1[2] = lVar4 + 1;
+  cStack_38 = '\x01';
+  plStack_40 = param_2;
+  lVar4 = FUN_14158a5e0(&plStack_40,&UNK_142c5b491,0xb,param_1);
+  if ((lVar4 == 0) &&
+     (lVar4 = FUN_14158c990(&plStack_40,&UNK_142c5b49c,6,param_1 + 0x20), plVar1 = plStack_40,
+     lVar4 == 0)) {
+    if (cStack_38 != '\0') {
+      lVar4 = plStack_40[3] + -1;
+      plStack_40[3] = lVar4;
+      if ((char)plStack_40[4] != '\0') {
+        plVar2 = (longlong *)*plStack_40;
+        lVar5 = plVar2[2];
+        if (*plVar2 == lVar5) {
+          FUN_1428a9a60(plVar2,lVar5,1,1,1);
+          lVar5 = plVar2[2];
+        }
+        *(undefined1 *)(plVar2[1] + lVar5) = 10;
+        plVar2[2] = lVar5 + 1;
+        if (lVar4 != 0) {
+          lVar5 = plVar1[1];
+          uVar3 = plVar1[2];
+          plVar2 = (longlong *)*plVar1;
+          lVar6 = plVar2[2];
+          do {
+            if ((ulonglong)(*plVar2 - lVar6) < uVar3) {
+              FUN_1428a9a60(plVar2,lVar6,uVar3,1,1);
+              lVar6 = plVar2[2];
+            }
+            func_0x000142923c00(plVar2[1] + lVar6,lVar5,uVar3);
+            lVar6 = lVar6 + uVar3;
+            plVar2[2] = lVar6;
+            lVar4 = lVar4 + -1;
+          } while (lVar4 != 0);
+        }
+      }
+      plVar1 = (longlong *)*plVar1;
+      lVar4 = plVar1[2];
+      if (*plVar1 == lVar4) {
+        FUN_1428a9a60(plVar1,lVar4,1,1,1);
+        lVar4 = plVar1[2];
+      }
+      *(undefined1 *)(plVar1[1] + lVar4) = 0x7d;
+      plVar1[2] = lVar4 + 1;
+    }
+    lVar4 = 0;
+  }
+  return lVar4;
+}
+

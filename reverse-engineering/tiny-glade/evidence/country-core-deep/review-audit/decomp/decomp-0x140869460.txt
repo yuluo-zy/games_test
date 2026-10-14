@@ -1,0 +1,35 @@
+
+void FUN_140869460(ulonglong *param_1,undefined8 *param_2,undefined8 *param_3)
+
+{
+  ulonglong uVar1;
+  ulonglong uVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  
+  uVar1 = param_1[0xb];
+  param_1[0xb] = uVar1 + 1;
+  uVar4 = *param_1;
+  uVar2 = param_1[3];
+  if (uVar2 == uVar4) {
+    FUN_140b5a980(param_1);
+    uVar4 = *param_1;
+    uVar2 = param_1[3];
+  }
+  uVar5 = 0;
+  if (uVar4 <= uVar2 + param_1[2]) {
+    uVar5 = uVar4;
+  }
+  lVar3 = (uVar2 + param_1[2]) - uVar5;
+  uVar4 = param_1[1];
+  *(ulonglong *)(uVar4 + lVar3 * 0x28) = uVar1 + 1;
+  *(undefined8 *)(uVar4 + 8 + lVar3 * 0x28) = *param_2;
+  *(undefined4 *)(uVar4 + 0x10 + lVar3 * 0x28) = *(undefined4 *)(param_2 + 1);
+  *(undefined8 *)(uVar4 + 0x14 + lVar3 * 0x28) = *param_3;
+  *(undefined4 *)(uVar4 + 0x1c + lVar3 * 0x28) = *(undefined4 *)(param_3 + 1);
+  *(undefined4 *)(uVar4 + 0x20 + lVar3 * 0x28) = 0;
+  param_1[3] = param_1[3] + 1;
+  return;
+}
+

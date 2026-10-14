@@ -24,3 +24,6 @@
 
 - W50/W51 由 `param_6[0xa9+(res_type==0x13?1:0)] != 0` 门控（frame-wiring §3）。
 - 结构体 `IndirectArgsType`（U 字段）。
+- **补充（render-gap §2.1）**：5 个 `source_hash` 中 `impl$11`（FullResDof）@0x140a5de00、`impl$7`（FullResAllLod1Dof）@0x140a5d960
+  已反编译确认 = `calculate_hash(&(uri:entry, &self))`（串 `/dof/fullres.cs.hlsl:cs_main` 0x1c / `/dof/fullres_all_lod1.cs.hlsl:cs_main` 0x25），
+  与 `dof_source!` 宏实现逐位一致——**已实现，只需补地址标注**。证据：render-gap\decomp\decomp-0x140a5de00.txt / decomp-0x140a5d960.txt。

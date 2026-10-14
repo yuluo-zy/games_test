@@ -1,0 +1,73 @@
+
+longlong FUN_1413fe6f0(longlong param_1,longlong *param_2)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  longlong *plVar3;
+  longlong lVar4;
+  longlong lVar5;
+  longlong *plStack_28;
+  char cStack_20;
+  undefined7 uStack_1f;
+  
+  plVar3 = (longlong *)*param_2;
+  param_2[3] = param_2[3] + 1;
+  *(undefined1 *)(param_2 + 4) = 0;
+  lVar4 = plVar3[2];
+  if (*plVar3 == lVar4) {
+    FUN_1428a9a60(plVar3,lVar4,1,1,1);
+    lVar4 = plVar3[2];
+  }
+  *(undefined1 *)(plVar3[1] + lVar4) = 0x7b;
+  plVar3[2] = lVar4 + 1;
+  _cStack_20 = CONCAT71(uStack_1f,1);
+  plStack_28 = param_2;
+  lVar4 = FUN_141583750(&plStack_28,&UNK_142c5b3d0,0x11,param_1);
+  if ((((lVar4 == 0) &&
+       (lVar4 = FUN_1415891d0(&plStack_28,&UNK_142c5b3e1,0x1a,param_1 + 0xc0), lVar4 == 0)) &&
+      (lVar4 = FUN_141583370(&plStack_28,&UNK_142c5b3fb,0x12,param_1 + 200), lVar4 == 0)) &&
+     (lVar4 = FUN_14158b390(&plStack_28,&UNK_142c5b40d,0x15,param_1 + 0x68), lVar4 == 0)) {
+    if (cStack_20 != '\0') {
+      plVar3 = (longlong *)*plStack_28;
+      lVar4 = plStack_28[3] + -1;
+      plStack_28[3] = lVar4;
+      if ((char)plStack_28[4] == '\0') {
+        lVar5 = plVar3[2];
+      }
+      else {
+        lVar5 = plVar3[2];
+        if (*plVar3 == lVar5) {
+          FUN_1428a9a60(plVar3,lVar5,1,1,1);
+          lVar5 = plVar3[2];
+        }
+        *(undefined1 *)(plVar3[1] + lVar5) = 10;
+        lVar5 = lVar5 + 1;
+        plVar3[2] = lVar5;
+        if (lVar4 != 0) {
+          lVar1 = plStack_28[1];
+          uVar2 = plStack_28[2];
+          do {
+            if ((ulonglong)(*plVar3 - lVar5) < uVar2) {
+              FUN_1428a9a60(plVar3,lVar5,uVar2,1,1);
+              lVar5 = plVar3[2];
+            }
+            func_0x000142923c00(plVar3[1] + lVar5,lVar1,uVar2);
+            lVar5 = lVar5 + uVar2;
+            plVar3[2] = lVar5;
+            lVar4 = lVar4 + -1;
+          } while (lVar4 != 0);
+        }
+      }
+      if (*plVar3 == lVar5) {
+        FUN_1428a9a60(plVar3,lVar5,1,1,1);
+        lVar5 = plVar3[2];
+      }
+      *(undefined1 *)(plVar3[1] + lVar5) = 0x7d;
+      plVar3[2] = lVar5 + 1;
+    }
+    return 0;
+  }
+  return lVar4;
+}
+

@@ -1,0 +1,30 @@
+
+
+void FUN_14091ef90(void)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  longlong *plVar3;
+  
+  plVar3 = (longlong *)func_0x000140613c10(0x18,8);
+  if (plVar3 == (longlong *)0x0) {
+    FUN_1428d9000(8,0x18);
+  }
+  else {
+    *plVar3 = 1;
+    plVar3[1] = 1;
+    *(undefined1 *)(plVar3 + 2) = 1;
+    LOCK();
+    lVar1 = *plVar3;
+    *plVar3 = *plVar3 + 1;
+    UNLOCK();
+    if (*plVar3 != 0 && SCARRY8(lVar1,1) == *plVar3 < 0) {
+      return;
+    }
+  }
+                    /* WARNING: Does not return */
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+

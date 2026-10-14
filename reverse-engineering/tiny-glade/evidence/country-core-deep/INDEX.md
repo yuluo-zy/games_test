@@ -98,7 +98,7 @@
 - StairsState GraphMap@+0x28、stubs@+0x29、脏字节 +0x2f（重建 restore 极性反）。
 - ClutterMeshTy 实为 **56 路径变体**（重建 11 粗分类错）。
 - RaycastGeoSource = 24B{disc,flag}，subworld() = disc→槽表（0x142aef03c/
-  0x142aa4418）；Terrain 槽=5 三证锚定（mask 0x20/地形命中 0xb/映射表[11]=5）。
+  0x142aa4415）；Terrain 槽=5 三证锚定（mask 0x20/地形命中 0xb/映射表[11]=5）。
 - legacy_spherecast 固定 10 槽顺序 {0,1,3,7,6,4,11,2,12,13}（供 critters）。
 - v1 错位纠正补充：0x1408ccc90=legacy_spherecast、0x1408cd5c0=flush_colliders、
   0x1408ffef0=remove_node、0x1408ffd70=add_edge、0x14094c800=closest_segment_index、

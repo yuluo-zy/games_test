@@ -1,0 +1,25 @@
+
+void FUN_140b04040(undefined8 param_1,uint *param_2)
+
+{
+  code *pcVar1;
+  undefined8 *puVar2;
+  
+  puVar2 = (undefined8 *)func_0x000140613c10(0x18,4);
+  if (puVar2 != (undefined8 *)0x0) {
+    *(uint *)(puVar2 + 1) = param_2[6];
+    *puVar2 = *(undefined8 *)(param_2 + 4);
+    *(uint *)((longlong)puVar2 + 0x14) = param_2[9];
+    *(undefined8 *)((longlong)puVar2 + 0xc) = *(undefined8 *)(param_2 + 7);
+                    /* WARNING: Could not recover jumptable at 0x000140b040ca. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (*(code *)(&UNK_142ae72ec + *(int *)(&UNK_142ae72ec + (ulonglong)*param_2 * 4)))();
+    return;
+  }
+  FUN_1428d9000(4,0x18);
+  FUN_1428d8fe3(1,0x13,&UNK_142a98f20);
+                    /* WARNING: Does not return */
+  pcVar1 = (code *)invalidInstructionException();
+  (*pcVar1)();
+}
+

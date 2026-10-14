@@ -23,16 +23,16 @@
 | `country_core::systems::ui::resources::ui_state::UiState::active_widget_state` | 0x140002450 | 204 | active_widget_state | O：折叠单行（NotFound），语义=取当前 active widget 状态对（U 细节） | ui-input\decomp\decomp-0x140002450.txt |
 | `country_core::systems::ui::resources::ui_state::UiState::widget` | 0x14067dd80 | 234 | UiState::widget 查询 | O：1177 callers（ICF 折叠——与 AssetMeshLibrary::transient_meshes/PendingEguiContextResource::into_egui_context_resource 同码；按 WidgetId 查 Arc<WidgetParams>） | ui-input\decomp\decomp-0x14067dd80.txt |
 | `country_core::systems::ui::resources::ui_state::UiWidgetContext::clicked` | 0x14092e5f0 | 246 | UiWidgetContext::clicked | O：hover>1 && click<2 && click&1（wp15 合同） | ui-input\decomp\decomp-0x14092e5f0.txt |
-| `country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered` | 0x14092e620 | 250 | UiWidgetContext::hovered | O：hover 字节 != 0 且 id@+0x38 == ctx id（注意重建代码缺 id 匹配） | ui-input\decomp\decomp-0x14092e620.txt |
+| `country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered` | 0x14092e620 | 250 | UiWidgetContext::hovered | O：hover **==1** 且 id@+0x38 == ctx id，返回值=byte@+0x19（click 字节）（review-audit 纠错：hover==1 非 !=0） | ui-input\decomp\decomp-0x14092e620.txt |
 | `country_core::systems::ui::resources::ui_state::UiWidgetContext::dragged` | 0x14092df10 | 254 | UiWidgetContext::dragged（与 Slider3d validate_param 折叠） | O：折叠单行（NotFound）；语义=拖拽中（DragState::is_started） | ui-input\decomp\decomp-0x14092df10.txt |
 | `country_core::systems::ui::resources::slider3d::impl$1::into_drag_state` | 0x14092df10 | 255 | UiWidgetContext::dragged（与 Slider3d validate_param 折叠） | O：折叠单行（NotFound）；语义=拖拽中（DragState::is_started） | ui-input\decomp\decomp-0x14092df10.txt |
 | `country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting` | 0x14092e640 | 259 | UiWidgetContext::intersecting | O：交点载荷 7 qword 拷贝或 tag-2 None | ui-input\decomp\decomp-0x14092e640.txt |
-| `country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active` | 0x14092e680 | 264 | UiWidgetContext::is_active | O：hover!=0 && id 匹配（同 hovered） | ui-input\decomp\decomp-0x14092e680.txt |
+| `country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active` | 0x14092e680 | 264 | UiWidgetContext::is_active | O：hover!=0 && id 匹配 && **dword@+0x28 != 2**（review-audit 纠错：缺 [+0x28]!=2 门控） | ui-input\decomp\decomp-0x14092e680.txt |
 | `country_core::systems::ui::resources::ui_state::UiWidgetContext::id` | 0x1406868b0 | 274 | UiWidgetContext::id | O：返回 ctx 的 WidgetId（NotFound 折叠，语义由调用点证实） | ui-input\decomp\decomp-0x1406868b0.txt |
 | `country_core::systems::ui::resources::ui_state::ActiveWidget::is_dragging` | 0x14092e6a0 | 299 | ActiveWidget::is_dragging | O：折叠单行（NotFound） | ui-input\decomp\decomp-0x14092e6a0.txt |
 | `country_core::systems::ui::resources::ui_state::HoverState::is_some` | 0x1408c5680 | 339 | HoverState::is_some | O：折叠单行（NotFound）= 判别非 None（hover 字节非 0） | wall\decomp\decomp-0x1408c5680.txt |
 | `country_core::systems::ui::resources::ui_state::DragState::is_some` | 0x14092e6b0 | 355 | DragState::is_some | O：折叠 = 判别非 None | camera-time\decomp\decomp-0x14092e6b0.txt |
-| `country_core::systems::ui::resources::ui_state::DragState::is_started` | 0x14092e6c0 | 364 | DragState::is_started | O：∈ {Started, Dragging}（wp15 b5 既有） | wp15/analysis/b5_ui_state/is_started_0x14092e6c0.c |
+| `country_core::systems::ui::resources::ui_state::DragState::is_started` | 0x14092e6c0 | 364 | DragState::is_started | O：**单一判别 byte[rcx]==3**（sete；与 GladeType::is_autumn ICF 折叠同址；review-audit 纠错："∈{Started,Dragging}"不被机器码支持） | wp15/analysis/b5_ui_state/is_started_0x14092e6c0.c |
 | `country_core::systems::ui::resources::ui_state::DragState::is_finished` | 0x14092e6d0 | 372 | DragState::is_finished | O：== Finished（wp15 b5 既有） | wp15/analysis/b5_ui_state/is_finished_0x14092e6d0.c |
 
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）

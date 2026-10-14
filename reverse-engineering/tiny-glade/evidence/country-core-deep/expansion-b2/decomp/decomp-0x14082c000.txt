@@ -1,0 +1,59 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_14082c000(undefined8 *param_1,undefined8 *param_2,undefined8 *param_3,longlong param_4)
+
+{
+  undefined8 uVar1;
+  longlong lVar2;
+  longlong lVar3;
+  code *pcVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  undefined4 uVar7;
+  longlong *plVar8;
+  undefined8 uStack_4d0;
+  undefined4 *puStack_4c8;
+  undefined8 uStack_4c0;
+  undefined1 auStack_280 [592];
+  
+  func_0x00014093f900(auStack_280);
+  uVar1 = *param_2;
+  lVar2 = *(longlong *)*param_1;
+  func_0x000142923c00(&uStack_4d0,auStack_280,0x250);
+  FUN_1412bbcf0(uVar1,lVar2 + 0x10,&uStack_4d0,1);
+  plVar8 = *(longlong **)(param_4 + 8);
+  if (plVar8 == (longlong *)0x0) {
+    plVar8 = *(longlong **)(param_4 + 0x10);
+  }
+  lVar2 = plVar8[2];
+  if ((ulonglong)(*plVar8 - lVar2) < 600) {
+    FUN_1428a9a60(plVar8,lVar2,600,1,1);
+  }
+  lVar3 = plVar8[1];
+  *(code **)(lVar3 + lVar2) = FUN_1412d8420;
+  func_0x000142923c00(lVar3 + lVar2 + 8,auStack_280,0x250);
+  plVar8[2] = lVar2 + 600;
+  *(undefined4 *)param_3[2] = *(undefined4 *)((longlong)param_3 + 0x1c);
+  uVar1 = *param_3;
+  puStack_4c8 = (undefined4 *)func_0x000140613c10(0x12,1);
+  uVar7 = _UNK_142a920b2;
+  uVar6 = _UNK_142a920ae;
+  uVar5 = _UNK_142a920aa;
+  if (puStack_4c8 != (undefined4 *)0x0) {
+    *puStack_4c8 = _UNK_142a920a6;
+    puStack_4c8[1] = uVar5;
+    puStack_4c8[2] = uVar6;
+    puStack_4c8[3] = uVar7;
+    *(undefined2 *)(puStack_4c8 + 4) = 0x6e6f;
+    uStack_4d0 = 0x12;
+    uStack_4c0 = 0x12;
+    FUN_1408ba290(uVar1,&uStack_4d0);
+    return;
+  }
+  FUN_1428d8fe3(1,0x12,&UNK_142a91da0);
+  pcVar4 = (code *)swi(3);
+  (*pcVar4)();
+  return;
+}
+

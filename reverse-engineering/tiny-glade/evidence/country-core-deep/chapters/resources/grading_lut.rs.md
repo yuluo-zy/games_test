@@ -25,3 +25,11 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`closure`、`default`、`deserialize`、`eq`、`expecting`、`visit_map`、`visit_seq` 等 12 项
+
+## render-gap 核对（2026-10-14）
+
+- 7 处 `unimplemented!`（`flattened`/`load_unwrapped`/`load_cube`/`lut_name_to_asset_name`/`asset_name`/`parse_rgb`/`load`）
+  的落码依据 = audio-misc §2.9 反编译 + `reconstruction/country-core-render/wp19/analysis/decomp/load_cube_140b01050.c`
+  （另有 `wp15/contracts/startup.md`、`wp15/src/startup/load_glade_grading.rs` 可对照）。
+  `load_cube` PDB 名 `asset_name` 错位已记（audio-misc §2.9）；`GradingLut::asset_name` 实为 load_cube。
+
