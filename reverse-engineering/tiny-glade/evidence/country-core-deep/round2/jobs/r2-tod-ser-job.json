@@ -1,0 +1,77 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_a6r3",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_a6r3"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r3",
+   "address": "0x14007fd40"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "tod Serialize#2"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r3",
+   "address": "0x14007ff80"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "tod Serialize#3"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r3",
+   "address": "0x140080160"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "tod Serialize#4"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r3",
+   "address": "0x1400802c0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "tod Serialize#5"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r3",
+   "address": "0x140b3bc00"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "tod Serialize#6"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_a6r3",
+   "save": false
+  },
+  "timeout_ms": 180000
+ }
+]

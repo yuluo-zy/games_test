@@ -1,0 +1,34 @@
+
+void FUN_1408ffe80(undefined8 *param_1,uint param_2,uint param_3)
+
+{
+  char cVar1;
+  uint uVar2;
+  
+  *param_1 = 0;
+  if (param_2 == param_3) {
+    cVar1 = FUN_14093a220(param_1 + 5,param_2);
+    uVar2 = param_2;
+    param_3 = param_2;
+    if (cVar1 == '\0') {
+      return;
+    }
+  }
+  else {
+    cVar1 = FUN_140939da0(param_1 + 5,param_2);
+    if (cVar1 == '\0') {
+      return;
+    }
+    uVar2 = param_3;
+    if (param_2 < param_3) {
+      uVar2 = param_2;
+    }
+    if (param_3 < param_2) {
+      param_3 = param_2;
+    }
+  }
+  FUN_1402c8640(param_1 + 0x29,uVar2,param_3);
+  *(undefined1 *)(param_1 + 0x2f) = 0;
+  return;
+}
+

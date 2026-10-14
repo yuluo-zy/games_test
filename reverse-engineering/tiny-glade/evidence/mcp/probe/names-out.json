@@ -1,0 +1,163 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_names",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_names\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_names",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_names"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_names\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_names",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "list_names",
+      "args": {
+        "database": "tg_names",
+        "filter_pattern": "country_core",
+        "limit": 15
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":15,\"has_more\":false,\"database\":\"tg_names\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 15,
+          "has_more": false,
+          "database": "tg_names"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "list_names",
+      "args": {
+        "database": "tg_names",
+        "filter_pattern": "systems.*history",
+        "limit": 15
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":15,\"has_more\":false,\"database\":\"tg_names\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 15,
+          "has_more": false,
+          "database": "tg_names"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "list_functions",
+      "args": {
+        "database": "tg_names",
+        "filter_pattern": "FUN_140af5b30",
+        "limit": 5
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[{\"name\":\"FUN_140af5b30\",\"start\":\"0x140AF5B30\",\"end\":\"0x140AF5B31\",\"size\":1}],\"total\":1,\"offset\":0,\"limit\":5,\"has_more\":false,\"database\":\"tg_names\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [
+            {
+              "name": "FUN_140af5b30",
+              "start": "0x140AF5B30",
+              "end": "0x140AF5B31",
+              "size": 1
+            }
+          ],
+          "total": 1,
+          "offset": 0,
+          "limit": 5,
+          "has_more": false,
+          "database": "tg_names"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_names",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_names\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_names"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

@@ -1,0 +1,51 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+longlong * FUN_140995040(longlong *param_1,longlong param_2)
+
+{
+  code *pcVar1;
+  float fVar2;
+  float fVar3;
+  longlong lStack_48;
+  longlong lStack_40;
+  undefined8 uStack_38;
+  longlong lStack_30;
+  longlong lStack_28;
+  longlong lStack_20;
+  undefined8 uStack_18;
+  
+  uStack_18 = 0xfffffffffffffffe;
+  fVar2 = _UNK_1429258d8;
+  if (SBORROW8(0,*(longlong *)(param_2 + 0x10))) {
+    lStack_30 = param_2 + 0x18;
+    lStack_48 = *(longlong *)(param_2 + 0x20);
+    lStack_40 = lStack_48 + *(longlong *)(param_2 + 0x28) * 0xc;
+    uStack_38 = 0;
+    lStack_28 = param_2;
+    lStack_20 = param_2;
+    fVar2 = (float)func_0x000141476710(&lStack_48,_UNK_142934698);
+    if (0x7f7fffff < (uint)ABS(fVar2)) {
+      FUN_1428d9430(&UNK_142a94c34,0x2b,&UNK_142a94c98);
+                    /* WARNING: Does not return */
+      pcVar1 = (code *)invalidInstructionException();
+      (*pcVar1)();
+    }
+    fVar3 = _UNK_142925970;
+    if (_UNK_142925970 <= fVar2 * _UNK_142960674) {
+      fVar3 = fVar2 * _UNK_142960674;
+    }
+    param_2 = lStack_20;
+    fVar2 = _UNK_1429cd078;
+    if (fVar3 <= _UNK_1429cd078) {
+      fVar2 = fVar3;
+    }
+  }
+  *param_1 = param_2;
+  *(undefined1 *)((longlong)param_1 + 0x14) = 1;
+  *(undefined4 *)(param_1 + 1) = 0;
+  *(float *)((longlong)param_1 + 0xc) = fVar2;
+  *(undefined4 *)(param_1 + 2) = 2;
+  return param_1;
+}
+

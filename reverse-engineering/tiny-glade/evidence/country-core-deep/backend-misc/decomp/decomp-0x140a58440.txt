@@ -1,0 +1,6 @@
+icc::impl$0::build (0x140a58440) — 机器码手解（Ghidra 未建函数，RE-MCP NotFound）
+Raw: 48 89 d1 | e9 38 d6 10 00 | cc cc ...
+  0x140a58440:  mov rcx, rdx            ; plugin 参数送入 rcx
+  0x140a58443:  jmp 0x140b65a80         ; 尾调用 → 真实 build 实现（App::add_systems 注册）
+  0x140a58448:  int3 ...                ; 对齐填充
+= 2 指令跳板，无独立逻辑。真实实现在 decomp-0x140b65a80.txt。

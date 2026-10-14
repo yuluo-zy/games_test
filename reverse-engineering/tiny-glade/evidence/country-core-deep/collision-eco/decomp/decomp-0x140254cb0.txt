@@ -1,0 +1,47 @@
+
+void FUN_140254cb0(longlong *param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  undefined8 *puVar4;
+  code *pcVar5;
+  undefined4 uVar6;
+  int iVar7;
+  ulonglong *puVar8;
+  ulonglong uVar9;
+  undefined8 uStack_50;
+  undefined4 uStack_48;
+  longlong lStack_40;
+  undefined8 uStack_38;
+  undefined4 uStack_30;
+  
+  lVar1 = *param_1;
+  puVar8 = (ulonglong *)func_0x000140b93940(param_1[1]);
+  if (puVar8 != (ulonglong *)0x0) {
+    uVar9 = *puVar8;
+    uVar6 = func_0x000140833250((uint)(uVar9 >> 0x20) | 1);
+    lVar2 = *(longlong *)(lVar1 + 8);
+    uVar3 = *(ulonglong *)(lVar1 + 0x10);
+    uStack_50 = CONCAT44((int)uVar9,uVar6);
+    iVar7 = func_0x0001408d99e0(&uStack_50);
+    uVar9 = uVar9 & 0xffffffff;
+    if (((uVar9 < uVar3) && (lVar2 != 0)) && (*(int *)(lVar2 + 0x20 + uVar9 * 0x28) == iVar7)) {
+      lVar2 = lVar2 + uVar9 * 0x28;
+      puVar4 = (undefined8 *)param_1[2];
+      func_0x0001408cc620(&uStack_38,*(undefined1 *)param_1[3],param_2,param_3);
+      uStack_48 = uStack_30;
+      uStack_50 = uStack_38;
+      lStack_40 = lVar2;
+      (*(code *)*puVar4)(&uStack_50,lVar2);
+      return;
+    }
+    FUN_1428d8725(&UNK_1429eca18,0x18,&UNK_1429a3490);
+  }
+  FUN_1428d9310(&UNK_1429a3478);
+  pcVar5 = (code *)swi(3);
+  (*pcVar5)();
+  return;
+}
+

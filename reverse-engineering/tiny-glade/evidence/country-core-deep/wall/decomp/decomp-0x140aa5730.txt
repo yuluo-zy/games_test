@@ -1,0 +1,63 @@
+country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query::hf237c1465f60a1b6
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_140aa5730(longlong param_1,undefined8 param_2,undefined8 param_3)
+
+{
+  undefined8 uVar1;
+  int iVar2;
+  ulonglong uVar3;
+  int iVar4;
+  uint uVar5;
+  float fVar6;
+  float fVar7;
+  undefined1 auVar8 [16];
+  undefined1 auVar9 [16];
+  int iVar11;
+  undefined1 auVar10 [16];
+  undefined1 auVar12 [16];
+  int iVar13;
+  
+  uVar3 = *(ulonglong *)(param_1 + 0x50);
+  auVar8._8_8_ = 0;
+  auVar8._0_8_ = uVar3;
+  auVar12._0_4_ = _UNK_1429258e0 * (float)uVar3 + (float)param_2;
+  auVar12._4_4_ = _UNK_1429258e4 * (float)(uVar3 >> 0x20) + (float)param_3;
+  auVar12._8_4_ = _UNK_1429258e8 * 0.0 + (float)((ulonglong)param_2 >> 0x20);
+  auVar12._12_4_ = _UNK_1429258ec * 0.0 + (float)((ulonglong)param_3 >> 0x20);
+  iVar13 = (int)*(undefined8 *)(param_1 + 0x48);
+  iVar11 = (int)((ulonglong)*(undefined8 *)(param_1 + 0x48) >> 0x20);
+  auVar9._0_4_ = (float)iVar13;
+  auVar9._4_4_ = (float)iVar11;
+  auVar9._8_8_ = 0;
+  auVar8 = divps(auVar8,auVar9);
+  divps(auVar12,auVar8);
+  fVar6 = (float)func_0x000142923ee0();
+  fVar7 = (float)func_0x000142923ee0();
+  iVar2 = (int)fVar7;
+  if (_UNK_1429a49bc < fVar7) {
+    iVar2 = 0x7fffffff;
+  }
+  if (NAN(fVar7)) {
+    iVar2 = 0;
+  }
+  iVar4 = (int)fVar6;
+  if (_UNK_1429a49bc < fVar6) {
+    iVar4 = 0x7fffffff;
+  }
+  if (NAN(fVar6)) {
+    iVar4 = 0;
+  }
+  uVar1 = 8;
+  if ((((-1 < iVar2) &&
+       (auVar10._0_4_ = -(uint)(iVar2 < iVar13), iVar11 = -(uint)(iVar4 < iVar11),
+       auVar10._4_4_ = auVar10._0_4_, auVar10._8_4_ = iVar11, auVar10._12_4_ = iVar11,
+       uVar5 = movmskpd(iVar4,auVar10), (uVar5 & 2) != 0)) && ((uVar5 & 1) != 0)) &&
+     ((-1 < iVar4 &&
+      (uVar3 = (ulonglong)(iVar4 * iVar13 + iVar2), uVar3 < *(ulonglong *)(param_1 + 0x10))))) {
+    uVar1 = *(undefined8 *)(*(longlong *)(param_1 + 8) + 8 + uVar3 * 0x30);
+  }
+  return uVar1;
+}
+

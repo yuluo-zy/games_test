@@ -1,0 +1,192 @@
+country_core::systems::wall::wall_state::wall_spatial_hash::impl$4::get_cells_from_circle::closure$0 :: systems/wall/wall_state/wall_spatial_hash.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+ulonglong FUN_1409f12e0(longlong param_1,undefined8 param_2,float param_3,float param_4,
+                       float param_5,float param_6,longlong *param_7,longlong param_8)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  float fVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  longlong lVar6;
+  code *pcVar7;
+  longlong lVar8;
+  longlong lVar9;
+  longlong lVar10;
+  longlong lVar11;
+  int iVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  uint uVar15;
+  uint uVar17;
+  int iVar18;
+  ulonglong uVar20;
+  ulonglong uVar21;
+  int iVar22;
+  ulonglong unaff_RDI;
+  ulonglong uVar23;
+  ulonglong uVar24;
+  int iVar25;
+  int iVar26;
+  uint uVar27;
+  longlong lVar28;
+  undefined1 auVar29 [16];
+  undefined1 in_XMM1 [16];
+  undefined1 auVar30 [16];
+  float fVar31;
+  int iVar16;
+  ulonglong uVar19;
+  
+  fVar3 = *(float *)(param_1 + 0x50);
+  if ((in_XMM1._0_4_ < fVar3 * _UNK_14295a0e8) ||
+     (param_3 < _UNK_14295a0e8 * *(float *)(param_1 + 0x54))) {
+    FUN_1428d9430(&UNK_142ac5548,0x44,&UNK_142ac5590);
+  }
+  else if ((param_4 <= fVar3 * _UNK_142925870) &&
+          (param_5 <= _UNK_142925870 * *(float *)(param_1 + 0x54))) {
+    fVar31 = fVar3 / (float)*(int *)(param_1 + 0x48);
+    if (_UNK_142925870 < fVar31) {
+      auVar30._4_12_ = in_XMM1._4_12_;
+      auVar30._0_4_ = ((in_XMM1._0_4_ - param_6) + fVar3 * _UNK_142925870) / fVar31;
+      fVar31 = (float)func_0x000142923ee0(param_1,auVar30._0_8_);
+      fVar3 = _UNK_1429a49bc;
+      iVar25 = (int)fVar31;
+      if (_UNK_1429a49bc < fVar31) {
+        iVar25 = 0x7fffffff;
+      }
+      if (NAN(fVar31)) {
+        iVar25 = 0;
+      }
+      fVar31 = (float)func_0x000142923ee0();
+      iVar22 = (int)fVar31;
+      if (fVar3 < fVar31) {
+        iVar22 = 0x7fffffff;
+      }
+      if (NAN(fVar31)) {
+        iVar22 = 0;
+      }
+      if (iVar25 < 1) {
+        iVar25 = 0;
+      }
+      if (iVar22 < 1) {
+        iVar22 = 0;
+      }
+      fVar31 = (float)func_0x000142923ee0();
+      uVar27 = (int)fVar31;
+      if (fVar3 < fVar31) {
+        uVar27 = 0x7fffffff;
+      }
+      if (NAN(fVar31)) {
+        uVar27 = 0;
+      }
+      lVar28 = func_0x000142923ee0();
+      lVar11 = _UNK_142ac4d48;
+      lVar10 = _UNK_142ac4d40;
+      lVar9 = _UNK_142ac4d38;
+      lVar8 = _UNK_142ac4d30;
+      fVar31 = (float)lVar28;
+      uVar15 = (int)fVar31;
+      if (fVar3 < fVar31) {
+        uVar15 = 0x7fffffff;
+      }
+      uVar13 = (ulonglong)uVar15;
+      if (NAN(fVar31)) {
+        uVar13 = 0;
+      }
+      iVar16 = (int)*(undefined8 *)(param_1 + 0x48);
+      uVar15 = iVar16 - 1;
+      uVar17 = (int)((ulonglong)*(undefined8 *)(param_1 + 0x48) >> 0x20) - 1;
+      if ((int)uVar15 < (int)uVar27) {
+        uVar27 = uVar15;
+      }
+      uVar19 = (ulonglong)uVar17;
+      if ((int)uVar13 <= (int)uVar17) {
+        uVar19 = uVar13;
+      }
+      iVar18 = (int)uVar19;
+      if (iVar22 <= iVar18) {
+        if ((int)uVar27 < iVar25) {
+          do {
+            if (iVar18 <= iVar22) {
+              return 0;
+            }
+            uVar13 = (ulonglong)(iVar22 < iVar18);
+            iVar22 = iVar22 + (uint)(iVar22 < iVar18);
+          } while (iVar22 <= iVar18);
+        }
+        else {
+          lVar4 = *(longlong *)(param_8 + 8);
+          unaff_RDI = *(ulonglong *)(param_8 + 0x10);
+          do {
+            iVar12 = (uint)(iVar22 < iVar18) + iVar22;
+            iVar26 = iVar25;
+            do {
+              uVar13 = (ulonglong)(iVar22 * iVar16 + iVar26);
+              if (unaff_RDI <= uVar13) goto code_r0x0001409f1778;
+              lVar14 = uVar13 * 0x30;
+              uVar19 = *(ulonglong *)(lVar4 + 8 + lVar14);
+              uVar5 = *(ulonglong *)(lVar4 + 0x10 + lVar14);
+              lVar14 = param_7[2];
+              uVar13 = *param_7 - lVar14;
+              if (uVar13 < uVar5) {
+                lVar28 = FUN_1428a9a60(param_7,lVar14,uVar5,8,8);
+                lVar14 = param_7[2];
+code_r0x0001409f15fb:
+                lVar6 = param_7[1];
+                uVar21 = uVar5 * 0x38 - 0x38;
+                uVar13 = uVar19;
+                if (0xa7 < uVar21) {
+                  uVar20 = uVar21 / 0x38 + 1;
+                  uVar24 = uVar20 & 0xfffffffffffffffc;
+                  uVar13 = uVar24 * 0x38 + uVar19;
+                  lVar1 = lVar6 + lVar14 * 8;
+                  lVar14 = lVar14 + uVar24;
+                  uVar23 = 0;
+                  uVar21 = uVar19;
+                  do {
+                    auVar29._8_4_ = (int)uVar21;
+                    auVar29._0_8_ = uVar21;
+                    auVar29._12_4_ = (int)(uVar21 >> 0x20);
+                    lVar28 = uVar21 + lVar10;
+                    plVar2 = (longlong *)(lVar1 + uVar23 * 8);
+                    *plVar2 = uVar21 + lVar8;
+                    plVar2[1] = auVar29._8_8_ + lVar9;
+                    plVar2 = (longlong *)(lVar1 + 0x10 + uVar23 * 8);
+                    *plVar2 = lVar28;
+                    plVar2[1] = auVar29._8_8_ + lVar11;
+                    uVar23 = uVar23 + 4;
+                    uVar21 = uVar21 + 0xe0;
+                  } while (uVar24 != uVar23);
+                  if (uVar20 == uVar24) goto code_r0x0001409f16c0;
+                }
+                do {
+                  *(ulonglong *)(lVar6 + lVar14 * 8) = uVar13;
+                  uVar13 = uVar13 + 0x38;
+                  lVar14 = lVar14 + 1;
+                } while (uVar13 != uVar19 + uVar5 * 0x38);
+              }
+              else if (uVar5 != 0) goto code_r0x0001409f15fb;
+code_r0x0001409f16c0:
+              param_7[2] = lVar14;
+            } while ((iVar26 < (int)uVar27) &&
+                    (iVar26 = iVar26 + (uint)(iVar26 < (int)uVar27), iVar26 <= (int)uVar27));
+          } while ((iVar22 < iVar18) && (iVar22 = iVar12, iVar12 <= iVar18));
+        }
+      }
+      return uVar13;
+    }
+    goto code_r0x0001409f1760;
+  }
+  FUN_1428d9430(&UNK_142ac55a8,0x44,&UNK_142ac55f0);
+code_r0x0001409f1760:
+  lVar28 = FUN_1428d9430(&UNK_142ac5608,0x31,&UNK_142ac5640);
+code_r0x0001409f1778:
+  FUN_1428d9518(lVar28,unaff_RDI,&UNK_142ac54e8);
+  pcVar7 = (code *)swi(3);
+  uVar13 = (*pcVar7)();
+  return uVar13;
+}
+

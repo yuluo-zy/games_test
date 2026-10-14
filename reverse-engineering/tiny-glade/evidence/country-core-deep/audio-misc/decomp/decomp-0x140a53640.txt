@@ -1,0 +1,87 @@
+
+void FUN_140a53640(byte *param_1,undefined8 *param_2)
+
+{
+  code *pcVar1;
+  undefined4 *puVar2;
+  undefined8 uVar3;
+  undefined8 *puVar4;
+  undefined1 uStack_e1;
+  byte *pbStack_e0;
+  code *pcStack_d8;
+  undefined8 uStack_d0;
+  undefined *puStack_c8;
+  undefined8 uStack_c0;
+  undefined8 uStack_b8;
+  undefined4 uStack_b0;
+  undefined4 uStack_ac;
+  undefined4 uStack_a8;
+  undefined4 uStack_a4;
+  undefined8 uStack_a0;
+  undefined *puStack_98;
+  undefined8 uStack_90;
+  undefined4 uStack_88;
+  undefined4 uStack_84;
+  undefined *puStack_80;
+  undefined8 uStack_78;
+  byte **ppbStack_70;
+  undefined8 uStack_68;
+  undefined8 uStack_60;
+  longlong lStack_50;
+  undefined8 uStack_48;
+  
+  if ((*param_1 & 1) != 0) {
+    return;
+  }
+  puVar4 = param_2;
+  if (4 < *puRam000000014362c3a8) {
+    pbStack_e0 = param_1 + 0x10;
+    pcStack_d8 = FUN_140d61ae0;
+    puVar2 = (undefined4 *)func_0x00014067dd80(&UNK_142ad2538);
+    uStack_b0 = *puVar2;
+    uStack_ac = puVar2[1];
+    uStack_a8 = puVar2[2];
+    uStack_a4 = puVar2[3];
+    uStack_84 = puVar2[4];
+    uStack_a0 = 5;
+    puStack_98 = &UNK_142ad2550;
+    uStack_90 = 0x28;
+    puStack_80 = &UNK_142ad24f0;
+    uStack_78 = 1;
+    ppbStack_70 = &pbStack_e0;
+    uStack_68 = 1;
+    uStack_60 = 0;
+    uStack_d0 = 0;
+    puStack_c8 = &UNK_142ad2550;
+    uStack_c0 = 0x28;
+    uStack_b8 = 0;
+    uStack_88 = 1;
+    puVar4 = &uStack_d0;
+    func_0x000140d4a330(&uStack_e1,puVar4);
+  }
+  uVar3 = FUN_140d76ed0(param_1 + 0x10);
+  FUN_140d58e70(&uStack_d0,uVar3,puVar4);
+  if ((int)uStack_d0 == 1) {
+    FUN_1428d9310(&UNK_142ad2578);
+  }
+  else {
+    FUN_14157cb70(&lStack_50,param_2,puStack_c8,uStack_c0,0);
+    if (lStack_50 == -0x7ffffffffffffffc) {
+      param_1[0] = 1;
+      param_1[1] = 0;
+      param_1[2] = 0;
+      param_1[3] = 0;
+      param_1[4] = 0;
+      param_1[5] = 0;
+      param_1[6] = 0;
+      param_1[7] = 0;
+      *(undefined8 *)(param_1 + 8) = uStack_48;
+      return;
+    }
+  }
+  FUN_140a537e0(param_1 + 0x10,&lStack_50);
+  pcVar1 = (code *)swi(3);
+  (*pcVar1)();
+  return;
+}
+

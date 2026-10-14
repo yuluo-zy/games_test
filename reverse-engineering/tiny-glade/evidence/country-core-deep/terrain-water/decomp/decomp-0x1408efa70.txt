@@ -1,0 +1,151 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_1408efa70(longlong *param_1,undefined8 *param_2,byte *param_3)
+
+{
+  uint *puVar1;
+  float fVar2;
+  float fVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  byte bVar6;
+  undefined4 uVar7;
+  longlong lVar8;
+  longlong lVar9;
+  undefined8 *puVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  longlong lVar14;
+  ulonglong uVar15;
+  longlong lVar16;
+  ulonglong uVar17;
+  longlong lVar18;
+  longlong lVar19;
+  uint *puVar20;
+  longlong unaff_R12;
+  ulonglong uVar21;
+  longlong lVar22;
+  longlong unaff_R15;
+  longlong lVar23;
+  
+  fVar13 = _UNK_142aa6894;
+  fVar12 = _UNK_142aa6890;
+  fVar11 = _UNK_142934620;
+  lVar8 = *param_1;
+  lVar9 = param_1[1];
+  uVar7 = *(undefined4 *)((longlong)param_1 + 0x14);
+  puVar20 = *(uint **)(lVar8 + 0xf8);
+  puVar1 = puVar20 + *(longlong *)(lVar8 + 0x100);
+  bVar6 = *param_3;
+  if (*(char *)(lVar8 + 0x108) == '\0') {
+    lVar14 = 8;
+    lVar22 = 0;
+    lVar19 = 0;
+    lVar18 = 0;
+    lVar16 = 0;
+    do {
+      if (lVar16 == lVar18) {
+        if (puVar20 == puVar1) {
+          return;
+        }
+        while( true ) {
+          lVar18 = *(longlong *)(*(longlong *)(lVar9 + 0x100) + 0x58 + (ulonglong)*puVar20 * 0xa0);
+          if (lVar18 != 0) break;
+          puVar20 = puVar20 + 1;
+          if (puVar20 == puVar1) {
+            return;
+          }
+        }
+        lVar23 = *(longlong *)(lVar9 + 0x100) + (ulonglong)*puVar20 * 0xa0;
+        uVar17 = (ulonglong)*(uint *)(lVar23 + 0x94);
+        lVar14 = *(longlong *)(*(longlong *)(lVar9 + 0x1a8) + 0x18 + uVar17 * 0x48);
+        lVar22 = *(longlong *)(*(longlong *)(lVar9 + 0x1a8) + 0x38 + uVar17 * 0x48);
+        lVar19 = *(longlong *)
+                  (lVar14 + 0x10 + ~*(ulonglong *)(lVar22 + *(longlong *)(lVar8 + 0x110) * 8) * 0x30
+                  );
+        lVar16 = ~*(ulonglong *)(lVar22 + *(longlong *)(lVar8 + 0x118) * 8) * 0x30;
+        lVar22 = *(longlong *)(lVar14 + 0x10 + lVar16);
+        unaff_R12 = *(longlong *)(lVar14 + 0x28 + lVar16);
+        lVar14 = *(longlong *)(lVar23 + 0x50);
+        puVar20 = puVar20 + 1;
+        lVar16 = 0;
+      }
+      uVar17 = (ulonglong)*(uint *)(lVar14 + 8 + lVar16 * 0x10);
+      lVar23 = uVar17 * 0x30 + lVar22;
+      lVar16 = lVar16 + 1;
+      if (*(char *)(lVar19 + uVar17) == '\0') {
+        if ((bVar6 & 1) != 0) {
+          *(undefined4 *)(unaff_R12 + uVar17 * 4) = uVar7;
+          *(undefined4 *)(lVar23 + 0x18) = *(undefined4 *)(param_3 + 0xc);
+          *(undefined8 *)(lVar23 + 0x10) = *(undefined8 *)(param_3 + 4);
+        }
+      }
+      else {
+        puVar10 = (undefined8 *)*param_2;
+        fVar2 = *(float *)((longlong)puVar10 + 0x14);
+        fVar3 = *(float *)(puVar10 + 1);
+        uVar4 = *puVar10;
+        uVar5 = *(undefined8 *)((longlong)puVar10 + 0xc);
+        *(undefined4 *)(unaff_R12 + uVar17 * 4) = uVar7;
+        *(ulonglong *)(lVar23 + 0x10) =
+             CONCAT44((float)((ulonglong)uVar5 >> 0x20) * fVar13 + (float)((ulonglong)uVar4 >> 0x20)
+                      ,(float)uVar5 * fVar12 + (float)uVar4);
+        *(float *)(lVar23 + 0x18) = fVar2 * fVar11 + fVar3;
+      }
+    } while( true );
+  }
+  lVar19 = 0;
+  lVar18 = 0;
+  uVar17 = 0;
+  uVar21 = 0;
+  do {
+    if (uVar21 == uVar17) {
+      if (puVar20 == puVar1) {
+        return;
+      }
+      while( true ) {
+        uVar17 = *(ulonglong *)(*(longlong *)(lVar9 + 0x1a8) + 0x10 + (ulonglong)*puVar20 * 0x48);
+        if (uVar17 != 0) break;
+        puVar20 = puVar20 + 1;
+        if (puVar20 == puVar1) {
+          return;
+        }
+      }
+      lVar18 = *(longlong *)(lVar9 + 0x1a8) + (ulonglong)*puVar20 * 0x48;
+      lVar22 = *(longlong *)(lVar18 + 0x18);
+      lVar19 = *(longlong *)(lVar18 + 0x38);
+      lVar18 = *(longlong *)
+                (lVar22 + 0x10 + ~*(ulonglong *)(lVar19 + *(longlong *)(lVar8 + 0x110) * 8) * 0x30);
+      lVar14 = ~*(ulonglong *)(lVar19 + *(longlong *)(lVar8 + 0x118) * 8) * 0x30;
+      lVar19 = *(longlong *)(lVar22 + 0x10 + lVar14);
+      unaff_R15 = *(longlong *)(lVar22 + 0x28 + lVar14);
+      puVar20 = puVar20 + 1;
+      uVar21 = 0;
+    }
+    uVar15 = uVar21 & 0xffffffff;
+    lVar22 = uVar15 * 0x30 + lVar19;
+    uVar21 = uVar21 + 1;
+    if (*(char *)(lVar18 + uVar15) == '\0') {
+      if ((bVar6 & 1) != 0) {
+        *(undefined4 *)(unaff_R15 + uVar15 * 4) = uVar7;
+        *(undefined4 *)(lVar22 + 0x18) = *(undefined4 *)(param_3 + 0xc);
+        *(undefined8 *)(lVar22 + 0x10) = *(undefined8 *)(param_3 + 4);
+      }
+    }
+    else {
+      puVar10 = (undefined8 *)*param_2;
+      fVar2 = *(float *)((longlong)puVar10 + 0x14);
+      fVar3 = *(float *)(puVar10 + 1);
+      uVar4 = *puVar10;
+      uVar5 = *(undefined8 *)((longlong)puVar10 + 0xc);
+      *(undefined4 *)(unaff_R15 + uVar15 * 4) = uVar7;
+      *(ulonglong *)(lVar22 + 0x10) =
+           CONCAT44((float)((ulonglong)uVar5 >> 0x20) * fVar13 + (float)((ulonglong)uVar4 >> 0x20),
+                    (float)uVar5 * fVar12 + (float)uVar4);
+      *(float *)(lVar22 + 0x18) = fVar2 * fVar11 + fVar3;
+    }
+  } while( true );
+}
+

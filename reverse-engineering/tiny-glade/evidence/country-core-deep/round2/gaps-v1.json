@@ -1,0 +1,385 @@
+{
+ "history": {
+  "files": 27,
+  "lines": 3104,
+  "v2_procs": 116,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/history/replay_pop_bucket.rs",
+   "systems/history/replay_raster.rs",
+   "systems/history/replay_wall.rs",
+   "resources/history/mod.rs",
+   "resources/history/terrain_edit.rs",
+   "resources/history/wall_compound_edit.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "resources/history/mod.rs",
+    "gap": 14,
+    "v2": 33
+   },
+   {
+    "file": "resources/history/replay_cmd_buffer.rs",
+    "gap": 12,
+    "v2": 4
+   },
+   {
+    "file": "systems/history/history_process.rs",
+    "gap": 11,
+    "v2": 6
+   },
+   {
+    "file": "resources/history/decorator_edit.rs",
+    "gap": 10,
+    "v2": 16
+   },
+   {
+    "file": "systems/history/replay_raster.rs",
+    "gap": 7,
+    "v2": 8
+   }
+  ],
+  "digest_gaps": [
+   "remove_snapshot_record / update_compatibility / TerrainEdit::duration 真实地址。",
+   "closest_history_snapshot 独立符号是否存在（或内联进 save::snapshot）。",
+   "快照负载 T 的完整类型（已知含 sun 环境字段）。",
+   "跳表 0x142ae5420/0x142ae545c 的逐 case 语义（Ghidra 未恢复跳表）。",
+   "add_decorator_diff 的 remap 表（param_4）内容与用途。",
+   "History 完整 serde 手写 impl 位置（S_PUB32 无 History serde 符号——内联）。"
+  ]
+ },
+ "wall": {
+  "files": 91,
+  "lines": 5570,
+  "v2_procs": 437,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/wall/eraser/archivist.rs",
+   "systems/wall/shapes/circle/ui_edit_circle.rs",
+   "systems/wall/wall_state/wall_spatial_hash.rs",
+   "resources/walls/decorator_storage.rs",
+   "resources/walls/inner_walls.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "resources/walls/decorator.rs",
+    "gap": 13,
+    "v2": 69
+   },
+   {
+    "file": "resources/walls/inner_wall_state.rs",
+    "gap": 8,
+    "v2": 18
+   },
+   {
+    "file": "systems/wall/eraser/archivist.rs",
+    "gap": 7,
+    "v2": 7
+   },
+   {
+    "file": "resources/stairs_walls.rs",
+    "gap": 7,
+    "v2": 1
+   },
+   {
+    "file": "resources/walls/decorator_storage.rs",
+    "gap": 7,
+    "v2": 57
+   }
+  ],
+  "digest_gaps": [
+   "标注：**O**=反编译/机器码/原字节直接支持；**I**=推断（注明依据）；**U**=未恢复，不臆造。",
+   "另有第二张字段表（旧版 WallStyle 结构 serde）：`freehand_ty, halftimber, lantern_light, fences, window_light, flag, windows, gates, flat_rim_style, lantern_brightness, stairs`（兼容层，U 归属）。",
+   "- `Decorators`（单墙装饰集合）：removed_ids Vec @+0x0..+0x18；modified Vec @+0x60..+0x70；另有 @+0x30、@+0x78 字段；`!self.immutable` 断言（get_or_insert 族 0x140a1cf30 等）→ Decorators 有 immutable 标志（U 偏移）。",
+   "- `decorator_cull_allow_any` 0x140b2bc00：遍历 0x98 步长 map（值 0x90B），命中后 `FUN_140b76260` 回调；返回布尔语义 U（Ghidra 未见返回码路径）。",
+   "- `inner_walls.rs`：**InnerWalls** = hashbrown map（ctrl@+0、mask@+8、…）＋ **+0xc0 u64 脏代计数器**（wall_ids 0x14085a200 每次 `[self+0xc0] += 1`）＋ +0x30 子结构（wall_ids 尾调 `FUN_1402ca2f0(self+0x30, id)`；new_wall_w_params 0x14085a4a0 经 FUN_141529bb0 走 +0x30 工厂）。`max_id` 0x14085a730 仅调 FUN_1402ca2f0。全局 `cRam0000000143634d90`（静态 bool）×5 影响 wall_ids 分支（调试开关，U）。",
+   "- `public_walls.rs`：`PublicWalls` 含 **wall_entities_map @+0x30**（delete_wall 0x140aac1e0 从 `*self+0x30` remove_entry）与 roofs map（`roof_entity` 0x140a923a0 hashbrown 查表返回 Option<Entity>）；`simplified_curve_2d` 方法/字段 O（`assertion failed: w.simplified_curve_2d.is_valid()` public_walls.rs:50，被 publish/spatial_hash_update/clamp_wall_height 内联调用）。`WallEntities`/`WallPlasters` 的 map 在各自 +0x0/+0x20 区（delete_wall 用 `*param_3+0x20`/`*param_4+0x20` 作 map/哈希态，两个 map 哈希态指针互相引用，具体结构 U）。",
+   "- `cached_decorator_transforms.rs`：`transform` 0x140a1ada0 = 校验缓存 3×3 矩阵 9 分量有限性（NaN/Inf → panic），U 重建。",
+   "## 2. 系统行为（O/I/U）",
+   "- **publish_public_wall_state** 0x140a8b530（101KB，14 系统参数）：puffin scope（0x142ad8bd1 等 profile 串）→ 收集 lazy 更新源 → 遍历 InnerWalls/PublicWalls（0x2a8 步长 hashbrown SIMD 探针）→ 每墙：`FUN_141458b20/141458a50`（曲线/形状处理）、`FUN_140b772b0`（AnimateWallBulldozeBuffer::contains，动画中墙跳过）、`FUN_1409e9640`（material_stats 相关）、`FUN_140969720(&UNK_142c2e2b8/…c360)`（SparseInstanceBuffer::allocate，两个静态类型 id）、事件写 `OnWallChanged`（16B 行 {id, WallId}）与删除事件；7×`FUN_14087f390` 为栈上 7 个临时值 drop 胶水；panics：`assertion failed: !is_adding`、`w.simplified_curve_2d.is_valid()`。**typed gap**：inner→public 逐字段复制映射仍 U（大函数未逐行）。",
+   "- **wall_roof_hashmap** 0x140a94cd0（47KB，O 结构）：Query 迭代器（FUN_140eec970/d64e00/d4d740）＋ PublicWalls/WallEntities hashbrown 读写——维护 wall↔roof 实体双向映射；预置形状无 roof → 清除（合同）。param_3 有 +0x1c 回写（1 个 ResMut 证据点，另一 ResMut 走 Query 路径未见回写，U）。",
+   "- **ui_draw_wall** 0x140aafe40（O 结构）：**5 ResMut 回写**（param_5/7/9/10/14）——合同只列 ResMut<WallDrawState>+ResMut<CurveNursery>，另有 3 个 &mut Mut（CurveNursery 之外资源，U）；`water_hint` signifier 串；`RecordMouseInputIntoWall` 写入路径 FUN_14146c880 域。",
+   "- **archivist::finish** 0x14092f990（O）：`assertion failed: !before_wall.curve.is_empty()`、`original_wall_state.curve.is_valid()`、`Tried to init CurveU from an invalid u: `；`uespemosarenegylmodnarodsetybdet`（0x1429cd080 域，倒序存储串，U 语义）；`cache_if_original_wall` 0x14092ea50（Ghidra 未建函数，0x168 帧真实函数，U 逐行）。",
+   "| `uespemosarenegylmodnarodsetybdet` / `modnarodsetybdet` | 0x1429cd080/0x1429cd090 | eraser archivist（**倒序存储**，U） |",
+   "3. **wp12 core-lifecycle.md `ui_draw_wall` 签名**：实际 5 个 ResMut（param_5/7/9/10/14 tick 回写），合同只列 2 个 ResMut——至少 3 个未登记 &mut Mut 资源（U 名称）。"
+  ]
+ },
+ "session-save": {
+  "files": 16,
+  "lines": 1295,
+  "v2_procs": 48,
+  "stub_files": [
+   "resources/loading_screen.rs",
+   "resources/logo_animation.rs"
+  ],
+  "empty_body_files": [
+   "systems/save/load_game.rs",
+   "systems/save/save_thread.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "resources/session/mod.rs",
+    "gap": 29,
+    "v2": 0
+   },
+   {
+    "file": "systems/save/save_game.rs",
+    "gap": 13,
+    "v2": 10
+   },
+   {
+    "file": "systems/save/save_thread.rs",
+    "gap": 12,
+    "v2": 5
+   },
+   {
+    "file": "systems/save/snapshot.rs",
+    "gap": 11,
+    "v2": 6
+   },
+   {
+    "file": "systems/save/load_game.rs",
+    "gap": 8,
+    "v2": 2
+   }
+  ],
+  "digest_gaps": [
+   "NextSessionKind 变体 1/2 的完整语义映射（1=解析存档、2=常规加载为 I）；on_load 条目 {0, 0x80000000, payload} 头部语义。",
+   "backup_folder_path 的叶名明文（描述符 @0x140aef328 未解）；\"state\" 串在 meta.json/快照中的角色。",
+   "SessionMeta 字段 0/2/5（unit/双 qword/String）与 \"state\" 键的对应。",
+   "execute_save_cmd 变体 0/1/2 归属；ChangeSection/ReplaceEdits 的载荷细节；快照 GC 的触发频率。",
+   "update_loading_screen 的 UUID 键业务含义与增删时机。",
+   "try_approx_parse_save_file_identity 的近似解析规则。"
+  ]
+ },
+ "terrain-water": {
+  "files": 55,
+  "lines": 5974,
+  "v2_procs": 136,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/render_loop/compute_passes/rasterize_terrain_stroke.rs",
+   "resources/history/terrain_edit.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "systems/terrain/mod.rs",
+    "gap": 21,
+    "v2": 0
+   },
+   {
+    "file": "systems/terrain/ui_terrain_focus_mode.rs",
+    "gap": 15,
+    "v2": 1
+   },
+   {
+    "file": "systems/terrain/ui_edit_terrain.rs",
+    "gap": 8,
+    "v2": 1
+   },
+   {
+    "file": "resources/terrain_height.rs",
+    "gap": 8,
+    "v2": 16
+   },
+   {
+    "file": "systems/terrain/edit_terrain_stroke.rs",
+    "gap": 6,
+    "v2": 1
+   }
+  ],
+  "digest_gaps": [
+   "0x07954dbb 瓦片状态字语义；+0x48..+0x5f 次级 Vec 用途；subscribe 记录的消费方（谁读订阅 Vec@+0x78——candidate：AllWorldRasterRead::read，未证实）。",
+   "WorldRaster::new 的 param_2 原型来源（静态表 DATA xref 0x1436953d0）。",
+   "+0x29b 的**另一置位点**（write 只置 +0x299；0x29b 谁置仍 U）。",
+   "ActiveRasterStroke +0x00/+0x08 字段名；solidify_fluid_into 的固化数学（间隔/权重）。",
+   "ui_terrain_focus_mode 四闭包体语义；drawing_input_smoother 具体平滑核参数。",
+   "rasterize_stroke 三 blend 闭包写入公式的 zeno 覆盖度定点细节（prior 已标边界，本域不重开）。",
+   "WaterMaskSsbo/WaterExcludeClutterMaskSsbo/GardenMaskSsbo/RippleSourceSsbo 字段（PDB name-only）。",
+   ""
+  ]
+ },
+ "ui-input": {
+  "files": 65,
+  "lines": 3701,
+  "v2_procs": 222,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/wall/shapes/circle/ui_edit_circle.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "systems/terrain/ui_terrain_focus_mode.rs",
+    "gap": 15,
+    "v2": 1
+   },
+   {
+    "file": "systems/mode_manager.rs",
+    "gap": 12,
+    "v2": 23
+   },
+   {
+    "file": "systems/ui_edit_focus.rs",
+    "gap": 8,
+    "v2": 3
+   },
+   {
+    "file": "systems/terrain/ui_edit_terrain.rs",
+    "gap": 8,
+    "v2": 1
+   },
+   {
+    "file": "systems/ui/signifiers/mod.rs",
+    "gap": 7,
+    "v2": 12
+   }
+  ],
+  "digest_gaps": [
+   "check_if_can_switch 尾段（byte@+1 >= 2 之后的闭包分发码）未完全手解。",
+   "mode_manager 跳表中 0..64 各模式 id 的语义名（仅 2=Timelapse、0xd=Replay、10=特殊模式已知）。",
+   "EscMenuState 判别 {3,4,7} 的变体名；0x200000002/3 事件的确切类型名。",
+   "Toolbar::new 中 Buildings 列表混入 (0xb,0x3f)/(0x12,0) 条目的真伪（Ghidra 类型混淆风险）。",
+   "switch_mode panic 串完整原文。",
+   "Modifiers 位标志的完整位定义（仅知 disable_snapping ∈ byte1）。"
+  ]
+ },
+ "camera-time": {
+  "files": 22,
+  "lines": 1496,
+  "v2_procs": 36,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/camera_rig/mod.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "systems/timelapse_replay.rs",
+    "gap": 7,
+    "v2": 4
+   },
+   {
+    "file": "systems/camera_rig/mod.rs",
+    "gap": 7,
+    "v2": 0
+   },
+   {
+    "file": "resources/daily.rs",
+    "gap": 5,
+    "v2": 2
+   },
+   {
+    "file": "systems/arrow_gizmo_animation.rs",
+    "gap": 4,
+    "v2": 1
+   },
+   {
+    "file": "systems/main_camera.rs",
+    "gap": 4,
+    "v2": 7
+   }
+  ],
+  "digest_gaps": [
+   "1. CameraMode 变体 6..12 的确切名字/语义（拍照模式相机 7 种？）——需 ui-input 域",
+   "2. `WalkCamera::rotation` 的 16B 拷贝语义（位置+旋转混合 or 布局不同）。",
+   "3. TodLightingSnapshot 两个 u64 字段（@+0x20/+0x28，拷贝不插值）的语义（颜色打包 id？）。",
+   "4. suncalc 的固定纬度/经度常量（@142ad5910..5984 一组 f32）与日期位打包",
+   "5. time_of_day 的 param_3（f32 资源，写入光照结构尾部）+ param_10/11（双 EventReader",
+   "6. `MainCamera::reset` 0x140911280 全貌（NotFound，仅有前 64B 手解：f32 位检查）。",
+   "7. GameTime 头部布局（+0x0/+0x8 = game_time Duration；+0x10/+0x18 = delta Duration；"
+  ]
+ },
+ "collision-eco": {
+  "files": 44,
+  "lines": 3894,
+  "v2_procs": 187,
+  "stub_files": [],
+  "empty_body_files": [
+   "systems/collision/world.rs",
+   "systems/ivy/ivy_pruner.rs",
+   "systems/ivy/mod.rs",
+   "systems/paths/draw_path.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "systems/collision/world.rs",
+    "gap": 10,
+    "v2": 68
+   },
+   {
+    "file": "resources/stairs_walls.rs",
+    "gap": 7,
+    "v2": 1
+   },
+   {
+    "file": "resources/stairs/stairs_state.rs",
+    "gap": 6,
+    "v2": 31
+   },
+   {
+    "file": "resources/clutter_meshes.rs",
+    "gap": 5,
+    "v2": 10
+   },
+   {
+    "file": "resources/ivy/ivy_storage.rs",
+    "gap": 5,
+    "v2": 4
+   }
+  ],
+  "digest_gaps": [
+   "SubworldIndex 17 槽完整名字↔槽号映射（Terrain=5 已锚定，其余待各 mask 使用点交叉验证）。",
+   "RaycastMeshData 写入面 vs 读取面 ±8 偏移裁决；legacy_spherecast 结果 +0x30/+0x34 布局差。",
+   "update_rapier_colliders（0x1408d0490）反编译失败，需 asm/邻接函数恢复。",
+   "StairsState 完整 0x180B 布局（+0xb0 备份区结构、+0x178 标志语义）。",
+   "Ivy grower 主闭包（系统跳表目标）不在清单内——逻辑经 closest_segment_index 等恢复（部分 O）。",
+   "ClutterMeshTy 56 变体完整名序（名字表碎片化，需按 len-prefix 全量解析）。"
+  ]
+ },
+ "audio-misc": {
+  "files": 68,
+  "lines": 3907,
+  "v2_procs": 175,
+  "stub_files": [
+   "resources/gpu_lut.rs",
+   "resources/grading_lut.rs"
+  ],
+  "empty_body_files": [
+   "systems/steam/mod.rs"
+  ],
+  "top_gap_files": [
+   {
+    "file": "resources/grading_lut.rs",
+    "gap": 16,
+    "v2": 6
+   },
+   {
+    "file": "resources/color_icon.rs",
+    "gap": 15,
+    "v2": 2
+   },
+   {
+    "file": "resources/audio_resources.rs",
+    "gap": 11,
+    "v2": 14
+   },
+   {
+    "file": "systems/audio/music/music_player.rs",
+    "gap": 7,
+    "v2": 7
+   },
+   {
+    "file": "systems/steam/mod.rs",
+    "gap": 7,
+    "v2": 17
+   }
+  ],
+  "digest_gaps": [
+   "0x142a9fa24，按 `pos<last_position` 选表；Ghidra 未能展开全部 case，转移语义 U）；",
+   "写入游戏输入资源 + PrevSteamInputState 帧差）→ 纯 steamworks 胶水，逐块内容未深挖（U）。",
+   "表中语义未钉死 U）——与 wp15 合同一致。",
+   "i64::MIN 哨兵）——aspect_ratio 真实函数体 U。",
+   "stop_immediately。current_track 真实地址 U。",
+   "## 7. 未解决（U，不臆造）"
+  ]
+ }
+}

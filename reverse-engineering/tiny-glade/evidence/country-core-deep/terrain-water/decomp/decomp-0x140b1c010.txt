@@ -1,0 +1,132 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140b1c010(undefined8 *param_1,longlong *param_2,undefined8 *param_3)
+
+{
+  char cVar1;
+  uint uVar2;
+  longlong lVar3;
+  uint *puVar4;
+  longlong lVar5;
+  longlong lVar6;
+  uint *puVar7;
+  longlong *plVar8;
+  longlong *plVar9;
+  longlong lVar10;
+  undefined4 uVar11;
+  longlong *plVar12;
+  longlong lVar13;
+  longlong lVar14;
+  longlong lVar15;
+  ulonglong uVar16;
+  longlong lVar17;
+  longlong lVar18;
+  float fVar19;
+  longlong lStack_78;
+  longlong lStack_70;
+  longlong lStack_68;
+  longlong lStack_60;
+  longlong lStack_58;
+  longlong lStack_50;
+  longlong lStack_48;
+  
+  if (1 < *(int *)*param_1 - 7U) {
+    return;
+  }
+  lVar18 = *param_2;
+  lVar3 = param_2[1];
+  lVar10 = param_2[2];
+  puVar4 = *(uint **)(lVar18 + 0xf8);
+  lVar5 = *(longlong *)(lVar18 + 0x100);
+  cVar1 = *(char *)(lVar18 + 0x108);
+  puVar7 = puVar4;
+  if (cVar1 == '\0') {
+    plVar12 = &lStack_50;
+    plVar8 = &lStack_48;
+    plVar9 = &lStack_58;
+    lVar15 = lVar5 * 4;
+    do {
+      if (lVar15 == 0) goto code_r0x000140b1c1f5;
+      uVar2 = *puVar7;
+      puVar7 = puVar7 + 1;
+      lVar14 = *(longlong *)(*(longlong *)(lVar3 + 0x100) + 0x58 + (ulonglong)uVar2 * 0xa0);
+      lVar15 = lVar15 + -4;
+    } while (lVar14 == 0);
+    lVar15 = *(longlong *)(lVar3 + 0x100) + (ulonglong)uVar2 * 0xa0;
+    uVar16 = (ulonglong)*(uint *)(lVar15 + 0x94);
+    lVar6 = *(longlong *)(*(longlong *)(lVar3 + 0x1a8) + 0x18 + uVar16 * 0x48);
+    lVar13 = ~*(ulonglong *)
+               (*(longlong *)(*(longlong *)(lVar3 + 0x1a8) + 0x38 + uVar16 * 0x48) +
+               *(longlong *)(lVar18 + 0x110) * 8) * 0x30;
+    uVar16 = (ulonglong)*(uint *)(*(longlong *)(lVar15 + 0x50) + 8);
+    lVar15 = uVar16 * 0x30 + *(longlong *)(lVar6 + 0x10 + lVar13);
+    lVar17 = uVar16 * 4;
+    lVar18 = lVar17 + *(longlong *)(lVar6 + 0x28 + lVar13);
+    lStack_60 = lVar15;
+    lStack_58 = *(longlong *)(lVar6 + 0x20 + lVar13) + lVar17;
+  }
+  else {
+    plVar12 = &lStack_70;
+    plVar8 = &lStack_68;
+    plVar9 = &lStack_78;
+    lVar15 = lVar5 * 4;
+    do {
+      if (lVar15 == 0) goto code_r0x000140b1c1f5;
+      uVar2 = *puVar7;
+      puVar7 = puVar7 + 1;
+      lVar14 = *(longlong *)(*(longlong *)(lVar3 + 0x1a8) + 0x10 + (ulonglong)uVar2 * 0x48);
+      lVar15 = lVar15 + -4;
+    } while (lVar14 == 0);
+    lVar15 = *(longlong *)(lVar3 + 0x1a8) + (ulonglong)uVar2 * 0x48;
+    lVar6 = *(longlong *)(lVar15 + 0x18);
+    lVar15 = ~*(ulonglong *)(*(longlong *)(lVar15 + 0x38) + *(longlong *)(lVar18 + 0x110) * 8) *
+             0x30;
+    lVar18 = *(longlong *)(lVar6 + 0x28 + lVar15);
+    lVar15 = *(longlong *)(lVar6 + 0x10 + lVar15);
+  }
+  *plVar12 = lVar18;
+  *plVar8 = lVar10;
+  plVar8 = (longlong *)plVar9[1];
+  uVar11 = *(undefined4 *)((longlong)plVar9 + 0x14);
+  lVar10 = 1;
+joined_r0x000140b1c206:
+  if (cVar1 == '\0') {
+    if (lVar10 == lVar14) {
+      do {
+        if (puVar7 == puVar4 + lVar5) {
+code_r0x000140b1c231:
+          if (lVar15 == 0) {
+            return;
+          }
+          fVar19 = *(float *)*param_3 * _UNK_142a8d600;
+          *(float *)(lVar15 + 0x1c) = fVar19;
+          *(float *)(lVar15 + 0x24) = fVar19;
+          if (fVar19 <= _UNK_142925904) {
+            fVar19 = _UNK_142925904;
+          }
+          *(undefined4 *)plVar8 = uVar11;
+          *(float *)(lVar15 + 0x20) = fVar19;
+          return;
+        }
+        uVar2 = *puVar7;
+        puVar7 = puVar7 + 1;
+      } while (*(longlong *)(*(longlong *)(lVar3 + 0x100) + 0x58 + (ulonglong)uVar2 * 0xa0) == 0);
+    }
+  }
+  else if (lVar10 == lVar14) {
+    do {
+      if (puVar7 == puVar4 + lVar5) goto code_r0x000140b1c231;
+      uVar2 = *puVar7;
+      puVar7 = puVar7 + 1;
+    } while (*(longlong *)(*(longlong *)(lVar3 + 0x1a8) + 0x10 + (ulonglong)uVar2 * 0x48) == 0);
+  }
+  return;
+code_r0x000140b1c1f5:
+  uVar11 = 0;
+  lVar14 = 0;
+  lVar10 = 0;
+  lVar15 = 0;
+  goto joined_r0x000140b1c206;
+}
+

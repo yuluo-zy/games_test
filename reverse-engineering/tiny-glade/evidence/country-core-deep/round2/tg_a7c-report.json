@@ -1,0 +1,177 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_a7c",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_a7c\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_a7c",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_a7c"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_a7c\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_a7c",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_a7c",
+        "address": "0x14094ac20"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14094AC20\",\"error_type\":\"NotFound\",\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_a7c",
+        "address": "0x14094c09f"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14094C09F\",\"error_type\":\"NotFound\",\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_a7c",
+        "address": "0x1408d0490"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"\\nRecoverable Error: Unable to find unique hash for varnode\",\"error_type\":\"DecompilationFailed\",\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_a7c",
+        "address": "0x142aa4360"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":100,\"has_more\":false,\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 100,
+          "has_more": false,
+          "database": "tg_a7c"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "tg_a7c",
+        "address": "0x142aa4420"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":100,\"has_more\":false,\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 100,
+          "has_more": false,
+          "database": "tg_a7c"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_a7c",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_a7c\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_a7c"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

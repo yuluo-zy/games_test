@@ -1,0 +1,124 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 *
+FUN_14175ada0(undefined4 *param_1,undefined8 *param_2,undefined8 param_3,undefined8 param_4,
+             byte *param_5,float param_6)
+
+{
+  byte *pbVar1;
+  code *pcVar2;
+  char cVar3;
+  undefined4 *puVar4;
+  float fVar5;
+  undefined1 auVar6 [16];
+  float fVar7;
+  float fVar8;
+  undefined1 in_XMM2 [16];
+  undefined1 auVar9 [16];
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  undefined1 auVar14 [16];
+  float fStack_b8;
+  float fStack_b4;
+  float fStack_b0;
+  float fStack_ac;
+  float fStack_a8;
+  float fStack_a4;
+  float fStack_a0;
+  float fStack_9c;
+  float fStack_98;
+  float fStack_94;
+  float fStack_90;
+  float fStack_8c;
+  
+  fVar10 = (float)param_2[1];
+  fVar11 = (float)((ulonglong)param_2[1] >> 0x20);
+  pbVar1 = param_5 + 4;
+  fVar8 = (float)*param_2;
+  fVar5 = (float)((ulonglong)*param_2 >> 0x20);
+  if ((*param_5 & 1) == 0) {
+    FUN_140c97980(&fStack_b8,pbVar1,param_3,fVar5,fVar10 - fVar8,fVar11 - fVar5);
+    if (((((uint)fStack_b8 & 1) == 0) || (_UNK_142925904 < fStack_b4)) || (fStack_b0 < 0.0))
+    goto code_r0x00014175b04b;
+    fVar8 = fStack_b0;
+    if (fStack_b4 < 0.0) goto code_r0x00014175afcb;
+    if ((fStack_b4 < 0.0) || (_UNK_142925904 < fStack_b4)) goto code_r0x00014175b10b;
+code_r0x00014175b0ae:
+    fVar5 = (float)func_0x000140c904d0();
+    if (_UNK_142925904 < fVar8) {
+code_r0x00014175b011:
+      fVar8 = _UNK_142925904;
+      fVar10 = (float)func_0x000142923f10();
+      fVar8 = (float)(~-(uint)(fVar10 < 0.0) & (uint)fVar10 |
+                     (uint)(fVar8 + fVar10) & -(uint)(fVar10 < 0.0));
+      if (fVar5 <= fVar8) goto code_r0x00014175b0f5;
+      goto code_r0x00014175b04b;
+    }
+  }
+  else {
+    func_0x000140c99540(&fStack_a8,pbVar1);
+    auVar6 = _UNK_142a901b0;
+    fVar7 = fStack_9c * fStack_a8 - fStack_a0 * fStack_a4;
+    auVar9._4_4_ = fVar7;
+    auVar9._0_4_ = fVar7;
+    auVar9._8_4_ = fVar7;
+    auVar9._12_4_ = fVar7;
+    auVar9 = divps(_UNK_142a901b0,auVar9);
+    fVar12 = fVar8 - (float)*(undefined8 *)(param_5 + 0xc);
+    fVar13 = fVar5 - (float)((ulonglong)*(undefined8 *)(param_5 + 0xc) >> 0x20);
+    func_0x000140c99540(&fStack_b8,pbVar1);
+    fVar7 = fStack_ac * fStack_b8 - fStack_b0 * fStack_b4;
+    auVar14._4_4_ = fVar7;
+    auVar14._0_4_ = fVar7;
+    auVar14._8_4_ = fVar7;
+    auVar14._12_4_ = fVar7;
+    auVar14 = divps(auVar6,auVar14);
+    fVar10 = fVar10 - fVar8;
+    fVar11 = fVar11 - fVar5;
+    fStack_98 = fVar12 * fStack_9c * auVar9._0_4_ + fVar13 * fStack_a0 * auVar9._8_4_;
+    fStack_94 = fVar12 * fStack_a4 * auVar9._4_4_ + fVar13 * fStack_a8 * auVar9._12_4_;
+    fStack_90 = fVar10 * fStack_ac * auVar14._0_4_ + fVar11 * fStack_b0 * auVar14._8_4_;
+    fStack_8c = fVar10 * fStack_b4 * auVar14._4_4_ + fVar11 * fStack_b8 * auVar14._12_4_;
+    fVar8 = 0.0;
+    FUN_14123fff0(&fStack_b8);
+    fVar5 = (float)FUN_1412401c0(&fStack_b8,&fStack_98);
+    fStack_a8 = fVar5;
+    fStack_a4 = fVar8;
+    cVar3 = func_0x000141240b10(&fStack_a8);
+    if ((cVar3 == '\0') || ((_UNK_142925904 < fVar5 || (fVar8 < 0.0)))) goto code_r0x00014175b04b;
+    if (0.0 <= fVar5) {
+      if ((fVar5 < 0.0) || (_UNK_142925904 < fVar5)) goto code_r0x00014175b10b;
+      goto code_r0x00014175b0ae;
+    }
+code_r0x00014175afcb:
+    fVar5 = _UNK_142925904;
+    auVar6._0_4_ = in_XMM2._0_4_ + param_6;
+    auVar6._4_12_ = in_XMM2._4_12_;
+    fVar10 = (float)func_0x000142923f10(auVar6._0_8_);
+    fVar5 = (float)(~-(uint)(fVar10 < 0.0) & (uint)fVar10 |
+                   (uint)(fVar5 + fVar10) & -(uint)(fVar10 < 0.0));
+    if (_UNK_142925904 < fVar8) goto code_r0x00014175b011;
+  }
+  if ((fVar8 < 0.0) || (_UNK_142925904 < fVar8)) {
+code_r0x00014175b10b:
+    FUN_1428d9430(&UNK_142aa53ed,0x2a,&UNK_142aa5468);
+    pcVar2 = (code *)swi(3);
+    puVar4 = (undefined4 *)(*pcVar2)();
+    return puVar4;
+  }
+  fVar8 = (float)func_0x000140c904d0();
+  if (fVar5 <= fVar8) {
+code_r0x00014175b0f5:
+    param_1[1] = fVar5;
+    param_1[2] = fVar8;
+    *param_1 = 1;
+    return param_1;
+  }
+code_r0x00014175b04b:
+  *param_1 = 0;
+  return param_1;
+}
+

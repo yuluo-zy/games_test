@@ -1,0 +1,112 @@
+
+/* WARNING: Possible PIC construction at 0x0001409e99cf: Changing call to branch */
+/* WARNING: Removing unreachable block (ram,0x0001409e99d4) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined2 FUN_1409e9640(longlong param_1,undefined8 param_2)
+
+{
+  undefined2 uVar1;
+  int iVar2;
+  uint uVar3;
+  int iVar4;
+  uint uVar5;
+  uint uVar6;
+  uint uVar8;
+  undefined1 auVar7 [16];
+  float fVar9;
+  undefined1 in_XMM2 [16];
+  undefined1 auVar10 [16];
+  undefined1 auVar11 [16];
+  undefined1 auVar12 [16];
+  undefined1 auVar13 [16];
+  float fVar14;
+  
+  auVar10._0_8_ = in_XMM2._0_8_;
+  auVar10._8_4_ = in_XMM2._4_4_;
+  auVar10._12_4_ = (int)((ulonglong)param_2 >> 0x20);
+  auVar11._8_8_ = auVar10._8_8_;
+  auVar11._0_4_ = in_XMM2._0_4_;
+  auVar11._4_4_ = (int)param_2;
+  auVar11 = divps(auVar11,_UNK_1429a3c70);
+  auVar7._0_4_ = auVar11._0_4_ + _UNK_1429258e0;
+  auVar7._4_4_ = auVar11._4_4_ + _UNK_1429258e4;
+  auVar7._8_4_ = auVar11._8_4_ + _UNK_1429258e8;
+  auVar7._12_4_ = auVar11._12_4_ + _UNK_1429258ec;
+  auVar12._4_12_ = auVar7._4_12_;
+  if (*pcRam000000014362c308 == '\0') {
+    auVar11 = maxps(ZEXT816(0),auVar7);
+    auVar13._0_4_ = (float)(-(uint)!NAN(auVar7._0_4_) & auVar11._0_4_);
+    auVar13._4_4_ = (float)(-(uint)!NAN(auVar7._4_4_) & auVar11._4_4_);
+    auVar13._8_4_ = -(uint)!NAN(auVar7._8_4_) & auVar11._8_4_;
+    auVar13._12_4_ = -(uint)!NAN(auVar7._12_4_) & auVar11._12_4_;
+    auVar7 = minps(_UNK_14292e6b0,auVar13);
+    fVar14 = (float)(~-(uint)NAN(auVar13._0_4_) & auVar7._0_4_ |
+                    (uint)UNK_14292e6b0 & -(uint)NAN(auVar13._0_4_)) * _UNK_1429a3c80;
+    fVar9 = (float)(~-(uint)NAN(auVar13._4_4_) & auVar7._4_4_ |
+                   UNK_14292e6b0._4_4_ & -(uint)NAN(auVar13._4_4_)) * _UNK_1429a3c84;
+    uVar3 = (uint)(longlong)fVar14;
+    if (fVar14 < 0.0) {
+      uVar3 = 0;
+    }
+    if (_UNK_1429a07d0 < fVar14) {
+      uVar3 = 0xffffffff;
+    }
+    uVar5 = (uint)(longlong)fVar9;
+    if (fVar9 < 0.0) {
+      uVar5 = 0;
+    }
+    if (_UNK_1429a07d0 < fVar9) {
+      uVar5 = 0xffffffff;
+    }
+    uVar6 = -(uint)(_UNK_1429a3c90 < (int)(_UNK_1429258f0 ^ uVar3));
+    uVar8 = -(uint)(_UNK_1429a3c94 < (int)(_UNK_1429258f4 ^ uVar5));
+    uVar1 = *(undefined2 *)
+             (*(longlong *)(param_1 + 8) +
+             ((ulonglong)((uVar6 & _UNK_1429a3ca0 | ~uVar6 & uVar3) << 9) +
+              (ulonglong)(uVar8 & _UNK_1429a3ca4 | ~uVar8 & uVar5) + 0x201) * 2);
+  }
+  else {
+    fVar14 = auVar7._4_4_;
+    if (_UNK_142925904 <= auVar7._4_4_) {
+      fVar14 = _UNK_142925904;
+    }
+    if (_UNK_142925904 <= auVar7._0_4_) {
+      auVar12._0_4_ = _UNK_142925904;
+      auVar7 = auVar12;
+    }
+    fVar14 = fVar14 * _UNK_1429a3cb0 + _UNK_14295a0e8;
+    fVar9 = auVar7._0_4_ * _UNK_1429a3cb0 + _UNK_14295a0e8;
+    if (fVar14 <= 0.0) {
+      fVar14 = 0.0;
+    }
+    iVar2 = (int)(longlong)fVar14;
+    if (fVar14 < 0.0) {
+      iVar2 = 0;
+    }
+    if (fVar9 <= 0.0) {
+      fVar9 = 0.0;
+    }
+    if (_UNK_1429a07d0 < fVar14) {
+      iVar2 = -1;
+    }
+    iVar4 = (int)(longlong)fVar9;
+    if (fVar9 < 0.0) {
+      iVar4 = 0;
+    }
+    if (_UNK_1429a07d0 < fVar9) {
+      iVar4 = -1;
+    }
+    uVar3 = iVar2 + 1;
+    if (0x1fe < uVar3) {
+      uVar3 = 0x1ff;
+    }
+    uVar5 = iVar4 + 1U;
+    if (0x1fe < iVar4 + 1U) {
+      uVar5 = 0x1ff;
+    }
+    uVar1 = *(undefined2 *)(*(longlong *)(param_1 + 8) + (ulonglong)((uVar5 << 9 | uVar3) * 2));
+  }
+  return uVar1;
+}
+

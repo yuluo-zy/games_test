@@ -1,0 +1,125 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_a2_r5",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_a2_r5\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_a2_r5",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_a2_r5"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_a2_r5\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_a2_r5",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_a2_r5",
+        "address": "0x14165cd40"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14165cd40\",\"address\":\"0x14165CD40\",\"decompiled_code\":\"\\r\\nvoid FUN_14165cd40(longlong *param_1,undefined8 *param_2,undefined1 param_3)\\r\\n\\r\\n{\\r\\n  code *pcVar1;\\r\\n  undefined1 uVar2;\\r\\n  undefined8 *puVar3;\\r\\n  longlong lVar4;\\r\\n  undefined8 uVar5;\\r\\n  undefined8 *puStack_c8;\\r\\n  code *pcStack_c0;\\r\\n  undefined1 *puStack_b8;\\r\\n  undefined *puStack_b0;\\r\\n  undefined8 uStack_a8;\\r\\n  undefined8 uStack_a0;\\r\\n  undefined8 **ppuStack_98;\\r\\n  undefined8 uStack_90;\\r\\n  undefined8 uStack_88;\\r\\n  longlong lStack_70;\\r\\n  undefined8 uStack_68;\\r\\n  longlong lStack_60;\\r\\n  undefined8 *puStack_58;\\r\\n  undefined1 uStack_49;\\r\\n  undefined8 uStack_48;\\r\\n  \\r\\n  uStack_48 = 0xfffffffffffffffe;\\r\\n  pcStack_c0 = FUN_14165bd40;\\r\\n  puStack_b8 = &uStack_49;\\r\\n  puStack_b0 = &UNK_140156710;\\r\\n  uStack_a8 = (undefined8 *)&UNK_142c82220;\\r\\n  uStack_a0 = 2;\\r\\n  ppuStack_98 = &puStack_c8;\\r\\n  uStack_90 = 2;\\r\\n  uStack_88 = 0;\\r\\n  puStack_c8 = param_2;\\r\\n  uStack_49 = param_3;\\r\\n  FUN_140d79f90(&lStack_70,&uStack_a8);\\r\\n  uVar2 = uStack_49;\\r\\n  uStack_a8 = (undefined8 *)*param_2;\\r\\n  uStack_a0._0_4_ = *(undefined4 *)(param_2 + 1);\\r\\n  uStack_a0._4_4_ = *(undefined4 *)((longlong)param_2 + 0xc);\\r\\n  puVar3 = (undefined8 *)func_0x000140613c10(0x28,8);\\r\\n  if (puVar3 == (undefined8 *)0x0) {\\r\\n    FUN_1428d9000(8,0x28);\\r\\n  }\\r\\n  else {\\r\\n    *puVar3 = 1;\\r\\n    puVar3[1] = 1;\\r\\n    *(undefined4 *)(puVar3 + 2) = (undefined4)uStack_a8;\\r\\n    *(undefined4 *)((longlong)puVar3 + 0x14) = uStack_a8._4_4_;\\r\\n    *(undefined4 *)(puVar3 + 3) = (undefined4)uStack_a0;\\r\\n    *(undefined4 *)((longlong)puVar3 + 0x1c) = uStack_a0._4_4_;\\r\\n    *(undefined1 *)(puVar3 + 4) = uVar2;\\r\\n    uStack_a0._0_4_ = 0x42c82240;\\r\\n    uStack_a0._4_4_ = 1;\\r\\n    uStack_a8 = puVar3;\\r\\n    if (lStack_60 < 0) {\\r\\n      uVar5 = 0;\\r\\n    }\\r\\n    else {\\r\\n      if (lStack_60 == 0) {\\r\\n        lVar4 = 1;\\r\\ncode_r0x00014165ce5d:\\r\\n        func_0x000142923c00(lVar4,uStack_68,lStack_60);\\r\\n        *param_1 = lStack_60;\\r\\n        param_1[1] = lVar4;\\r\\n        param_1[2] = lStack_60;\\r\\n        param_1[3] = (longlong)puVar3;\\r\\n        param_1[4] = (longlong)&UNK_142c82240;\\r\\n        if (lStack_70 != 0) {\\r\\n          func_0x000140613c20(uStack_68,lStack_70,1);\\r\\n        }\\r\\n        return;\\r\\n      }\\r\\n      uVar5 = 1;\\r\\n      lVar4 = func_0x000140613c10(lStack_60,1);\\r\\n      if (lVar4 != 0) goto code_r0x00014165ce5d;\\r\\n    }\\r\\n    puStack_58 = puVar3;\\r\\n    FUN_1428d8fe3(uVar5,lStack_60,&UNK_142a98f20);\\r\\n  }\\r\\n                    /* WARNING: Does not return */\\r\\n  pcVar1 = (code *)invalidInstructionException();\\r\\n  (*pcVar1)();\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_a2_r5\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14165cd40",
+          "address": "0x14165CD40",
+          "decompiled_code": "\r\nvoid FUN_14165cd40(longlong *param_1,undefined8 *param_2,undefined1 param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined1 uVar2;\r\n  undefined8 *puVar3;\r\n  longlong lVar4;\r\n  undefined8 uVar5;\r\n  undefined8 *puStack_c8;\r\n  code *pcStack_c0;\r\n  undefined1 *puStack_b8;\r\n  undefined *puStack_b0;\r\n  undefined8 uStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 **ppuStack_98;\r\n  undefined8 uStack_90;\r\n  undefined8 uStack_88;\r\n  longlong lStack_70;\r\n  undefined8 uStack_68;\r\n  longlong lStack_60;\r\n  undefined8 *puStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  pcStack_c0 = FUN_14165bd40;\r\n  puStack_b8 = &uStack_49;\r\n  puStack_b0 = &UNK_140156710;\r\n  uStack_a8 = (undefined8 *)&UNK_142c82220;\r\n  uStack_a0 = 2;\r\n  ppuStack_98 = &puStack_c8;\r\n  uStack_90 = 2;\r\n  uStack_88 = 0;\r\n  puStack_c8 = param_2;\r\n  uStack_49 = param_3;\r\n  FUN_140d79f90(&lStack_70,&uStack_a8);\r\n  uVar2 = uStack_49;\r\n  uStack_a8 = (undefined8 *)*param_2;\r\n  uStack_a0._0_4_ = *(undefined4 *)(param_2 + 1);\r\n  uStack_a0._4_4_ = *(undefined4 *)((longlong)param_2 + 0xc);\r\n  puVar3 = (undefined8 *)func_0x000140613c10(0x28,8);\r\n  if (puVar3 == (undefined8 *)0x0) {\r\n    FUN_1428d9000(8,0x28);\r\n  }\r\n  else {\r\n    *puVar3 = 1;\r\n    puVar3[1] = 1;\r\n    *(undefined4 *)(puVar3 + 2) = (undefined4)uStack_a8;\r\n    *(undefined4 *)((longlong)puVar3 + 0x14) = uStack_a8._4_4_;\r\n    *(undefined4 *)(puVar3 + 3) = (undefined4)uStack_a0;\r\n    *(undefined4 *)((longlong)puVar3 + 0x1c) = uStack_a0._4_4_;\r\n    *(undefined1 *)(puVar3 + 4) = uVar2;\r\n    uStack_a0._0_4_ = 0x42c82240;\r\n    uStack_a0._4_4_ = 1;\r\n    uStack_a8 = puVar3;\r\n    if (lStack_60 < 0) {\r\n      uVar5 = 0;\r\n    }\r\n    else {\r\n      if (lStack_60 == 0) {\r\n        lVar4 = 1;\r\ncode_r0x00014165ce5d:\r\n        func_0x000142923c00(lVar4,uStack_68,lStack_60);\r\n        *param_1 = lStack_60;\r\n        param_1[1] = lVar4;\r\n        param_1[2] = lStack_60;\r\n        param_1[3] = (longlong)puVar3;\r\n        param_1[4] = (longlong)&UNK_142c82240;\r\n        if (lStack_70 != 0) {\r\n          func_0x000140613c20(uStack_68,lStack_70,1);\r\n        }\r\n        return;\r\n      }\r\n      uVar5 = 1;\r\n      lVar4 = func_0x000140613c10(lStack_60,1);\r\n      if (lVar4 != 0) goto code_r0x00014165ce5d;\r\n    }\r\n    puStack_58 = puVar3;\r\n    FUN_1428d8fe3(uVar5,lStack_60,&UNK_142a98f20);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+          "database": "tg_a2_r5"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_a2_r5",
+        "address": "0x14155e460"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14155e460\",\"address\":\"0x14155E460\",\"decompiled_code\":\"\\r\\nvoid FUN_14155e460(longlong *param_1,undefined8 *param_2,undefined1 param_3)\\r\\n\\r\\n{\\r\\n  code *pcVar1;\\r\\n  undefined1 uVar2;\\r\\n  undefined8 *puVar3;\\r\\n  longlong lVar4;\\r\\n  undefined8 uVar5;\\r\\n  undefined8 *puStack_c8;\\r\\n  code *pcStack_c0;\\r\\n  undefined1 *puStack_b8;\\r\\n  undefined *puStack_b0;\\r\\n  longlong lStack_a8;\\r\\n  undefined8 uStack_a0;\\r\\n  longlong lStack_98;\\r\\n  undefined8 *puStack_90;\\r\\n  undefined8 uStack_88;\\r\\n  undefined8 uStack_80;\\r\\n  undefined8 **ppuStack_78;\\r\\n  undefined8 uStack_70;\\r\\n  undefined8 uStack_68;\\r\\n  undefined1 uStack_49;\\r\\n  undefined8 uStack_48;\\r\\n  \\r\\n  uStack_48 = 0xfffffffffffffffe;\\r\\n  pcStack_c0 = FUN_141559ce0;\\r\\n  puStack_b8 = &uStack_49;\\r\\n  puStack_b0 = &UNK_140156710;\\r\\n  uStack_88 = (undefined8 *)&UNK_142c6e320;\\r\\n  uStack_80 = 2;\\r\\n  ppuStack_78 = &puStack_c8;\\r\\n  uStack_70 = 2;\\r\\n  uStack_68 = 0;\\r\\n  puStack_c8 = param_2;\\r\\n  uStack_49 = param_3;\\r\\n  FUN_140d79f90(&lStack_a8,&uStack_88);\\r\\n  uVar2 = uStack_49;\\r\\n  ppuStack_78 = (undefined8 **)param_2[2];\\r\\n  uStack_88 = (undefined8 *)*param_2;\\r\\n  uStack_80._0_4_ = *(undefined4 *)(param_2 + 1);\\r\\n  uStack_80._4_4_ = *(undefined4 *)((longlong)param_2 + 0xc);\\r\\n  puVar3 = (undefined8 *)func_0x000140613c10(0x30,8);\\r\\n  if (puVar3 == (undefined8 *)0x0) {\\r\\n    FUN_1428d9000(8,0x30);\\r\\n  }\\r\\n  else {\\r\\n    *puVar3 = 1;\\r\\n    puVar3[1] = 1;\\r\\n    *(undefined4 *)(puVar3 + 2) = (undefined4)uStack_88;\\r\\n    *(undefined4 *)((longlong)puVar3 + 0x14) = uStack_88._4_4_;\\r\\n    *(undefined4 *)(puVar3 + 3) = (undefined4)uStack_80;\\r\\n    *(undefined4 *)((longlong)puVar3 + 0x1c) = uStack_80._4_4_;\\r\\n    puVar3[4] = ppuStack_78;\\r\\n    *(undefined1 *)(puVar3 + 5) = uVar2;\\r\\n    uStack_80._0_4_ = 0x42c6e340;\\r\\n    uStack_80._4_4_ = 1;\\r\\n    uStack_88 = puVar3;\\r\\n    if (lStack_98 < 0) {\\r\\n      uVar5 = 0;\\r\\n    }\\r\\n    else {\\r\\n      if (lStack_98 == 0) {\\r\\n        lVar4 = 1;\\r\\ncode_r0x00014155e58d:\\r\\n        func_0x000142923c00(lVar4,uStack_a0,lStack_98);\\r\\n        *param_1 = lStack_98;\\r\\n        param_1[1] = lVar4;\\r\\n        param_1[2] = lStack_98;\\r\\n        param_1[3] = (longlong)puVar3;\\r\\n        param_1[4] = (longlong)&UNK_142c6e340;\\r\\n        if (lStack_a8 != 0) {\\r\\n          func_0x000140613c20(uStack_a0,lStack_a8,1);\\r\\n        }\\r\\n        return;\\r\\n      }\\r\\n      uVar5 = 1;\\r\\n      lVar4 = func_0x000140613c10(lStack_98,1);\\r\\n      if (lVar4 != 0) goto code_r0x00014155e58d;\\r\\n    }\\r\\n    puStack_90 = puVar3;\\r\\n    FUN_1428d8fe3(uVar5,lStack_98,&UNK_142a98f20);\\r\\n  }\\r\\n                    /* WARNING: Does not return */\\r\\n  pcVar1 = (code *)invalidInstructionException();\\r\\n  (*pcVar1)();\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_a2_r5\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14155e460",
+          "address": "0x14155E460",
+          "decompiled_code": "\r\nvoid FUN_14155e460(longlong *param_1,undefined8 *param_2,undefined1 param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined1 uVar2;\r\n  undefined8 *puVar3;\r\n  longlong lVar4;\r\n  undefined8 uVar5;\r\n  undefined8 *puStack_c8;\r\n  code *pcStack_c0;\r\n  undefined1 *puStack_b8;\r\n  undefined *puStack_b0;\r\n  longlong lStack_a8;\r\n  undefined8 uStack_a0;\r\n  longlong lStack_98;\r\n  undefined8 *puStack_90;\r\n  undefined8 uStack_88;\r\n  undefined8 uStack_80;\r\n  undefined8 **ppuStack_78;\r\n  undefined8 uStack_70;\r\n  undefined8 uStack_68;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  pcStack_c0 = FUN_141559ce0;\r\n  puStack_b8 = &uStack_49;\r\n  puStack_b0 = &UNK_140156710;\r\n  uStack_88 = (undefined8 *)&UNK_142c6e320;\r\n  uStack_80 = 2;\r\n  ppuStack_78 = &puStack_c8;\r\n  uStack_70 = 2;\r\n  uStack_68 = 0;\r\n  puStack_c8 = param_2;\r\n  uStack_49 = param_3;\r\n  FUN_140d79f90(&lStack_a8,&uStack_88);\r\n  uVar2 = uStack_49;\r\n  ppuStack_78 = (undefined8 **)param_2[2];\r\n  uStack_88 = (undefined8 *)*param_2;\r\n  uStack_80._0_4_ = *(undefined4 *)(param_2 + 1);\r\n  uStack_80._4_4_ = *(undefined4 *)((longlong)param_2 + 0xc);\r\n  puVar3 = (undefined8 *)func_0x000140613c10(0x30,8);\r\n  if (puVar3 == (undefined8 *)0x0) {\r\n    FUN_1428d9000(8,0x30);\r\n  }\r\n  else {\r\n    *puVar3 = 1;\r\n    puVar3[1] = 1;\r\n    *(undefined4 *)(puVar3 + 2) = (undefined4)uStack_88;\r\n    *(undefined4 *)((longlong)puVar3 + 0x14) = uStack_88._4_4_;\r\n    *(undefined4 *)(puVar3 + 3) = (undefined4)uStack_80;\r\n    *(undefined4 *)((longlong)puVar3 + 0x1c) = uStack_80._4_4_;\r\n    puVar3[4] = ppuStack_78;\r\n    *(undefined1 *)(puVar3 + 5) = uVar2;\r\n    uStack_80._0_4_ = 0x42c6e340;\r\n    uStack_80._4_4_ = 1;\r\n    uStack_88 = puVar3;\r\n    if (lStack_98 < 0) {\r\n      uVar5 = 0;\r\n    }\r\n    else {\r\n      if (lStack_98 == 0) {\r\n        lVar4 = 1;\r\ncode_r0x00014155e58d:\r\n        func_0x000142923c00(lVar4,uStack_a0,lStack_98);\r\n        *param_1 = lStack_98;\r\n        param_1[1] = lVar4;\r\n        param_1[2] = lStack_98;\r\n        param_1[3] = (longlong)puVar3;\r\n        param_1[4] = (longlong)&UNK_142c6e340;\r\n        if (lStack_a8 != 0) {\r\n          func_0x000140613c20(uStack_a0,lStack_a8,1);\r\n        }\r\n        return;\r\n      }\r\n      uVar5 = 1;\r\n      lVar4 = func_0x000140613c10(lStack_98,1);\r\n      if (lVar4 != 0) goto code_r0x00014155e58d;\r\n    }\r\n    puStack_90 = puVar3;\r\n    FUN_1428d8fe3(uVar5,lStack_98,&UNK_142a98f20);\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+          "database": "tg_a2_r5"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_a2_r5",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_a2_r5\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_a2_r5"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

@@ -1,0 +1,214 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_str3",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_str3\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_str3",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_str3"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_str3\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_str3",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_strings",
+      "args": {
+        "database": "tg_str3",
+        "limit": 10
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[{\"address\":\"0x14319332A\",\"value\":\"AddVectoredExceptionHandler\",\"length\":27,\"type\":\"TerminatedCString\"},{\"address\":\"0x143193348\",\"value\":\"CancelIo\",\"length\":8,\"type\":\"TerminatedCString\"},{\"address\":\"0x143193354\",\"value\":\"CloseHandle\",\"length\":11,\"type\":\"TerminatedCString\"},{\"address\":\"0x143193362\",\"value\":\"CompareStringOrdinal\",\"length\":20,\"type\":\"TerminatedCString\"},{\"address\":\"0x14319337A\",\"value\":\"CopyFileExW\",\"length\":11,\"type\":\"TerminatedCString\"},{\"address\":\"0x143193388\",\"value\":\"CreateDirectoryW\",\"length\":16,\"type\":\"TerminatedCString\"},{\"address\":\"0x14319339C\",\"value\":\"CreateFileMappingW\",\"length\":18,\"type\":\"TerminatedCString\"},{\"address\":\"0x1431933B2\",\"value\":\"CreateFileW\",\"length\":11,\"type\":\"TerminatedCString\"},{\"address\":\"0x1431933C0\",\"value\":\"CreateIoCompletionPort\",\"length\":22,\"type\":\"TerminatedCString\"},{\"address\":\"0x1431933DA\",\"value\":\"CreateMutexA\",\"length\":12,\"type\":\"TerminatedCString\"}],\"total\":466,\"offset\":0,\"limit\":10,\"has_more\":true,\"database\":\"tg_str3\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [
+            {
+              "address": "0x14319332A",
+              "value": "AddVectoredExceptionHandler",
+              "length": 27,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x143193348",
+              "value": "CancelIo",
+              "length": 8,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x143193354",
+              "value": "CloseHandle",
+              "length": 11,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x143193362",
+              "value": "CompareStringOrdinal",
+              "length": 20,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x14319337A",
+              "value": "CopyFileExW",
+              "length": 11,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x143193388",
+              "value": "CreateDirectoryW",
+              "length": 16,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x14319339C",
+              "value": "CreateFileMappingW",
+              "length": 18,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x1431933B2",
+              "value": "CreateFileW",
+              "length": 11,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x1431933C0",
+              "value": "CreateIoCompletionPort",
+              "length": 22,
+              "type": "TerminatedCString"
+            },
+            {
+              "address": "0x1431933DA",
+              "value": "CreateMutexA",
+              "length": 12,
+              "type": "TerminatedCString"
+            }
+          ],
+          "total": 466,
+          "offset": 0,
+          "limit": 10,
+          "has_more": true,
+          "database": "tg_str3"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "find_code_by_string",
+      "args": {
+        "database": "tg_str3",
+        "pattern": "None is not allowed"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":50,\"has_more\":false,\"database\":\"tg_str3\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 50,
+          "has_more": false,
+          "database": "tg_str3"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "find_code_by_string",
+      "args": {
+        "database": "tg_str3",
+        "pattern": "Tried writing to History"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":50,\"has_more\":false,\"database\":\"tg_str3\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 50,
+          "has_more": false,
+          "database": "tg_str3"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_str3",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_str3\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_str3"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

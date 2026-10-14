@@ -1,0 +1,49 @@
+country_core::resources::walls::HighlightColor::to_rgb :: resources/walls/mod.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+longlong * FUN_140b34f80(longlong *param_1,float param_2)
+
+{
+  float fVar1;
+  float fVar2;
+  longlong lVar3;
+  float fVar4;
+  longlong lStack_88;
+  undefined4 *puStack_80;
+  longlong lStack_78;
+  undefined8 uStack_70;
+  
+  uStack_70 = 0xfffffffffffffffe;
+  lStack_88 = 0;
+  puStack_80 = (undefined4 *)0x4;
+  lStack_78 = 0;
+  if (_UNK_142aecb40 <= param_2) {
+    FUN_140650050(&lStack_88,&UNK_142aed820);
+    *puStack_80 = 0x40900000;
+    fVar2 = _UNK_142aecb44;
+    fVar1 = _UNK_142abcb6c;
+    lVar3 = 1;
+    fVar4 = _UNK_142ae819c;
+    while( true ) {
+      fVar4 = fVar4 + fVar1;
+      if (param_2 <= fVar4 + fVar2) break;
+      if (lVar3 == lStack_88) {
+        lStack_78 = lVar3;
+        FUN_140650050(&lStack_88,&UNK_142aed838);
+      }
+      puStack_80[lVar3] = fVar4;
+      lVar3 = lVar3 + 1;
+    }
+    param_1[2] = lVar3;
+    *param_1 = lStack_88;
+    param_1[1] = (longlong)puStack_80;
+  }
+  else {
+    param_1[2] = 0;
+    *param_1 = 0;
+    param_1[1] = 4;
+  }
+  return param_1;
+}
+

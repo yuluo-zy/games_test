@@ -1,0 +1,89 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_140a152c0(float param_1,float param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  int iVar4;
+  uint uVar5;
+  float fVar6;
+  float fVar7;
+  undefined1 auVar8 [16];
+  undefined1 auVar9 [16];
+  float fVar10;
+  uint uVar11;
+  float fVar12;
+  uint uVar13;
+  float fVar14;
+  uint uVar15;
+  uint uVar16;
+  
+  fVar6 = (float)func_0x000142923ee0();
+  fVar10 = _UNK_1429a49bc;
+  iVar4 = (int)fVar6;
+  if (_UNK_1429a49bc < fVar6) {
+    iVar4 = 0x7fffffff;
+  }
+  if (NAN(fVar6)) {
+    iVar4 = 0;
+  }
+  fVar7 = (float)func_0x000142923ee0();
+  iVar2 = (int)fVar7;
+  if (fVar10 < fVar7) {
+    iVar2 = 0x7fffffff;
+  }
+  if (NAN(fVar7)) {
+    iVar2 = 0;
+  }
+  param_1 = param_1 - fVar6;
+  param_2 = param_2 - fVar7;
+  uVar3 = ((uint)(iVar2 * 0x401) >> 6 ^ iVar2 * 0x401) * 9;
+  iVar1 = (uVar3 >> 0xb ^ uVar3) * 0x8001;
+  iVar4 = iVar4 * 0x19660d;
+  uVar5 = (iVar1 + iVar4 + 0x19660d) * 0x19660d + 0xae135d3;
+  uVar5 = uVar5 >> 0xb ^ uVar5;
+  uVar3 = iVar2 * 0x401 + 0x401;
+  uVar3 = (uVar3 >> 6 ^ uVar3) * 9;
+  iVar2 = (uVar3 >> 0xb ^ uVar3) * 0x8001;
+  uVar3 = (iVar4 + iVar2 + 0x19660d) * 0x19660d + 0xae135d3;
+  uVar3 = uVar3 >> 0xb ^ uVar3;
+  uVar15 = (iVar4 + iVar2) * 0x19660d + _UNK_142ac7e10;
+  uVar16 = (iVar1 + iVar4) * 0x19660d + _UNK_142ac7e14;
+  uVar15 = uVar15 >> 0xb ^ uVar15;
+  uVar16 = uVar16 >> 0xb ^ uVar16;
+  uVar11 = _UNK_142ac7e18 >> 0xb ^ _UNK_142ac7e18;
+  uVar13 = _UNK_142ac7e1c >> 0xb ^ _UNK_142ac7e1c;
+  fVar10 = (_UNK_1429cd078 - (param_1 + param_1)) * param_1 * param_1;
+  uVar15 = uVar15 << 7 & _UNK_142ac7e20 ^ uVar15;
+  uVar16 = uVar16 << 7 & _UNK_142ac7e24 ^ uVar16;
+  uVar11 = uVar11 << 7 & _UNK_142ac7e28 ^ uVar11;
+  uVar13 = uVar13 << 7 & _UNK_142ac7e2c ^ uVar13;
+  uVar15 = uVar15 << 0xf & _UNK_142ac7e30 ^ uVar15;
+  uVar16 = uVar16 << 0xf & _UNK_142ac7e34 ^ uVar16;
+  uVar11 = uVar11 << 0xf & _UNK_142ac7e38 ^ uVar11;
+  uVar13 = uVar13 << 0xf & _UNK_142ac7e3c ^ uVar13;
+  fVar6 = (float)(uVar15 & _UNK_142ac7e40 ^ uVar15 >> 0x12 | _UNK_14292e6b0) + _UNK_14292e6d0;
+  fVar7 = (float)(uVar16 & _UNK_142ac7e44 ^ uVar16 >> 0x12 | _UNK_14292e6b4) + _UNK_14292e6d4;
+  fVar12 = (float)(uVar11 & _UNK_142ac7e48 ^ uVar11 >> 0x12 | (uint)_UNK_14292e6b8) + _UNK_14292e6d8
+  ;
+  fVar14 = (float)(uVar13 & _UNK_142ac7e4c ^ uVar13 >> 0x12 | (uint)_UNK_14292e6bc) + _UNK_14292e6dc
+  ;
+  uVar3 = uVar3 ^ (uVar3 & 0x13a58ad) << 7;
+  uVar5 = uVar5 ^ (uVar5 & 0x13a58ad) << 7;
+  uVar3 = uVar3 << 0xf & _UNK_142ac7e30 ^ uVar3;
+  uVar5 = uVar5 << 0xf & _UNK_142ac7e34 ^ uVar5;
+  auVar8._0_4_ = fVar10 * (((float)(uVar3 & _UNK_142ac7e40 ^ uVar3 >> 0x12 | _UNK_14292e6b0) +
+                           _UNK_14292e6d0) - fVar6) + fVar6;
+  auVar8._4_4_ = fVar10 * (((float)(uVar5 & _UNK_142ac7e44 ^ uVar5 >> 0x12 | _UNK_14292e6b4) +
+                           _UNK_14292e6d4) - fVar7) + fVar7;
+  auVar8._8_4_ = ((_UNK_14292e6b8 + _UNK_14292e6d8) - fVar12) * 0.0 + fVar12;
+  auVar8._12_4_ = ((_UNK_14292e6bc + _UNK_14292e6dc) - fVar14) * 0.0 + fVar14;
+  auVar9._4_12_ = auVar8._4_12_;
+  auVar9._0_4_ = (auVar8._0_4_ - auVar8._4_4_) *
+                 (_UNK_1429cd078 - (param_2 + param_2)) * param_2 * param_2 + auVar8._4_4_;
+  return auVar9._0_8_;
+}
+

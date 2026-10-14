@@ -1,0 +1,78 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+uint * FUN_141276b20(uint *param_1,undefined8 *param_2,undefined8 param_3,undefined8 *param_4,
+                    float *param_5,float *param_6)
+
+{
+  float fVar1;
+  undefined8 *puVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  code *pcVar6;
+  char cVar7;
+  uint *puVar8;
+  byte bVar9;
+  uint uVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fStack_58;
+  float fStack_54;
+  float fStack_50;
+  
+  puVar2 = (undefined8 *)*param_2;
+  cVar7 = func_0x00014092df10(param_3);
+  uVar3 = param_2[1];
+  uVar4 = param_2[5];
+  bVar9 = 3;
+  if ((byte)(cVar7 - 2U) < 3) {
+    bVar9 = cVar7 - 2U;
+  }
+  uVar5 = param_2[9];
+  uVar10 = (uint)bVar9;
+  if (bVar9 - 2 < 2) {
+    fVar15 = *param_6;
+    fVar14 = param_6[1];
+    FUN_140a9bd40(&fStack_58,puVar2,uVar3,uVar4,uVar5);
+    if (fVar14 < fVar15) {
+      FUN_140d8b480(fVar15,fVar14,&UNK_142c234f8);
+      pcVar6 = (code *)swi(3);
+      puVar8 = (uint *)(*pcVar6)();
+      return puVar8;
+    }
+    fVar1 = *(float *)((longlong)puVar2 + 0x14);
+    fVar11 = (float)*(undefined8 *)((longlong)puVar2 + 0xc);
+    fVar12 = (float)((ulonglong)*(undefined8 *)((longlong)puVar2 + 0xc) >> 0x20);
+    fVar13 = (fStack_50 * fVar1 + fStack_54 * fVar12 + fStack_58 * fVar11) - *(float *)(puVar2 + 3);
+    if (fVar15 <= fVar13) {
+      fVar15 = fVar13;
+    }
+    if (fVar15 <= fVar14) {
+      fVar14 = fVar15;
+    }
+    fVar15 = *(float *)(puVar2 + 1);
+    *(ulonglong *)(param_1 + 1) =
+         CONCAT44((float)((ulonglong)*puVar2 >> 0x20) + fVar14 * fVar12,
+                  (float)*puVar2 + fVar14 * fVar11);
+    param_1[3] = (uint)(fVar1 * fVar14 + fVar15);
+    param_1[4] = (uint)fVar14;
+    uVar10 = 1;
+  }
+  else if (bVar9 != 0) {
+    fVar15 = *param_5;
+    *(undefined4 *)(puVar2 + 1) = *(undefined4 *)(param_4 + 1);
+    *puVar2 = *param_4;
+    *(undefined8 *)((longlong)puVar2 + 0xc) = _UNK_1429345b0;
+    *(undefined4 *)((longlong)puVar2 + 0x14) = 0;
+    FUN_140a9bd40(&fStack_58,puVar2,uVar3,uVar4,uVar5);
+    *(float *)(puVar2 + 3) = (fStack_50 * 0.0 + fStack_58 * 0.0 + fStack_54) - fVar15;
+    uVar10 = 0;
+  }
+  *param_1 = uVar10;
+  return param_1;
+}
+

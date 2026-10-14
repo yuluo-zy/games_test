@@ -1,0 +1,105 @@
+country_core::resources::walls::wall_holes::FinalizedWallHoles::iter_holes_with_padding<system_wall_constructor::wall_constructor::impl$0::normalize_holes::closure_env$0> :: resources/walls/wall_holes.rs
+
+void FUN_14123fc70(longlong param_1,float param_2,undefined8 *param_3,longlong *param_4)
+
+{
+  float *pfVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  undefined8 uVar5;
+  float *pfVar7;
+  float *in_RDX;
+  longlong lVar8;
+  float *pfVar9;
+  longlong lVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  undefined8 uVar6;
+  
+  if (*(char *)(param_1 + 0x1c) == '\0') {
+    pfVar7 = (float *)func_0x000140f86cd0();
+    if (pfVar7 != in_RDX) {
+      uVar5 = *param_3;
+      uVar6 = *param_3;
+      lVar10 = param_4[2];
+      lVar8 = lVar10 << 4;
+      do {
+        fVar2 = *pfVar7;
+        fVar12 = pfVar7[1];
+        fVar13 = pfVar7[2];
+        fVar14 = pfVar7[3];
+        if (lVar10 == *param_4) {
+          FUN_14068d3d0(param_4,&UNK_142c1f4e0);
+        }
+        pfVar7 = pfVar7 + 5;
+        pfVar9 = (float *)(param_4[1] + lVar8);
+        *pfVar9 = fVar2 * (float)uVar5;
+        pfVar9[1] = fVar12 * (float)((ulonglong)uVar5 >> 0x20);
+        pfVar9[2] = fVar13 * (float)uVar6;
+        pfVar9[3] = fVar14 * (float)((ulonglong)uVar6 >> 0x20);
+        lVar10 = lVar10 + 1;
+        param_4[2] = lVar10;
+        lVar8 = lVar8 + 0x10;
+      } while (pfVar7 != in_RDX);
+    }
+    return;
+  }
+  fVar2 = *(float *)(param_1 + 0x18);
+  pfVar7 = (float *)func_0x000140f86cd0();
+  fVar12 = (float)*param_3;
+  fVar13 = (float)((ulonglong)*param_3 >> 0x20);
+  fVar14 = (float)*param_3;
+  fVar15 = (float)((ulonglong)*param_3 >> 0x20);
+code_r0x00014123fce9:
+  do {
+    pfVar9 = pfVar7;
+    if (pfVar9 == in_RDX) {
+      return;
+    }
+    pfVar7 = pfVar9 + 5;
+  } while (*(char *)((longlong)pfVar9 + 0x11) != '\0');
+  fVar16 = *pfVar9;
+  fVar11 = pfVar9[1];
+  fVar3 = pfVar9[2];
+  fVar4 = pfVar9[3];
+  lVar10 = param_4[2];
+  if (lVar10 == *param_4) {
+    FUN_14068d3d0(param_4,&UNK_142c1f4e0);
+  }
+  pfVar1 = (float *)(param_4[1] + lVar10 * 0x10);
+  *pfVar1 = fVar16 * fVar12;
+  pfVar1[1] = fVar11 * fVar13;
+  pfVar1[2] = fVar3 * fVar14;
+  pfVar1[3] = fVar4 * fVar15;
+  lVar8 = lVar10 + 1;
+  param_4[2] = lVar8;
+  fVar16 = *pfVar9;
+  if (param_2 <= fVar16) goto code_r0x00014123fd52;
+  fVar16 = fVar16 + fVar2;
+  fVar11 = pfVar9[2] + fVar2;
+  goto code_r0x00014123fd6d;
+code_r0x00014123fd52:
+  if (fVar2 < pfVar9[2] + param_2) {
+    fVar16 = fVar16 - fVar2;
+    fVar11 = pfVar9[2] - fVar2;
+code_r0x00014123fd6d:
+    fVar3 = pfVar9[1];
+    fVar4 = pfVar9[3];
+    if (lVar8 == *param_4) {
+      FUN_14068d3d0(param_4,&UNK_142c1f4e0);
+    }
+    pfVar9 = (float *)(param_4[1] + lVar8 * 0x10);
+    *pfVar9 = fVar16 * fVar12;
+    pfVar9[1] = fVar3 * fVar13;
+    pfVar9[2] = fVar11 * fVar14;
+    pfVar9[3] = fVar4 * fVar15;
+    param_4[2] = lVar10 + 2;
+  }
+  goto code_r0x00014123fce9;
+}
+

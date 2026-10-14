@@ -1,0 +1,75 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140a0b340(undefined8 *param_1,undefined8 param_2)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  longlong lStack_78;
+  longlong lStack_70;
+  undefined8 uStack_68;
+  undefined4 *puStack_60;
+  undefined8 uStack_58;
+  undefined1 uStack_50;
+  undefined4 uStack_4f;
+  undefined2 uStack_4b;
+  undefined1 uStack_49;
+  longlong lStack_48;
+  longlong lStack_40;
+  undefined8 uStack_38;
+  undefined4 *puStack_30;
+  undefined8 uStack_28;
+  undefined1 uStack_20;
+  undefined4 uStack_1f;
+  undefined2 uStack_1b;
+  undefined1 uStack_19;
+  undefined8 uStack_18;
+  
+  uStack_18 = 0xfffffffffffffffe;
+  if (*(longlong *)*param_1 == 0) {
+    puStack_30 = (undefined4 *)func_0x000140613c10(0x13,1);
+    uVar4 = _UNK_142ac6dc4;
+    uVar3 = _UNK_142ac6dc0;
+    uVar2 = _UNK_142ac6dbc;
+    if (puStack_30 == (undefined4 *)0x0) {
+      FUN_1428d8fe3(1,0x13,&UNK_142ad07b0);
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)();
+      return;
+    }
+    *puStack_30 = _UNK_142ac6db8;
+    puStack_30[1] = uVar2;
+    puStack_30[2] = uVar3;
+    puStack_30[3] = uVar4;
+    *(undefined4 *)((longlong)puStack_30 + 0xf) = 0x756e654d;
+    lStack_48 = 0;
+    uStack_38 = 0x13;
+    uStack_28 = 0x13;
+    uStack_20 = 2;
+  }
+  else {
+    FUN_140a54440(&lStack_48,*(longlong *)*param_1 + 0x10,&UNK_142ac6db8,0x13);
+    if (lStack_48 == 2) {
+      lStack_78 = lStack_40;
+      FUN_1428d9760(&UNK_142ac6360,0x2b,&lStack_78,&UNK_142ac6340,&UNK_142ac6e00);
+                    /* WARNING: Does not return */
+      pcVar1 = (code *)invalidInstructionException();
+      (*pcVar1)();
+    }
+  }
+  uStack_58 = uStack_28;
+  uStack_50 = uStack_20;
+  uStack_4f = uStack_1f;
+  uStack_4b = uStack_1b;
+  uStack_49 = uStack_19;
+  uStack_68 = uStack_38;
+  puStack_60 = puStack_30;
+  lStack_78 = lStack_48;
+  lStack_70 = lStack_40;
+  FUN_1412df050(param_2,&lStack_78,&UNK_142ac6e18);
+  return;
+}
+

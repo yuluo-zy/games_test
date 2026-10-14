@@ -1,0 +1,62 @@
+{
+ "nodes": {
+  "camera-time": {
+   "leads": [
+    "- `resources::session` 相机记录反序列化（0x1403b4ca0）→ 0x24B CameraRigParametersCache（session-save 域）。",
+    "- `PhotoModeCameraMode`（photo_mode.rs，next_demo 0x140b596b0）↔ 模式字节 6..12（ui-input 域，待联动核实变体名）。"
+   ],
+   "n": 2
+  },
+  "session-save": {
+   "leads": [
+    "- **camera-time 域（协调员同步，2026-10-14）**：会话相机存档 schema = `{yaw, pitch, position, camera_rig_arm_length, pitch_offset, yaw_offset, position_cache}`。本域对应存档节 **Camera（tag 3，json_key \"Camera\"，padding 128）**，载荷 = `CameraRigParametersCache`（to_json_string 实例 0x1416f8470，save_game.rs）。请对照相机字段顺序/序列化 tag 与本域 SaveFileSection::Camera 节序。",
+    "- **history 域**：save_game 调 `0x140a84760`（=set_current_snapshot，PLAYBOOK 已证）挂接新快照 Arc；save_game_to_file 序列化 HistoryIdentity/HistoryChainIndex/HistoryChainSnapshots；load_game 遍历 MultiEdit（变体 7/8/9）恢复 max wall id；ensure_current_snapshot 以 ShadowFile::mark_dirty 增量写历史 JSON。",
+    "- **render 域**：loading_screen/logo 经 `load_mesh_into_library`（0x140b1aca0）/`load_shader_into_library`（0x140b3fe40）挂 AssetMeshLibrary/AssetShaderLibrary；`*.raster.hlsl` 命名（loading_screen、logo_animation、logo_branches_animation）；DrawableMeshBundle(vt 0x1412da5d0)+DesignatedRenderPass(0x12)+DontCastShadow；session_selection（0x1408f68c0/0x1408f6c00）缩略图渲染留待渲染域。",
+    "- **audio 域**：animate_logo 播 FMOD `event:/UI/Logo/Scribble|Branches`（AudioCore @+0x10 句柄路径）；prefab 音频触发经 audio_trigger_library（0x140a382d0）+ 0x1408b9f20。"
+   ],
+   "n": 4
+  },
+  "audio-misc": {
+   "leads": [
+    "- `0x143634d60/d58、d80/d78`：FMOD 失败报告注册表（audio_resources 内两槽）；与",
+    "- `0x143634d94`：Steam 浮动键盘打开状态缓存（steam 域）。",
+    "- trigger_audio_system（0x1409eafa0）读 `AudioTriggerLibrary`（asset_libraries 域）与"
+   ],
+   "n": 3
+  },
+  "wall": {
+   "leads": [],
+   "n": 0
+  },
+  "history": {
+   "leads": [
+    "- `systems::save::save_game::add_history_edit_to_save_file` 0x140a439b0。",
+    "- stairs 域：`StairsState::restore_snapshot` 0x1408ff590、",
+    "- 装饰域：`DecoratorStorage::restore_snapshot` 0x140a20d70、",
+    "（drop 0x14014b5e0）、`systems::wall::eraser::archivist::WallHistoryEdits`",
+    "- `0x14362c3a8`（字节/整型）：**日志级别全局**（数字越大越详细）。历史域",
+    "- `0x14362c370`（qword）：add_history_systems 0x1409438a0 经"
+   ],
+   "n": 6
+  },
+  "ui-input": {
+   "leads": [
+    "槽 6..12 的映射在本域内无法闭合**——需要 camera-time 的 main_camera/camera_rig 代码（0x140911e40",
+    "0x140837c40/loading_screen_pass 0x140837ff0 属渲染侧，本域仅登记。"
+   ],
+   "n": 2
+  },
+  "collision-eco": {
+   "leads": [
+    "- **DirtyTiles pub/sub**：发布者 playermade_stairs_assembly_propagate_dirty_flags（0x1407d16b0）、detect_overhang_support_segments（0x1407867d0）、read_bush_positions_from_gpu（0x140eebaa0）、add_birdnests（0x1422c9c70）、populate_autoclutter_regions（0x1422d6ed0）；订阅者=碰撞世界（本域）。",
+    "- stairs_assemble（system_decorator）闭包 0x140254890/0x140254aa0（wall 域）实例化 iter_shape_overlaps；calculate_distortion_from_structural_graph 0x14129b780/0x14129bad0。"
+   ],
+   "n": 2
+  },
+  "terrain-water": {
+   "leads": [],
+   "n": 0
+  }
+ },
+ "edges": []
+}

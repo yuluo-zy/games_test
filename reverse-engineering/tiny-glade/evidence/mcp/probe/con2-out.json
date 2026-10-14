@@ -1,0 +1,103 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_conc2",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_conc2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_conc2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_conc2"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_conc2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_conc2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_conc2",
+        "address": "0x140a86270"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140a86270\",\"address\":\"0x140A86270\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nvoid FUN_140a86270(longlong param_1,undefined8 *param_2)\\r\\n\\r\\n{\\r\\n  code *pcVar1;\\r\\n  undefined4 uVar2;\\r\\n  undefined4 uVar3;\\r\\n  longlong lVar4;\\r\\n  longlong lVar5;\\r\\n  undefined8 uVar6;\\r\\n  undefined4 uVar7;\\r\\n  undefined4 uVar8;\\r\\n  undefined4 uVar9;\\r\\n  char cVar10;\\r\\n  undefined8 *puVar11;\\r\\n  longlong *plVar12;\\r\\n  undefined8 *puVar13;\\r\\n  \\r\\n  cVar10 = func_0x000140a825e0(*param_2,&UNK_142ad83e8);\\r\\n  if (cVar10 == '\\\\0') {\\r\\n    FUN_1428d9430(&UNK_142ad83f8,0x2f,&UNK_142ad8428);\\r\\n  }\\r\\n  else {\\r\\n    puVar11 = (undefined8 *)func_0x000140613c10(0x40,8);\\r\\n    if (puVar11 != (undefined8 *)0x0) {\\r\\n      plVar12 = (longlong *)FUN_1400d9b20(0);\\r\\n      if (plVar12 == (longlong *)0x0) {\\r\\n        FUN_1428d80d0(&UNK_142c3aaa0);\\r\\n      }\\r\\n      else {\\r\\n        lVar4 = *plVar12;\\r\\n        uVar2 = *(undefined4 *)((longlong)plVar12 + 4);\\r\\n        lVar5 = plVar12[1];\\r\\n        uVar3 = *(undefined4 *)((longlong)plVar12 + 0xc);\\r\\n        *plVar12 = *plVar12 + 1;\\r\\n        *puVar11 = 1;\\r\\n        puVar11[1] = 1;\\r\\n        uVar6 = _UNK_142af1478;\\r\\n        puVar11[2] = _UNK_142af1470;\\r\\n        puVar11[3] = uVar6;\\r\\n        uVar9 = _UNK_142af148c;\\r\\n        uVar8 = _UNK_142af1488;\\r\\n        uVar7 = _UNK_142af1484;\\r\\n        *(undefined4 *)(puVar11 + 4) = _UNK_142af1480;\\r\\n        *(undefined4 *)((longlong)puVar11 + 0x24) = uVar7;\\r\\n        *(undefined4 *)(puVar11 + 5) = uVar8;\\r\\n        *(undefined4 *)((longlong)puVar11 + 0x2c) = uVar9;\\r\\n        *(int *)(puVar11 + 6) = (int)lVar4;\\r\\n        *(undefined4 *)((longlong)puVar11 + 0x34) = uVar2;\\r\\n        *(int *)(puVar11 + 7) = (int)lVar5;\\r\\n        *(undefined4 *)((longlong)puVar11 + 0x3c) = uVar3;\\r\\n        puVar13 = (undefined8 *)func_0x000140613c10(0x60,8);\\r\\n        if (puVar13 != (undefined8 *)0x0) {\\r\\n          *puVar13 = 1;\\r\\n          puVar13[1] = 1;\\r\\n          puVar13[2] = 0;\\r\\n          puVar13[4] = 0;\\r\\n          puVar13[6] = 0;\\r\\n          puVar13[7] = 4;\\r\\n          puVar13[8] = 0;\\r\\n          puVar13[9] = 0;\\r\\n          puVar13[10] = 4;\\r\\n          puVar13[0xb] = 0;\\r\\n          if (!SBORROW8(0,*(longlong *)(param_1 + 0x30))) {\\r\\n            FUN_14088bae0((undefined8 *)(param_1 + 0x30));\\r\\n          }\\r\\n          *(undefined8 *)(param_1 + 0x40) = 0;\\r\\n          *(undefined8 *)(param_1 + 0x30) = 0;\\r\\n          *(undefined8 *)(param_1 + 0x38) = 8;\\r\\n          *(undefined8 **)(param_1 + 0x48) = puVar11;\\r\\n          *(undefined8 **)(param_1 + 0x50) = puVar13;\\r\\n          return;\\r\\n        }\\r\\n        FUN_1428d9000(8,0x60);\\r\\n      }\\r\\n      goto code_r0x000140a86432;\\r\\n    }\\r\\n  }\\r\\n  FUN_1428d9000(8,0x40);\\r\\ncode_r0x000140a86432:\\r\\n                    /* WARNING: Does not return */\\r\\n  pcVar1 = (code *)invalidInstructionException();\\r\\n  (*pcVar1)();\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_conc2\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140a86270",
+          "address": "0x140A86270",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140a86270(longlong param_1,undefined8 *param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  undefined4 uVar3;\r\n  longlong lVar4;\r\n  longlong lVar5;\r\n  undefined8 uVar6;\r\n  undefined4 uVar7;\r\n  undefined4 uVar8;\r\n  undefined4 uVar9;\r\n  char cVar10;\r\n  undefined8 *puVar11;\r\n  longlong *plVar12;\r\n  undefined8 *puVar13;\r\n  \r\n  cVar10 = func_0x000140a825e0(*param_2,&UNK_142ad83e8);\r\n  if (cVar10 == '\\0') {\r\n    FUN_1428d9430(&UNK_142ad83f8,0x2f,&UNK_142ad8428);\r\n  }\r\n  else {\r\n    puVar11 = (undefined8 *)func_0x000140613c10(0x40,8);\r\n    if (puVar11 != (undefined8 *)0x0) {\r\n      plVar12 = (longlong *)FUN_1400d9b20(0);\r\n      if (plVar12 == (longlong *)0x0) {\r\n        FUN_1428d80d0(&UNK_142c3aaa0);\r\n      }\r\n      else {\r\n        lVar4 = *plVar12;\r\n        uVar2 = *(undefined4 *)((longlong)plVar12 + 4);\r\n        lVar5 = plVar12[1];\r\n        uVar3 = *(undefined4 *)((longlong)plVar12 + 0xc);\r\n        *plVar12 = *plVar12 + 1;\r\n        *puVar11 = 1;\r\n        puVar11[1] = 1;\r\n        uVar6 = _UNK_142af1478;\r\n        puVar11[2] = _UNK_142af1470;\r\n        puVar11[3] = uVar6;\r\n        uVar9 = _UNK_142af148c;\r\n        uVar8 = _UNK_142af1488;\r\n        uVar7 = _UNK_142af1484;\r\n        *(undefined4 *)(puVar11 + 4) = _UNK_142af1480;\r\n        *(undefined4 *)((longlong)puVar11 + 0x24) = uVar7;\r\n        *(undefined4 *)(puVar11 + 5) = uVar8;\r\n        *(undefined4 *)((longlong)puVar11 + 0x2c) = uVar9;\r\n        *(int *)(puVar11 + 6) = (int)lVar4;\r\n        *(undefined4 *)((longlong)puVar11 + 0x34) = uVar2;\r\n        *(int *)(puVar11 + 7) = (int)lVar5;\r\n        *(undefined4 *)((longlong)puVar11 + 0x3c) = uVar3;\r\n        puVar13 = (undefined8 *)func_0x000140613c10(0x60,8);\r\n        if (puVar13 != (undefined8 *)0x0) {\r\n          *puVar13 = 1;\r\n          puVar13[1] = 1;\r\n          puVar13[2] = 0;\r\n          puVar13[4] = 0;\r\n          puVar13[6] = 0;\r\n          puVar13[7] = 4;\r\n          puVar13[8] = 0;\r\n          puVar13[9] = 0;\r\n          puVar13[10] = 4;\r\n          puVar13[0xb] = 0;\r\n          if (!SBORROW8(0,*(longlong *)(param_1 + 0x30))) {\r\n            FUN_14088bae0((undefined8 *)(param_1 + 0x30));\r\n          }\r\n          *(undefined8 *)(param_1 + 0x40) = 0;\r\n          *(undefined8 *)(param_1 + 0x30) = 0;\r\n          *(undefined8 *)(param_1 + 0x38) = 8;\r\n          *(undefined8 **)(param_1 + 0x48) = puVar11;\r\n          *(undefined8 **)(param_1 + 0x50) = puVar13;\r\n          return;\r\n        }\r\n        FUN_1428d9000(8,0x60);\r\n      }\r\n      goto code_r0x000140a86432;\r\n    }\r\n  }\r\n  FUN_1428d9000(8,0x40);\r\ncode_r0x000140a86432:\r\n                    /* WARNING: Does not return */\r\n  pcVar1 = (code *)invalidInstructionException();\r\n  (*pcVar1)();\r\n}\r\n\r\n",
+          "database": "tg_conc2"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_conc2",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_conc2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_conc2"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

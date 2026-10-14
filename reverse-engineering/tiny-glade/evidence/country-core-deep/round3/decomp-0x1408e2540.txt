@@ -1,0 +1,45 @@
+
+/* WARNING: Removing unreachable block (ram,0x000140d65824) */
+
+longlong FUN_1408e2540(undefined8 param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  longlong lStack_60;
+  longlong lStack_58;
+  longlong lStack_50;
+  longlong lStack_48;
+  undefined *puStack_40;
+  longlong lStack_38;
+  longlong lStack_30;
+  undefined8 uStack_28;
+  
+  uStack_28 = 0xfffffffffffffffe;
+  FUN_14152c770(&lStack_60,param_1,param_2,param_3,param_4);
+  lVar2 = -lStack_60;
+  if (!SBORROW8(0,lStack_60)) {
+    lStack_38 = lStack_60;
+    lStack_48 = lStack_50;
+    puStack_40 = (undefined *)0x0;
+    lStack_30 = lStack_58;
+    lVar2 = lStack_58;
+    while (lVar1 = lStack_30, (undefined *)lStack_48 != puStack_40) {
+      puStack_40 = (undefined *)((longlong)puStack_40 + 1);
+      FUN_14088bca0(lVar2);
+      lVar2 = lVar2 + 0x98;
+    }
+    lVar2 = 0;
+    if (lStack_38 != 0) {
+      puStack_40 = &UNK_140d6582e;
+      uVar3 = GetProcessHeap(lStack_30,lStack_38 * 0x98);
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      lVar2 = HeapFree(uVar3,0,lVar1);
+      return lVar2;
+    }
+  }
+  return lVar2;
+}
+

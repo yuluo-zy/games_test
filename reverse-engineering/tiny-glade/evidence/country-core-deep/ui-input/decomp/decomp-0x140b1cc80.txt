@@ -1,0 +1,130 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+uint * FUN_140b1cc80(uint *param_1,undefined8 *param_2,char param_3,longlong *param_4,float *param_5
+                    )
+
+{
+  undefined8 uVar1;
+  undefined8 *puVar2;
+  undefined4 *puVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  code *pcVar6;
+  uint *puVar7;
+  uint uVar8;
+  byte bVar9;
+  float *pfVar10;
+  float fVar11;
+  float fVar12;
+  undefined4 uVar13;
+  undefined4 uVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fStack_a0;
+  float fStack_9c;
+  float fStack_98;
+  undefined4 uStack_94;
+  float fStack_90;
+  float fStack_8c;
+  float fStack_88;
+  undefined8 uStack_80;
+  undefined1 uStack_78;
+  undefined8 uStack_70;
+  undefined4 uStack_68;
+  undefined8 uStack_64;
+  undefined4 uStack_5c;
+  
+  puVar2 = (undefined8 *)*param_2;
+  puVar3 = (undefined4 *)param_2[1];
+  puVar7 = (uint *)param_2[5];
+  bVar9 = 3;
+  if ((byte)(param_3 - 2U) < 3) {
+    bVar9 = param_3 - 2U;
+  }
+  uVar4 = param_2[9];
+  uVar8 = (uint)bVar9;
+  if (bVar9 - 2 < 2) {
+    fVar17 = *param_5;
+    fVar16 = param_5[1];
+    fStack_a0 = (float)*puVar7;
+    fStack_9c = (float)puVar7[1];
+    fVar18 = fStack_a0 / fStack_9c;
+    uStack_94 = 0x3f800000;
+    uVar13 = puVar3[1];
+    uVar14 = 0;
+    fStack_98 = fVar18;
+    fVar11 = (float)func_0x000140c906d0(*puVar3,uVar13);
+    uStack_5c = *(undefined4 *)((longlong)puVar2 + 0x14);
+    uStack_64 = *(undefined8 *)((longlong)puVar2 + 0xc);
+    uStack_70 = *puVar2;
+    uStack_68 = *(undefined4 *)(puVar2 + 1);
+    uStack_80 = _UNK_142ada620;
+    uStack_78 = 0;
+    FUN_140ac84a0(&fStack_90,fVar18 * fVar11,CONCAT44(uVar14,uVar13),&fStack_a0,uVar4,&uStack_70,
+                  &uStack_80);
+    if (fVar16 < fVar17) {
+      FUN_140d8b480(fVar17,fVar16,&UNK_142ae9050);
+      pcVar6 = (code *)swi(3);
+      puVar7 = (uint *)(*pcVar6)();
+      return puVar7;
+    }
+    fVar11 = *(float *)((longlong)puVar2 + 0x14);
+    fVar18 = (float)*(undefined8 *)((longlong)puVar2 + 0xc);
+    fVar12 = (float)((ulonglong)*(undefined8 *)((longlong)puVar2 + 0xc) >> 0x20);
+    fVar15 = (fStack_88 * fVar11 + fStack_8c * fVar12 + fStack_90 * fVar18) - *(float *)(puVar2 + 3)
+    ;
+    if (fVar17 <= fVar15) {
+      fVar17 = fVar15;
+    }
+    if (fVar17 <= fVar16) {
+      fVar16 = fVar17;
+    }
+    fVar17 = *(float *)(puVar2 + 1);
+    *(ulonglong *)(param_1 + 1) =
+         CONCAT44((float)((ulonglong)*puVar2 >> 0x20) + fVar16 * fVar12,
+                  (float)*puVar2 + fVar16 * fVar18);
+    param_1[3] = (uint)(fVar11 * fVar16 + fVar17);
+    param_1[4] = (uint)fVar16;
+    uVar8 = 1;
+  }
+  else if (bVar9 != 0) {
+    pfVar10 = (float *)param_4[4];
+    if ((*(longlong *)param_4[2] - 1U & 0xfffffffffffffffd) != 0) {
+      pfVar10 = (float *)param_4[3];
+    }
+    fVar17 = *pfVar10;
+    fVar16 = *(float *)((undefined8 *)param_4[1] + 1);
+    uVar1 = *(undefined8 *)param_4[1];
+    uVar5 = *(undefined8 *)*param_4;
+    *(undefined4 *)(puVar2 + 1) = *(undefined4 *)((undefined8 *)*param_4 + 1);
+    *puVar2 = uVar5;
+    *(undefined8 *)((longlong)puVar2 + 0xc) = uVar1;
+    *(float *)((longlong)puVar2 + 0x14) = fVar16;
+    fStack_a0 = (float)*puVar7;
+    fStack_9c = (float)puVar7[1];
+    fVar18 = fStack_a0 / fStack_9c;
+    uStack_94 = 0x3f800000;
+    uVar13 = puVar3[1];
+    uVar14 = 0;
+    fStack_98 = fVar18;
+    fVar11 = (float)func_0x000140c906d0(*puVar3,uVar13);
+    uStack_5c = *(undefined4 *)((longlong)puVar2 + 0x14);
+    uStack_64 = *(undefined8 *)((longlong)puVar2 + 0xc);
+    uStack_70 = *puVar2;
+    uStack_68 = *(undefined4 *)(puVar2 + 1);
+    uStack_80 = _UNK_142ada620;
+    uStack_78 = 0;
+    FUN_140ac84a0(&fStack_90,fVar18 * fVar11,CONCAT44(uVar14,uVar13),&fStack_a0,uVar4,&uStack_70,
+                  &uStack_80);
+    *(float *)(puVar2 + 3) =
+         (fVar16 * fStack_88 +
+         (float)((ulonglong)uVar1 >> 0x20) * fStack_8c + fStack_90 * (float)uVar1) - fVar17;
+    uVar8 = 0;
+  }
+  *param_1 = uVar8;
+  return param_1;
+}
+

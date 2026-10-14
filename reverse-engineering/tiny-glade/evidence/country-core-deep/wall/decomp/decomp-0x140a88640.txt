@@ -1,0 +1,85 @@
+country_core::resources::walls::material_stats::MaterialStats::path_segmentation_delta :: resources/walls/material_stats.rs
+
+char FUN_140a88640(char *param_1,undefined8 param_2)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  longlong lVar3;
+  char cVar4;
+  char *pcVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  bool bVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  
+  pcVar5 = param_1 + 0x68;
+  LOCK();
+  bVar8 = param_1[0x68] == '\0';
+  if (bVar8) {
+    param_1[0x68] = '\x01';
+  }
+  UNLOCK();
+  if (!bVar8) {
+    FUN_1428cd210(pcVar5,param_2,1000000000);
+  }
+  FUN_140c81c70();
+  lVar3 = *(longlong *)(param_1 + 0x78);
+  uVar7 = *(ulonglong *)(param_1 + 0x80);
+  LOCK();
+  cVar4 = *param_1;
+  if (cVar4 == '\0') {
+    *param_1 = '\x01';
+  }
+  UNLOCK();
+  if (cVar4 != '\0') {
+    FUN_1428cd210(param_1);
+  }
+  FUN_140c81c70();
+  if (*(ulonglong *)(param_1 + 0x18) < uVar7) {
+    uVar7 = *(ulonglong *)(param_1 + 0x18);
+  }
+  if (uVar7 != 0) {
+    uVar6 = 0;
+    fVar11 = 0.0;
+    do {
+      uVar1 = *(undefined8 *)(*(longlong *)(param_1 + 0x10) + uVar6 * 8);
+      uVar2 = *(undefined8 *)(lVar3 + uVar6 * 8);
+      uVar6 = uVar6 + 1;
+      fVar9 = (float)uVar1 - (float)uVar2;
+      fVar10 = (float)((ulonglong)uVar1 >> 0x20) - (float)((ulonglong)uVar2 >> 0x20);
+      fVar10 = SQRT(fVar10 * fVar10 + fVar9 * fVar9);
+      fVar9 = fVar10;
+      if (fVar10 <= fVar11) {
+        fVar9 = fVar11;
+      }
+      fVar11 = (float)(~-(uint)NAN(fVar11) & (uint)fVar9 | -(uint)NAN(fVar11) & (uint)fVar10);
+    } while (uVar7 != uVar6);
+  }
+  FUN_140c81e10();
+  LOCK();
+  cVar4 = *param_1;
+  if (cVar4 == '\x01') {
+    *param_1 = '\0';
+  }
+  UNLOCK();
+  if (cVar4 != '\x01') {
+    FUN_1428cdb90(param_1,0);
+  }
+  FUN_140c81e10();
+  LOCK();
+  cVar4 = *pcVar5;
+  bVar8 = cVar4 == '\x01';
+  if (bVar8) {
+    *pcVar5 = '\0';
+    cVar4 = '\x01';
+  }
+  UNLOCK();
+  if (!bVar8) {
+    cVar4 = FUN_1428cdb90(pcVar5,0);
+  }
+  return cVar4;
+}
+

@@ -1,0 +1,53 @@
+
+undefined8 *
+FUN_1408d98c0(undefined8 *param_1,undefined4 *param_2,longlong param_3,ulonglong param_4)
+
+{
+  longlong *plVar1;
+  undefined8 uVar2;
+  code *pcVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  ulonglong uVar8;
+  undefined4 uStack_1c;
+  undefined4 uStack_18;
+  
+  uVar8 = (ulonglong)*(byte *)(param_2 + 2);
+  if (uVar8 < param_4) {
+    lVar7 = func_0x000140b93940(param_3 + uVar8 * 0x390,*param_2,param_2[1]);
+    if (lVar7 != 0) {
+      uVar4 = *(undefined8 *)(lVar7 + 0x34);
+      uVar5 = *(undefined8 *)(lVar7 + 0x3c);
+      uVar6 = *(undefined8 *)(lVar7 + 0x48);
+      uStack_18 = (undefined4)((ulonglong)*(undefined8 *)(lVar7 + 0x40) >> 0x20);
+      uStack_1c = (undefined4)((ulonglong)uVar5 >> 0x20);
+      plVar1 = *(longlong **)(lVar7 + 0x10);
+      uVar2 = *(undefined8 *)(lVar7 + 0x18);
+      LOCK();
+      lVar7 = *plVar1;
+      *plVar1 = *plVar1 + 1;
+      UNLOCK();
+      if (*plVar1 != 0 && SCARRY8(lVar7,1) == *plVar1 < 0) {
+        *(ulonglong *)((longlong)param_1 + 0xc) = CONCAT44(uStack_18,uStack_1c);
+        *(undefined8 *)((longlong)param_1 + 0x14) = uVar6;
+        *param_1 = uVar4;
+        param_1[1] = uVar5;
+        param_1[4] = plVar1;
+        param_1[5] = uVar2;
+        return param_1;
+      }
+      goto code_r0x0001408d9950;
+    }
+  }
+  else {
+    FUN_1428d9518(uVar8,param_4,&UNK_142aa42c8);
+  }
+  FUN_1428d9310(&UNK_142aa42e0);
+code_r0x0001408d9950:
+                    /* WARNING: Does not return */
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

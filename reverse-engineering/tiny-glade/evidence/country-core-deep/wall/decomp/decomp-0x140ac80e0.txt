@@ -1,0 +1,139 @@
+country_core::systems::wall::shapes::calc_shape_height::calc_shape_height :: systems/wall/shapes/calc_shape_height.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140ac80e0(undefined8 *param_1,longlong *param_2,longlong *param_3,undefined8 param_4,
+                  longlong *param_5,undefined8 *param_6,longlong *param_7)
+
+{
+  float fVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int *piVar4;
+  char *pcVar5;
+  undefined4 *puVar6;
+  undefined4 *puVar7;
+  code *pcVar8;
+  longlong lVar9;
+  uint uVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  uint uVar15;
+  longlong lStack_a0;
+  longlong lStack_98;
+  longlong lStack_90;
+  longlong lStack_88;
+  undefined8 uStack_80;
+  longlong lStack_68;
+  undefined8 uStack_60;
+  longlong lStack_50;
+  undefined8 uStack_48;
+  undefined8 uStack_30;
+  
+  uStack_30 = 0xfffffffffffffffe;
+  piVar4 = (int *)*param_1;
+  if ((*piVar4 != 6) || (1 < (byte)((char)piVar4[1] - 1U))) {
+    *(undefined4 *)param_6[2] = *(undefined4 *)((longlong)param_6 + 0x1c);
+    *(undefined4 *)*param_6 = 0;
+    return;
+  }
+  if ((char)piVar4[1] == '\x02') {
+    FUN_140c98cf0(&lStack_68,*param_2 + 0x10);
+  }
+  else {
+    FUN_140c97cf0(&lStack_68,*param_3 + 0x10,_UNK_1429cd068);
+  }
+  FUN_14146afe0(&lStack_a0,&lStack_68,_UNK_142925870,param_4,param_5);
+  fVar1 = _UNK_142a7f250;
+  if (lStack_90 == 0) {
+    fVar12 = 0.0;
+    fVar11 = 0.0;
+  }
+  else {
+    lVar9 = 0;
+    fVar12 = 0.0;
+    fVar11 = 0.0;
+    do {
+      fVar13 = *(float *)(lStack_98 + 4 + lVar9);
+      fVar12 = fVar12 + fVar13;
+      fVar14 = fVar13;
+      if (fVar13 <= fVar11) {
+        fVar14 = fVar11;
+      }
+      fVar11 = (float)(~-(uint)NAN(fVar11) & (uint)fVar14 | -(uint)NAN(fVar11) & (uint)fVar13);
+      lVar9 = lVar9 + 0xc;
+    } while (lStack_90 * 0xc != lVar9);
+  }
+  if (*piVar4 == 6 && (char)piVar4[1] == '\x02') {
+    pcVar5 = (char *)*param_5;
+    iVar2 = *(int *)(pcVar5 + 8);
+    fVar13 = _UNK_142934690;
+  }
+  else {
+    if ((*piVar4 != 6) || ((char)piVar4[1] != '\x01')) {
+      FUN_1428d9430(&UNK_142adf6e0,0x28,&UNK_142adfab0);
+                    /* WARNING: Does not return */
+      pcVar8 = (code *)invalidInstructionException();
+      (*pcVar8)();
+    }
+    pcVar5 = (char *)*param_5;
+    iVar2 = *(int *)(pcVar5 + 8);
+    fVar13 = _UNK_142934604;
+  }
+  if (iVar2 == 2) {
+    if (*pcVar5 == '\0') {
+      fVar12 = 0.0;
+    }
+    else {
+      fVar12 = *(float *)(pcVar5 + 4);
+    }
+    fVar13 = fVar13 + fVar12;
+  }
+  else {
+    fVar13 = fVar12 / (float)lStack_90 + fVar13 + _UNK_142a7f250;
+  }
+  fVar13 = fVar13 - (fVar11 + _UNK_142a7f250);
+  fVar12 = _UNK_1429cd030;
+  if (_UNK_1429cd030 <= fVar13) {
+    fVar12 = fVar13;
+  }
+  fVar13 = _UNK_142a7de00;
+  if (fVar12 <= _UNK_142a7de00) {
+    fVar13 = fVar12;
+  }
+  *(undefined4 *)param_5[2] = *(undefined4 *)((longlong)param_5 + 0x1c);
+  *(float *)(pcVar5 + 0x40) = fVar13;
+  lVar9 = *param_5;
+  fVar12 = *(float *)(lVar9 + 0x3c);
+  uVar10 = -(uint)(fVar12 == 0.0);
+  uVar15 = _UNK_1429df1c0 & uVar10;
+  uVar3 = *(undefined4 *)((longlong)param_6 + 0x1c);
+  puVar6 = (undefined4 *)param_6[2];
+  *puVar6 = uVar3;
+  puVar7 = (undefined4 *)*param_6;
+  puVar7[2] = ~uVar10 & (uint)fVar12 | uVar15;
+  fVar11 = (float)FUN_140c904e0(lVar9,fVar13 + fVar11 + fVar1,*(undefined4 *)(*param_7 + 0x28),
+                                _UNK_1429345a8);
+  *puVar6 = uVar3;
+  *puVar7 = 1;
+  puVar7[1] = fVar11;
+  fVar1 = (float)puVar7[2];
+  *puVar6 = uVar3;
+  puVar7[3] = fVar11 - fVar1;
+  if (lStack_a0 != 0) {
+    func_0x000140613c20(lStack_98,lStack_a0 * 0xc,4);
+  }
+  if (lStack_88 != 0) {
+    func_0x000140613c20(uStack_80,lStack_88 << 2,4);
+  }
+  if (lStack_68 != 0) {
+    func_0x000140613c20(uStack_60,lStack_68 << 3,4);
+  }
+  if (lStack_50 != 0) {
+    func_0x000140613c20(uStack_48,lStack_50 << 2,4);
+  }
+  return;
+}
+

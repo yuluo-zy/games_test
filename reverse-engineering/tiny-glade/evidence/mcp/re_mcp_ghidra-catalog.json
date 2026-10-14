@@ -164,7 +164,7 @@
     {
       "name": "open_database",
       "title": "Open Database",
-      "description": "Open a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\nRe-opening an already-open database returns the existing worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.",
+      "description": "Open a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\n\nAn explicit ``database_id`` always opens a worker of its own, so\ndistinct ids open the *same* file several times and let those\nworkers analyze it concurrently (up to the configured maximum).\nWithout ``database_id``, re-opening the same file returns the\nexisting worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -185,12 +185,12 @@
           "database_id": {
             "default": "",
             "type": "string",
-            "description": "Custom ID (must match [a-z][a-z0-9_]{0,31})."
+            "description": "Custom ID (must match [a-z][a-z0-9_]{0,31}).\nReusing an id that is already open is rejected; a new id\nfor an already-open path opens an additional worker."
           },
           "force_new": {
             "default": false,
             "type": "boolean",
-            "description": "Delete existing project and start fresh."
+            "description": "Delete existing project and start fresh. With no\ndatabase_id it replaces the path's worker; it does not by\nitself create a second one."
           },
           "language": {
             "default": "",

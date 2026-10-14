@@ -1,0 +1,197 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_a3r2",
+   "keep_open": true
+  },
+  "timeout_ms": 300000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_a3r2"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46920"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "NextSession::load consumers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46960"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "NextSession::create consumers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46a20"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "ignore_snapshot consumers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46b00"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "refresh_session_list consumers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46d60"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "delete_session consumers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140a1a190"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "update_loading_screen callers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x142aef328"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "backup_folder_path descriptor refs"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x1405d45f0"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "code target of 0x142aef328"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x141e58f20"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "try_approx_parse callers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x141673140"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "derive_fallback closure callers"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x1408f68c0"
+  },
+  "timeout_ms": 180000,
+  "allow_error": true,
+  "_note": "session_selection build"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46b00"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "refresh_session_list"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b463c0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SessionMeta::write_to_disk"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b46370"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SessionMeta::assets_root"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x140b468f0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SessionMeta default ctor"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x1408f68c0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "session_selection build"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a3r2",
+   "address": "0x1408f6c00"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "session_selection thumbnails closure"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_a3r2",
+   "save": false
+  },
+  "timeout_ms": 120000
+ }
+]

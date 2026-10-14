@@ -1,0 +1,23 @@
+
+longlong * FUN_1408e4560(longlong *param_1,longlong param_2,undefined4 param_3)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  code *pcVar3;
+  longlong *plVar4;
+  
+  lVar1 = *(longlong *)(param_2 + 0x10);
+  if (lVar1 != 0) {
+    lVar2 = *(longlong *)(param_2 + 8);
+    *param_1 = lVar2;
+    param_1[1] = lVar2 + lVar1 * 0x24;
+    *(undefined4 *)(param_1 + 2) = param_3;
+    return param_1;
+  }
+  FUN_1428d9430(&UNK_142aa5958,0x2c,&UNK_142aa59c8);
+  pcVar3 = (code *)swi(3);
+  plVar4 = (longlong *)(*pcVar3)();
+  return plVar4;
+}
+

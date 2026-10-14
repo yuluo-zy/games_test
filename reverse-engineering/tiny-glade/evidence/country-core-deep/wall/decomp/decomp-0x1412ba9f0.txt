@@ -1,0 +1,256 @@
+country_core::resources::walls::wall_holes::WallHoles::extend<core::iter::adapters::copied::Copied<core::slice::iter::Iter<tuple$<utils::wall_space::WallSpaceRegion,country_core::resources::walls::wall_holes::HoleType> > > > :: resources/walls/wall_holes.rs
+
+void FUN_1412ba9f0(longlong *param_1,longlong param_2,longlong *param_3,longlong *param_4)
+
+{
+  undefined8 *puVar1;
+  undefined1 auVar2 [16];
+  undefined1 (*pauVar3) [16];
+  uint uVar4;
+  ulonglong uVar5;
+  longlong *plVar6;
+  uint uVar7;
+  ushort uVar8;
+  uint uVar9;
+  ulonglong uVar10;
+  longlong lVar11;
+  longlong lVar12;
+  byte bVar13;
+  longlong lVar14;
+  byte bVar15;
+  char cVar16;
+  char cVar18;
+  char cVar19;
+  char cVar20;
+  undefined1 auVar17 [16];
+  undefined1 auVar21 [16];
+  undefined1 auVar22 [16];
+  longlong lStack_a8;
+  longlong lStack_a0;
+  undefined8 uStack_98;
+  undefined8 uStack_90;
+  undefined8 uStack_88;
+  undefined8 uStack_80;
+  undefined8 uStack_78;
+  undefined8 uStack_70;
+  undefined8 uStack_68;
+  undefined8 uStack_60;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  undefined8 uStack_48;
+  
+  lStack_a8 = param_2;
+  uVar5 = FUN_1405b0d70(param_1 + 4,&lStack_a8);
+  lVar11 = *param_1;
+  bVar13 = (byte)(uVar5 >> 0x38);
+  bVar15 = bVar13 >> 1;
+  auVar17 = ZEXT216(CONCAT11(bVar15,bVar15));
+  auVar17 = pshuflw(auVar17,auVar17,0);
+  lVar12 = 0;
+  uVar10 = uVar5;
+  do {
+    uVar10 = param_1[1] & uVar10;
+    auVar2 = *(undefined1 (*) [16])(lVar11 + uVar10);
+    cVar16 = auVar17[0];
+    auVar22[0] = -(auVar2[0] == cVar16);
+    cVar18 = auVar17[1];
+    auVar22[1] = -(auVar2[1] == cVar18);
+    cVar19 = auVar17[2];
+    auVar22[2] = -(auVar2[2] == cVar19);
+    cVar20 = auVar17[3];
+    auVar22[3] = -(auVar2[3] == cVar20);
+    auVar22[4] = -(auVar2[4] == cVar16);
+    auVar22[5] = -(auVar2[5] == cVar18);
+    auVar22[6] = -(auVar2[6] == cVar19);
+    auVar22[7] = -(auVar2[7] == cVar20);
+    auVar22[8] = -(auVar2[8] == cVar16);
+    auVar22[9] = -(auVar2[9] == cVar18);
+    auVar22[10] = -(auVar2[10] == cVar19);
+    auVar22[0xb] = -(auVar2[0xb] == cVar20);
+    auVar22[0xc] = -(auVar2[0xc] == cVar16);
+    auVar22[0xd] = -(auVar2[0xd] == cVar18);
+    auVar22[0xe] = -(auVar2[0xe] == cVar19);
+    auVar22[0xf] = -(auVar2[0xf] == cVar20);
+    uVar8 = (ushort)(SUB161(auVar22 >> 7,0) & 1) | (ushort)(SUB161(auVar22 >> 0xf,0) & 1) << 1 |
+            (ushort)(SUB161(auVar22 >> 0x17,0) & 1) << 2 |
+            (ushort)(SUB161(auVar22 >> 0x1f,0) & 1) << 3 |
+            (ushort)(SUB161(auVar22 >> 0x27,0) & 1) << 4 |
+            (ushort)(SUB161(auVar22 >> 0x2f,0) & 1) << 5 |
+            (ushort)(SUB161(auVar22 >> 0x37,0) & 1) << 6 |
+            (ushort)(SUB161(auVar22 >> 0x3f,0) & 1) << 7 |
+            (ushort)(SUB161(auVar22 >> 0x47,0) & 1) << 8 |
+            (ushort)(SUB161(auVar22 >> 0x4f,0) & 1) << 9 |
+            (ushort)(SUB161(auVar22 >> 0x57,0) & 1) << 10 |
+            (ushort)(SUB161(auVar22 >> 0x5f,0) & 1) << 0xb |
+            (ushort)(SUB161(auVar22 >> 0x67,0) & 1) << 0xc |
+            (ushort)(SUB161(auVar22 >> 0x6f,0) & 1) << 0xd |
+            (ushort)(SUB161(auVar22 >> 0x77,0) & 1) << 0xe | (ushort)(auVar22[0xf] >> 7) << 0xf;
+    uVar9 = (uint)uVar8;
+    while (uVar8 != 0) {
+      uVar7 = 0;
+      for (uVar4 = uVar9; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+        uVar7 = uVar7 + 1;
+      }
+      lVar14 = (uVar7 + uVar10 & param_1[1]) * -0x68;
+      if (*(longlong *)(lVar11 + -0x68 + lVar14) == param_2) {
+        lVar11 = lVar11 + lVar14;
+        goto code_r0x0001412bab9e;
+      }
+      uVar8 = (ushort)(uVar9 - 1) & (ushort)uVar9;
+      uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar8);
+    }
+    auVar21[0] = -(auVar2[0] == -1);
+    auVar21[1] = -(auVar2[1] == -1);
+    auVar21[2] = -(auVar2[2] == -1);
+    auVar21[3] = -(auVar2[3] == -1);
+    auVar21[4] = -(auVar2[4] == -1);
+    auVar21[5] = -(auVar2[5] == -1);
+    auVar21[6] = -(auVar2[6] == -1);
+    auVar21[7] = -(auVar2[7] == -1);
+    auVar21[8] = -(auVar2[8] == -1);
+    auVar21[9] = -(auVar2[9] == -1);
+    auVar21[10] = -(auVar2[10] == -1);
+    auVar21[0xb] = -(auVar2[0xb] == -1);
+    auVar21[0xc] = -(auVar2[0xc] == -1);
+    auVar21[0xd] = -(auVar2[0xd] == -1);
+    auVar21[0xe] = -(auVar2[0xe] == -1);
+    auVar21[0xf] = -(auVar2[0xf] == -1);
+    if ((((((((((((((((SUB161(auVar21 >> 7,0) & 1) != 0 || (SUB161(auVar21 >> 0xf,0) & 1) != 0) ||
+                    (SUB161(auVar21 >> 0x17,0) & 1) != 0) || (SUB161(auVar21 >> 0x1f,0) & 1) != 0)
+                  || (SUB161(auVar21 >> 0x27,0) & 1) != 0) || (SUB161(auVar21 >> 0x2f,0) & 1) != 0)
+                || (SUB161(auVar21 >> 0x37,0) & 1) != 0) || (SUB161(auVar21 >> 0x3f,0) & 1) != 0) ||
+              (SUB161(auVar21 >> 0x47,0) & 1) != 0) || (SUB161(auVar21 >> 0x4f,0) & 1) != 0) ||
+            (SUB161(auVar21 >> 0x57,0) & 1) != 0) || (SUB161(auVar21 >> 0x5f,0) & 1) != 0) ||
+          (SUB161(auVar21 >> 0x67,0) & 1) != 0) || (SUB161(auVar21 >> 0x6f,0) & 1) != 0) ||
+        (SUB161(auVar21 >> 0x77,0) & 1) != 0) || auVar21[0xf] < '\0') {
+      if (param_1[2] == 0) {
+        FUN_1428b80c0(param_1,1,param_1 + 4,CONCAT71((int7)((ulonglong)(lVar11 + -0x68) >> 8),1));
+        param_2 = lStack_a8;
+      }
+      FUN_140f86de0(&lStack_a0);
+      pauVar3 = (undefined1 (*) [16])*param_1;
+      uVar10 = param_1[1];
+      uVar5 = uVar5 & uVar10;
+      auVar17 = *(undefined1 (*) [16])(*pauVar3 + uVar5);
+      uVar8 = (ushort)(SUB161(auVar17 >> 7,0) & 1) | (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+              (ushort)(byte)(auVar17[0xf] >> 7) << 0xf;
+      uVar9 = (uint)uVar8;
+      if (uVar8 == 0) {
+        lVar11 = 0x10;
+        do {
+          uVar5 = uVar5 + lVar11 & uVar10;
+          auVar17 = *(undefined1 (*) [16])(*pauVar3 + uVar5);
+          lVar11 = lVar11 + 0x10;
+          uVar9 = (uint)(ushort)((ushort)(SUB161(auVar17 >> 7,0) & 1) |
+                                 (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+                                 (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+                                 (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+                                 (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+                                 (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+                                 (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+                                 (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+                                 (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+                                 (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+                                 (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+                                 (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+                                 (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+                                 (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+                                 (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+                                (ushort)(byte)(auVar17[0xf] >> 7) << 0xf);
+        } while (uVar9 == 0);
+      }
+      uVar7 = 0;
+      for (; (uVar9 & 1) == 0; uVar9 = uVar9 >> 1 | 0x80000000) {
+        uVar7 = uVar7 + 1;
+      }
+      uVar5 = uVar7 + uVar5 & uVar10;
+      bVar15 = (*pauVar3)[uVar5];
+      if (-1 < (char)bVar15) {
+        auVar17 = *pauVar3;
+        uVar9 = 0;
+        for (uVar7 = (uint)(ushort)((ushort)(SUB161(auVar17 >> 7,0) & 1) |
+                                    (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+                                    (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+                                    (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+                                    (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+                                    (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+                                    (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+                                    (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+                                    (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+                                    (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+                                    (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+                                    (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+                                    (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+                                    (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+                                    (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe |
+                                   (ushort)(byte)(auVar17[0xf] >> 7) << 0xf); (uVar7 & 1) == 0;
+            uVar7 = uVar7 >> 1 | 0x80000000) {
+          uVar9 = uVar9 + 1;
+        }
+        uVar5 = (ulonglong)uVar9;
+        bVar15 = (*pauVar3)[uVar5];
+      }
+      bVar13 = bVar13 >> 1;
+      (*pauVar3)[uVar5] = bVar13;
+      pauVar3[1][uVar5 - 0x10 & uVar10] = bVar13;
+      lVar12 = uVar5 * -0x68;
+      lVar11 = (longlong)pauVar3 + lVar12;
+      param_1[2] = param_1[2] - (ulonglong)(bVar15 & 1);
+      *(undefined8 *)((longlong)pauVar3 + lVar12 + -8) = uStack_48;
+      puVar1 = (undefined8 *)((longlong)pauVar3 + lVar12 + -0x18);
+      *puVar1 = uStack_58;
+      puVar1[1] = uStack_50;
+      puVar1 = (undefined8 *)((longlong)pauVar3 + lVar12 + -0x28);
+      *puVar1 = uStack_68;
+      puVar1[1] = uStack_60;
+      puVar1 = (undefined8 *)((longlong)pauVar3 + lVar12 + -0x38);
+      *puVar1 = uStack_78;
+      puVar1[1] = uStack_70;
+      puVar1 = (undefined8 *)((longlong)pauVar3 + lVar12 + -0x48);
+      *puVar1 = uStack_88;
+      puVar1[1] = uStack_80;
+      puVar1 = (undefined8 *)((longlong)pauVar3 + lVar12 + -0x58);
+      *puVar1 = uStack_98;
+      puVar1[1] = uStack_90;
+      plVar6 = (longlong *)((longlong)pauVar3 + lVar12 + -0x68);
+      *plVar6 = param_2;
+      plVar6[1] = lStack_a0;
+      param_1[3] = param_1[3] + 1;
+      lStack_a8 = param_2;
+code_r0x0001412bab9e:
+      plVar6 = (longlong *)FUN_140f86f00(lVar11 + -0x60);
+      uVar10 = ((ulonglong)((longlong)param_4 - (longlong)param_3) >> 2) * -0x3333333333333333;
+      if ((ulonglong)(*plVar6 - plVar6[2]) < uVar10) {
+        FUN_1428a7f20(plVar6,plVar6[2],uVar10,4,0x14);
+      }
+      if (param_3 != param_4) {
+        do {
+          if ((char)param_3[2] == '\x05') {
+            return;
+          }
+          lStack_a8 = *param_3;
+          lStack_a0 = param_3[1];
+          param_3 = (longlong *)((longlong)param_3 + 0x14);
+          FUN_140f87860(plVar6,&lStack_a8);
+        } while (param_3 != param_4);
+      }
+      return;
+    }
+    uVar10 = uVar10 + lVar12 + 0x10;
+    lVar12 = lVar12 + 0x10;
+  } while( true );
+}
+

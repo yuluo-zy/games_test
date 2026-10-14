@@ -1,0 +1,45 @@
+[
+{
+"tool": "open_database",
+"args": {
+"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+"run_auto_analysis": false,
+"database_id": "tg_a2_c0",
+"keep_open": true
+},
+"timeout_ms": 600000
+},
+{
+"tool": "wait_for_analysis",
+"args": {
+"database": "tg_a2_c0"
+},
+"timeout_ms": 600000
+},
+{
+"tool": "decompile_function",
+"args": {
+"database": "tg_a2_c0",
+"address": "0x140a7cba0"
+},
+"timeout_ms": 240000,
+"allow_error": true
+},
+{
+"tool": "decompile_function",
+"args": {
+"database": "tg_a2_c0",
+"address": "0x1408dc9f0"
+},
+"timeout_ms": 240000,
+"allow_error": true
+},
+{
+"tool": "close_database",
+"args": {
+"database": "tg_a2_c0",
+"save": false
+},
+"timeout_ms": 180000
+}
+]

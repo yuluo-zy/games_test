@@ -1,5 +1,53 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-14 country-core systems/resources 第三轮（章节化源码地图）收齐
+
+用户指正挖掘方式后改为**结构化章节流**：先由 B 源码骨架建完整**源码地图**（`evidence/country-core-deep/SOURCE_MAP.json`：420 文件/4,027 函数 = 1,690 业务 + 1,658 派生胶水(drop/debug/clone/serde visitor) + 667 内联无独立符号 + 12 依赖转发；分类规则：仅硬胶水模式剔除，new/add/get/set 等自定义实现一律保留为业务），再逐文件生成章节骨架并填充。第三轮 8 域全部完成：**chapters/ 下 420 章全部就地填充、占位符清零**；每章 = 文件作用（名称+证据推断）→ 业务函数表（地址/源码行/作用猜测→证实/逆向结论 O-I-U/证据链接）→ 内联函数名称推断 → 派生胶水分组。各域结论分布（业务行）：wall 430（O296/I83/U51，U 中 48 为 serde 胶水）、collision-eco 213、terrain-water 123、history 127、ui-input（42 章）+ 15 手解、session-save 17 章（O100/U5）、camera-time 21 章、audio-misc 59 章（补建 6 零函数章）。本轮新反编译累计 ~60 个、字节手解 ~30 个。剩余真实业务空白仅 10 行（wall：is_default_arch_height 卡点 + 4 闭包实例 + UiWallHeight 等，均已在章内列明）。章节结构成为后续实现阶段与继续深挖的权威入口（`chapters/` + `SOURCE_MAP.json` + 各域 DIGEST/REVIEW/CLOSURE 三层证据）。
+
+## 2026-10-14 country-core systems/resources 第二轮（审查+闭合）收齐
+
+第二轮 8 域全部交付：每域 `<domain>-REVIEW.md`（逐文件实现逻辑审查表，共 277 条：OK 99 / FIX 98 / WRONG 15 / PARTIAL 31 / GAP 20 / STUB 7 / LATER 6，机器可读 `evidence/country-core-deep/round2/FIX-LIST.{json,md}`）+ `<domain>-CLOSURE.md`（第一轮 U 项闭合，多数 CLOSED）。关键新理解：① **S_PUB32 只含 pub 项**，私有函数不在其中不等于"全内联"（session.rs 假象已澄清）；索引升级 **v3** = S_PUB32 + 骨架 CU"编译实例 RVAs"（1,864 过程，runner 已切）。② **.rdata CU 函数边界表**（0x14369a000/0x143682f74/0x143697308）可枚举全部本地符号——解决 Ghidra NotFound 的通用手段。③ 跨域闭合：CameraMode=核心 6+拍照槽 6..12（PhotoModeCameraMode 4 变体 next/next_demo 转移表双域交叉验证；槽 6..9=拍照子模式复用 Normal body I）；0x14362c420=panic 进行中标志（多域确认）。④ 典型实现错误模式已归档（地址丢高位、v1 错名沿用、签名不符、无证据布局）——实现阶段按 FIX-LIST 逐条修。仍 OPEN 的卡点（SubworldIndex 12 槽名、PhotoMode 精确判别映射、EscMenuState 变体名、Events fork 双布局等）登记在各 CLOSURE 卡点表，属 engine 层/跨 crate 依赖边界。
+
+## 2026-10-14 utils B 深挖
+
+用户明确后续只分析 B，不索取 A/C。继续沿真实 2D 楼梯构造→`densely_sample_spline_segment`（0x140809ad0）恢复密集采样，143 组原指令样例含 7 越界；严格系数检查发现旧标量 RHS/c1 运算顺序偏差，已修复并用原 20 组 3D 构造/120 查询逐位回归。Curve owned 转换 XZ/输入12/输出8 stride 已由 0x1402ba9e0 原 map/collect 确认，std/glam 直接复用。纠正旧 as_vec2 说法：四字节入口只证明 RCX→RAX，RDX 不证明长度，原借用类型仍未知。全部 4894 模块/85322 C13 行号段继续扫描，墙三个方法及 Spline2D 全局查询仍无正面原码映射，不宣称死代码。当前 formal utils Debug/Release 各93测试、严格Clippy通过，country-core1142 CPU测试通过；报告 evidence/utils-deep-followup-2026-10-14/REPORT.md，审计 tiny-glade/provenance/utils-deep-audit.json。Windows独立worker保存重开确认USER_DEFINED原型，仅辅助反编译，非作者Rust ABI；未同步原库，专属worker已停止。库仍partial，完整原进程未验收。
+
+## 2026-10-14 tg-text 字体/帧缓存内部收口
+
+用户明确先补内部字体角色/共享表与帧缓存，不处理调用方/GPU，不以适配代替原逻辑。当前 `tiny-glade/crates/tg-text` 已改真实角色/Arc模型：new移入Arc<FontTable>、AttrsOwned与基准/实际metrics分离；tag Label0/MenuButton1/TextEditor2/Hand3。原set_family不写回构造角色，切回早退/后续metrics查原角色的行为经原入口确认后保留；标准unwrap、移走lines再new_empty和take_editor状态恢复。FontMetrics只是原二f32状态的恢复命名，作者typename缺失；仅证实From<f32>=(v,v)，不添加tuple转换。
+
+frame/stamp和片段生成/验证帧均u32，恢复无符号<、wrapping+1、同帧不增加epoch、frame0/MAX边界；usage Vec按原etagere rawID slot/gen，顺序验证保留前缀副作用、越界panic、cache hit不更新usage、expiry零哨兵、本次removed集合retain。移除u64内部epoch/自增allocation counter和render隐式prepare/强制左对齐/生成后清redraw。原同rawID复用会接受，不保留候选更强拒绝。consume在CPU上传处理后推进帧，payload返回供以后GPU接线；gpu.rs/真实游戏调用方未改。本库测试/示例只更新API。
+
+原代码受控829项（字体17、cache791、追加21）通过；Windows rustc1.97.1当前源码Debug/Release各33测试通过、0失败/忽略、严格all-targets Clippy/fmt与gpu特性仅编译通过，113默认CPU外部依赖身份匹配原B，锁未改。范围/源码SHA见 `evidence/text-internal-2026-10-14/{REPORT.md,verification.json,delivery.json}` 与 `tiny-glade/provenance/text-internal-audit.json`。本轮指定内部规则已闭合；历史条目里的Arc角色/u32规则“待恢复”由此取代。原完整进程、冷生成全输入域、真实GPU/调用方与A/C不升级验收，模块整体保持部分恢复，不按case数算完成比例。未覆盖历史源码/发行文件，无新增MCP后端。
+
+## 2026-10-14 country-core systems/resources 并行深挖收齐（8/8 域）
+
+8 个领域 agent 全部交付 DIGEST（`evidence/country-core-deep/<domain>/`）：camera-time/session-save/audio-misc/wall/history/ui-input/collision-eco/terrain-water，共 ~1,270 份反编译落盘。**关键基础设施结论**：① 旧 sysres-procedures.json（PDB 编译单元"首条位置"派生）存在**系统性名/址错位**（四域各自证实 10+ 处），已用 `evidence/render-architecture/public-symbols.json`（S_PUB32，101,405 条）重建权威索引 **sysres-procedures-v2.json**（1,599 个 country_core systems/resources 过程，rustc-demangle 名，0 未映射）；此后一律以 v2 + 机器码为准，PDB 骨架名只作线索。② 跨域全局族三域合证：0x14362c420=panic-in-progress 门控、0x14362c3a8=全局日志级别、0x14362c011=楼梯校验开关。③ 每域 10-15 条合同/代码纠错已入 DIGEST（例：快照 schema=JSON+flate2 非 rkyv/ron；WallState=0x70B；CameraMode=13 槽；SubworldColliderHandle=24B 枚举 Terrain 槽=5；AllWorldRasterWrite::write 置 +0x299 全脏悬案闭合）。实现落地为下一批次，按各域 DIGEST 的 O 条目写码、I/U 保持诚实标注；INDEX.md 为总入口（含跨域闭合与冲突登记）。
+
+## 2026-10-14 当前 utils 缺口原码恢复
+
+用户指定直接继续 `tiny-glade/crates/utils/README.md` 的缺口，未回写历史 shared-foundation。全原 B PDB 4894 模块 fresh 扫描定位 IndexCondenser::insert IPI0x74ee 的两个真实宿主；重复 key 失败且不改状态，新 key 取旧 Vec 长度后 append/map insert。52 插入+78 完整 remove 原指令快照通过；共享 insert/get/remove_index 已接 country-core 的 OwnedGpuWorldSubset ID 重试、hint 修复和载荷交换，移除重复业务实现。FloatGridCells/RasterBufferRef 消费改为共享 utils；原 512x512 byte-grid 两分支100原指令样例逐位通过。纠正采样开关：public USE_FLOAT_GRID_SAMPLING_FIX 的 pointer slot=0x14362c308，actual byte=0x143638fac，写入者仍未定位（原 .text 有6处读取，Ghidra缺xref不能当无caller）。Windows x86_64 utils Debug/Release 各90通过、country-core 1142通过、两库 all-targets严格Clippy通过。Release旧圆形literal样例4ULP差通过black_box输入避免编译期求值后闭合，原输入/预期/逐位断言不变，生产算法未改；失败保留。墙3方法、2D全局查询无PROC/inline host仍未恢复，Vec3SliceView2投影轴/stride未知；原泛型ABI/巨大索引、原全进程/GPU、A/C及全平台浮点不计完成。证据 `evidence/utils-gap-recovery-2026-10-14/REPORT.md`，机器台账 `tracking/utils-gap-recovery.json`，当前源码审计 `tiny-glade/provenance/utils-gap-audit.json`。
+
+## 2026-10-14 主题接口一次真实请求
+
+用户后续明确授权请求一次。实际Rust reqwest/ReqwestTransport对原events URL做1次GET（禁重定向，无重试/循环/下载blob），HTTP200、123字节、events1项、max-age3600。原响应已保存，theme-server-proto及fetcher离线同响应复验通过。首次汇总的u128不被原serde_json接受，已改u64且未重发请求。证据 `evidence/theme-live-once-2026-10-14/REPORT.md`/`result.json`；只验证events可达和解析，不升级完整原主题流程。此前静态轮“无真实请求”是当轮历史事实，不适用于此授权后续。
+
+
+## 2026-10-14 当前开发工程 integrity / text 续轮
+
+用户指定 `tiny-glade/crates/{tg-package-integrity,tg-text}`，直接修当前工程，不回写历史 shared-foundation 导入快照。integrity 原 verify loader 新增 11 个 Windows 精确路径/Unicode/surrogate 边界全部匹配，冻结回归；修复 inspect_package 在 verify 前 read/parse expect 的提前 panic，5 个阶段输出验证通过，库内生产算法未改。tg-text 恢复 render 的借用 atlas descriptor + 最近 consume 图元数（0x140b8f670/0x140fac810），回调失败前 count 已保存而流/frame 不变；metrics 按 0x140b90780 搬移 lines 至 Buffer::new_empty 并 Editor::new（保留文本/attrs/actions，重置编辑状态）；scale setter 保留 pending growth；按原 upload fold 0x14180585e 修复 RGBA/SubpixelMask 错误 RGB3 转换。文字 19 个 getter/align/width 原指令案例通过，其他改动静态原字节/fresh MCP 合同；独立 Windows worker 保存/重开验证后停止。
+
+当前 workspace 联合门禁：31 测试通过（integrity 8 + text 23）、0 失败/忽略，all-targets 严格 Clippy、fmt、tg-text gpu 特性 all-targets check 通过；CPU 120 外部依赖身份匹配原 B 锁。验收/当前源码 SHA：`evidence/small-libs-followup-2026-10-14/{REPORT.md,verification.json}` 与 `tiny-glade/provenance/foundation-followup-2026-10-14.json`。历史报告的“仅 ShapeStream CPU”不是当前实现范围。新确认的未知：原 set_family 为角色字节+Arc<FontTable>，候选 String/set_font_role 仍适配；render descriptor 非原 Texture；原 u32 atlas stamp/frame 与候选 u64 的同帧/rollover 差异未闭合。真实启动/toolbar/GPU consumer、A/C、全部 OS/并发异常仍未验收，candidate_partial，不宣称整库/整游戏等价。已明确排除的四个报告/云平台包不列为后续恢复缺口。
+
+## 2026-10-14 主题三库静态补全
+
+直接完善实际 `tiny-glade/crates/theme-defs`、`theme-fetcher`、`theme-server-proto`，不修改历史 shared-foundation 镜像。B 已定位库内业务/合同静态覆盖收口：HTTP Date/ETag/body 顺序和副作用、Response释放、分阶段时钟、CAS mtime错误传播、ZIP清单缓冲写入、21处原日志已恢复；defs/proto完整已发射合同及serde分支已复核。当前交付锁三库可达138公共包identity全匹配原B，26测试（含3跨库离线链）与all-targets严格Clippy/fmt通过，锁SHA门禁前后不变。无真实主题服务请求、无原游戏执行。原plugin消费langs/meta/history/credits属于库外；精确未发射命名/Display、完整原HTTP/CAS/ZIP入口oracle与A/C未验收，不升级整模块原行为等价。新Windows独立consumer库保存/重开/停止，未同步原库/Mac overlay。权威报告 `evidence/theme-static-2026-10-14/REPORT.md`；源码SHA与进度 `tracking/theme-static-recovery.json`。
+
+## 2026-10-14 用户排除四个报告与云平台包
+
+用户明确要求删除 `tiny-glade/crates/tg-integrity-report`、`tiny-glade/crates/crash-reporter-gui`、`tiny-glade/crates/feedback-reporter` 和 `tiny-glade/crates/geforcenow`，四者不需要逆向还原。从当前开发 workspace、当前源码清单和后续恢复范围排除；旧恢复目录与原锁文件、历史证据仅作历史保留，不重新导入，也不列为待恢复缺口。根 README 说明删除原因和功能影响。
+
+
 ## 2026-10-14 数值测试合同后续修复
 
 零切线直接构造固定负 quiet NaN；圆形/Elastic 的原样例含 Windows UCRT 舍入，跨平台测试分别采用有界误差，Windows 分支保留逐位。utils debug/release 均 93 项通过、无忽略；这不是 Windows 原版逐位验收，也不升级完整业务恢复。详见 `evidence/foundation-review-fixes-2026-10-14/numeric-followup/REPORT.md`。此前 87/3 为历史断点。

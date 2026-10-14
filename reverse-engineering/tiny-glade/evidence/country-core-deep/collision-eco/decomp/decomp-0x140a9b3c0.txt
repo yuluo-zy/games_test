@@ -1,0 +1,58 @@
+
+byte FUN_140a9b3c0(ulonglong *param_1,ulonglong *param_2,longlong param_3)
+
+{
+  char *pcVar1;
+  byte *pbVar2;
+  byte bVar3;
+  code *pcVar4;
+  byte bVar5;
+  longlong lVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  
+  uVar7 = *param_1 & 0xffffffff;
+  if (((*(ulonglong *)(param_3 + 0x10) <= uVar7) || (lVar6 = *(longlong *)(param_3 + 8), lVar6 == 0)
+      ) || (*(uint *)(lVar6 + 0x20 + uVar7 * 0x28) != ((uint)(*param_1 >> 0x20) | 1))) {
+    FUN_1428d8725(&UNK_142c6d8e0,0x18,&UNK_142adb3e8);
+code_r0x000140a9b4c3:
+    FUN_1428d8725(&UNK_142c6d8e0,0x18,&UNK_142adb400);
+    pcVar4 = (code *)swi(3);
+    bVar5 = (*pcVar4)();
+    return bVar5;
+  }
+  uVar9 = *param_2 & 0xffffffff;
+  if ((*(ulonglong *)(param_3 + 0x10) <= uVar9) ||
+     (*(uint *)(lVar6 + 0x20 + uVar9 * 0x28) != ((uint)(*param_2 >> 0x20) | 1)))
+  goto code_r0x000140a9b4c3;
+  pcVar1 = (char *)(lVar6 + uVar7 * 0x28);
+  lVar8 = *(longlong *)(pcVar1 + 8);
+  pbVar2 = (byte *)(lVar6 + uVar9 * 0x28);
+  bVar5 = *pbVar2;
+  uVar9 = (ulonglong)bVar5;
+  uVar7 = (ulonglong)pbVar2[1];
+  lVar6 = *(longlong *)(pbVar2 + 8);
+  if (*pcVar1 == '\0') goto code_r0x000140a9b475;
+  if (*pcVar1 == '\x02') {
+    bVar3 = pcVar1[1];
+    uVar7 = (ulonglong)bVar3;
+    uVar9 = (ulonglong)bVar5;
+    if (bVar5 == 2) {
+      return bVar3 == pbVar2[1] & (bVar3 ^ 1) & lVar8 != lVar6;
+    }
+    if (bVar5 == 0) goto code_r0x000140a9b47b;
+  }
+  do {
+    uVar7 = 0;
+    lVar8 = 0x28;
+    lVar6 = FUN_1428d9430(&UNK_142adb418,0x28,&UNK_142adb440);
+code_r0x000140a9b475:
+  } while ((char)uVar9 != '\x02');
+code_r0x000140a9b47b:
+  if ((lVar8 == lVar6) || (bVar5 = 1, (uVar7 & 1) != 0)) {
+    bVar5 = 0;
+  }
+  return bVar5;
+}
+

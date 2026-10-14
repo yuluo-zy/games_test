@@ -1,0 +1,47 @@
+
+void FUN_14090e310(undefined8 *param_1,undefined8 param_2,longlong param_3,longlong param_4,
+                  longlong param_5)
+
+{
+  longlong *plVar1;
+  undefined8 uVar2;
+  longlong lVar3;
+  undefined1 auStack_378 [400];
+  undefined1 auStack_1e8 [400];
+  longlong lStack_58;
+  longlong lStack_50;
+  undefined1 uStack_41;
+  undefined *puStack_40;
+  
+  puStack_40 = (undefined *)0xfffffffffffffffe;
+  lStack_50 = param_5;
+  plVar1 = (longlong *)param_1[1];
+  uStack_41 = 1;
+  lStack_58 = param_4;
+  uVar2 = (**(code **)(param_3 + 0x18))(param_2);
+  lVar3 = plVar1[2];
+  if (lVar3 == *plVar1) {
+    uStack_41 = 1;
+    FUN_140562870(plVar1,&UNK_142aab700);
+  }
+  *(undefined8 *)(plVar1[1] + lVar3 * 8) = uVar2;
+  plVar1[2] = lVar3 + 1;
+  uStack_41 = 1;
+  FUN_141600570(auStack_1e8,&UNK_142aab718,3,param_2,param_3,param_1[2],*param_1);
+  func_0x000142923c00(auStack_378,auStack_1e8,400);
+  (**(code **)(lStack_50 + 0x18))(lStack_58,auStack_378);
+  if (*(longlong *)(lStack_50 + 8) != 0) {
+    lVar3 = lStack_58;
+    if (0x10 < *(ulonglong *)(lStack_50 + 0x10)) {
+      lVar3 = *(longlong *)(lStack_58 + -8);
+    }
+    puStack_40 = &UNK_140d6582e;
+    uVar2 = GetProcessHeap();
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    HeapFree(uVar2,0,lVar3);
+    return;
+  }
+  return;
+}
+

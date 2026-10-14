@@ -1,0 +1,77 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_a7c",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_a7c"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a7c",
+   "address": "0x14094ac20"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "ivy_grower main closure (phase 1,3,4 entry)"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a7c",
+   "address": "0x14094c09f"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "ivy_grower phase-0 closure"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a7c",
+   "address": "0x1408d0490"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "update_rapier_colliders retry"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a7c",
+   "address": "0x142aa4360"
+  },
+  "timeout_ms": 120000,
+  "allow_error": true,
+  "_note": "xrefs to 15-name blob"
+ },
+ {
+  "tool": "get_xrefs_to",
+  "args": {
+   "database": "tg_a7c",
+   "address": "0x142aa4420"
+  },
+  "timeout_ms": 120000,
+  "allow_error": true,
+  "_note": "xrefs to byte map"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_a7c",
+   "save": false
+  },
+  "timeout_ms": 180000
+ }
+]

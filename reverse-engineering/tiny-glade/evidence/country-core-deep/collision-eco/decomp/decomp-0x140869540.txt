@@ -1,0 +1,99 @@
+
+void FUN_140869540(ulonglong *param_1)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  longlong lVar5;
+  code *pcVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  
+  uVar3 = param_1[3];
+  if (uVar3 < 2) goto code_r0x0001408696c9;
+  uVar9 = param_1[2];
+  uVar7 = (uVar3 + uVar9) - 2;
+  uVar12 = *param_1;
+  uVar4 = param_1[1];
+  uVar13 = 0;
+  uVar8 = uVar12;
+  if (uVar7 < uVar12) {
+    uVar8 = uVar13;
+  }
+  lVar11 = *(longlong *)(uVar4 + (uVar7 - uVar8) * 0x28);
+  uVar7 = (uVar3 + uVar9) - 1;
+  uVar8 = uVar12;
+  if (uVar7 < uVar12) {
+    uVar8 = uVar13;
+  }
+  lVar5 = *(longlong *)(uVar4 + (uVar7 - uVar8) * 0x28);
+  uVar8 = uVar12;
+  if (uVar9 < uVar12) {
+    uVar8 = uVar13;
+  }
+  uVar12 = uVar12 - (uVar9 - uVar8);
+  lVar1 = uVar4 + (uVar9 - uVar8) * 0x28;
+  uVar9 = uVar12;
+  if (uVar3 < uVar12) {
+    uVar9 = uVar3;
+  }
+  do {
+    if (uVar9 * 0x28 == uVar13) {
+      uVar9 = uVar12;
+      if (uVar3 < uVar12) {
+        uVar9 = uVar3;
+      }
+      lVar10 = 0;
+      goto code_r0x000140869610;
+    }
+    plVar2 = (longlong *)(lVar1 + uVar13);
+    uVar13 = uVar13 + 0x28;
+  } while (*plVar2 != lVar11);
+  goto code_r0x000140869626;
+  while (plVar2 = (longlong *)(uVar4 + lVar10), lVar10 = lVar10 + 0x28, *plVar2 != lVar11) {
+code_r0x000140869610:
+    if (uVar3 * 0x28 + uVar9 * -0x28 == lVar10) {
+      FUN_1428d9430(&UNK_142a96a90,0x34,&UNK_142a96ac8);
+      goto code_r0x0001408696b1;
+    }
+  }
+code_r0x000140869626:
+  uVar9 = uVar12;
+  if (uVar3 < uVar12) {
+    uVar9 = uVar3;
+  }
+  lVar11 = 0;
+  while (uVar9 * 0x28 != lVar11) {
+    plVar2 = (longlong *)(lVar1 + lVar11);
+    lVar11 = lVar11 + 0x28;
+    if (*plVar2 == lVar5) {
+      return;
+    }
+  }
+  if (uVar3 < uVar12) {
+    uVar12 = uVar3;
+  }
+  lVar11 = 0;
+  while (uVar3 * 0x28 + uVar12 * -0x28 != lVar11) {
+    plVar2 = (longlong *)(uVar4 + lVar11);
+    lVar11 = lVar11 + 0x28;
+    if (*plVar2 == lVar5) {
+      return;
+    }
+  }
+code_r0x0001408696b1:
+  FUN_1428d9430(&UNK_142a96ae0,0x32,&UNK_142a96b18);
+code_r0x0001408696c9:
+  FUN_1428d9330(&UNK_142a966fc,0x14,&UNK_142a96a78);
+  pcVar6 = (code *)swi(3);
+  (*pcVar6)();
+  return;
+}
+
