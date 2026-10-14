@@ -839,7 +839,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "is not")]
+    #[should_panic(expected = "The instance data for Plant is not")]
     fn writing_with_the_wrong_instance_type_panics() {
         let dev = MockDevice::default();
         // 在 Plant 槽里放 SolidVertexColor 的数据缓冲，再用 plant 系统写 → 类型不符。

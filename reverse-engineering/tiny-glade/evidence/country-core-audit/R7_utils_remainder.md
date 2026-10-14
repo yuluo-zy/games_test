@@ -11,6 +11,9 @@
 | `ChildWall::slice` | 0x140a24000 | O：DIGEST 说的 "clamp" 是错的——helper 0x140c904d0 是 `a + (b-a)*t`（`subss/mulss/addss`），结果须在 [0,1]，否则 panic `Tried to init CurveU from an invalid u: {u}`（串 0x142aa5398）。返回 `{id, lerp(t1), lerp(t2)}`，布局 id@0、a@8、b@0xc |
 | `DebugSphere` / `DebugRectangle3d` / `DebugLine` 构造器与 builder | 0x140b02490 … 0x140b04f40 | O：13 个短函数逐字节核对；0x28 / 0x38 / 0x48 字节布局与默认值见模块注释 |
 
+## 复查补记
+统一复查后改了一处顺序：`read_attribute_from_json`（0x14083e210）里 `["buffer"]` 的查找在每个类型分支内部（反编译第 71–75、102–106 行等各取一次），类型匹配在前，所以未知类型即使没有 buffer 也先报 `unrecognized attrib`。之前的实现先取 buffer，已改；测试 +1。
+
 ## 偏差与未做
 * `FUN_141466bb0` 按工作区里的 `Curve::crashy_slice` 使用（它带 `get_coord_at_u` 0x141467ce0 调用，I）。
 * 构造器只写 `color` 的首个 dword，其余 12 字节在 EXE 里未初始化，取 0（I）。`DebugRectangle3d::rect` 的 32 字节布局未解（U）。

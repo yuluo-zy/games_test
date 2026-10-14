@@ -35,22 +35,29 @@ fn floats<const N: usize>(element: &Value) -> [f32; N] {
 /// 读取名为 `name` 的顶点属性。
 pub fn read_attribute_from_json(json: &Value, name: &str) -> VertexAttributeValues {
     let ty = format!("{}", json[name]["type"]);
-    let buffer = buffer_of(json, name);
+    // O 0x14083e210：`["buffer"]` 在每个匹配分支里才取，所以未知类型先于 buffer 检查 panic。
+    let buffer = || buffer_of(json, name);
     match ty.as_str() {
-        "[\"int\",1]" => {
-            VertexAttributeValues::Int(buffer.iter().map(|v| v.as_i64().unwrap() as i32).collect())
-        }
+        "[\"int\",1]" => VertexAttributeValues::Int(
+            buffer()
+                .iter()
+                .map(|v| v.as_i64().unwrap() as i32)
+                .collect(),
+        ),
         "[\"float\",1]" => VertexAttributeValues::Float(
-            buffer.iter().map(|v| v.as_f64().unwrap() as f32).collect(),
+            buffer()
+                .iter()
+                .map(|v| v.as_f64().unwrap() as f32)
+                .collect(),
         ),
         "[\"float\",2]" => {
-            VertexAttributeValues::Float2(buffer.iter().map(|v| Vec2::from(floats(v))).collect())
+            VertexAttributeValues::Float2(buffer().iter().map(|v| Vec2::from(floats(v))).collect())
         }
         "[\"float\",3]" => {
-            VertexAttributeValues::Float3(buffer.iter().map(|v| Vec3::from(floats(v))).collect())
+            VertexAttributeValues::Float3(buffer().iter().map(|v| Vec3::from(floats(v))).collect())
         }
         "[\"float\",4]" => {
-            VertexAttributeValues::Float4(buffer.iter().map(|v| Vec4::from(floats(v))).collect())
+            VertexAttributeValues::Float4(buffer().iter().map(|v| Vec4::from(floats(v))).collect())
         }
         _ => panic!("load_json_as_mesh: unrecognized attrib '{name}' with type '{ty}'"),
     }
@@ -134,6 +141,13 @@ mod tests {
     )]
     fn unknown_type_panics_with_the_type_text() {
         let json = json!({"Bad": {"type": ["float", 5], "buffer": []}});
+        read_attribute_from_json(&json, "Bad");
+    }
+
+    #[test]
+    #[should_panic(expected = "unrecognized attrib 'Bad' with type")]
+    fn unknown_type_panics_before_the_buffer_is_read() {
+        let json = json!({"Bad": {"type": ["float", 5]}});
         read_attribute_from_json(&json, "Bad");
     }
 
