@@ -1,5 +1,7 @@
 pub mod color_id;
 pub mod gothic_window_profile;
+pub mod grading_lut;
+pub mod grading_lut_cube;
 pub mod render_input_views;
 pub mod roofs;
 pub mod session;

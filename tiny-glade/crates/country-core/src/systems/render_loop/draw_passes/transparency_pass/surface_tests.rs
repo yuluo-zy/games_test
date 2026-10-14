@@ -212,7 +212,7 @@ fn cenv() -> CEnv {
     ssbos.add_new::<RtTriangleMetaSsbo>(&dev);
     ssbos.add_new::<RtBvhSsbo>(&dev);
     ssbos.add_new::<WallColorIdSsbo>(&dev);
-    textures.create_preset_textures(&dev, |_| TextureDesc::new([8, 4, 1], 0x25, 0));
+    textures.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 0x25, 0));
     textures.import_texture_presets_to_rg(&mut crate::rhapsody_types::RenderGraph::default());
     // blue noise：`0x579f39ab91a01865 = xxh3_64("blue_noise")`（B_c3.md）。
     textures.add(

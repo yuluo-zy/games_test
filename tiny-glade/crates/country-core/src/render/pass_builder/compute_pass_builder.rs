@@ -1093,7 +1093,7 @@ mod tests {
         ssbos.add_new::<RtTriangleMetaSsbo>(&dev);
         ssbos.add_new::<RtBvhSsbo>(&dev);
         ssbos.add_new::<WallColorIdSsbo>(&dev);
-        textures.create_preset_textures(&dev, |_| TextureDesc::new([8, 4, 1], 0x25, 0));
+        textures.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 0x25, 0));
         textures.import_texture_presets_to_rg(&mut crate::rhapsody_types::RenderGraph::default());
         let mut map: HashMap<TypeId128, *const ()> = HashMap::new();
         let dummy: &'static u8 = Box::leak(Box::new(0u8));

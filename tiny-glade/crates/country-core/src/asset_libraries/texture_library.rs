@@ -21,8 +21,8 @@
 //!  * `nohash_hasher` 外部库 → 本文件内的 `NoHashHasher`（write_u64 直接存值）；
 //!  * rhapsody 设备调用面（`update_texture` / `get_vk_image_view` / `update_persistent_descriptor_set` /
 //!    `create_persistent_descriptor_set`）→ `TextureLibraryDevice` trait，`GraphicsDevice` 上给空实现；
-//!  * `TexturePreset -> TextureDesc` 的 `From`（0xa59890，1933 B，属 `resources/texture_presets.rs`）尚未恢复，
-//!    `create_preset_textures` 以闭包参数接收它（原版是直接调用）；
+//!  * `TexturePreset -> TextureDesc` 的 `From`（0xa59890，1933 B）已在 `resources/texture_presets.rs` 恢复；
+//!    `create_preset_textures` 直接用它，`create_preset_textures_with` 保留为测试注入点；
 //!  * `rhapsody::raw::format::vk_format_info` 的 “每像素字节数” → `format_bytes_per_texel`（只覆盖预设用到的格式）。
 
 // Rust 1.88 enables newer style suggestions; retain original nested branches and modulo expressions.
@@ -47,8 +47,9 @@ use crate::rhapsody_types::{BackendError, ImportedBuffer, RenderGraph, Texture, 
 pub const REQUIRED_BINDLESS_DESCRIPTOR_COUNT: u32 = 0x2000;
 pub const RESERVED_DESCRIPTOR_COUNT: u32 = 0x20;
 
-/// 预设纹理个数：`enum_iterator::All<TexturePreset>` 的跳转表（0x141474bd5）依次产出 0..=0x19，共 26 个（O）。
-pub const PRESET_COUNT: u8 = 0x1a;
+/// 预设纹理个数：`enum_iterator::All<TexturePreset>` 的折叠函数 0x141474b90 状态 0..=24 依次产出预设，状态 25 是结束标记，
+/// 共 **25** 个（O）。**纠错**：此前写成 26（0..=0x19），把结束标记也算成了变体。
+pub const PRESET_COUNT: u8 = TexturePreset::COUNT;
 
 /// 渲染图导入/导出预设纹理的访问类型字节（O：`mov r9b, 0x22` / `mov r8b, 0x22`）。
 pub const RG_TEXTURE_ACCESS: u8 = 0x22;
@@ -365,13 +366,18 @@ impl AssetTextureLibrary {
 
     // ---------------------------------------------------------------- 预设纹理
 
-    /// `create_preset_textures(device)`（O 0x14093bd80）：对 `enum_iterator::All<TexturePreset>`（0..=0x19）逐个：
-    /// `TextureDesc::from(preset)` → `device.create_texture(name = "(NameHash)", desc, TextureInitialData::None)`
-    /// （Err → `Result::unwrap` panic）→ `PresetTextureState { texture, rg_handle: None }`，收集进一张**新** HashMap
-    /// （新的 RandomState）后整体替换 `self.presets`（旧表连同其纹理句柄被 drop）。
+    /// `create_preset_textures(device)`（O 0x14093bd80）：对 `enum_iterator::All<TexturePreset>`（0..=0x18，共 25 个）逐个：
+    /// `TextureDesc::from(preset)`（0x140a59890，见 [`TexturePreset::texture`]）→ `device.create_texture(name = "(NameHash)", desc,
+    /// TextureInitialData::None)`（Err → `Result::unwrap` panic）→ `PresetTextureState { texture, rg_handle: None }`，收集进一张**新**
+    /// HashMap（新的 RandomState）后整体替换 `self.presets`（旧表连同其纹理句柄被 drop）。
     /// 原版经 `ResMut<AssetTextureLibrary>` 的 DerefMut 调用，会把 changed tick 置为 this_run（O：末尾 `[rcx]=[rsi+0x1c]`），
-    /// 在 ECS 之外无对应物。`desc_of` 代替尚未恢复的 `impl From<TexturePreset> for TextureDesc`（0xa59890）。
-    pub fn create_preset_textures<D: TextureDevice>(
+    /// 在 ECS 之外无对应物。
+    pub fn create_preset_textures<D: TextureDevice>(&mut self, device: &D) {
+        self.create_preset_textures_with(device, |p| p.texture().desc);
+    }
+
+    /// 同 [`Self::create_preset_textures`]，但每个预设的描述由 `desc_of` 给出（测试注入点：让 `TestWorld` 等按格式分支）。
+    pub fn create_preset_textures_with<D: TextureDevice>(
         &mut self,
         device: &D,
         desc_of: impl Fn(TexturePreset) -> TextureDesc,
@@ -853,18 +859,18 @@ mod tests {
     }
 
     #[test]
-    fn create_preset_textures_makes_all_26_and_replaces() {
+    fn create_preset_textures_makes_all_25_and_replaces() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
-        assert_eq!(dev.created.borrow().len(), 26);
+        l.create_preset_textures_with(&dev, desc_of);
+        assert_eq!(dev.created.borrow().len(), 25);
         assert!(dev.created.borrow().iter().all(|(n, _)| n == "(NameHash)"));
-        assert!((0..26u8).all(|p| l.preset(TexturePreset(p)).is_some()));
-        assert!(l.preset(TexturePreset(26)).is_none());
+        assert!((0..25u8).all(|p| l.preset(TexturePreset(p)).is_some()));
+        assert!(l.preset(TexturePreset(25)).is_none());
         assert!(l.preset(TexturePreset(3)).unwrap().rg_handle.is_none());
         // 再次创建：整体替换（新纹理 id）
         let before = l.preset(TexturePreset(0)).unwrap().texture.id;
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
         assert_ne!(l.preset(TexturePreset(0)).unwrap().texture.id, before);
     }
 
@@ -876,14 +882,14 @@ mod tests {
             ..Default::default()
         };
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
     }
 
     #[test]
     fn clear_preset_texture_writes_zeros_sized_by_format() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, |_| TextureDesc::new([8, 4, 1], 0x61, 0)); // 8 B/texel
+        l.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 0x61, 0)); // 8 B/texel
         l.clear_preset_texture(&dev, TexturePreset(5));
         let ups = dev.updates.borrow();
         assert_eq!(ups.len(), 1);
@@ -907,16 +913,16 @@ mod tests {
     fn rg_import_export_roundtrip() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
         let mut rg = RenderGraph::default();
         l.import_texture_presets_to_rg(&mut rg);
-        assert_eq!(rg.imports.len(), 26);
+        assert_eq!(rg.imports.len(), 25);
         assert!(rg.imports.iter().all(|&(_, a)| a == 0x22));
         let h = l.get_rg_texture(TexturePreset(7));
         assert_eq!(h.access, 0x22);
         assert_eq!(h.resource, l.preset(TexturePreset(7)).unwrap().texture.id);
         l.export_preset_textures_from_rg(&mut rg);
-        assert_eq!(rg.exports.len(), 26);
+        assert_eq!(rg.exports.len(), 25);
         assert!(l.preset(TexturePreset(7)).unwrap().rg_handle.is_none());
     }
 
@@ -925,7 +931,7 @@ mod tests {
     fn import_twice_asserts() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
         let mut rg = RenderGraph::default();
         l.import_texture_presets_to_rg(&mut rg);
         l.import_texture_presets_to_rg(&mut rg);
@@ -936,7 +942,7 @@ mod tests {
     fn export_without_import_panics() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
         l.export_preset_textures_from_rg(&mut RenderGraph::default());
     }
 
@@ -960,7 +966,7 @@ mod tests {
     fn get_rg_texture_not_imported_panics() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures(&dev, desc_of);
+        l.create_preset_textures_with(&dev, desc_of);
         l.get_rg_texture(TexturePreset(1));
     }
 }

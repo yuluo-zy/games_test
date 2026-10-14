@@ -10,12 +10,13 @@
 |---|---|---|
 | `src/render/pass_builder/` | Shader URI、反射绑定查找、资源读写访问声明、uniform、compute dispatch、光栅附件、绘制包及 draw builder 状态/快照规则 | 与真实 rhapsody graph/recording/descriptor 的统一适配；全部原入口 ABI 和整链行为验收 |
 | `src/render/` | Typed/Mapped/Instance/Shadowed/Sparse buffer 的容量、上传区间、脏范围及稀疏分配；Mesh/VAO、纹理包解析、shader 程序缓存、view/frame/灯光常量 | GPU 对象生命周期接线、实际上传/管线创建；部分描述字段语义仍只有调用点合同 |
-| `src/render/nani/` | 27 个真实子集、实例 ID/稠密索引与数据更新、mesh atlas、meshlet 切块/属性打包、包围球、间接绘制及 cull shader 描述 | `nani/systems.rs` 的完整游戏 components/resources 消费图及调度；原整帧验证 |
+| `src/render/nani/` | 27 个真实子集、实例 ID/稠密索引与数据更新、mesh atlas、meshlet 切块/属性打包、包围球、间接绘制及 cull shader 描述；`instance_updates.rs`：各 `nani_update_*` 系统的实例载荷构建函数 `build_*`（plant/solid_vertex_color/albedo_map/window_glass/bricks/wren/gothic/flower/curved_halftimber/stone_floor/lantern/plaster/cloth/smoke/balcony_door/uber/velocity_only/stairs_floor）及打包辅助、50 项测试 | `nani/systems.rs` 的 ECS 包装层（`nani_update_*`、`nani_maintain_instances`、`nani_flush_instance_updates`）——等 `NaniActiveInstance`/`NaniInstanceDesc`/`Wren`/`Plaster` 等组件恢复后接上；证据见 [R2_nani_instance_updates.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/R2_nani_instance_updates.md)；原整帧验证 |
 | `src/asset_libraries/` | Mesh/VAO/shader/SSBO/texture 的名字与类型索引、注册/重载策略、颜色槽、placement data、audio trigger collection；文件监听策略 | 完整资产启动生产者、网格 JSON 加载 schema；原 frozen 本地库来源与实现身份 |
 | `src/systems/render_loop/compute_passes/` | 地形/水/建筑栅格、草地/植被、光照/GI、HZB/mips、TAA/TGSR、DoF、读取及间接绘制等 pass 的参数、绑定、资源尺寸、顺序和 dispatch 规则 | shader_refactoring 状态 6–9、reset_indirect_args 临时区等源合同中的未恢复分支；真实 GPU backend |
 | `src/systems/render_loop/draw_passes/` | 主、阴影、透明、水/冰、UI 等 raster pass，draw shader 绑定及已恢复 draw callbacks | 不完整游戏资源的正式类型生产者；各 `*View` 目前是显式输入视图，不能称完整原资源 ABI |
 | `src/systems/render_loop/` | `render_world` / `render_frame` CPU 帧编排、Painterly/Vermeer、预览/LUT gallery/session selection 的参数和分支策略 | `FramePasses` 到真实各 pass/backend 的消费桥；LUT 文件加载与全游戏场景 |
 | `src/resources/` | 已验证墙高规则、屋顶/窗口局部规则，渲染资源布局/默认值、会话主题谓词及明确的渲染输入视图 | 完整墙/存档/会话资源图、组件身份和未知字段 |
+| `src/resources/grading_lut.rs`、`grading_lut_cube.rs` | 调色 LUT 的 `.cube` 加载：逐行解析（TITLE/DOMAIN_MIN·MAX/LUT_1D_SIZE 拒绝/LUT_3D_SIZE/数据行，含原错误文案与行号上下文）、RGB9E5 打包（`utils::rgb9e5`）、`TextureDesc::new_3d(..,0x7b).sampled()` 建 3D 纹理 | `load_unwrapped`（PNG）、`GradingLuts::load`（闭包 0x140ae5bb0 未反编译）、`ColorGradingState::flattened`；`TextureDesc` 未建模维度码 `+0x1e`；证据见 [R1_grading_lut.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/R1_grading_lut.md) |
 | `src/resources/gothic_window_profile.rs` | Gothic 半老虎窗/门的两组完整轮廓函数；6 个变体共 41 个点逐 f32 位核对现有原码常量 | Rust 参数宽度、原 panic 文案和完整开口消费者 ABI 未由这些常量测试证明 |
 | `src/systems/camera_rig/` | B `default_vertical_fov_degrees` 的已闭合 45 度默认值叶函数 | 完整相机控制器、模式与正式场景接线；没有搬入旧停止恢复目录 |
 | [`src/recovered_building/`](src/recovered_building/README.md) | 早期原指令/状态证据约束的建筑、墙、门窗、历史和生命周期 CPU 实现 | 详见子目录 README；这些是已解析输入的 CPU 投影，与渲染侧类型不是已证明相同的原 ABI |
@@ -44,7 +45,7 @@
 
 `IvyDrawView` 和 `LeafParticleCountView` 仅承载已观察的 draw 输入；没有拷贝旧 IvyStorage 的猜测增长器或 GladeSettings 的空加载方法。后者保留原 callback 的 `u64` 输入，避免旧 `u32` 字段适配截断。`FrozenMap` 暂为稳定引用容器的工程适配，不计作原 frozen 库恢复；其上游身份和完整语义仍待核实。
 
-未纳入 stub-only 的 grading LUT 加载、旧 loading/logo 启动骨架、全游戏 nani ECS 系统、未确认的 bucket/marker/世界栅格类型及整树 `Gap` 资源。原二进制本身的 `TODO(vulkan)` panic 和不支持格式的 panic 是已观察行为，保留并在对应函数注释中说明。
+未纳入 grading LUT 中仍是 stub 的部分（`.cube` 加载已纳入，见上表）、旧 loading/logo 启动骨架、全游戏 nani ECS 系统、未确认的 bucket/marker/世界栅格类型及整树 `Gap` 资源。原二进制本身的 `TODO(vulkan)` panic 和不支持格式的 panic 是已观察行为，保留并在对应函数注释中说明。
 
 追加覆盖核查发现 Gothic 门曲线旧转录存在 4 个错误：`-0.148 → -1.48`、`1.58 → 1.57`、`-1.58 → -1.57`、`-0.6 → -1.65`。正式函数已按 `wp21/evidence/g8-misc-2.result.json` 的原 f32/qword 常量纠正，六组完整点表使用独立原常量 fixture 逐位验证。旧 `delete_wall` 的两张 Entity map 所有权存在合同/保存反编译冲突，未猜测双 despawn 算法；原因登记于覆盖清单。
 

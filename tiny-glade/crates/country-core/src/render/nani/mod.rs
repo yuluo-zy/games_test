@@ -50,6 +50,7 @@ pub mod cull_shaders;
 pub mod draw_ext;
 pub mod gpu_world;
 pub mod instance_data;
+pub mod instance_updates;
 pub mod mesh_atlas;
 // `systems.rs` (WP6): the 20 `nani_update_*` + `nani_maintain_instances` +
 // `nani_flush_instance_updates` ECS systems. Declared by WP6 together with the
@@ -57,6 +58,8 @@ pub mod mesh_atlas;
 // `crate::utils::components::transform::Transform`, `crate::systems::paths::draw_path`).
 // See wp6 contracts/systems.md.
 // ECS consumer registration remains to be integrated.
+// The component-independent payload builders of `systems.rs` live in `instance_updates.rs`;
+// only the ECS wrapper layer waits for the component graph.
 pub mod trimesh;
 
 /// 编译期开关：强制细粒度排序（public-symbols `NANI_FORCE_NO_FINE_GRAINED_SORTING`，O）。

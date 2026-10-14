@@ -224,6 +224,11 @@ country-core 中与之重复的位置：
 6. **整体编译**：在有网络或 `dolly`/`mint` 缓存的机器上做第一次，修类型问题，再做 `render_world` 接线与 `SurfaceCompute`。
 7. 去重与拆文件（§5.5）。
 
+## 7.1 推进记录
+
+- 2026-10-14：§7 第 2 步的 `grading_lut` 部分——`.cube` 解析与 `GradingLut::load_cube` 已恢复（7 处 `todo!` 中 2 处），
+  证据与遗留见 `R1_grading_lut.md`。测试台 804 通过。
+
 ## 8. 本轮没有做的事
 
 没有改任何源码；没有恢复新函数；没有提交（本文和 `coverage.py` 是工作区里的新文件）。

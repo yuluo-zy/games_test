@@ -249,6 +249,8 @@ pub const DEFAULT_PRESET_DESC: TextureDesc = TextureDesc {
     mip_levels: 4,
     array_elements: 0,
     storage: false,
+    color_attachment: false,
+    depth_stencil_attachment: false,
     format: 0x7a,
 };
 
@@ -296,7 +298,7 @@ impl TestWorld {
             descs: RefCell::new(HashMap::new()),
             next: Cell::new(0),
         };
-        textures.create_preset_textures(&preset_dev, preset_desc);
+        textures.create_preset_textures_with(&preset_dev, preset_desc);
         let descs = preset_dev.descs.into_inner();
         textures.import_texture_presets_to_rg(&mut PresetRg {
             descs: &descs,

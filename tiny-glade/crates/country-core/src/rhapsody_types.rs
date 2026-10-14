@@ -24,6 +24,10 @@ pub struct TextureDesc {
     pub array_elements: u16,
     /// B 阶段追加（i_api）：`TextureDesc::storage`（O 0x140bd5390：`usage |= 8`）。
     pub storage: bool,
+    /// `TextureDesc::color_attachment`（O 0x140bd53d0：`usage |= 0x10`）。
+    pub color_attachment: bool,
+    /// `TextureDesc::depth_stencil_attachment`（O 0x140bd53f0：`usage |= 0x20`）。
+    pub depth_stencil_attachment: bool,
     /// B 阶段追加（i_api）：像素格式（O：`TextureDesc::new_2d(extent, format)` 0x140bd52a0 的第二参数；
     /// `format(f)` 0x140bd5430 覆写）。`Default` 为 0。
     pub format: u32,
@@ -55,10 +59,40 @@ impl TextureDesc {
         self.storage = true;
         self
     }
+    /// `TextureDesc::color_attachment`（O 0x140bd53d0，`usage |= 0x10`）。
+    pub fn color_attachment(mut self) -> Self {
+        self.color_attachment = true;
+        self
+    }
+    /// `TextureDesc::depth_stencil_attachment`（O 0x140bd53f0，`usage |= 0x20`）。
+    pub fn depth_stencil_attachment(mut self) -> Self {
+        self.depth_stencil_attachment = true;
+        self
+    }
+    /// `TextureDesc::new_2d_array(extent, layers, format)`（O 0x140bd52e0）：深度 1、层数 = `layers`、mip 1。
+    /// 与 `new_2d` 的差别还有 `+0x1e` 维度码（2D=2、2D 数组=3、3D=4，O），本结构体不建模该字节。
+    pub fn new_2d_array(extent: [u32; 2], layers: u32, format: u32) -> Self {
+        Self {
+            extent: [extent[0], extent[1], 1],
+            array_elements: layers as u16,
+            format,
+            ..Self::default()
+        }
+    }
     /// B 阶段追加（i_api）：`TextureDesc::new_2d(extent, format)`（O 0x140bd52a0）：深度 1、层 1。
     pub fn new_2d(extent: [u32; 2], format: u32) -> Self {
         Self {
             extent: [extent[0], extent[1], 1],
+            format,
+            ..Self::default()
+        }
+    }
+    /// `TextureDesc::new_3d`（O 0x140bd5310，与 `new_2d` 逐字节对照）：extent 三维原样、`format` 为第三参。
+    /// 与 `new_2d` 的唯一差别是 `+0x1e` 维度码（2D=2，3D=4，O）；本结构体没有该字段（U，未建模，避免波及
+    /// 其它不带 `..Default` 的字面量），调用方只能靠 `extent[2]` 区分。
+    pub fn new_3d(extent: [u32; 3], format: u32) -> Self {
+        Self {
+            extent,
             format,
             ..Self::default()
         }

@@ -156,8 +156,10 @@ panic（index out of bounds，位置 wall_audio_utils.rs）；取 `instances[cur
      `LUT_3D_SIZE` → 手写十进制 u64 解析（± 号、≤17 位、溢出检查；错误 0x142ae6d50）→
      `size³` 数组扩容（×4B，0 填充）；数据行 → parse_rgb → **RGB9E5 打包**
      （func_0x0001417c66b0）入数组；超过 size³ → **`"Too many entries in the LUT.
-     Bailing before an overrun"`**（0x142ae6db8）；行数不足 size³ → 越界 panic
-     （0x1428d9518，位置 grading_lut.rs）。
+     Bailing before an overrun"`**（0x142ae6db8）；行数不足 size³ → **不报错**，剩余 texel 保持 0
+     （**2026-10-14 更正**：原写“越界 panic 0x1428d9518”是误读——它是写入前冗余的下标检查，已被 `idx+1>len` 的
+     “Too many entries”挡掉，不可达；另 0x1400f9c30 是 `str::trim`，反编译器丢了返回长度，行与 `LUT_3D_SIZE`
+     参数均经 trim；详见 country-core-audit/R1_grading_lut.md）。
   3. 建 3D 纹理：`{size,size,size}` → func_0x000140bd5310（尺寸准备）→
      FUN_1416a6700(device, 名 `"grading lut"`(0x142ae6c70, 11B), 数据, `size³×4` 字节)；
      失败 → panic `"called Result::unwrap() on an Err value"`。

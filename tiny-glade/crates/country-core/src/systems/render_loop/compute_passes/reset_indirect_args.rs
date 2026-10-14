@@ -8,7 +8,9 @@
 //!    （顺序即机器码调用顺序；各取返回句柄的资源号）。
 //! 3. 锁 `Mutex<DynamicConstants>`（`parking_lot::RawMutex`），按顺序 `DynamicConstants::allocate(frame, size, ..)` 四块暂存区并填充：
 //!    * 0x80 B：16 个 u64，交替写 `{u32 0, u32 1}`、`{u32 1, u32 0}`（0x142aaa1e0/e8）= 8 × `[0,1,1,0]`（`VkDispatchIndirectCommand` + 填充）；
-//!    * 0x1e0 B：**无任何写入**（U：暂存区原内容，24 × 20 B 的 `DrawIndexedIndirectCommand`）；
+//!    * 0x1e0 B：**`memcpy` 自静态表 0x142aaaa78**（0x1e0 B；`DrawIndexedIndirectCommand` × 24，每条 20 B，只有 `index_count`
+//!      非零，其余四字段全 0；长度校验 `lStack_150 == 0x1e0`，0x14090a870 反编译，EXE 字节核对）。**纠错**：此前（B_c3）判为
+//!      "无任何写入"是错的——反编译里那一处 `memcpy` 被漏看了；`render-gap/DIGEST.md §3.2`；
 //!    * 0x10 B：`{0,1,0,0}`（`VkDrawIndirectCommand`：顶点数 0、实例数 1）；
 //!    * 8 B：`0x0009_0000_0000_0000`（u32 对 `[0, 0x90000]`）。
 //!    每次 `allocate` 返回切片长度若不等于请求长度 → `copy_from_slice::len_mismatch_fail`（长度不符 panic）。
@@ -39,6 +41,13 @@ pub const DISPATCH_ROW: [u32; 4] = [0, 1, 1, 0];
 pub const DRAW_COMMAND: [u32; 4] = [0, 1, 0, 0];
 /// 原子计数缓冲：8 B = 一个 u64 `0x0009_0000_0000_0000`。
 pub const ATOMIC_INIT: u64 = 0x0009_0000_0000_0000;
+/// 0x1e0 B 暂存区的静态表 0x142aaaa78：24 条 `DrawIndexedIndirectCommand`（20 B）的 `index_count`
+/// （O，EXE 字节；`instance_count`/`first_index`/`vertex_offset`/`first_instance` 全 0）。
+/// 数值是各预置网格的索引数（语义 I，未逐项对应到网格）。
+pub const DRAW_INDEXED_INDEX_COUNTS: [u32; 24] = [
+    27, 300, 96, 57, 36, 6, 60, 6, 48, 174, 0, 0, 2817, 4716, 66, 180, 15, 900, 18, 900, 18, 18,
+    18, 18,
+];
 
 /// 渲染图接缝：在 [`RenderGraph`] 之上补“多资源访问登记”与“库缓冲导入用的渲染图”。
 pub trait IndirectResetGraph: RenderGraph {
@@ -57,6 +66,16 @@ pub trait IndirectResetGraph: RenderGraph {
 pub fn dispatch_init() -> Vec<u8> {
     (0..8)
         .flat_map(|_| DISPATCH_ROW)
+        .flat_map(u32::to_le_bytes)
+        .collect()
+}
+
+/// 0x1e0 B 的 draw-indexed 缓冲初值：`DRAW_INDEXED_INDEX_COUNTS` 每项展开成 20 B 命令
+/// `{index_count, 0, 0, 0, 0}`（O：0x142aaaa78 的 memcpy 源）。
+pub fn draw_indexed_init() -> Vec<u8> {
+    DRAW_INDEXED_INDEX_COUNTS
+        .into_iter()
+        .flat_map(|index_count| [index_count, 0, 0, 0, 0])
         .flat_map(u32::to_le_bytes)
         .collect()
 }
@@ -96,12 +115,8 @@ pub fn reset_indirect_args<G: IndirectResetGraph>(graph: &mut G, ssbos: &AssetSs
 
     let mut s0 = graph.allocate_dynamic(STAGING_SIZES[0]);
     fill(&mut s0, &dispatch_init());
-    let s1 = graph.allocate_dynamic(STAGING_SIZES[1]);
-    assert_eq!(
-        s1.bytes.len(),
-        STAGING_SIZES[1],
-        "unwritten staging keeps the pool content (U)"
-    );
+    let mut s1 = graph.allocate_dynamic(STAGING_SIZES[1]);
+    fill(&mut s1, &draw_indexed_init());
     let mut s2 = graph.allocate_dynamic(STAGING_SIZES[2]);
     fill(&mut s2, &draw_init());
     let mut s3 = graph.allocate_dynamic(STAGING_SIZES[3]);
@@ -226,6 +241,34 @@ mod tests {
     }
 
     #[test]
+    fn draw_indexed_table_matches_the_exe_static_blob() {
+        let b = draw_indexed_init();
+        assert_eq!(b.len(), 0x1e0);
+        assert_eq!(b.len(), 24 * 20);
+        for (i, cmd) in b.chunks(20).enumerate() {
+            let w: Vec<u32> = cmd
+                .chunks(4)
+                .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+                .collect();
+            assert_eq!(
+                w[0], DRAW_INDEXED_INDEX_COUNTS[i],
+                "index_count of command {i}"
+            );
+            assert_eq!(
+                &w[1..],
+                &[0, 0, 0, 0],
+                "only index_count is non-zero (command {i})"
+            );
+        }
+        // 0x142aaaa78 起 0x1e0 B 的 EXE 原值（十六进制 `0x1b,0x12c,0x60,0x39,…`）。
+        assert_eq!(&DRAW_INDEXED_INDEX_COUNTS[..4], &[0x1b, 0x12c, 0x60, 0x39]);
+        // 第 13 项的 EXE 字节是 `01 0b 00 00`（小端 0xb01 = 2817）；DIGEST 曾误抄成 0x10b。
+        assert_eq!(DRAW_INDEXED_INDEX_COUNTS[12], 0xb01);
+        assert_eq!(DRAW_INDEXED_INDEX_COUNTS[13], 0x126c);
+        assert_eq!(DRAW_INDEXED_INDEX_COUNTS[17], 0x384);
+    }
+
+    #[test]
     fn registers_one_pass_with_four_transfer_writes_in_call_order() {
         let (mut g, l) = (Graph::default(), lib());
         reset_indirect_args(&mut g, &l);
@@ -258,12 +301,9 @@ mod tests {
             [0, 0x80, 0x80 + 0x1e0, 0x80 + 0x1e0 + 0x10]
         );
         assert_eq!(api.0[0].4, dispatch_init());
+        assert_eq!(api.0[1].4, draw_indexed_init());
         assert_eq!(api.0[2].4, draw_init());
         assert_eq!(api.0[3].4, atomic_init());
-        assert!(
-            api.0[1].4.iter().all(|&b| b == 0xAB),
-            "the 0x1e0 staging is never written"
-        );
     }
 
     #[test]
