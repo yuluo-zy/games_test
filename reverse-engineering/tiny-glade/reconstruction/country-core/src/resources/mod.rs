@@ -59,6 +59,7 @@ pub mod texture_presets;
 // WP19: LUT / boot resources.
 pub mod gpu_lut;
 pub mod grading_lut;
+pub mod grading_lut_cube;
 pub mod loading_screen;
 pub mod logo_animation;
 

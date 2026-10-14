@@ -61,6 +61,8 @@ pub mod utils_contract {
 pub mod frozen_map;
 #[path = "@SRC@/name_hash.rs"]
 pub mod name_hash;
+#[path = "@SRC@/../../shared-foundation/crates/utils/src/rgb9e5.rs"]
+pub mod rgb9e5;
 pub mod asset_libraries {
     include!("asset_handle.rs");
     #[path = "@SRC@/asset_libraries/mesh_library.rs"]
@@ -116,6 +118,10 @@ pub mod resources {
     pub mod session { #[derive(Clone, Copy)] pub struct GladeType(pub bool); impl GladeType { pub fn is_winter(&self) -> bool { self.0 } } }
     #[path = "@SRC@/resources/texture_presets.rs"]
     pub mod texture_presets;
+    #[path = "@SRC@/resources/grading_lut_cube.rs"]
+    pub mod grading_lut_cube;
+    #[path = "@SRC@/resources/grading_lut.rs"]
+    pub mod grading_lut;
     pub mod placement_data {
         use crate::render::ssbo::StorageElement;
         use serde::Deserialize;
@@ -144,6 +150,8 @@ pub mod resources {
 
 pub mod systems {
     pub mod render_loop {
+        /// 占位：`grading_lut.rs` 只 re-export 该类型；真实实现在 country-core `lut_gallery.rs`。
+        pub mod lut_gallery { #[derive(Clone, Copy, Debug, Default)] pub struct LutGalleryState; }
         pub mod compute_passes {
             #[path = "@SRC@/systems/render_loop/compute_passes/apply_screen_shadows.rs"]
             pub mod apply_screen_shadows;

@@ -63,6 +63,16 @@ impl TextureDesc {
             ..Self::default()
         }
     }
+    /// `TextureDesc::new_3d`（O 0x140bd5310，与 `new_2d` 逐字节对照）：extent 三维原样、`format` 为第三参。
+    /// 与 `new_2d` 的唯一差别是 `+0x1e` 维度码（2D=2，3D=4，O）；本结构体没有该字段（U，未建模，避免波及
+    /// 其它不带 `..Default` 的字面量），调用方只能靠 `extent[2]` 区分。
+    pub fn new_3d(extent: [u32; 3], format: u32) -> Self {
+        Self {
+            extent,
+            format,
+            ..Self::default()
+        }
+    }
     /// B 阶段追加（i_api）：`TextureDesc::format`（O 0x140bd5430）。
     pub fn with_format(mut self, format: u32) -> Self {
         self.format = format;

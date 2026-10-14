@@ -34,6 +34,10 @@ pub mod asset_libraries; // wp4 + wp14 audio_trigger_library + wp16 non-render r
 pub mod audio_events; // wp14 audio event rows (16×register_event, O)
 pub mod frozen_map; // `frozen::FrozenMap` call-surface stand-in (external crate)
 pub mod name_hash; // utils::name_hash::NameHash (xxh3_64)
+// `utils::rgb9e5::pack_rgb9e5`（O 0x1417c66b0）：直接挂载共享基础库 `utils` 里已按机器码核对的那一份源文件，
+// 不复制（只依赖 glam）。country-core 还没有对 `utils` crate 的整体依赖，见 RENDER_GAP_ANALYSIS §4.1。
+#[path = "../../shared-foundation/crates/utils/src/rgb9e5.rs"]
+pub mod rgb9e5;
 pub mod rhapsody_types; // single placeholder set for rhapsody texture/shader types
 pub mod boundary; // wp16 game-side render/core boundary (real types where surface matches)
 pub mod components; // wp6 drawable + wp16 residual markers/geometry/utils
