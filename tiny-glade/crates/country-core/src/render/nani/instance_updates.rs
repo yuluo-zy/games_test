@@ -4,7 +4,7 @@
 //! 包装层（`nani_update_*`、`nani_maintain_instances`、`nani_flush_instance_updates`）依赖尚未恢复的游戏组件
 //! （`NaniActiveInstance`/`NaniInstanceDesc`、`Wren`、`Plaster`、`StairsFloorMeshChunk` 等）。这里只迁**不依赖
 //! 那些类型**的部分：每个系统对应的纯构建函数 `build_*`（输入普通值/视图，输出 `InstanceUpdate<N>` 字载荷）、
-//! 打包辅助、常量，及其测试。系统包装层留在旧树，等组件恢复后再接。
+//! 打包辅助、常量，及其测试。系统层已在 `systems.rs`（R8）。
 //!
 //! 标注：**O**=机器码观测；**I**=推断；**U**=未知。原文的 O/I/U 注释与地址保持不动。
 //! 与原文件一致，同名重复实现（`trs_words`/`trs_words12`/`gb_affine_words` 等）**没有合并**：它们的运算顺序

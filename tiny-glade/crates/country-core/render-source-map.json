@@ -7,9 +7,9 @@
   },
   "author_source_claim": false,
   "summary": {
-    "mapped_source_files": 193,
+    "mapped_source_files": 194,
     "by_classification": {
-      "recovered_functional_module_with_documented_O_I_U_boundaries": 180,
+      "recovered_functional_module_with_documented_O_I_U_boundaries": 181,
       "observed_render_marker_fragment": 1,
       "engineering_stable_reference_container_adapter_not_original_frozen": 1,
       "observed_color_id_fragment": 1,
@@ -307,7 +307,7 @@
       "destination": "crates/country-core/src/render/nani/mod.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/render/nani/mod.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "a431b7b162f829bf36329f8a9c52139d8f7b37a9601da06aba299c402eb335f5",
+      "destination_sha256": "1adbe0155dd9c3ad30e2a95990c43fbae37ac3608da264e08e9c626403a6dd3b",
       "source_commit": "b5965593",
       "source_sha256": "04064e37ee7904c46044a1fc6e64c5c2015a2a6167de501a36a12fc1aa61de1f",
       "engineering_changes": [
@@ -1620,7 +1620,7 @@
       "destination": "crates/country-core/src/render/nani/instance_updates.rs",
       "source": "reverse-engineering/tiny-glade/reconstruction/country-core/src/render/nani/systems.rs",
       "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
-      "destination_sha256": "503e49bafc5cd7e033c93733f059566c6c0031f70191be61c73b6e44c3b9d26c",
+      "destination_sha256": "9ffa8c14ecaf51f31183d0ab69042599ae40c85499c128735c287fbd231b57b1",
       "source_commit": "b5965593",
       "source_sha256_note": "Partial extraction: only the component-independent payload builders (build_*), pack helpers, constants, *View structs and their 50 tests. The ECS wrapper layer (nani_update_*, nani_maintain_instances, nani_flush_instance_updates) and items needing absent types stay in the old tree.",
       "preservation_note": "Original expressions/operand order/evidence comments kept; duplicate helpers (trs_words/trs_words12/gb_affine_words, pack_2x16f_uint/gb_pack_2x16f, max_abs_scale/gb_max_abs_scale) intentionally not merged. PlasterWallInputs::from_state(&PublicWallState) became from_bytes(&[u8]) because PublicWallState is not in this workspace. File-local lint allowances in lint-preservation.json."
@@ -1710,6 +1710,14 @@
       "destination_sha256": "e1898ba40eeb159a42c85caa9a6c11f87474abc492e60094e527fb135f9e5bab",
       "source_commit": null,
       "source_note": "Written 2026-10-14 from EXE bytes; see R7."
+    },
+    {
+      "destination": "crates/country-core/src/render/nani/systems.rs",
+      "source": "reverse-engineering/tiny-glade/evidence/country-core-audit/R8_nani_systems.md",
+      "classification": "recovered_functional_module_with_documented_O_I_U_boundaries",
+      "destination_sha256": "0e9d2175e215aba723c4524e31cb4a5b6c19757aa1583300f3ac36c204bfabcd",
+      "source_commit": null,
+      "source_note": "Written 2026-10-14 from B-nani asm + strings; see R8."
     }
   ],
   "exclusions": [
@@ -1836,6 +1844,21 @@
         },
         "native-physics": {
           "passed": 1317,
+          "failed": 0
+        }
+      },
+      "strict_clippy_D_warnings_no_deps_all_targets": "passed",
+      "rustfmt_check": "passed"
+    },
+    "r8_nani_systems": {
+      "date": "2026-10-14",
+      "lib_tests": {
+        "default_features": {
+          "passed": 1324,
+          "failed": 0
+        },
+        "native-physics": {
+          "passed": 1324,
           "failed": 0
         }
       },
