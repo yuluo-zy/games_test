@@ -1,23 +1,22 @@
 # render/render_config.rs
 
-> 文件作用：**画质/显示设置枚举与小函数（layer A1）：`FullscreenConfig` / `UpscalingPreset` / `ImageQualityPreset` / `UpscalingMode` / `MonitorMatch` + 序列化/克隆/From 实现。**
+> 文件作用：**待推断**（由章节 agent 按函数名+证据填写）
 
-函数总计 9：业务 3 / 自定义 From 1 / 派生胶水 5
+函数总计 39：业务 6 / 内联无独立符号 1 / 派生胶水 32
 
 ## 业务函数
 
-| 函数 | 地址 | 源码行 | 作用（猜测→证实） | 逆向结论 | 证据 |
+| 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `render_config::impl$7::from` | 0x140968c40 | — | **`From<&GraphicsDevice>` 类转换 → `{String uuid, String driver}`（48 B）**：String A=`format!("{}", physical_device)`（`rhapsody::physical_device::impl$3::fmt`，源 @+0x58），String B=`uuid.to_string()`（`uuid::fmt::impl$1::fmt`，源 @+0x78）；失败 → panic "a Display implementation returned an error unexpectedly" | O（2026-10-14 反编译） | render-gap\decomp\decomp-0x140968c40.txt |
+| `…impl$0::serialize<ron::Serializer<String>>` | 0x140039c10 | 7 | 序列化/serde | O（胶水）：ron 序列化派生（RENDER_GAP §2.1 已判 serde derive 无独立逻辑） | render-gap\DIGEST.md |
+| `FullscreenConfig::resolution` | 0x140968ad0 | 25 | 查询/计算 | O：resolution 访问器（FullscreenConfig 分辨率字段；见 render_config 章节布局） | render-gap\DIGEST.md |
+| `…impl$0::deserialize::visit_str<ron::Error>` | 0x14003ae40 | 48 | 序列化/serde | O（胶水）：ron 字符串枚举反序列化 visitor（RENDER_GAP §2.1 已判 serde derive；字符串枚举名可核对） | render-gap\DIGEST.md |
+| `…impl$0::previous` | 0x140914840 | 220 | 查询/计算 | O：枚举迭代器 Sequence::previous（与 game_config 0x140914840 同址 ICF；枚举向前遍历胶水） | expansion-b2\decomp\decomp-0x140914840.txt |
+| `UpscalingPreset::tgsr_resolution_scale` | 0x140968bb0 | 262 | 查询/计算 | O：TGSR 分辨率缩放访问器（UpscalingPreset 枚举方法） | render-gap\DIGEST.md |
+| `impl$7::from` | 0x140968c40 | 335 | 构造/注册/生成 | O：`From<&GraphicsDevice> for LastKnownGraphicsDevice{uuid,driver}`（render-gap §2.1 已核实，RENDER_GAP 判需补项） | render-gap\decomp |
 
-> 语义（I）：产出 `LastKnownGraphicsDevice{uuid,driver}`（render_config 序列化串含 "LastKnownGraphicsDevice"/"uuid"/"driver"，见下）。
-> reconstruction 未实现；建议补该 From。`FullscreenConfig/UpscalingPreset/ImageQualityPreset/UpscalingMode/MonitorMatch` 本体见 L0_NOTES（O）。
+## 内联/无独立符号函数
 
-## 派生胶水（derive/宏生成；不计独立业务）
+- `country_core::render::render_config::VideoSettings::upgrade`（行 287）— 待推断
 
-- `render_config serialize` 0x140039c10：serde `Serialize` for `MonitorMatch`（`serialize_struct("MonitorMatch",3)`，字段 `name/physical_position/physical_size`；串 0x14292b810 区含 "MonitorMatch"、全 `VideoSettings` 字段名、`FullscreenConfig{Best/ClosestMatch}`、`UpscalingPreset{UltraPerformance..UltraQuality}`、`LastKnownGraphicsDevice{uuid,driver}`、`VideoMode{resolution,bit_depth,refresh_rate_millihertz}`）。
-- `render_config deserialize visit_str` 0x14003ae40：serde `Deserialize` visitor（`visit_str<ron::error::Error>`，8 字节窗口比较；Ghidra NotFound 已反汇编核实）。
-- `render_config::impl$38::clone` 0x1404d7d50：derive(Clone) 展开（逐字段拷贝 ~0xc0 B 配置结构 + 2 字段专用 clone + `i64::MIN` niche）。
-- `FullscreenConfig/UpscalingPreset` 等 fmt/eq/hash 其余胶水。
-
-> 全部确认后标注**不补**（render-gap §2.1）。
+## 派生胶水（32 项：clone、default、deserialize、eq、fmt、next、partial_cmp、serialize、visit_enum、visit_map、visit_str 等）
