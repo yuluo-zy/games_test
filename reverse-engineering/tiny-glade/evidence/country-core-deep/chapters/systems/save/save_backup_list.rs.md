@@ -21,3 +21,11 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`fmt` 等 4 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **BackupSaveFileKind::is_corrupted 0x140ae8320**：`tag == 4`（机器码；batch PDB 名
+  is_auto 错位）；iter_backup_files 0x140ae8330 = 迭代备份文件。
+- **new_from_session 0x140ae8470**：扫备份目录（`history-auto` 前缀）建列表；错误
+  "Error reading save backup directory" / "Error creating backup save folder: "
+  （@0x142ae367c）。

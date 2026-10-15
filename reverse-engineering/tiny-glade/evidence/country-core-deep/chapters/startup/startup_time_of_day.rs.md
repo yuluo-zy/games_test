@@ -17,3 +17,9 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_time_of_day 0x14089d6f0（O）**：load_default_tod（内联，行 10）=
+  FUN_140d59140(&path, 'assets/tod/default.json' 0x142a99540, 23) → FUN_1414051e0 载入 ToD 配置
+  → 2x unwrap panic。**与 load_glade_tod_and_weather 共用同一 ToD 载入器**（跨模块）。

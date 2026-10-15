@@ -17,3 +17,9 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_sky_and_sun 0x140864430（O）**：skydome 网格（1x 名式 + 1x 文件式）+ skydome_shader
+  （load_shader_into_library）+ 1 个 spawn 记录（FUN_1412dd460）+ 1x unwrap。
+  网格消费：systems/backend/vao_update.rs 的 VAO 构建路径。

@@ -20,3 +20,10 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`closure`、`default`、`eq`、`fmt`、`hash` 等 8 项
+
+## 实现方式（算法级）
+
+- `PlayermadeStairsAssemblyParams::length_ws`（0x140959ca0）：点/高 zip → 链式 Vec3 段长求和（墙空间总长）。
+- `AlignKind::position_offset`（0x140959f00）：判别 byte0；变体 1 = {flag u8@+1, Vec2@+4, Vec2@+0xc} 组合 + 常量缩放（重建 stub 返 ZERO 错）；`outgoing_dir`（0x140959f50）：判别 0/1 否则 panic。
+- `StairNodeAnchor::try_as_wall`（0x140959ef0）：判别==2 才返回 &payload(+8)（Wall 判别=2）。
+- `StairWallAnchor::new`（0x140959e80）：16B 拷贝 {Vec2 anchor, f32 angle, pad}；`wall_normal`（0x140959e90）= (sin(angle), cos(angle))。

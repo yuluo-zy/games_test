@@ -15,6 +15,12 @@
 
 `closure` 等 1 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `StarsPlugin::build`（0x140903c90）：`mov rcx,rdx; jmp <shared>` thunk（clouds/billboard_forest 同型共享 builder）。
+- `startup_stars`（0x140903ca0）：串 `star_shader` + `/star.raster.hlsl` + `star/star.raster.hlsl`（三名称全中，O 抽查）；load_mesh/shader + spawn_empty。
+- draw_lists 分派目标（star 材质族）；shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - shader：`/star.raster.hlsl`（夜空星星光栅）。

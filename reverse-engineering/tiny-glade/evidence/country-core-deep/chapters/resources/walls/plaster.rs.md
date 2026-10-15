@@ -15,3 +15,18 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+## 实现方式（算法级）
+
+### 该文件无独立业务函数（依据：sysres-procedures.json 含 plaster.rs 但仅 3 条 bevy 胶水）
+
+sysres-procedures.json 对 `resources/walls/plaster.rs` 仅登记：
+- `bevy_ecs::system::schedule_system::impl$1::is_exclusive<FunctionSystem<…timelapse_replay…>>` 0x140002370（**Bevy 调度胶水，非 plaster 业务**，与其他域同名同址复用）
+- `impl$4::clone_behavior` 0x140002370（同址，derive 胶水：`xor eax,eax` 返回 0）
+- `impl$4::register_required_components` 0x140990b00（组件注册胶水，I）
+
+即：Plaster 组件 / AnimatedPlasterPeel / Recalculate* 命令族的业务逻辑全部**内联于消费系统**（渲染域 WP6、set_wall_style 0x1409a2290 的 update_plaster_peel 0x140aaa350 实例化），本文件无独立可恢复业务过程。
+
+### 遗留 U
+
+- register_required_components 0x140990b00 的组件表内容（I）。
+- Plaster 组件字段布局（渲染域另行恢复）。

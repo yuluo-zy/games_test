@@ -14,3 +14,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`deserialize`、`expecting`、`visit_map`、`visit_seq`、`visit_str` 等 8 项
+
+## 实现方式（算法级）
+
+`RockyTerrainMesh::load`（0x8bbf50）：`fs::read_to_string`（FUN_140d59140）→ serde_json 解析 → `add_new_with_data<RockyTerrainVertexSSBO/TriangleSSBO>`；顶点源记录 0x24B→0x30B、三角形 0x10B→0x20B。JSON 中间结构 LoadedRockyTerrainVertex/Triangle（derive 胶水）。displace_rocky_terrain 每帧 GPU 变形。

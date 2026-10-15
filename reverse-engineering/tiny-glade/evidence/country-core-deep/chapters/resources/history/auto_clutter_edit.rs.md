@@ -22,3 +22,10 @@
 - `country_core::resources::history::auto_clutter_edit::impl$1::fmt`（行 8）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **AutoClutterEdit**（墙派生装饰记录：host wall_id + decorator_ids）：手写 serde
+  visitor 族（serialize 0x14003d300 / deserialize 0x140a18500）。
+- 运行侧消费：replay_auto_clutter 0x140aa4a60（undo==0 插墙集 / !=0 从
+  DeletedAutoClutter erase (DecoratorId, DecoratorId)）。
+

@@ -18,3 +18,16 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_loading_screen 0x140a1a1e0**：once 初始化 → load_mesh_into_library
+  ("loading_screen", hash 0x42ac8c61) + load_shader_into_library
+  ("loading_screen/loading_screen.raster.hlsl") → spawn 0x88B bundle
+  {DrawableMeshBundle(vt 0x1412da5d0), +0x48=0x12 渲染 pass, +0x58=0 DontCastShadow,
+  单位变换}。
+- **update_loading_screen 0x140a1a190**：以占位 UUID **33333333-3333-3333-3333-
+  333333333333**（@0x1429503e0）为键对两张 hashbrown 表（+0x70/+0xd8）做插入/删除
+  （0x80 控制字节/0xff 墓碑，0xd0B 值条目，progress u32@+0x58 源 @+0x5b0，rehash
+  0x140d3fa40）——LoadingScreenProgress 资源内的按会话/资产 16B id 索引的加载进度
+  条目；占位 UUID = "无会话"（boot 屏）固定键（round2 闭合）。业务增删时机 U。

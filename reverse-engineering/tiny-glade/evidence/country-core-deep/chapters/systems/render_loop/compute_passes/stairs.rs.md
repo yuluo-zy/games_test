@@ -10,6 +10,13 @@
 |---|---|---|---|---|---|
 | `country_core::systems::render_loop::compute_passes::stairs::stairs` | 0x140a68a50 | 23 | W20 楼梯：`/rocky_terrain/stairs/stairs.cs.hlsl`（wp5 O）；read + write_draw_indirect_cmd_buffer + read_draw_indirect_cmd_buffer + dispatch_2d + dispatch；`StairsTransformSsbo`；raster `_stairs_indirect.raster` | O | render-loop\decomp\decomp-0x140a68a50.txt；wp5 compute-passes §21 |
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `stairs`（0x140a68a50，W20）
+处理链（O，B_c2 §2）：两个 pass；`contouring_grid_dims=(80,80)`、`pebble_buffer_offset=0x9c40`、`pebble_indirect_draw_idx=2` + counter pass；`/rocky_terrain/stairs/stairs.cs.hlsl` + `_stairs_indirect.raster`。
+- 数据流：`StairsTransformSsbo` + DrawIndexedIndirectBuffer → `stairs_draw`（draw_shaders 章）draw_indexed_indirect。
+- 帧序 W20（W19 roof_tiles_gravity 后、W21 墙 draw list 前）。
+
 ## 关键事实
 
 - 结构体（U 布局）：`StairsTransformSsbo`；输出由 stairs_draw（draw_shaders）消费。

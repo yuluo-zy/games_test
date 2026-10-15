@@ -24,3 +24,8 @@
   `func_0x000142923c00`/`func_0x000142923c20` 是编译器为 `App::init_resource<T>` / `insert_resource<T>` 生成的调度辅助
   （同地址多模块复用），内部调 `FUN_14153*…14154*`（`bevy_app` 单态化）。
 - 交叉域：rt 资源构造经 0x1408ba490/0x1408bab30（见 rt/mod.rs 章）；渲染 SSBO 库插槽与 audio-misc 域的 render_ssbo 相关。
+
+## 实现方式（算法级）
+
+- `insert_rendering_resources`（0x140940190）：12×func_0x000142923c20 + 8×func_0x000142923c00（App::init_resource/insert_resource 调度辅助）注册 rt（0x1408ba490/0x1408bab30）、SSBO（0x140867700）、mesh atlas 等。
+- `init_populate_ssbo_library`（0x140909e80）：FUN_1412c4*..1412c6f* 连续 30+ 注册函数逐槽填充 SSBO 库（配 0x140613c10 分配/0x613c20 释放）；`init_populate_minimal_startup_ssbo_library` 为加载屏最小集同模式。

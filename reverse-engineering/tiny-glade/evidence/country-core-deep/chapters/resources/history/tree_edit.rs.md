@@ -38,3 +38,11 @@
 - `country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance::get_dist`（行 100）— 取树冠最大剔除距离（I；内联）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **TreeEdit 负载**（missing_prefab 0x1409e6210 等符号族）：树编辑操作（种树/删除/
+  形态）载荷 + 手写 serde visitor 族；运行侧由 replay_raster 类系统消费（树为
+  Raster 域之一）。
+- missing_prefab = 树引用缺失 prefab 的判定/记录（具体规则 U；同族符号无自定义
+  算法级行为）。
+

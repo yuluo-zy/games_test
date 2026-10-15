@@ -19,3 +19,13 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`TimelapseState` 字节 0=idle/1=recording/2=finished；`is_active` 0x14092e6b0 = `state != 2`（骨架写 ==1 错）。
+```
+start_timelapse（0x140a8a310）：消费 StartTimelapseReplayCmd → 修剪输入流 → 有未消费帧 → mode_manager::check_if_can_switch<closure>
+finish_timelapse（0x140a8a460）：state!=2 时：未消费帧且 state 偶数 → 推 MetaCommand（i64::MIN 哨兵 + 16B@+0x60..0x6c，FUN_140b59900）→ state=1
+  命令队列空（+0x18==0）→ 推 {tag:i64::MIN, byte: state} 事件（stride 0x10）并清另一计数器
+cleanup_timelapse（0x140a8a5d0）：有未消费帧 → 日志（level 3）"The timelapse has finished" → state=2
+```

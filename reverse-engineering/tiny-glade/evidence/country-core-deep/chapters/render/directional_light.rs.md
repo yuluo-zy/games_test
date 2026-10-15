@@ -10,7 +10,7 @@
 
 | 偏移 | 字段 | 证据 |
 |---|---|---|
-| +0x00 | view-basis Mat4（旋转列 + 平移行，w=1） | look_at 0x140b18550 |
+| +0x00 | view-basis Mat4（旋转列 + 平移行，w=1） | render-top/decomp/decomp-0x140b18550.txt（原 look_at 0x140b18550） |
 | +0x40 | position Vec3（+w 复用为打包对） | look_at |
 | +0x50 | target Vec3（/+0x60 为 1.0 + target） | look_at |
 | +0x70 | distance f32 | look_at / set_direction_towards_light |
@@ -19,14 +19,23 @@
 
 | 函数 | 地址 | 源码行 | 作用（猜测→证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `DirectionalLight::look_at` | 0x140b18550 | 21 | 猜测：看向目标；证实：look-at 基构建 | **O**（725 B）：right/up/forward 归一化基、translation = -dot(basis, eye-ish)；存 position + target + distance=|eye-target| | wp4 |
-| `DirectionalLight::set_direction_towards_light` | 0x140b18830 | 58 | 猜测：沿光向移动；证实：position += normalize(direction)*distance | **O**（695 B）：position += normalize(direction)*distance；重建 look-at 基朝 target；存新 position | wp4 |
+| `DirectionalLight::look_at` | 0x140b18550 | 21 | 猜测：看向目标；证实：look-at 基构建 | **O**（725 B）：right/up/forward 归一化基、translation = -dot(basis, eye-ish)；存 position + target + distance=| eye-target | | render-top/decomp/decomp-0x140b18550.txt（原 wp4） |
+| `DirectionalLight::set_direction_towards_light` | 0x140b18830 | 58 | 猜测：沿光向移动；证实：position += normalize(direction)*distance | **O**（695 B）：position += normalize(direction)*distance；重建 look-at 基朝 target；存新 position | render-top/decomp/decomp-0x140b18830.txt（原 wp4） |
 
 ## 内联/无独立符号函数
 
 - `view_to_clip`（行 35）— **U**：视图→裁剪矩阵转换（无独立过程，体 U）
 - `update`（行 75）— **U**：更新（无独立过程；I：transform/基重算入口）
 - PDB 名存在无独立过程：`translate`（I）
+
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `DirectionalLight::look_at`（0x140b18550）—— look-at 视图基
+算法（O，725B）：right/up/forward 归一化正交基（forward = eye→target）→ `translation = -dot(basis, eye-ish)` → 存 position + target + `distance = |eye-target|`。布局 ~0x78B：view-basis Mat4@0（旋转列 + 平移行，w=1）、position Vec3@0x40、target Vec3@0x50（/+0x60 = 1.0）、distance f32@0x70。
+
+### `set_direction_towards_light`（0x140b18830）
+`position += normalize(direction)*distance` → 重建 look-at 基朝 target → 存新 position。
+- 消费链：`shadow_pass` 3 个级联（`sun_cascade` 视图矩阵，`common_draw_params`）+ `DirectionalLight` 经 `main_pass`/`late_forward` 的 `frame_constants` UBO 进入光照 uniform。
 
 ## 纠错/差异
 

@@ -1,0 +1,25 @@
+# decomp-0x140870570 — PhotomodeState::on_enable_photomode
+# 机器码手解（Ghidra tg_b2 反编译 = NotFound（51B 小函数），本文件为 rne-read --hex + capstone 手解替代，2026-10-15）
+# 函数：demo flag ? FOV=1.0 : FOV=3.0，写 PhotomodeState 默认值
+
+# 0x140870570  cmp byte [rip+0x2dc4819], 0   ; demo 标志 0x143634d90
+# 0x140870577  jne 0x140870583              ; demo != 0 → demo FOV
+# 0x140870579  movss xmm0, [rip+0x215caf7]   ; 非 demo → [0x1429cd078] = 0x40400000 = 3.0
+# 0x140870581  jmp 0x14087058b
+# 0x140870583  movss xmm0, [rip+0x20b5379]   ; demo → [0x142925904] = 0x3f800000 = 1.0
+# 0x14087058b  movss [rcx], xmm0             ; [rcx+0] = fov
+# 0x14087058f  mov dword [rcx+4], -1         ; [rcx+4] = -1（哨兵）
+# 0x140870596  mov byte [rcx+8], 0
+# 0x14087059a  mov byte [rcx+0xa], 0
+# 0x14087059e  mov byte [rcx+0xc], 0
+# 0x1408705a2  ret
+
+# 语义：PhotomodeState 默认 = { fov: demo?1.0:3.0, +4: -1, +8:0, +0xa:0, +0xc:0 }
+# 邻接第二实例 = 0x1408705b0（同文件另一个 impl，章节曾记 0x140870590 = 错位，应为 0x1408705b0）：
+#   mov rax,rcx; cmp demo; jne; movss [非demo→0x1429cd078]=3.0 / [demo→0x142925904]=1.0
+#   movss [rax],xmm0; mov word [rax+0xc],0x100; mov ecx,-1; mov qword [rax+4],rcx; ret
+#   → 第二实例写 qword[+4]=-1（i64）与 word[+0xc]=0x100（不同字段宽/不同结构）
+
+# 证据：rne-read --hex 0x140870570 + capstone；常量 0x1429cd078=3.0、0x142925904=1.0
+#       （与 startup/ALGORITHMS.md §6.8、init_photomode_state.rs.md 算法节一致）
+# 原始 NotFound 见 expansion-b2/decomp/decomp-0x140870570.txt

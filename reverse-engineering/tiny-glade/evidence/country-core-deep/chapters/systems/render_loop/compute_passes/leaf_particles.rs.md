@@ -14,6 +14,17 @@
 
 `default` 等 1 项（LeafParticleSsbo 等默认）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `leaf_particles_compute`（0x1408f4d00，W18）
+处理链（O，B_c2 §2）：
+1. **粒子总数 `min(n, 0x340)`，n=0 直接返回**；
+2. `total_particle_count` / `particle_emitter_count` 两个 i32 uniform（`LoadedLeafParticleCount(usize)` TypeId 0x3dce… 与 `LoadedParticleEmitterCount(u64)` 0x4259…，c2 §3 拆名）；
+3. **第二资源在第一个 uniform 之后才取**（缺失 unwrap panic）；
+4. `dispatch_1d(n)`。
+- 数据流：LeafParticleSsbo → `leaf_particle_draw`（draw_shaders 章）draw_instanced。
+- 帧序 W18（roof_tiles_gravity W19 前）。
+
 ## 关键事实
 
 - 结构体（U 布局）：`LeafParticleSsbo/ParticleEmitterSsbo/LoadedParticleEmitterCount`（wp5 记名）。

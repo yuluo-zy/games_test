@@ -15,3 +15,7 @@
 | `impl$0::rotate_yaw_pitch` | 0x14003bb80 | 20 | 空操作（同上） | O：`ret` trampoline | camera-time\decomp\decomp-0x14003bb80.txt |
 | `impl$0::translate_screen_space` | 0x14003bb80 | 20 | 空操作（同上） | O：`ret` trampoline | camera-time\decomp\decomp-0x14003bb80.txt |
 | `impl$0::update` | 0x140a0d090 | 37 | `selected(+0x3c) != applied(+0x38)` → applied=selected、dt=1000（@14295b630）→ rig 迭代 vtable+0x30 → sret 28B | O：实证 | camera-time\decomp\decomp-0x140a0d090.txt |
+
+## 实现方式（算法级）
+
+`update`（0x140a0d090）：`selected(+0x3c) != applied(+0x38)` → applied=selected、dt=1000（0x14295b630 瞬时吸附）→ rig 迭代 vtable+0x30 → sret 28B。rig 装配 = Position+Rotation+Smooth(2,predictive)+Arm+Smooth(4)+LookAt(4)（I，vtable 遍历 O）。rotate/constrain/translate 三操作折叠 0x14003bb80（`ret`，蝴蝶不约束）。

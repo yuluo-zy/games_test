@@ -20,3 +20,16 @@
 > `ShadowMaskMeanSsbo`=f32（`RWByteAddressBuffer Load<float>(0)`）；
 > `WallColorIdSsbo`=NAME "WallColorIds"、SsboId 0xaf42315d263aa22a（O，`bind_resources.rs:214`）。
 > 均可补真实元素类型 + StorageElement；NAME/BUFFER_LEN 的机器码核对留待各 SSBO owner（U）。
+
+## 实现方式（算法级）（O 布局 / U 待核）
+
+**render_ssbo.rs**：纯类型/StorageElement 实现集中地（0 函数）——原版分散在 render::
+lantern、compute_mouse_depth_value、compute_passes、indirect_params，此处归并再导出：
+- `LanternSsbo`：`{position f32×3, intensity_color_id u32 = half16 强度 | color_id<<16}`，
+  16B，容量 0x8000；`SsboId = xxh3_64("LanternSsbo") = 0x8b2da1ef1bff9619`（O 机器码注释）。
+- `MouseDepthValueSsbo`/`SpatialResolveOffsetsSsbo`/`indirect_params` = 再导出/库侧类型
+  StorageElement 已补（O）。
+- 5 处 typed-gap 载体真实元素形态（render-gap §2.2，HLSL 重建 O）：
+  DofAutofocusSsbo=64B、DofFocusReadbackSsbo=16B、ShadowMaskHistogramSsbo=u32[256]、
+  ShadowMaskMeanSsbo=f32、WallColorIdSsbo=NAME "WallColorIds"/SsboId 0xaf42315d263aa22a。
+- 各 SSBO 的 NAME/BUFFER_LEN 机器码核对留待 owner（U）。O/I 混合

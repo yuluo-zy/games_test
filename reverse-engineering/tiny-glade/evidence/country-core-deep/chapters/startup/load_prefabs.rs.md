@@ -27,3 +27,28 @@
 ## 派生胶水
 
 - 15 项：closure$0, closure$1, closure$2, closure$3, closure$4, closure$5 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **load_prefabs_impl 0x1412a1df0（154KB，O）** 算法：
+  1. `PathBuf::from("assets/prefabs")`（FUN_140d61b00，len 0xe=14 = **字符串长度**，非条目数）
+  2. read_dir/open（FUN_140d76ed0 → FUN_14200a1b0 结果检查）；失败 → `.unwrap()` panic 行 43
+  3. 每条目：`format!("assets/meshes/{name}.json")`（前缀串 0x142c2a8e0，FUN_1415244d0）
+     → 打开（FUN_140d76ed0）→ 读入（FUN_140b0fe60，unwrap 行 43）
+  4. 内联 load_json_as_mesh（render/mesh.rs）：Mesh::new/is_valid/has_attribute/vertex_count
+     + Inheritable::as_concrete（PDB inline 证实）
+  5. 属性查找 FUN_1405b1a70(mesh, name, len)（hash + hashbrown probe；**第三参 = 名字符串长度**）：
+     `"id"`(2, 0x142c2a850 串合并显示 idappear_pos — 实为 'id'+'appear_pos' 合并)、
+     `appear_pos`(10)、`age`(3)、`prim_center`(0xb)、`Vertex_Position`(0xf)、`Vertex_Normal`(13)；
+     prim_center/Vertex_Normal 要求属性类型判别 == 3，不符 → panic 'incorrect attribute type'
+     （render/mesh.rs：0x142ac7018 / 0x142ac7040）；顶点数据按 12B(Vec3) 拷入（FUN_1412e7c80）
+  6. MeshProcessorConfig 分发：未知 code → panic `Unknown mesh code processor {code:?}`
+     （0x142c2a828 尾随空格）；Option 缺失 → panic `Sholud not exist`（0x142c2a928/938）
+  7. filter_mesh_by_vertex_color 两 closure（0x140a08680/0x140a08d30；串 'Vertex_Color' 0x142ac6590、'No ' 0x142ac69e0）
+  8. 注册：库 HashMap 索引写 → `no entry found for key` panic（0x142c29ee8，行 22，文件 0x142c2a960）
+  9. PrefabWatcher::watch_prefab 注册 → `Failed to watch file {path:?}!`（0x142c2aa90）
+- **reload_prefabs 0x1412a1a60（O）**：Mutex 守卫（@+0x30 的 +0x10 标志，LOCK/UNLOCK）；
+  已置位 → 重入跳过；置位 → 调 load_prefabs_impl（0x1412a1df0 唯一调用点）。
+- **PrefabWatcher::new 0x1412a8e00**：notify watcher（debounce 100,000,000 ns）+ channel；
+  `watch_atlas` 0x1412a8fa0 = Arc clone + notify watch 注册（FUN_14091d540）。
+- 纠错：章节旧述 "idappear_pos 提取" 修正为 **"id"(2)**（串合并假象，见 ALGORITHMS 6.2）。

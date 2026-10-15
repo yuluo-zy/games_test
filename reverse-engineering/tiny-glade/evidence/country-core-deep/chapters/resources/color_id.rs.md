@@ -18,6 +18,16 @@
 | country_core::resources::color_id::GateColorIds::new | 0x140b19900 | 147 | 建空表（0x140b19900） | O |  |
 | country_core::resources::color_id::HalftimberColorIds::new | 0x140b19970 | 216 | 建空表（0x140b19970） | O |  |
 
+## 实现方式（算法级）（O + 归属纠错）
+
+**ColorId(u32) 资源族**：
+- `WallColorIds::new @0x140b19890` / `GateColorIds::new @0x140b19900` /
+  `HalftimberColorIds::new @0x140b19970`：各建空表（三表并行结构）。（O）
+- `iter_nondefault`（行 85/153/222）：跳过缺省 ColorId 的迭代（内联，逻辑并入调用点）。I
+- **0x14099ca50 归属纠错**：该址 PDB 属 color_id_roof.rs 且返回 **1**（非本文件
+  ColorId(0) 合同）——见 color_id_roof 章节与 §7 错位表。U
+- 其余 = serde json/组件注册/clone_behavior 派生胶水。O
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::resources::color_id::WallColorIds::iter_nondefault`（行 85）— 迭代/变换

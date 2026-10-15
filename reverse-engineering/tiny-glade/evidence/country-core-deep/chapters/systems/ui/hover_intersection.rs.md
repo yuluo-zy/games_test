@@ -13,3 +13,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 13 项
+
+## 实现方式（算法级）
+
+- `hover_intersection` @0x1408383a0（O，wp15 b5 既有）：并行悬停相交检测。
+  - `par_chunk_map` 分块并行：射线 × `(WidgetId, &Arc<WidgetParams>)` 体积测试 → `Vec<WidgetIntersection>`。
+  - `sort_by` + stable merge 按 layer/distance 排序 → `Vec<(&WorldCanvasLayer, WidgetIntersection)>`。
+  - 结果写入 UiState 上下文：hover 字节@+0x18、click 字节@+0x19、交点载荷@+0x28..0x58（O：ui_state 章）。
+- 处理链（O 组合）：hover_intersection 先算交点 → ui_update 同帧消费做状态机；二者由 add_ui 同帧配对调度。
+- 13 个 closure/default 派生胶水（O）：derive 生成，不计独立业务。

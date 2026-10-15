@@ -17,3 +17,12 @@
 - `country_core::systems::history::replay_mode::RestoreAppTo::get`（行 50）— 取回放前 AppMode（I；内联；源行 50）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **replay_mode 0x140a7c550**：`*app_mode != 0xd(Replay) → return`（再次确认
+  AppMode::Replay = 0xd）；进入/离开 log "Replay mode started"/"Replay mode
+  finished"（target country_core::systems::history::replay_mode，级别 >3，
+  @0x142ad7120/0x142ad7190）；RestoreAppTo::set 记录回放前 AppMode；长按快进
+  （HoldToFastReplay，FUN_140c904e0 时间函数）时发 redo HistoryCmd；驱动
+  ReplayModeElapsedTime（enum2$ 判别）计时；写回放状态资源（+0x28 f32 = 1.0 等）。
+

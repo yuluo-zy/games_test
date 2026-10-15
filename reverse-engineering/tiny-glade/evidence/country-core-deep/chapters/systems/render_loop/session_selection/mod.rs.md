@@ -23,6 +23,18 @@
 
 `closure`、`default` 等 8 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. `thumbnails_startup`（0x1408f6900）
+4 着色器 + **6 张 512×512 格式 0x2b mip1 纹理**（失败仅记日志）：`/session_selection/{new_glade_thumbnail, thumbnail_painterly}.raster.hlsl` 等。
+
+### 2. `render_session_selection_previews`（0x1408f6c00，120KB）—— 池窗口算法
+- **窗口**：`start = floor(min(len, max(0, scroll)) - pool/2 + 0.5)`、`end = min(len, start+pool)`；断言 `backed_range.len() <= THUMBNAIL_POOL_SIZE.min(save_list.sessions.len())`；
+- 锁内 `mode_tag==1`（assert_eq）、`active!=0`（否则 `panic!("TODO")`）；pass D 按截图路径逐组件匹配复用池项，pass E 取第一个未分配项（`expect("thumb pool entry")`），新分配项 modified 复位 FILETIME 1970；`idx < self.texture_pool.len()` 断言；
+- **刷新**：metadata("Reading metadata") → modified("Checking modification time") → 比较（有符号 `>=` 跳过）→ 解码("Loading the image") → `update_texture`("updating texture")，成功写回 modified 并 debug "Loaded session thumbnail image"，失败不更新 modified 且按 `"module_path! ()$crate :: Level :: Error"` + 消息去重记 error（消息 `Failed to refresh screenshot {tail}: {err}`）；
+- **绘制序**：背景(3 顶点) → "新建"卡(槽 0，6 顶点) → 全部会话卡 thumbnail 着色器(6 顶点) → 全部会话卡 painterly 着色器(**0x300 顶点**，多绑一张磁盘纹理)；位置 `(slot*spacing+origin.x, origin.y)`；高亮 `state&1 && slot==selected`；bool uniform `(index>=3 && demo) || session.flag`；窗口外会话用占位磁盘纹理。
+- 常量 THUMBNAIL_POOL_SIZE；磁盘约定 screenshot.jpg/meta.json/assets/gladestate/loading_background.jpg。
+
 ## 关键事实
 
 - 常量：`THUMBNAIL_POOL_SIZE`（纹理池容量，配合 `save_list.sessions.len()` 上限）。

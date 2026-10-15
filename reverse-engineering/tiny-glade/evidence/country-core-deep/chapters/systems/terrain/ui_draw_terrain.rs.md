@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`ui_draw_terrain`（0xa9fdc0）：Res<AppMode, CursorTerrainRaycast, AssetSsboLibrary, WaterRaster, UiState, GladeBorder> + ResMut<TerrainEditingData, PendingTerrainHistory, DecoratorArchivist> + 事件组；点按新建笔画 `new_stroke` + EvTerrainStrokeChanged；界外反馈（DisplayOutOfBorder/FeedbackInputOutOfBorder）。状态机细节归 ui-input 域。

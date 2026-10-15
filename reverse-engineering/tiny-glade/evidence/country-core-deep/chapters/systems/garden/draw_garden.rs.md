@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 3 项
+
+## 实现方式（算法级）
+
+`draw_garden`（0xae4620）：工具 id 分发（`id-6<0xf` 且 `id-5∈{4,0xc}`；9=橡皮/17=花丛）；Circle2d 半径 = 笔刷 + 1.5（0x1429258d0）；GladeBorder::is_shape_inside 界内校验 → draw_raster<GardenRasterStagingSsbo>。

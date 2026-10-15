@@ -9,3 +9,7 @@
 | 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
 | `country_core::systems::terrain::draw_terrain_stroke::terrain_stroke_changed` | 0x140a03ba0 | 17 | EvTerrainStrokeChanged 非空 → 发 RecalculateHeightMapCmd + PlayTerrainSound | O | terrain-water\decomp\decomp-0x140a03ba0.txt
+
+## 实现方式（算法级）
+
+`terrain_stroke_changed`（0xa03ba0）：EvTerrainStrokeChanged 非空 → 发 RecalculateHeightMapCmd + PlayTerrainSound（转发生效链，非本域实现）。

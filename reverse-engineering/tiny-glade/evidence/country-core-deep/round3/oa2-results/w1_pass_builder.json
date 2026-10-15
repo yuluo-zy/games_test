@@ -1,0 +1,176 @@
+[
+ {
+  "addr": "0x140588820",
+  "verdict": "一致",
+  "detail": "impl$3::read_storage_buffer<Cobblestone1RasterStagingSsbo>（PDB 精确符号 0x140588820/464B 与行内 fn 吻合）。机器码：mov byte [rsp+0x20],0x1a（access 0x1a）→ call 0x1402b02e0=read_access_buffer<Cobblestone1RasterStagingSsbo>（procs.tsv 命名）→ 尾部 hashbrown 开放寻址查找（[rcx+0xb0] 容量、shr r8,0x39、桶 [rcx+0x98/0xa0]）→ call 0x140562e70=RawVec::grow_one<AtlasAllocUsage> 注册表追加范围 → 未命中 panic（0x1428a994f，Location=pass_resource_access.rs 系数据）。与行断言 read_access_buffer<T>(0x1a)+查注册表追加范围 完全吻合。注：同族实例非字节全同（每实例仅 per-T callee/数据引用不同），行内'ICF'描述不精确，不影响 O。",
+  "evidence": "rne-read/capstone 反汇编 0x140588820(464B)；procs.tsv 命名 0x1402b02e0/0x140562e70；兄弟实例 0x14160ddc0 同构且 call 0x140972220"
+ },
+ {
+  "addr": "0x1408eefd0",
+  "verdict": "一致",
+  "detail": "to_texture_binding_key（61B，PDB 精确符号吻合）。机器码：栈上构造 Arguments（pieces fat ptr→{0x142aa72e8,0x57}='internal error: entered unreachable code: Raw textures must not be used as rg resources'）→ lea rdx 0x142aa7390=Location{file=0x142aa7350 len 0x3a=draw_stream.rs, line 0xcc=204, col 9} → call 0x1428d9390(panic_fmt)，无返回路径（int3 填充）。与行断言'恒 unreachable!(\"Raw textures must not be used as rg resources\")（draw_stream.rs:204:9）'逐项吻合。",
+  "evidence": "capstone 反汇编 61B；rne-read 串 0x142aa72e8(87B)/Location 0x142aa7390"
+ },
+ {
+  "addr": "0x140907990",
+  "verdict": "一致",
+  "detail": "DrawBuilder::multi_draw_indexed_indirect（815B，PDB 吻合）。call 0x1412d5ad0=get_rg_buffer<DrawIndexedIndirectBuffer>；mov eax,esi; shl rax,2; lea rcx,[rax+rax*4]（=idx*0x14）→ lea 0x142aaaa78 → mov eax,[rax+rcx]（表读 4B）；[rdi+0x40]=7（种类 7）、[rdi+0x44]=resource index、[rdi+0x48]=idx*0x14、[rdi+0x60]=1；表 0x142aaaa78 恰 24 项（27,300,96,57,36,6,60,6,48,174,0,0,2817,4716,66,180,15,900,18,900,18,18,18,18）。行断言全中。",
+  "evidence": "capstone 0x140907990/815B 全解；rne-read 表 24 项；procs.tsv 0x1412d5ad0"
+ },
+ {
+  "addr": "0x140907cc0",
+  "verdict": "一致",
+  "detail": "DrawBuilder::draw_indexed_indirect_raw（715B，PDB 吻合）。mov edi,dword ptr [rdi+0x10]（从间接缓冲记录 +0x10 读 resource_index）；[rdi+0x40]=7（种类 7）、[rdi+0x44]=读出的 index、[rdi+0x60]=0；call 0x1409dca90=PassBuilder::add_resource_access<PassResources>；记录 0xb8 步长 Vec 扩容/拷贝（0x142923c10, imul rcx,rdi,0xb8）。'add_resource_access(2,组1)'中常量 2 未在可见窗口出现（小立即数过滤），但调用形态与家族一致，其余断言全中。",
+  "evidence": "capstone 0x140907cc0/715B；procs.tsv 0x1409dca90"
+ },
+ {
+  "addr": "0x140970b20",
+  "verdict": "一致",
+  "detail": "read_access_buffer<NaniNextVisibilityBitmaskSsbo>（256B，PDB 吻合）。call 0x1412d1180=get_rg_buffer<NaniNextVisibilityBitmaskSsbo>→call 0x1409dca90=PassBuilder::add_resource_access<PassResources>→cmp rdi,0x100（绑定数≥0x100）→未达标走 unwrap panic（'called `Result::unwrap()` on an `Err` value'，Location=pass_resource_access.rs）→call 0x140bd6c60=pass_api::impl$5::bind→call 0x140b60150=RawVec::grow_one<RenderPassBinding> 追加 RenderPassBinding。行断言（get_rg_buffer→add_resource_access(0x1a,组1)→≥0x100 unwrap→追加 RenderPassBinding）吻合；组常量 r9d=1 在同族 0x140972220 内可见。注：'53 实例 ICF'中 ICF 不精确（每实例 per-T get_rg_buffer callee 不同、非字节全同）。",
+  "evidence": "capstone 0x140970b20/256B；procs.tsv 0x1412d1180/0x1409dca90/0x140bd6c60/0x140b60150"
+ },
+ {
+  "addr": "0x140971020",
+  "verdict": "一致",
+  "detail": "read_access_buffer<ShapeStreamSsbo>（256B，PDB 吻合）。与 0x140970b20 同构，仅 call 0x1412cbb70=get_rg_buffer<ShapeStreamSsbo> 不同；其余流程（add_resource_access→0x100 unwrap→bind→RenderPassBinding 追加）逐指令一致。行断言吻合。",
+  "evidence": "capstone 0x140971020/256B；procs.tsv 0x1412cbb70"
+ },
+ {
+  "addr": "0x140972220",
+  "verdict": "一致",
+  "detail": "read_access_buffer<DofAutofocusSsbo>（256B，PDB 吻合）。call 0x1412d0190=get_rg_buffer<DofAutofocusSsbo>；0x140972261 处 mov r9d,1（组 1 常量机器可见）→add_resource_access；0x100 绑定数 unwrap；bind+RenderPassBinding 追加。且该函数被 0x14160ddc0（impl$3::read_storage_buffer<DofAutofocusSsbo>）以 access 0x1a 调用——家族链路闭环验证。",
+  "evidence": "capstone 0x140972220/256B；procs.tsv 0x1412d0190；0x14160ddc0 call 0x140972220"
+ },
+ {
+  "addr": "0x140973c20",
+  "verdict": "一致",
+  "detail": "write_access_buffer<NaniFilteredInstanceAllocatorSsbo>（253B，PDB 吻合）。与 read 同构：call 0x1412ca1f0=get_rg_buffer<NaniFilteredInstanceAllocatorSsbo>→add_resource_access（0x1409dca90）→0x100 unwrap→bind→RawVec::grow_one<RenderPassBinding> 追加；绑定标签数据 0x142ab65c0（vs read 的 0x142ab65a8，偏移 +0x18，与'read 标签 3/write 标签 4'语义一致）；Location=pass_resource_access.rs。行断言（0x32/0x37 访问码、组 0、返回追加前下标）与形态吻合，具体访问码/组由调用方传入（byte [rsp+0xd0]）。",
+  "evidence": "capstone 0x140973c20/253B；procs.tsv 0x1412ca1f0；rne-read 0x142ab65c0/0x142ab6548"
+ },
+ {
+  "addr": "0x140973d20",
+  "verdict": "一致",
+  "detail": "write_access_buffer<GrassBladeDataSsbo>（253B，PDB 吻合）。同构，call 0x1412d5140=get_rg_buffer<GrassBladeDataSsbo>（procs.tsv 精确命名，T 匹配）。",
+  "evidence": "capstone 0x140973d20；procs.tsv 0x1412d5140"
+ },
+ {
+  "addr": "0x140974020",
+  "verdict": "一致",
+  "detail": "write_access_buffer<AtomicCounterBuffer>（253B，PDB 吻合）。同构，call 0x1412cb1e0=get_rg_buffer<AtomicCounterBuffer>。且该函数被 0x1416056e0（write_storage_buffer<AtomicCounterBuffer>）以 access 0x32 调用——链路闭环。",
+  "evidence": "capstone 0x140974020；procs.tsv 0x1412cb1e0；0x1416056e0 call 0x140974020"
+ },
+ {
+  "addr": "0x140974d20",
+  "verdict": "一致",
+  "detail": "write_access_buffer<DrawIndirectBuffer>（253B，PDB 吻合）。同构，call 0x1412d6130=get_rg_buffer<DrawIndirectBuffer>（T 匹配）。",
+  "evidence": "capstone 0x140974d20；procs.tsv 0x1412d6130"
+ },
+ {
+  "addr": "0x140975020",
+  "verdict": "一致",
+  "detail": "write_access_buffer<Flower03Ssbo>（253B，PDB 吻合）。同构，call 0x1412c8ed0=get_rg_buffer<Flower03Ssbo>（T 匹配）。",
+  "evidence": "capstone 0x140975020；procs.tsv 0x1412c8ed0"
+ },
+ {
+  "addr": "0x140a59860",
+  "verdict": "一致",
+  "detail": "pass_resource_access::impl$0::dims（38B，PDB 吻合）。机器码：mov rdx,[rdx+8]；movzx r8d,byte [rcx]；call 0x14093cf30=AssetTextureLibrary::get_rg_texture；call 0x140bd5790=rhapsody::raw::texture::TextureDesc::extent_2d（5B 访问器，procs.tsv 命名，与 B_i_api §3.1 'extent_2d() 0x140bd5790' 吻合）；ret。行断言'恒 TextureDesc::extent_2d（36B ImportedTexture 带 desc）'成立。",
+  "evidence": "capstone 0x140a59860；procs.tsv 0x14093cf30/0x140bd5790；B_i_api.md §3.1"
+ },
+ {
+  "addr": "0x141600570",
+  "verdict": "一致",
+  "detail": "ComputePass::new<ref$<dyn$<AsComputeShaderSource>>>（PDB 0x141600570/2279B 吻合）。MCP 反编译（FUN_141600570）流程：FUN_141620a10=managed::handle::clone<[DescriptorSetBinding;2]> → vtable call (param_5+0x18)=AsComputeShaderSource::source → call 0x140909310=PassResources::new_from → call 0x1400dd6f0=Components::get_resource_id（TypeId 密钥 0x2ed189581b92decf/0x15d3d99396065f38 缓存查找）：命中→Arc 引用计数 clone（LOCK/UNLOCK）；槽空→vtable call (param_5+0x20)=as_compute_pipeline + call 0x140937e10=ComputeShaderProgram::new + 0x140c81c70 缓存插入；彻底未命中→panic 0x1428d9310（Location=compute_pass_builder.rs 0x142c7d9d0 系）；尾部 call 0x1415fc070=bind_color_library<ComputePass>，返回约 400B 大结构（栈上 0x170+ 字节组装）。行断言（PassResources::new_from→get_compute_by_name 缓存（命中 clone/构建）→设备 unwrap→UniformBinder::new→bind_color_library；返回 400B）结构吻合。注：evid 中 2311B/1943B 尺寸属 0x1405876a0/0x140587eb0/0x1415fcf10 系其他实例，本实例 2279B，不冲突。",
+  "evidence": "MCP decompile_function tg_oa2w1 0x141600570；procs.tsv 0x140909310/0x140937e10/0x1415fc070/0x1400dd6f0"
+ },
+ {
+  "addr": "0x1416056e0",
+  "verdict": "一致",
+  "detail": "ComputePass::write_storage_buffer<AtomicCounterBuffer>（464B，PDB 吻合）。mov byte [rsp+0x20],0x32（access 0x32）→ call 0x140974020=write_access_buffer<AtomicCounterBuffer>（本 chunk 第 10 条，链路互证）→ 尾部 hashbrown 查找+RawVec::grow_one<AtlasAllocUsage> 注册表追加（同 impl$3 形态）。行断言'write_access_buffer<T>(access 0x32)'成立（行文省略了注册表追加尾段，机器上存在，与 wtcm/impl$3 同构）。",
+  "evidence": "capstone 0x1416056e0/464B；procs.tsv 0x140974020"
+ },
+ {
+  "addr": "0x141606900",
+  "verdict": "一致",
+  "detail": "ComputePass::write_storage_buffer<NaniDrawListLengthSsbo>（464B，PDB 吻合）。同构：0x32 → call 0x140975920=write_access_buffer<NaniDrawListLengthSsbo>（章节行 0x140975920 吻合）→ 注册表追加尾段。",
+  "evidence": "capstone 0x141606900；procs.tsv 0x140975920"
+ },
+ {
+  "addr": "0x141607040",
+  "verdict": "一致",
+  "detail": "ComputePass::write_storage_buffer<FireflyVisibilitySsbo>（464B，PDB 吻合）。同构：0x32 → call 0x140973720=write_access_buffer<FireflyVisibilitySsbo>（章节行 0x140973720 吻合）→ 注册表追加尾段。",
+  "evidence": "capstone 0x141607040；procs.tsv 0x140973720"
+ },
+ {
+  "addr": "0x141607cf0",
+  "verdict": "一致",
+  "detail": "ComputePass::write_storage_buffer<BrickDrawListSsbo>（464B，PDB 吻合）。同构：0x32 → call 0x140974920=write_access_buffer<BrickDrawListSsbo>（procs.tsv 命名，T 匹配）→ 注册表追加尾段。",
+  "evidence": "capstone 0x141607cf0；procs.tsv 0x140974920"
+ },
+ {
+  "addr": "0x1416093d0",
+  "verdict": "一致",
+  "detail": "ComputePass::write_to_cpu_mapped_storage_buffer<MouseTerrainRaycastSsbo>（464B，PDB 吻合）。同构：0x32 → call 0x140975820=write_access_buffer<MouseTerrainRaycastSsbo>（章节行 0x140975820 吻合）→ hashbrown 查找（shr r8,0x39）后按 hash 解析 resource_index 追加 access_range（RawVec::grow_one<AtlasAllocUsage>）。行断言'write_access_buffer<T>（0x32）后按 hash 解析 resource_index 追加 access_range'全中。",
+  "evidence": "capstone 0x1416093d0；procs.tsv 0x140975820"
+ },
+ {
+  "addr": "0x1416095a0",
+  "verdict": "一致",
+  "detail": "ComputePass::write_to_cpu_mapped_storage_buffer<BushCpuSsbo>（464B，PDB 吻合）。同构：0x32 → call 0x140975520=write_access_buffer<BushCpuSsbo>（章节行 0x140975520 吻合）→ 注册表追加尾段。",
+  "evidence": "capstone 0x1416095a0；procs.tsv 0x140975520"
+ },
+ {
+  "addr": "0x14160a2e0",
+  "verdict": "一致",
+  "detail": "ComputePass::dispatch_with<cull_and_bucket::closure_env$1>（656B，PDB 吻合）。机器码：call 0x142923c00 分配 0x190（400B）闭包 env 装箱；从 rsi+0x10/0x28/0x40/0x58 拷贝闭包字段入记录；[rbp+0x1e0]=3（模式 3）；[rbp+0x1e8]=rax（函数指针入记录）；[rbp+0x1f0]=0x142c7db00（数据指针）；call 0x1409dd4d0=PassBuilder::render<PassResources,dispatch_impl::closure_env$0> 提交；尾部 drop/panic 路径（0x1428d9000/0x140896fb0=drop_in_place<ComputePass>）。行断言'模式 3，闭包 400B env 装箱 + 函数指针入记录'全中。",
+  "evidence": "capstone 0x14160a2e0/656B；procs.tsv 0x1409dd4d0"
+ },
+ {
+  "addr": "0x14160ddc0",
+  "verdict": "一致",
+  "detail": "impl$3::read_storage_buffer<DofAutofocusSsbo>（464B，PDB 吻合）。同构于 0x140588820：0x1a → call 0x140972220=read_access_buffer<DofAutofocusSsbo>（本 chunk 第 7 条，链路互证）→ 注册表追加尾段。行断言全中。",
+  "evidence": "capstone 0x14160ddc0；procs.tsv 0x140972220"
+ },
+ {
+  "addr": "0x1416247a0",
+  "verdict": "一致",
+  "detail": "cull_shaders::impl$30::as_compute_pipeline（1131B，PDB 吻合）。机器码：call 0x140613c10 分配 0x2f=47B 路径串，movups 三段拷贝自 0x142c80dbf/0x142c80dcf/0x142c80dde='/nani/cull_and_bucket_curved_halftimber.cs.hlsl'（47B，路径长表第 6 位=47 吻合）；再分配 7B 写 'cs_main'（0x6d5f7363/0x6e69616d）；再分配 0xc=12B 写 'PERM_oc_pass'（[rax+8]=0x73736170='pass'）+ i32 值 1 + Display vtable 0x142ab53c0（'a Display implementation returned an error unexpectedly' panic 引用佐证）；尾部 call 0x1416a7d30=RawVec::grow_one<(String,String)> Vec 追加。行断言'ComputePipelineDesc{path: URI, entry: cs_main, defines: [(\"PERM_oc_pass\", i32 Display)]}'逐项吻合。",
+  "evidence": "capstone 0x1416247a0/1131B 全解；procs.tsv 0x1416a7d30"
+ },
+ {
+  "addr": "0x141624c40",
+  "verdict": "一致",
+  "detail": "cull_shaders::impl$34::as_compute_pipeline（1147B，PDB 吻合）。同构：分配 0x25=37B 路径串，movups 拷贝自 0x142c80e1b/0x142c80e2b='/nani/cull_and_bucket_plaster.cs.hlsl'（37B，路径长表第 7 位=37 吻合）；'cs_main'、'PERM_oc_pass'(0xc)+i32=1+Display vtable 同构；0x140d8d580 构建与 0x1416a7d30 追加同构。",
+  "evidence": "capstone 0x141624c40/1147B；0x1416247a0 对照"
+ },
+ {
+  "addr": "0x1416250c0",
+  "verdict": "一致",
+  "detail": "cull_shaders::impl$38::source_hash（46B，PDB 吻合）。机器码：构建 {0x142c80e40, 0x2b=43} 串 fat ptr + rcx(self) 于栈上 → lea rcx,&tuple → call 0x141459e20=utils::calculate_hash<tuple$<ref$<str$>,ref$<...>>>。串 43B='/nani/cull_and_bucket_smoke.cs.hlsl:cs_main'（路径 35B=路径长表第 8 位，与 impl$38 的 as_compute_pipeline 分配 0x23=35 互证）。行断言'source_hash=calculate_hash(&(\"<path>:cs_main\", &i32))'成立；注：第二元素实为 &self（&i32 措辞不精确，dof impl$11 行文'&self'更准），行为形态一致。",
+  "evidence": "capstone 0x1416250c0/46B；rne-read 0x142c80e40 43B；procs.tsv 0x141459e20"
+ },
+ {
+  "addr": "0x1416250f0",
+  "verdict": "一致",
+  "detail": "cull_shaders::impl$38::as_compute_pipeline（1131B，PDB 吻合）。同构：分配 0x23=35B 路径串（[rax+0x1f] 写 0x6c736c68='hlsl'，即 '/nani/cull_and_bucket_smoke.cs.hlsl' 35B，路径长表第 8 位=35 吻合，与 source_hash 串互证）；'cs_main' 写入；'PERM_oc_pass' define 结构同构。",
+  "evidence": "capstone 0x1416250f0；与 0x1416247a0/0x1416250c0 互证"
+ },
+ {
+  "addr": "0x14162cb90",
+  "verdict": "一致",
+  "detail": "draw_builder::impl$2::read_storage_buffer<StairsTransformSsbo>（756B，PDB 吻合）。机器码：call 0x141524340=hashbrown HashMap<&str,PassResourceSlot>::rustc_entry（槽表 entry 查询，参数 r8=0x142c81499/r9=0x11='Stairs transforms' 槽名 17B）→ mov byte [rsp+0x20],0x1f（access 0x1f）→ call 0x140971320=read_access_buffer<StairsTransformSsbo>（procs.tsv 命名，T 匹配）→ 尾部 hashbrown 查找+RawVec::grow_one<AtlasAllocUsage> 注册表追加 → 槽表结果写入 packet.accesses。行断言'槽表 entry（空位 read_access_buffer：access 0x1f、组 1）→ 名字表 → packet.accesses.push'全中。注：evid 引用的'WALL_COLOR_ID_SLOT_NAME=\"WallColorIds\" 0x14162c290'地址错位——0x14162c290 是函数序言（push r15..），'WallColorIds' 实际在 0x14293ff6b 等数据区且不在本家族槽名 blob（0x142c81499 系）内；建议集成者修正该引用地址，不影响本行 O 结论。",
+  "evidence": "capstone 0x14162cb90/756B；procs.tsv 0x141524340/0x140971320/0x140562e70；rne-read 0x142c81499"
+ },
+ {
+  "addr": "0x14162f890",
+  "verdict": "一致",
+  "detail": "draw_builder::impl$2::read_storage_buffer<ShadowMaskMeanSsbo>（756B，PDB 吻合）。同构：槽名 r8=0x142c815ab/r9=0x12=18='ShadowMaskMeanSsbo'（精确匹配）；0x1f；call 0x140974120=read_access_buffer<ShadowMaskMeanSsbo>（章节行 0x140974120 吻合）；注册表追加+push 同构。WallColorIds 引用地址问题同上条。",
+  "evidence": "capstone 0x14162f890；procs.tsv 0x140974120；rne-read 0x142c815ab"
+ },
+ {
+  "addr": "0x141630790",
+  "verdict": "一致",
+  "detail": "draw_builder::impl$2::read_storage_buffer<GrassBladeDataSsbo>（756B，PDB 吻合）。同构：槽名 r8=0x142c81606/r9=0xb=11='GrassBlades'（人类化槽名，blob 精确匹配）；0x1f；call read_access_buffer<GrassBladeDataSsbo> 实例（0x140971120 系，章节行 0x140971120 吻合）；注册表追加+push 同构。WallColorIds 引用地址问题同上。",
+  "evidence": "capstone 0x141630790；章节行 0x140971120；rne-read 0x142c81606"
+ }
+]

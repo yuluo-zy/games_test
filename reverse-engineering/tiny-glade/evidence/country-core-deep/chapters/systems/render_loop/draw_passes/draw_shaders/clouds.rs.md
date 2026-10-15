@@ -15,6 +15,12 @@
 
 `closure` 等 1 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `CloudsPlugin::build`（0x14085b8a0）：`mov rcx,rdx; jmp <shared>` thunk（billboard_forest/stars 同型共享 builder）。
+- `startup_clouds`（0x14085b8b0）：串 `cloud_shader` + `/cloud.raster.hlsl` + `cloud/cloud.raster.hlsl`（三名称全中，O 抽查）；load_mesh/shader + spawn_empty。
+- draw_lists 分派目标（cloud 材质族）；shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - shader：`/cloud.raster.hlsl`（云光栅，GPU 后置不挖内部算法）。

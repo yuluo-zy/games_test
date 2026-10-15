@@ -11,3 +11,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `fmt` 等 1 项
+## 实现方式（算法级）
+
+### 该文件无独立业务函数（依据：sysres-procedures.json 不含 in_progress_wall.rs）
+
+sysres-procedures.json 无 `resources/walls/in_progress_wall.rs` 键。InProgressWall 组件 / InProgressWallResource 的业务（徒手墙输入→预备轮廓→提交，finish_wall 取 .wall.take()）**内联于** draw_wall 0x140a7cba0 / finish_wall 0x140a800a0 / ui_draw_wall 0x140aafe40 等系统；`InProgressWall::new`（行 31）为内联构造，无独立符号。
+
+### 遗留 U
+
+- InProgressWallResource 的 Option<InProgressWall> 布局（Option 语义先验）U。

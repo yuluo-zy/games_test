@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 3 项
+
+## 实现方式（算法级）
+
+- ivy_send_to_gpu_segments（0x140a9b4e0）：全量段收集（IvyStorage::total_segment_count 预算）→ 段属性打包 → SSBO 上传（ivy_segments 系，render 域交叉）。

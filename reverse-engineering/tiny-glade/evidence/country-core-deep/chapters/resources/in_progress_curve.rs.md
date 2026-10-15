@@ -23,3 +23,10 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone` 等 1 项
+
+## 实现方式（算法级）
+
+- `new`（0xad3070）：空曲线 Vec 初始化。
+- `try_add_raw_input_points`（0xad3f50）：先调 FUN_141466860 输入验证（返回 3 为合法），非法分支清两字段；合法则批量加入原始输入点。
+- `compute_final_curve`（0xad41a0）：由原始输入点计算终结曲线（重采样/拟合，16KB）。
+- 辅助（内联）：last/first_raw_input_point、raw_input_curve_length_ws、add_weight_to_the_last_point、is_raw_input_curve_valid。wall 域 freehand 墙为主消费者。

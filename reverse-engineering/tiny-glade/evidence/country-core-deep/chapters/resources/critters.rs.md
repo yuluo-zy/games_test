@@ -34,3 +34,11 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default`、`drop`、`eq` 等 4 项
+
+## 实现方式（算法级）
+
+- **鸟点池（BirdSpotManager）**：`gen_id`（0x140f86330）= `+8` 自增**返回旧值**；`create_spots`（0x140f86340）= 池内复用/分配（wp10 合同）；`recycle`（0x1422f86e0）= +0x10 原子借用守卫（LOCK/CAS）→ 池回收。
+- `Duck::new`（0x140f85bb0）：FMOD 事件 event:/SFX/Ducks/{Quack,TakeOff,Land} 三事件装载（wp10 合同）。
+- `Sheep::being_petted`（0x14089d4c0）= `f32@+0x58 > 0.01`（review-audit 纠错常量 0.01）。
+- `ButterflyAudio::set_position`（0x140f85ba0）= 5B thunk → 0x140a57da0（共享实现 U）。
+- 上限 96/24（Firefly/Butterfly）= GPU 侧合同（wp10），本域资源面不重复验证。

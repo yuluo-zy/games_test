@@ -14,6 +14,18 @@
 
 `closure` 等 1 项（HashMap 迭代闭包）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `rasterize_buildings`（0x140a32770 + 0x1412fc510，W11）
+处理链（O，B_c3 §2）：
+1. `filter_map` 闭包（**进度 >0.05 / kind>1 丢弃**，圆/矩形两种 **32B 元素**）；
+2. ≥5000 个 → **`"Exceeded maximum number of buildings per level"`**；
+3. **未注册缓冲 → 静默跳过上传**；
+4. 4 个 pass（`/rasterize_buildings.cs.hlsl` + `/rasterize_buildings_animate.cs.hlsl` + `/gauss_blur_building_mask.cs.hlsl` ×2）；
+5. `HashMap::iter` + `AssetSsboLibrary::get` + `InstanceBuffer::gpu_write` + write_texture + dispatch_2d。
+- 元素 32B（B_c3 §4）：kind==1 → `[w3c,w38,v34.0,v34.1,w44,w40,1,0]`；kind==0 → `[w44,w40,w3c,w3c,0,0,0,0]`（字段名全 U）。
+- 数据流：建筑掩码 → 植被/布置避开建筑 + `garden/water spawn` 排除；帧序 W11。
+
 ## 关键事实
 
 - 结构体（U 布局）：`GroundedBuildingsSsbo`；输出建筑掩码（供植被/布置避开建筑）。

@@ -9,3 +9,7 @@
 | 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
 | `country_core::systems::ivy::ivy_leaf_animation::ivy_leaf_animation` | 0x140b0e380 | 14 | 系统:动画 | O：ivy_leaf_animation——叶动画 | collision-eco\decomp\decomp-0x140b0e380.txt |
+
+## 实现方式（算法级）
+
+- ivy_leaf_animation（0x140b0e380）：遍历叶实例 → 动画参数（摆动/生长相位）随时间推进写回（GPU 叶属性）。

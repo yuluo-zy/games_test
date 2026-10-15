@@ -56,3 +56,25 @@
 ## 复用技巧登记（协调方 CU 边界表）
 
 PE .rdata 的 CU 函数边界表（0x14369a000/0x143682f74/0x143697308 等，rne-read --hex 可读）对"Ghidra NotFound / S_PUB32 无符号"函数的边界枚举有效；本域后续如需枚举 compute_path_masks（0x1409014e0）邻接的私有小函数（+0x29b 协议辅助）可复用。
+
+---
+## round3 追加（2026-10-15，算法级深挖期间）
+
+### §1 的 +0x29b 置位点 —— O（闭合，W1 发布握手）
+
+- **置位方**：`upload_raster_staging_to_texture<T>`（W1，0x1403d8bd0 第 59 行）发布后执行
+  `*(undefined2 *)(raster + 0x29a) = 0x100` —— **2 字节 word 写** → +0x29a=0（清 published）、**+0x29b=1**。
+- round2 排除性扫描把 `66 c7 86 9a 02 00 00 00 01`（0x140c25541）当作"2 字节写 0x101=selector+staging 脏，false positive"；
+  实际同类 word 写正是置位路径（W1 的 `66 c7 86 9a 02 00 00 00 01` 形式即 0x1403d8bd0 的 +0x29a=0x100）。
+- **协议闭环（O）**：write 置 +0x299 + 位图全脏 → copy_to_staging 清 +0x299、置 +0x29a=1 → W1 消费 +0x29a、置 +0x29b=1 → W2/W12/path-masks 消费 +0x29b（同步版本 +0x5c←库+0x5b0、清位图、重传 mask）。
+
+### 布局修正：+0x98..+0x297 = 4096-bit 脏位图（非 staging 缓冲）
+
+- write 的 `memset(+0x98, 0xff, 0x200)` = 512B = 64×u64 = **4096 bit 全置 1**（每 8×8px 瓦片 1 bit）；
+- copy_to_staging 的 `FUN_140adfcb0(param_1 + 0x98, &retain_frame)` = DirtyTiles::retain 的位图首参；
+- rasterize_from_cpu 三处的 `memset(+0x98, 0, 0x200)` = 清位图。DIGEST 2.1 已修正。
+
+### 采样 +0x201 偏移归属修正
+
+- `sample_at_world_xz` 权威实例（0x9e9640）：`*0x14362c308 == 0`（**正常**分支）读 `grid[(z<<9|x)+0x201]`；
+  另一分支无偏移。DIGEST 原写"debug 路径用 +0x201"→ 修正为**正常分支**；+0x201 语义（halo 候选）U。

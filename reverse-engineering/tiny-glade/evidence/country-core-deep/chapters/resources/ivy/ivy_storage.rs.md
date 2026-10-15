@@ -31,3 +31,9 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`closure` 等 4 项
+
+## 实现方式（算法级）
+
+- `Ivy::add_point`（0x140869460）：push_back 40B 点 {id=next+1, reserved=0, 位置/方向} 到 VecDeque。
+- `IvyStorage::spawn_ivy`（0x1408696f0）：RNG 采样根点建新株（HashMap<usize,Ivy> 插入），next_ivy_id+1；grower 每帧经 iter_mut 遍历各株。
+- 内联面：`point_count` / `set_last_point_position` / `remove_last_point` / `remove_root` / `get_point_id`（grower/pruner 内联调用）；`roots()` 收集全部根位置（spawner 用）；`total_segment_count` 全株段数求和（GPU 上传预算）。

@@ -23,3 +23,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `deserialize`、`eq`、`expecting`、`fmt`、`visit_enum`、`visit_map`、`visit_seq`、`visit_str` 等 17 项
+
+## 实现方式（算法级）
+
+- `Sheep::being_petted`（0x14089d4c0）= `f32@+0x58 > 0.01`（ucomiss 常量 0x142960674 = 0.01；review-audit 纠错 0.0→0.01）。

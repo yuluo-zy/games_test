@@ -1,0 +1,651 @@
+==================== ?? ====================
+  components/mod.rs | 0x140002370 | `country_core::components::impl$23::clone_behavior`
+      claim: 共享 `clone_behavior` 0x140002370 = `xor eax,eax; ret`（返回 0 = 无克隆行为）。Bevy 默认胶水。
+      evid : decomp-0x140002370.txt
+  asset_libraries/mesh_library.rs | 0x140002450 | `transient_meshes`
+      claim: 猜测：返回瞬时网格集合；证实：`&Arc<Mutex<Vec<_>>>` 访问器
+      evid : A3_mesh.md
+  render/render_config.rs | 0x14003ae40 | `…impl$0::deserialize::visit_str<ron::Error>`
+      claim: O（胶水）：ron 字符串枚举反序列化 visitor（RENDER_GAP §2.1 已判 serde derive；字符串枚举名可核对）
+      evid : render-gap\DIGEST.md
+  utils/mod.rs | 0x1402b4aa0 | `get_last_event<OsCursorCaptureCmd>`
+      claim: 同上（枚举变体）
+      evid : 同注册表
+  render/pass_builder/compute_pass_builder.rs | 0x140588820 | `country_core::render::pass_builder::compute_pass_builder::impl$3::read_storage_buffer<country_core:
+      claim: O
+      evid : B_a4_compute §2/§3.3；wp1/contracts/compute_pass_builder.md §6（0x14160c290 系）
+  components/drawable.rs | 0x14082cad0 | `country_core::components::drawable::impl$9::register_required_components`
+      claim: Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。
+      evid : decomp-0x14082cad0.txt
+  components/drawable.rs | 0x14082d1c0 | `country_core::components::drawable::impl$12::register_required_components`
+      claim: Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。
+      evid : decomp-0x14082d1c0.txt
+  components/drawable.rs | 0x140830250 | `country_core::components::drawable::impl$27::register_required_components`
+      claim: Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。
+      evid : decomp-0x140830250.txt
+  components/mod.rs | 0x140850aa0 | `country_core::components::impl$52::register_required_components`
+      claim: Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。
+      evid : decomp-0x140850aa0.txt
+  components/mod.rs | 0x140855030 | `country_core::components::impl$82::register_required_components`
+      claim: Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。
+      evid : decomp-0x140855030.txt
+  game_key_bindings.rs | 0x14089b280 | `KeyBindings::assign_mouse_button`
+      claim: 指定鼠标键
+      evid : 写 `{key,mouse} u16` @0x1bc+action*4（重建已证）
+  game_key_bindings.rs | 0x14089b2a0 | `KeyBindings::assign_key`
+      claim: 指定按键（冲突交换）
+      evid : 26 块逐槽扫描、清 0xc3、冲突交换、变更事件
+  game_key_bindings.rs | 0x14089d490 | `keycode_to_str`
+      claim: 键码→标签
+      evid : 跳表
+  asset_libraries/configwatch.rs | 0x1408ba290 | `ConfigWatch::watch`
+      claim: 猜测：注册监视路径；证实：clone 路径 + hotwatch.watch + 回调捕获
+      evid : A3_shader.md
+  render/pass_builder/draw_stream.rs | 0x1408eefd0 | `country_core::render::pass_builder::draw_stream::impl$8::to_texture_binding_key`
+      claim: O
+      evid : B_a4_draw §1；wp1/contracts/draw_stream.md §4（0x1408eefd0）
+  render/pass_builder/draw_builder.rs | 0x140907990 | `country_core::render::pass_builder::draw_builder::DrawBuilder::multi_draw_indexed_indirect`
+      claim: O
+      evid : B_a4_draw §2；B_i_api §2（0x140907990）
+  render/pass_builder/draw_builder.rs | 0x140907cc0 | `country_core::render::pass_builder::draw_builder::DrawBuilder::draw_indexed_indirect_raw`
+      claim: O
+      evid : B_a4_draw §2（0x140907cc0）
+  game_config.rs | 0x14090df90 | `GameConfig::upgrade`
+      claim: O：`cmp byte[rcx+0x88],1; je +1; ret`（+0x88==1 已升级即返回）；随后 f32 比较 `[rcx+0x84]` vs 常量 0x14202018e（0.5?）、`cmp dword[rcx+0x80],0`、写 `[rcx+0x80]=0`——**配置版本迁移：旧配置清零 0x80 字段、新常量回填**（字段语义 U）
+      evid : expansion-b2\decomp\decomp-0x14090df90.txt（NotFound，手解）
+  game_profile.rs | 0x140916440 | `profile_file_path`
+      claim: `config_dir()+"profile.ron"`
+      evid : UNK_142aaca1c len 0xb
+  game_profile.rs | 0x140917230 | `save_game_profile`
+      claim: 保存配置
+      evid : → write_profile_via_tmp；错误 log
+  asset_libraries/vao_library.rs | 0x140924030 | `AssetVAOLibrary::new`
+      claim: 猜测：构造；证实：两张空表
+      evid : A3_mesh.md
+  asset_libraries/mesh_library.rs | 0x14092cc60 | `AssetMeshLibrary::add`
+      claim: 猜测：注册网格；证实：**入参一个 0x90 B 结构 `{ asset: Mesh(0x78)@0, name: Option<String>@0x78 }`**
+      evid : A3_mesh.md
+  asset_libraries/mesh_library.rs | 0x14092d2e0 | `AssetMeshLibrary::get`
+      claim: 猜测：按 handle 取；证实：FrozenMap::get
+      evid : A3_mesh.md
+  asset_libraries/shader_library.rs | 0x140936c60 | `AssetShaderLibrary::new`
+      claim: 猜测：构造；证实：两张空表 + RandomState
+      evid : A3_shader.md
+  asset_libraries/shader_library.rs | 0x140937cb0 | `AssetShaderLibrary::debug_raster_get_name`
+      claim: 猜测：调试取名字；证实：读锁下线性扫描返回 `Option<&str>`
+      evid : A3_shader.md
+  asset_libraries/color_library.rs | 0x14093b530 | `update_color_library`
+      claim: 猜测：更新系统；证实：**bevy 系统** `(设置, &AssetSsboLibrary, &Arc<GraphicsDevice>, &mut ColorLibrarySsbo)`
+      evid : A3_color.md §一；decomp: backend-misc/decomp/decomp-0x14093b530.txt
+  asset_libraries/texture_library.rs | 0x14093c720 | `AssetTextureLibrary::create_name_mapping`
+      claim: 猜测：名字→现有纹理映射；证实：target 查找 + 别名登记
+      evid : A3_texture.md
+  asset_libraries/texture_library.rs | 0x14093d310 | `AssetTextureLibrary::handle_to_bindless_index`
+      claim: 猜测：分配 bindless 槽；证实：`&self`，读写锁两段式
+      evid : A3_texture.md
+  asset_libraries/texture_library.rs | 0x14093d690 | `impl$2::image_name_to_index`
+      claim: 猜测：名字→bindless 下标；证实：NameHash::compute + handle_to_bindless_index
+      evid : A3_texture.md
+  render/pass_builder/pass_resource_access.rs | 0x140970b20 | `country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::render::
+      claim: O
+      evid : B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）
+  render/pass_builder/pass_resource_access.rs | 0x140971020 | `country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::systems:
+      claim: O
+      evid : B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）
+  render/pass_builder/pass_resource_access.rs | 0x140972220 | `country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::systems:
+      claim: O
+      evid : B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）
+  render/pass_builder/pass_resource_access.rs | 0x140973c20 | `country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::render:
+      claim: O
+      evid : B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）
+  render/pass_builder/pass_resource_access.rs | 0x140973d20 | `country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems
+      claim: O
+      evid : B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）
+  render/pass_builder/pass_resource_access.rs | 0x140974020 | `country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems
+      claim: O
+      evid : B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）
+  render/pass_builder/pass_resource_access.rs | 0x140974d20 | `country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems
+      claim: O
+      evid : B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）
+  render/pass_builder/pass_resource_access.rs | 0x140975020 | `country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems
+      claim: O
+      evid : B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）
+  render/raster_single.rs | 0x1409d00a0 | `…raster_single_object<1,ColorAttachment[1],resolve_to_swapchain::closure_env$0>`
+      claim: O：同上（resolve_to_swapchain 变体；渲染图单例光栅化）
+      evid : render-loop\decomp
+  render/mesh.rs | 0x140a08440 | `VertexAttributeValues::append`
+      claim: 猜测：追加；证实：同变体跳表分派
+      evid : wp4 mesh
+  render/pass_builder/pass_resource_access.rs | 0x140a59860 | `country_core::render::pass_builder::pass_resource_access::impl$0::dims`
+      claim: O
+      evid : B_i_api §3.2（0x140a59860）
+  game_profile.rs | 0x140a658a0 | `serialize<ron>`
+      claim: ron 序列化
+      evid : 同字段表
+  utils/dirty_tiles.rs | 0x140adec50 | `DirtyTiles::iter_world_space_rect_cells<intersects closure>`
+      claim: 矩形范围遍历（碰撞闭包）
+      evid : 闭包置 bool
+  render/view_constants.rs | 0x140b18f60 | `ViewportConstantBuilder::build`
+      claim: 猜测：构建常量；证实：完整矩阵链
+      evid : wp4；decomp: backend-misc/decomp/decomp-0x140b18f60.txt
+  startup/load_mesh_atlases.rs | 0x14129f400 | `country_core::startup::load_mesh_atlases::load_mesh_atlases`
+      claim: `load_mesh_atlases`：生成图集 parts — `Vertex_Position`+`stone_floor_`、`plaster`/`plaster_strip`、`stairs_floor_chunk_`、`smoke`；调 grid_gen_cw/ccw（0x140928100/350）、load_nani_meshes（0x1415f7190）。
+      evid : decomp-0x14129f400.txt
+  render/nani/gpu_world.rs | 0x14156e880 | `country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::rend
+      claim: O
+      evid : B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）
+  render/nani/gpu_world.rs | 0x14156f290 | `country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::rend
+      claim: O
+      evid : B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）
+  render/nani/gpu_world.rs | 0x14156f950 | `country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::rend
+      claim: O
+      evid : B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）
+  render/nani/gpu_world.rs | 0x1415722c0 | `country_core::render::nani::gpu_world::impl$14::as_any<country_core::render::nani::instance_data::S
+      claim: O
+      evid : B_n_world §1/§2.6（0x141572280 系）
+  render/nani/gpu_world.rs | 0x141572340 | `country_core::render::nani::gpu_world::impl$14::as_any<country_core::render::nani::instance_data::S
+      claim: O
+      evid : B_n_world §1/§2.6（0x141572280 系）
+  render/nani/gpu_world.rs | 0x141576500 | `country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::
+      claim: O
+      evid : B_n_world §1/§7（0x141572d80 系）
+  render/nani/gpu_world.rs | 0x1415780c0 | `country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::
+      claim: O
+      evid : B_n_world §1/§7（0x141572d80 系）
+  render/nani/gpu_world.rs | 0x141579590 | `country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::
+      claim: O
+      evid : B_n_world §1/§7（0x141572d80 系）
+  render/nani/gpu_world.rs | 0x14157aa60 | `country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::
+      claim: O
+      evid : B_n_world §1/§7（0x141572d80 系）
+  render/pass_builder/compute_pass_builder.rs | 0x141600570 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref$<dyn$<country_core::
+      claim: O
+      evid : B_a4_compute §2/§3；wp1/contracts/compute_pass_builder.md §2（0x1405876a0/String、0x140587eb0/&str、nani cull ×5 0x1415fcf10 系；2311B 带 PERM_* 变体与 1943B 不同形态）
+  render/pass_builder/compute_pass_builder.rs | 0x1416056e0 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country
+      claim: O
+      evid : B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）
+  render/pass_builder/compute_pass_builder.rs | 0x141606900 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country
+      claim: O
+      evid : B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）
+  render/pass_builder/compute_pass_builder.rs | 0x141607040 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country
+      claim: O
+      evid : B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）
+  render/pass_builder/compute_pass_builder.rs | 0x141607cf0 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country
+      claim: O
+      evid : B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）
+  render/pass_builder/compute_pass_builder.rs | 0x1416093d0 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_to_cpu_mapped_storage_
+      claim: O
+      evid : B_a4_compute §2；wp1/contracts/compute_pass_builder.md §6（0x141609770）
+  render/pass_builder/compute_pass_builder.rs | 0x1416095a0 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::write_to_cpu_mapped_storage_
+      claim: O
+      evid : B_a4_compute §2；wp1/contracts/compute_pass_builder.md §6（0x141609770）
+  render/pass_builder/compute_pass_builder.rs | 0x14160a2e0 | `country_core::render::pass_builder::compute_pass_builder::ComputePass::dispatch_with<country_core::
+      claim: O
+      evid : B_a4_compute §2/§3.5；wp1/contracts/compute_pass_builder.md §5（0x14160a2e0）
+  render/pass_builder/compute_pass_builder.rs | 0x14160ddc0 | `country_core::render::pass_builder::compute_pass_builder::impl$3::read_storage_buffer<country_core:
+      claim: O
+      evid : B_a4_compute §2/§3.3；wp1/contracts/compute_pass_builder.md §6（0x14160c290 系）
+  render/pass_builder/shader_uri.rs | 0x1416247a0 | `country_core::render::nani::cull_shaders::impl$30::as_compute_pipeline`
+      claim: O
+      evid : B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）
+  render/pass_builder/shader_uri.rs | 0x141624c40 | `country_core::render::nani::cull_shaders::impl$34::as_compute_pipeline`
+      claim: O
+      evid : B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）
+  render/pass_builder/shader_uri.rs | 0x1416250c0 | `country_core::render::nani::cull_shaders::impl$38::source_hash`
+      claim: O
+      evid : B_n_sys cull_shaders §1（0x141624770/0x141624c10/0x1416250c0/0x141625560）
+  render/pass_builder/shader_uri.rs | 0x1416250f0 | `country_core::render::nani::cull_shaders::impl$38::as_compute_pipeline`
+      claim: O
+      evid : B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）
+  render/pass_builder/draw_builder.rs | 0x14162cb90 | `country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems
+      claim: O
+      evid : B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME="WallColorIds" 0x14162c290）
+  render/pass_builder/draw_builder.rs | 0x14162f890 | `country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems
+      claim: O
+      evid : B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME="WallColorIds" 0x14162c290）
+  render/pass_builder/draw_builder.rs | 0x141630790 | `country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems
+      claim: O
+      evid : B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME="WallColorIds" 0x14162c290）
+  render/nani/systems.rs | 0x142072b50 | `country_core::render::nani::systems::nani_update_solid_albedo_map_emissive`
+      claim: O
+      evid : B_n_sys §1/§4；wp3/contracts/systems.md §3；src/nani/systems.rs
+==================== audio-misc ====================
+  startup/debug.rs | 0x1408efd40 | `country_core::startup::debug::debug`
+      claim: `debug`：载入 `assets/meshes/{decorator_delete_scribble,decorator_test,decorator_test_turret,decorator_test_door,decorator_test_cupola,decorator_test_dormer,decorator_outline,stair_step,particle_plane}.j
+      evid : decomp-0x1408efd40.txt
+  utils/debug_viz.rs | 0x140b024e0 | `DebugSphere::radius`
+      claim: 设置半径
+      evid : 原字节短函数
+  utils/debug_viz.rs | 0x140b02ea0 | `DebugRectangle3d::dashed_line`
+      claim: 虚线开关
+      evid : 原字节短函数
+  utils/debug_viz.rs | 0x140b04640 | `DebugRectangle2d::show`
+      claim: 4 f32 角点 + box + fmt + 排队
+      evid : FUN_140c991f0/FUN_140d79f90
+  name_hash.rs | 0x140c9cd70 | `NameHash::eq`
+      claim: O
+      evid : 同上
+==================== backend-misc ====================
+  systems/brush_preview.rs | 0x140865050 | `country_core::systems::brush_preview::brush_preview`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140865050.txt
+  systems/backend/flush_screen_log.rs | 0x1408c1310 | `country_core::systems::backend::flush_screen_log::log_warning_to_screen`
+      claim: O
+      evid : decomp/decomp-0x1408c1310.txt
+  systems/mod.rs | 0x140a90e00 | `country_core::systems::is_gameplay_active`
+      claim: O
+      evid : 机器码 rne-read --hex 0x140a90e00（手解）
+  systems/mod.rs | 0x140a90e80 | `country_core::systems::_::impl$0::dyn_hash`
+      claim: O
+      evid : decomp/decomp-0x140a90e80.txt
+  systems/backend/texture_watch.rs | 0x140aab370 | `country_core::systems::backend::texture_watch::texture_watch`
+      claim: O
+      evid : decomp/decomp-0x140aab370.txt；rne-read --unks/--hex 0x142add810、0x142add878
+==================== camera-time ====================
+  systems/camera_rig/butterfly.rs | 0x14003bb80 | `impl$0::constrain_to_be_above_terrain`
+      claim: O：`ret` trampoline
+      evid : camera-time\decomp\decomp-0x14003bb80.txt
+  systems/camera_rig/free.rs | 0x14003bb80 | `impl$1::constrain_to_be_above_terrain`
+      claim: O：实证
+      evid : camera-time\decomp\decomp-0x14003bb80.txt
+  resources/time_of_day.rs | 0x1400802c0 | `_::impl$0::serialize<serde_json::value::Serializer>`
+      claim: O：字段名串实证（round2）
+      evid : round2\decomp\r2-0x1400802c0.txt
+  systems/despawn.rs | 0x1408b3510 | `despawn_glade_entities`
+      claim: O：实证
+      evid : camera-time\decomp\decomp-0x1408b3510.txt
+  systems/main_camera.rs | 0x140912c20 | `main_camera_update`
+      claim: O：实证
+      evid : camera-time\decomp\decomp-0x140912c20.txt
+  systems/camera_rig/normal.rs | 0x140949e70 | `impl$1::translate_screen_space`
+      claim: O：实证（50@1429cd070）
+      evid : camera-time\decomp\decomp-0x140949e70.txt
+  systems/camera_rig/walk.rs | 0x140993750 | `free::impl$1::rotate_yaw_pitch`
+      claim: O
+      evid : camera-time\decomp\decomp-0x140993750.txt
+  systems/camera_rig/free.rs | 0x140993d30 | `impl$1::update`（free/walk 共享）
+      claim: O：实证
+      evid : camera-time\decomp\decomp-0x140993d30.txt
+  systems/camera_rig/butterfly.rs | 0x140a0d090 | `impl$0::update`
+      claim: O：实证
+      evid : camera-time\decomp\decomp-0x140a0d090.txt
+  systems/time_of_day.rs | 0x140a73460 | `time_of_day`
+      claim: O：22KB 反编译全析（DIGEST §2.6）
+      evid : camera-time\decomp\decomp-0x140a73460.txt
+==================== collision-eco ====================
+  resources/stairs/stairs_state.rs | 0x1402e0630 | `country_core::resources::stairs::stairs_state::_::impl$0::serialize<ref_mut$<serde_json::ser::Seria
+      claim: O：serde derive（复用依赖，不计业务）
+  resources/clutter_meshes.rs | 0x1408b9170 | `country_core::resources::clutter_meshes::impl$1::register_required_components`
+      claim: O：register_required_components（Bevy 组件注册）
+      evid : collision-eco\decomp\decomp-0x1408b9170.txt
+  systems/collision/world.rs | 0x1408cc680 | `country_core::systems::collision::world::RaycastWorld::legacy_raycast`
+      claim: O：legacy_raycast——mask=0 的 rapier raycast（无命中语义，遗留）
+      evid : collision-eco\decomp\decomp-0x1408cc680.txt
+  systems/collision/world.rs | 0x1408ce4a0 | `country_core::systems::collision::world::rapier_hit_to_raycast_world_result`
+      claim: O：rapier_hit_to_raycast_world_result——三角形 feature==2 时 barycentric 插值法线/uv+quat 旋转；无索引法线取原始命中；组装 0x40B 结果
+      evid : collision-eco\decomp\decomp-0x1408ce4a0.txt
+  resources/stairs/stairs_state.rs | 0x1408ffd70 | `country_core::resources::stairs::stairs_state::StairsState::add_edge`
+      claim: O：add_edge——自环 panic；归一化(min,max)；端点命中短路；3 处边/桩表插
+      evid : collision-eco\decomp\decomp-0x1408ffd70.txt
+  resources/stairs/stairs_state.rs | 0x1408ffef0 | `country_core::resources::stairs::stairs_state::StairsState::remove_node`
+      claim: O：remove_node——邻边插桩 (min,max)+自环 (n,n)→GraphMap::remove_node
+      evid : collision-eco\decomp\decomp-0x1408ffef0.txt
+  systems/ivy/mod.rs | 0x140944070 | `country_core::systems::ivy::impl$0::add_ivy_systems`
+      claim: O：add_ivy_systems——插件系统注册
+      evid : collision-eco\decomp\decomp-0x140944070.txt
+  systems/ivy/ivy_spawner.rs | 0x14094cf90 | `country_core::systems::ivy::ivy_spawner::ivy_spawner`
+      claim: O：ivy_spawner——try_random_ivy_root/try_ivy_root_next_to_cursor/is_point_inside_wall_segment
+      evid : collision-eco\decomp\decomp-0x14094cf90.txt
+  systems/ivy/ivy_leaf_spawner.rs | 0x140996080 | `country_core::systems::ivy::ivy_leaf_spawner::ivy_leaf_spawner`
+      claim: O：ivy_leaf_spawner——消费 IvySegmentDoneGrowingMsg（"Received IvySegmentDoneGrowingMsg with ivy id "）沿末段放叶
+      evid : collision-eco\decomp\decomp-0x140996080.txt
+  resources/ivy/wall_coord.rs | 0x140b199e0 | `country_core::resources::ivy::wall_coord::WallCoord::into_world_space`
+      claim: O：WallCoord::into_world_space——PublicWallState 曲线采样+法向偏移 0.63*0.5（按侧±）
+      evid : collision-eco\decomp\decomp-0x140b199e0.txt
+  systems/collision/world.rs | 0x140b26bd0 | `country_core::systems::collision::world::impl$22::to_offset_collider_builder`
+      claim: O：new_compound 闭包
+      evid : collision-eco\decomp\decomp-0x140b26bd0.txt
+  resources/critters.rs | 0x140f88c80 | `country_core::resources::critters::impl$12::register_required_components`
+      claim: O：Bevy 组件注册（复用 derive，不计业务）
+      evid : collision-eco\decomp\decomp-0x140f88c80.txt
+  systems/collision/world.rs | 0x141296510 | `country_core::systems::collision::world::RaycastWorld::upsert_collider<country_core::resources::sta
+      claim: O：upsert_collider<StairGraphEdge,IsoTransform>
+      evid : collision-eco\decomp\decomp-0x141296510.txt
+  systems/collision/world.rs | 0x14129b780 | `country_core::systems::collision::world::RaycastWorld::iter_shape_overlaps<country_core::systems::c
+      claim: O：iter_shape_overlaps（calculate_distortion_from_structural_graph 闭包实例1）——QBVH 相交遍历
+      evid : collision-eco\decomp\decomp-0x14129b780.txt
+  resources/critters/sheep.rs | 0x1413ff8a0 | `country_core::resources::critters::sheep::_::impl$0::deserialize<ref_mut$<serde_json::de::Deseriali
+      claim: O：serde derive（复用依赖，不计业务）
+      evid : collision-eco\decomp\decomp-0x1413ff8a0.txt
+==================== history ====================
+  resources/history/path_edit.rs | 0x1404896f0 | `country_core::resources::history::path_edit::_::impl$0::serialize<ref_mut$<serde_json::ser::Seriali
+      claim: O(入口)
+      evid : 见文件作用所列 serde 地址
+  resources/history/replay_cmd_buffer.rs | 0x140949170 | `country_core::resources::history::replay_cmd_buffer::ReplayBuffer::len`
+      claim: O
+      evid : 符号 0x140949170
+  systems/history/replay_wall.rs | 0x140951b80 | `country_core::systems::history::replay_wall::replay_wall`
+      claim: O
+      evid : decomp-0x140951b80.txt
+  systems/history/replay_wall.rs | 0x140952570 | `country_core::systems::history::replay_wall::_deprecated_morph_curve`
+      claim: O
+      evid : decomp-0x140952570.txt
+  systems/history/replay_mode.rs | 0x140a7c550 | `country_core::systems::history::replay_mode::replay_mode`
+      claim: O
+      evid : decomp-0x140a7c550.txt
+  resources/history/mod.rs | 0x140a844f0 | `country_core::resources::history::History::insert_starting_edit`
+      claim: O
+      evid : decomp-0x140a844f0.txt
+  resources/history/mod.rs | 0x140a84a40 | `country_core::resources::history::History::iter_resolved_snapshots`
+      claim: O
+      evid : decomp-0x140a84a40 区；符号 0x140a84a40
+  systems/history/history_process.rs | 0x140af5b20 | `country_core::systems::history::history_process::HistoryCmd::interrupt`
+      claim: O
+      evid : history\decomp\decomp-0x140af5b20.txt
+  systems/history/history_process.rs | 0x140af6170 | `country_core::systems::history::history_process::replay_edit`
+      claim: O
+      evid : decomp-0x140af5b30.txt；DIGEST §3.3
+  systems/history/replay_stairs.rs | 0x140af75b0 | `country_core::systems::history::replay_stairs::replay_stairs`
+      claim: O
+      evid : decomp-0x140af75b0.txt
+  resources/history/mod.rs | 0x140b31cf0 | `country_core::resources::history::history_chain::HistoryEditChain::iter`
+      claim: O
+      evid : 符号 0x140b31cf0（iter_mut 同址族）
+  systems/history/replay_pop_bucket.rs | 0x140b38250 | `country_core::systems::history::replay_pop_bucket::replay_pop_bucket`
+      claim: O
+      evid : decomp-0x140b38250.txt
+  systems/history/history_process.rs | 0x141444c70 | `country_core::systems::history::history_process::generate_replay_cmds_from_edit<country_core::syste
+      claim: O
+      evid : DIGEST §3.5；decomp-0x14143fb50/0x14143d2c0/0x1414423e0/0x141444c70.txt
+  systems/history/replay_path.rs | 0x1416286d0 | `country_core::systems::history::replay_path::generate_path_replay_cmds`
+      claim: O
+      evid : history\decomp\decomp-0x1416286d0.txt
+  resources/history/tree_edit.rs | 0x1417c2770 | `country_core::resources::history::tree_edit::_::impl$0::serialize<serde_json::value::ser::Serialize
+      claim: O(入口)
+      evid : 见文件作用所列 serde 地址
+==================== render-loop ====================
+  systems/render_loop/compute_passes/grass.rs | 0x140002370 | `bevy_ecs::system::schedule_system::impl$1::is_exclusive<…FunctionSystem…>`
+      claim: O（识别为依赖）
+      evid : audio-misc\decomp\decomp-0x140002370.txt（多域同址）
+  systems/render_loop/vermeer.rs | 0x1408aa720 | `country_core::systems::render_loop::vermeer::startup_vermeer`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1408aa720.txt；reconstruction vermeer.rs
+  systems/render_loop/menu_background.rs | 0x1408c9a30 | `country_core::systems::render_loop::menu_background::render_menu_bg`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1408c9a30.txt
+  systems/render_loop/draw_passes/final_post.rs | 0x14090d850 | `country_core::systems::render_loop::draw_passes::final_post::resolve_to_swapchain`
+      claim: O
+      evid : render-loop\decomp\decomp-0x14090d850.txt（串：Resolve to swapchain、raster_resolve_to_swapchain、raster_resolve_msaa_to_swapchain）；wp5 draw-passes §6
+  systems/render_loop/compute_passes/prefix_scan.rs | 0x14098bf60 | `country_core::systems::render_loop::compute_passes::prefix_scan::inclusive_prefix_scan_u32_1m`
+      claim: O
+      evid : render-loop\decomp\decomp-0x14098bf60.txt（串：_Prefix merge、/prefix_scan/inclusive_prefix_scan_merge.cs.hlsl、/prefix_scan/inclusive_prefix_scan_subtotals.cs.hlsl）；wp5 compute-passes §22
+  systems/render_loop/draw_passes/transparency_pass.rs | 0x1409c40b0 | `country_core::systems::render_loop::draw_passes::transparency_pass::post_taa_transparency_pass`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1409c40b0.txt；wp5 draw-passes §4
+  systems/render_loop/draw_passes/wireframe_pass.rs | 0x1409ccb20 | `country_core::systems::render_loop::draw_passes::wireframe_pass::wireframe_pass`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1409ccb20.txt；wp5 draw-passes §10
+  systems/render_loop/draw_passes/object_grass_push.rs | 0x1409daaa0 | `country_core::systems::render_loop::draw_passes::object_grass_push::object_grass_push_pass`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1409daaa0.txt（串：Grass object push pass、grass_object_push）；wp5 draw-passes §8
+  systems/render_loop/compute_passes/reprojection.rs | 0x140a0d190 | `country_core::systems::render_loop::compute_passes::reprojection::calculate_reprojection_map`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a0d190.txt（串：Reprojection map、/calculate_reprojection_map.cs.hlsl、Copy depth、/copy_depth_to_r.cs.hlsl）；wp5 compute-passes §9
+  systems/render_loop/compute_passes/rasterize_buildings.rs | 0x140a32770 | `country_core::systems::render_loop::compute_passes::rasterize_buildings::rasterize_buildings`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a32770.txt（串：Animate buildings mask、/rasterize_buildings_animate.cs.hlsl、Blur buildings mask、/gauss_blur_building_mask.cs.hlsl、buildings blur temp）；wp5 compute-passes §2
+  systems/render_loop/compute_passes/apply_screen_shadows.rs | 0x140a39e70 | `country_core::systems::render_loop::compute_passes::apply_screen_shadows::apply_screen_shadows`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a39e70.txt（串：Screen shadows temporal、/apply_screen_shadows.cs.hlsl、Shadow mask mean、/shadow_mask_mean.cs.hlsl）；wp5 compute-passes §6
+  systems/render_loop/compute_passes/taa.rs | 0x140a3ba60 | `country_core::systems::render_loop::compute_passes::taa::calculate_tgsr`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a3ba60.txt；wp5 compute-passes §3
+  systems/render_loop/compute_passes/dof.rs | 0x140a5a570 | `country_core::systems::render_loop::compute_passes::dof::calc_dof`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a5a570.txt（串：CoC dilated、DoF tile offsets、DoF tile coords、DoF dispatch args、Depth of field、/dof/fused.cs.hlsl）；wp5 compute-passes §2
+  systems/render_loop/compute_passes/grass.rs | 0x140a66970 | `country_core::systems::render_loop::compute_passes::grass::impl$4::register_required_components`
+      claim: O
+      evid : render-loop\decomp\decomp-0x140a66970.txt；wp5 compute-passes §5
+  systems/render_loop/draw_passes/draw_shaders/leaf_particle_draw.rs | 0x140a8a090 | `…draw_shaders::leaf_particle_draw::leaf_particle_draw`
+      claim: O（分派目标）
+      evid : render-loop\decomp\decomp-0x140a8a090.txt；wp5 draw-passes §1
+==================== roofs-rt ====================
+  resources/render/mod.rs | 0x14089d500 | `country_core::resources::render::Affine3Packed::from_cols`
+      claim: O
+      evid : 手解（rne-read --hex 0x14089d500）
+  resources/render/mod.rs | 0x14089d550 | `country_core::resources::render::Affine3Packed::add_y`
+      claim: O
+      evid : 手解（rne-read --hex 0x14089d550）
+  resources/roofs/roof_ridge.rs | 0x1408e30f0 | `inverse_ridge_01_param`
+      claim: O
+      evid : 已由 reconstruction/roof/ridge.rs 恢复；evidence/roof-ridge/tg_...inverse_ridge_01_param.c
+  resources/roofs/roof_shape.rs | 0x1408e4040 | `roof_uv_at_ws_pos`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x1408e4040.txt
+  resources/roofs/roof_trigger_volume.rs | 0x1408e45b0 | `RoofTriggerVolume::set_triangles`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x1408e45b0.txt
+  resources/roofs/roof_trigger_volume.rs | 0x1408e45f0 | `RoofTriggerVolume::set_normals`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x1408e45f0.txt
+  resources/mod.rs | 0x140940d80 | `country_core::resources::impl$1::insert_resources`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x140940d80.txt
+  resources/tree_storage.rs | 0x140a38460 | `country_core::resources::tree_storage::TreeStorage::get`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x140a38460.txt
+  resources/tree_storage.rs | 0x140a385a0 | `country_core::resources::tree_storage::TreeStorage::remove`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x140a385a0.txt
+  resources/render/mesh_atlas_library.rs | 0x140ae6570 | `country_core::resources::render::mesh_atlas_library::impl$2::from`
+      claim: O
+      evid : roofs-rt/decomp/decomp-0x140ae6570.txt
+==================== session-save ====================
+  systems/prefab.rs | 0x140841d60 | ``country_core::systems::prefab::update_prefabs``
+      claim: O：update_prefabs = GPU 实例数据刷新（触 audio_trigger_library.rs 路径）
+      evid : session-save\decomp\decomp-0x140841d60.txt
+  systems/prefab.rs | 0x1408446b0 | ``country_core::systems::prefab::impl$3::register_required_components``
+      claim: O：Bevy 注册胶水（ComponentId/registry/drop，非业务）
+      evid : session-save\decomp\decomp-0x1408446b0.txt
+  resources/session.rs | 0x14092e6a0 | ``country_core::resources::session::GladeType::is_flowery``
+      claim: O：tag==2 判定
+      evid : ui-input\decomp\decomp-0x14092e6a0.txt
+  resources/session.rs | 0x14092e6c0 | ``country_core::resources::session::GladeType::is_autumn``
+      claim: O：tag==3 判定
+      evid : session-save\DIGEST.md
+  systems/save/save_game.rs | 0x140a439b0 | ``country_core::systems::save::save_game::add_history_edit_to_save_file``
+      claim: O：add_history_edit_to_save_file / v1 双名 ensure_current_snapshot = 追加 edit 计数+序列化 0x80B+",\n"(0xa2c)+ShadowFile::mark_dirty(start,end)
+      evid : session-save\decomp\decomp-0x140a439b0.txt
+  systems/save/load_completion_checker.rs | 0x140a9fa70 | ``country_core::systems::save::load_completion_checker::SessionLoadReadiness::deny_load``
+      claim: O：deny_load = tag==1 判定（与 GladeType::is_olden 同址折叠）
+      evid : session-save\DIGEST.md
+  resources/session.rs | 0x140b46000 | ``country_core::resources::session::SessionId::save_folder_path``
+      claim: O：paths::saves()(0x140b9db60)/uuid
+      evid : round2\session-save-CLOSURE.md
+  resources/prefab.rs | 0x141552d70 | ``country_core::resources::prefab::PrefabLibrary::get<ref$<asset::prefab::PrefabName> >``
+      claim: O：hashbrown 查表（0x1405b1a70 哈希 + SIMD group probe + memcmp）返回 &Prefab
+      evid : session-save\DIGEST.md
+  systems/save/save_thread.rs | 0x14171f7f0 | ``country_core::systems::save::save_thread::CurrentSaveFile::flush_deferred_and_sync``
+      claim: O：flush_deferred_and_sync（游戏线程断开时落盘；错误日志 Error flushing save file on game thread disconnect.）
+      evid : session-save\decomp\decomp-0x14171f7f0.txt
+  systems/save/save_thread.rs | 0x14172b280 | ``country_core::systems::save::save_thread::snapshot_gc_thread``
+      claim: O：snapshot_gc_thread = parse_save_file_snapshots→目录比对→Deleting unreferenced snapshot；竞态守卫 Save file changed before snapshot GC could finish...
+      evid : session-save\decomp\decomp-0x14172b280.txt
+==================== terrain-water ====================
+  systems/world_raster.rs | 0x14003bb80 | `country_core::systems::world_raster::_::impl$0::apply`
+      claim: O
+      evid : terrain-water/DIGEST.md
+  systems/render_loop/compute_passes/upload_world_raster.rs | 0x1403d8bd0 | `…upload_raster_staging_to_texture<PathRaster>`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1403d8bd0.txt；terrain-water\decomp\decomp-0x1403d8bd0.txt；wp5 §20
+  resources/world_raster.rs | 0x14083f410 | `country_core::resources::world_raster_defs::AllWorldRasterWrite::would_write_succeed`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x14083f410.txt
+  resources/terrain_editing.rs | 0x140924a10 | `country_core::resources::terrain_editing::TerrainEditingData::new_stroke`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140924a10.txt
+  systems/render_loop/compute_passes/mouse_read_terrain_stroke_index.rs | 0x1409768b0 | `country_core::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::mouse_read_ter
+      claim: O
+      evid : render-loop\decomp\decomp-0x1409768b0.txt（串：Read terrain stroke、/read_terrain_stroke.cs.hlsl）；terrain-water\decomp\decomp-0x1409768b0.txt；wp5 compute-passes §21
+  systems/render_loop/compute_passes/read_terrain_data.rs | 0x14098c680 | `country_core::systems::render_loop::compute_passes::read_terrain_data::read_terrain_data`
+      claim: O
+      evid : render-loop\decomp\decomp-0x14098c680.txt（串：Visual terrain height、Read terrain rock mask、Read water、Read garden、/terrain_editing/read_terrain_height.cs.hlsl、/water/read_water_mask.cs.hlsl、/garden/read
+  resources/terrain_height.rs | 0x1409e9640 | `country_core::resources::terrain_height::TerrainHeightsData::sample_at_world_xz<country_core::resou
+      claim: O
+      evid : terrain-water\decomp\decomp-0x1409e9640.txt
+  systems/audio/water_ambience_audio.rs | 0x1409ecea0 | `country_core::systems::audio::water_ambience_audio::water_ambience_audio_system`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x1409ecea0.txt
+  resources/brush_sizes.rs | 0x1409f1890 | `country_core::resources::brush_sizes::BrushSizes::reset_water`
+      claim: O
+      evid : terrain-water/DIGEST.md
+  resources/world_raster.rs | 0x140a16580 | `country_core::resources::world_raster::impl$2::commit_scratch_to_composite<512>`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140a16580.txt
+  resources/world_raster.rs | 0x140a16960 | `country_core::resources::world_raster::impl$2::rasterize_stroke<512,core::iter::adapters::map::Map<
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140a16960.txt
+  resources/terrain_stroke.rs | 0x140a97880 | `country_core::resources::terrain_stroke::TerrainStroke::insert_or_morph_last_point`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140a97880.txt
+  systems/world_raster.rs | 0x140ab6de0 | `country_core::systems::world_raster::draw_raster<country_core::resources::world_raster_defs::Cobble
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140ab6de0.txt
+  systems/world_raster.rs | 0x140aba770 | `country_core::systems::world_raster::draw_raster<country_core::resources::world_raster_defs::PathRa
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140aba770.txt
+  systems/terrain/ui_edit_terrain.rs | 0x140aef1f0 | `country_core::systems::terrain::ui_edit_terrain::ui_edit_terrain`
+      claim: O
+      evid : terrain-water\decomp\decomp-0x140aef1f0.txt
+==================== ui-input ====================
+  resources/gui.rs | 0x140002370 | `country_core::resources::gui::_::impl$0::first`
+      claim: O：折叠单行（NotFound；容器 first 元素）
+      evid : ui-input\decomp\decomp-0x140002370.txt
+  input/input_stream.rs | 0x1402e0060 | `serialize<Compact>`
+      claim: `{replay_initial_state, first_frame}`
+      evid : 两键（0x1429b3d4e/0x1429b3d62）
+  systems/ui/signifiers/mod.rs | 0x14089d9b0 | `country_core::systems::ui::signifiers::SignifierEntityBuilder::new`
+      claim: O（wp15 b6）：35 callers，默认值序列见文件作用
+      evid : wp15/analysis/b6_widgets/new_0x14089d9b0.c
+  systems/ui/signifiers/mod.rs | 0x1408a15f0 | `country_core::systems::ui::signifiers::impl$6::register_required_components`
+      claim: O：bevy 组件注册（SignifierAnimation 族）
+      evid : ui-input\decomp\decomp-0x1408a15f0.txt
+  systems/ui/resources/ui_state.rs | 0x14092df10 | `country_core::systems::ui::resources::slider3d::impl$1::into_drag_state`
+      claim: O：折叠单行（NotFound）；语义=拖拽中（DragState::is_started）
+      evid : ui-input\decomp\decomp-0x14092df10.txt
+  resources/gui.rs | 0x140940170 | `country_core::resources::gui::ShowDebugRaycastGeo::as_string`
+      claim: O（手解结构）：`movzx eax,[rcx]; 两张相对偏移表 {rel_ptr u32, rel_len i32} 查表拼 &str`（表址校准 U）
+  input/input_stream.rs | 0x1409494c0 | `InputStream::on_history_sync`
+      claim: 推同步点（截断/裁剪）
+      evid : 非 recording 截断两队列；sync≥9 或 frames≥10000 删最老；push 11 qwords 翻译态 + 帧数
+  systems/ui_move_shapes.rs | 0x14097d280 | `country_core::systems::ui_move_shapes::move_gizmo_and_trigger_vol`
+      claim: O：move_gizmo_and_trigger_vol（wp20 既有）
+      evid : wp20/analysis/0x14097d280_move_gizmo_and_trigger_vol.txt
+  systems/ui/resources/widget_params.rs | 0x1409a90c0 | `country_core::systems::ui::resources::widget_params::UiSounds::on_drag_release`
+      claim: O：折叠（NotFound；槽 6-8）
+      evid : ui-input\decomp\decomp-0x1409a90c0.txt
+  systems/render_loop/draw_passes/ui_2d_pass.rs | 0x1409c6700 | `country_core::systems::render_loop::draw_passes::ui_2d_pass::mei_pass`
+      claim: O
+      evid : render-loop\decomp\decomp-0x1409c6700.txt（串：Mei 2D、mei temp、UI shadow combine、mei_shadow）；ui-input\decomp\decomp-0x1409c6700.txt；wp5 draw-passes §7
+  resources/toolbar.rs | 0x140af8c50 | `country_core::resources::toolbar::Toolbar::new`
+      claim: O(部分)：SOURCE_MAP 地址；此变体 alloc 0x30×8B 元素表（与 0x140af9000 的 11 类 0x10B 表不同——两地址为 new 的不同单态/内联，关系待核 I）
+  systems/mod_key.rs | 0x140af9c00 | `country_core::systems::mod_key::update_mod_key_state`
+      claim: O（手解）：ResMut<Modifiers> tick 回写；读键态 @+0x78 计数与 f32@+0x7c 阈值；键码索引 0..6 跳表 7 handler；Decor 模式 0x38..0x3f 区间判定并入；写 {u32@0, byte@1}。SOURCE_MAP 地址（重建代码写的 0x140af9000 = Toolbar::new，错）
+  systems/mode_manager.rs | 0x140afa060 | `country_core::systems::mode_manager::check_if_can_switch<country_core::systems::mode_manager::mode_
+      claim: O：idx8(Meadow) 同 env_10 模式（entry@0x110）
+      evid : ui-input\decomp\decomp-0x140afa060.txt
+  resources/photo_mode.rs | 0x140b59640 | `country_core::resources::photo_mode::impl$0::build`
+      claim: O：register_event + 组件注册（bevy event/registry.rs 路径证据）
+      evid : ui-input\decomp\decomp-0x140b59640.txt
+  systems/backend/input/translate_input.rs | 0x1417cd0a0 | `country_core::systems::backend::input::translate_input::translate_input`
+      claim: O：输入映射主系统（wp20 合同 + 本域 34KB decomp 复核一致）
+      evid : ui-input\decomp\decomp-0x1417cd0a0.txt
+==================== wall ====================
+  resources/walls/decorator.rs | 0x14067dd80 | `country_core::resources::walls::decorator::DeferredDecoratorOpEvents::events`
+      claim: O
+      evid : audio-misc\decomp\decomp-0x14067dd80.txt, collision-eco\decomp\decomp-0x14067dd80.txt, terrain-water\decomp\decomp-0x14067dd80.txt
+  resources/walls/decorator.rs | 0x140833230 | `country_core::resources::walls::decorator::ClutterVersion::is_initial`
+      claim: O
+      evid : wall\decomp\decomp-0x140833230.txt
+  resources/walls/decorator.rs | 0x140833260 | `country_core::resources::walls::decorator::DecoratorInfo::dst_as_wall`
+      claim: O
+      evid : wall\decomp\decomp-0x140833260.txt
+  resources/walls/decorator.rs | 0x1408332c0 | `country_core::resources::walls::decorator::DecoratorInfo::dst_as_wall_mut`
+      claim: O
+      evid : wall\decomp\decomp-0x1408332c0.txt
+  resources/walls/decorator.rs | 0x140833540 | `country_core::resources::walls::decorator::DecoratorDst::as_wall_mut`
+      claim: O
+      evid : wall\decomp\decomp-0x140833540.txt
+  resources/walls/decorator.rs | 0x140839550 | `country_core::resources::walls::decorator::impl$96::from`
+      claim: O
+  resources/walls/decorator.rs | 0x140839560 | `country_core::resources::walls::decorator::impl$97::from`
+      claim: O
+  resources/walls/inner_walls.rs | 0x14085a730 | `country_core::resources::walls::inner_walls::InnerWalls::remove_all`
+      claim: O
+      evid : wall\decomp\decomp-0x14085a730.txt
+  systems/wall/merge_walls.rs | 0x140999920 | `country_core::systems::wall::merge_walls::merge_walls`
+      claim: O
+      evid : wall\decomp\decomp-0x140999920.txt
+  resources/walls/decorator_storage.rs | 0x140a1b430 | `country_core::resources::walls::decorator_storage::DecoMoveToStorage::new`
+      claim: O
+      evid : wall\decomp\decomp-0x140a1b430.txt
+  resources/walls/decorator_storage.rs | 0x140a1c240 | `country_core::resources::walls::decorator_storage::DecoratorStorageAddr::as_wall`
+      claim: O
+      evid : wall\decomp\decomp-0x140a1c240.txt
+  resources/walls/decorator_storage.rs | 0x140a1cf30 | `country_core::resources::walls::decorator_storage::DecoratorStorage::get_or_insert_default`
+      claim: O
+      evid : wall\decomp\decomp-0x140a1cf30.txt
+  resources/walls/decorator_storage.rs | 0x140a1e280 | `country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators`
+      claim: O
+      evid : wall\decomp\decomp-0x140a1e280.txt
+  resources/walls/material_stats.rs | 0x140a884f0 | `country_core::resources::walls::material_stats::MaterialStats::add_gate_length`
+      claim: O
+      evid : wall\decomp\decomp-0x140a884f0.txt
+  systems/wall/calc_wall_bend.rs | 0x140a8a710 | `country_core::systems::wall::calc_wall_bend::calc_wall_bend`
+      claim: O
+      evid : wall\decomp\decomp-0x140a8a710.txt
+  systems/wall/wall_state/wall_spatial_hash.rs | 0x140aa5dd0 | `country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::add_segment`
+      claim: O
+      evid : wall\decomp\decomp-0x140aa5dd0.txt
+  systems/wall/wall_state/wall_spatial_hash.rs | 0x140aa6600 | `country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws`
+      claim: O
+      evid : wall\decomp\decomp-0x140aa6600.txt
+  systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs | 0x140ac79e0 | `country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_
+      claim: O
+      evid : ui-input\decomp\decomp-0x140ac79e0.txt, wall\decomp\decomp-0x140ac79e0.txt
+  systems/wall/shapes/rectangle/ui_edit_rectangle_dims.rs | 0x140ad6250 | `country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_dims::ui_edit_rectangle_dims`
+      claim: O
+      evid : wall\decomp\decomp-0x140ad6250.txt
+  systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs | 0x140ad8000 | `country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::ui_edit_rectangle_ro
+      claim: O
+      evid : wall\decomp\decomp-0x140ad8000.txt
+  resources/walls/wall_attachment.rs | 0x140b256b0 | `country_core::resources::walls::wall_attachment::WallCornerAttachment::is_attached`
+      claim: O
+      evid : wall\decomp\decomp-0x140b256b0.txt
+  resources/walls/decorator_subtype.rs | 0x140b25ef0 | `country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_inter
+      claim: O
+      evid : wall\decomp\decomp-0x140b25ef0.txt
+  resources/walls/public_wall_state.rs | 0x140b2a770 | `country_core::resources::walls::public_wall_state::PublicWallState::u_space`
+      claim: O
+      evid : wall\decomp\decomp-0x140b2a770.txt
+  resources/walls/decorator_archivist.rs | 0x140b2bc00 | `country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_wall`
+      claim: O
+      evid : wall\decomp\decomp-0x140b2bc00.txt
+  resources/walls/decorator_outline.rs | 0x140b33b00 | `country_core::resources::walls::decorator_outline::DecoratorOutline::display`
+      claim: O
+      evid : wall\decomp\decomp-0x140b33b00.txt
+  resources/walls/mod.rs | 0x140b34f80 | `country_core::resources::walls::split_height_into_skirts`
+      claim: O
+      evid : wall\decomp\decomp-0x140b34f80.txt
+  resources/walls/wall_holes.rs | 0x140f86d00 | `country_core::resources::walls::wall_holes::PrevWallHoles::wall_holes`
+      claim: O
+      evid : wall\decomp\decomp-0x140f86d00.txt
+  resources/walls/wall_holes.rs | 0x140f87300 | `country_core::resources::walls::wall_holes::WallHoleStorage::finalize`
+      claim: O
+      evid : wall\decomp\decomp-0x140f87300.txt
+  systems/wall/valid_enclosure/mod.rs | 0x1411ff620 | `country_core::systems::wall::valid_enclosure::ShapeParameters::get_pos_at_u`
+      claim: O
+      evid : wall\decomp\decomp-0x1411ff620.txt
+  resources/walls/wall_path_segment.rs | 0x141234970 | `country_core::resources::walls::wall_path_segment::WallPathSegment::pt_count`
+      claim: O
+      evid : wall\decomp\decomp-0x141234970.txt

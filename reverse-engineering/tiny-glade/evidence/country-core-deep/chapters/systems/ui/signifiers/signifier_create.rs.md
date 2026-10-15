@@ -14,3 +14,10 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 2 项
+
+## 实现方式（算法级）
+
+- `UiSignifierStream` = 0x170B 无锁环形流（O）：`write` @0x140b2cf90 拷贝 0x28B `UiAppendSignifier` 记录进槽 + 自旋推进写游标（read cursor@+0x160、write counter@+0x168），36 callers（O wp15 b7）。
+- `signifier_create` @0x140b2cfa0（O，wp15 b7）：每帧 drain 环形流 → 逐条 spawn signifier 实体。
+- 重建代码写成 `Vec<UiAppendSignifier>` 是错的（O）：真实为无锁环形流（DB 布局证据），无锁写方与排空方并发安全。
+- 处理链（O 组合）：widget 交互 → `write` 入流 → signifier_create 排空生成实体 → animation 推进 → mark_for_delete/despawn 回收。

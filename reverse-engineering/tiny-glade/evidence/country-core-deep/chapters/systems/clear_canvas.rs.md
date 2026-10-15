@@ -16,3 +16,7 @@
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `clear_terrain_gpu`（行 187）— 删除/清理：地形 GPU 缓冲重置（0x14000=80KB 分配 + color_id.rs panic 点，并入 clear_canvas 主体尾部）
+
+## 实现方式（算法级）
+
+`clear_canvas`（0x140a7abd0）：事件驱动（EventReader 修剪流）；日志 "Clearing the canvas." → InnerWalls::remove_all（0x14085a730，flag 时 +0xc0=0）→ 世界光栅 clear_all<512>（0x14093bee0）变体 0x13/0x14/6/5/7/1/2/3/4（+9/0xb/0xd/0xe）→ 7×clear_preset_texture（0x140a15da0，3 个 color_id 0x5000=20KB 缓冲，panic 串 color_id.rs）→ 上传记录/杂项清零（0x140aaae80×2、0x140aa5150、0x1408950d0、0x14088acf0）。

@@ -8,6 +8,16 @@
 
 - `country_core::render::pass_builder::draw_list::DrawListItem::to_draw_packet`（行 32）— 内联 22 宿主：DrawListItem（0x70B，首字段 EntityDrawParams 0x50B）+ 回调 fn@+0x70（元组 0x80B，driftsort 稳定排序）；元素布局 O（0x1409bc8f0..0x1409bc97c 逐字段），to_draw_packet 具体形态 I—— O/I
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `DrawListItem` 元素布局与消费链（O，0x1409bc8f0..0x1409bc97c）
+- 元素 = `(DrawListItem 0x70B, fn(DrawBuilder, &EntityDrawParams, &mut World)@+0x70)` 元组 **0x80B**（d_main §1.1 与 B_d_gap §2 统一后唯一定义，`draw_lists.rs` 以 `DrawItem`/`DrawFn`/`DrawEntry` 别名引用）。
+- 字段表：+0 `Option<DrawTopology>`（tag u32，None=2；载荷 f32@+4）、+8 Entity、+0x10 shader 名 &str、+0x20 Transform 0x30B（`{rotation@0, translation@0x10, scale@0x1c}`，`bind_common` 直接读该块）、+0x50 `Handle<Vao>`、+0x58 `Handle<RasterShaderProgram>`、+0x60 排序键 i32、+0x64/0x65 `Option<u8>` 模板参考、+0x70 回调。
+- 回调第二实参 `&EntityDrawParams` 就是**元素指针**（`[rdx+8]` = Entity）—— 回调直接改元素（如 state 位改写）。
+- 消费链：`build_draw_lists` 按列表下标 push → `DrawLists::sort`（**稳定排序，排序键 i32@+0x60**；len<0x15 插入排序否则 driftsort）→ `run_list_pass` 逐项 `DrawPacket::new(head=[1, vao], shader)` → `DrawBuilder::new` → stencil_ref unwrap → bind_common → 回调 → render。
+- 纠错（B_d_gap §2）：旧 `DrawListItem{sort_key:u64, shader_id}` 与 `to_draw_packet` 的 `[0,0]` 头按机器码改为 `[1, vao]`；`EntityDrawParams` 是元素首字段。
+- U：`DrawTopology` 变体名（`Alt`=tag1 为 I 命名）；`to_draw_packet` 具体形态 I。
+
 ## 证据注记（tg_rn1）
 - 元素 = `(DrawListItem, fn(DrawBuilder, &EntityDrawParams, &mut World))` 元组 0x80B；回调第二实参即元素指针（`[rdx+8]` = Entity）。
 - 字段表（O，0x1409bc8f0..0x1409bc97c）：+0 Option<DrawTopology>（tag u32，None=2）、+8 Entity、+0x10 shader 名 &str、+0x20 Transform 0x30B、+0x50 Handle<Vao>、+0x58 Handle<RasterShaderProgram>、+0x60 排序键 i32、+0x64/0x65 Option<u8> 模板、+0x70 回调。

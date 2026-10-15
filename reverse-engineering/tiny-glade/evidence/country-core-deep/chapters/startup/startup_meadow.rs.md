@@ -17,3 +17,9 @@
 ## 派生胶水
 
 - 7 项：closure$0, deserialize, expecting, visit_map, visit_seq, visit_str 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **init_meadow 0x1408639f0（O）**：3x 文件操作（FUN_140d76ed0 + FUN_140d62810：plants.json 与
+  meadow 植物网格路径）→ deserialize plants（panic `deserialize plants` 0x142a96308，行 18，
+  文件 0x142a95ec0/0x142a96320）→ 1 个 spawn 记录 + meadow_plant_shader 注册。

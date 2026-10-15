@@ -25,3 +25,11 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default`、`eq` 等 11 项
+
+## 实现方式（算法级）
+
+处理链（新 collider 到达 → 伪影图更新 → 折线化 → tabloid 发布）：
+1. `find_mesh_mesh_intersections`（0x140a97b70，系统）：订阅/消费 collider 变更 → 对新 collider 与其相关网格 `intersect_mesh_mesh` → 交点段收集 → `merge_segments_into_polylines`（0x1408f2850，44KB）按端点连通性合并 → 更新 MeshIntersectionGraph（GraphMap<SubworldColliderHandle, Artifacts> 待核）+ 发布。
+2. `intersect_mesh_mesh`（0x140a9afa0）：parry `traverse_bvtt` 两网格三角两两相交（from_parry_triangle 转换）。
+3. `should_intersect_collider_meshes`（0x140a9b3c0）：按几何源（RaycastGeoSource 判别）过滤是否参与相交检测。
+4. `merge_segments_into_polylines`（0x1408f2850）：VertexId u32 端点 → 段-端点邻接 → 贪心链式合并（重建 stub 返空，真实 44KB）。

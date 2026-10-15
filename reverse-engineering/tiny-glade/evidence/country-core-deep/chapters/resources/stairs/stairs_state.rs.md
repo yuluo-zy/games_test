@@ -53,3 +53,20 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default`、`deserialize`、`eq`、`expecting`、`fmt`、`hash`、`visit_map`、`visit_seq`、`visit_str` 等 20 项
+
+## 实现方式（算法级）
+
+完整算法见 `collision-eco/ALGORITHMS.md` §3。要点（含机器码更正）：
+
+### 备份/恢复机制（机器码裁决，推翻 DIGEST 两处）
+- **备份区 = +0xb8 起 0x90B**（图的镜像区，与图区 +0x28..+0xb8 等长；原记 +0xb0 差 8）。
+- **restore_backup 只写 +0x178**（开头 0、结尾 1）；**无 +0x2f 写入** —— 原"+0x2f 脏字节"为误记，实际为 +0x178 `backed_up` 标志（add_node/remove_node 清零；make_backup 守卫后置 1；restore_backup 置 1）。
+- **make_backup**（0x1408fefe0）：`if (+0x178==0)` 守卫 → iter_edges_and_stubs（graph@+0x28, backup@+0xb8, stubs@+0x148）+ 收集当前边 → 读图字段（+0x60..0x6c/+0xa8/+0xb0）→ 释放旧备份缓冲（+0x100/+0x108、+0x118/+0x120）→ 组装 0x90B blob → memcpy(+0xb8) → +0x178=1。
+- **restore_backup**（0x1408ff210）：`qword[+0]=0`、`byte[+0x178]=0` → iter_edges_and_stubs + 收集备份边（来自 +0xb8）→ 读备份字段（+0xf0..0xfc/+0x100/+0x138）→ **释放当前图内部 Vec 缓冲（+0x70/+0x78、+0x88/+0x90）** → memcpy 0x90B 覆盖图区 +0x28（整个 GraphMap 被备份替换）→ +0x178=1。
+
+### add_node（64B 手解）／remove_node（llvm-objdump 全解）
+- add_node：`qword[+0]=0` → `byte[+0x178]=0` → GraphMap::add_node(self+0x28)（0x140cb10c0）→ 尾调用插桩 (n,n) 进 +0x148。
+- remove_node：`qword[+0]=0`、`byte[+0x178]=0` → 节点查找（nodes_len@+0x38：0 跳过 / 1 单节点快路径 / hash 查找 0x140106b70+0x140b4f360；未找到跳过；idx≥len panic）→ 读邻接（arena+0x8/+0x10 + idx·0x28 = 邻接表 ptr/计数）→ 每邻边 cmov 归一化 (min,max) 插桩进 +0x148（0x1402c8640）→ 自环桩 (n,n) → GraphMap::remove_node（0x14093a220）。
+
+### contains_edge_or_stub（0x140900e80）
+a==b：节点存在性（单节点/空快路径 + 双次 hash 查找 + 越界 panic 0x142c812b0 + 邻接条目空判定）；a!=b：归一化后边/桩存在性（edges_len@+0x80==1 单边快路径 {a@+8,b@+0xc}；否则 FUN_140106840+FUN_140b4f270 于 +0x70）。

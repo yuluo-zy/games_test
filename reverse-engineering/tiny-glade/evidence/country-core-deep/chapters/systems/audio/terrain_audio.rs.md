@@ -15,3 +15,7 @@
 
 - `country_core::systems::audio::terrain_audio::EditStateAudio::new`（行 18）— 编辑状态音频构造
 - `country_core::systems::audio::terrain_audio::EditStateAudio::update`（行 25）— 编辑状态音频更新
+
+## 实现方式（算法级）
+
+`terrain_audio_system`（0x1414618c0）：消费 PlayTerrainSound 事件播放地形音效（4 循环 + EditStateAudio 编辑状态机）；init 0x1414613e0（7.6KB）。细节归 audio-misc 域。

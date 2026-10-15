@@ -19,6 +19,17 @@
 
 `closure` 等 1 项（逐 LUT 缩略图构造闭包）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `render_photomode_lut_gallery`（0x1408b0560）—— 逐格 LUT 缩略图
+处理链（O，B_s_h S-B 组）：
+1. **demo 开关静态字节 0x143634d90**；AppMode==(0xa,1) 门控；预览槽 Arc 缺失/槽内 None 直接返回；
+2. pass "LUT thumbnail"；逐格 `zip(lut 列表, positions)`；
+3. 绑定 3 张纹理：预览（`0x11ba5697cc40b3dd`）、磁盘（`0xA647E80AF4E9395F`→`-0x3f4f…`）、`NameHash(name)`（`0x0422b14c27be4803`）；
+4. **uniform 序**：extent、alpha=1.0、pos、size、highlight(=flag&&selected==i)、is_current(名字相等)、is_first(i==0)；
+5. state byte0&=0x7f、byte3=(b3&0x9f)|0x40；每格 `draw_no_vao(6)`；最后 render。
+- 资源：LutGalleryState（0x48B Arc<Mutex<0x34B>>）、当前 LUT 条目表、LUT 列表；`startup` 加载 `/lut_gallery/thumbnail.raster.hlsl` = `lut_gallery_thumbnail`。
+
 ## 关键事实
 
 - 串证据：`lut_gallery_thumbnail`（每张 LUT 的缩略图纹理名）。

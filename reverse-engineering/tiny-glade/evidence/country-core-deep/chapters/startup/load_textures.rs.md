@@ -20,3 +20,14 @@
 ## 派生胶水
 
 - 14 项：closure$0, closure$1, closure$2, deserialize, expecting, visit_map, visit_seq 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **should_load 0x1409e6950（O）**：前缀匹配谓词，串表 0x142ac4780 区（顺序）：
+  logo / brush / loading / menu/pounce_light_logo / menu/heart / menu/noknok_logo / menu/fmod_logo
+  / blue_noise / default_loading_background / default_loading_background_demo；
+  **末两项受 demo flag 0x143634d90 门控**（与 session build/photomode 共用同一全局）。
+- **load_glade_texture_mappings 0x1409e6b60（O）**：读 'textures.json' → 语义键
+  glade:{ivy_leaf_color, canopy_flowers_depth, leaf_particle_colors, terrain_texture, grass_patch,
+  lilypad_flower, canopy_color, bark_color, bark_color_naked} → 失败 panic `Couldn't load `（0x142ac47xx 区）。
+- load_textures（内联，行 53）= should_load 过滤后逐纹理载入 + create_mappings（内联）。

@@ -15,3 +15,9 @@
 ## 备注
 
 - 归入 backend 域内联项；`ActiveSession` 资源被 feedback_report（audio-misc 域）读取为跨域线索。
+
+## 实现方式（算法级）
+
+**panic_reporter_fetch_active_session（全内联，I）**：
+- 无独立物理符号（PDB inline）；行为从名称+PDB 记录推断：启动/崩溃时读 `Res<ActiveSession>` 交给崩溃报告器（feedback_report_resources，audio-misc 域）。（I）
+- 无机器码可归属，不臆造调用面；`ActiveSession` 资源被 feedback_report 消费（跨域线索）。（I）

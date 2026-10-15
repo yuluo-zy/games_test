@@ -21,3 +21,8 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`ui_camera_mode_gizmos`（0x1409527a0）：四重门槛 ① AppMode∈{2,10}（10 需 flag=0）② (mode&6)==2 返回 ③ 窗口宽或高 ≤ 2 ④ 0x13>>mode&1（签名符模式∈{0,1,4}；模式 6 先映射 0）。通过后 UiState::add("camera_mode_activerotation_")（状态 int≠20 时）→ 0x20B UiAppendSignifier{1,1,id_string,size=窗口字段,fov=snapshot+0xe8} → AppendOnlyVec push。
+闭包 0x140952b60 = 渲染回调：cursor_grab 部件 + vertex_color_shader；动画 value/1000·20，clamp 25.0@0x1429edb98。消费 CameraRotationPivot::use_camera_cursor_grab_icon 谓词。

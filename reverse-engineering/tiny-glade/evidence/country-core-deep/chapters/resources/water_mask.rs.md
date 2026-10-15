@@ -15,3 +15,7 @@
 ## 派生胶水
 
 `add_new`/`get_rg_buffer`/`write_storage_buffer` 等泛型胶水（不计独立业务）
+
+## 实现方式（算法级）
+
+无独立业务过程（name-only）。WaterMaskSsbo = 512×512 水 mask 纹理 .y 通道打包回读（>0.5 水位位 / >0.2 clutter 位，read_water_mask.cs.hlsl O）；read_terrain_data 槽位回拷消费者。字段布局 U。

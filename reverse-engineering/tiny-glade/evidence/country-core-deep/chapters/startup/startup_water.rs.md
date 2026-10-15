@@ -17,3 +17,12 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_water 0x1408f1a20（17.6KB，O）**：6x 文件式网格（water_plane、lilypad、lilypad_flower、
+  reed{,_autumn}、water_stones、fallen_leaves、water_grass_winter 族）+ 6x shader
+  （water_plane、ice_plane、water_plane_refraction_copy、water_snow_plane、lilypad、lilypad_flower、
+  reed、water_x_paths 族）+ **7 个 spawn 记录**（FUN_1428a9a60/FUN_141564d30/FUN_140d146a0 三件套
+  x7）+ 6x unwrap panic。
+- 消费：水面渲染（terrain-water 域跨模块线索）。

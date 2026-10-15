@@ -17,6 +17,11 @@
 
 - `country_core::resources::stairs::visual::StairsVisualState::force_rebuild`（行 132）— I：强制重建视觉（v2 名 reset_edge=0x140aa8a60）
 
+## 实现方式（算法级）
+
+- `MagicSupports::clear`（0x140aa8210）：清空魔法支撑集合（重建/失效时调用）。
+- `StairsVisualState::remove_edge`（0x140aa8620）：删除指定边的视觉状态（invalidate 系统经 contains_edge_or_stub 判定后调用）；`reset_edge`（0x140aa8a60）：边视觉重置（v1 force_rebuild 名错）。
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 6 项

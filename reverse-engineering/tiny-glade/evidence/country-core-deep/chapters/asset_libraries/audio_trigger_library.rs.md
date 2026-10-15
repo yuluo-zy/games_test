@@ -37,3 +37,26 @@
 
 - 消费者 `trigger_audio_system`（0x1409eafa0）读本库 + `Aabb3::intersect_segment`（shared-foundation utils）；wp14 audio-trigger 合同保留（audio-misc DIGEST §5）。
 - 旧版错误：`AudioTriggerCollectionHandle` 与二级 slotmap 纯属臆造；`get_triggers` 返回 Option 错；28 B 盒的 "flags" 实为 version（A3_color §三）。
+
+## 算法要点（本批深挖 2026-10-15）
+
+### SlotMap 迭代算法（boxes 0x14157ce40，67 B）
+
+`AudioTriggerCollection` = `slotmap::SlotMap<AudioTriggerHandle, Aabb3>`：slots Vec @0（cap-first），num_elems u32 @0x1c；槽 stride 0x1c = **24 B Aabb3 + 4 B version**。`boxes()` 返回 4 qword `{ptr + (len?0x1c:0), ptr + len*0x1c, (len != 0), num_elems}` = `slotmap::basic::Iter`（`slots.iter().enumerate()`：**跳过哨兵槽 0，起始下标 1，剩余数 = num_elems**）。
+
+### 消费端算法（trigger_audio_system 0x1409eafa0，PDB 名 ICF 折叠为 handplaced_tree_animation，O）
+
+逐槽迭代 `boxes()` 返回的 Iter：`[slot+0x18] & 1` 判占用（version 奇偶 = 活跃槽标记，**不是 flags**）→ `DecoratorRank::new(idx)`（`mov eax,ecx` 恒等，与 `impl$3::from` 0x140833250 ICF 合并 = AudioTriggerHandle ↔ u32）取键 → 前 0x18 B 当 `Aabb3` 喂 `Aabb3::intersect_segment`（shared-foundation utils）。
+
+### 关键常量/布局
+
+| 项 | 值 | 含义 |
+|---|---|---|
+| AudioTriggerLibrary | `[AudioTriggerCollection; 1]` 0x20 B | 按 kind 索引（COUNT==1，get_triggers 断言 `kind != COUNT` 行 85 列 9） |
+| 槽 | 0x1c B = 24 B Aabb3 + 4 B version | slotmap 槽（旧版"28 B 盒+flags"全错） |
+| 键 | u32 恒等 | AudioTriggerHandle ↔ DecoratorRank |
+| 插入/更新/删除 | 内联于 prefab 系统（无独立符号，I） | add_trigger/update_trigger_shape/remove_trigger/clear |
+
+### 模块间调用
+
+- 生产者：prefab 系统（内联 add/update/remove，无符号）；消费者：`trigger_audio_system`（0x1409eafa0）读库 + `Aabb3::intersect_segment`；`insert_resource<AudioTriggerLibrary>` 搬 0x20 B。

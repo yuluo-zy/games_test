@@ -18,3 +18,12 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **load_ui_shaders 0x140aaaf80（O）**：6 个 UI shader 依次经 load_shader_into_library<&str>（FUN_140b3fe40）：
+  ui_2d、ui_2d_ws、ui_2d_color_button、text、mei_shadow、custom_cursor（`.raster.hlsl`）。
+- **load_shaders 0x140aab0c0（O）**：~13 个渲染 shader（串表 0x142add604 区证实 10 个路径+名对）：
+  meadow_flower、vertex_color_shader、dashed_line、timer_circle、final_post、egui、
+  solid_vertex_color{,_albedo_map,_wooden_gate}、flag_{roof_cloth,wall_cloth,small}、stairs_foliage_exclusion；
+  每对 = '{/…}.raster.hlsl' 路径 + 名称键。

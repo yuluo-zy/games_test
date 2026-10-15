@@ -15,6 +15,19 @@
 | country_core::resources::window::WindowSize::aspect_ratio | 0x140949c20 | 53 | PDB 名挂在 0x140949c40 上但该址=静态析构注册（唯一引用 0x14368E2FC DATA 非 call）；真实体 U | U（错位） |  |
 | country_core::resources::window::AvailableMonitors::clear | 0x140949c40 | 78 | 显示器列表清理（O 名；与 0x140949c40 析构邻接，宿主疑为显示器缓存静态） | I | audio-misc\decomp\decomp-0x140949c40.txt |
 
+## 实现方式（算法级）（O 手解 + 错位）
+
+**WindowSize 头 8B = Vec2（f32×2）**：
+- `as_vec2 @0x1400885d0`（PDB 名错位）：`mov rax,[rcx]; ret`——头 8 字节直接当 Vec2 返回；
+  重建 `{width:u32,height:u32}` 模型**错误**（§4 #3）。（O）
+- `as_dims @0x1400885d0`（PDB 名 as_vec2 同址）：同址同行为（O）。
+- `new @0x140949bf0`/`set @0x140949c00`：尺寸构造/写入（I，无 decomp 细节）。
+- **0x140949c40**（PDB `aspect_ratio` 错位）= **析构例程**：cap-first Vec<stride 0x40> 逐元素
+  双指针释放 + i64::MIN 哨兵；xrefs 唯一 = 0x14368e2fc DATA（静态析构注册表）；
+  `aspect_ratio` 真实函数体 **U**。（O 错位）
+- `AvailableMonitors::clear @0x140949c40`：显示器列表清理（与析构邻接，宿主类型疑为显示器
+  缓存静态，I）。O/I 混合
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项

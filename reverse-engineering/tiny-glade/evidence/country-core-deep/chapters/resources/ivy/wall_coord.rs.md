@@ -14,3 +14,7 @@
 
 - `country_core::resources::ivy::wall_coord::WallCoord::from_wall_u`（行 24）— O：WallCoord::from_wall_u——u 参数构造（v=0）
 - `country_core::resources::walls::public_wall_state::PublicWallState::max_ivy_grow_height`（行 60）— O：墙最大藤蔓生长高度 getter（grower 引用，跨域）
+
+## 实现方式（算法级）
+
+- `WallCoord::into_world_space`（0x140b199e0）：从 PublicWallState 取墙曲线（Curve::get_coord_at_u 采样，u 参数 → 世界点/切向）→ 法向偏移 ±0.63×0.5（按侧符号）；grower/pruner 内联采样墙坐标。

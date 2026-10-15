@@ -38,3 +38,8 @@
 - 子集图：`{entries_base@+0x0, bucket_mask@+0x8, … , len@+0x18}`，查找经 FUN_1412e7650（hash，字节/字符串 key）→ bucket 探测。
 - `add`/`get_by_name` 均为 0x140a37* 邻近地址族（同一哈希表单态化的不同 key 实例）。
 - 交叉域：与 `utils::name_hash::NameHash`（audio-misc 域）、`asset::prefab::PrefabName`（session-save 域）、rt BVH 构建器（本域 rt/bvh_builder）关联。
+
+## 实现方式（算法级）
+
+- `register_meshes`（0x140ae6b90）：逐世界子集注册网格 —— 子集变更时重建图集（字节 key 哈希表，FUN_1412e7650 hash）并调 `RtBvhBuilderGlueResource::new`（0x14067dd80）×2 接入 rt BVH；panic "Updating mesh atlas for world subset "/"Not registering atlas for world subset "（0x142ae3438/0x142ae3518）。
+- `add`/`get_by_name`/`clear_*`：同一哈希表族的 key 单态化（PrefabName 串逐字节散列/比较、NameHash 直接 key）；`impl$1::from`（0x140ae6430）尾部 Arc 引用计数减（归零释放 0x14064eb30）。

@@ -17,3 +17,8 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_ivy 0x140a21a30（O）**：4x 名式网格（ivy_branch、ivy_leaf、ivy_flower、ivy_debug_cube）
+  + instanced_ivy_branch/instanced_ivy_leaf shader + 3 个 spawn 记录（FUN_1412dd460）+ 3x unwrap。

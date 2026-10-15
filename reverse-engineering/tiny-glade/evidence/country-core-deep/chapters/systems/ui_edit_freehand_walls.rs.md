@@ -13,3 +13,10 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 3 项
+
+## 实现方式（算法级）
+
+- `ui_edit_freehand_walls` @0x140ac98e0（O，12.1KB，wp20 + 本域；细节分支未逐行）：自由手绘墙编辑。
+  - 拖拽笔划累进 `EditFreehandWallCache`（I：结构名来自 wp20 合同），松手提交墙段给 wall-constructor。
+  - 高密度 panic 分支（O）：`FUN_1428d9518`×10（bounds）+ `FUN_1428d9430`×10（断言）——多路越界/非法墙检查；变换常量 UNK_1429259/1429258、hashmap get `FUN_1405b0d70`。
+  - 算法级主体（墙段合并/构造）在 wall 域（I）：本域只登记 widget 交互 → 提交链。

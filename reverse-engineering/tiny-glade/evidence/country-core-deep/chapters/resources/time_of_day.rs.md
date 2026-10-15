@@ -27,3 +27,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`default`、`deserialize`、`eq`、`expecting`、`hash`、`serialize`、`visit_map`、`visit_newtype_struct`、`visit_seq`、`visit_str` 等 16 项
+
+## 实现方式（算法级）
+
+`TodSequence` entries 0x50B/条：{start_hour f32, end_hour f32, snapshot 0x44B@+0xc}；`TodLightingSnapshot` 0x44B = {sun_sky@+0x0 8×f32, fog_tint@+0x20 2×u64（打包雾色，**不插值**——round2 CLOSED）, base_fog_thickness@+0x30 4×f32, speed_bias@+0x40}。
+```
+snapshot_at_tod（0x140b067d0）：len==1 拷贝；len==0 panic；t=tod.rem_euclid(1)（fmodf+负值 wrap）
+  → 定段 t=clamp01((t−a.start)/(b.start−a.start)) → TodLightingSnapshot::lerp（0x140a97650；f32 组插值 + u64 对拷贝）
+```
+会话序列化：TodSequence{entries}、TimeOfDay{time_of_day,snapshot,temp_ui_ids}、目标态 {time_of_day, sun_xz_rotation, latitude_degrees}；TodEasing 默认 fastrand 选段。

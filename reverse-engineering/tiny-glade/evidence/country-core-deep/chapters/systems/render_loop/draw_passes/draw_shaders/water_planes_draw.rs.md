@@ -13,6 +13,13 @@
 | `…water_planes_draw::lilypad_flower_draw` | 0x1409da760 | 91 | 睡莲花绘制：draw_instanced（读 LilypadFlowerSsbo） | I | render-loop\decomp\decomp-0x1409da760.txt；terrain-water\decomp\decomp-0x1409da760.txt |
 | `…water_planes_draw::reed_draw` | 0x1409da940 | 108 | 芦苇绘制：draw_instanced（读 ReedSsbo） | I | render-loop\decomp\decomp-0x1409da940.txt；terrain-water\decomp\decomp-0x1409da940.txt |
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `water_planes_draw` 回调（d_cb_b §2）：进程布尔 `WATER_PLANES_DISABLED`（.data 0x143634d90 区，运行期来源 U，默认 false）、`ActiveSession`（变体字节、字节序列）；**`water_planes_draw_rt(b, inputs)` = 真实 `DrawBuilder::bind_ray_tracing::<RtTriangles,RtTriangleMeta,RtBvh,WallColorId>()`**（B_i_infra §5：RT 四槽排在雪纹理之前 + 两个 `write_uniform<u32>` 写入缓冲字；闭包版 `water_planes_draw` 保留作兼容入口）。
+- 三个水生植物 draw：`lilypad_draw`（LilypadSsbo）/`lilypad_flower_draw`（LilypadFlowerSsbo）/`reed_draw`（ReedSsbo），回调本体已恢复（d_gap §1.3）。
+- 数据流：`water_spawn_vegetation`（W13，demo 守卫；Spawn lilypads grid 225² offset 8 / Spawn reeds grid 150² offset 9；`is_autumn = session[+0x58]==3`）→ 实例缓冲 → draw_instanced。
+- shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - 三个水生植物 draw 消费 compute_water.rs（W13）生成实例。

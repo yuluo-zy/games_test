@@ -509,3 +509,24 @@ ICF 近似合并）。**generate_path_replay_cmds 0x1416286d0 同理**：读 [rc
 - 跳表 0x142ae5420/0x142ae545c 的逐 case 语义（Ghidra 未恢复跳表）。
 - add_decorator_diff 的 remap 表（param_4）内容与用途。
 - History 完整 serde 手写 impl 位置（S_PUB32 无 History serde 符号——内联）。
+
+## 9. 算法级深挖补充/纠错（2026-10-15，见 ALGORITHMS.md）
+
+- **ReplayBucket 布局修正**：replay_wall 0x140951b80 直读 `桶+0x08/+0x10` 为 cmds
+  {ptr, len}、history_process push 写 `{+0x00,+0x08}` 为 cmds {cap, ptr} → 桶 =
+  **cmds Vec cap-first @+0x00**（非本 DIGEST 早前记的 arcs@+0x00/+0x08）；decorators/
+  stairs Arc @+0x20/+0x28 区。
+- **add_decorator_diff 两循环均写 tag 0xE**（0x140a854a0 行 311/391：`plStack_e8 =
+  (longlong *)0xe`）；记录 type 字段（+0x10）0/1 区分移除/新增（早前记 loop B 为
+  tag 1 错）。checksum 扫描比对的是 **stairs 表 tag0（Arc+0x20==1）与 tag1
+  （Arc+0x28）**，非装饰表（早前记"装饰表 type_counts[0]"错）。
+- **History::add 的 tag-7 校验三串**（新读）：0x142ad8170 "Slice start_u must be
+  smaller than end_u. Otherwise an invalid curve will be created!"、0x142ad81b8
+  "None is not allowed in `CreateWall` history command"、0x142ad8200 "…`DeleteWall`…"；
+  起始 panic 前缀 "Tried writing " @0x142ad8250。
+- **0x14362c011（楼梯 checksum 开关）语义闭合**：由 load_game 0x14146d030 按存档
+  版本写（`0x14362c011 = (v > 0x1a)`；0x14362c308 = v > 0x19）——版本门控兼容开关。
+- **history_process 细节**（新读全文）：HistoryCmd byte[1]==4 或 byte[0]==2 →
+  Interrupt；undo 反转循环为 0x30=6 qword 两两交换；第二流消费动作 = 清
+  Events<HistoryCmd> + param_8 计数器 push；每条记录（tag!=3）追加 param_6 的
+  Vec<16B> {计数器, byte[+0xb]}。

@@ -31,3 +31,25 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default`、`deserialize`、`eq`、`fmt`、`next`、`visit_enum` 等 9 项
+
+## 实现方式（算法级）
+
+```
+camera_snapshot（0x140911e40）：Mut tick 回写；mode=snapshot.mode u32@+0x18；
+  jumptable(0x142aabc88)[mode](snapshot.f32@+0x1c, dt·camera.fov_coeff@+0xec, mode)
+  // 每模式 body 快照应用函数；dt×+0xec = 插值步长
+main_camera_update（0x140912c20）：
+  aspect=w/h → camera+0x4d8
+  new_session.flag(+0x18)：窗口>2px 且 cursor==(0,0) → return（等鼠标首动）；否则清 flag
+  窗口<3px → 推 WriteSettingsFileCmd（Vec grow + 8B 事件 + counter@+0x40）
+  camera+0x344 = 鼠标深度字节
+  debug_gui 模式滑块（6→0）；free_camera 开关(+0x168)≠0 → 自由相机 jumptable(0x142aabd30)
+  否则 jumptable(0x142aabd04)[action_states.mode(+0x10)]
+paused_main_camera_update（0x1409145a0）：
+  aspect=w/h；mode→6 body（+0x100/1b8/270/2f0/390/448）→ body 更新 fn
+  → CameraProjectionParams::calc_matrices（FUN_140c8ff70）+FUN_140c97390 → memcpy 0x100 → MainCamera@+0x0
+reset_camera（0x140912a40）：DebugGui 层>4 日志 "Resetting the camera." → MainCamera::new(旧 aspect@+0x4d8)
+  → memcpy 0x4e0 → 清 CameraRigParametersCache Vec（0x24B 元素 free，cap 留 4）→ 推 WriteSettingsFileCmd
+previous（0x140914ac0）：表 [6,0,1,2,3,4,0,0]（CameraRotationPivot 7 变体前驱循环，previous(0)=6）
+CameraRotationPivot ron 变体名：CameraRotationPivot/CursorDepthFiltered/CursorDepth/CenterDepthFiltered/CenterDepth/CursorTerrain/CenterTerrain（0x14292bb7c）
+```

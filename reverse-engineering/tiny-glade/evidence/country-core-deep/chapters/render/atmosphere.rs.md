@@ -9,19 +9,26 @@
 
 | 类型 | 布局 | 证据 |
 |---|---|---|
-| `SunSkyColors` | 48 B = 3 × Vec4（`lerp` 读写 [0..11] f32） | lerp 0x140a97650 |
-| `DerivedAtmosphere` | 4 × Vec3 0xc B（`{sun_tint_color, moon_tint_color, sky_low_color, sky_high_color}` @ +0/+0xc/+0x18/+0x24） | serialize 0x140322a10（字段串 0x1429bd228/236/245/252） |
+| `SunSkyColors` | 48 B = 3 × Vec4（`lerp` 读写 [0..11] f32） | hex 手解 0x140a97650（rne-read --hex 本批；原 lerp 0x140a97650） |
+| `DerivedAtmosphere` | 4 × Vec3 0xc B（`{sun_tint_color, moon_tint_color, sky_low_color, sky_high_color}` @ +0/+0xc/+0x18/+0x24） | render-top/decomp/decomp-0x140322a10.txt（原 serialize 0x140322a10（字段串 0x1429bd228/236/245/252）） |
 
 ## 业务函数
 
 | 函数 | 地址 | 源码行 | 作用（猜测→证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `_::impl$0::serialize<…PrettyFormatter>` | 0x140322a10 | 4 | 猜测：serde 序列化；证实：**derive(Serialize) 胶水**，宿主 = `DerivedAtmosphere`（非 SunSkyColors） | **O**：`{` + 4 字段 `sun_tint_color/moon_tint_color/sky_low_color/sky_high_color` + `}`；各字段 0xc B（Vec3）。**纠错**：`SunSkyColors::lerp` 读 3 个 xmmword（3×Vec4），故 serialize 对象是同模块 `DerivedAtmosphere`（4×Vec3，48 B）——两者不同型 | render-gap §1 #5 |
-| `SunSkyColors::lerp` | 0x140a97650 | 15 | 猜测：插值；证实：逐分量 `self*(1-t) + other*t` | **O**（87 B）：12 个 f32 逐分量 `other*t + self*(1-t)`（mulps×2 + addps；1-t 先算）。**不是** glam 的 `a+(b-a)*t`（舍入不同，t=1 时后者可能得不到恰好 other） | wp4 view_frame_light_atmos_texture |
+| `_::impl$0::serialize<…PrettyFormatter>` | 0x140322a10 | 4 | 猜测：serde 序列化；证实：**derive(Serialize) 胶水**，宿主 = `DerivedAtmosphere`（非 SunSkyColors） | **O**：`{` + 4 字段 `sun_tint_color/moon_tint_color/sky_low_color/sky_high_color` + `}`；各字段 0xc B（Vec3）。**纠错**：`SunSkyColors::lerp` 读 3 个 xmmword（3×Vec4），故 serialize 对象是同模块 `DerivedAtmosphere`（4×Vec3，48 B）——两者不同型 | render-top/decomp/decomp-0x140322a10.txt（原 render-gap §1 #5） |
+| `SunSkyColors::lerp` | 0x140a97650 | 15 | 猜测：插值；证实：逐分量 `self*(1-t) + other*t` | **O**（87 B）：12 个 f32 逐分量 `other*t + self*(1-t)`（mulps×2 + addps；1-t 先算）。**不是** glam 的 `a+(b-a)*t`（舍入不同，t=1 时后者可能得不到恰好 other） | hex 手解 0x140a97650（rne-read --hex 本批；原 hex 手解 0x140a97650（rne-read --hex 本批；原 wp4 view_frame_light_atmos_texture）） |
 
 ## 派生胶水（8 项：default、deserialize、expecting、visit_map、visit_seq、visit_str 等）
 
 - serde Deserialize/Default 派生族（SunSkyColors 的 derive 展开）——不补业务。
+
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `SunSkyColors::lerp`（0x140a97650）
+算法（O，87B）：12 个 f32 逐分量 `other*t + self*(1-t)`（mulps×2 + addps；`1-t` 先算，`t` 先乘 self 链）。**不是** glam 的 `a+(b-a)*t`（舍入不同，t=1 时后者可能得不到恰好 other）。3×Vec4 48B。
+- 消费链：`time_of_day`/`weather` 域产出的太阳/天空调色板经 lerp 插值 → `main_pass`/`late_forward` 的 sky/sun tint uniform（帧常量 UBO）。
+- 纠错：`serialize`（0x140322a10）宿主是 `DerivedAtmosphere`（4×Vec3 = 48B，`{sun_tint_color, moon_tint_color, sky_low_color, sky_high_color}`@+0/+0xc/+0x18/+0x24），不是 SunSkyColors——两者同 48B 但不同型。
 
 ## 纠错/差异
 

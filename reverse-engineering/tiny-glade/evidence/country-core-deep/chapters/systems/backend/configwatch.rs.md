@@ -11,6 +11,18 @@
 | `country_core::systems::backend::configwatch::configwatch` | 0x14085b1c0 | 12 | Bevy 系统（含 ResMut，+0x1c tick 回写）。锁 ConfigWatch 互斥项（`*param_3+0x30` 处 +0x10 字节标志，LOCK/UNLOCK 保护）；非空闲则 panic `Result::unwrap()`（configwatch.rs:43）；空闲时按日志门槛（全局 `>2`）输出 `'Configwatch: detected changes: '` + 计数；调 `FUN_14093b530`（重载助手）后清理队列。 | O | decomp/decomp-0x14085b1c0.txt；rne-read --unks：`'Configwatch: detected changes: '` 0x142a95080、`'called Result::unwrap()...'` 0x142a949f0、源文件 0x142a95048/0x142a95090（configwatch.rs） |
 | （助手）`FUN_14093b530` | 0x14093b530 | — | configwatch 的重载助手：拼 `assets/gladestate` + `colors.json` 路径（`FUN_140d62810`/`FUN_140d76ed0` 路径拼接/to_string），`FUN_140969720` 读 ColorLibrary，`func_0x000142923bf0` memcmp 62B，复制 0x250B 配置结构到目标，`FUN_140beefa0`/`FUN_1428cab41` 重载 SSBO 库（`UNK_142c2e180`→ssbo_library.rs）。跨域到 asset_libraries{color,ssbo}_library。 | I | decomp/decomp-0x14093b530.txt；rne-read --unks：`assets/colors.json` 0x142ab1a40、`assets/gladestate` 0x142aef51a、`ssbo_library.rs` 0x142c2e180 |
 
+## 实现方式（算法级）
+
+**configwatch @0x14085b1c0（系统，O）**：
+1. LOCK ConfigWatch 互斥项（`*param_3+0x30 → +0x10` 字节标志，LOCK/UNLOCK）；未空闲（队列处理中）→ panic `Result::unwrap()`（configwatch.rs:43，0x142a949f0）。（O）
+2. 日志门控：全局 verbosity `>2` 才输出 `'Configwatch: detected changes: N'`（0x142a95080，N=变更数）。（O）
+3. 调重载助手 `FUN_14093b530` → 清理/复位变更队列。（O）
+
+**FUN_14093b530 @0x14093b530（重载助手，I）**：
+- 拼 `assets/gladestate` + `colors.json` 路径（FUN_140d62810/FUN_140d76ed0）→ `FUN_140969720` 读 ColorLibrary（`func_0x000142923bf0` memcmp 62B 后复制 0x250B 配置）→ `FUN_140beefa0`/`FUN_1428cab41` 重载 SSBO 库（ssbo_library.rs）。（I）
+
+**数据结构（O）**：ConfigWatch 队列与 meshwatch/texture_watch 同构（+0x30 锁 / +0x10 标志 / 0x20B 条目），watch 三系统处理链一致。（O）
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 （无）

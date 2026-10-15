@@ -11,13 +11,13 @@
 
 | 函数 | 地址 | 源码行 | 作用（猜测→已证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `CameraModeStates::current_dyn` | 0x1409149d0 | 149 | 模式@+0x3d0 jumptable → {body 指针, 表, (fov_current,fov_target) 对}：Normal/TiltShift/Free/Walk/TopDown/Butterfly 各一 case + 模式 6（body=+0x0 矩阵块区） | O：hex 手解（jumptable 分发 + 6 个 case 偏移对） | camera-time\decomp\decomp-0x1409149d0.txt（hex 手解） |
+| `CameraModeStates::current_dyn` | 0x1409149d0 | 149 | 模式@+0x3d0 jumptable → {body 指针, 表, (fov_current,fov_target) 对}：Normal/TiltShift/Free/Walk/TopDown/Butterfly 各一 case + 模式 6（body=+0x0 矩阵块区） | O：hex 手解（jumptable 分发 + 6 个 case 偏移对） | hex 手解（NotFound；模式@+0x3d0、jumptable 6 case+模式6、返回 {body,表,fov 对}，见 round3/DANGLING-FILL-REPORT.md） |
 | `MainCamera::init_walk_camera` | 0x14090e510 | 196 | 地形采样+球投地面求 Walk 出生点，方向归一化后 `WalkCamera::teleport(body@+0x2f0, pos, dir)` | O：实证 | round2\decomp\r2-0x14090e510.txt |
 | `MainCamera::match_free_camera_to_normal` | 0x14090e6f0 | 231 | 读 Normal position(+0x138..144)/yaw-pitch(+0x150) → 重建 Free rig@+0x270=Position+YawPitch+Smooth(1,1) → dt=0 跑一遍存 final_transform | O：实证（dolly typeid 查找全录） | camera-time\decomp\decomp-0x14090e6f0.txt |
 | `MainCamera::new` | 0x14090ec70 | 246 | 构造：六 body 默认装配 + mode@+0x4d0=0 + aspect@+0x4d8=参数 | O：实证 | camera-time\decomp\decomp-0x14090ec70.txt |
-| `MainCamera::mode` | 0x140911230 | 432 | 读模式字节 `[self+0x4d0]`（1 字节 getter） | O：hex 手解 `movzx eax,[rcx+0x4d0]; ret` | camera-time\decomp\decomp-0x140911230.txt（hex 手解） |
-| `MainCamera::focus`（focus_mut 同址） | 0x140911240 | 436 | 模式→body 内 focus 字段指针：`self+0x100+表[0x142aabb68][mode]`（表 13 项） | O：hex 手解 | camera-time\decomp\decomp-0x140911240.txt（hex 手解） |
-| `MainCamera::lens`（lens_mut 同址） | 0x140911260 | 444 | 模式→body 内 lens(fov) 字段指针：`self+0x108+表[0x142aabb98][mode]`（表 13 项，槽 6..9 落 Normal body） | O：hex 手解 | camera-time\decomp\decomp-0x140911260.txt（hex 手解） |
+| `MainCamera::mode` | 0x140911230 | 432 | 读模式字节 `[self+0x4d0]`（1 字节 getter） | O：hex 手解 `movzx eax,[rcx+0x4d0]; ret` | hex 手解（NotFound；8B getter 实证） |
+| `MainCamera::focus`（focus_mut 同址） | 0x140911240 | 436 | 模式→body 内 focus 字段指针：`self+0x100+表[0x142aabb68][mode]`（表 13 项） | O：hex 手解 | hex 手解（NotFound；`lea→0x142aabb68`、`table[mode]`、`add +0x100`，表条=fov 偏移） |
+| `MainCamera::lens`（lens_mut 同址） | 0x140911260 | 444 | 模式→body 内 lens(fov) 字段指针：`self+0x100+表[0x142aabb98][mode]`（表 13 项，槽 6..9 落 Normal body；悬空引用交叉核对修正：基址 +0x100 非 +0x108） | O：hex 手解 | hex 手解（NotFound；`lea→0x142aabb98`、`table[mode]`、`add +0x100`；表[0]=0x8c → 默认 body lens@+0x18c） |
 | `MainCamera::zoom` | 0x140911280 | 519 | 缩放：amount/anchor 有限性检查→模式 jumptable→Normal/TiltShift/TopDown：`factor=exp2(clamp(amount·−0.08,−1,1))`，active_rotation 判别(+0x18==1) 双分支（target_arm_length@+0x20 或 offset×factor 写 pending），上界 radial_max@+0x64 | O：582B 全函数手解（pdata 边界 0x911280–0x9114c6，见 round2 CLOSURE） | camera-time\decomp\decomp-0x140911280.txt（hex 手解） |
 | `MainCamera::target_vertical_fov_degrees` | 0x1409114d0 | 574 | 读目标 fov：`[self+0x108+lens表[mode]]` | O：hex 手解 | camera-time\decomp\decomp-0x1409114d0.txt（hex 手解） |
 | `MainCamera::immediately_set_vertical_fov_degrees` | 0x1409114f0 | 579 | 写 fov：`self+0x100+lens表[mode]` 尾调 body setter | O：hex 手解 | camera-time\decomp\decomp-0x1409114f0.txt（hex 手解） |
@@ -52,3 +52,34 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`deserialize`、`eq`、`expecting`、`fmt`、`serialize`、`visit_map`、`visit_seq` 等 10 项
+
+## 实现方式（算法级）
+
+### 模式→body/fov 分发（O）
+
+`CameraModeStates::current_dyn`（0x1409149d0）：模式@+0x3d0 jumptable → {body 指针, 表, (fov_current,fov_target) 对}（Normal/TiltShift/Free/Walk/TopDown/Butterfly + 模式 6）。
+focus 表 @0x142aabb68（13 项，相对 +0x100）；lens(fov) 表 @0x142aabb98（13 项，相对 +0x100；悬空引用交叉核对修正：基址 +0x100 非 +0x108）。
+访问器（hex 手解）：mode 0x140911230 `movzx eax,[rcx+0x4d0]`；focus 0x140911240 / lens 0x140911260 表驱动；target_vertical_fov 0x1409114d0；immediately_set 0x1409114f0 尾调 body setter。
+
+### 关键算法
+
+```
+match_free_camera_to_normal（0x14090e6f0）：
+  读 Normal pos(+0x138..144)/yaw-pitch(+0x150) → 重建 Free rig@+0x270 = Position+YawPitch+Smooth(1,1)
+  → dt=0 跑一遍存 final_transform（与 FreeCamera::set 0x140993100 同构建器）
+zoom（0x140911280，582B 手解）：
+  amount/anchor 有限性检查 → factor=exp2(clamp(amount·−0.08,−1,1))
+  Normal→+0x100 / TiltShift→+0x1b8（lower 查表） / TopDown→+0x390
+  active_rotation(+0x18)==1 → target_arm_length@+0x20=clamp(factor·target, lower, radial_max@+0x64)
+  否则 offset=(pos+pending)−anchor × factor 写回 pending
+store_parameters（0x140911710）：读 yaw@+0x154/pitch@+0x150/pos@+0x138/fov@+0x190 → 0x24B 记录；
+  NaN→0（pos 默认 (0,5,0)@0x142aab4c0）+ 四条 "…invalid. Overriding param cache value." 日志
+load_parameters（0x140911520）：mode=0；轨道四元数（π/180@0x142aab4b0）；+0x118=0；
+  push 28B ActiveRotation 入 +0x100 Vec；flag 时 +0x194=记录分量
+immediately_finish_interpolating（0x140911b50）：模式@+0x4d0+快照字节@+0x134 双 jumptable；
+  fov 系数 +0xec×0.1；多 body 矩阵 0x100 拷贝；winter==4 分支
+```
+
+### dolly 接线
+
+CameraRig {drivers Vec cap-first, final_transform@+0x18}；分叉 CameraTransform **rotation-first**（quat@+0x18 16B, pos@+0x28 12B）。driver 查找 vtable+0x38(type_id)/+0x40(driver_mut)；typeid Position=0x6b8463577afc1a66、YawPitch=0x718e4fd258330fe5。panic：`No <…> driver found in the CameraRig`（dolly-0.6.0 rig.rs）。

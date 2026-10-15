@@ -272,7 +272,7 @@ wp15/wp20 既有 analysis、rne-read 字符串/字节直读。标注 O=机器码
 | 0x14093fc00 EscMenuState::is_open | 见 §2.6 | 判别 ∈{3,4} 或 7+条件 |
 | 0x14093fc60 EscMenuState::allow_time_passage | 见 §2.6 | `!(state==7 && flag@8==1)` |
 | 0x140afb590 ToolbarCategoryModes::next_mode | thunk → serde unknown_variant("variant identifier", 0x12) | **PDB 名错位**（§7） |
-| 0x140b12f30 ui_settings previous | (81B NotFound) | U，折叠 |
+| 0x140b12f30 ui_settings previous | RNE 手解（ICF 折叠） | **enum_iterator Sequence::previous 依赖方法**（`0x2010004 >> (t<<3)` 表 {0x04,0x00,0x01,0x02}[t]，0x04=None niche）→ 胶水排除（候选U收尾闭合，round3/WALL-CANDIDATE-U-CLOSURE.md） |
 | 0x1409de170 wall_eraser_bulldoze_condition | (81B NotFound) | 跨域（wall/eraser），U |
 | 0x1416feeb0 calculate_input_delta | NotFound（Ghidra 未建函数） | wp20 既有反编译可用，合同复核通过 |
 

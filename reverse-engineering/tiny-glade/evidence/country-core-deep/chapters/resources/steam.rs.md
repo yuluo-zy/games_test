@@ -18,6 +18,22 @@
 | country_core::resources::steam::impl$37::from | 0x1409e8da0 | 280 | impl$37::from：动作名转换 | I（胶水） |  |
 | country_core::resources::steam::SteamInput::get_action_origin_glyphs | 0x1409e6280 | 385 | SteamInput::get_action_origin_glyphs：动作源字形查询（into_action_value 内联） | I | audio-misc\decomp\decomp-0x1409e6280.txt |
 
+## 实现方式（算法级）（O，DIGEST §2.11）
+
+**SteamMainActionSet::try_load<Input> @0x1417c3720**：动作名表（0x142ce2049 起连续串）：
+动作集 `"GameControls"` + **28 个数字/模拟动作**（CameraPan、cursor_move、camera_height、
+left_click、right_click、undo、redo、tool_building、tool_path、tool_decorator、tool_customize、
+tool_eraser、tool_terrain、tool_garden、tool_tree、tool_water、time_of_day、photomode、
+toggle_snapping、zoom_in、zoom_out、main_menu、ui_cancel、ui_confirm、ui_up、ui_left、
+ui_right、ui_down）逐名查句柄 → 状态结构。（O）
+**SteamMenuActionSet::try_load<Input> @0x1417c5770**：菜单集 `"Menu"`：`ui_tab_prev`/
+`ui_tab_next` 句柄加载。（O）
+- 另两组 `"CottageWindow"`/`"GothicWindow"`（窗口层，I）。
+- `read_state @0x1409e86b0`/`@0x1409e8bf0`：读当前数字/模拟动作状态 → 游戏状态结构（O）；
+  `is_any_active @0x1409e8aa0`：任一动作非零（O）。
+- `get_action_origin_glyphs @0x1409e6280`：动作源字形查询（into_action_value 内联，I）。
+- impl$30/31/37::from：动作名 → C 串转换胶水（I）。O/I 混合
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::resources::steam::SteamMainActionSet::action_handle`（行 89）— 待推断

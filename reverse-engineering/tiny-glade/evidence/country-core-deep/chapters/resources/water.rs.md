@@ -15,3 +15,7 @@
 ## 派生胶水
 
 `add_new`/`get_rg_buffer`/`write_storage_buffer` 等泛型胶水（不计独立业务）
+
+## 实现方式（算法级）
+
+无独立业务过程（PDB name-only）。RippleSourceSsbo = 鸭子入水波纹源（system_critters::duck::update_duck_ripples 生产 / water_planes_draw 消费）；WaterDrawEvent/WaterEraseEvent = draw_raster/replay_raster 写入。CPU 水位本体在 world_raster_defs::WaterRaster（WorldRaster<512> 槽 4，见 ALGORITHMS.md §1）。

@@ -19,3 +19,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+- ivy_spawner（0x14094cf90，38KB）：随机根点尝试（try_random_ivy_root）/ 光标旁根点（try_ivy_root_next_to_cursor）/ 点是否在墙段内（is_point_inside_wall_segment）三内联函数组成；callee 结构证实调 `closest_segment_index`（0x14094c800）选墙 + `func_0x000140c9cdc0` ×6（墙段几何采样）+ RNG/panic 路径；生成后经 `IvyStorage::spawn_ivy`（0x1408696f0，next_ivy_id+1）入存储。

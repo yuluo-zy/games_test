@@ -17,3 +17,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`terrain_stairs_audio_system`（0x141462dc0）：消费楼梯地形交互事件驱动音频（SuppressPathSound + StairsCounter 状态 + StairDraw_OneShot 瞬发）；init 内联。细节归 audio-misc 域。

@@ -1,0 +1,94 @@
+
+void FUN_1415724f0(longlong param_1,ulonglong param_2,ulonglong param_3)
+
+{
+  undefined8 *puVar1;
+  undefined8 *puVar2;
+  longlong lVar3;
+  code *pcVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  ulonglong uVar15;
+  longlong lVar16;
+  bool bVar17;
+  
+  uVar13 = *(ulonglong *)(param_1 + 0x30);
+  if (param_3 < uVar13) {
+    if (param_2 < uVar13) {
+      lVar3 = *(longlong *)(param_1 + 0x28);
+      lVar14 = param_3 * 0x40;
+      lVar16 = param_2 * 0x40;
+      uVar5 = *(undefined8 *)(lVar3 + lVar14);
+      uVar6 = ((undefined8 *)(lVar3 + lVar14))[1];
+      puVar1 = (undefined8 *)(lVar3 + 0x10 + lVar14);
+      uVar7 = *puVar1;
+      uVar8 = puVar1[1];
+      puVar1 = (undefined8 *)(lVar3 + 0x20 + lVar14);
+      uVar9 = *puVar1;
+      uVar10 = puVar1[1];
+      puVar1 = (undefined8 *)(lVar3 + 0x30 + lVar14);
+      uVar11 = puVar1[1];
+      puVar2 = (undefined8 *)(lVar3 + 0x30 + lVar16);
+      *puVar2 = *puVar1;
+      puVar2[1] = uVar11;
+      puVar1 = (undefined8 *)(lVar3 + 0x20 + lVar16);
+      *puVar1 = uVar9;
+      puVar1[1] = uVar10;
+      puVar1 = (undefined8 *)(lVar3 + 0x10 + lVar16);
+      *puVar1 = uVar7;
+      puVar1[1] = uVar8;
+      *(undefined8 *)(lVar3 + lVar16) = uVar5;
+      ((undefined8 *)(lVar3 + lVar16))[1] = uVar6;
+      uVar13 = *(ulonglong *)(param_1 + 0x18);
+      do {
+        uVar15 = param_2;
+        if (uVar13 <= param_2) {
+          uVar15 = uVar13;
+        }
+        LOCK();
+        uVar12 = *(ulonglong *)(param_1 + 0x18);
+        bVar17 = uVar13 == uVar12;
+        if (bVar17) {
+          *(ulonglong *)(param_1 + 0x18) = uVar15;
+          uVar12 = uVar13;
+        }
+        UNLOCK();
+        uVar13 = uVar12;
+      } while (!bVar17);
+      uVar13 = *(ulonglong *)(param_1 + 0x20);
+      do {
+        uVar15 = param_2;
+        if (param_2 < uVar13) {
+          uVar15 = uVar13;
+        }
+        LOCK();
+        uVar12 = *(ulonglong *)(param_1 + 0x20);
+        bVar17 = uVar13 == uVar12;
+        if (bVar17) {
+          *(ulonglong *)(param_1 + 0x20) = uVar15;
+          uVar12 = uVar13;
+        }
+        UNLOCK();
+        uVar13 = uVar12;
+      } while (!bVar17);
+      return;
+    }
+  }
+  else {
+    param_2 = uVar13;
+    uVar13 = FUN_1428d9518(param_3,uVar13,&UNK_142c86838);
+  }
+  FUN_1428d9518(param_2,uVar13,&UNK_142c86850);
+  pcVar4 = (code *)swi(3);
+  (*pcVar4)();
+  return;
+}
+

@@ -17,3 +17,11 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_olden 0x1415539d0（O）**：2x 名式网格 + 2x 文件式网格（'assets/meshes/clover.json'）+
+  2x shader + **6 份树配置** trees/{rocks,clearing_edge_rocks,stumps,clearing_edge_tree_stumps,
+  logs,clearing_edge_tree_logs}.json（串 0x142c6c918 区）+ 2 个注册记录（FUN_1412d9400/1412d9270）
+  + 2x unwrap。
+- 跨模块：init_clearing 直接调用本函数（0x140a78aa0 → 0x1415539d0）。

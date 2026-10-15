@@ -19,3 +19,16 @@
 ## 派生胶水
 
 - 7 项：default, deserialize, expecting, visit_map, visit_seq, visit_str 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **load_glade_audio 0x1408be360（O）**：theme byte @ gladestate+0x58 x8 索引 →
+  GladeAudio::load（0x1408bf460，4 主题各一次）→ 每主题：
+  'Reading {path}/audio.json' 日志（'audio.json' 0x142aa0d44）→ 4 事件
+  `event:/Music/Halloween/{Single Leaf, Tiny Olden Glade, Forgotten Ruins, Enchanted Forest}`
+  （串 0x142aa0c33 区）→ FUN_140a54440 事件句柄 x2 + FUN_14089a280（容器注册）
+  → FMOD 参数 `GladeTypeIsHalloween`(9, 0x142aa0ce8) / `IsHalloween`(0xb, 0x142aa0cf1)
+  （FUN_140a53db0 设置，行 371/386）→ stop_and_play_new（内联，行 81）。
+  5x unwrap panic 行 43（0x142ad0600/0x142ad05c0/0x142ad2bc0/0x142ad2c20）。
+- **GladeAudio::load 0x1408bf460（O）**：单主题音频事件配置载入（见上）。
+- 契约缺口：reconstruction GladeAudio 无 4 主题音乐事件表（HIGHLIGHTS 7 既有结论保持）。

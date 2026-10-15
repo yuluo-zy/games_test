@@ -49,7 +49,7 @@
 | `Rapier::raycast_simple` | 0x1408ce180（696B） | `cast_ray`（无法线）；**后命中覆盖先命中**（不比较距离）；无命中写 byte0=0x11（Empty） |
 | `RaycastWorld::raycast_w_terrain` | 0x1408cd430 | mask 含位 0x20（槽 5=Terrain）时先碰撞后地形：地形 raycast（FUN_1409e9a20，terrain 域）以碰撞 toi 为上限过滤，地形命中→合成命中（handle byte0=**0xb**、法线(0,1,0)、marker=0） |
 | `RaycastWorld::spherecast` | 0x1408ccfc0 | 全 17 槽 mask 驱动 cast_shape，最近命中 |
-| `RaycastWorld::legacy_spherecast` | 0x1408ccc90 | **固定 10 槽顺序 {0,1,3,7,6,4,11,2,12,13}** 的 spherecast；critters_avoid_collisions（0x1423179a0）/move_critters（0x142318fa0）/0x1423246b0 调用（O：callgraph） |
+| `RaycastWorld::legacy_spherecast` | 0x1408ccc90 | **固定 10 槽顺序 {0,1,3,7,6,4,11,2,12,13}** 的 spherecast；**专用小结果 {handle 24B@+0, point@+0x18, 零 12B@+0x24, marker@+0x30}（无 normal/toi，marker 在 +0x30 非 +0x34）**；critters_avoid_collisions（0x1423179a0）/move_critters（0x142318fa0）/0x1423246b0 调用（O：callgraph + 反编译全解，ALGORITHMS §2.6） |
 | `RaycastWorld::intersects_any` | 0x1408cd5b0 | 5B jmp thunk → 0x1408cdf80 |
 | `RaycastWorld::flush_colliders` | 0x1408cd5c0（1149B） | 见 §2.4 |
 | `RaycastWorld::raycast_intersections_with_ray` | 0x1408cc8a0 | 全交点收集（RaycastHit Vec） |
@@ -61,7 +61,7 @@
 `{ handle: 24B @+0x00（byte0=判别，0x11=Empty），point: Vec3 @+0x18，normal: Vec3 @+0x24，
    toi: f32 @+0x30，marker: u32 @+0x34（0=命中/2=无命中），uv: Vec2 @+0x38（mesh 命中时） }`
 证据：`rapier_hit_to_raycast_world_result` 0x1408ce4a0（法线/UV 按 barycentric 插值 + quat 旋转）与 raycast_w_terrain/legacy_spherecast 写入面三方一致。
-legacy_spherecast 变体把状态写在 +0x30（不写 toi）——两处布局差 4B 偏移（记 U 待裁）。
+legacy_spherecast 变体把状态写在 +0x30（不写 toi）——**round3 裁决：legacy 为专用小结果 {handle 24B, point, 零 12B, marker@+0x30}，非 0x40B 族的 4B 偏移差**（ALGORITHMS §2.6）。
 
 **SubworldColliderHandle = 24B 带按变体负载的枚举（不是 {subworld,index}！）**（O）：
 - `SubworldColliderHandle::new`（0x1408cc620）= 写 `{u32@+0, u32@+4, u8@+8}`（9B/24B）。
@@ -109,8 +109,7 @@ legacy_spherecast 变体把状态写在 +0x30（不写 toi）——两处布局�
 | +0x10 | endpoint 判别 qword（0/1/2/3）+ 数据 @+0x18/+0x20（24B 区间）| unset_endpoint 写 3；endpoint getter 拷贝 24B |
 | +0x28 | **GraphMap 起点**（`graph` getter 0x1408fe8b0 = `&self+0x28`，O 手解） | 与 endpoint 24B 结束于 +0x28 自洽 |
 | **+0x148** | **脏边/桩 hashbrown 集合**（add_node 插 (n,n)；remove_node 插 (min,max)+(n,n)） | O 手解：add_node `add rdi,0x148` 后 tail-call 插桩；remove_node 的 `param_1+0x29`（undefined8* 指针算术）= 字节 +0x148。**round2 更正：初版误记 +0x29** |
-| +0x2f | 脏字节（图变更置 **0**）| remove_node/restore 各写 0/1 |
-| +0x178 | backed_up 字节（add_node 清零；restore 置 1） | O 手解：add_node `mov byte[rcx+0x178],0`（合同 wp21 一致） |
+| +0x178 | **backed_up 字节**（add_node/remove_node 清零；make_backup/restore_backup 置 1） | O 手解：add_node `mov byte[rcx+0x178],0`；restore_backup llvm 全解：开头 `mov byte[rdi+0x178],0`、结尾 `mov byte[rdi+0x178],1`（0x1408ff36e）—— **round3 更正：原"+0x2f 脏字节"无机器码依据，实为 +0x178；备份区起点 +0xb8（非 +0xb0）** |
 | +0x30/+0x38 | 图竞技场（ptr/节点数；单节点快路径检查 entry+0x20） | contains_edge_or_stub |
 | +0x60/+0x68 | 节点查找 map（hashbrown） | remove_node/contains |
 | +0x78/+0x80 | 边 map（ptr/len；单边快路径 entry+0xc） | contains_edge_or_stub |
@@ -162,7 +161,7 @@ legacy_spherecast 变体把状态写在 +0x30（不写 toi）——两处布局�
 - `Ivy::add_point` 0x140869460 / `last_point` 0x1408694f0 / `last_segment_point_ids` 0x140869540 / `IvyStorage::spawn_ivy` 0x1408696f0 / `IvyLeafStorage::add` 0x1408fe280——与 wp16/wp21 合同一致（40B 点、VecDeque、HashMap<usize,Ivy>）。
 - `IvyDirectionProposer::get_direction` 0x141234590（θ∈[-40°,+40°] 混合，(cosθ,sinθ)）。
 - `WallCoord::into_world_space` 0x140b199e0（墙曲线采样 + 法向偏移 0.63*0.5）。
-- **grower**：`ivy_grower` 0x14094a910 = puffin + Bevy 系统跳表分派（`world+0x118` 索引 @0x142ab3be0 表——真实逻辑在系统闭包，U）；`closest_segment_index` 0x14094c800（**28B 步长墙段** {xy0,xy1,h0@+0xc,h1@+0x1c}，投影+高度过滤 `max_ivy_grow_height`）；`get_wall_double_sided_normal` 0x14094caa0；`intersect_ivy_growth_w_wall_segment` 0x14094cc60（v2 名；v1 三名全错）。
+- **grower**：`ivy_grower` 0x14094a910 = puffin + Bevy 系统跳表分派（`world+0x118` 索引 @0x142ab3be0 表——**10 相跳表字节级验证**，ALGORITHMS §4.1）；`closest_segment_index` 0x14094c800（**56B 步长墙段** {xy0,xy1,f32@+0x10/+0x14（打包进结果）,h0@+0x18,h1@+0x1c}，投影+高度过滤 `max_ivy_grow_height`，距离度量 = |(P0−P)·单位方向|；ALGORITHMS §4.2）；`get_wall_double_sided_normal` 0x14094caa0；`intersect_ivy_growth_w_wall_segment` 0x14094cc60（v2 名；v1 三名全错）。
 - **spawner** 0x14094cf90（38KB）、**pruner** 0x140997410（70KB）/ `is_point_still_valid` 0x140998dc0 / `ivy_pruner_cmd` 0x140999330 / `remove_ivy_at_location` 0x140999860、**leaf_spawner** 0x140996080、branch_thickness 0x140995a80、leaf_animation 0x140b0e380、send_to_gpu_{leaf,segments} 0x1408c1580/0x140a9b4e0。
 - panic/日志串（O）：`"Received IvySegmentDoneGrowingWithMsg with ivy id "`（leaf_spawner）、`"Spatial Hash returned a wall id "`（pruner 墙空间哈希）；引用 `"Tried to init CurveU from an invalid u: "` + `"assertion failed: !u.is_infinite()"`（CurveU 跨域）、`"assertion failed: ev_count < 2"`（merge_walls.rs）。
 
@@ -227,8 +226,8 @@ legacy_spherecast 变体把状态写在 +0x30（不写 toi）——两处布局�
 ## 11. 待办/未知（U）
 
 - SubworldIndex 17 槽完整名字↔槽号映射（Terrain=5 已锚定，其余待各 mask 使用点交叉验证）。
-- RaycastMeshData 写入面 vs 读取面 ±8 偏移裁决；legacy_spherecast 结果 +0x30/+0x34 布局差。
-- update_rapier_colliders（0x1408d0490）反编译失败，需 asm/邻接函数恢复。
-- StairsState 完整 0x180B 布局（+0xb0 备份区结构、+0x178 标志语义）。
-- Ivy grower 主闭包（系统跳表目标）不在清单内——逻辑经 closest_segment_index 等恢复（部分 O）。
+- update_rapier_colliders（0x1408d0490）反编译失败，需 asm/邻接函数恢复（管线已闭合，见 ALGORITHMS §2.9）。
+- StairsState 完整 0x180B 布局（+0xb8 备份区结构已解：0x90B 镜像图区；+0x178 语义已裁决 = backed_up；残余字段 U）。
+- Ivy grower 相 5-9 宿主定位（跳表目标在 grower 体尾部区间，二级跳表/panic 入口，语义面已闭合）。
 - ClutterMeshTy 56 变体完整名序（名字表碎片化，需按 len-prefix 全量解析）。
+- closest_segment_index 双高度过滤互斥疑点（高度坐标方向语义，待调用方数值裁决）。

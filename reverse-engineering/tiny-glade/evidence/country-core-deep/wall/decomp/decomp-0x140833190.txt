@@ -1,2 +1,22 @@
 country_core::resources::walls::decorator::DecoratorType::can_place_on_stair_top::hac9011691cfee1c1
-{"error":"No function at 0x140833190","error_type":"NotFound","database":"tg_a2_v2c0"}
+[Ghidra NotFound @0x140833190 — 小函数未建函数，改用 RNE 原字节手解（候选U收尾闭合）]
+RNE disasm (scripts/rne-disasm.py 0x140833190 0x30):
+
+0x140833190  movzx    eax, byte ptr [rcx]   ; eax = t (DecoratorType u8)
+0x140833193  mov      ecx, eax
+0x140833195  not      cl                    ; cl = ~t
+0x140833197  test     cl, 0x38
+0x14083319a  setne    cl                    ; cl = (~t & 0x38)!=0  =  (t & 0x38) != 0x38
+0x14083319d  add      al, 0xc4              ; al = t + 0xc4 (byte wrap)
+0x14083319f  cmp      al, 3
+0x1408331a1  setb     al                    ; al = ((t+0xc4) & 0xff) < 3
+0x1408331a4  or       al, cl                ; result = ((t+0xc4)<3) || ((t&0x38)!=0x38)
+0x1408331a6  ret
+
+结论: can_place_on_stair_top(t) = ((t+0xc4) mod 256 < 3) || (t&0x38 != 0x38)
+  - (t+0xc4)<3  ⇔ t ∈ {0x3c, 0x3d, 0x3e}（楼梯顶可放型）
+  - (t&0x38)!=0x38 ⇔ t ∉ {0x38..0x3f}
+  - 并集 = 除 t∈{0x38,0x39,0x3a,0x3b}（四窗型）外全部为 true
+即仅窗族不可放楼梯顶。与邻接谓词族（can_place_on_flat_roof 0x140833180、
+can_place_on_terrain 0x1408331b0、should_offer_snap_to_corner 0x1408331c0）
+一致为 DecoratorType 位运算谓词（业务 O，手解证实）。

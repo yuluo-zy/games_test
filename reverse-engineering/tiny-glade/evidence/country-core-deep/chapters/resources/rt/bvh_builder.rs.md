@@ -25,3 +25,27 @@
 - RtBvhBuilderGlueResource：`+0x10` busy/refcount（int）、`+0x14` state 字节（2=待机）、`+0x15` 处理标志、
   `+0x98` 数据指针；`+0x3` 退出标志（Bevy system param 判定）。
 - 交叉域：update_rt_world（rt/mod.rs）触发 builder 创建；upload_rt_world 消费产出。
+
+## 实现方式（算法级）
+
+完整算法见 `roofs-rt/ALGORITHMS.md` §4。要点（**偏移更正：raw bytes 0x140b24d50 前导复核**）：
+
+### bvh_builder_worker（0x140b24d50）状态机
+```
+loop:
+  抢 busy: LOCK; cmpxchg [glue+0x10]: 0→0x3fffffff; 非零 → panic
+  停止标志 0x14362c420（首 qword & 0x7fffffffffffffff 非零 → fastrand 随机停止）
+  if glue+0x18 != 0: break（退出 → 日志 + Arc drop glue）
+  state = [glue+0xa0]; [glue+0xa0] = 2
+  if 先前 == 2（空闲）: 释放抢注; sleep(0, 1ms); continue
+  # 处理路径：
+  [glue+0xa8] = 1（处理中）
+  读脏列表 {ptr@+0x68, len@+0x70, count@+0x98, 计数@+0x78..+0x94, 脏字节@+0xa1..0xa7}
+  占用掩码 → FUN_14130d1b0 组装三角缓冲（0x28 步长）→ build_gpu_bvh → 新 BVH
+  再抢 busy; 停止检查
+  if glue+0x18 == 0: 交换新旧 BVH（+0x20..+0x60 十二组 u32 写回）→ 释放旧缓冲
+                     （tri 0x50 / node 0x18 / meta u32）→ [glue+0xa8] = 0 → 释放抢注
+  else: 释放新缓冲; 释放抢注
+  释放临时三角缓冲; FUN_1400524e0(脏列表, 计数, 0x20, 0x10)  # 完成通知（与 update 对称）
+```
+**关键偏移（raw bytes）**：`+0x10 busy（cmpxchg 0→0x3fffffff）、+0x18 退出/停止字节、+0xa0 状态（2=空闲）、+0xa8 处理标志` —— 章内/DIGEST 的 "+0x14/+0x15" 为旧读，已更正。

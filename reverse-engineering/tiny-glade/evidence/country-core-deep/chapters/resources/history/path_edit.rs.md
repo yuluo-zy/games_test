@@ -26,3 +26,11 @@
 - `country_core::resources::history::path_edit::impl$0::from`（行 35）— From 转换（RasterEdit 构造）（I；内联）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **RasterEdit**（points/brush_size/is_additive/blend_mode）：ReplayCmd 判别 0/1/2 的
+  Arc 负载（make_animations_instant 的 instant 路径走判别 0/1/2 的 Arc 变体 drop）。
+- **RasterEditSerialized**（存档载荷）：手写 serde（serialize 0x1404896f0/0x1416e8340、
+  deserialize 0x1416e8510——**注意地址为 0x1416e8510，丢一位 1 的旧写法 0x16e8510
+  错**）；`impl$1::from 0x140a976b0` = DecoratorHistoryState::From 同族转换。
+

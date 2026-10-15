@@ -8,3 +8,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+
+## 实现方式（算法级）
+
+`Weather` 空资源（O 名、impl$0::default 内联；audio weather 消费；布局 U）。雪强逻辑在 systems/weather_system.rs（SnowIntensity@+0xc，10 分钟正弦 ±0.1·dt）。

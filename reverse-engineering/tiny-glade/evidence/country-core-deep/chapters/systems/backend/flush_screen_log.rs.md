@@ -24,6 +24,29 @@
 | `country_core::systems::backend::flush_screen_log::flush_error_log_to_screen` | 0x1408c0d90 | 16 | Bevy 系统 `fn flush_error_log_to_screen(mut screen_log: ResMut<ScreenLog>)`：取走全局队列（len 置 0），逐条调 `FUN_14093fe50(screen_log, text, color)`；颜色按 kind 查表 0x142aa159c（0=0xff0000ff 红, 1=0xffff00ff 黄）。**虽名 flush_error 实际排空全部错误+警告条目**。 | O | decomp/decomp-0x1408c0d90.txt；rne-read --hex 0x142aa159c（颜色表） |
 | （助手）`FUN_14093fe50` | 0x14093fe50 | — | `ScreenLog::push_line(text: String, color: u32)`：5 槽环缓冲（`+0xb0` 计数 `(n+1)%5`），每槽 0x20B {String, color@0x28, 5.0f32@0x2c}，超 5 条 panic。 | O | decomp/decomp-0x14093fe50.txt |
 
+## 实现方式（算法级）（O，decomp-0x1408c0d90/0x14093fe50 全解）
+
+**flush_error_log_to_screen @0x1408c0d90（系统）**：
+1. `LOCK(); mutex_state==0 → 置 1; UNLOCK()`；未获取 → FUN_1428d8750（等待唤醒）。
+2. `panic 中检查`：`(*0x14362c420 & 0x7fffffffffffffff) == 0 → uVar8=0`，否则
+   `uVar8 = FUN_1428d86b0() ^ 1`（报告抑制语义）。
+3. **取走全局队列**：`ptr = 0x14362bff8`、`len = 0x14362c000`（`len = 0` 复位）。
+   `is_processing@0x14362bfe9 != 0 → panic "called Result::unwrap() on an Err value"`
+   （0x142aa03b8，line 0x2b，Mutex 中毒）。
+4. **逐条排空**：条目 stride 0x20 = `{cap@0, ptr@8, len@0x10, kind@0x18}`；
+   `FUN_14093fe50(screen_log, text_ptr, text_len, 颜色表[kind])`，颜色表 0x142aa159c
+   （0=0xff0000ff 红, 1=0xffff00ff 黄）→ 释放字符串 `func_0x000140613c20(ptr, cap, 1)`。
+5. **尾部清理**：未消费条目逐个释放（cap-first 双指针）。
+6. `uVar8==0 && panic 进行中 && !FUN_1428d86b0() → is_processing=1`。
+7. `LOCK(); state=0; UNLOCK(); state 原为 2 → WakeByAddressSingle`（唤醒等待线程）。
+
+**FUN_14093fe50 @0x14093fe50（ScreenLog::push_line，O）**：
+- `len<0 / alloc 失败` → FUN_1428d8fe3（异常）；alloc+memcpy 文本（len==0 时 alloc 1B）。
+- `count@+0xb0 < 5`：槽 = `screen_log + count*0x20`；drop 旧槽字符串（ptr≠0 才释放）；
+  写 `{cap=len@+0x10, ptr@+0x18, len@+0x20, color u32@+0x28, 0x40a00000(5.0f)@+0x2c}`；
+  `count = ((count+1)/5)*-5 + count + 1` = **(count+1) mod 5**（5 槽环）。
+- `count >= 5 → FUN_1428d9518()`（panic_bounds_check，防御——正常被 mod 不变量阻止）。
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 （无）

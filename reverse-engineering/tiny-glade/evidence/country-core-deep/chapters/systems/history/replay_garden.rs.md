@@ -18,3 +18,7 @@
 - `country_core::systems::history::replay_garden::replay_garden::closure$2`（行 39）— replay_raster<Garden> 薄包装（I；单态 0x1409f6ff0）
 
 <!-- 未覆盖函数数：0 -->
+
+## 实现方式（算法级）
+
+`replay_raster<GardenRasterStagingSsbo, WorldRaster<512>, GardenFilter>` 薄包装（单态 0x1409f6ff0）+ 命令生成闭包（generate_replay_cmds_from_edit 宿主 0x14143d2c0）。主算法在 history/replay_raster.rs。

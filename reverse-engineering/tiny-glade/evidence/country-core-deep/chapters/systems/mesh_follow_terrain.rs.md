@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`mesh_follow_terrain`（0xa68430）：Query<(&MeshFollowTerrain, &mut Transform, &Handle<Mesh>)> + 2×Res（地形高度数据）；FUN_14092d300 取 mesh、FUN_140a07b30 取几何；取 "Vertex_Position" 属性（0x142ad5120，0xf）→ FUN_1412fd550 位置计算（内联地形采样）→ Transform.y 更新；无效句柄 panic "MeshFollowTerrain got an invalid mesh handle"（0x142ad50d8）。

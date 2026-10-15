@@ -17,3 +17,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+
+## 实现方式（算法级）
+
+- `get_direction`（0x141234590）：3×noise3d（双 FastNoise 资源，采样坐标映射 U）+ 3×uniform（fastrand）混合 → 角度 θ ∈ [−40°, +40°] → 返回 (cosθ, sinθ)。grower 主闭包每生长步调用（作为"提议方向"），随后 closest_segment_index 选墙段校验/吸附。

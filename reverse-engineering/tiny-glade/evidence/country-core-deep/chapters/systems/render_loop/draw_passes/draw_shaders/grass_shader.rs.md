@@ -15,6 +15,12 @@
 
 - `draw_common`（行 18）— 公共绑定（两 draw 共用）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `draw_grass_shader`（0x140b4af70）/`draw_grass_lod1_shader`（0x140b4b1d0）：DrawBuilder draw + 读 `GrassBladeDataSsbo`；`draw_common`（公共绑定：地形高度/光照/主题 uniform）。
+- 分派链：draw_lists `grass`/`grass_lod1` 材质名 → 回调（d_gap §1.3：`draw_grass_shader`/`draw_grass_lod1_shader` 已恢复本体）→ 消费 `grass_compute`（W29）生成的 `DrawIndexedIndirectBuffer/DrawIndirectBuffer/AtomicCounterBuffer` 间接绘制参数。
+- shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - 消费 grass.rs 生成的草地间接绘制缓冲。

@@ -24,3 +24,23 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 12 项
+
+## 实现方式（算法级，2026-10-15 深挖；全文见 session-save/ALGORITHMS.md）
+
+- **capture_game_snapshot_save_data 0x1417a0430**：串匹配 @0x142cdc3b0（0x46 字，
+  panic @0x142cdc480/0x142cdc498）+ 路径 join（FUN_140c16d40）→ 从 ~9 组世界数据
+  （FUN_141305170/141308b40/141309840 收集器）构建 ~0x400B 快照结构（JSON 键串表
+  @0x142a93bfe 起）→ 返回 **Arc**（alloc 0x18 {strong=1,weak=1} + LOCK inc）。
+- **capture_game_snapshot 0x1417a1d00**（184KB 系统体）：全 Query 串化；已知结构
+  StairsSnapshot{edges, checksum} / StairsRemovedSupports{edges} /
+  TerrainEditingData{strokes, next_stroke_id, next_stroke_index} /
+  DecoratorStorageSnapshot{states}。
+- **validate_and_load_closest_snapshot_data 0x1417a6e50**（快照 JSON 解析器）：
+  按节名键分派（FUN_1414744d0 匹配 + 各节跳表 @0x142cdca80/0x142cdca98/0x142cdcab0）：
+  **节序 Version → Walls → Roofs → Decorators → WallColors → GateColors → Terrain
+  → Trees → Raster**；每节 log "parsing X"（@0x142cdc709 块）；Version 不符 → panic
+  "Version mismatch; expected , got "（@0x142cdc840）；Terrain 数据 **flate2 deflate
+  解压**（"decompressing terrain data" @0x142cdc800，flate2-1.0.24）；Raster 键白名单
+  外 → "Ignoring unknown raster data in snapshot: "（@0x142cdc7c0）。
+- **init_game_state_from_snapshot 0x1417a9c50**：load_game 拷贝 0x1b0B 解析数据 →
+  应用各域资源（颜色/时间/羊/地形…）。

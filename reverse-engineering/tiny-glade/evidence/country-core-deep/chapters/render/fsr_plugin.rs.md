@@ -10,11 +10,17 @@
 
 | 函数 | 地址 | 源码行 | 作用（猜测→证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `plugin_impl::impl$0::build` | 0x14003bb80 | 84 | 猜测：插件 build；证实：**1 字节 RET 空函数（ICF 合并）** | **O**：字节 `c3 cc cc…`（0x14003bb80 起 1 B RET + int3 填充，其后 0x14003bb90 是另一函数 `55 41 57…`）；B-focused 反编译显示该址 = `bevy_app::plugin::Plugin::finish<MainCameraPlugin>` 空实现——PDB 名 `fsr_plugin::build` 与 bevy 空 `finish` ICF 合并。**无独立业务过程**；FSR 通过 compute passes 接线（`_fsr_copy_history`/`_fsr_init_reactive`，render-passes/INDEX.md） | B-focused 14003bb80.c/asm + 本批 rne-read 0x14003bb80 |
+| `plugin_impl::impl$0::build` | 0x14003bb80 | 84 | 猜测：插件 build；证实：**1 字节 RET 空函数（ICF 合并）** | **O**：字节 `c3 cc cc…`（0x14003bb80 起 1 B RET + int3 填充，其后 0x14003bb90 是另一函数 `55 41 57…`）；B-focused 反编译显示该址 = `bevy_app::plugin::Plugin::finish<MainCameraPlugin>` 空实现——PDB 名 `fsr_plugin::build` 与 bevy 空 `finish` ICF 合并。**无独立业务过程**；FSR 通过 compute passes 接线（`_fsr_copy_history`/`_fsr_init_reactive`，render-passes/INDEX.md） | hex 手解 0x14003bb80（`c3` RET + int3 填充；原 B-focused 14003bb80.c/asm + rne-read） |
 
 ## 内联/无独立符号函数
 
 - 无（模块仅 marker 类型 `FsrPlugin`/`FsrPluginState`；reconstruction 保留为 typed gap，符合证据）。
+
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- **结论**：本文件无独立业务过程。`plugin_impl::impl$0::build`（0x14003bb80）= 1B `ret` + int3 填充（ICF 合并，与 `bevy_app::plugin::Plugin::finish<MainCameraPlugin>` 同址）——旧骨架"构造/注册/生成待推断"作废。
+- FSR 真实逻辑全在 compute pass 域（CPU 侧接线点）：`_fsr_copy_history`、`_fsr_init_reactive`（render-passes/INDEX.md）；GPU shader 内部算法不挖（wave-2 HLSL 覆盖）。
+- reconstruction `fsr_plugin.rs`（29B）保留 `FsrPlugin` marker + `FsrPluginState` gap，与证据一致。
 
 ## 纠错/差异
 

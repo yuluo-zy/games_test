@@ -1,0 +1,151 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_us1",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_us1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_us1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_us1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_us1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_us1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x140c98660"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C98660\",\"error_type\":\"NotFound\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x140c9cde0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C9CDE0\",\"error_type\":\"NotFound\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x140c9cdc0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C9CDC0\",\"error_type\":\"NotFound\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x140d4ae30"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140d4ae30\",\"address\":\"0x140D4AE30\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nvoid FUN_140d4ae30(undefined1 (*param_1) [16],float *param_2,float *param_3)\\r\\n\\r\\n{\\r\\n  float fVar1;\\r\\n  float fVar2;\\r\\n  float fVar3;\\r\\n  float fVar4;\\r\\n  undefined1 auVar5 [16];\\r\\n  undefined1 auVar6 [16];\\r\\n  undefined1 auVar7 [16];\\r\\n  float fVar8;\\r\\n  float fVar9;\\r\\n  float fVar10;\\r\\n  \\r\\n  fVar4 = *param_2;\\r\\n  fVar1 = param_2[1];\\r\\n  fVar8 = param_2[2];\\r\\n  fVar9 = *param_3;\\r\\n  fVar2 = param_3[1];\\r\\n  fVar3 = param_3[2];\\r\\n  fVar10 = fVar8 * fVar3 + fVar1 * fVar2 + fVar4 * fVar9;\\r\\n  auVar6 = _UNK_14293e0c0;\\r\\n  if (fVar10 <= _UNK_142b45544) {\\r\\n    if (_UNK_142b45548 <= fVar10) {\\r\\n      auVar7._0_4_ = fVar1 * fVar3 - fVar8 * fVar2;\\r\\n      fVar8 = fVar8 * fVar9 - fVar3 * fVar4;\\r\\n      auVar7._4_4_ = fVar8;\\r\\n      fVar4 = fVar4 * fVar2 - fVar1 * fVar9;\\r\\n      fVar10 = fVar10 + _UNK_142925904;\\r\\n      auVar7._12_4_ = fVar10;\\r\\n      auVar7._8_4_ = fVar4;\\r\\n      auVar5._0_4_ = fVar10 * fVar10 + fVar8 * fVar8 + fVar4 * fVar4 + auVar7._0_4_ * auVar7._0_4_;\\r\\n      auVar5._4_4_ = auVar5._0_4_;\\r\\n      auVar5._8_4_ = auVar5._0_4_;\\r\\n      auVar5._12_4_ = auVar5._0_4_;\\r\\n      auVar6 = sqrtps(auVar5,auVar5);\\r\\n      auVar6 = divps(auVar7,auVar6);\\r\\n    }\\r\\n    else {\\r\\n      fVar9 = (float)(~-(uint)NAN(fVar8) & ((uint)fVar8 & _UNK_1429258f0 | (uint)UNK_142925930) |\\r\\n                     _UNK_142a8d5c4 & -(uint)NAN(fVar8));\\r\\n      fVar8 = _UNK_14295a0e4 / (fVar8 + fVar9);\\r\\n      auVar6._4_4_ = fVar1 * fVar1 * fVar8 + fVar9;\\r\\n      auVar6._0_4_ = fVar4 * fVar1 * fVar8;\\r\\n      auVar6._8_4_ = (uint)fVar1 ^ _UNK_1429258f0;\\r\\n      auVar6._12_4_ = _UNK_142b4554c;\\r\\n    }\\r\\n  }\\r\\n  *param_1 = auVar6;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140d4ae30",
+          "address": "0x140D4AE30",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140d4ae30(undefined1 (*param_1) [16],float *param_2,float *param_3)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  float fVar4;\r\n  undefined1 auVar5 [16];\r\n  undefined1 auVar6 [16];\r\n  undefined1 auVar7 [16];\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  \r\n  fVar4 = *param_2;\r\n  fVar1 = param_2[1];\r\n  fVar8 = param_2[2];\r\n  fVar9 = *param_3;\r\n  fVar2 = param_3[1];\r\n  fVar3 = param_3[2];\r\n  fVar10 = fVar8 * fVar3 + fVar1 * fVar2 + fVar4 * fVar9;\r\n  auVar6 = _UNK_14293e0c0;\r\n  if (fVar10 <= _UNK_142b45544) {\r\n    if (_UNK_142b45548 <= fVar10) {\r\n      auVar7._0_4_ = fVar1 * fVar3 - fVar8 * fVar2;\r\n      fVar8 = fVar8 * fVar9 - fVar3 * fVar4;\r\n      auVar7._4_4_ = fVar8;\r\n      fVar4 = fVar4 * fVar2 - fVar1 * fVar9;\r\n      fVar10 = fVar10 + _UNK_142925904;\r\n      auVar7._12_4_ = fVar10;\r\n      auVar7._8_4_ = fVar4;\r\n      auVar5._0_4_ = fVar10 * fVar10 + fVar8 * fVar8 + fVar4 * fVar4 + auVar7._0_4_ * auVar7._0_4_;\r\n      auVar5._4_4_ = auVar5._0_4_;\r\n      auVar5._8_4_ = auVar5._0_4_;\r\n      auVar5._12_4_ = auVar5._0_4_;\r\n      auVar6 = sqrtps(auVar5,auVar5);\r\n      auVar6 = divps(auVar7,auVar6);\r\n    }\r\n    else {\r\n      fVar9 = (float)(~-(uint)NAN(fVar8) & ((uint)fVar8 & _UNK_1429258f0 | (uint)UNK_142925930) |\r\n                     _UNK_142a8d5c4 & -(uint)NAN(fVar8));\r\n      fVar8 = _UNK_14295a0e4 / (fVar8 + fVar9);\r\n      auVar6._4_4_ = fVar1 * fVar1 * fVar8 + fVar9;\r\n      auVar6._0_4_ = fVar4 * fVar1 * fVar8;\r\n      auVar6._8_4_ = (uint)fVar1 ^ _UNK_1429258f0;\r\n      auVar6._12_4_ = _UNK_142b4554c;\r\n    }\r\n  }\r\n  *param_1 = auVar6;\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_us1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_us1",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_us1"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

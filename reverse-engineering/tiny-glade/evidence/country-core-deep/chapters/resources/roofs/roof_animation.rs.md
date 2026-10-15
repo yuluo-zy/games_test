@@ -20,3 +20,9 @@
 
 - RoofAnimation ≥ 16 字节（new 用两个 xmm 寄存器零化）；`is_being_animated` 读 +0 处 f32。
 - 交叉域：与 render_loop/compute_passes/roof_tiles_gravity 及 roof_visual_shape 动画初态（Roof +0x50）关联。
+
+## 实现方式（算法级）
+
+- `is_being_animated`（0x1408dbc20）：`cmpss [rcx], 常量; movd eax; and eax, 1` —— 首字段（动画计时 f32@+0）≠ 常量 → true。
+- `new`（0x1408dbc40）：`xorps xmm0/xmm1; ret` —— 16 字节全零（双 xmm 零化）。
+- 消费方：roof_tiles_gravity compute 与 roof 动画系统按计时推进瓦片动画（Roof +0x50 动画初态）。

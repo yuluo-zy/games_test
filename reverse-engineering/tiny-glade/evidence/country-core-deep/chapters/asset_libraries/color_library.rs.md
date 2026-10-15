@@ -35,3 +35,39 @@
 - 旧版 `update_color_library`：`path.exists()` 吞错、主题层缺失、用 `get_mut`+rg_handle 上传（原版只读 `get` + `buffer()`）、失败保留 CPU 副本（原版 panic）——全部不符。
 - **vtable 槽序冲突**（A3_color 注）：A3 把 `Ssbo` trait `+0x18` 记为 `as_any`（返回值直接当 Buffer* 用）；L0_NOTES 确认 `+0x18` 就是 `as_any`（返回 `(自身指针, Any 虚表)`），调用点取返回对象的 `+0x0` 即内嵌 Buffer —— 二者一致，非冲突。
 - `StorageElement::NAME == "ColorLibrary"`（O，xxh3 复算；"ColorLibrarySsbo" 全名哈希 0x58d69be238f7e8b7 不符）。
+
+## 算法要点（本批深挖 2026-10-15，decomp: backend-misc/decomp/decomp-0x14093b530 + rne-read 常量复核）
+
+### JSON 槽名→下标解析算法（deserialize_from 0x14093e510，5102 B）
+
+输入 `Vec<ColorFromJson>`（0x28 B 元素：{name String@0, color [f32;3]@0x18}）。**按名字长度分派**：
+
+1. `len - 4 <= 0xf` 才走 `jmp [跳表]`（0x14093e510 内），其他长度直接落到 panic。
+2. 各长度分支内逐项比较：4 B 用 `cmp dword`（path）；8 B 用 `cmp qword`（sky_base）；17/19 B 用 SSE `pcmpeqb`（terrain_flattened / indirect_light_tint）；6 个串（terrain_1/2、wall_moss、wall_bricks、terrain_highlight、night_tint）用字符串池 `bcmp`（池 @0x142ab2182 连续拼接）；其余 movabs+xor 常数比较。
+3. 命中 → 统一写入 `slot = (c[0], c[1], c[2], 1.0)`（`mov dword [slot+0xc], 0x3f800000`），**边遍历边写、无事务**（前面已写的槽不回滚）。
+4. 全部比较完仍未知名 → `panic!("Init Color Library failed: {} entry is missing from ColorLibrarySSBO")`（pieces 0x142ab2208/0x142ab2218，行 66）。
+5. 槽表（序号 = 相对槽基址 N/16）：temp_color_1..3(0-2)、roof_color_1/2(3-4)、sky_low/high_day(5-6)、sun_tint_day(7)、sky_low/high_dusk(8-9)、sun_tint_dusk(10)、indirect_light_tint(11)、fence_color_1/2(12-13)、flower_color_1/2(14-15)、canopy_color_1/2(16-17)、grass_1/2(18-19)、path(20)、sky_base(21)、sky_horizon(22)、sky_clouds_1/2(23-24)、terrain_1/2(25-26)、terrain_flattened(27)、wall_1/2(28-29)、wall_moss(30)、wall_bricks(31)、ivy_branch(32)、ivy_leaf_1/2(33-34)、terrain_highlight(35)、night_tint(36)（A3_color 全表）。
+
+### update_color_library 上传算法（0x14093b530，1502 B）
+
+参数面（Win64）：rcx=设置（+0x58 u8 = 主题下标）、rdx=&AssetSsboLibrary、r8=&Arc<GraphicsDevice>（[r8]+0x10）、r9=&mut ColorLibrarySsbo（CPU 资源，末尾 memcpy 0x250 回写）。
+
+1. 栈上 37 槽品红 (1,0,1,1) → `deserialize_from_path<&str>("assets/colors.json")`（无存在性检查，缺文件 panic）。
+2. 主题目录表（0x142ab22b8 起 5 个胖指针 {ptr,len}：summer(6)/olden(5)/flowery(7)/autumn(6)/winter(6)，**本批 rne-read 复核**）→ `Path::join("assets/glade").join(theme).join("colors.json")` → `fs::stat` 成功才再加载（**主题层可选，基础层必须**）。
+3. `FrozenMap::get(&SsboId)`，键立即数 `0xef2a68c12cde3f0d` = xxh3_64("ColorLibrary")（原 EXE XXH3 secret 复算，O）→ 缺失 unwrap（行 156）→ `assert_eq!(state.name, type_name::<ColorLibrarySsbo>())`（名长 0x3e）。
+4. vtable+0x18（as_any）取具体 TypedStorageBuffer → `byte_size >= 0x250` 守卫 → `update_buffer_bytes(buffer, data, [0..0x250], 0)` → Err → unwrap panic（行 158）→ Ok → `memcpy` CPU 资源（**成功才回写**）。
+
+### 关键常量表
+
+| 常量 | 值 | 含义 |
+|---|---|---|
+| 槽数/大小 | 37 × 16 B = 0x250 | [[f32;4];37]，4 字节对齐非 SIMD Vec4 |
+| 默认色 | (1.0, 0.0, 1.0, 1.0) 品红 | 37 槽全填（xmmword 0x142a9be30） |
+| SsboId | 0xef2a68c12cde3f0d | xxh3_64("ColorLibrary")（短名非全名） |
+| 上传范围 | 0..0x250，mip/offset 实参 1 与 0x22 | update_buffer_bytes |
+| 主题表 | 0x142ab22b8（5×{ptr,len}） | summer/olden/flowery/autumn/winter |
+
+### 模块间调用
+
+- `update_color_library` ← `systems::backend::configwatch`（0x14085b1c0，take pending 后直调）；→ `AssetSsboLibrary`（FrozenMap::get + vtable buffer）+ GraphicsDevice `update_buffer_bytes`。
+- `deserialize_from_path`（&PathBuf / &str 两个泛型实例 0x14155a170/0x14155a320）→ fs::read_to_string + serde_json::from_str::<Vec<ColorFromJson>>（两处 unwrap panic）。

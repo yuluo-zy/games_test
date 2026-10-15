@@ -1,0 +1,182 @@
+[
+ {
+  "addr": "0x1402e0630",
+  "verdict": "一致",
+  "detail": "serde derive 胶水（不计业务）。S_PUB32 该址唯一符号为 country_core::resources::stairs::stairs_state 的 StairGraphEdge Serialize::serialize::he93863cb385cd42c，与行内 fn 完全吻合；协调员已预验证（胶水一致）。",
+  "evidence": "public-symbols.json 0x1402e0630 仅 1 条 S_PUB32：StairGraphEdge $u20$Serialize$u20$::serialize；PDB exact/pubsym 与行内 fn 同名同址（size 248/212）"
+ },
+ {
+  "addr": "0x1408b9170",
+  "verdict": "一致",
+  "detail": "register_required_components Bevy 注册胶水（不计业务）。PDB/PUB32 唯一符号 ClutterMarkedForDeletion 的 Component::register_required_components，与行内 fn 吻合；decomp 有效（27904B），调用 bevy_ecs::component::QueuedRegistration::register 与 enforce_no_required_components_recursion，典型 Bevy 必需组件注册形态。",
+  "evidence": "decomp-0x1408b9170.txt 有效；FUN_ 映射：0x140d3fa40=QueuedRegistration::register、0x140d40d70=enforce_no_required_components_recursion；public-symbols.json 同址 1 条"
+ },
+ {
+  "addr": "0x1408cc680",
+  "verdict": "一致",
+  "detail": "legacy_raycast mask=0 的 rapier raycast（无命中语义）成立。decomp 有效：调用 FUN_1408cdc60(...,第4参 0) 即 mask=0；FUN_1408cdc60 内按 param_7 的 32-bit mask 逐子世界循环，mask=0 时全部跳过、命中状态 iStack_14 保持 2，外层 iStack_14==2 时把结果标记为 2（无命中）——与“无命中语义，遗留”完全吻合。",
+  "evidence": "decomp-0x1408cc680.txt（933B）+ decomp-0x1408cdc60.txt（查询循环/状态 2 语义）；PUB32 同址唯一 legacy_raycast::h07cd5421a017ff6e"
+ },
+ {
+  "addr": "0x1408ce4a0",
+  "verdict": "一致",
+  "detail": "rapier_hit_to_raycast_world_result 行为逐项核实：feature==2 门（*param_3 != 2 时写 0x34 标记 2 直接返回）；调用 utils::geometry::barycentric::barycentric 做重心插值；法线数组存在时对插值法线做 quat 旋转（可见 v+2w(qxv)+2qx(qxv) 展开式），uv 数组存在时 barycentric 插值 uv；无法线数组（lVar9==0）时取原始命中法线（param_3+3/param_3[5]）；结果写至偏移 0x40（claim 的 0x40B 按 0x40 字节结果理解）。",
+  "evidence": "decomp-0x1408ce4a0.txt；FUN_1416c2f20=utils::geometry::barycentric::barycentric、FUN_1428d9518=panic_bounds_check；PUB32 唯一符号"
+ },
+ {
+  "addr": "0x1408ffd70",
+  "verdict": "一致",
+  "detail": "add_edge 机器码核实（原 decomp 文件为 varnode 错误，无效）：cmp edx,r8d (a vs b)；je → 0x1408ffe5c 调 core::panicking::panic（PUB32 确认）后 int3——自环 panic 成立；cmovb ebp=min、cmova r14d=max 归一化 (min,max)；命中短路：单边情形 cmp [rax+8]/[rax+0xc] 双命中即 ret，多边情形 edge 表 push 返回 1 也短路；插入：0x14093ac90（表1 存 (a,b)）+ 0x1402c8640 x3（表2 存 (min,max)、(a,a)、tail-jmp (b,b)）——claim 的“3 处”实为 3 个 call 点加 1 个 tail-call。",
+  "evidence": "capstone 反汇编 0x1408ffd70..ffe75 全函数；public-symbols.json：0x1428d9430=core::panicking::panic；0x1402c8640 与 remove_node 内插桩助手同址"
+ },
+ {
+  "addr": "0x1408ffef0",
+  "verdict": "一致",
+  "detail": "remove_node 成立：edge 数分支（0 条/1 条/多条）；对每条邻边以 (min,max) 调 FUN_1402c8640 插桩（uVar6/uVar7 的 min/max 选择可见）；无邻边时兜底 FUN_1402c8640(param_1+0x29, n, n) 自环 (n,n)；最后 FUN_14093a220(param_1+5, n) 即 GraphMap::remove_node（图在 self+5）；越界走 panic_bounds_check+swi(3)。",
+  "evidence": "decomp-0x1408ffef0.txt（1749B）有效；PUB32 唯一 StairsState::remove_node::h9ccdb889ee8f9c9e"
+ },
+ {
+  "addr": "0x140944070",
+  "verdict": "一致",
+  "detail": "add_ivy_systems 插件系统注册胶水。PUB32 唯一符号 App as IvySystems::add_ivy_systems，与行内 fn 吻合；decomp 有效且为 3 调用注册形态：FUN_141664d80(栈, 0x16=22) 建系统描述、FUN_141450fa0 组装、FUN_140b67280(app, 描述) 注册。",
+  "evidence": "decomp-0x140944070.txt（272B）；public-symbols.json 0x140944070 → App as IvySystems::add_ivy_systems::h5eab93b71cef1e18"
+ },
+ {
+  "addr": "0x14094cf90",
+  "verdict": "一致",
+  "detail": "ivy_spawner 行为证据成立：调用 IvyStorage::spawn_ivy（0x1408696f0）、ivy_grower::closest_segment_index（0x14094c800）、Curve::get_coord_at_u/is_on_right_side/get_approx_u_from_pos（0x141467ce0/0x141469000/0x141469a20）、PerchanceContext::usize_less_than（随机根点）、FastNoise::get_noise、Quat::from_rotation_arc；串含 'assertion failed: w.simplified_curve_2d.is_valid()'（墙段检查上下文）。claim 的 try_random_ivy_root/try_ivy_root_next_to_cursor/is_point_inside_wall_segment 为源码级助手名，S_PUB32 无此独立符号（内联进本系统），与机器码行为一致。",
+  "evidence": "decomp-0x14094cf90.txt（38649B）有效 + FUN_→PDB 映射 + 串解析；PUB32 唯一 ivy_spawner::h00fc38d9e49c0473"
+ },
+ {
+  "addr": "0x140996080",
+  "verdict": "一致",
+  "detail": "ivy_leaf_spawner 成立：串 \"Received IvySegmentDoneGrowingMsg with ivy id , but IvyStorage didn't have it\" 位于 0x142abae60 且被本函数 decomp 直接引用（UNK_142abae60）——claim 串为其前缀，逐字吻合；调用 IvyLeafStorage::add（0x1408fe280）、PerchanceContext::normal_f32/uniform_disc_vec2、FastNoise::get_noise3d、usize Display fmt（id 格式化）；puffin 作用域串含模块名。",
+  "evidence": "decomp-0x140996080.txt（28076B）有效；二进制 0x142abae60 串读取；FUN_→PDB 映射；PUB32 唯一 ivy_leaf_spawner::h0fac5af88b31af01"
+ },
+ {
+  "addr": "0x140b199e0",
+  "verdict": "一致",
+  "detail": "WallCoord::into_world_space 成立：调用 Curve::get_coord_at_u（0x141467ce0）做曲线采样；u=pos.x/曲线长 且 clamp [0,1]（1.0f=0x3f800000）；法向偏移常量逐字核对：0.63f（0x3f2147ae, 0x142aa4550）x 0.5f（0x3f000000, 0x1429258e0）——0.63*0.5 完全吻合；-0.0（0x80000000）翻转垂直方向；param_4 按侧 ± 加减。",
+  "evidence": "decomp-0x140b199e0.txt（4491B）+ 常量区浮点读取（0x142aa4550=0.63、0x1429258e0=0.5、0x142925904=1.0、0x1429258f0=-0.0）；PUB32 唯一"
+ },
+ {
+  "addr": "0x140b26bd0",
+  "verdict": "一致",
+  "detail": "to_offset_collider_builder（new_compound 闭包）成立：PDB/PUB32 唯一 IsoTransform as ToOffsetColliderBuilder::to_offset_collider_builder；decomp 有效：读 IsoTransform 分量、调 IsoTransform::nested_in（0x140c91b80，以 param_3+0x50 的形状与给定 iso 合成嵌套变换）、Arc 引用计数 clone（LOCK/UNLOCK + 溢出检查）产出 (shape+offset transform) 对——即供 rapier new_compound 使用的偏移 collider 闭包（new_compound 本体 0x1408d0230，reconstruction 已标 O）。",
+  "evidence": "decomp-0x140b26bd0.txt（2650B）；FUN_0x140c91b80=utils::IsoTransform::nested_in；public-symbols.json 唯一符号"
+ },
+ {
+  "addr": "0x140f88c80",
+  "verdict": "一致",
+  "detail": "Butterfly register_required_components Bevy 注册胶水（不计业务）。PDB/PUB32 唯一符号 Butterfly 的 Component::register_required_components；decomp 有效（18260B），调用 QueuedRegistration::register + enforce_no_required_components_recursion，与 0x1408b9170 同形态。",
+  "evidence": "decomp-0x140f88c80.txt；FUN_→PDB 映射；public-symbols.json 同址 1 条"
+ },
+ {
+  "addr": "0x141296510",
+  "verdict": "一致",
+  "detail": "upsert_collider<StairGraphEdge,IsoTransform> 成立：PDB/PUB32 唯一符号与行内 fn 同名（含泛型参数）；decomp 有效，调用链完整：get_collider/get_collider_mesh/on_collider_upserted、rapier ColliderBuilder::build、ColliderSet::insert、SlotMap::insert、compute_aabb、to_offset_collider_builder、hash_one——upsert 语义（查旧→建新→插入→通知）吻合。",
+  "evidence": "decomp-0x141296510.txt（28127B）；FUN_→PDB 映射（0x140b93000=ColliderBuilder::build、0x1420088a0=ColliderSet::insert 等）；PUB32 唯一"
+ },
+ {
+  "addr": "0x14129b780",
+  "verdict": "一致",
+  "detail": "iter_shape_overlaps（QBVH 相交遍历）成立：PDB/PUB32 唯一符号（SubworldColliderHandle + calculate_distortion_from_structural_graph closure_env$0/$1 泛型实例）；decomp 有效，调用 parry3d Qbvh::traverse_depth_first_node（0x142009910）——QBVH 深度优先遍历确认；另调用 IntoTransformedShape::into_transformed_shape、Isometry::inverse。",
+  "evidence": "decomp-0x14129b780.txt（4759B）；FUN_0x142009910=parry3d::partitioning::qbvh::traversal::Qbvh::traverse_depth_first_node；PUB32 唯一"
+ },
+ {
+  "addr": "0x1413ff8a0",
+  "verdict": "一致",
+  "detail": "SheepMoveState serde derive 胶水（不计业务）。PDB/PUB32 唯一符号 SheepMoveState 的 Deserialize::deserialize；decomp 有效（4218B），调用 serde_json Deserializer::error/peek_error、VariantAccess::struct_variant、DeserializeSeed——典型 serde derive visitor 形态。",
+  "evidence": "decomp-0x1413ff8a0.txt；FUN_→PDB 映射；public-symbols.json 同址 1 条"
+ },
+ {
+  "addr": "0x14003bb80",
+  "verdict": "一致",
+  "detail": "按 round2 新标准（S_PUB32 权威）判 ICF 折叠一致：该址 S_PUB32 共 437 条符号，含 country_core::systems::world_raster::RasterDrawResources::apply::h0413737f75d9ebc5 与 RasterHistoryRecordResources::apply::hc28c4e7b19170ee8 及 AllWorldRasterWrite/Read 的 apply/new_archetype/queue 等——行内 fn（world_raster impl$0::apply）对应其中 SystemParam apply 实例，并非地址错位；机器码 0x14003bb80 为 1B c3 ret（无状态 SystemParam apply no-op 折叠），与 Plugin::finish<MainCameraPlugin>（PDB exact）等同址。",
+  "evidence": "rne-read 0x14003bb80: c3…；public-symbols.json 0x14003bb80=437 条（含 world_raster RasterDrawResources/RasterHistoryRecordResources apply/queue/new_archetype、world_raster_defs AllWorldRasterWrite/Read 全套）；协调员预验证"
+ },
+ {
+  "addr": "0x1403d8bd0",
+  "verdict": "一致",
+  "detail": "upload_raster_staging_to_texture<PathRaster> 成立：PDB/PUB32 唯一符号与行内 fn 吻合（泛型 PathRaster）；decomp 有效（3884B），GPU 上传 pass 调用链：ComputePass::new、bind_texture_to_compute_pass、read_storage_buffer、UniformBinder::write_uniform、dispatch_2d。",
+  "evidence": "decomp-0x1403d8bd0.txt（render-loop/terrain-water 两份一致）；FUN_→PDB 映射（0x14096ec80=dispatch_2d 等）；PUB32 唯一"
+ },
+ {
+  "addr": "0x14083f410",
+  "verdict": "一致",
+  "detail": "would_write_succeed 成立：串证据——类型名表 'Cobblestone1Raster'/'Cobblestone2Raster'/'Cobblestone3Raster'（0x142a92ed0 起）与 Bevy panic 串 'Resource does not exist…'（0x142a92ef0 起）均被本函数 decomp 引用；0xa(10) 长度比对（param_2[1] != 0xa）+ 内容比对常量 0x7473615268746150（'PathRast'）与 0x7265（'er'）——即按槽位比对 'PathRaster' 写冲突检测；缺失资源走 Bevy panic 'Resource does not exist…'。",
+  "evidence": "decomp-0x14083f410.txt（17553B）72-74 行；UNK_142a92ed0/142a92ef0 串解析；PUB32 唯一 would_write_succeed::h384904df09772de2"
+ },
+ {
+  "addr": "0x140924a10",
+  "verdict": "一致",
+  "detail": "TerrainEditingData::new_stroke 成立：0x3ffffe < last_stroke_id（[param_1+0x38]）→ return 0（None）；否则 id+1 写回；分配 0xc*4 后调 FUN_141526d10（HashMap::insert，键为新 id）；再对 stroke id 做 usize Display 格式化（FUN_140d8d6c0）；分配失败路径 panic。claim 的 \"<0x3fffff 则 +1 否则 None\" 语义等价成立。",
+  "evidence": "decomp-0x140924a10.txt（1565B）全文；PUB32 唯一 new_stroke::h1dfd4091172b91db"
+ },
+ {
+  "addr": "0x1409768b0",
+  "verdict": "一致",
+  "detail": "mouse_read_terrain_stroke_index 成立：串 'Read terrain stroke' + '/read_terrain_stroke.cs.hlsl'（0x142ab68e0/0x142ab68f3）被 decomp 引用；GPU 调用链：ComputePass::new、bind_texture_to_compute_pass、write_to_cpu_mapped_storage_buffer（写 MouseTerrainRaycastSsbo 类 CPU 映射缓冲）；puffin 作用域串含模块名。",
+  "evidence": "decomp-0x1409768b0.txt（6297B，render-loop/terrain-water 一致）；UNK 串解析；FUN_0x1416093d0=ComputePass::write_to_cpu_mapped_storage_buffer；PUB32 唯一"
+ },
+ {
+  "addr": "0x14098c680",
+  "verdict": "一致",
+  "detail": "read_terrain_data 成立：串证据全部命中——'Visual terrain height'（0x142ab9198）、'Read terrain height/terrain_editing/read_terrain_height.cs.hlsl'、'Read terrain rock mask/terrain_editing/read_terrain_rock_mask.cs.hlsl'、'Read water/water/read_water_mask.cs.hlsl'、'Read garden/garden/read_garden_mask.cs.hlsl'（0x142ab92c8-937f）、'rocky_terrain'、'terrain_shader'；7 处 ComputePass::write_storage_buffer（多路回读 pass）；floor_shader/rocky_terrain_shader 绘制。注：claim 提及的 ScheduledTerrainReadback::on_gpu_copy_issued 未出现在直接 callee 名单（属回读机制内部钩子），不影响整体判定。",
+  "evidence": "decomp-0x14098c680.txt（37874B，render-loop/terrain-water 一致）；UNK 串解析；FUN_→PDB 映射；PUB32 唯一"
+ },
+ {
+  "addr": "0x1409e9640",
+  "verdict": "不一致",
+  "detail": "行为主体成立但 debug 门方向反（claim 与机器码相反）：代码为 if(*0x14362c308 == 0) { x=u*512 截断 clamp[0,511]；index=(y<<9|x)+0x201 } else { idx=(int)(u*512-0.5)+1 clamp[0,511]；index=(y<<9|x) 无 0x201 }——即 +0x201 偏移在 debug 全局字节==0 时走，而 claim 写 \"≠0 走 +0x201 偏移视觉网格变体\"。其余逐项吻合：(x/130+0.5)（130.0f@0x1429a3c70、0.5f@0x1429258e0）、×512（0x1429a3c80/84/b0）、-0.5+1（0x14295a0e8=-0.5）、clamp[0,511]、u16 读取（*2）。fix 建议：该行改为 \"debug 全局字节 *0x14362c308==0 时走 +0x201 分支，≠0 时走无偏移的 u*512-0.5+1 分支\"。",
+  "evidence": "decomp-0x1409e9640.txt（3675B）if(*pcRam000000014362c308=='\\0') 分支结构；常量区浮点读取；PUB32 唯一 sample_at_world_xz"
+ },
+ {
+  "addr": "0x1409ecea0",
+  "verdict": "一致",
+  "detail": "water_ambience_audio_system 成立：PDB/PUB32 唯一符号；decomp 有效（10680B），调用 AudioLoop::start_if_not_playing（0x140a596b0）/AudioLoop::stop（0x140a59430）、libfmod EventInstance::set_volume（0x141436b40）、AudioInstance::set_position（0x140a57da0）——以入水状态驱动水面环境音循环（音量/位置/启停）；串含模块 puffin 作用域名与 'crates/country-core/src/systems/audio/water_ambience_audio.rs' panic 位置。",
+  "evidence": "decomp-0x1409ecea0.txt（audio-misc/terrain-water 两份一致）；FUN_→PDB 映射；UNK 串解析；PUB32 唯一"
+ },
+ {
+  "addr": "0x1409f1890",
+  "verdict": "一致",
+  "detail": "reset_water 成立（decomp 文件 NotFound 无效，以机器码核实）：0x1409f1890 处 8 字节 c7 41 04 00 00 00 40 c3 = mov dword ptr [rcx+4], 0x40000000; ret——水笔刷字段重置为 2.0f，与 claim \"[rcx+4]=0x40000000\" 逐字节吻合；PDB exact size 8 亦吻合。",
+  "evidence": "rne-read --hex 0x1409f1890 16: c7410400000040c3…；public-symbols.json 唯一 BrushSizes::reset_water::hb33f9b0b6303e8d3"
+ },
+ {
+  "addr": "0x140a16580",
+  "verdict": "一致",
+  "detail": "commit_scratch_to_composite<512> 成立：decomp 有效（4909B）；puffin 作用域串含本函数名（0x142ac8218）；核心为 len 断言（[param_1+0x10] 与 [param_1+0x28] 不等 → 错误路径/panic）后调 0x142923c00=memcpy（scratch→composite 纯拷贝）——与\"纯 memcpy + len 断言\"吻合。",
+  "evidence": "decomp-0x140a16580.txt；FUN_0x142923c00→public-symbols.json=memcpy；PUB32 唯一 commit_scratch_to_composite::he503707caeef5f0a"
+ },
+ {
+  "addr": "0x140a16960",
+  "verdict": "一致",
+  "detail": "rasterize_stroke<512, Map<Iter<Vec3>, iter_points_xz 闭包>> 成立（本章该址 impl$2 行；PUB32 同址 2 个单态对应章节 impl$2/impl$3 两行）：常量核对——130.0f（0x1429a3c70/0x142a7b658）、0.5f（0x1429258e0）、512.0f（0x1429a3c80/84/b0）、65536.0f（u16 饱和加基准）、1.0/4.0；28B/条命令表（count*0x1c 分配，0x140a16c81 溢出检查）；3 个 zeno::mask::Mask::blend_into 单态（0x1416bdab0/0x1416be2e0/0x1416beb50）＝三 blend 闭包（min/max/饱和加）。grid=(world/130+0.5)*512 与 28B/条均吻合。",
+  "evidence": "decomp-0x140a16960.txt（10386B）；UNK 浮点读取；FUN_→PDB 映射（3 x blend_into）；public-symbols.json 同址 2 条 rasterize_stroke"
+ },
+ {
+  "addr": "0x140a97880",
+  "verdict": "一致",
+  "detail": "TerrainStroke::insert_or_morph_last_point 成立（decomp_files 为空，以 capstone 全 421 字节反汇编核实）：len==0→push（capacity 不足时 grow，panic 位置 terrain_stroke.rs:45:25）；len==1 且 dist(point,last)>0.001（常量 0x3a83126f=0.001f @ 0x1429cd060）→push；len>=2：dist(prev,last)>=spacing（xmm2 参数，Win64 ABI 第 3 参）→push（容量 <0x400=1024 才 push，否则返回），否则覆盖 last 即 morph——claim 语义完全吻合；源串 'crates/country-core/src/resources/terrain_stroke.rs' 确认模块归属。",
+  "evidence": "capstone 反汇编 0x140a97880..a7a24；0x1429cd060 f32=0.001000000047；0x142adb140 Location{file='crates/country-core/src/resources/terrain_stroke.rs', line 45, col 25}；PUB32 唯一 insert_or_morph_last_point::ha454410a8264e7bb"
+ },
+ {
+  "addr": "0x140ab6de0",
+  "verdict": "一致",
+  "detail": "draw_raster<Cobblestone2RasterStagingSsbo, WorldRaster<512>, erase_other_path_variants closure_env$3/4/5> 实例成立：PDB exact 与行内 fn 泛型名一致（Cobblestone2 无误）；PUB32 该址 3 个 draw_raster 单态（对应三闭包变体）；decomp 有效（53259B），管线调用：ActiveRasterStroke::start_new、InProgressRasterStroke::add_point/solidify_fluid_into、copy_composite_to_scratch/commit_scratch_to_composite/rasterize_stroke/copy_to_staging、DirtyTiles::rasterize_world_space_stroke/retain。",
+  "evidence": "decomp-0x140ab6de0.txt；FUN_→PDB 映射；public-symbols.json 同址 3 条 draw_raster"
+ },
+ {
+  "addr": "0x140aba770",
+  "verdict": "一致",
+  "detail": "draw_raster<PathRasterStagingSsbo, WorldRaster<512>, draw_path closure_env$0/1/2> 实例成立：PDB exact 与行内 fn 泛型名一致；PUB32 该址 draw_raster::haccd5cb9fee5fa00；decomp 有效（48186B），与 0x140ab6de0 相同的 world_raster 管线调用（start_new/add_point/solidify_fluid_into/copy_composite_to_scratch/commit_scratch_to_composite/rasterize_stroke/copy_to_staging/DirtyTiles）。",
+  "evidence": "decomp-0x140aba770.txt；FUN_→PDB 映射；public-symbols.json"
+ },
+ {
+  "addr": "0x140aef1f0",
+  "verdict": "一致",
+  "detail": "ui_edit_terrain 成立：PDB/PUB32 唯一符号与行内 fn 吻合；decomp 有效（34399B）；调用 UiState::add（0x1409231f0）等 UI 状态交互；事件命令（EditTerrainStrokeCmd/SetTerrainStrokePtsCmd 等）生成细节属 ui-input 域主责，本章按身份+行为类核验通过。",
+  "evidence": "decomp-0x140aef1f0.txt；FUN_0x1409231f0=UiState::add；public-symbols.json 唯一 ui_edit_terrain::h11e063eba6283e83"
+ }
+]

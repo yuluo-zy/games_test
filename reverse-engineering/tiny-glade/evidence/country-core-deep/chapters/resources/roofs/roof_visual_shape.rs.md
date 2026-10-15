@@ -21,3 +21,23 @@
 - `RoofBoundsDims`：`+0` tag 字节（bit0=is_rectangle）；圆字段 +4/+8，矩字段 +4..+0x14（as_circle/as_rectangle 各断言匹配形状，panic 行 0x28=40）。
 - `get_height_01_unclamped_from_ws` 与 `roof_shape_at_intersection_y`（roof_shape.rs 章）共用高度 cap 计算块（同机器码模式）。
 - 交叉域：roof_noise（噪声采样）、roof_shape（截面）、reconstruction/roof/surface.rs、roof-tiles（扩展界）。
+
+## 实现方式（算法级）
+
+完整算法见 `roofs-rt/ALGORITHMS.md` §5.3。要点：
+
+### get_height_01_unclamped_from_ws（0x1408e4790）公式级
+```
+n = noise(pos.x·0.5, pos.z·0.5)                    # 噪声尺度 0.5（_UNK_142925870）
+y = pos.y + n·(−0.3)                               # 噪声系数 −0.3（_UNK_142925900；章内 "0.12?" 更正）
+if height_01(+0x30) > 0.1:
+  circle: dim_n = (r(+0x14) − 0.9)/7.1, base = 16.0（_UNK_142934604）
+  rect:   dim_n = (max(dim_x, dim_z) − 2.25)/12.75, base = 9.0（_UNK_142a7ba84）
+  t = clamp(dim_n/0.4, 0, 1);  smooth = (3−2t)·t²
+  cap_base = smooth·12 + (1−smooth)·base;  <0 → panic（0x140d8b480）
+  cap = min(height_01·12 + (1−height_01)·0.4, cap_base)
+return (y − floor(+0x4c)) / (cap − floor)
+```
+### 其余
+- get_roof_shape_from_pos_ws_clamped（0x1408e4750）：h01 = 上式 → clamp[0,1] → get_roof_shape(h01) 截面。
+- RoofBoundsDims as_circle/as_rectangle：tag bit0 匹配断言（不匹配 panic）。

@@ -1,0 +1,37 @@
+// 
+
+longlong * FUN_140d7bd90(longlong *param_1,longlong param_2)
+
+{
+  longlong lVar1;
+  undefined8 uVar2;
+  code *pcVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  undefined8 uVar6;
+  
+  lVar1 = *(longlong *)(param_2 + 0x10);
+  if (lVar1 < 0) {
+    uVar6 = 0;
+code_r0x000140d7be09:
+    FUN_1428d8fe3(uVar6,lVar1,&UNK_142b4bad0);
+    pcVar3 = (code *)swi(3);
+    plVar5 = (longlong *)(*pcVar3)();
+    return plVar5;
+  }
+  uVar2 = *(undefined8 *)(param_2 + 8);
+  if (lVar1 == 0) {
+    lVar4 = 1;
+  }
+  else {
+    uVar6 = 1;
+    lVar4 = func_0x000140613c10(lVar1,1);
+    if (lVar4 == 0) goto code_r0x000140d7be09;
+  }
+  func_0x000142923c00(lVar4,uVar2,lVar1);
+  *param_1 = lVar1;
+  param_1[1] = lVar4;
+  param_1[2] = lVar1;
+  return param_1;
+}
+

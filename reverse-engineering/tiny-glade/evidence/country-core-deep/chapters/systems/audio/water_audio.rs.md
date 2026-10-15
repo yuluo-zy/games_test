@@ -10,3 +10,7 @@
 |---|---|---|---|---|---|
 | `country_core::systems::audio::water_audio::water_audio_system` | 0x140873630 | 0 | 按 WaterRaster 水位采样驱动音频混合（audio-misc 域细查） | O | terrain-water\decomp\decomp-0x140873630.txt
 | `country_core::systems::audio::water_audio::water_audio_init_system` | 0x140873140 | 25 | 初始化 WaterAudioState 资源/音频源 | O | terrain-water\decomp\decomp-0x140873140.txt
+
+## 实现方式（算法级）
+
+`water_audio_system`（0x873630）：按 WaterRaster 水位采样驱动音频混合（4 循环 + mode）；`water_audio_init_system`（0x873140）初始化 WaterAudioState/音频源。细节归 audio-misc 域。

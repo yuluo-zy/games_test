@@ -1,0 +1,426 @@
+{
+ "adaptive_render_state.rs.md": [],
+ "atmosphere.rs.md": [
+  {
+   "addr": "0x140322a10",
+   "fn": "`_::impl$0::serialize<…PrettyFormatter>`",
+   "role": "猜测：serde 序列化；证实：**derive(Serialize) 胶水**，宿主 = `DerivedAtmosphere`（非 SunSkyColors）",
+   "concl": "**O**：`{` + 4 字段 `sun_tint_color/moon_tint_color/sky_low_color/sky_high_color` + `}`；各字段 0xc B（Vec3）。**纠错**：`SunSkyColors::lerp` 读 3 个 xmmword（3×Vec4），故 serialize 对象是同模块 `DerivedAtmosphere`（4×Vec3，48 B）——两者不同型"
+  },
+  {
+   "addr": "0x140a97650",
+   "fn": "`SunSkyColors::lerp`",
+   "role": "猜测：插值；证实：逐分量 `self*(1-t) + other*t`",
+   "concl": "**O**（87 B）：12 个 f32 逐分量 `other*t + self*(1-t)`（mulps×2 + addps；1-t 先算）。**不是** glam 的 `a+(b-a)*t`（舍入不同，t=1 时后者可能得不到恰好 other）"
+  }
+ ],
+ "directional_light.rs.md": [
+  {
+   "addr": "0x140b18550",
+   "fn": "`DirectionalLight::look_at`",
+   "role": "猜测：看向目标；证实：look-at 基构建",
+   "concl": "**O**（725 B）：right/up/forward 归一化基、translation = -dot(basis, eye-ish)；存 position + target + distance="
+  },
+  {
+   "addr": "0x140b18830",
+   "fn": "`DirectionalLight::set_direction_towards_light`",
+   "role": "猜测：沿光向移动；证实：position += normalize(direction)*distance",
+   "concl": "**O**（695 B）：position += normalize(direction)*distance；重建 look-at 基朝 target；存新 position"
+  }
+ ],
+ "dirty_index_range.rs.md": [],
+ "frame_constants.rs.md": [
+  {
+   "addr": "0x140976880",
+   "fn": "`FrameConstants::should_reset_temporal`",
+   "role": "猜测：谓词；证实：返回时间性重置标志",
+   "concl": "**O**（11 B，本批字节复核）：`cmp dword [rcx+0x80], 0; sete al; ret`——重标志在 +0x80（wp4 记为\"空体寄存器透传\"，字节证实为 +0x80==0 布尔）"
+  }
+ ],
+ "fsr_plugin.rs.md": [
+  {
+   "addr": "0x14003bb80",
+   "fn": "`plugin_impl::impl$0::build`",
+   "role": "猜测：插件 build；证实：**1 字节 RET 空函数（ICF 合并）**",
+   "concl": "**O**：字节 `c3 cc cc…`（0x14003bb80 起 1 B RET + int3 填充，其后 0x14003bb90 是另一函数 `55 41 57…`）；B-focused 反编译显示该址 = `bevy_app::plugin::Plugin::finish<MainCameraPlugin>` 空实现——PDB 名 `fsr_plugin::build` 与 bevy 空 `finish` ICF 合并。**无独立业务过程**；FSR 通过 compute passes 接线（`_fsr_copy_history`/`_fsr_init_reactive`，render-passes/INDEX.md）"
+  }
+ ],
+ "indirect.rs.md": [],
+ "load_texture.rs.md": [
+  {
+   "addr": "0x140917860",
+   "fn": "`load_compiled_texture_image`",
+   "role": "猜测：加载纹理；证实：编译镜像读取+校验+创建",
+   "concl": "**O**（2323 B）：1. puffin scope `\"load_compiled_texture_image\"`；2. `Path::to_path_buf` + join + `with_extension`（编译镜像路径）；3. debug 日志；`std::fs::OpenOptions::open`（io 错误 → panic）、`memmap2` mmap + file_len；4. 头校验：对齐长度、magic `0x48502183`、字段 +4 == 8、尾部 mips u16 < 0xff；5. `TextureDesc::new().sampled().mip_levels(..).array_elements(..)`；`ustr::Ustr::from(path)`；`GraphicsDevice::create_texture<&[u8]>`（reuse）unwrap；6. 返回 0x40 B `Texture`"
+  }
+ ],
+ "mesh.rs.md": [
+  {
+   "addr": "0x140a07390",
+   "fn": "`Mesh::new`",
+   "role": "猜测：构造空网格；证实：空索引/空属性 + 哨兵",
+   "concl": "**O**（166 B）：空 indices、空 attributes（RandomState）、`+0x18 = 0x8000…` 哨兵、参数拷到 +0x68/+0x70"
+  },
+  {
+   "addr": "0x140a074d0",
+   "fn": "`Mesh::arrayed_indices`",
+   "role": "猜测：三重化索引；证实：`Vec<[u32;3]>` from_iter ChunksExact",
+   "concl": "**O**（104 B）：`from_iter<[u32;3], Map<ChunksExact<u32>,…>>`"
+  },
+  {
+   "addr": "0x140a07540",
+   "fn": "`Mesh::add_color`",
+   "role": "猜测：加统一色；证实：位置数×color 属性写入",
+   "concl": "**O**（316 B）：查 `Vertex_Position`；`vec::from_elem(color, pos_count)`；`set_attribute<Vec<[f32;3]>>`"
+  }
+ ],
+ "mod.rs.md": [
+  {
+   "addr": "0x140987cb0",
+   "fn": "`AvailableGraphicsDevices::from_preference_order`",
+   "role": "猜测：按偏好排序；证实：**就地 `reverse()`**——成对交换 0xa0 B 元素",
+   "concl": "**O**（本批字节复核）：`mov rax,rcx; cmp rdx,2; jb +0x10a`（len<2 早退）→ `shr rcx,1`（len/2 轮）→ `lea r8,[rax+0x90]`（元素 +0x90）、`shl r9,5`（×0x20）、movups 对换 0xa0 B 元素——与 reconstruction 的 `devices.reverse()` 一致。输入排列方向/用途（I：调用方按\"最不优先在前\"给出，列表内部最优在前）不在函数内体现"
+  }
+ ],
+ "nani.rs.md": [],
+ "nani/buffers.rs.md": [
+  {
+   "addr": "0x1408baed0",
+   "fn": "`country_core::render::nani::buffers::nani_calculate_draw_list_params`",
+   "role": "27 kind × 4 list 前缀和：cmd_offsets += T[k]；draws 钳制（!FORCE_FINE && (k>=2",
+   "concl": ""
+  },
+  {
+   "addr": "0x1408bb650",
+   "fn": "`country_core::render::nani::buffers::impl$9::default_value`",
+   "role": "NaniDrawListOffsetDefaults（[u32;108]，0x1b0B）：offsets[4k+j] = base + j*T[k]，base += 4*T[k]；跳表 0x142aa1618",
+   "concl": "O"
+  }
+ ],
+ "nani/draw_ext.rs.md": [
+  {
+   "addr": "0x140904ae0",
+   "fn": "`country_core::render::nani::draw_ext::impl$0::nani_draw`",
+   "role": "9 步（O）：取 GpuWorld（type-hash 0x662978458699a5ef；缺→unwrap）→ subset 读锁（槽 None→unwrap）→ draw_count（Owned/External 变体 u64）→ list_index=kind*4",
+   "concl": "PASS_VARIANT_TABLE[pass_variant(+0xf0)]（0x302010000→[0,0,1,2,3]）→ list_index_to_cmd_offset（越界 panic_bounds_check）→ get_rg_buffer<NaniDrawListLength/NaniDrawList> + read_storage_buffer<NaniInstanceIndirectionSsbo> +（句柄有则）read_rg_storage_buffer(0x2106412d631790c6) → 偏移 cmd_slot*20 → count_path=FORCE_FINE(0x143634d9c)"
+  }
+ ],
+ "nani/gpu_world.rs.md": [
+  {
+   "addr": "0x141572870",
+   "fn": "`country_core::render::nani::gpu_world::_::impl$0::deserialize::impl$0::visit_str<enum2$<ron::error::Error> >`",
+   "role": "GpuWorldSubsetKind 的 serde Deserialize 派生（RON 字符串→变体，27 路匹配；非法 → Error::Message）；I（体量一致，未逐字节比对）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1415780c0",
+   "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::BalconyDoorInstanceData>`",
+   "role": "同一泛型（19 实例，1776B 系）：bevy 派生展开 —— ComponentsRegistrator::register_component<InstanceDataMarker<T>>（纯 ECS 胶水，无游戏数值）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x141575030",
+   "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::ClothInstanceData>`",
+   "role": "同一泛型（19 实例，1776B 系）：bevy 派生展开 —— ComponentsRegistrator::register_component<InstanceDataMarker<T>>（纯 ECS 胶水，无游戏数值）",
+   "concl": "O"
+  }
+ ],
+ "nani/instance_data.rs.md": [
+  {
+   "addr": "0x140990af0",
+   "fn": "`country_core::render::nani::instance_data::impl$122::clone_behavior`",
+   "role": "Component Clone 派生薄封装（13B）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140990a80",
+   "fn": "`country_core::render::nani::instance_data::impl$122::register_required_components`",
+   "role": "InstanceDataMarker<T> 组件注册（bevy 派生；行 284）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14098f690",
+   "fn": "`country_core::render::nani::instance_data::CurvedHalfTimberInstanceData::new_curved_xy`",
+   "role": "0x40B 逐偏移写入：+0x10=start-half_len*0.5、+0x14=mid+half_len*0.5、+0x18=start、+0x1c=end、+0x28=细分计数值、+0x30=next_power_of_two(ceil((",
+   "concl": "y1-y0"
+  }
+ ],
+ "nani/mesh_atlas.rs.md": [
+  {
+   "addr": "0x140a36200",
+   "fn": "`country_core::render::nani::mesh_atlas::MeshAtlas::add`",
+   "role": "8 步（O）：indices 空→panic \"invalid mesh\"；Vertex_Position 包围半径 sqrt(max(x²+y²+z²))；parts.len()<0x40 断言；base_vertex=现有元素数；首个 mesh 直接 clone 否则索引+base 后比较排序属性名集（不同 → Err anyhow \"Mesh attribute mismatch…\"，不回滚）→ 追加 MeshAtlasPart{index_offset,index_count,radius,0}；重复名 → panic \"Duplicate atlas mesh name\"",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140833250",
+   "fn": "`country_core::render::nani::mesh_atlas::MeshAtlasPart::new`",
+   "role": "空构造（3B 薄构造，O）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140002370",
+   "fn": "`country_core::render::nani::mesh_atlas::impl$10::clone_behavior`",
+   "role": "Component 派生薄封装（3B；与 is_exclusive<FunctionSystem> 同址 ICF，0x140002370）",
+   "concl": "O"
+  }
+ ],
+ "nani/systems.rs.md": [
+  {
+   "addr": "0x142077d20",
+   "fn": "`country_core::render::nani::systems::nani_update_curved_halftimber`",
+   "role": "CurvedHalfTimber 打包（kind 0x18，0x40 载荷，**&mut 组件直写**触发 tick）：选色 direct!=0→HalftimberColorIds[key]（越界 panic）/PublicWalls.roofs→Roof(byte@+0x40==2→u32@+0x44)/ids；写 data[3]（pad_0c）；无 cap 掩码；position=data[0..3]/sort=1.0",
+   "concl": "O"
+  },
+  {
+   "addr": "0x142078780",
+   "fn": "`country_core::render::nani::systems::nani_update_stone_floor`",
+   "role": "StoneFloor 打包（kind 9）：Roof(0x58B)/Floor(0x28B)/RoofAnimation(8B 缺省 1.0)；Roof 与 Floor 都缺 → unwrap；circle_tangent_u0（Circle2d::get_tangent_at_u(0.0) 0x140c97660）U=0",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14206f300",
+   "fn": "`country_core::render::nani::systems::nani_maintain_instances`",
+   "role": "实例维护三阶段（**先删→后建→再改**）：RemovedComponents→Local map remove_entry（缺→unwrap，行 51:41）→remove_instance；新增 Query<Entity,&NaniInstanceDesc,&Transform> Without<NaniActiveInstance> → MeshAtlasLibrary get_by_name（Named 需 part.subset==kind，缺→panic 行 63:21 文案）→ extend_no_data（closure$1 0x141565950 收 12B {u32,u32,kind u8,[u8;3]}）→ Local HashMap insert + Commands Insert<NaniActiveInstance>；容量满 → warn_once(\"Instance limit reached…\")；Changed<NaniInstanceDesc> → parts.len()==1 断言 → update_instance_mesh",
+   "concl": "O"
+  }
+ ],
+ "nani/trimesh.rs.md": [
+  {
+   "addr": "0x14129dbc0",
+   "fn": "`country_core::render::nani::trimesh::TrimeshChunk::index_count`",
+   "role": "movzx eax, word [rcx+8]：u16 索引数（5B）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14129dbd0",
+   "fn": "`country_core::render::nani::trimesh::Trimesh::builder`",
+   "role": "把索引缓冲切成 ≤64 三角形 meshlet（块内顶点去重成局部 u8 下标；Vec::with_capacity(0x40/0xc0)）；旧骨架完全缺失的主体",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14129e890",
+   "fn": "`country_core::render::nani::trimesh::TrimeshBuilder::positions`",
+   "role": "置 positions 属性下标（= 当前 attribs.len()）→ attrib<Vec3>(\"positions\", …)（98B）",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/bind_resources.rs.md": [
+  {
+   "addr": "0x1405896e0",
+   "fn": "`country_core::render::pass_builder::bind_resources::impl$0::bind_color_library<country_core::render::pass_builder::compute_pass_builder::ComputePass>`",
+   "role": "登记 ColorLibrarySsbo 读访问：read_access_buffer<ColorLibrarySsbo>（access 0x1a，组 1）→ 注册表命中 hash 0x52ec6a17beb8fef0 追加 AccessRange；**无槽表**",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1416286f0",
+   "fn": "`country_core::render::pass_builder::bind_resources::impl$0::bind_color_library<country_core::render::pass_builder::draw_builder::DrawBuilder>`",
+   "role": "同上，但经 HashMap<&str,PassResourceSlot>::rustc_entry 槽表（已占槽不重复登记）；access 0x1f",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1415fc230",
+   "fn": "`country_core::render::pass_builder::bind_resources::impl$0::bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>`",
+   "role": "取 RtTriangles/RtBvh 缓冲（SsboId 库查 + 名字断言 + unwrap）→ 4 槽 read_access_buffer（Tri/Meta/Bvh/WallColorId，0x1a）→ 2×write_uniform<u32>（Tri/Bvh 缓冲字）；ComputePass 版**不**写 CPU 缓冲",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/compute_pass_builder.rs.md": [
+  {
+   "addr": "0x1402af750",
+   "fn": "`country_core::render::pass_builder::compute_pass_builder::impl$4::bind_texture_to_compute_pass<country_core::render::pass_builder::pass_resource_access::WriteTextureUnchecked>`",
+   "role": "RG 路径（O）：注册表未命中 → 只写维度 uniform（键 name+1，闭包惰性）；命中 → assert set==0 → 取纹理 → 绑定数检查 → add_resource_access(res, access, write?0:1) → Ref::bind_view（整块 TextureViewDesc，+0x3c 资源号、+0x40 写标志）→ AccessRange → 维度 uniform；外部路径（受管/FromDisk）见 U",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140363db0",
+   "fn": "`country_core::render::pass_builder::compute_pass_builder::impl$4::bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>`",
+   "role": "RG 路径（O）：注册表未命中 → 只写维度 uniform（键 name+1，闭包惰性）；命中 → assert set==0 → 取纹理 → 绑定数检查 → add_resource_access(res, access, write?0:1) → Ref::bind_view（整块 TextureViewDesc，+0x3c 资源号、+0x40 写标志）→ AccessRange → 维度 uniform；外部路径（受管/FromDisk）见 U",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1408fcd40",
+   "fn": "`country_core::render::pass_builder::compute_pass_builder::impl$4::bind_texture_to_compute_pass<ref$<rhapsody::raw::texture::Texture> >`",
+   "role": "RG 路径（O）：注册表未命中 → 只写维度 uniform（键 name+1，闭包惰性）；命中 → assert set==0 → 取纹理 → 绑定数检查 → add_resource_access(res, access, write?0:1) → Ref::bind_view（整块 TextureViewDesc，+0x3c 资源号、+0x40 写标志）→ AccessRange → 维度 uniform；外部路径（受管/FromDisk）见 U",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/draw_builder.rs.md": [
+  {
+   "addr": "0x140905be0",
+   "fn": "`country_core::render::pass_builder::draw_builder::DrawBuilder::new`",
+   "role": "写 variant@+0xb0；取 shader 反射（缺失 unwrap）；**仅当反射有 uniform 块**才 DynamicConstants::allocate + insert uniform 绑定，否则 None@+0xde==8；写 +0xe0 pass、+0xe8 Arc、+0xf0=0",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140906150",
+   "fn": "`country_core::render::pass_builder::draw_builder::DrawBuilder::read_rg_storage_buffer`",
+   "role": "名字表空/未命中 → 原样返回；set!=0 → assert_failed<SetIndex>；add_resource_access(0x24, 组 1)；绑定≤0x100",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140906400",
+   "fn": "`country_core::render::pass_builder::draw_builder::DrawBuilder::bind_external_storage_buffer`",
+   "role": "{vk_buffer,0,u64::MAX}+句柄克隆 insert；get_vk_buffer None → unwrap",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/draw_list.rs.md": [],
+ "pass_builder/draw_stream.rs.md": [
+  {
+   "addr": "0x140867850",
+   "fn": "`country_core::render::pass_builder::draw_stream::DrawPacket::new`",
+   "role": "0xb8B 绘制包：+0x40 种类 u32=0x1_0000_0003（3 变体 + 计数）、+0x70 HashMap<BindingIndex,GpuOwned<DescriptorSetBinding>>、+0xa0 shader、+0xa8 光栅状态、+0xac blend 1.0、+0xb0 variant=0",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140867940",
+   "fn": "`country_core::render::pass_builder::draw_stream::TextureBindingKey::with_view`",
+   "role": "u64 键 = 0x4000_0000_0000_0000",
+   "concl": "id；有视图时 ^ calculate_hash(view)（0x140867940）"
+  },
+  {
+   "addr": "0x1408eefd0",
+   "fn": "`country_core::render::pass_builder::draw_stream::impl$8::to_texture_binding_key`",
+   "role": "&Texture → 恒 unreachable!(\"Raw textures must not be used as rg resources\")（draw_stream.rs:204:9）",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/framebuffer_binding.rs.md": [
+  {
+   "addr": "0x1409092f0",
+   "fn": "`country_core::render::pass_builder::framebuffer_binding::ColorAttachment::desc`",
+   "role": "21B：ptr = *(self + 8 + (tag==1)*0x10); return ptr+4（两变体都指向 {id:u32@0, TextureDesc@4}，引用偏移不同）",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/pass_resource_access.rs.md": [
+  {
+   "addr": "0x140a59800",
+   "fn": "`country_core::render::pass_builder::pass_resource_access::impl$0::as_texture`",
+   "role": "TexturePreset 的 TextureAccess：as_texture 返回 3 标签枚举（0=RG {extent,id,desc}、1=受管、2=按名）；dims=extent_2d",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140a59860",
+   "fn": "`country_core::render::pass_builder::pass_resource_access::impl$0::dims`",
+   "role": "TexturePreset：恒 TextureDesc::extent_2d（36B ImportedTexture 带 desc）",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1408ef010",
+   "fn": "`country_core::render::pass_builder::pass_resource_access::impl$2::as_texture`",
+   "role": "受管 &Handle<Texture>：标签 1 {extent, 图像视图(get_vk_image_view unwrap), 句柄克隆}",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/pass_resources.rs.md": [
+  {
+   "addr": "0x140909310",
+   "fn": "`country_core::render::pass_builder::pass_resources::PassResources::new_from`",
+   "role": "按 7 个 128 位 TypeId（A..G）查 world 资源表；B 可选（缺→0）、其余缺失 Option::unwrap；56B 布局 +0 着色器库/+8 纹理库/+0x10 SSBO 库/+0x28 Mutex<DynamicConstants>，+0x18/+0x20/+0x30 类型 U",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/shader_uri.rs.md": [
+  {
+   "addr": "0x140968960",
+   "fn": "`country_core::render::pass_builder::shader_uri::ShaderUri::parse`",
+   "role": "48B sret = 3×&str 对：rfind(':')→path/entry（无冒号 entry=None）、rfind('/')→文件名、rfind('.')→stem；无点 → unwrap panic",
+   "concl": "O"
+  },
+  {
+   "addr": "0x1408a4300",
+   "fn": "`country_core::render::pass_builder::shader_uri::impl$1::source_hash<ref$<str$> >`",
+   "role": "calculate_hash(&(self_str, &()))：SipHash-1-3 零密钥，str 写字节后补 0xff",
+   "concl": "O"
+  },
+  {
+   "addr": "0x140056d30",
+   "fn": "`country_core::render::pass_builder::shader_uri::impl$1::as_compute_pipeline<alloc::string::String>`",
+   "role": "ShaderUri::parse → ComputePipelineDesc{path: String, entry: \"cs_main\", defines: []}.with_entry(uri.entry)",
+   "concl": "O"
+  }
+ ],
+ "pass_builder/uniform_binder.rs.md": [
+  {
+   "addr": "0x14096b420",
+   "fn": "`country_core::render::pass_builder::uniform_binder::UniformBinder::new`",
+   "role": "反射 +0xd8==0（无 uniform 块）→ None（niche 标签 0xa）；否则 DynamicConstants::allocate(size=reflection[+0x128]) → into_uniform_buffer，记录 set/绑定号到 +0x28",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14048f660",
+   "fn": "`country_core::render::pass_builder::uniform_binder::UniformBinder::write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<array$<u32,2> >,array$<u32,2> >`",
+   "role": "同一泛型（10 实例，写宽不同）：守卫①反射 valid ②表非空 ③名字哈希（64 位直接作 hashbrown 哈希）命中取偏移 ④偏移≤len；写 u32/i32/f32/bool→u32 4B、[u32;2]/Vec2 8B、Vec3 12B、Vec4 16B、Mat4 64B；越界 slice_start_index_len_fail；守卫失败静默返回",
+   "concl": "O"
+  },
+  {
+   "addr": "0x14096ba30",
+   "fn": "`country_core::render::pass_builder::uniform_binder::UniformBinder::write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>`",
+   "role": "同一泛型（10 实例，写宽不同）：守卫①反射 valid ②表非空 ③名字哈希（64 位直接作 hashbrown 哈希）命中取偏移 ④偏移≤len；写 u32/i32/f32/bool→u32 4B、[u32;2]/Vec2 8B、Vec3 12B、Vec4 16B、Mat4 64B；越界 slice_start_index_len_fail；守卫失败静默返回",
+   "concl": "O"
+  }
+ ],
+ "raster_single.rs.md": [],
+ "render_config.rs.md": [
+  {
+   "addr": "0x140968ad0",
+   "fn": "`FullscreenConfig::resolution`",
+   "role": "查询/计算",
+   "concl": "O：resolution 访问器（FullscreenConfig 分辨率字段）"
+  },
+  {
+   "addr": "0x14003ae40",
+   "fn": "`…impl$0::deserialize::visit_str<ron::Error>`",
+   "role": "序列化/serde",
+   "concl": "O（胶水，round3 round2 复查修正：措辞由“字符串枚举”改“字段名匹配”）：serde 派生 visit_str（DisplayConfig 字段名 monitor/fullscreen 等 14 档长度跳表匹配，非枚举变体）"
+  },
+  {
+   "addr": "0x140914840",
+   "fn": "`…impl$0::previous`",
+   "role": "查询/计算",
+   "concl": "O：枚举迭代器 Sequence::previous（与 game_config 0x140914840 同址 ICF；枚举向前遍历胶水）"
+  }
+ ],
+ "shader.rs.md": [
+  {
+   "addr": "0x1409383b0",
+   "fn": "`compile_shader_variants`",
+   "role": "猜测：编译变体；证实：`shader_variants::get_raster_shader_variants()` + 逐变体 load_compiled",
+   "concl": "**O**（1054 B）：复用库取 raster 变体清单，每个变体 `ShaderCompilerArtifacts::load_compiled<RasterPipelineDesc>()`，产出编译变体产物容器（每 16-hex 变体一个；见 render-passes/shaders/catalog.md 两变体模式）"
+  },
+  {
+   "addr": "0x140937e10",
+   "fn": "`ComputeShaderProgram::new`",
+   "role": "猜测：构造计算程序；证实：load_compiled + create_compute_pipeline",
+   "concl": "**O**：`shader_pipeline::compiled::ShaderCompilerArtifacts::load_compiled<ComputePipelineDesc>()`（reuse，0x140 B 产物）→ debug 日志 \"Creating pipeline\"（module `country_core::render::shader`）→ Box 程序（0x150 分配）→ `GraphicsDevice::create_compute_pipeline<Arc<CompiledShaderPipeline>>` → 0xa0 B 结构填充（+0x90/+0x98 源路径/入口 String）"
+  },
+  {
+   "addr": "0x140938240",
+   "fn": "`RasterShaderProgram::new_draw`",
+   "role": "猜测：构造 raster；证实：compile_shader_variants + 填充 0xd8 B",
+   "concl": "**O**：调 `compile_shader_variants()`；Ok → 拷 64 B 参数 + variants + 2 参数进结构（0xd0+）；Err → unwrap"
+  }
+ ],
+ "shadowed_buffer.rs.md": [],
+ "sparse_instance_buffer.rs.md": [],
+ "ssbo.rs.md": [],
+ "uniform.rs.md": [],
+ "vao.rs.md": [
+  {
+   "addr": "0x140909690",
+   "fn": "`build_vao`",
+   "role": "猜测：构建 VAO；证实：GPU-only 缓冲 + 属性→绑定",
+   "concl": "**O**（463 B）：`fn build_vao(attributes: HashMap<String, VertexAttributeValues>, device) -> Vao`；`BufferDesc::new_gpu_only()` + `GraphicsDevice::create_buffer<Option<&[u8]>>()`（非 Ok → unwrap_failed，tag 0xb）；`Vec<VaoBinding>` = `attributes.iter().map(build_vao::closure$0).collect()`；闭包用 `VertexAttributeValues::size_in_bytes`（O 依赖）+ 原始属性字节索引 + unwrap 把 `(&String, &VAV)` → VaoBinding；返回 8 qword"
+  }
+ ],
+ "view_constants.rs.md": [
+  {
+   "addr": "0x140b18f60",
+   "fn": "`ViewportConstantBuilder::build`",
+   "role": "猜测：构建常量；证实：完整矩阵链",
+   "concl": "**O**（2339 B）：proj×view、逆矩阵、prev view-proj（时间重投影）、像素偏移应用；写 ~0x320 B 结构（0x40 步长交错存储；逐列精确映射重且留为 I）"
+  }
+ ]
+}

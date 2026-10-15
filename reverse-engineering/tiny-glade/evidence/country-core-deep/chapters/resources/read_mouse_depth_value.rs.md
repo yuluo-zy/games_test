@@ -18,3 +18,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+
+## 实现方式（算法级）
+
+`read_mouse_depth_value_from_gpu`（0xa1a480）：帧哨兵@+0x40 == i64::MIN+3 早退（帧有效性）；查 MouseDepthValueSsbo（名 0x47=71 字符）→ 读 2×float4 → NaN 过滤（`&0x7fffffff < 0x7f800000`）→ 写 {w f32@0, xyz@+8}。生产者 = mouse_depth_compute（frame compute）。

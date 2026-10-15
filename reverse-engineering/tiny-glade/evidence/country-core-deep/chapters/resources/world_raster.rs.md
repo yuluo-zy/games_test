@@ -56,3 +56,42 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`deref`、`deref_mut`、`deserialize`、`fmt`、`visit_enum`、`visit_map`、`visit_str` 等 13 项
+
+## 实现方式（算法级）
+
+### 处理链（O，本轮修正一处布局）
+
+```
+AllWorldRasterWrite::write(up_to)  每槽(0..up_to)：
+  槽 Option=None → memset(composite,0,len)（资源缺失→清空）
+  否则 len 断言("Length mismatch; expected ", 行43) → memcpy 槽数据→composite
+  memset(+0x98, 0xff, 0x200)   ← 4096-bit 脏瓦片位图全置1（非"staging 缓冲"；每 8×8px 瓦片 1 bit）
+  +0x299 = 1                    ← staging 脏标志
+→ upload_to_staging（0x83fa60）：6 槽按 type-id 查 *StagingSsbo → copy_to_staging(selector=0)
+→ copy_to_staging（0xa172d0）：+0x299 脏→memset(out,0,len)；+0x298=selector；
+    DirtyTiles::retain(bitmap@+0x98, frame) 按脏瓦片拷入 SSBO 映射区 → tabloid publish → +0x29a=1
+```
+
+### 逐函数算法
+
+| 函数 | 算法 |
+|---|---|
+| WorldRaster::new<512>（0xa15530） | alloc composite+scratch 各 0x40000B + 瓦片状态 Vec(4096×u32, 初值 0x07954dbb) + 拷贝 56B DirtyTiles 头模板 + memset(+0x98,0,0x200) 清位图 |
+| clear_buffer（0xa15a10）/ clear_all（0xa15da0） | 按选择字节清单缓冲（0x200 段或全 0x40000）；clear_all 双缓冲全清 + 4096 瓦片状态重置 0x07954dbb（SIMD+标量尾） |
+| copy_composite_to_scratch / commit_scratch_to_composite | 纯 memcpy + len 断言 |
+| rasterize_stroke（0xa16960） | 点数<3 早退；点列→zeno Command 表（28B/条，首点 move-to 其余 line-to，grid=(w/130+0.5)*512）；blend 闭包按 (arg6,bit0) 选 min/max/饱和加×笔刷(16.16)；(0,1)→panic；目标层按模式字节选 composite/scratch |
+| copy_to_staging（0xa172d0） | 见处理链；+0x50..0x5c 4×u32 脏瓦片元数据进 retain 帧 |
+| build_tile_hasher（0x9393e0） | 写 4×u64 ahash 种子（0xbe734ee571db45b0 / 0xfca4335f3c9b800a / 0x36de4a1709f2df62 / 0xee5497aefccb8a97）到 +0/+8/+0x10/+0x18 |
+| DirtyTilePublisher::unique | 38B：判别 0 + 双空 Vec(cap=8) |
+| subscribe（0xa158e0） | primary 校验（secondary→panic "Can't subscribe…"）；0x28B Arc 记录 {Arc 计数@0, lock@0x10, Arc<闭包>@0x20} 压入 +0x78 Vec；tabloid publish 换装闭包消费 |
+| write（0x83ebe0） | 见处理链 |
+| would_write_succeed（0x83f410） | 按槽比对类型名做写冲突检测；缺失资源→Bevy panic |
+| upload_to_staging（0x83fa60） | 6 槽 type-id 查 SSBO + memcmp 全名 → vtable 映射指针 → copy_to_staging(selector=0) |
+| PathRaster::new（0x83eaf0） | 委托 WorldRaster::new |
+
+### panic 分支
+
+- "Length mismatch; expected "（0x142ac8648/0x142a93cf0，行 43 world_raster_defs.rs，unwrap Err 包装）
+- "Can't subscribe to a secondary dirty tile publisher. Go for the primary one instead."（0x142ac85f8）
+- "Expected raster " / "End of stream while expecting raster "（deserialize\<Value>，0x142a93d80/8）
+- 尾部 panic/abort 胶水：`lea rcx,[world_raster_defs.rs fat]; call 0x1428d9310; int3`（0x14083f2d6）

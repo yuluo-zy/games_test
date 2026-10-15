@@ -166,6 +166,7 @@ SheepAnimationSsbo@0x1412ce4e0
 - 旧版 `get_rg_buffer` 的 "state==5 → re-import" 与 wp4 描述一致（O）。
 - **0x14067dd80**：`impl$0::buffer`/`handle` = `mov rax,rcx; ret`（本批字节复核），与 `AppSteamIntegration::client`（audio-misc §2.11）ICF 合并；`impl$1` 0x140a439a0 = `lea rax,[rcx+0x10]`（session-save 证据）；`impl$2` 0x14160f910 = `lea rax,[rcx+8]`。
 - **SsboId 断言文案**：`add_new` 撞同名 → `"Tried to register the same storage buffer twice: {NAME} (type: {full})"`；撞短名哈希 → `"Tried to register two storage buffers with the same \`NAME\`…"`；`get_rg_buffer` 缺失 → `"Buffer {NAME} (type: {full}) is not available in the library. Forgot to register it?"`（O，wp4/L0_NOTES）。
+- **get_rg_buffer 缺失 panic 参数槽序（round3 裁决项）**：机器码（0x1402b31a0）`format_args!` 参数序 = **[全名(73), 短名(28)]** → 渲染 `"Buffer {full} (type: {short})…"`；本文件注释与 reconstruction 实现渲染 `"Buffer {short} (type: {full})…"`——**槽序相反**（消息内容等价），待集成裁决是否对齐机器码参数序（见 `asset-libraries/ALGORITHMS.md` §14.1 / `CLOSURE-ROUND3.md` §4）。
 - 调试标签（add_new 的 BufferState 名）：`"Firefly_Vis_Buffer"`、`"NaniNextVisibilityBitmaskSsbo"` 等（wp4 O）；`SsboId = xxh3_64(槽名)` 由 d_cb_a/b 测试复算（`"Boats"`、`"Small lowpoly flowers"`、`"Garden Stone"`、`"HalftimberColorId"`、`"Sparkle"`）。
 
 ## 跨领域线索
@@ -173,3 +174,41 @@ SheepAnimationSsbo@0x1412ce4e0
 - 渲染面消费者：`pass_resource_access::read/write_access_buffer<T>`（A4）经 `get_rg_buffer<T>` 取句柄；d_cb_a/b 的 69 个 draw 回调、`indirect_draw_bricks`（`SparseInstanceBuffer<BrickTransformSsbo>` 经 +0x68 内嵌 Buffer）、`ivy_leaf_shader`/`roof_spire`/`roof_support_beam`（`as_any` 后读具体对象）、`env36`（SparkleSsbo `to_draw_multi_instanced`）、`update_color_library`（ColorLibrarySsbo，键 0xef2a68c12cde3f0d）。
 - `AssetSsboLibrary` TypeId = 0x8226cc786e679355（d_cb_a §2，真实资源在场）。
 - `get_cpu_shadow_words<T>`：B_x_out 追加的只读影子入口（TerrainRockMaskSsbo 4 字节元素），flower 系统使用。
+
+## 算法要点（本批深挖 2026-10-15，decomp: asset-libraries/decomp/）
+
+证据：本批 MCP 定点反编译（tg_m1）`decomp-0x1402b31a0`（get_rg_buffer<Cobblestone3RasterStagingSsbo>）、`decomp-0x14091ebb0`（export_from_rg）、`decomp-0x1412bdaf0`（add_new<Cobblestone3RasterStagingSsbo>）、`decomp-0x1412bbcf0`（add_new_with_data<ColorLibrarySsbo>）、`decomp-0x1412098a0`（get_mut<SparkleSsbo>）+ 机器码手解 0x14091eb30（BufferState::new）+ round3 FrozenMap::insert 0x140969bf0。
+
+### 注册/查询/删除算法
+
+| 操作 | 算法（O，机器码级） | 证据 |
+|---|---|---|
+| `SsboId` 生成 | 编译期常量：`xxh3_64(T::NAME)` 结果作为**立即数内联**进 add_new/get_rg_buffer（0x1412bdbca `movabs rdx,0x802ff23dee42ab47`）；另存 .rdata 静态（0x1429adf08 = 同一值的小端字节）供查表。**insert 传值（u64）、get 传引用（&SsboId）** | 机器码 + rne-read --hex 0x1429adf08 |
+| `FrozenMap::insert(&self, key: SsboId, value: Box<BufferState>) -> Result<(),()>` | ①写锁（std RwLock 状态字 @+0：0=无锁、0x3fffffff=写持有，快路径 cmpxchg）→ ②h2 = key>>0x39 广播 SSE 比对 ctrl 组 → ③槽命中：丢弃**新值**（vtable[0] drop → dealloc(data,size@vt+8,align@vt+0x10) → dealloc(box,0x40,8)），**表不变**，返回 Err(1)；槽空：写 `{key,value}` 桶（0x10 B）、items+1、返回 Ok(0)。**键已存在不替换** | round3 反编译 0x140969bf0 |
+| `add_new<T>` | **先建缓冲后查重**：①`T::new_storage_buffer(device, None)` → ②栈上组装 0x40 B BufferState → Box（alloc 0x40,8）→ ③**直接 insert（无前置 get）**，Ok 即返回；Err(1) 时读表内既有 BufferState 的 `name{ptr@+0x10,len@+0x18}`：`len==type_name.len` 且 memcmp 相等 → panic#1（"Tried to register the same storage buffer twice: {NAME} (type: {full})"，pieces 0x142c2d628 / 短名 0x142c2d840）；否则 panic#2（"Tried to register two storage buffers with the same \`NAME\`: {full}"，0x142c2d568）。insert 失败已先 drop 新 Box，表保持原状 | decomp-0x1412bdaf0 + --fat 0x142c2d628/0x142c2d568 |
+| `add_new_with_data<T>` | 同 add_new，仅①为 `new_storage_buffer(device, Some(&data))`（`len*size_of::<T>()` 字节） | decomp-0x1412bbcf0 |
+| `get_rg_buffer<T>` | 三段式（0x1402b31a0）：①`FrozenMap::get(&SsboId 静态)` 缺失 → 格式化 panic "Buffer {full} (type: {NAME}) is not available in the library. Forgot to register it?"（pieces=["Buffer "0x1429ae008/7, " (type: "0x1429ae00f/8, " is not available in the library. Forgot to register it?"0x1429ae017/0x39]；args=[全名 0x1429fcd5c/0x49, 短名 0x1429ae158]——**全名在前**，wp4 槽序待核）→ ②读锁 rg（+0x20），`+0x36` != 5（Some）→ 拷 20 B 句柄 @+0x28..0x3b、放锁、返回 → ③+0x36==5（None）：放读锁 → **再查一次表**（缺失 unwrap panic @0x1429adf78）→ `assert_eq!(name,type_name)`（len 0x49 + memcmp 0x1429fcd5c）→ `vtable+0x30`（Ssbo::handle）→ `rg.import_unowned(handle, 0x37)`（FUN_140bd4fc0）→ **第三次查表**（缺失 unwrap @0x1429adf90）→ 写锁存 Some → 句柄拷输出。**渲染导入按需发生在 CPU 面 get 之后，非注册时** | decomp-0x1402b31a0 |
+| `export_from_rg` | FrozenMap 全表遍历（hashbrown SSE 组扫描 + items 计数 @+0x28）：每条目 → 写锁 rg → **先写 +0x36=5（None）再读旧值**（take() 语义）→ 旧值 != 5 才 `rg.export(handle, 0x37)`（FUN_140bd5120）。开头借用字节 @+8 != 0 → panic（0x142ab57c0 = "called \`Result::unwrap()\` on an \`Err\` value"，FrozenMap 借用冲突） | decomp-0x14091ebb0 |
+| `BufferState::new` | 36 B 七次写：`{data@0, vtable@8, name.ptr@0x10, name.len@0x18, lock@0x20=0, handle@0x28..0x3f, None-tag@0x36=5}`（Win64: rcx=out, rdx=data, r8=vtable, r9=name.ptr, [rsp+0x28]=name.len） | 0x14091eb30 机器码 |
+| `get_mut<T>` | 表空/键缺失 → None；命中 → assert_eq!(name, type_name)（0x1412098a0 逐字节比对 0x14295076x 串）→ vtable+0x20 as_any_mut | decomp-0x1412098a0 |
+
+### 关键常量表
+
+| 常量 | 值 | 含义 |
+|---|---|---|
+| SsboId 静态 | 0x802ff23dee42ab47 | xxh3_64("Cobblestone3RasterStagingSsbo")（.rdata 0x1429adf08） |
+| import/export 绑定 | 0x37 | rg.import_unowned / rg.export 队列族实参（与 texture 0x22 不同） |
+| BufferState | 0x40 B（alloc 0x40,8） | 数据+胖指针+名字+锁+20 B 句柄 |
+| None 标签 | +0x36 == 5 | rg Option<ImportedBuffer> = None（L0_NOTES 修正 wp4） |
+| FrozenMap 桶 | 0x10 B | {u64 key, u64 value} |
+| 写锁状态字 | 0 = 无锁 / 0x3fffffff = 写持有 | std RwLock 内部协议（非游戏逻辑） |
+
+### 模块间调用与构建事实
+
+- `add_new` → `T::new_storage_buffer`（SsboType trait 族）→ `FrozenMap::insert`（0x140969bf0）；`get_rg_buffer` → `FrozenMap::get`（0x1405ca870）→ `rg.import_unowned`（0x140bd4fc0）；`export_from_rg` → `rg.export`（0x140bd5120）。
+- panic 位置串指向 **`/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/ssbo_library.rs`**（0x1429ae080/0x1429ae198）——Linux 构建机路径 + 私有仓库名 country-slice-private（新事实，O）。rustc 提交 05f9846f893b09a1be1fc8560e33fc3c815cfecb（iterator.rs 位置串）。
+
+### 本批纠错/细化
+
+- "add_new 撞键 panic" 细化：**panic 在 insert 之后**（insert-first，无前置 get）；既有表项地址由 insert 调用返回时 rdx 残留带出（该二进制内的确定行为，勿写成 API 契约）。
+- `FrozenMap::insert` "键已存在 → 丢弃新值 Box 返回 1"（round3 已修正 frozen_map 章；本批确认 ssbo 侧 add_new 依赖同一语义，表永不替换）。

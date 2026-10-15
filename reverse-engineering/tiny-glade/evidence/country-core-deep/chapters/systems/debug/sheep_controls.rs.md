@@ -14,6 +14,14 @@
 | country_core::systems::debug::sheep_controls::sheep_controls | 0x1416f11a0 | 97 | 0x1416f11a0：调试绵羊控制（PickingMode 拾取） | O（名） | audio-misc\decomp\decomp-0x1416f11a0.txt |
 | country_core::systems::debug::sheep_controls::apply_sheep_snapshot | 0x1416f24f0 | 358 | 0x1416f24f0：应用绵羊快照 | O（名） | audio-misc\decomp\decomp-0x1416f24f0.txt |
 
+## 实现方式（算法级）（O 名级 / I 结构）
+
+**sheep_controls @0x1416f11a0**：调试绵羊控制——bevy PickingMode 拾取绵羊实体，
+无 FMOD/游戏业务链（O 名）。handle_mouse_picking（行 267，I 内联）处理拾取事件。
+**apply_sheep_snapshot @0x1416f24f0**：把快照数据应用到绵羊状态（O 名，逐字段拷贝 U）。
+**SheepControl::new @0x1416f0ea0**：调试控制组件构造（O 名）。
+- clone_behavior @0x140002370 / register_required_components @0x1416f2910 = bevy 胶水（O）。I
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::systems::debug::sheep_controls::PickingMode::is_some`（行 51）— 谓词/校验

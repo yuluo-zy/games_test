@@ -1,0 +1,97 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_rev2",
+   "keep_open": true
+  },
+  "timeout_ms": 300000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_rev2"
+  },
+  "timeout_ms": 300000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x1404ec110"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "render_world"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x140a59890"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "TextureDesc_from_preset"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x14169a830"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "reset_indirect_args_closure"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x1416dcd10"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "bundle_component_ids"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x140852d60"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rrc_impl66"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x14084a260"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rrc_impl25"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_rev2",
+   "address": "0x14084be20"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rrc_impl29"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_rev2",
+   "save": false
+  },
+  "timeout_ms": 120000
+ }
+]

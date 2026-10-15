@@ -17,6 +17,16 @@
 - `read_water_mask`（行 196）— `/water/read_water_mask.cs.hlsl` 回读
 - `read_garden_mask`（行 207）— `/garden/read_garden_mask.cs.hlsl` 回读
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `read_terrain_data`（0x14098c680，W5）
+处理链（O，B_c1 §2）：
+1. `Read terrain height`（dispatch_1d 0x20000）/ `rock mask` / `Read water`（**demo 守卫 `*0x143634d90`**）/ `Read garden`（dispatch_1d 0x2000）；
+2. 预设槽 9/10/0xe/0x13/0x14（terrain_heightmap / visual_terrain_heightmap / rocky_terrain / water_mask / garden_mask）；
+3. 尾部 **`on_gpu_copy_issued`**（`swap(0)`，`|=` 标志）；
+4. 光栅预渲染 `"Visual terrain height"` 固化为 `VisualHeightRasterPlan`（两个 DrawBuilder，B_c1 §5 遗留）。
+- 回读结果经 `ScheduledTerrainReadback`（terrain-water 域）供 CPU 编辑/拾取。
+
 ## 关键事实
 
 - 回读结果经 `ScheduledTerrainReadback`（terrain-water 域）供 CPU 编辑/拾取。

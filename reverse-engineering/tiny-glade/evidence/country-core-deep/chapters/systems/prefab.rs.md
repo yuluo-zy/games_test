@@ -26,3 +26,20 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 3 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **spawn_prefabs 0x140840610**：事件消费 → PrefabLibrary 查找（缺失 panic
+  prefab.rs @0x142a94158）→ 实例创建。
+- **create_prefab_rt 0x140841550**：Prefab → 位置查表（@0x142a94358 按变体）→
+  四元数旋转矩阵 + 缩放 → GPU 实例缓冲 push（FUN_1415634c0）+ 打包颜色 u32
+  (b<<16|g<<8|r) → 条件 spawn（+0x84 标志字节：&1 spawn、==2 跳过）。
+- **create_prefab_audio_trigger 0x140841b00**：查 audio_trigger_library（0x140a382d0）
+  → 注册/生成（0x1408b9f20）。
+- **update_prefabs 0x140841d60**：GPU 实例数据刷新（触 audio_trigger_library 路径）。
+- **despawn_prefabs 0x140842d60**：逐条目（0x58 步长）despawn_prefab_contents
+  （0x140843390）→ Commands::despawn（0x140d14770）。
+- **hot_reload_prefabs 0x140843740**：watch 事件 → 加载 JSON 资产（0x140b712b0 族）
+  → despawn_prefab_contents → create_prefab_audio_trigger → create_prefab_rt
+  全量重建实例链。
+- **clone_behavior 0x140002370**：`xor eax,eax; ret`（返回 0/false，O）。

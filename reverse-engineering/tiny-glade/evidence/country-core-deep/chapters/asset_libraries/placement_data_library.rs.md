@@ -34,3 +34,34 @@
 
 - 旧版错：不读文件、返回 `Result<(),()>`、`add`/`clear` 不存在。
 - U：`PlacementDataSsbo` 的 JSON schema（deserialize_struct 含 u32/f32/i32/[f32;3]/[f32;2] 与 `utils::pack_2x16f_uint`，与 resources/placement_data.rs 现有字段不符，属另一工作包）；`Handle::new` 计数器即 `HANDLE_COUNT`（I，O 为 `lock xadd [0x143634cd0]` 同址模式）。
+- **round3 闭合（2026-10-15）**：JSON schema 已解出，见下方 §算法要点；U 解除。
+
+## 算法要点（本批深挖 2026-10-15，decomp: asset-libraries/decomp/decomp-0x1409365d0 + rne-read）
+
+### load<PathBuf> 流程（0x1409365d0，1674 B，返回 (Vec<PlacementDataSsbo>, Handle) 0x20 B）
+
+1. 表 B 非空（`[self+0x48] != 0`）才查重：`hash_one<RandomState,&PathBuf>` + 探测命中 → `panic_fmt(["AssetPlacementDataLibrary: the placement data from ", " has already been loaded"], path.display())`（pieces 0x142ab0fd0/0x142ab0ff0，行 93 列 13；**先查重后读文件**）。
+2. `fs::read_to_string(path)` 失败 → `panic_fmt(["Couldn't find  ", …])`（pieces 0x142ab1018 起——**"Couldn't find " 后有两个空格**，行 100 列 63，io 错误丢弃）。
+3. `serde_json::from_str::<Vec<PlacementDataSsbo>>` Err → unwrap panic（行 101 列 73）。
+4. `TypedStorageBuffer<PlacementDataSsbo>::new(device, Some(&data))`（`len*size` 字节上传 GPU）。
+5. `lock xadd [0x143634cd0], 1` 取全局 handle。
+6. `A.insert(handle, (buf, len))`（旧值非 None 则 drop 句柄）→ `B.insert(path, handle)`（返回 (Vec, handle)，文本释放）。
+
+### 关键常量/布局
+
+| 项 | 值 | 含义 |
+|---|---|---|
+| 表 A | HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)> @+0x00（条目 0x38 B） | handle → 缓冲+条数 |
+| 表 B | HashMap<PathBuf, Handle> @+0x30（条目 0x28 B） | 路径 → handle（查重 + 复用入口） |
+| RandomState | @+0x20 / @+0x50（k0 自增，第二张 k0 大 1） | 两张表各自哈希种子 |
+| 全局 handle | 0x143634cd0 | 与 mesh/vao/shader/ssbo 共用 |
+
+### 模块间调用 / U
+
+- `load` → TypedStorageBuffer::new（SsboType 族）+ 全局 HANDLE_COUNT；`register_required_components` 0x14086c3d0 = bevy derive 胶水。
+- **PlacementDataSsbo JSON schema（round3 闭合，tg_ca1 反编译族，O）**：`from_str::<Vec<PlacementDataSsbo>>` 链 = `FUN_141405cf0`（from_str）→ `FUN_1414106e0`（Vec）→ `FUN_140967640`（逐元素收集，stride 0x30=48B）→ `FUN_14142f860`（visit_map，28.5KB，调 `FUN_140b3b960`=__Field visit_str + `FUN_140c90df0`=pack_2x16f_uint×2）。
+  - **JSON 字段（tag=声明序）**：`position:[f32;3]`(必需)、`scale:f32`(必需)、`rotation_degrees:f32`(必需；**别名 `rotation_angle`**——FIELDS 串表 0x142c5cd48/0x142c5d028..058 主名 16 字符)、`id:i32/u32`(必需)、`custom0:u32`(可选,pack_2x16f)、`custom1:u32`(可选,pack_2x16f)、`bend_vector:[f32;2]`(可选)、`pad0:u32`(可选)。未知键跳过（tree JSON 的 `pad1` 即跳过）。
+  - **元素 0x30=48B**（缓冲创建/Vec drop/逐元素 stride 三处证实）；reconstruction `PlacementDataSsbo{position,scale,angle,gap}` 仅 20B，**缺 id/custom0/custom1/bend_vector/pad0**。
+  - 真实资产（`assets/glade/{theme}/trees/*.json`）：`rotation_angle` 值为**度**（112.97 等）；解析器（FUN_14140cfd0）为普通 f32，未见度→弧度转换——与 `to_affine3a`（0x140ad5020，+0x10 值×0.5→sin/cos）的弧度解释关系待集成裁决（I）。
+  - 证据：`asset-libraries/decomp/decomp-0x140b3b960.txt`（visit_str）、`decomp-0x14142f860.txt`（visit_map）、`decomp-0x14140cfd0/0x14140d270/0x141412c00/0x1414132b0.txt`（字段解析器）、`decomp-0x1416164c0/0x141405cf0/0x1414106e0/0x140967640.txt`（元素尺寸）；详见 `asset-libraries/ALGORITHMS.md` §7 与 `asset-libraries/CLOSURE-ROUND3.md`。
+- 消费方（读取表 A 的渲染/CPU 侧）未见独立过程。

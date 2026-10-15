@@ -17,3 +17,9 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **spawn_human_ref 0x14089d5a0（O）**：load_mesh_into_library('human_ref_cube'，串 0x142a9947e)
+  → shader 'vertex_color_shader'（0x142a9948c）→ 1 个 spawn 记录（FUN_1412d6d80）+ assert panic
+  （FUN_1428d9310）。人类尺寸参考立方体实体。
