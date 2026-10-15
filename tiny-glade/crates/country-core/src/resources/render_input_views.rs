@@ -8,7 +8,3 @@ pub struct IvyDrawView {
     pub point_counts: Vec<usize>,
 }
 
-/// The u64 at GladeSettings +0 consumed by leaf_particle_draw (B 0x140a8a090).
-/// Its full resource fields and serializer remain outside this callback view.
-#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default)]
-pub struct LeafParticleCountView(pub u64);

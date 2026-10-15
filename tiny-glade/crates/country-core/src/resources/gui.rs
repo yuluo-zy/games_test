@@ -1,6 +1,6 @@
 //! B GUI state and menu policies. Native tags are exposed only through the view;
 //! owned Rust enums preserve behavior without promising the original compiler ABI.
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use bevy_ecs::resource::Resource;
 use bevy_ecs::{event::Event, event::EventWriter, system::ResMut};
@@ -8,6 +8,7 @@ use glam::Vec2;
 use parking_lot::Mutex;
 
 use super::session::SessionId;
+use crate::systems::camera_rig::main_camera::CameraMode;
 
 #[derive(Resource, Clone)]
 pub struct EguiContextResource(pub egui::Context);
@@ -36,6 +37,18 @@ impl PendingEguiContextResource {
 pub struct PhotomodeScreen {
     pub was_enabled: bool,
     pub enabled: bool,
+}
+
+impl PhotomodeScreen {
+    /// The transition tested by B do_photomode before the frame-end copy.
+    pub fn just_enabled(&self) -> bool {
+        self.enabled && !self.was_enabled
+    }
+
+    /// B 0x14234c104. Call after consumers have inspected the transition.
+    pub fn finish_frame(&mut self) {
+        self.was_enabled = self.enabled;
+    }
 }
 
 #[derive(Event, Clone, Copy, Debug, Default)]
@@ -444,30 +457,183 @@ impl ScreenLog {
     }
 }
 
-/// Recovered log owner and the draw consumer's suppression field.
-/// Remaining debug controls/hash table are tracked separately until identified.
+/// Per-TOD-entry editor state. B 0x1400bff20 inserts one false byte under the
+/// entry's TempUiId; 0x140144590 toggles it with the `...` button. It is not a
+/// deletion-confirmation flag: deletion uses egui's double-click response.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TodSnapshotGuiState {
+    pub expanded: bool,
+}
+
+impl TodSnapshotGuiState {
+    pub fn show_toggle(&mut self, ui: &mut egui::Ui) {
+        if ui.button("...").clicked() {
+            self.expanded = !self.expanded;
+        }
+    }
+}
+
+/// Owned controls whose meaning is established by the original widgets. Field
+/// spellings are descriptive; the offset comments refer to B, not this layout.
+/// The three flags at B +0xfb/+0xfc/+0xff and the snapshot request at +0 remain
+/// outside this semantic model until their consumers have been identified.
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub struct DebugGui {
+    /// B +0xf0, toggled by the debug-window input action.
+    pub enabled: bool,
+    /// B +0xf1.
+    pub show_spatial_grid: bool,
+    /// B +0xf2.
+    pub show_trigger_proxies: bool,
+    /// B +0xf3.
+    pub show_threshold_curve: bool,
+    /// B +0xf4.
+    pub show_lazy_grid: bool,
+    /// B +0xf5.
+    pub show_sheep_controls: bool,
+    /// B +0xf6.
+    pub show_music_info: bool,
+    /// B +0xf7, labelled `Show 2D UI`; also gates the screen-log window.
+    pub show_2d_ui: bool,
+    /// B +0xf8.
+    pub human_scale_reference: bool,
+    /// B +0xf9.
+    pub disable_terrain_hover_highlight: bool,
+    /// B +0xfa.
+    pub hide_brush_previews: bool,
+    /// B +0xfd.
+    pub disable_wall_snapping: bool,
+    /// B +0xfe, labelled `Disable eraser higlight` in the original UI.
     pub suppress: bool,
-    pub show_screen_log: bool,
+    /// B +0x100.
+    pub force_music_richness: bool,
+    /// B +0x101, the independently toggled experimental window.
+    pub experimental_window: bool,
+    /// B +0x102.
+    pub trigger_proxy_visualization: DebugTriggerProxyVis,
+    /// B +0x103. This is CameraMode, not PhotoModeCameraMode; photomode's
+    /// conversion writes its tag plus one here and writes Normal on exit.
+    pub camera_mode: CameraMode,
+    /// B +0x104.
+    pub show_raycast_geometry: ShowDebugRaycastGeo,
+    /// B +0xe8, edited only for MeshesAndNormals (tag 3).
+    pub normal_length: f32,
+    /// B +0xec, used by camera_snapshot as `GameTime.delta * speed`.
+    pub camera_snapshot_interpolation_speed: f32,
+    /// B +0xb8: original TempUiId keys are u64. The owning TOD domain supplies
+    /// IDs; this map stores only GUI expansion state and never allocates IDs.
+    pub tod_snapshot_states: HashMap<u64, TodSnapshotGuiState>,
     pub screen_log: ScreenLog,
 }
 
 impl Default for DebugGui {
     fn default() -> Self {
         Self {
+            enabled: false,
+            show_spatial_grid: false,
+            show_trigger_proxies: false,
+            show_threshold_curve: false,
+            show_lazy_grid: false,
+            show_sheep_controls: false,
+            show_music_info: false,
+            show_2d_ui: true,
+            human_scale_reference: false,
+            disable_terrain_hover_highlight: false,
+            hide_brush_previews: false,
+            disable_wall_snapping: false,
             suppress: false,
-            show_screen_log: true,
+            force_music_richness: false,
+            experimental_window: false,
+            trigger_proxy_visualization: DebugTriggerProxyVis::ShowAll,
+            camera_mode: CameraMode::NORMAL,
+            show_raycast_geometry: ShowDebugRaycastGeo::No,
+            normal_length: 1.0,
+            camera_snapshot_interpolation_speed: 1.5,
+            tod_snapshot_states: HashMap::new(),
             screen_log: ScreenLog::default(),
         }
     }
 }
 
 impl DebugGui {
+    /// B 0x1400bff20: existing state survives repeated visits. No retention or
+    /// cleanup policy is added when the source TOD entry is removed.
+    pub fn tod_snapshot_state(&mut self, id: u64) -> &mut TodSnapshotGuiState {
+        self.tod_snapshot_states.entry(id).or_default()
+    }
+
+    /// Resource-owned part of the original debug panels. GPU, audio and world
+    /// controls remain owned by their respective consumers.
+    pub fn show_controls(&mut self, ui: &mut egui::Ui) {
+        egui::ComboBox::from_label("Mode")
+            .selected_text(camera_mode_label(self.camera_mode))
+            .show_ui(ui, |ui| {
+                for mode in [
+                    CameraMode::NORMAL,
+                    CameraMode::TILT_SHIFT,
+                    CameraMode::FREE,
+                    CameraMode::WALK,
+                    CameraMode::TOP_DOWN,
+                    CameraMode::BUTTERFLY,
+                ] {
+                    ui.selectable_value(&mut self.camera_mode, mode, camera_mode_label(mode));
+                }
+            });
+        ui.add(
+            egui::Slider::new(&mut self.camera_snapshot_interpolation_speed, 0.0..=10.0)
+                .text("Interpolation Speed"),
+        );
+        ui.checkbox(&mut self.show_2d_ui, "Show 2D UI");
+        ui.checkbox(&mut self.show_sheep_controls, "Show sheep controls");
+        ui.checkbox(&mut self.show_music_info, "Show music info");
+        ui.checkbox(
+            &mut self.force_music_richness,
+            "Force Music Richness to 1.0",
+        );
+        ui.checkbox(
+            &mut self.disable_terrain_hover_highlight,
+            "Disable terrain hover highlight",
+        );
+        ui.checkbox(&mut self.disable_wall_snapping, "Disable wall snapping");
+        ui.checkbox(&mut self.suppress, "Disable eraser higlight");
+        ui.checkbox(&mut self.hide_brush_previews, "Hide brush previews");
+        ui.checkbox(
+            &mut self.human_scale_reference,
+            "Enable human scale ref (R)",
+        );
+        ui.checkbox(&mut self.show_threshold_curve, "Show debug threshold curve");
+        ui.checkbox(&mut self.show_spatial_grid, "Show debug spatial grid");
+        egui::ComboBox::from_label("Show debug raycast geo")
+            .selected_text(self.show_raycast_geometry.as_string())
+            .show_ui(ui, |ui| {
+                for value in enum_iterator::all::<ShowDebugRaycastGeo>() {
+                    ui.selectable_value(&mut self.show_raycast_geometry, value, value.as_string());
+                }
+            });
+        ui.checkbox(&mut self.show_trigger_proxies, "Show debug trigger proxies");
+        ui.checkbox(&mut self.show_lazy_grid, "Show lazy grid");
+        if self.show_trigger_proxies {
+            egui::ComboBox::from_label("Viz presets")
+                .selected_text(self.trigger_proxy_visualization.as_string())
+                .show_ui(ui, |ui| {
+                    for value in enum_iterator::all::<DebugTriggerProxyVis>() {
+                        ui.selectable_value(
+                            &mut self.trigger_proxy_visualization,
+                            value,
+                            value.as_string(),
+                        );
+                    }
+                });
+            if self.trigger_proxy_visualization == DebugTriggerProxyVis::MeshesAndNormals {
+                ui.add(egui::Slider::new(&mut self.normal_length, 0.2..=4.0).text("Normal length"));
+            }
+        }
+    }
+
     /// Core-hosted B gui_error_log policy. Hidden/context-less frames do not
     /// decrement timers; GameTime's delta is supplied by the schedule caller.
     pub fn show_screen_log(&mut self, context: Option<&EguiContextResource>, delta_seconds: f32) {
-        if !self.show_screen_log || !self.screen_log.entries.iter().any(Option::is_some) {
+        if !self.show_2d_ui || !self.screen_log.entries.iter().any(Option::is_some) {
             return;
         }
         let Some(context) = context else {
@@ -491,4 +657,66 @@ impl DebugGui {
         self.screen_log.entries[self.screen_log.next] = Some(entry);
         self.screen_log.next = (self.screen_log.next + 1) % 5;
     }
+}
+
+/// B CameraMode fmt (0x1400c48b0), length/relative-pointer tables
+/// 0x142935590/0x1429355c0. The six selectable debug modes are the base modes.
+fn camera_mode_label(mode: CameraMode) -> &'static str {
+    match mode {
+        CameraMode::NORMAL => "Normal",
+        CameraMode::TILT_SHIFT => "TiltShift",
+        CameraMode::FREE => "Free",
+        CameraMode::WALK => "Walk",
+        CameraMode::TOP_DOWN => "TopDown",
+        CameraMode::BUTTERFLY => "Butterfly",
+        _ => "Unresolved camera mode",
+    }
+}
+
+#[cfg(test)]
+mod recovery_tests {
+    use super::*;
+
+    #[test]
+    fn debug_owner_defaults_and_persistent_per_entry_state_match_b() {
+        let mut gui = DebugGui::default();
+        assert!(gui.show_2d_ui);
+        assert!(!gui.enabled);
+        assert_eq!(gui.normal_length.to_bits(), 0x3f80_0000);
+        assert_eq!(
+            gui.camera_snapshot_interpolation_speed.to_bits(),
+            0x3fc0_0000
+        );
+        assert_eq!(gui.camera_mode, CameraMode::NORMAL);
+        gui.tod_snapshot_state(19).expanded = true;
+        assert!(gui.tod_snapshot_state(19).expanded);
+        assert!(!gui.tod_snapshot_state(20).expanded);
+    }
+
+    #[test]
+    fn screen_log_overwrites_physical_slots_and_expires_strictly_below_zero() {
+        let mut gui = DebugGui::default();
+        for i in 0..6 {
+            gui.log_to_screen(&i.to_string(), egui::Color32::RED);
+        }
+        assert_eq!(gui.screen_log.next, 1);
+        assert_eq!(gui.screen_log.entries[0].as_ref().unwrap().message, "5");
+        assert_eq!(gui.screen_log.entries[1].as_ref().unwrap().message, "1");
+        let context = egui::Context::default();
+        let _ = context.run(egui::RawInput::default(), |context| {
+            egui::CentralPanel::default().show(context, |ui| gui.screen_log.show(ui, 5.0));
+        });
+        assert!(gui.screen_log.entries.iter().all(Option::is_some));
+        let _ = context.run(egui::RawInput::default(), |context| {
+            egui::CentralPanel::default().show(context, |ui| gui.screen_log.show(ui, f32::EPSILON));
+        });
+        assert!(gui.screen_log.entries.iter().all(Option::is_none));
+    }
+}
+
+/// Visibility consumed by mode_manager (original TimeOfDayScreen +0xa).
+/// Other snapshot/editor fields remain in their owning GUI recovery.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TimeOfDayScreen {
+    pub visible: bool,
 }

@@ -29,7 +29,7 @@
 use std::ops::{Index, IndexMut};
 
 use glam::Vec3;
-use utils::curve::{Curve3, smooth_in_place};
+use utils::curve::{smooth_in_place, Curve3};
 
 use crate::utils::dirty_tiles::DirtyTiles;
 
@@ -199,6 +199,26 @@ impl ActiveRasterStroke {
         &mut self.dirty_current
     }
 
+    pub fn dirty_previous_mut(&mut self) -> &mut DirtyTiles {
+        &mut self.dirty_previous
+    }
+
+    /// B 0x140957990 detaches the smoothed curve and zeros radius/mode before
+    /// constructing the Arc history record. Input, blend parameters and dirty
+    /// maps survive. Vec pointer=4 is the empty Vec3 sentinel, not capacity=4.
+    pub fn take_history_stroke(&mut self) -> std::sync::Arc<super::raster_stroke::RasterStroke> {
+        let points = std::mem::take(&mut self.resampled);
+        let radius = std::mem::take(&mut self.brush_size);
+        let draw = std::mem::take(&mut self.mode) != 0;
+        std::sync::Arc::new(super::raster_stroke::RasterStroke {
+            flags: self.param_a,
+            strength: self.param_b,
+            points: points.into(),
+            radius,
+            draw,
+        })
+    }
+
     /// `draw_raster` 在光栅化之后对两份位图做的 512 B 互换（0x142260c2d 起的 `movups` 序列）。
     pub fn swap_dirty(&mut self) {
         std::mem::swap(&mut self.dirty_previous, &mut self.dirty_current);
@@ -248,7 +268,7 @@ impl ActiveRasterStroke {
 }
 
 /// 6 个笔画槽位（PathRaster、Cobblestone1/2/3、Water、Garden 各一）。
-#[derive(Clone, Debug, Default)]
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct ActiveRasterStrokesStorage {
     strokes: [ActiveRasterStroke; STROKE_COUNT],
 }

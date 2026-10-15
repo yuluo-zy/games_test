@@ -14,6 +14,11 @@
 //! 段步长 0x38 B：`p0.xy @0x00`、`p1.xy @0x08`、`extra_a @0x10`、`extra_b @0x14`、`h0 @0x18`、`h1 @0x1c`，
 //! 其后 24 B 未恢复。未找到时原函数不写有效的 index/extra，这里返回 `None`。
 use glam::Vec2;
+pub mod ivy_branch_thickness_animation;
+pub mod ivy_leaf_animation;
+pub mod ivy_leaf_spawner;
+pub mod ivy_pruner;
+pub mod registration;
 
 /// 初始最佳距离（O：0x14292c76c = 100.0）。
 pub const INITIAL_BEST_DISTANCE: f32 = 100.0;

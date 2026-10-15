@@ -100,6 +100,52 @@ impl<M, S> HistoryTransactions<M, S> {
     pub fn pending(&self) -> Option<&HistoryEntry<M>> {
         self.pending.as_ref()
     }
+    /// Select the original cursor entry, expand its commands, then commit the
+    /// cursor. Expansion owns command reversal: reversing edits is incorrect
+    /// for edits which expand into several commands. A failed expansion keeps
+    /// the ledger unchanged so unresolved owners cannot silently lose history.
+    pub fn cursor_step_expanding<T, E: From<HistoryTransactionError>>(
+        &mut self,
+        step: HistoryCursorStep,
+        instant: bool,
+        expand: impl FnOnce(usize, &HistoryEntry<M>, bool, bool) -> Result<T, E>,
+    ) -> Result<Option<T>, E> {
+        if self.is_recording() {
+            return Ok(None);
+        }
+        let target = match step {
+            HistoryCursorStep::Undo => {
+                if self.ledger.cursor < 0 || self.ledger.cursor <= self.ledger.undo_anchor {
+                    return Ok(None);
+                }
+                self.ledger.cursor as usize
+            }
+            HistoryCursorStep::Redo => {
+                if self.ledger.cursor < -1 {
+                    return Err(HistoryTransactionError::InvalidCursor.into());
+                }
+                let next = self.ledger.cursor.wrapping_add(1);
+                if next < 0 {
+                    return Ok(None);
+                }
+                next as usize
+            }
+        };
+        let Some(entry) = self.ledger.entries.get(target) else {
+            return Ok(None);
+        };
+        if entry.observed_auxiliary_counts != [0; 3] {
+            return Err(HistoryTransactionError::AuxiliaryReplayOwnerRequired.into());
+        }
+        let undo = step == HistoryCursorStep::Undo;
+        let result = expand(target, entry, undo, instant)?;
+        self.ledger.cursor = if undo {
+            self.ledger.cursor - 1
+        } else {
+            target as i32
+        };
+        Ok(Some(result))
+    }
     pub fn start_input_recording(
         &mut self,
         app_mode_tag: u32,

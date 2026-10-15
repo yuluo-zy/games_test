@@ -7,9 +7,13 @@
 
 use std::ops::{Deref, DerefMut};
 
+use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::{MappedStorageBuffer, StorageElement};
 use bevy_ecs::resource::Resource;
+use bevy_ecs::system::{ResMut, SystemParam};
 
-use super::world_raster::{DirtyTilePublisher, WorldRaster};
+use super::world_raster::{DirtyTilePublisher, RasterBufferRef, WorldRaster};
 
 macro_rules! named_raster {
     ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {$(
@@ -58,6 +62,191 @@ pub const ORDERED_NAMES: [&str; 6] = [
     "GardenRaster",
 ];
 
+/// Owned stream record; this is not a native ABI layout. B's corresponding
+/// 40-byte borrowed record has a name slice followed by `Option<Vec<u8>>`.
+/// Names are validated before data is written.
+pub type NamedRasterData = (String, Option<Vec<u8>>);
+
+fn validate_named_data(lengths: [usize; 6], data: &[NamedRasterData]) -> anyhow::Result<()> {
+    for (i, (name, expected)) in ORDERED_NAMES.iter().zip(lengths).enumerate() {
+        let (provided, bytes) = data
+            .get(i)
+            .ok_or_else(|| anyhow::anyhow!("End of stream while expecting raster {name}"))?;
+        anyhow::ensure!(
+            provided == name,
+            "Expected raster {name}, but got {provided}"
+        );
+        if let Some(bytes) = bytes {
+            anyhow::ensure!(
+                bytes.len() == expected,
+                "Length mismatch; expected {}, but got {} while copying {name}",
+                expected,
+                bytes.len()
+            );
+        }
+    }
+    Ok(())
+}
+
+/// ECS ownership access for the six named rasters. The borrowed algorithm view
+/// below shares these resources rather than maintaining a second raster store.
+#[derive(SystemParam)]
+pub struct WorldRasterResources<'w> {
+    pub path: ResMut<'w, PathRaster>,
+    pub cobblestone1: ResMut<'w, Cobblestone1Raster>,
+    pub cobblestone2: ResMut<'w, Cobblestone2Raster>,
+    pub cobblestone3: ResMut<'w, Cobblestone3Raster>,
+    pub water: ResMut<'w, WaterRaster>,
+    pub garden: ResMut<'w, GardenRaster>,
+}
+
+impl WorldRasterResources<'_> {
+    pub fn would_write_succeed(&self, data: &[NamedRasterData]) -> anyhow::Result<()> {
+        validate_named_data(
+            self.read_view().read().map(|(_, view)| view.data.len()),
+            data,
+        )
+    }
+
+    /// Validate via shared borrows first, so rejected streams do not mark any
+    /// resource changed. Successful writes then mutate each slot in source order.
+    pub fn write_named(&mut self, data: &[NamedRasterData]) -> anyhow::Result<()> {
+        self.would_write_succeed(data)?;
+        let mut entries = data.iter();
+        macro_rules! write_slot {
+            ($field:ident) => {
+                self.$field
+                    .write_composite(entries.next().unwrap().1.as_deref());
+            };
+        }
+        write_slot!(path);
+        write_slot!(cobblestone1);
+        write_slot!(cobblestone2);
+        write_slot!(cobblestone3);
+        write_slot!(water);
+        write_slot!(garden);
+        Ok(())
+    }
+
+    /// Preserve native prefix change ticks: dereference each resource only when
+    /// that slot is actually reached. A mutable six-way view is too eager here.
+    pub fn write(&mut self, data: &[Option<Vec<u8>>]) {
+        let mut entries = data.iter();
+        macro_rules! write_slot {
+            ($field:ident) => {
+                self.$field.write_composite(
+                    entries
+                        .next()
+                        .expect("called `Option::unwrap()` on a `None` value")
+                        .as_deref(),
+                );
+            };
+        }
+        write_slot!(path);
+        write_slot!(cobblestone1);
+        write_slot!(cobblestone2);
+        write_slot!(cobblestone3);
+        write_slot!(water);
+        write_slot!(garden);
+    }
+
+    pub fn upload_to_staging(&mut self, library: &mut AssetSsboLibrary) {
+        macro_rules! upload {
+            ($field:ident, $staging:ty) => {{
+                let buffer = library
+                    .get_mut::<$staging>()
+                    .expect("called `Option::unwrap()` on a `None` value");
+                self.$field
+                    .copy_to_staging(0, bytemuck::cast_slice_mut(buffer.mapped));
+            }};
+        }
+        upload!(path, PathRasterStagingSsbo);
+        upload!(cobblestone1, Cobblestone1RasterStagingSsbo);
+        upload!(cobblestone2, Cobblestone2RasterStagingSsbo);
+        upload!(cobblestone3, Cobblestone3RasterStagingSsbo);
+        upload!(water, WaterRasterStagingSsbo);
+        upload!(garden, GardenRasterStagingSsbo);
+    }
+
+    pub fn write_view(&mut self) -> AllWorldRasterWrite<'_> {
+        AllWorldRasterWrite {
+            path: &mut self.path,
+            cobblestone1: &mut self.cobblestone1,
+            cobblestone2: &mut self.cobblestone2,
+            cobblestone3: &mut self.cobblestone3,
+            water: &mut self.water,
+            garden: &mut self.garden,
+        }
+    }
+
+    pub fn read_view(&self) -> AllWorldRasterRead<'_> {
+        AllWorldRasterRead {
+            path: &self.path,
+            cobblestone1: &self.cobblestone1,
+            cobblestone2: &self.cobblestone2,
+            cobblestone3: &self.cobblestone3,
+            water: &self.water,
+            garden: &self.garden,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct AllWorldRasterRead<'a> {
+    pub path: &'a PathRaster,
+    pub cobblestone1: &'a Cobblestone1Raster,
+    pub cobblestone2: &'a Cobblestone2Raster,
+    pub cobblestone3: &'a Cobblestone3Raster,
+    pub water: &'a WaterRaster,
+    pub garden: &'a GardenRaster,
+}
+
+impl AllWorldRasterRead<'_> {
+    /// B read-side consumers select composite/scratch using +0x298.
+    pub fn read(&self) -> [(&'static str, RasterBufferRef<'_, 512>); 6] {
+        let rasters = [
+            &self.path.0,
+            &self.cobblestone1.0,
+            &self.cobblestone2.0,
+            &self.cobblestone3.0,
+            &self.water.0,
+            &self.garden.0,
+        ];
+        std::array::from_fn(|i| (ORDERED_NAMES[i], rasters[i].as_ref()))
+    }
+}
+
+macro_rules! staging_rasters {
+    ($($name:ident),+ $(,)?) => {$(
+        /// B mapped upload SSBO: 512*512 bytes, byte alignment, memory kind 2.
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, Default)]
+        pub struct $name(pub u8);
+        // SAFETY: repr(transparent) over u8 has no padding and all bit patterns are valid.
+        unsafe impl bytemuck::Zeroable for $name {}
+        unsafe impl bytemuck::Pod for $name {}
+        impl StorageElement for $name {
+            const NAME: &'static str = stringify!($name);
+            const BUFFER_LEN: usize = 512 * 512;
+        }
+        impl SsboType for $name {
+            type Storage = MappedStorageBuffer<'static, Self>;
+            fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+                MappedStorageBuffer::new_storage_buffer(device, initial)
+            }
+        }
+    )+};
+}
+
+staging_rasters!(
+    PathRasterStagingSsbo,
+    Cobblestone1RasterStagingSsbo,
+    Cobblestone2RasterStagingSsbo,
+    Cobblestone3RasterStagingSsbo,
+    WaterRasterStagingSsbo,
+    GardenRasterStagingSsbo
+);
+
 /// `AllWorldRasterWrite`：对六个栅格资源的可变借用（SystemParam，六个 `ResMut`）。
 pub struct AllWorldRasterWrite<'a> {
     pub path: &'a mut PathRaster,
@@ -75,13 +264,13 @@ impl AllWorldRasterWrite<'_> {
     }
 
     /// O：0x14083ebe0。按槽位顺序逐个处理前 `data.len()` 个条目（原版第三个参数就是个数，
-    /// 每槽后 `cmp rbx, k; je 结束`，最多 6 个；多出的条目被忽略）：
+    /// 每槽后 `cmp rbx, k`；不足六项时在已写前缀后 panic，额外项忽略）：
     /// `None` 清空 composite，`Some` 长度必须等于 composite 再整块拷入，
     /// 随后位图置全脏、`staging_dirty = 1`（见 [`WorldRaster::write_composite`]）。
     ///
     /// 原版每槽还会把 `ResMut` 的 changed tick 写成系统的 change tick；那是 Bevy 变更检测，
-    /// 这里由调用方的 `ResMut` 负责。条目在原版里是 40 B（前 16 B 的用途未恢复，U），
-    /// 写入只用后 24 B 的 `Option<Vec<u8>>`。
+    /// 这里由调用方的 `ResMut` 负责。此低层入口只使用记录的后 24 B；
+    /// 名字由 `would_write_succeed` 单独校验。
     pub fn write(&mut self, data: &[Option<Vec<u8>>]) {
         let rasters: [&mut WorldRaster<512>; 6] = [
             &mut self.path.0,
@@ -94,6 +283,62 @@ impl AllWorldRasterWrite<'_> {
         for (raster, item) in rasters.into_iter().zip(data) {
             raster.write_composite(item.as_deref());
         }
+        assert!(
+            data.len() >= 6,
+            "called `Option::unwrap()` on a `None` value"
+        );
+    }
+
+    /// O: 0x14083f410. Required slots are checked in order: presence, name,
+    /// then length for Some(data). None skips the length check. Extra slots ignored.
+    /// A failed check leaves all six resources untouched.
+    pub fn would_write_succeed(&self, data: &[NamedRasterData]) -> anyhow::Result<()> {
+        let rasters = [
+            &self.path.0,
+            &self.cobblestone1.0,
+            &self.cobblestone2.0,
+            &self.cobblestone3.0,
+            &self.water.0,
+            &self.garden.0,
+        ];
+        validate_named_data(rasters.map(|raster| raster.current_buffer().len()), data)
+    }
+
+    /// Core integration entry: validate the named save stream before any mutation.
+    pub fn write_named(&mut self, data: &[NamedRasterData]) -> anyhow::Result<()> {
+        self.would_write_succeed(data)?;
+        let rasters: [&mut WorldRaster<512>; 6] = [
+            &mut self.path.0,
+            &mut self.cobblestone1.0,
+            &mut self.cobblestone2.0,
+            &mut self.cobblestone3.0,
+            &mut self.water.0,
+            &mut self.garden.0,
+        ];
+        for (raster, (_, bytes)) in rasters.into_iter().zip(data) {
+            raster.write_composite(bytes.as_deref());
+        }
+        Ok(())
+    }
+
+    /// O: 0x14083fa60. Publish each composite into its registered mapped SSBO.
+    /// Lookups and writes remain interleaved, preserving prefix side effects.
+    pub fn upload_to_staging(&mut self, library: &mut AssetSsboLibrary) {
+        macro_rules! upload {
+            ($field:ident, $staging:ty) => {{
+                let buffer = library
+                    .get_mut::<$staging>()
+                    .expect("called `Option::unwrap()` on a `None` value");
+                self.$field
+                    .copy_to_staging(0, bytemuck::cast_slice_mut(buffer.mapped));
+            }};
+        }
+        upload!(path, PathRasterStagingSsbo);
+        upload!(cobblestone1, Cobblestone1RasterStagingSsbo);
+        upload!(cobblestone2, Cobblestone2RasterStagingSsbo);
+        upload!(cobblestone3, Cobblestone3RasterStagingSsbo);
+        upload!(water, WaterRasterStagingSsbo);
+        upload!(garden, GardenRasterStagingSsbo);
     }
 }
 
@@ -148,7 +393,13 @@ mod tests {
             water: &mut water,
             garden: &mut garden,
         };
-        all.write(&[Some(vec![7; 0x40000]), None]);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            all.write(&[Some(vec![7; 0x40000]), None]);
+        }));
+        assert!(
+            result.is_err(),
+            "B panics after the supplied prefix when a slot is missing"
+        );
         assert_eq!(path.composite()[0], 7);
         assert!(path.staging_dirty());
         assert!(c1.staging_dirty());

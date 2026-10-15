@@ -111,7 +111,7 @@ pub trait VisualHeightRaster {
 
 /// `ScheduledTerrainReadback`（O：type-id `0xfc8691076ab4d826`/`0x24ccb35ae3644351` 一族；
 /// `on_gpu_copy_issued` = 对 `[+0]` 做 `cmpxchg 0` 取走请求，旧值非 0 则 `[+8] |= 1`）。
-#[derive(Debug, Default)]
+#[derive(bevy_ecs::resource::Resource, Debug, Default)]
 pub struct ScheduledTerrainReadback {
     /// `[+0]`：待处理的读回请求（取走式）。
     pub pending: AtomicU64,
@@ -122,6 +122,10 @@ pub struct ScheduledTerrainReadback {
 }
 
 impl ScheduledTerrainReadback {
+    /// B 0x140aabdc0, LOCK INC; shared by draw and edit consumers.
+    pub fn on_terrain_modified(&self) {
+        self.pending.fetch_add(1, Ordering::SeqCst);
+    }
     /// O（0x14098d88f..0x14098d8ac）：先标记变更 tick，再 `swap(0)`，旧值非 0 → `copy_issued = true`（只或不清）。
     pub fn on_gpu_copy_issued(&mut self, world_tick: u32) {
         self.changed_tick = world_tick;

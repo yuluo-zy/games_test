@@ -262,6 +262,17 @@ pub struct MainActionSetSerde {
     pub digital: [bool; DIGITAL_SLOTS],
 }
 
+/// Original ActionSetValues holds two bool-valued action sets, at +0 and
+/// +0x58. Device translation writes the current half; input delta reads both.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct ActionSetValues {
+    pub previous: MainActionSetSerde,
+    pub current: MainActionSetSerde,
+}
+
+/// One runtime owner shared by device input, UI and mode/history consumers.
+pub type ActionSetStates = MainActionSet;
+
 impl Default for MainActionSetSerde {
     fn default() -> Self {
         Self {

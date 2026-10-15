@@ -1,490 +1,436 @@
-//! `mode_manager.rs` — AppMode 切换中枢（B 版 `systems::mode_manager`）。
-//!
-//! 证据（RNE 机器码 + `evidence/country-core-deep/ui-input/decomp/`）：
-//! - `mode_manager` 0x140a86b60：先做 `esc_menu_canvas` 悬停早退，再按 bevy `Events` 读游标语义排空
-//!   `RequestAppModeChange`，有未读事件时取**最后一条**调用 `check_if_can_switch`，最后按模式 id 走
-//!   跳表（0x142ad890c，逐模式块**未恢复**，由调用方接）。
-//! - `check_if_can_switch` 分发器 0x140afa8a0。
-//! - `send_mode_just_changed_event` 0x140a875e0。
-//!
-//! 纠错（相对此前文档）：`mode_manager` 调分发器时第一个参数是 `cmp 0,[len+0x30]; setno cl`（0x140a86c94），
-//! `0 - len` 对任何 `usize` 长度都不会有符号溢出，所以 `force` **恒为真**；文档里"force = 双队列读数差为 0"
-//! 不成立。因此从 `mode_manager` 进入时总走 force 分支，非 force 分支只在其他调用点（如 timelapse 闭包）出现。
-//!
-//! 未恢复：各 `Events<T>` 的原类型名（只有负载布局）、跳表逐模式块、`AppMode` 完整变体表、`hash("esc_menu_canvas")`
-//! 的哈希函数（0x1405bdda0）。
-use bevy_ecs::event::{Event, EventCursor, Events};
+//! B mode manager: complete input ordering and toolbar transitions from original
+//! 0x140a86b60..0x140a875d7; thirteen five-entry ActionState jump tables.
+//! History::is_recording 0x140a86970 is the guard (not an event-queue length).
+//! Event/audio/history payload ownership is explicit at the integration boundary.
+use crate::input::action_set::MainActionSet;
+use crate::recovered_building::history_transactions::HistoryTransactions;
+use crate::resources::gui::TimeOfDayScreen;
+use crate::resources::toolbar::{Toolbar, ToolbarCategory};
+use bevy_ecs::event::{Event, EventReader, EventWriter, Events};
+use bevy_ecs::prelude::{Res, ResMut, Resource, World};
+use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
 
-use crate::resources::toolbar::{ModeEntry, SwitchMode, Toolbar, ToolbarIndexOutOfBounds};
+mod types;
+pub use types::{AppMode, ClutterMeshTy, DecoratorType, EditSubject, EraserLayer, WallShape};
 
-/// 非 force 分支写入模式状态的值（O：`mov dword [rax],0xd`，注释记为 Replay）。
-pub const PENDING_REPLAY_MODE: u32 = 0xd;
+impl Resource for MainActionSet {}
+impl<M: Send + Sync + 'static, S: Send + Sync + 'static> Resource for HistoryTransactions<M, S> {}
 
-/// 请求切换模式（O：`EventInstance` 载荷 = `u32` 请求模式，0x10 B 含 id）。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RequestAppModeChange {
-    pub mode: u32,
+    pub mode: AppMode,
 }
-
-impl RequestAppModeChange {
-    /// 请求模式 u32 的第 1 字节（O：`byte [req+1]`，分发器要求 `<= 1`）。
-    pub fn byte1(&self) -> u8 {
-        (self.mode >> 8) as u8
-    }
-}
-
-/// force 分支推入的事件（O：0x20 B `EventInstance`，载荷首 u32 = 4，其余载荷未恢复）。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ModeSwitchForced;
-
-/// 非 force 分支第一个事件（O：载荷 = 请求模式 u32）。
+pub struct RequestToolbarCategoryChange(pub ToolbarCategory);
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ModeSwitchRequested(pub u32);
+pub struct LoadingGameComplete {
+    pub restore_to: AppMode,
+}
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RestoreAppTo(pub AppMode);
 
-/// 非 force 分支第二个事件（O：载荷 = 请求模式的第 1 字节）。
+/// Exact four-byte command crossing the history-process boundary. That owner's
+/// nested command enum is not guessed here. Known original constructors are
+/// Undo=0x00000000, Redo=0x01000100 and Interrupt=0x02000200 (0x140af5b20).
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ModeSwitchByte(pub u8);
-
-/// 分发器写入的三条事件队列。
-#[derive(Default)]
-pub struct SwitchEvents {
-    pub forced: Events<ModeSwitchForced>,
-    pub requested: Events<ModeSwitchRequested>,
-    pub byte: Events<ModeSwitchByte>,
+pub struct HistoryCommand {
+    pub bytes: [u8; 4],
+}
+impl HistoryCommand {
+    pub const UNDO: Self = Self {
+        bytes: [0, 0, 0, 0],
+    };
+    pub const REDO: Self = Self {
+        bytes: [0, 1, 0, 1],
+    };
+    pub const INTERRUPT: Self = Self {
+        bytes: [0, 2, 0, 2],
+    };
+}
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RequestHistoryCommand(pub HistoryCommand);
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UiHistoryPlaySelectAnimation(pub bool);
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClearCanvasCmd(pub bool);
+/// The two PlayUiSound variants emitted here. Names describe their verified
+/// use; numeric values preserve the original audio consumer boundary.
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ModeManagerSound {
+    SwitchBlocked = 4,
+    TimeOfDayToggled = 14,
 }
 
-/// 原版 `unreachable!()`（`toolbar.rs:40`，串 0x142ae5650，长 0x28）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct UnreachableRequestByte {
-    pub byte1: u8,
-}
-
-impl core::fmt::Display for UnreachableRequestByte {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "internal error: entered unreachable code (request byte1 = {})",
-            self.byte1
-        )
-    }
-}
-
-impl std::error::Error for UnreachableRequestByte {}
-
-/// `check_if_can_switch<closure_env$0>` 分发器（0x140afa8a0）。
-///
-/// - `force`：向 `forced` 推 `ModeSwitchForced`，不碰状态；
-/// - 非 force：`*state_mode = 0xd` → 推 `ModeSwitchRequested(mode)` → 若 `byte1 > 1` 则 `unreachable!()`
-///   （此时第一个事件已推入）→ 推 `ModeSwitchByte(byte1)`。
-pub fn check_if_can_switch(
-    force: bool,
-    state_mode: &mut u32,
-    request: &RequestAppModeChange,
-    out: &mut SwitchEvents,
-) -> Result<(), UnreachableRequestByte> {
-    if force {
-        out.forced.send(ModeSwitchForced);
-        return Ok(());
-    }
-    *state_mode = PENDING_REPLAY_MODE;
-    out.requested.send(ModeSwitchRequested(request.mode));
-    let byte1 = request.byte1();
-    if byte1 > 1 {
-        return Err(UnreachableRequestByte { byte1 });
-    }
-    out.byte.send(ModeSwitchByte(byte1));
-    Ok(())
-}
-
-/// `esc_menu_canvas` 早退条件的输入（O：`[ui+0x18]`、`[ui+0x38]`、`[ui+0x28]`）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EscMenuProbe {
-    /// `+0x18`：悬停标志字节。
     pub hovered: bool,
-    /// `+0x38`：悬停 widget 的 id。
     pub widget_id: u64,
-    /// `+0x28`：交点载荷标签；`2` = 无。
     pub hit_tag: u32,
 }
-
-/// 早退判定（O：0x140a86b9f..0x140a86baf）：悬停 && id 等于 `hash("esc_menu_canvas")` && 标签 != 2 时
-/// 整个系统直接返回。哈希函数（0x1405bdda0）未恢复，由调用方传入结果。
+/// Projection from UiState. The owning UI supplies its real canvas identifier;
+/// no guessed hash or fabricated UI state is inserted by configuration.
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ModeManagerUiContext {
+    pub probe: EscMenuProbe,
+    pub esc_menu_canvas_id: u64,
+}
 pub fn esc_menu_blocks(probe: EscMenuProbe, esc_menu_canvas_id: u64) -> bool {
     probe.hovered && probe.widget_id == esc_menu_canvas_id && probe.hit_tag != 2
 }
 
-/// `mode_manager` 单次运行的结果。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ModeManagerStep {
-    /// 被 ESC 菜单画布悬停挡住，未读事件，也不走跳表。
-    Blocked,
-    /// 已排空请求队列；`handled` 是被取走的最后一条请求。调用方随后按模式 id 走跳表（未恢复）。
-    Drained {
-        handled: Option<RequestAppModeChange>,
-    },
-}
-
-/// `mode_manager` 的已恢复前半段：早退 + 排空 + 分发。
-///
-/// 排空与机器码一致：读游标推进到事件总数，有未读事件时只处理**最后一条**，且以 `force = true` 调分发器。
-pub fn mode_manager_step(
-    probe: EscMenuProbe,
-    esc_menu_canvas_id: u64,
-    cursor: &mut EventCursor<RequestAppModeChange>,
-    requests: &Events<RequestAppModeChange>,
-    state_mode: &mut u32,
-    out: &mut SwitchEvents,
-) -> Result<ModeManagerStep, UnreachableRequestByte> {
-    if esc_menu_blocks(probe, esc_menu_canvas_id) {
-        return Ok(ModeManagerStep::Blocked);
-    }
-    let last = cursor.read(requests).last().copied();
-    if let Some(request) = last {
-        check_if_can_switch(true, state_mode, &request, out)?;
-    }
-    Ok(ModeManagerStep::Drained { handled: last })
-}
-
-/// 模式变化事件（O：0x28 B `EventInstance`，`{first 16B @0, second 16B @0x10, id}`）。
-///
-/// 字段名为推断（I）：机器码把第 1 个参数写在 `+0`、第 2 个参数写在 `+0x10`，随后 `*second = *first`，
-/// 所以 `second` 是"上次值"，`first` 是"当前值"。
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AppModeChanged<M: Copy + Send + Sync + 'static> {
-    pub current: M,
-    pub previous: M,
+pub struct AppModeChanged {
+    pub current: AppMode,
+    pub previous: AppMode,
 }
-
-/// `send_mode_just_changed_event`（0x140a875e0）：两个 `AppMode`（16 B）不等时发事件并把 `previous` 同步为 `current`。
-/// 不等判定是原版 `PartialEq::ne`（0x140a825e0），这里用 `M: PartialEq`。
-pub fn send_mode_just_changed_event<M>(
-    current: &M,
-    previous: &mut M,
-    out: &mut Events<AppModeChanged<M>>,
-) where
-    M: Copy + PartialEq + Send + Sync + 'static,
-{
-    if *current != *previous {
-        out.send(AppModeChanged {
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct PreviousAppMode(pub AppMode);
+pub fn send_mode_just_changed_event(
+    current: Res<AppMode>,
+    mut previous: ResMut<PreviousAppMode>,
+    mut events: EventWriter<AppModeChanged>,
+) {
+    if *current != previous.0 {
+        events.write(AppModeChanged {
             current: *current,
-            previous: *previous,
+            previous: previous.0,
         });
-        *previous = *current;
+        previous.0 = *current;
     }
 }
 
-/// 工具栏类别下标：`check_if_can_switch<closure_env$N>` 与类别的对应（O，由各闭包的 `len < N+1` 与偏移得出）。
-pub mod category_closure {
-    pub const ENV_5: usize = 0;
-    pub const ENV_6: usize = 1;
-    pub const ENV_7: usize = 2;
-    pub const ENV_8: usize = 3;
-    pub const ENV_9: usize = 4;
-    pub const ENV_12: usize = 5;
-    pub const ENV_10: usize = 6;
-    /// env_3：特殊闭包，见 [`super::category_env3`]。
-    pub const ENV_3: usize = 7;
-    pub const ENV_13: usize = 8;
-    pub const ENV_11: usize = 9;
-    /// env_14：特殊闭包，见 [`super::category_env14`]。
-    pub const ENV_14: usize = 10;
+/// All ordinary category closures, including explicit RequestToolbarCategoryChange.
+pub fn category_advance(category: ToolbarCategory, toolbar: &mut Toolbar, mode: &mut AppMode) {
+    if let Some(next) = toolbar.advance_category(category) {
+        *mode = next;
+    }
+}
+/// RequestAppModeChange closure 0x140afa2c0. Editing and CloneClutter select
+/// Editing's toolbar slot while preserving the exact requested editing target.
+pub fn select_app_mode(request: AppMode, toolbar: &mut Toolbar, mode: &mut AppMode) {
+    *mode = request;
+    match request {
+        AppMode::Editing(_) | AppMode::CloneClutter => {
+            toolbar.advance_category(ToolbarCategory::Editing);
+        }
+        _ => toolbar.switch_mode(&request),
+    }
+}
+/// Photomode shortcut closure 0x140afa9f0; selecting the category explicitly
+/// uses ordinary cycling, while this shortcut toggles back to Editing(None).
+pub fn toggle_photomode(toolbar: &mut Toolbar, mode: &mut AppMode) {
+    if *mode == AppMode::Photomode {
+        *mode = AppMode::Editing(EditSubject::None);
+        toolbar.switch_mode(mode);
+    } else {
+        category_advance(ToolbarCategory::Photomode, toolbar, mode);
+    }
 }
 
-/// 通用类别闭包（env_5..13，非 force 分支）：推进类别 `n`，条目非哨兵则写入 `pending`。
-pub fn category_advance(
-    n: usize,
-    toolbar: &mut Toolbar,
-    pending: &mut ModeEntry,
-) -> Result<(), ToolbarIndexOutOfBounds> {
-    if let Some(entry) = toolbar.advance_category(n)? {
-        *pending = entry;
+/// The exact mode-manager ordering. It consumes the existing HistoryTransactions
+/// owner, whose pending Option corresponds to native History+0x30.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn mode_manager<M: Send + Sync + 'static, S: Send + Sync + 'static>(
+    mut mode: ResMut<AppMode>,
+    mut restore: ResMut<RestoreAppTo>,
+    mut toolbar: ResMut<Toolbar>,
+    ui: Res<ModeManagerUiContext>,
+    history: Res<HistoryTransactions<M, S>>,
+    actions: Res<MainActionSet>,
+    mut tod: ResMut<TimeOfDayScreen>,
+    (mut loaded, mut requested_modes, mut requested_categories, mut requested_history): (
+        EventReader<LoadingGameComplete>,
+        EventReader<RequestAppModeChange>,
+        EventReader<RequestToolbarCategoryChange>,
+        EventReader<RequestHistoryCommand>,
+    ),
+    (mut clear, mut animation, mut history_commands, mut sounds): (
+        EventWriter<ClearCanvasCmd>,
+        EventWriter<UiHistoryPlaySelectAnimation>,
+        EventWriter<HistoryCommand>,
+        EventWriter<ModeManagerSound>,
+    ),
+) {
+    if esc_menu_blocks(ui.probe, ui.esc_menu_canvas_id) {
+        return;
     }
-    Ok(())
+    let blocked = history.is_recording();
+    if let Some(request) = requested_history.read().last().copied() {
+        if blocked {
+            sounds.write(ModeManagerSound::SwitchBlocked);
+        } else {
+            *mode = AppMode::Replay;
+            history_commands.write(request.0);
+            let direction = request.0.bytes[1];
+            assert!(direction < 2, "internal error: entered unreachable code");
+            animation.write(UiHistoryPlaySelectAnimation(direction != 0));
+        }
+    }
+    // Undo then Redo, before the Replay early return. These hotkeys do not
+    // emit UiHistoryPlaySelectAnimation; only the explicit request above does.
+    for (slot, command) in [(16, HistoryCommand::UNDO), (17, HistoryCommand::REDO)] {
+        if actions.digital[slot].just_pressed() {
+            if blocked {
+                sounds.write(ModeManagerSound::SwitchBlocked);
+            } else {
+                *mode = AppMode::Replay;
+                history_commands.write(command);
+            }
+        }
+    }
+    if *mode == AppMode::Replay {
+        return;
+    }
+    if let Some(loaded) = loaded.read().last().copied() {
+        *mode = AppMode::Replay;
+        assert!(
+            !matches!(loaded.restore_to, AppMode::Replay | AppMode::LoadGame),
+            "internal error: entered unreachable code"
+        );
+        restore.0 = loaded.restore_to;
+        // Original continues after the loading branch; it does not recheck Replay.
+    }
+    if let Some(request) = requested_modes.read().last().copied() {
+        if blocked {
+            sounds.write(ModeManagerSound::SwitchBlocked);
+        } else {
+            select_app_mode(request.mode, &mut toolbar, &mut mode);
+        }
+    }
+    if let Some(request) = requested_categories.read().last().copied() {
+        if blocked {
+            sounds.write(ModeManagerSound::SwitchBlocked);
+        } else {
+            category_advance(request.0, &mut toolbar, &mut mode);
+        }
+    }
+    // Native order: eraser (+48) precedes terrain (+40), then garden/tree/water.
+    for (slot, category) in [
+        (4, ToolbarCategory::Building),
+        (5, ToolbarCategory::Path),
+        (6, ToolbarCategory::Decorators),
+        (7, ToolbarCategory::Customization),
+        (9, ToolbarCategory::Eraser),
+        (8, ToolbarCategory::Terrain),
+        (10, ToolbarCategory::Garden),
+        (11, ToolbarCategory::Tree),
+        (12, ToolbarCategory::Water),
+    ] {
+        if actions.digital[slot].just_pressed() {
+            if blocked {
+                sounds.write(ModeManagerSound::SwitchBlocked);
+            } else {
+                category_advance(category, &mut toolbar, &mut mode);
+            }
+        }
+    }
+    if actions.digital[13].just_pressed() {
+        if blocked {
+            sounds.write(ModeManagerSound::SwitchBlocked);
+        } else {
+            toggle_photomode(&mut toolbar, &mut mode);
+        }
+    }
+    if actions.digital[14].just_pressed() {
+        tod.visible = !tod.visible;
+        sounds.write(ModeManagerSound::TimeOfDayToggled);
+    }
+    // Clear uses pressed, not just_pressed (native discriminant <=2).
+    if actions.digital[26].pressed() {
+        if blocked {
+            sounds.write(ModeManagerSound::SwitchBlocked);
+        } else {
+            *mode = AppMode::Editing(EditSubject::None);
+            clear.write(ClearCanvasCmd(false));
+        }
+    }
 }
 
-/// env_14（Terrain，类别 10，0x140afa9f0）：`pending.tag == 0x13` 时先清零 tag，再以 `pending` 副本直调
-/// `switch_mode` 并返回；否则同通用闭包。
-pub fn category_env14<S: SwitchMode>(
-    toolbar: &mut Toolbar,
-    pending: &mut ModeEntry,
-    switch: &mut S,
-) -> Result<(), ToolbarIndexOutOfBounds> {
-    if pending.tag == 0x13 {
-        pending.tag = 0;
-        let copy = *pending;
-        switch.switch_mode(toolbar, &copy);
-        return Ok(());
+/// Adds callable ECS consumers. Callers insert the real HistoryTransactions,
+/// ModeManagerUiContext, TimeOfDayScreen and MainActionSet resources and maintain Bevy's event
+/// lifecycle. The original global schedule ordering is not asserted here.
+pub fn configure_mode_manager<M: Send + Sync + 'static, S: Send + Sync + 'static>(
+    world: &mut World,
+    schedule: &mut Schedule,
+    demo: bool,
+) {
+    world.init_resource::<AppMode>();
+    world.init_resource::<PreviousAppMode>();
+    world.init_resource::<RestoreAppTo>();
+    if !world.contains_resource::<Toolbar>() {
+        world.insert_resource(Toolbar::new(demo));
     }
-    category_advance(category_closure::ENV_14, toolbar, pending)
-}
-
-/// env_3（类别 7，0x140afa2c0）：先把 `request` 整块拷入 `pending`；请求标签归一化后不是 0 且不是 15
-/// （即标签 `6..=0x13`）时直调 `switch_mode(toolbar, request)` 返回；否则只推进类别 7 的选中下标，
-/// **不**把条目写回 `pending`。
-pub fn category_env3<S: SwitchMode>(
-    request: &ModeEntry,
-    toolbar: &mut Toolbar,
-    pending: &mut ModeEntry,
-    switch: &mut S,
-) -> Result<(), ToolbarIndexOutOfBounds> {
-    *pending = *request;
-    let variant = request.normalized_variant();
-    if variant != 0 && variant != 0xf {
-        switch.switch_mode(toolbar, request);
-        return Ok(());
-    }
-    toolbar.select_index(category_closure::ENV_3).map(|_| ())
+    world.init_resource::<Events<RequestAppModeChange>>();
+    world.init_resource::<Events<RequestToolbarCategoryChange>>();
+    world.init_resource::<Events<RequestHistoryCommand>>();
+    world.init_resource::<Events<LoadingGameComplete>>();
+    world.init_resource::<Events<HistoryCommand>>();
+    world.init_resource::<Events<UiHistoryPlaySelectAnimation>>();
+    world.init_resource::<Events<ModeManagerSound>>();
+    world.init_resource::<Events<ClearCanvasCmd>>();
+    world.init_resource::<Events<AppModeChanged>>();
+    schedule.add_systems((mode_manager::<M, S>, send_mode_just_changed_event).chain());
 }
 
 #[cfg(test)]
-mod tests {
+mod recovery_tests {
     use super::*;
-
-    fn probe(hovered: bool, widget_id: u64, hit_tag: u32) -> EscMenuProbe {
-        EscMenuProbe {
-            hovered,
-            widget_id,
-            hit_tag,
-        }
+    use crate::input::action_set::DigitalActionState;
+    use crate::recovered_building::history_transactions::ObservedHistoryLedger;
+    fn fixture() -> (World, Schedule) {
+        let mut world = World::new();
+        world.insert_resource(HistoryTransactions::<(), ()>::from_observed(
+            ObservedHistoryLedger {
+                entries: vec![],
+                cursor: -1,
+                undo_anchor: -1,
+                resolved_snapshots: vec![],
+                observed_count_58: 0,
+                mutation_nonce: 0,
+            },
+        ));
+        world.insert_resource(ModeManagerUiContext {
+            probe: EscMenuProbe {
+                hovered: false,
+                widget_id: 0,
+                hit_tag: 2,
+            },
+            esc_menu_canvas_id: 55,
+        });
+        world.insert_resource(MainActionSet::default());
+        world.insert_resource(TimeOfDayScreen { visible: false });
+        let mut schedule = Schedule::default();
+        configure_mode_manager::<(), ()>(&mut world, &mut schedule, false);
+        (world, schedule)
     }
-
-    fn count<T: Event>(events: &Events<T>) -> usize {
-        events.get_cursor().read(events).count()
+    fn events<T: Event + Clone>(world: &World) -> Vec<T> {
+        let events = world.resource::<Events<T>>();
+        events.get_cursor().read(events).cloned().collect()
     }
-
+    fn press(world: &mut World, slot: usize) {
+        world.resource_mut::<MainActionSet>().digital[slot] =
+            DigitalActionState { disc: 0, val: 0.0 };
+    }
     #[test]
-    fn force_branch_only_pushes_the_forced_event() {
-        let mut state = 7;
-        let mut out = SwitchEvents::default();
-        check_if_can_switch(
-            true,
-            &mut state,
-            &RequestAppModeChange { mode: 0x1234 },
-            &mut out,
-        )
-        .unwrap();
-        assert_eq!(state, 7);
+    fn last_mode_request_and_full_payload_event() {
+        let (mut w, mut s) = fixture();
+        let target = AppMode::Editing(EditSubject::Roof(0x123456789));
+        w.resource_mut::<Events<RequestAppModeChange>>()
+            .send(RequestAppModeChange {
+                mode: AppMode::Path,
+            });
+        w.resource_mut::<Events<RequestAppModeChange>>()
+            .send(RequestAppModeChange { mode: target });
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), target);
+        assert_eq!(w.resource::<Toolbar>().current, ToolbarCategory::Editing);
         assert_eq!(
-            (count(&out.forced), count(&out.requested), count(&out.byte)),
-            (1, 0, 0)
-        );
-    }
-
-    #[test]
-    fn non_force_branch_sets_replay_and_pushes_both_events() {
-        let mut state = 0;
-        let mut out = SwitchEvents::default();
-        let req = RequestAppModeChange { mode: 0x0100 | 9 };
-        check_if_can_switch(false, &mut state, &req, &mut out).unwrap();
-        assert_eq!(state, PENDING_REPLAY_MODE);
-        assert_eq!(
-            out.requested.get_cursor().read(&out.requested).next(),
-            Some(&ModeSwitchRequested(0x0109))
-        );
-        assert_eq!(
-            out.byte.get_cursor().read(&out.byte).next(),
-            Some(&ModeSwitchByte(1))
-        );
-    }
-
-    #[test]
-    fn non_force_byte1_above_one_is_the_original_unreachable_after_first_event() {
-        let mut state = 0;
-        let mut out = SwitchEvents::default();
-        let err = check_if_can_switch(
-            false,
-            &mut state,
-            &RequestAppModeChange { mode: 0x0200 },
-            &mut out,
-        )
-        .unwrap_err();
-        assert_eq!(err, UnreachableRequestByte { byte1: 2 });
-        assert_eq!(state, PENDING_REPLAY_MODE);
-        assert_eq!((count(&out.requested), count(&out.byte)), (1, 0));
-    }
-
-    #[test]
-    fn esc_menu_blocks_only_when_hovered_matching_id_and_tag_not_two() {
-        let id = 0xabcd;
-        assert!(esc_menu_blocks(probe(true, id, 0), id));
-        assert!(!esc_menu_blocks(probe(false, id, 0), id));
-        assert!(!esc_menu_blocks(probe(true, id + 1, 0), id));
-        assert!(!esc_menu_blocks(probe(true, id, 2), id));
-    }
-
-    #[test]
-    fn blocked_step_leaves_unread_requests_in_the_queue() {
-        let mut requests = Events::<RequestAppModeChange>::default();
-        requests.send(RequestAppModeChange { mode: 1 });
-        let mut cursor = requests.get_cursor();
-        let (mut state, mut out) = (0, SwitchEvents::default());
-        let step = mode_manager_step(
-            probe(true, 5, 0),
-            5,
-            &mut cursor,
-            &requests,
-            &mut state,
-            &mut out,
-        )
-        .unwrap();
-        assert_eq!(step, ModeManagerStep::Blocked);
-        assert_eq!(cursor.len(&requests), 1);
-        assert_eq!(count(&out.forced), 0);
-    }
-
-    #[test]
-    fn drain_handles_only_the_last_unread_request_with_force() {
-        let mut requests = Events::<RequestAppModeChange>::default();
-        requests.send(RequestAppModeChange { mode: 1 });
-        requests.send(RequestAppModeChange { mode: 2 });
-        requests.send(RequestAppModeChange { mode: 3 });
-        let mut cursor = requests.get_cursor();
-        let (mut state, mut out) = (0, SwitchEvents::default());
-        let step = mode_manager_step(
-            probe(false, 0, 2),
-            9,
-            &mut cursor,
-            &requests,
-            &mut state,
-            &mut out,
-        )
-        .unwrap();
-        assert_eq!(
-            step,
-            ModeManagerStep::Drained {
-                handled: Some(RequestAppModeChange { mode: 3 })
-            }
-        );
-        assert_eq!(count(&out.forced), 1);
-        assert_eq!(cursor.len(&requests), 0);
-        let step = mode_manager_step(
-            probe(false, 0, 2),
-            9,
-            &mut cursor,
-            &requests,
-            &mut state,
-            &mut out,
-        )
-        .unwrap();
-        assert_eq!(step, ModeManagerStep::Drained { handled: None });
-        assert_eq!(count(&out.forced), 1);
-    }
-
-    #[test]
-    fn mode_changed_event_fires_once_and_syncs_previous() {
-        let mut out = Events::<AppModeChanged<[u64; 2]>>::default();
-        let current = [6, 1];
-        let mut previous = [2, 0];
-        send_mode_just_changed_event(&current, &mut previous, &mut out);
-        assert_eq!(previous, current);
-        let got: Vec<_> = out.get_cursor().read(&out).copied().collect();
-        assert_eq!(
-            got,
-            vec![AppModeChanged {
-                current: [6, 1],
-                previous: [2, 0]
+            events::<AppModeChanged>(&w),
+            [AppModeChanged {
+                previous: AppMode::default(),
+                current: target
             }]
         );
-        send_mode_just_changed_event(&current, &mut previous, &mut out);
-        assert_eq!(out.get_cursor().read(&out).count(), 1);
     }
-
-    #[derive(Default)]
-    struct RecordingSwitch {
-        calls: Vec<ModeEntry>,
-    }
-
-    impl SwitchMode for RecordingSwitch {
-        fn switch_mode(&mut self, _toolbar: &mut Toolbar, entry: &ModeEntry) {
-            self.calls.push(*entry);
-        }
-    }
-
-    fn toolbar_11(cat: usize, modes: Vec<ModeEntry>, remembered: usize, current: u8) -> Toolbar {
-        use crate::resources::toolbar::ToolbarCategoryModes;
-        let mut categories = vec![ToolbarCategoryModes::default(); 11];
-        categories[cat] = ToolbarCategoryModes {
-            modes,
-            current: remembered,
-        };
-        Toolbar {
-            categories,
-            current,
-        }
-    }
-
-    fn me(tag: u32, arg: u64, extra: u32) -> ModeEntry {
-        ModeEntry { tag, arg, extra }
-    }
-
     #[test]
-    fn generic_closure_writes_the_entry_into_pending() {
-        let mut tb = toolbar_11(
-            category_closure::ENV_10,
-            vec![me(7, 1, 2), me(8, 3, 4)],
-            0,
-            category_closure::ENV_10 as u8,
+    fn history_recording_blocks_modes_but_time_of_day_remains_live() {
+        let (mut w, mut s) = fixture();
+        w.resource_mut::<HistoryTransactions<(), ()>>()
+            .start_input_recording(0)
+            .unwrap();
+        press(&mut w, 5);
+        press(&mut w, 14);
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::default());
+        assert!(w.resource::<TimeOfDayScreen>().visible);
+        assert_eq!(
+            events::<ModeManagerSound>(&w),
+            [
+                ModeManagerSound::SwitchBlocked,
+                ModeManagerSound::TimeOfDayToggled
+            ]
         );
-        let mut pending = ModeEntry::default();
-        category_advance(category_closure::ENV_10, &mut tb, &mut pending).unwrap();
-        assert_eq!(pending, me(8, 3, 4));
     }
-
     #[test]
-    fn env14_with_tag_0x13_clears_tag_and_calls_switch_mode_only() {
-        let mut tb = toolbar_11(category_closure::ENV_14, vec![me(9, 0, 0)], 0, 0);
-        let mut pending = me(0x13, 77, 5);
-        let mut sw = RecordingSwitch::default();
-        category_env14(&mut tb, &mut pending, &mut sw).unwrap();
-        assert_eq!(pending, me(0, 77, 5));
-        assert_eq!(sw.calls, vec![me(0, 77, 5)]);
-        assert_eq!(tb.current, 0);
+    fn undo_preempts_mode_queue_and_preserves_unread_mode_request() {
+        let (mut w, mut s) = fixture();
+        press(&mut w, 16);
+        w.resource_mut::<Events<RequestAppModeChange>>()
+            .send(RequestAppModeChange {
+                mode: AppMode::Tree,
+            });
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::Replay);
+        assert_eq!(events::<HistoryCommand>(&w), [HistoryCommand::UNDO]);
+        assert!(events::<UiHistoryPlaySelectAnimation>(&w).is_empty());
+        *w.resource_mut::<AppMode>() = AppMode::default();
+        *w.resource_mut::<MainActionSet>() = MainActionSet::default();
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::Tree);
     }
-
     #[test]
-    fn env14_otherwise_behaves_like_the_generic_closure() {
-        let mut tb = toolbar_11(category_closure::ENV_14, vec![me(9, 6, 7)], 0, 3);
-        let mut pending = me(1, 0, 0);
-        let mut sw = RecordingSwitch::default();
-        category_env14(&mut tb, &mut pending, &mut sw).unwrap();
-        assert_eq!(pending, me(9, 6, 7));
-        assert!(sw.calls.is_empty());
-        assert_eq!(tb.current, 10);
+    fn esc_menu_blocks_without_draining_and_loading_keeps_its_restore_target() {
+        let (mut w, mut s) = fixture();
+        w.resource_mut::<ModeManagerUiContext>().probe = EscMenuProbe {
+            hovered: true,
+            widget_id: 55,
+            hit_tag: 0,
+        };
+        w.resource_mut::<Events<LoadingGameComplete>>()
+            .send(LoadingGameComplete {
+                restore_to: AppMode::Wall(WallShape::Circle),
+            });
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::default());
+        w.resource_mut::<ModeManagerUiContext>().probe.hovered = false;
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::Replay);
+        assert_eq!(
+            w.resource::<RestoreAppTo>().0,
+            AppMode::Wall(WallShape::Circle)
+        );
     }
-
     #[test]
-    fn env3_copies_request_and_switches_for_tags_6_to_0x13() {
-        let mut tb = toolbar_11(category_closure::ENV_3, vec![me(1, 0, 0)], 0, 0);
-        let mut pending = ModeEntry::default();
-        let mut sw = RecordingSwitch::default();
-        let request = me(0x10, 9, 9);
-        category_env3(&request, &mut tb, &mut pending, &mut sw).unwrap();
-        assert_eq!(pending, request);
-        assert_eq!(sw.calls, vec![request]);
-        assert_eq!(tb.current, 0);
+    fn shortcut_photomode_toggle_and_clear_pressed_order() {
+        let (mut w, mut s) = fixture();
+        press(&mut w, 13);
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::Photomode);
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::default());
+        assert_eq!(w.resource::<Toolbar>().current, ToolbarCategory::Editing);
+        press(&mut w, 4);
+        w.resource_mut::<MainActionSet>().digital[26] = DigitalActionState { disc: 2, val: 99.0 };
+        s.run(&mut w);
+        assert_eq!(*w.resource::<AppMode>(), AppMode::default());
+        assert_eq!(events::<ClearCanvasCmd>(&w), [ClearCanvasCmd(false)]);
     }
-
     #[test]
-    fn env3_for_tags_0_to_5_and_0x14_only_advances_category_7() {
-        for tag in [0, 5, 0x14] {
-            let mut tb = toolbar_11(
-                category_closure::ENV_3,
-                vec![me(1, 0, 0), me(2, 0, 0)],
-                0,
-                category_closure::ENV_3 as u8,
-            );
-            let mut pending = ModeEntry::default();
-            let mut sw = RecordingSwitch::default();
-            let request = me(tag, 1, 2);
-            category_env3(&request, &mut tb, &mut pending, &mut sw).unwrap();
-            assert_eq!(pending, request, "tag {tag}");
-            assert!(sw.calls.is_empty(), "tag {tag}");
-            assert_eq!(
-                tb.categories[category_closure::ENV_3].current,
-                1,
-                "tag {tag}"
-            );
-            assert_eq!(tb.current, 7, "tag {tag}");
+    fn serde_preserves_original_nested_names_and_clutter_schema() {
+        let mode = AppMode::Decorator(DecoratorType::Clutter {
+            ty: ClutterMeshTy::PlantPotV1,
+        });
+        let json = serde_json::to_string(&mode).unwrap();
+        assert_eq!(json, r#"{"Decorator":{"Clutter":{"ty":"plant_pot_v1"}}}"#);
+        assert_eq!(serde_json::from_str::<AppMode>(&json).unwrap(), mode);
+        assert_eq!(
+            serde_json::to_string(&AppMode::Editing(EditSubject::DecoClutter {
+                decorator_id: 7
+            }))
+            .unwrap(),
+            r#"{"Editing":{"DecoClutter":{"decorator_id":7}}}"#
+        );
+        for tag in 0..=63u8 {
+            if tag != 62 {
+                assert_eq!(
+                    DecoratorType::from_native_tag(tag).unwrap().native_tag(),
+                    tag
+                );
+            }
         }
+        assert_eq!(AppMode::Editing(EditSubject::Roof(4)).native_tag(), 2);
+        assert!(!AppMode::Replay.is_tool_selected());
+        assert!(AppMode::Fences.is_tool_selected());
     }
 }

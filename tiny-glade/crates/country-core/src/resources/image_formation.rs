@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 
 /// `ImageFormationConfig`（O：0x40 B；见模块文档的偏移表，字段语义 U）。
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ImageFormationConfig {
     /// `+0x00`：名称（O：`String`，缺省 "default"）。
     pub name: String,
@@ -48,6 +48,89 @@ pub struct ImageFormationConfig {
     pub flag_3d: u8,
     /// `+0x3e..+0x40`：尾部填充。
     pub _pad_3e: [u8; 2],
+}
+
+// Serde views of this same owner. The native serializers are 0x14085fd80
+// (outer), 0x140af00e0 (grading), 0x14085faa0 (lens), 0x14085fc20 (artistic).
+// Padding and offset-based implementation names are never stored in saves.
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ColorGradingState")]
+struct GradingSave {
+    bypass_color: bool,
+    current_grading_lut: String,
+    grading_strength: f32,
+    ev_shift: f32,
+    contrast: f32,
+    saturation: f32,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "CameraLensConfig")]
+struct LensSave {
+    vignette: f32,
+    chromatic_aberration: f32,
+    barrel_distortion: f32,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ArtisticConfig")]
+struct ArtisticSave {
+    lighting_only: bool,
+    tree_see_thru: bool,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ImageFormationConfig")]
+struct ImageFormationSave {
+    grading: GradingSave,
+    camera_lens: LensSave,
+    artistic: ArtisticSave,
+}
+impl Serialize for ImageFormationConfig {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ImageFormationSave {
+            grading: GradingSave {
+                bypass_color: self.flag_28 != 0,
+                current_grading_lut: self.name.clone(),
+                grading_strength: self.params_18[0],
+                ev_shift: self.params_18[1],
+                contrast: self.params_18[2],
+                saturation: self.params_18[3],
+            },
+            camera_lens: LensSave {
+                vignette: self.params_30[0],
+                chromatic_aberration: self.params_30[1],
+                barrel_distortion: f32::from_bits(self.word_38),
+            },
+            artistic: ArtisticSave {
+                lighting_only: self.flag_3c != 0,
+                tree_see_thru: self.flag_3d != 0,
+            },
+        }
+        .serialize(serializer)
+    }
+}
+impl<'de> Deserialize<'de> for ImageFormationConfig {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Native visitors require all three objects and all of their fields.
+        let data = ImageFormationSave::deserialize(deserializer)?;
+        Ok(Self {
+            name: data.grading.current_grading_lut,
+            params_18: [
+                data.grading.grading_strength,
+                data.grading.ev_shift,
+                data.grading.contrast,
+                data.grading.saturation,
+            ],
+            flag_28: u8::from(data.grading.bypass_color),
+            _pad_29: [0; 7],
+            params_30: [
+                data.camera_lens.vignette,
+                data.camera_lens.chromatic_aberration,
+            ],
+            word_38: data.camera_lens.barrel_distortion.to_bits(),
+            flag_3c: u8::from(data.artistic.lighting_only),
+            flag_3d: u8::from(data.artistic.tree_see_thru),
+            _pad_3e: [0; 2],
+        })
+    }
 }
 
 impl ImageFormationConfig {

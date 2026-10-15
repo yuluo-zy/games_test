@@ -11,6 +11,9 @@ use crate::recovered_building::{
 #[derive(Clone, Debug)]
 pub enum WallReplayError {
     Source(WallReplaySourceError),
+    /// Older portable input omitted the original byte required to restore a
+    /// missing authority row. Existing rows can retain their observed value.
+    MissingSource66(WallId),
     Snapshot(WallSnapshotError),
     UnrestoredOperation(u32),
     Enclosure(crate::recovered_building::building_wall_freeform_cache::ShapeHeightError),
@@ -60,6 +63,23 @@ pub fn advance_wall_groups(
     dt: f32,
     terrain: &crate::recovered_building::building_wall_collection::TerrainHeightGrid512,
 ) -> Result<WallConcurrentReplayOutcome, WallReplayError> {
+    advance_wall_groups_observed(groups, sources, dt, terrain, |_, _| Ok(()))
+}
+
+/// Same interpreter with an adapter observation point after each command.
+/// This preserves A→B→A effects across disjoint adjacent groups without
+/// reconstructing intermediate writes from the final map. The callback does
+/// not own replay timing or group advancement.
+pub fn advance_wall_groups_observed(
+    groups: &mut std::collections::VecDeque<Vec<WallReplayCommand>>,
+    sources: &mut std::collections::HashMap<WallId, WallAuthoritySnapshot>,
+    dt: f32,
+    terrain: &crate::recovered_building::building_wall_collection::TerrainHeightGrid512,
+    mut observe: impl FnMut(
+        &TimedWallReplayOutcome,
+        &std::collections::HashMap<WallId, WallAuthoritySnapshot>,
+    ) -> Result<(), WallReplayError>,
+) -> Result<WallConcurrentReplayOutcome, WallReplayError> {
     let mut out = WallConcurrentReplayOutcome::default();
     loop {
         let Some(front) = groups.front_mut() else {
@@ -67,7 +87,9 @@ pub fn advance_wall_groups(
             break;
         };
         for command in front.iter_mut() {
-            out.effects.push(crate::recovered_building::building_wall_history_transition::advance_wall_transition(command, sources, dt, terrain)?);
+            let effect = crate::recovered_building::building_wall_history_transition::advance_wall_transition(command, sources, dt, terrain)?;
+            observe(&effect, sources)?;
+            out.effects.push(effect);
         }
         if front.iter().any(|command| !command.finished) {
             break;

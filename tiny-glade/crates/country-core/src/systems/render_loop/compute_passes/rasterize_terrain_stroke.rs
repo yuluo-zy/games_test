@@ -88,9 +88,9 @@ impl AsComputeShaderSource for GaussBlur {
     }
 }
 
-/// 地形重算命令（O 名；register_event `RecalculateHeightMapCmd`；布局 U）。
-#[derive(Clone, Debug, Default)]
-pub struct RecalculateHeightMapCmd(pub Gap);
+/// B 0x140a03ba0/0x14094e000 enqueue only the 8-byte EventId: payload is ZST.
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+pub struct RecalculateHeightMapCmd;
 
 // ---------------------------------------------------------------- 笔画上传
 

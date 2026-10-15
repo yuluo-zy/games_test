@@ -24,6 +24,8 @@ def va2off(va):
     rva = va - BASE
     for name, va0, vsize, rawptr, rawsize in sections:
         if va0 <= rva < va0 + vsize:
+            if rva - va0 >= rawsize:
+                raise ValueError(f"VA {va:#x} is zero-filled virtual data in {name}, not a raw-file offset")
             return rawptr + (rva - va0)
     raise ValueError(f"VA {va:#x} not mapped")
 

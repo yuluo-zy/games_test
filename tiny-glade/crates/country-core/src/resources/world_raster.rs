@@ -11,6 +11,7 @@
 //! `RasterBufferRef<512>` 是 512×512 光栅的引用（O：preplaced_flower 反编译
 //! `bilinear_sample_at_world_xz<resources::world_raster::RasterBufferRef<512>>`）。
 
+use std::hash::{BuildHasher, Hasher};
 use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
@@ -21,28 +22,32 @@ use zeno::{Cap, Command, Join, Mask, Point, Stroke};
 
 use crate::utils::dirty_tiles::{DirtyTiles, GRID_SIZE, TILE_SIZE};
 
+/// Original event owner, also consumed by the world-raster upload system.
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+pub struct UploadWorldRasterBuffersToStagingCmd;
+
 /// 固定尺寸光栅缓冲引用（O：`RasterBufferRef<512>` 泛型）。
 /// 布局（O，preplaced_flower 调用点 + 采样函数 `[rcx]` 取首 qword）：`{ ptr: *const u8, len: usize }`，即一个
 /// `&[u8]` 切片（调用方从 `WorldRaster` 的双缓冲里按 `+0x298` 字节选当前缓冲后构造；`WorldRaster` 本体布局 U）。
 /// 格点 = `u8 / 255.0`，按 `row*N + col` 排列。
 #[derive(Clone, Copy, Debug)]
-pub struct RasterBufferRef<const N: usize> {
-    pub data: &'static [u8],
+pub struct RasterBufferRef<'a, const N: usize> {
+    pub data: &'a [u8],
 }
 
-impl<const N: usize> Default for RasterBufferRef<N> {
+impl<const N: usize> Default for RasterBufferRef<'_, N> {
     fn default() -> Self {
         Self { data: &[] }
     }
 }
 
-impl<const N: usize> RasterBufferRef<N> {
-    pub const fn new(data: &'static [u8]) -> Self {
+impl<'a, const N: usize> RasterBufferRef<'a, N> {
+    pub const fn new(data: &'a [u8]) -> Self {
         Self { data }
     }
 }
 
-impl RasterBufferRef<512> {
+impl RasterBufferRef<'_, 512> {
     /// O：`utils::float_grid::bilinear_sample_at_world_xz<RasterBufferRef<512>>`（世界范围 `extent_x/z`，
     /// 调用点恒为 130.0）。
     pub fn bilinear_sample_at_world_xz(&self, x: f32, z: f32, extent_x: f32, extent_z: f32) -> f32 {
@@ -50,7 +55,7 @@ impl RasterBufferRef<512> {
     }
 }
 
-impl crate::utils::float_grid::FloatGridCells for RasterBufferRef<512> {
+impl crate::utils::float_grid::FloatGridCells for RasterBufferRef<'_, 512> {
     /// O：`movzx eax, byte [ptr + idx]` 后 `/255.0`（采样函数无边界检查；这里越界 panic）。
     fn cell(&self, index: usize) -> f32 {
         self.data[index] as f32 / 255.0
@@ -74,58 +79,34 @@ pub const EMPTY_TILE_HASH: u32 = 0x0795_4dbb;
 /// 一个瓦片的字节数：8×8 个 u8。
 pub const TILE_BYTES: usize = TILE_SIZE * TILE_SIZE;
 
-const AHASH_MULTIPLE: u64 = 0x5851_f42d_4c95_7f2d;
-const AHASH_ROT: u32 = 23;
-
-fn folded_multiply(a: u64, b: u64) -> u64 {
-    let product = u128::from(a) * u128::from(b);
-    product as u64 ^ (product >> 64) as u64
-}
-
 /// `build_tile_hasher` 构造的瓦片哈希器。
 ///
-/// O：0x140adfcb0 里 `copy_to_staging` 的闭包是对 64 字节切片做 ahash 回退实现的 `write`：
-/// `buffer = (k2 + 64) * MULTIPLE`；先吃尾部 16 字节，再依次吃 0/16/32 处的三个 16 字节块，
-/// 每块 `buffer = rol((buffer + k3) ^ folded_multiply(lo ^ k0, hi ^ k1), 23)`；
-/// 结尾 `rol(folded_multiply(buffer, k3), buffer & 63)`，取低 32 位。
-/// 编译器把 `(k2 + 64) * MULTIPLE + k3` 折成了常量 0x6b229c9255586cd1，
-/// 与 `TILE_HASH_KEYS` 相符（测试里复核）。
+/// O：0x140adfcb0 对 64 字节调用 `Hasher::write` 后取 `finish` 的低 32 位。
+/// 公共 ahash 0.8.11 直接复用原锁版本。构造参数按原 AHasher 状态和
+/// `RandomState::with_seeds` 的公开构造策略换算；不声称这些参数就是作者的源码字面量。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TileHasher {
-    keys: [u64; 4],
-}
+pub struct TileHasher;
 
 /// O：0x1409393e0。
 pub fn build_tile_hasher() -> TileHasher {
-    TileHasher {
-        keys: TILE_HASH_KEYS,
-    }
+    TileHasher
 }
 
 impl TileHasher {
     pub fn keys(&self) -> [u64; 4] {
-        self.keys
+        TILE_HASH_KEYS
     }
 
     pub fn hash_tile(&self, tile: &[u8; TILE_BYTES]) -> u32 {
-        let [k0, k1, k2, k3] = self.keys;
-        let word = |index: usize| {
-            let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&tile[index * 8..index * 8 + 8]);
-            u64::from_le_bytes(bytes)
-        };
-        let update = |buffer: u64, lo: u64, hi: u64| {
-            let combined = folded_multiply(lo ^ k0, hi ^ k1);
-            (buffer.wrapping_add(k3) ^ combined).rotate_left(AHASH_ROT)
-        };
-        let mut buffer = k2
-            .wrapping_add(TILE_BYTES as u64)
-            .wrapping_mul(AHASH_MULTIPLE);
-        buffer = update(buffer, word(6), word(7));
-        for pair in 0..3 {
-            buffer = update(buffer, word(pair * 2), word(pair * 2 + 1));
-        }
-        folded_multiply(buffer, k3).rotate_left((buffer & 63) as u32) as u32
+        let state = ahash::RandomState::with_seeds(
+            0xab7c_b648_c41b_99e0,
+            0x888a_2cd8_3d1b_d30e,
+            0x7edf_6752_b8a7_156d,
+            0xc320_e6ea_89dc_891d,
+        );
+        let mut hasher = state.build_hasher();
+        hasher.write(tile);
+        hasher.finish() as u32
     }
 }
 
@@ -292,6 +273,32 @@ impl<const N: usize> WorldRaster<N> {
         }
     }
 
+    /// The last published buffer is the read view used by B consumers.
+    pub fn current_buffer(&self) -> &[u8] {
+        self.buffer(self.selector)
+    }
+
+    pub fn as_ref(&self) -> RasterBufferRef<'_, N> {
+        RasterBufferRef::new(self.current_buffer())
+    }
+
+    /// B `extend_dirty` is an OR of the tile bitmaps.
+    pub fn extend_dirty(&mut self, dirty: &DirtyTiles) {
+        self.dirty.extend(dirty);
+    }
+
+    /// W1 0x1403d8bd0 writes word +0x29a = 0x0100 after format validation.
+    pub fn mark_staging_uploaded(&mut self) {
+        self.published = false;
+        self.reupload = true;
+    }
+
+    /// Water/garden/path-mask consumers clear the flag and tile bitmap together.
+    pub fn consume_reupload(&mut self) {
+        self.reupload = false;
+        self.dirty.clear();
+    }
+
     pub fn dirty(&self) -> &DirtyTiles {
         &self.dirty
     }
@@ -326,7 +333,7 @@ impl<const N: usize> WorldRaster<N> {
     }
 
     /// +0x29b。`water_rasterize_from_cpu` / `garden_rasterize_from_cpu` 读取并清零；
-    /// 原版里 `upload_to_staging` 路径之外的置位点没有定位（U），这里只提供读写口。
+    /// W1 staging-to-GPU upload 0x1403d8bd0 sets this flag; CPU staging copy alone does not.
     pub fn set_reupload_pending(&mut self, pending: bool) {
         self.reupload = pending;
     }
@@ -519,6 +526,7 @@ mod tests {
 
     #[test]
     fn tile_hash_constants_are_consistent_with_the_compiler_folded_immediate() {
+        const AHASH_MULTIPLE: u64 = 0x5851_f42d_4c95_7f2d;
         let [_, _, k2, k3] = TILE_HASH_KEYS;
         // 0x140adfd3d..0x140adfd58：`rdx = MULTIPLE * 0x40 + 0x6b229c9255586cd1`，
         // 即 `(k2 + 64) * MULTIPLE + k3` 的折叠。

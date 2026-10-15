@@ -29,12 +29,14 @@ pub struct DecoratorStorage {
     /// address. This set is not read when its Decorators object already exists.
     pub removed_by_address: HashMap<DecoratorStorageAddress, HashSet<u32>>,
 }
-pub struct DecoratorArchivist<C> {
+#[derive(bevy_ecs::resource::Resource)]
+pub struct DecoratorArchivist<C: Send + Sync + 'static> {
     pub walls: HashMap<WallId, TrackedDecorators>,
     pub special1: Option<TrackedDecorators>,
     pub special2: Option<TrackedDecorators>,
     pub collision_a: HashMap<u32, C>,
     pub collision_b: HashMap<u32, C>,
+    pub culling: crate::resources::walls::decorator_archivist::DecoratorCullPolicy,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DecoratorRestoreError {
@@ -111,7 +113,7 @@ fn restore_one(
 /// Actual order is wall-map drain, then special1, then special2. No ownership
 /// notifications substitute for restoring the data and global live-ID index.
 /// Invalid original panic domains return typed errors before committing state.
-pub fn restore_archived_decorators<C>(
+pub fn restore_archived_decorators<C: Send + Sync + 'static>(
     archive: &mut DecoratorArchivist<C>,
     storage: &mut DecoratorStorage,
 ) -> Result<(), DecoratorRestoreError> {

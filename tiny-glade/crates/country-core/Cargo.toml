@@ -9,20 +9,30 @@ description = "Tiny Glade game rendering declarations and recovered domain rules
 
 [features]
 native-physics = ["dep:rapier3d"]
+native-audio = ["dep:libfmod"]
 
 [dependencies]
+ahash = "=0.8.11"
+petgraph = "=0.8.1"
 system-roof.workspace = true
 tabloid.workspace = true
 tg-history.workspace = true
+tg-terrain.workspace = true
+paths.workspace = true
+tempfile = "=3.20.0"
+crossbeam-channel = "=0.5.6"
 fastrand.workspace = true
 perchance.workspace = true
 rapier3d = { workspace = true, optional = true }
 anyhow.workspace = true
 ash.workspace = true
 bevy_ecs = { version = "=0.16.0", default-features = false }
+bevy_time = { version = "=0.16.0", default-features = false }
+libfmod = { version = "=2.222.6", optional = true }
 bitvec = "=1.0.1"
 hexasphere = "=12.0.0"
 bytemuck = "=1.16.0"
+bracket-noise = "=0.8.2"
 fnv.workspace = true
 glam = { workspace = true, features = ["serde", "bytemuck"] }
 half.workspace = true

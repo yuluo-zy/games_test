@@ -64,13 +64,13 @@ impl BrickSourceId {
 }
 
 /// 砖实例墙。
-#[derive(Clone, Debug)]
+#[derive(bevy_ecs::component::Component, Clone, Debug)]
 pub struct InstancedWall<T> {
     pub id: u64,
     pub brick_transforms: Vec<T>,
 }
 
-impl<T: SparseSsbo + Copy> InstancedWall<T> {
+impl<T> InstancedWall<T> {
     /// 0x140858800。
     pub fn new(id: u64, brick_transforms: Vec<T>) -> Self {
         Self {
@@ -83,7 +83,9 @@ impl<T: SparseSsbo + Copy> InstancedWall<T> {
     pub fn update(&mut self, brick_transforms: Vec<T>) {
         self.brick_transforms = brick_transforms;
     }
+}
 
+impl<T: SparseSsbo + Copy> InstancedWall<T> {
     /// 0x140858880：取走砖缓冲，写入器缺失 panic，`clear` 后逐块 `push`，空间不足 panic `Out of bricks.`。
     pub fn upload_to_storage_buffer(
         &mut self,

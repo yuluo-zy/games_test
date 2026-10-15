@@ -21,13 +21,37 @@ use std::marker::PhantomData;
 
 use glam::Vec3;
 use tabloid::{Publisher, Subscriber};
-use utils::float_grid::{CENTERED_PATH, DEFAULT_WORLD_EXTENT, FloatGrid, FloatGridSampler};
+use utils::float_grid::{FloatGrid, FloatGridSampler, CENTERED_PATH, DEFAULT_WORLD_EXTENT};
 use utils::geometry::{Aabb3, Plane, Ray, RayBoxIntersection};
 
 use crate::utils::dirty_tiles::{DirtyTiles, GRID_SIZE, TILE_SIZE};
 
-/// 泛型参数的标记类型（`TerrainHeightsData<TerrainHeightSsbo>`）。
-pub struct TerrainHeightSsbo;
+/// B readback SSBOs pack two u16 heights in each u32 (0x20000 elements).
+/// They are also the distinct identity parameters of the two CPU height owners.
+macro_rules! height_readback_ssbo {
+    ($($name:ident),+ $(,)?) => {$(
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, Default)]
+        pub struct $name(pub u32);
+        unsafe impl bytemuck::Zeroable for $name {}
+        unsafe impl bytemuck::Pod for $name {}
+        impl crate::render::ssbo::StorageElement for $name {
+            const NAME: &'static str = stringify!($name);
+            const BUFFER_LEN: usize = 0x20000;
+            const MAPPED_MEMORY: u8 = crate::render::ssbo::MAPPED_MEMORY_READBACK;
+        }
+        impl crate::asset_libraries::ssbo_library::SsboType for $name {
+            type Storage = crate::render::ssbo::MappedStorageBuffer<'static, Self>;
+            fn new_storage_buffer(
+                device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+                initial: Option<&[u8]>,
+            ) -> Self::Storage {
+                crate::render::ssbo::MappedStorageBuffer::new_storage_buffer(device, initial)
+            }
+        }
+    )+};
+}
+height_readback_ssbo!(TerrainHeightSsbo, VisualTerrainHeightSsbo);
 
 /// 网格边长（格）。
 pub const GRID_SIDE: usize = 512;
@@ -59,6 +83,7 @@ pub struct TerrainHeightsData<T = TerrainHeightSsbo> {
     max_height: f32,
     marker: PhantomData<T>,
 }
+impl<T: Send + Sync + 'static> bevy_ecs::resource::Resource for TerrainHeightsData<T> {}
 
 impl<T> TerrainHeightsData<T> {
     /// 全零网格 + 默认高度范围。原版的构造点未恢复（U）；这里只提供一个可用起点。

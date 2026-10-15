@@ -262,11 +262,18 @@ pub enum BuildingReplayOutput {
 }
 #[derive(Clone, Debug)]
 pub struct RoofReplayCommand {
-    edit: RoofHistoryEdit,
+    edit: std::sync::Arc<RoofHistoryEdit>,
     state: VisualReplayState,
 }
 impl RoofReplayCommand {
-    fn expanded(edit: RoofHistoryEdit, undo: bool, instant: bool) -> Self {
+    pub(crate) fn expanded(edit: RoofHistoryEdit, undo: bool, instant: bool) -> Self {
+        Self::expanded_shared(std::sync::Arc::new(edit), undo, instant)
+    }
+    pub(crate) fn expanded_shared(
+        edit: std::sync::Arc<RoofHistoryEdit>,
+        undo: bool,
+        instant: bool,
+    ) -> Self {
         // Original B expansion: mode = !instant, duration = 0.2f32, elapsed = 0,
         // undo flag selected by cursor, finished = false. Arc pointer is owned
         // through Rust instead of copied into state bytes 8..16.
@@ -284,6 +291,13 @@ impl RoofReplayCommand {
     }
     pub fn state(&self) -> &VisualReplayState {
         &self.state
+    }
+    /// ReplayBuffer::make_animations_instant, original B jump-table tag 5:
+    /// write mode=0 and preserve elapsed/duration/undo/completion.
+    pub fn make_instant(&mut self) {
+        let mut state = *self.state.bytes();
+        state[..4].copy_from_slice(&0u32.to_le_bytes());
+        self.state = VisualReplayState::from_observed(state);
     }
     /// Executes recovered process policy only; caller owns actual World lookup,
     /// queue/bucket retention and original scheduler completion rules.
@@ -314,8 +328,9 @@ pub struct BuildingReplaySelection {
     pub undo: bool,
     pub instant: bool,
     pub commands: Vec<RoofReplayCommand>,
-    /// Complete partition in original owner order. `commands` remains the
-    /// Roof expansion observation used by existing native prefix probes.
+    /// Legacy owner-partition observation used by CPU probes. These are not
+    /// native outer ReplayBuckets: the live resource preserves mixed commands
+    /// in resources::history::ReplayBucket. `commands` is the Roof projection.
     pub buckets: Vec<BuildingReplayBucket>,
 }
 #[derive(Clone, Debug)]
@@ -333,9 +348,9 @@ pub struct BuildingReplayBucketSelection {
     pub owner: BuildingReplayBucket,
 }
 impl BuildingReplaySelection {
-    /// Actual new/deleted Wall owner and Roof owner partition. Roof->Roof and
-    /// the recovered Wall presence groups require distinct outer buckets.
-    /// Wall height merging and auxiliary owners remain explicitly unsupported.
+    /// Legacy probe partition, not the native scheduling boundary. The live
+    /// history owner must use resources::history::ReplayBucket::expand, whose
+    /// mixed command list is visited by each domain consumer in the same frame.
     pub fn into_replay_buckets(self) -> Vec<BuildingReplayBucketSelection> {
         self.buckets
             .into_iter()

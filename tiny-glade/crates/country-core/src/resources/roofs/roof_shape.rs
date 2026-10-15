@@ -1,4 +1,75 @@
-//! 原作 Roof 局部状态函数。字段名未知；不代表完整 Roof 类型或网格算法。
+//! B Roof component and its observed 0x58-byte game fields.
+//! Geometry is shared with the recovered system-roof crate. The byte projection
+//! preserves appearance fields whose original Rust enum schema is not yet known.
+
+use crate::resources::walls::WallId;
+use bevy_ecs::component::Component;
+use glam::Vec3;
+
+#[derive(Component, Clone, Debug)]
+pub struct Roof(pub(crate) [u8; 88]);
+
+impl Roof {
+    pub fn from_observed(bytes: [u8; 88]) -> Self {
+        Self(bytes)
+    }
+    pub fn observed(&self) -> &[u8; 88] {
+        &self.0
+    }
+    pub fn wall_id(&self) -> WallId {
+        WallId(u64::from_le_bytes(self.0[..8].try_into().unwrap()))
+    }
+    pub fn floor_y(&self) -> f32 {
+        self.float_at(0x4c)
+    }
+    pub fn height_01(&self) -> f32 {
+        self.float_at(0x30)
+    }
+    pub fn is_pitched(&self) -> bool {
+        ty_observed(self.height_01())
+    }
+    pub fn is_flat(&self) -> bool {
+        self.height_01() <= f32::from_bits(0x3dcccccd)
+    }
+    pub fn is_flat_w_no_rim(&self) -> bool {
+        self.is_flat() && self.0[0x3d] == 0
+    }
+    pub fn is_gable(&self) -> bool {
+        is_gable_observed(self.height_01(), self.float_at(0x34))
+    }
+    pub fn gable_sides(&self) -> Option<[u8; 2]> {
+        self.is_gable().then_some([self.0[0x3c], self.0[0x3c] | 2])
+    }
+    pub fn height(&self) -> f32 {
+        system_roof::surface::height(&self.0)
+    }
+    pub fn pivot_3d(&self) -> Vec3 {
+        let tag = u32::from_le_bytes(self.0[8..12].try_into().unwrap()) as usize;
+        assert!(tag < 2, "unsupported Roof enclosure");
+        Vec3::new(
+            self.float_at(12 + tag * 8),
+            self.floor_y(),
+            self.float_at(16 + tag * 8),
+        )
+    }
+    pub fn shape_dims(&self) -> [f32; 2] {
+        if self.0[8] & 1 == 0 {
+            let diameter = self.float_at(0x14) + self.float_at(0x14);
+            [diameter; 2]
+        } else {
+            [self.float_at(0x1c), self.float_at(0x20)]
+        }
+    }
+    pub fn shape_at(&self, coordinate: f32) -> system_roof::surface::RoofSection {
+        system_roof::surface::section(&self.0, coordinate)
+    }
+    pub fn parameters(&self) -> system_roof::parameters::RoofParameterBlock {
+        system_roof::parameters::RoofParameterBlock::from_roof(&self.0)
+    }
+    fn float_at(&self, offset: usize) -> f32 {
+        f32::from_le_bytes(self.0[offset..offset + 4].try_into().unwrap())
+    }
+}
 
 pub fn ty_observed(value_at_0x30: f32) -> bool {
     let threshold = f32::from_bits(0x3dcccccd);

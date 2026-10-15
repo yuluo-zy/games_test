@@ -193,3 +193,15 @@ sha256: f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03
 任务索引接入与 agent 角色模板使用 [tiny-glade-recovery](skeleton/workflow-design/tiny-glade-recovery/SKILL.md)。其 workflow.py 只准备任务包/检查冻结内容，不代替本说明的 operator、schema、身份检查或工具结果检查。
 
 本轮新增身份绑定原证据包、持久MCP批量、模块交接三个本地技能，原重建技能增加公共Cargo锁对照。可执行入口与真实成本/失败/源码边界见 [RESULTS.md](evidence/toolchain-pet-pilot-2026-10-11/RESULTS.md)，项目recipe由 `scripts/native-workflow/run_pet_pilot.py` 一次执行。所有步骤仍检查各自结果，脚本成功不等于完整游戏业务完成。默认Bpatched数据库与C原发行文件继续分离；不将可变DB反编译结果放入原字节缓存。
+
+## 9. 本机 Windows Claude 辅助调用（2026-10-15）
+
+已实测本机 Claude Code 2.1.299 可用，使用既有配置，调用时不传模型名称。先把最小证据片段写入 UTF-8 prompt 文件，再运行：
+
+```powershell
+py -3 C:/Users/liyu/.codex/skills/claude-reverse-assist/scripts/claude_print.py <prompt.txt> <output-prefix> --timeout 300
+```
+
+该技能入口直接调用 npm 安装的原生程序，通过 stdin 传递提示词，保留空 `--tools` 参数，并禁用本次分析的工具/MCP。输出为 `.stdout.json`、`.stderr.txt`、`.result.json`；检查进程退出码和报告 `ok`，不得只看 stderr。当前配置会输出 `[claude-code:unrecognized_model]` 日志，但真实请求退出 0、`subtype=success`、`is_error=false` 且返回预期文本，因此此日志本身不能判定调用失败。超时单独记录，不自动重试、不改模型配置。
+
+复验证据：[probe.result.json](evidence/claude-call-repair-2026-10-15/probe.result.json)，5.316 秒返回 `CLAUDE_OK_20261015`。Claude 仅作辅助分析，业务结论仍按原指令/PDB/Ghidra/ReVa 证据验收。

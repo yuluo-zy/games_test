@@ -253,6 +253,7 @@ fn observed_wall_snapshot(
                 .ok_or("Missing observed special flag")?,
         },
         metadata: WallHistoryMetadata {
+            source_66: v.get("source_66").map(|_| byte("source_66")).transpose()?,
             source_60_bits: u32::from_str_radix(
                 v["source_60_bits"]
                     .as_str()
@@ -392,7 +393,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             "set_wall_source_metadata"=>{
                 let wall=id(&operation["wall_id"])?;
                 let bits=u32::from_str_radix(operation["source_60_bits"].as_str().ok_or("Missing observed source60 bits")?,16)?;
-                let metadata=country_core::recovered_building::building_wall_history_edit::WallHistoryMetadata{source_60_bits:bits,source_67:u8::try_from(operation["source_67"].as_u64().ok_or("Missing source67")?)?,source_69:u8::try_from(operation["source_69"].as_u64().ok_or("Missing source69")?)?};
+                let metadata=country_core::recovered_building::building_wall_history_edit::WallHistoryMetadata{source_60_bits:bits,source_66:operation.get("source_66").map(|v| v.as_u64().ok_or("Invalid source66").and_then(|v| u8::try_from(v).map_err(|_| "Invalid source66"))).transpose()?,source_67:u8::try_from(operation["source_67"].as_u64().ok_or("Missing source67")?)?,source_69:u8::try_from(operation["source_69"].as_u64().ok_or("Missing source69")?)?};
                 app.world_mut().resource_mut::<tg_building_runtime::wall_authoring::WallAuthoringState>().history_metadata.insert(wall,metadata);
                 if let Some(source)=app.world().resource::<WallCollectionState>().raw_sources.get(&wall).cloned() {emit(&mut app,UpsertRawWall{wall,source});}
             }

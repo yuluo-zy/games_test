@@ -12,8 +12,8 @@
 //!   子类型 0x38..=0x3a 的 0x58 步长记录（"arrow slits color IDs"）。
 //! - 版本开关：`0x14362c308 = (v >= 0x1a)`、`0x14362c011 = (v > 0x1a)`（有符号比较，0x14146dc82..0x14146dc95）。
 //!
-//! 未恢复：备份节拍器（`save_game` 内联的 counter/除数循环，反编译不可靠）、`CurrentSaveFile` 的 0/1/2 三种形态、
-//! 存档线程与快照 GC 的 I/O、`AsyncSaveCmd` 0/1/2。
+//! 影子文件 I/O、节更新、备份节拍器及快照 GC 已接 `systems::save`。
+//! 尚未恢复完整 `CurrentSaveFile` 枚举、异步存档主循环/命令与所有领域快照采集。
 use bitvec::prelude::{BitVec, Lsb0};
 
 /// 存档节（O：键与填充取自二进制；变体名为 I）。
@@ -86,6 +86,14 @@ pub struct DirtyBlocks {
 }
 
 impl DirtyBlocks {
+    pub(crate) fn clear(&mut self) {
+        self.bits.clear();
+    }
+
+    pub(crate) fn truncate_for_file_length(&mut self, length: u64) {
+        self.bits.truncate(length.div_ceil(DIRTY_BLOCK_SIZE) as usize);
+    }
+
     /// `mark_dirty(start, end)`（0x14091a450）：`end <= start` 直接返回；块区间为
     /// `[start >> 12, ceil(end / 4096))`，位图不足时先补 `false` 到 `end_block` 位。
     pub fn mark_dirty(&mut self, start: u64, end: u64) {
@@ -131,7 +139,11 @@ pub struct ShadowBuffer {
 impl ShadowBuffer {
     /// 写入 `bytes` 到 `offset`：缓冲短于 `offset` 时零填充，长度取 `max(len, end)`，并把追加偏移推到 `end`。
     /// 与 0x140a439b0 里的"扩容 → 零填充 → 写入 → 更新 `+0x30/+0x38`"一致。
-    fn write_at(&mut self, offset: u64, bytes: &[u8]) {
+    pub(crate) fn write_at(&mut self, offset: u64, bytes: &[u8]) {
+        self.append_offset = offset;
+        if bytes.is_empty() {
+            return;
+        }
         let start = offset as usize;
         let end = start + bytes.len();
         if self.data.len() < end {

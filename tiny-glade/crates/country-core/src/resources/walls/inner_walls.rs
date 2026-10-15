@@ -172,7 +172,7 @@ impl InnerWalls {
     }
 
     pub fn update_freehand_ty(&mut self, id: WallId, ty: u8) -> bool {
-        self.try_update(id, |state| state.freehand_ty = ty)
+        self.try_update(id, |state| state.snapshot.metadata.source_66 = Some(ty))
     }
 
     /// B 0x140aaa530 writes all four bytes at +0x60. The enum's full schema

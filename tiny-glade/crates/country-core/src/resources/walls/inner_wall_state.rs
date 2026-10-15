@@ -18,7 +18,6 @@ pub fn is_default_arch_height(value: f32) -> bool {
 #[derive(Clone, Debug)]
 pub struct WallState {
     pub(crate) snapshot: WallAuthoritySnapshot,
-    pub(crate) freehand_ty: u8,
 }
 
 impl WallState {
@@ -46,13 +45,15 @@ impl WallState {
         )
     }
 
-    /// The earlier history projection omits source +0x66. Require its real
-    /// value separately rather than silently resetting it on restoration.
-    pub fn from_snapshot(snapshot: WallAuthoritySnapshot, freehand_ty: u8) -> Self {
-        Self {
-            snapshot,
-            freehand_ty,
-        }
+    /// Import the real source +66, including older portable snapshots that
+    /// omitted it. The metadata becomes its single authoritative storage.
+    pub fn from_snapshot(mut snapshot: WallAuthoritySnapshot, freehand_ty: u8) -> Self {
+        // The old portable snapshot has two representations of source +65.
+        // Preserve its raw byte (historically named clutter_version), deriving
+        // the collection predicate so the core never has two mutable owners.
+        snapshot.source.special = snapshot.source.clutter_version != 0;
+        snapshot.metadata.source_66 = Some(freehand_ty);
+        Self { snapshot }
     }
 
     pub fn snapshot(&self) -> &WallAuthoritySnapshot {
@@ -60,11 +61,22 @@ impl WallState {
     }
 
     pub fn into_snapshot(self) -> (WallAuthoritySnapshot, u8) {
-        (self.snapshot, self.freehand_ty)
+        let freehand_ty = self.freehand_ty();
+        (self.snapshot, freehand_ty)
     }
 
     pub fn source(&self) -> &RawWallPublicationSource {
         &self.snapshot.source
+    }
+
+    /// Original source +65, copied verbatim to Public +296. The original game
+    /// field name is unresolved; it is distinct from freehand type at +66.
+    pub fn source_flag_65(&self) -> u8 {
+        self.snapshot.source.clutter_version
+    }
+
+    pub fn is_special(&self) -> bool {
+        self.source_flag_65() != 0
     }
 
     /// Source +0x54; this is independent of terrain elevation and public max Y.
@@ -83,7 +95,10 @@ impl WallState {
 
     /// Source +0x66, confirmed from the byte store at 0x140aa9ba7.
     pub fn freehand_ty(&self) -> u8 {
-        self.freehand_ty
+        self.snapshot
+            .metadata
+            .source_66
+            .expect("core wall source +66")
     }
 
     /// Source +0x60, written as f32 by 0x140aaa6f8.

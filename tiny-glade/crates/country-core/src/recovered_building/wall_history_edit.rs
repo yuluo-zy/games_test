@@ -14,6 +14,9 @@ use crate::recovered_building::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WallHistoryMetadata {
     pub source_60_bits: u32,
+    /// Original source +66 (FreehandHeightType). None is reserved for older
+    /// portable inputs that did not capture it; native/core snapshots keep it.
+    pub source_66: Option<u8>,
     pub source_67: u8,
     pub source_69: u8,
 }
@@ -23,6 +26,7 @@ impl WallHistoryMetadata {
     pub fn for_new_wall(dev_override_is_demo_mode: bool) -> Self {
         Self {
             source_60_bits: 0,
+            source_66: Some(0),
             source_67: 0,
             source_69: if dev_override_is_demo_mode { 0 } else { 5 },
         }

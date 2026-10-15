@@ -31,6 +31,7 @@ pub mod startup;
 pub mod utils;
 
 pub mod systems {
+    pub mod audio;
     pub mod backend;
     pub mod camera_rig;
     pub mod collision;
@@ -38,7 +39,15 @@ pub mod systems {
     pub mod mode_manager;
     pub mod paths;
     pub mod render_loop;
+    pub mod roof;
     pub mod weather_system;
+    pub mod world_raster;
+    pub mod history;
+    pub mod garden;
+    pub mod ui;
+    pub mod ui_clutter;
+    pub mod terrain;
+    pub mod save;
     pub mod wall;
 }
 

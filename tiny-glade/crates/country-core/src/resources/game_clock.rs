@@ -28,15 +28,30 @@ pub enum DeltaSource {
 pub struct ClockGate {
     /// `*param_2 == 0`（门控资源首个 u32 为 0）。
     pub state_is_zero: bool,
-    /// `AppMode` 标签（tag 10 / 7 / 2 参与判定）。
+    /// `EscMenuState` 标签（tag 10 / 7 / 2 参与判定）。
     pub mode_tag: u32,
-    /// `AppMode` 载荷首字节（tag 10 要求为 0，tag 7 要求为 1）。
+    /// `EscMenuState` 载荷首字节（tag 10 要求为 0，tag 7 要求为 1）。
     pub mode_flag: u8,
     /// 时钟 `+0x31`：暂停标志。
     pub paused: bool,
 }
 
 impl ClockGate {
+    /// Consume the same owned menu resource as LUT rendering and menu advancement.
+    pub fn from_menu(
+        state_is_zero: bool,
+        menu: &crate::resources::gui::EscMenuState,
+        paused: bool,
+    ) -> Self {
+        let view = menu.view();
+        Self {
+            state_is_zero,
+            mode_tag: view.tag,
+            mode_flag: view.flag,
+            paused,
+        }
+    }
+
     /// O：`bVar14`，时钟是否推进（影响 `Live` 的步长是否为 0 以及写入 `ran`）。
     pub fn runs(self) -> bool {
         if !self.state_is_zero {
@@ -73,7 +88,7 @@ impl core::fmt::Display for GameClockError {
 impl std::error::Error for GameClockError {}
 
 /// 游戏时钟资源。
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct GameClock {
     pub elapsed: Duration,
     pub total_secs: f64,
@@ -151,20 +166,16 @@ mod tests {
         assert!(g(7, 1).runs());
         assert!(!g(7, 0).runs());
         assert!(!g(3, 0).runs());
-        assert!(
-            !ClockGate {
-                state_is_zero: false,
-                ..running()
-            }
-            .runs()
-        );
-        assert!(
-            !ClockGate {
-                paused: true,
-                ..running()
-            }
-            .runs()
-        );
+        assert!(!ClockGate {
+            state_is_zero: false,
+            ..running()
+        }
+        .runs());
+        assert!(!ClockGate {
+            paused: true,
+            ..running()
+        }
+        .runs());
     }
 
     #[test]

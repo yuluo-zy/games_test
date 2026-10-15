@@ -6,7 +6,7 @@
 
 ## 依赖关系
 
-`Cargo.toml` 当前直接依赖 28 个包：4 个 workspace 恢复库，加 24 个公开/公开 fork 包（其中 Rapier 可选）。新增 `uuid 1.15.1` 直接复用 B 原锁版本，供菜单载荷的 SessionId 使用。当前 core 没有依赖 `tg-building-runtime`；`systems` 只导出 camera_rig、render_loop、wall，尚无完整游戏调度器。
+`Cargo.toml` 当前直接依赖 41 个包（含可选 Rapier/FMOD）；`ahash 0.8.11`、`petgraph 0.8.1`、`bevy_time 0.16.0`、`libfmod 2.222.6`、`bracket-noise 0.8.2` 复用 B 原锁版本，`tempfile 3.20.0`、`crossbeam-channel 0.5.6` 及其传递依赖复用原锁，并连接已有 `tg-terrain`、`paths`。新增噪声传递依赖也按原锁固定，未使用 Cargo 自动选择的新版本。当前 core 没有依赖 `tg-building-runtime`；尚无完整游戏调度器。
 
 原文件主清单使用 B PDB 索引的 539 个记录。旧 595 文件库存属于历史重建目录；与 420 章节合并后有 74 个路径未出现在 B 文件表，另有两个 B 文件原先未进库存。它们分别记录，不能把重建辅助文件计成原作恢复进度。
 
@@ -33,7 +33,25 @@ flowchart TD
 
 箭头表示恢复顺序上的数据前置，不是声称所有接线已经存在。编译器提取的类型/签名依赖见 `inventory.json.signature_dependency_edges`，它不是函数体调用图。原调用者见每个文件的 `original_consumers`，无索引边的地方明确保留待定位。
 
-## 推进顺序
+## 当前优先级（2026-10-15 用户修正）
+
+优先补实际实现程度最低的模块，依赖只补到足以实现当前业务。不再持续加深已经具备编辑/发布/回放链的墙、屋顶和历史；其当前改动仅作编译收尾。旧清单的“无正式映射”不能当成零实现，必须检查当前源码及 recovered_* 投影。
+
+| 本批优先模块 | 核对到的起点 | 本批实现目标 |
+|---|---|---|
+| `resources/ivy`、`systems/ivy` | 无权威存储，仅 closest_segment_index | 实际株/叶存储、坐标和动画消费 |
+| `systems/garden` | 原两文件均无系统实现 | 接真实模式/画笔/UI/边界，绘制与历史记录 |
+| `resources/critters/sheep` | 仅移动类型谓词，旧草稿有 Gap | 核实移动状态和快照字段，实现捕获/恢复；不复制空壳 Sheep |
+| `systems/audio/music` | 仅分派表及边界纯函数 | 播放器拥有状态、随机队列和更新算法 |
+| `systems/backend/input` | 无实际后端输入消费者 | 已新增数字动作增量和光标事件合成；键盘/Steam/录制全链仍缺 |
+| `systems/terrain` | 仅高度资源及独立地形算法 | 已接点/参数编辑、聚合通知、延迟回读；工具UI和历史生产仍缺 |
+| `systems/save` | 仅节表/脏块等纯逻辑，无文件消费者 | 已落影子文件重试、分块刷新、节扩容和历史替换；完整异步捕获仍缺 |
+| `resources/session` | 仅 ID 与主题谓词 | 已接真实元数据/活动会话/图像 schema 及音乐消费；完整切换生命周期仍缺 |
+| `systems/ui_clutter` | 仅 Delete 序列化投影 | 已接权威删除集合、延迟历史及撤销/重做；拾取/生成可见消费仍缺 |
+
+这不是完成率表。新增花园1项、地形1项、常春藤创建/剪枝/动画及叶片生成2项、音乐状态转换1项、输入5项、绵羊快照2项关键行为核对已通过；不据此宣布整个模块完成。本批存档文件往返1项、备份/GC1项、会话文件往返1项、自动杂物2项、场景设置及真实叶片开关2项已通过限定检查。当前继续补树存储和杂物资产库；常春藤叶片与原生音乐接口已通过限定编译/行为检查，仍有报告中列明的生产者和全局接线缺口。
+
+## 依赖参考顺序
 
 | 顺序 | 原源码目录 | 当前工作与验收条件 |
 |---|---|---|
@@ -51,13 +69,15 @@ flowchart TD
 
 ## 当前断点
 
-2026-10-15 按用户要求改为实现优先，只做必要编译检查，疑义才定点查原码，不继续扩充测试矩阵。`gui.rs` 已从前缀 View 推进到拥有状态：菜单/加载与备份/设置子菜单、Next/Prev 和状态推进；缩略图位置算法及两组调试标签已恢复。`lut_gallery.rs` 删除重复假布局和外供坐标，改读同一 `EscMenuState` 和 metrics。`session.rs` 仅补菜单必需的 SessionId，不展开存档域。
+2026-10-15 按用户要求改为实现优先，只做必要编译检查，疑义才定点查原码，不继续扩充测试矩阵。`gui.rs` 已从前缀 View 推进到拥有状态：菜单/加载与备份/设置子菜单、Next/Prev 和状态推进；缩略图位置算法及两组调试标签已恢复。`lut_gallery.rs` 删除重复假布局和外供坐标，改读同一 `EscMenuState` 和 metrics。`session.rs` 已推进为实际 ActiveSession/SessionMeta，元数据与图像配置采用原 schema，写入临时文件后同步并重命名；音乐直接消费 ActiveSession。完整 NextSession/world 切换仍被未恢复的 GameSaveData/MetaCommand 所阻断，未伪造加载成功。
 
 既有基础文件和墙高亮的限定原指令报告保留，但不覆盖这次新增拥有状态、依赖与接线。当前增量完成 all-targets 编译，未声明完整 UI、原全局调度或 ABI 验收。
 
 `utils/components/transform.rs` 是 core 的组件外壳，原算法属于共享 `crates/utils/src/components/transform.rs`；本轮复用其 look_at/abs_diff_eq，不重复实现依赖数学。这个外壳不算额外原 core 源文件。
 
-下一项仍在 `resources/gui.rs`：PhotomodeScreen、完整 DebugGui/屏幕日志、PendingEguiContextResource；之后继续 `resources/walls/public_walls.rs` 的完整状态和发布/创建/删除同步。GUI 设置 tag10、报告菜单 bool 和 warning_session 的准确命名保留待取证；不把描述性名字当作者原字段名。
+本次继续实现已进入墙 PublicWalls 发布/空间/高度/砖块创建、屋顶创建/删除/类型切换/回放、楼梯权威图/快照/差分、AppMode/工具栏转换，以及世界栅格开始/续画/提交/历史提取。GUI 已接 pending context、屏幕日志和已证实 DebugGui 控件。实现和剩余边界见 `evidence/core-recovery-20261015/{gui,walls,roofs-stairs,raster}/REPORT.md`；此前目录清单尚未重新提取，不作为本次新增实现总数。
+
+墙、屋顶、栅格已增补统一历史消费者，当前改为上表的最低实现模块优先。完整全局调度、存档往返、视觉/碰撞消费者和未恢复的自有业务仍未验收；不把编译通过或局部测试通过当作整模块完成。GUI 设置 tag10、报告菜单 bool 和 warning_session 的准确命名仍待取证。
 
 ## 状态含义
 

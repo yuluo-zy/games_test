@@ -1,5 +1,5 @@
 //! country-core AutoClutterEdit data contract: externally tagged Delete{id:u64}.
-//! History mutation, picking and replay protection consumers remain unconnected.
+//! Live deletion/history consumers reuse this type through resources::history.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AutoClutterEdit {
     Delete { id: u64 },

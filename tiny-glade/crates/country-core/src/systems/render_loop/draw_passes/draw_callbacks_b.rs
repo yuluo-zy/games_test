@@ -51,7 +51,7 @@ use crate::render::pass_builder::draw_list::EntityDrawParams;
 use crate::render::pass_builder::pass_resource_access::SsboType;
 use crate::resources::color_id::ColorId;
 use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
-use crate::resources::render_input_views::LeafParticleCountView;
+use crate::resources::glade_settings::GladeSettings;
 use crate::resources::walls::WallHighlight;
 use crate::rhapsody_contract::ManagedHandle;
 use crate::rhapsody_types::RenderGraph;
@@ -745,10 +745,9 @@ pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World)
     });
 }
 
-/// `leaf_particle_draw` 适配器（0x140a8a090）：资源 `GladeSettings` 的 `u64 @+0` = 粒子数（`GladeSettings.a` 是 `u32 @+0`，
-/// 取其零扩展，I）。
+/// `leaf_particle_draw` (0x140a8a090) reads the actual GladeSettings u64 at +0.
 pub fn leaf_particle_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-    let count = res::<LeafParticleCountView>(w).0;
+    let count = res::<GladeSettings>(w).leaf_particle_count;
     leaf_particle_draw(b, count);
 }
 
@@ -1541,6 +1540,20 @@ mod tests {
     fn leaf_particle_adapter_needs_glade_settings() {
         let mut w = World::new();
         nani_adapter_panics(leaf_particle_cb, &mut w);
+    }
+
+    #[test]
+    fn glade_settings_particle_count_reaches_the_draw_callback() {
+        let mut world = World::new();
+        world.insert_resource(GladeSettings {
+            leaf_particle_count: 0x1_0000_0141,
+            ..GladeSettings::default()
+        });
+        let p = params(world.spawn_empty().id());
+        let (_, draws) = run(&[], &[], |builder| {
+            leaf_particle_cb(builder, &p, &mut world);
+        });
+        assert_eq!(draws[0].kind, DrawKind::InstancedGlDrawFlag { flag: 321 });
     }
 
     #[test]

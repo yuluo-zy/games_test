@@ -1,7 +1,11 @@
 pub mod height_rules;
+pub mod decorator_archivist;
 pub mod inner_wall_state;
 pub mod inner_walls;
 pub mod public_walls;
+pub mod public_wall_state;
+pub mod wall_holes;
+pub mod wall_trigger_volume;
 
 pub use inner_wall_state::WallState;
 pub use inner_walls::{InnerWalls, WallChanges};
