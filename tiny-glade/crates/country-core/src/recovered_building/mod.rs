@@ -110,4 +110,5 @@ pub use wall_state as building_wall_state;
 pub mod wall_structures;
 pub use wall_structures as building_wall_structures;
 pub mod building_history_transactions;
+pub mod history_snapshots;
 pub mod history_transactions;

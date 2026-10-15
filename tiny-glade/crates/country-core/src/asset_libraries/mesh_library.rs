@@ -162,8 +162,7 @@ impl AssetMeshLibrary {
         self.names.write().retain(|_, h| *h != handle);
     }
 
-    /// `reload_mesh_src` 的已恢复更新规则。调用方提供网格加载器；原 JSON
-    /// 网格消费 schema 尚未恢复，不能用固定错误加载器代替。
+    /// `reload_mesh_src`（0x14092d8d0）：加载器为 `utils::load_json::try_load_json_as_mesh`。
     ///
     /// 1. 读锁 `paths`：表空或查不到 → `panic!("Asset Mesh library was requested to reload a non-existing mesh path {:?}", path)`
     ///    （`{:?}`：格式化函数 0x14002e8d0 尾调 `std::path::impl$69::fmt` = `Path` 的 Debug，10 B）；
@@ -171,6 +170,11 @@ impl AssetMeshLibrary {
     /// 3. `self.get_mut(handle).unwrap()`（压入 `modified_meshes`，缺失则 `Option::unwrap` panic）；
     /// 4. `load_json_as_mesh(path)`：`Ok(m)` → drop 旧 `Mesh` 并就地覆盖；`Err(e)` →
     ///    `log::error!("Asset mesh library couldnt reload a mesh: {}", e)`（`{}` = anyhow `ErrorImpl::display`），旧网格保留。
+    pub fn reload_mesh_src(&mut self, path: &str) {
+        self.reload_mesh_src_with(path, crate::utils::load_json::try_load_json_as_mesh);
+    }
+
+    /// 同 [`Self::reload_mesh_src`]，加载器由调用方注入（测试用）。
     pub fn reload_mesh_src_with(
         &mut self,
         path: &str,

@@ -11,19 +11,81 @@
 //! | `DebugLine::new` | 0x140b04e70 | 0x48 B：points `Vec<Vec3>`@0（24 B）、label `Option<String>`@0x18（None = `0x8000000000000000`）、color@0x30、line_width@0x40 = 1.0、ui_pass@0x44 = true、dashed@0x45 = false |
 //! | `DebugLine::{color,set_ui_pass,dashed,line_width}` | 0x140b04eb0 / 0x140b04ee0 / 0x140b04f10 / 0x140b04f40 | 同上 |
 //!
-//! 颜色默认值：构造器只写 `color` 的首个 dword（= 0），其余 12 字节在 EXE 里未初始化，
-//! 这里取 0（I）。`DebugRectangle2d` 没有独立构造器（`show` 直接取 4 个 f32）。
+//! 颜色：`color` 不是 RGBA 向量，而是 16 B 的 6 变体枚举——`u32` 标签 @0，`Custom` 的 RGB 三个 f32 @4..16。
+//! 构造器只写标签（`mov dword [rcx], 0` = `White`），其余 12 字节在 EXE 里未初始化。
+//! 证据：`DebugSphere::show`（0x140b02520）用标签索引两张 6 项表（长度 0x142ae7200、串指针 0x142ae7230）选
+//! `debug_sphere_{white,red,blue,green,grey,custom}`；`DebugLine::show`（0x140b04f70）按跳表 0x142ae731c 把标签映射为
+//! RGB：白 (1,1,1)、红 (1,0,0)、蓝 (0,0,1)、绿 (0,1,0)、灰 (0.1,0.1,0.1)、自定义取 `+0x34` 起的三个 f32。
+//! `DebugRectangle3d` 的标签同位置同写法，按同一枚举处理（`show` 0x140b02ed0 只粗读过，I）。
+//! `DebugRectangle2d` 没有独立构造器（`show` 直接取 4 个 f32）。
 //!
 //! `show` 系列（0x140b02520 / 0x140b02ed0 / 0x140b04640 / 0x140b04f70 及其闭包）把一次性闭包
 //! 压入 `Commands`，闭包体读 `AssetMeshLibrary` / `AssetShaderLibrary`，属于 ECS 胶水层，
 //! 留给组件/ECS 包（H）。
 
-use glam::{Vec3, Vec4};
+use glam::Vec3;
+
+/// 调试图元的颜色（O：标签顺序与串表一致）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DebugColor {
+    White,
+    Red,
+    Blue,
+    Green,
+    Grey,
+    /// 标签 5，RGB 在 `+4..+16`。
+    Custom(Vec3),
+}
+
+impl Default for DebugColor {
+    /// 构造器写入的标签 0。
+    fn default() -> Self {
+        Self::White
+    }
+}
+
+impl DebugColor {
+    /// 标签字节（O：`u32 @0`）。
+    pub fn tag(self) -> u32 {
+        match self {
+            Self::White => 0,
+            Self::Red => 1,
+            Self::Blue => 2,
+            Self::Green => 3,
+            Self::Grey => 4,
+            Self::Custom(_) => 5,
+        }
+    }
+
+    /// `DebugLine::show` 的映射（O：0x140b0507d..0x140b05119）。
+    pub fn rgb(self) -> Vec3 {
+        match self {
+            Self::White => Vec3::new(1.0, 1.0, 1.0),
+            Self::Red => Vec3::new(1.0, 0.0, 0.0),
+            Self::Blue => Vec3::new(0.0, 0.0, 1.0),
+            Self::Green => Vec3::new(0.0, 1.0, 0.0),
+            Self::Grey => Vec3::new(0.1, 0.1, 0.1),
+            Self::Custom(rgb) => rgb,
+        }
+    }
+
+    /// `DebugSphere::show` 选用的网格名（O：0x142ae7230 的 6 个串）。
+    pub fn sphere_mesh_name(self) -> &'static str {
+        match self {
+            Self::White => "debug_sphere_white",
+            Self::Red => "debug_sphere_red",
+            Self::Blue => "debug_sphere_blue",
+            Self::Green => "debug_sphere_green",
+            Self::Grey => "debug_sphere_grey",
+            Self::Custom(_) => "debug_sphere_custom",
+        }
+    }
+}
 
 /// 一次画一个球的请求（0x28 B）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DebugSphere {
-    pub color: Vec4,
+    pub color: DebugColor,
     pub radius: f32,
     pub center: Vec3,
     pub alpha: f32,
@@ -34,7 +96,7 @@ impl DebugSphere {
     /// O 0x140b02490。
     pub fn new(center: Vec3) -> Self {
         Self {
-            color: Vec4::ZERO,
+            color: DebugColor::White,
             radius: 0.1,
             center,
             alpha: 1.0,
@@ -43,7 +105,7 @@ impl DebugSphere {
     }
 
     /// O 0x140b024c0。
-    pub fn color(mut self, color: Vec4) -> Self {
+    pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
@@ -65,7 +127,7 @@ impl DebugSphere {
 /// `FUN_140c99600` 展开为 4 个角点）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DebugRectangle3d {
-    pub color: Vec4,
+    pub color: DebugColor,
     pub line_width: f32,
     pub rect: [f32; 8],
     pub dashed: bool,
@@ -75,7 +137,7 @@ impl DebugRectangle3d {
     /// O 0x140b02e10。
     pub fn new(rect: [f32; 8]) -> Self {
         Self {
-            color: Vec4::ZERO,
+            color: DebugColor::White,
             line_width: 1.0,
             rect,
             dashed: false,
@@ -83,7 +145,7 @@ impl DebugRectangle3d {
     }
 
     /// O 0x140b02e40。
-    pub fn color(mut self, color: Vec4) -> Self {
+    pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
@@ -106,7 +168,7 @@ impl DebugRectangle3d {
 pub struct DebugLine {
     pub points: Vec<Vec3>,
     pub label: Option<String>,
-    pub color: Vec4,
+    pub color: DebugColor,
     pub line_width: f32,
     pub ui_pass: bool,
     pub dashed: bool,
@@ -118,7 +180,7 @@ impl DebugLine {
         Self {
             points,
             label: None,
-            color: Vec4::ZERO,
+            color: DebugColor::White,
             line_width: 1.0,
             ui_pass: true,
             dashed: false,
@@ -126,7 +188,7 @@ impl DebugLine {
     }
 
     /// O 0x140b04eb0。
-    pub fn color(mut self, color: Vec4) -> Self {
+    pub fn color(mut self, color: DebugColor) -> Self {
         self.color = color;
         self
     }
@@ -155,15 +217,49 @@ mod tests {
     use super::*;
 
     #[test]
+    fn colour_tags_follow_the_original_table_order() {
+        let all = [
+            DebugColor::White,
+            DebugColor::Red,
+            DebugColor::Blue,
+            DebugColor::Green,
+            DebugColor::Grey,
+            DebugColor::Custom(Vec3::new(0.2, 0.4, 0.6)),
+        ];
+        assert_eq!(all.map(DebugColor::tag), [0, 1, 2, 3, 4, 5]);
+        assert_eq!(DebugColor::default(), DebugColor::White);
+        assert_eq!(DebugColor::Blue.rgb(), Vec3::new(0.0, 0.0, 1.0));
+        assert_eq!(DebugColor::Green.rgb(), Vec3::new(0.0, 1.0, 0.0));
+        assert_eq!(DebugColor::Grey.rgb(), Vec3::splat(0.1));
+        assert_eq!(all[5].rgb(), Vec3::new(0.2, 0.4, 0.6));
+    }
+
+    #[test]
+    fn sphere_mesh_names_have_the_original_lengths() {
+        let lens = [0x12, 0x10, 0x11, 0x12, 0x11, 0x13];
+        let colours = [
+            DebugColor::White,
+            DebugColor::Red,
+            DebugColor::Blue,
+            DebugColor::Green,
+            DebugColor::Grey,
+            DebugColor::Custom(Vec3::ZERO),
+        ];
+        for (colour, len) in colours.into_iter().zip(lens) {
+            assert_eq!(colour.sphere_mesh_name().len(), len, "{colour:?}");
+        }
+    }
+
+    #[test]
     fn sphere_defaults_match_the_constructor_bytes() {
         let sphere = DebugSphere::new(Vec3::new(1.0, 2.0, 3.0));
         assert_eq!(sphere.radius.to_bits(), 0x3dcccccd);
         assert_eq!(sphere.alpha, 1.0);
         assert!(!sphere.solid);
-        let sphere = sphere.radius(2.0).solid().color(Vec4::ONE);
+        let sphere = sphere.radius(2.0).solid().color(DebugColor::Red);
         assert_eq!(
             (sphere.radius, sphere.solid, sphere.color),
-            (2.0, true, Vec4::ONE)
+            (2.0, true, DebugColor::Red)
         );
     }
 

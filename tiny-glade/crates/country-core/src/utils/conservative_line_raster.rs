@@ -102,6 +102,12 @@ fn plot_major(axes: Axes, slope: f32, c: f32, h: f32, r: f32, mut cell: impl FnM
     }
 }
 
+/// 端点排序判定：原版 `ucomiss start, end; jbe`（0x140b1e4fd / 0x140b1e556），`start <= end` 与**无序（NaN）**
+/// 都走"不交换"分支，只有 `start > end` 才交换。Rust 的 `start <= end` 对 NaN 为假，会错误地交换。
+fn keeps_order(start: f32, end: f32) -> bool {
+    start.is_nan() || end.is_nan() || start <= end
+}
+
 /// O 0x140b1e460 系：把半径 `r` 的线段 `(x0, y0) → (x1, y1)` 覆盖到的格子逐个交给 `cell(x, y)`。
 pub fn conservative_plot_line(
     (x0, y0): (f32, f32),
@@ -116,7 +122,7 @@ pub fn conservative_plot_line(
         let raw = dy / dx;
         let slope = if finite(raw) { raw } else { 0.0 };
         let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
-        let (first, second) = if x0 <= x1 {
+        let (first, second) = if keeps_order(x0, x1) {
             ((x0, y0), (x1, y1))
         } else {
             ((x1, y1), (x0, y0))
@@ -133,7 +139,7 @@ pub fn conservative_plot_line(
         let raw = dx / dy;
         let slope = if finite(raw) { raw } else { 0.0 };
         let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
-        let (first, second) = if y0 <= y1 {
+        let (first, second) = if keeps_order(y0, y1) {
             ((x0, y0), (x1, y1))
         } else {
             ((x1, y1), (x0, y0))
@@ -151,6 +157,15 @@ pub fn conservative_plot_line(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn endpoint_order_follows_jbe_so_nan_never_swaps() {
+        assert!(super::keeps_order(1.0, 2.0));
+        assert!(super::keeps_order(2.0, 2.0));
+        assert!(!super::keeps_order(3.0, 2.0));
+        assert!(super::keeps_order(f32::NAN, 2.0));
+        assert!(super::keeps_order(2.0, f32::NAN));
+    }
+
     use super::*;
     use std::collections::BTreeSet;
 

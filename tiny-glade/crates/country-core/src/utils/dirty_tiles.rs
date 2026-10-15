@@ -7,7 +7,7 @@
 //! |---|---|---|
 //! | `new_clear` | 0x140960ac0 | O，显式清零 512 B |
 //! | `rasterize_world_space_rect` | 0x140960ae0 | O，14 B 跳板进 `iter_world_space_rect_cells`（0x140ade8e0） |
-//! | `intersects_world_space_rect` | 0x140960af0 | O，跳板进 0x140adec50，内循环 `bt` 测位 |
+//! | `intersects_world_space_rect` | 0x140960af0 | O，0x26 B 包装：清零栈上 bool、交换 rcx/rdx 后调 0x140adec50 并返回该 bool；内循环 `bt` 测位，命中后置标志但继续下一行（结果等价于 `any`） |
 //! | `clear` | 0x140960c20 | O |
 //! | `extend` / `impl StateDelta::apply_to` | 0x140960c30 / 0x140960ef0 | O，两者同大小（694 B），逐字 OR |
 //! | `retain<copy_to_staging 闭包>` | 0x140adfcb0 | O，见 [`DirtyTiles::retain`] |

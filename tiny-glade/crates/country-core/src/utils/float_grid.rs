@@ -1,7 +1,8 @@
 //! RasterBufferRef<512> consumer of shared B bilinear sampling policy.
 //! 0x140a14df0: byte values /255, original lerp order and edge extrapolation.
-//! Branch byte 0x143638fac (pointer slot 0x14362c308) is caller state;
-//! its producer remains unresolved.
+//! Branch byte 0x143638fac (pointer slot 0x14362c308) is caller state. Its producer is
+//! `load_game` (`version >= 0x1a`, 0x14146dc82..0x14146dc95); see
+//! `resources::save_file::LoadVersionGates::apply_centered_path`.
 pub use ::utils::float_grid::{
     CENTERED_PATH, DEFAULT_WORLD_EXTENT, FloatGridCells, GRID_SIDE, bilinear_sample_at_world_xz,
     bilinear_sample_at_world_xz_130, lerp,

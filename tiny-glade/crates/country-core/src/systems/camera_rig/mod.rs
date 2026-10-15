@@ -5,6 +5,7 @@
 
 pub mod free_camera;
 pub mod main_camera;
+pub mod normal_body;
 
 /// B `default_vertical_fov_degrees` 0x140911e30 (9 bytes), returned f32 = 45.
 /// Source: reconstruction/camera/schema.rs, Git 8107b475;

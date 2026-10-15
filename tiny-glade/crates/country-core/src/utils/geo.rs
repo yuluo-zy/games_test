@@ -35,7 +35,14 @@ pub fn mesh_from_pts(label: &'static str, pts: &[Vec3]) -> Mesh {
     mesh
 }
 
-/// O 0x14157f130（及三个同体实例）：取到资产里的网格后整体改写位置/颜色/索引。
+/// O 0x14157f130 等四个单态：取到资产里的网格后整体改写位置/颜色/索引。四个单态的**输入迭代器不同**，改写体相同：
+///
+/// | 单态 | 输入 | 点的来源 |
+/// |---|---|---|
+/// | 0x14157eac0 | `vec::IntoIter<Vec3>` | 直接取（复用分配） |
+/// | 0x14157f130 | `Vec3` 切片 `[start, end)` | 克隆（0x1412612d0） |
+/// | 0x14157ef70 | `Vec2` 切片 | 经 [`x0y`] 映射（0x140c9cdc0） |
+/// | 0x14157eda0 | `Vec2` 切片 + 捕获的高度 `h` | 经 [`x_h_y`] 映射（0x140c9cde0） |
 ///
 /// `mesh` 是 `Assets<Mesh>` 按句柄查询的结果；查不到 → panic `MEOW####`（`0x142c77ab9`，8 字节）。
 /// 点列先于属性写入收集；空点列由 `set_attribute` 的非空断言 panic。
@@ -44,6 +51,16 @@ pub fn update_curve_mesh(mesh: Option<&mut Mesh>, points: impl IntoIterator<Item
         panic!("MEOW####");
     };
     fill_polyline_attributes(mesh, points.into_iter().collect());
+}
+
+/// O 0x140c9cdc0：`Vec2 (x, y)` → `Vec3 (x, 0, y)`（`mov [rcx+4], 0`）。
+pub fn x0y(p: Vec2) -> Vec3 {
+    Vec3::new(p.x, 0.0, p.y)
+}
+
+/// O 0x140c9cde0：`Vec2 (x, y)` 与高度 `h` → `Vec3 (x, h, y)`。
+pub fn x_h_y(p: Vec2, h: f32) -> Vec3 {
+    Vec3::new(p.x, h, p.y)
 }
 
 /// O 0x140a6ba50：以 `u = split` 把曲线一分为二，调换两半的先后顺序后重新建曲线。
@@ -104,6 +121,12 @@ mod tests {
         assert_eq!(mesh.indices, [0, 1, 2]);
         assert_eq!(mesh.positions_without_indices(), &pts);
         assert!(mesh.has_attribute(ATTR_COLOR));
+    }
+
+    #[test]
+    fn vec2_mappings_put_y_into_the_z_slot() {
+        assert_eq!(x0y(Vec2::new(1.0, 2.0)), Vec3::new(1.0, 0.0, 2.0));
+        assert_eq!(x_h_y(Vec2::new(1.0, 2.0), 5.0), Vec3::new(1.0, 5.0, 2.0));
     }
 
     #[test]

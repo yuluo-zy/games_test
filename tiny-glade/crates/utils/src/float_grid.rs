@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub const GRID_SIDE: usize = 512;
 pub const DEFAULT_WORLD_EXTENT: f32 = 130.0;
-/// Mirror of B byte 0x143638fac (pointer slot 0x14362c308). Its producer is unresolved;
-/// default zero selects the legacy branch. The explicit sampler accepts a bool.
+/// Mirror of B byte 0x143638fac (pointer slot 0x14362c308). Its producer is `load_game`
+/// (`version >= 0x1a`); default zero selects the legacy branch. The explicit sampler accepts a bool.
 pub static CENTERED_PATH: AtomicBool = AtomicBool::new(false);
 
 /// Fixed-size consumer contract recovered from RasterBufferRef<512>.
@@ -73,7 +73,8 @@ pub trait FloatGrid {
     fn load_index_unchecked(&self, index: usize) -> f32;
 }
 pub trait FloatGridSampler: FloatGrid {
-    // B's max/min sequence converts NaN to zero; f32::clamp preserves NaN.
+    // B's max/min sequence converts NaN to zero. Rust `f32::max/min` also return the non-NaN
+    // operand, so the chains below reproduce that; `f32::clamp` would propagate NaN instead.
     #[allow(clippy::manual_clamp)]
     fn bilinear_sample_at_world_xz(&self, xz: Vec2, world_extent: Vec2, sampling_fix: bool) -> f32 {
         let [width, height] = self.dimensions();

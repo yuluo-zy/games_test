@@ -125,4 +125,5 @@ pub mod shader_library;
 pub mod ssbo_library;
 pub mod texture_library;
 pub mod texture_watch;
+pub mod transient_mesh;
 pub mod vao_library;

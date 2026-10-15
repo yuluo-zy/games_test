@@ -1,4 +1,9 @@
 //! Observed zero-sized rendering component tags (B components/mod.rs).
+//!
+//! 子模块：[`registry`]（57 个组件的名字/注册地址/克隆策略，全部无 required 组件）、[`drawable`]。
+pub mod drawable;
+pub mod registry;
+
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct SemiTransparent;
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
