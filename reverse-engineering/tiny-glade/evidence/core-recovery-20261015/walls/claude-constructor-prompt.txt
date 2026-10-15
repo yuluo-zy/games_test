@@ -1,0 +1,15 @@
+仅核对以下 B 原作构造函数控制流，最多 180 字。不要猜 ABI、容器布局或补充实现。
+原 S_PUB32: 0x140833230 = country_core::resources::walls::inner_wall_state::FreehandHeightType::is_follow_terrain。
+PublicWallState base = RSI-0x2a0。
+140758117 MOV qword ptr [RBP+0x2b0],0
+140758122 MOV qword ptr [RBP+0x2b8],4
+14075812d MOV qword ptr [RBP+0x2c0],0
+这三个栈槽经原调用点确认是待输出 brick Vec。
+1407581b1 CMP byte ptr [RSI-0xa],0
+1407581b5 JNZ 0x14075936e
+1407581e1 LEA RCX,[RSI-0xb]
+1407581ec CALL 0x140833230
+1407581ff ADD AL,AL
+后面非 special 分支调用 WallConstructor::from_curve 0x14075925f。
+14075936e 起两分支：查询 WallEntities；缺实体调用 WallTriggerVolume::recompute，InstancedWall::new，spawn tuple(InstancedWall,WallTriggerVolume)；有实体调用 InstancedWall::update，WallTriggerVolume::recompute。两者都接收此前 brick Vec。
+问题：是否支持 (1) Public+0x295应传真实freehand_ty，旧ClutterVersion命名错误；(2) special+0x296非零跳过砖生产，空砖仍走创建/更新，不能把它标为未知另一个砖生产者？说出证据支持和剩余未知。

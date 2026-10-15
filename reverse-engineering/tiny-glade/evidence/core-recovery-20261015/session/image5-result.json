@@ -1,0 +1,60 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "shared",
+  "pid": 39772,
+  "project": "D:\\game\\tools\\reverse-runtime\\shared\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": false,
+  "results": [
+    {
+      "tool": "get-decompilation",
+      "requested_args": {
+        "functionNameOrAddress": "0x1415ce710",
+        "programPath": "/tiny-glade.exe",
+        "limit": 700,
+        "offset": 1
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "Decompilation timed out after 10 seconds",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": true
+      },
+      "elapsed_seconds": 10.265,
+      "passed": false,
+      "error": "get-decompilation: MCP isError: Decompilation timed out after 10 seconds"
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 10.656,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":10}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)",
+  "exception_trace": "  + Exception Group Traceback (most recent call last):\n  |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 116, in run\n  |     limits=httpx.Limits(max_keepalive_connections=0)) as http_client, streamable_http_client(\n  |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\contextlib.py\", line 231, in __aexit__\n  |     await self.gen.athrow(value)\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 672, in streamable_http_client\n  |     async with anyio.create_task_group() as tg:\n  |                ^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n  |     raise BaseExceptionGroup(\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Exception Group Traceback (most recent call last):\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 695, in streamable_http_client\n    |     yield (\n    |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 118, in run\n    |     async with ClientSession(read, write) as session:\n    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\shared\\session.py\", line 238, in __aexit__\n    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n    |     raise BaseExceptionGroup(\n    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n    +-+---------------- 1 ----------------\n      | Traceback (most recent call last):\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 201, in run\n      |     validate_result(result, name)\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 27, in validate_result\n      |     raise RuntimeError(name + ': MCP isError: ' + text_payload(result)[:600])\n      | RuntimeError: get-decompilation: MCP isError: Decompilation timed out after 10 seconds\n      +------------------------------------\n"
+}

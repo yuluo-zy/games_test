@@ -1,0 +1,58 @@
+Bounded review of Tiny Glade B switch_roof_type original instructions. Do not invent ABI or types. Answer <=220 words. Check exact flat-source wall-height branch versus a previous adapter which writes 1.6 unconditionally when source height !=1.6. Constants XMM8=1.6 (0x3fcccccd), XMM9=14.0 (0x41600000). Also determine whether Roof::pivot_3d is floor or apex from the provided leaf. State NaN semantics and meaningful event side effects only. Ignore Bevy/Vec internals. Source original RNE; full recovered declarations are not available.
+1421acc54 INC qword ptr [RDX + 0x40]
+1421acc58 CMP R12B,0x1
+1421acc5c JNZ 0x1421accb0
+1421acc5e MOV RCX,qword ptr [RBP + 0x50]
+1421acc62 MOV RDX,R13
+1421acc65 LEA R8,[0x142ff7810]
+1421acc6c CALL 0x14085a650
+1421acc71 MOVSS XMM0,dword ptr [RAX + 0x54]
+1421acc76 UCOMISS XMM0,XMM8
+1421acc7a JNZ 0x1421acc7e
+1421acc7c JNP 0x1421accb0
+1421acc7e MOVAPS XMM1,XMM8
+1421acc82 MAXSS XMM1,XMM0
+1421acc86 MOVAPS XMM2,XMM9
+1421acc8a MINSS XMM2,XMM1
+1421acc8e MOV RAX,qword ptr [RBP]
+1421acc92 MOV ECX,dword ptr [RBP + 0xb4]
+1421acc98 MOV dword ptr [RAX],ECX
+1421acc9a MOV RCX,qword ptr [RBP + 0x50]
+1421acc9e MOV RDX,R13
+1421acca1 CALL 0x14085ad60
+1421acca6 NOP word ptr CS:[RAX + RAX*0x1]
+1421accb0 MOV R14,qword ptr [RBP + 0xb8]
+1421accb7 MOV RAX,qword ptr [RSI]
+1421accba MOV RDI,qword ptr [RSI + 0x10]
+1421accbe SUB RAX,RDI
+1421accc1 CMP RAX,0x17
+1421accc5 JBE 0x1421acd31
+1421accc7 MOV RAX,qword ptr [RSI + 0x8]
+1421acccb LEA RCX,[0x140dcedc0]
+1421accd2 MOV qword ptr [RAX + RDI*0x1],RCX
+1421accd6 LEA RCX,[0x140dcf410]
+1421accdd MOV qword ptr [RAX + RDI*0x1 + 0x8],RCX
+1421acce2 MOV qword ptr [RAX + RDI*0x1 + 0x10],R14
+1421acce7 ADD RDI,0x18
+1421acceb MOV qword ptr [RSI + 0x10],RDI
+1421accef MOV R14,qword ptr [R15]
+1421accf2 MOV EAX,dword ptr [RBP + 0xb0]
+1421accf8 MOV RCX,qword ptr [RBP + -0x10]
+1421accfc MOV dword ptr [RCX],EAX
+1421accfe MOV R15,qword ptr [RBP + -0x18]
+1421acd02 MOV RDI,qword ptr [R15 + 0x30]
+1421acd06 MOV RBX,qword ptr [R15 + 0x40]
+1421acd0a CMP RDI,qword ptr [R15 + 0x20]
+1421acd0e MOV R12,qword ptr [RBP + -0x40]
+1421acd12 MOV R13,qword ptr [RBP + -0x38]
+1421acd16 JNZ 0x1421ac6a0
+1421acd1c MOV RCX,qword ptr [RBP + -0x8]
+1408e3220 MOV RAX,RCX
+1408e3223 MOV ECX,dword ptr [RDX + 0x8]
+1408e3226 MOVSS XMM0,dword ptr [RDX + RCX*0x8 + 0xc]
+1408e322c MOVSS XMM1,dword ptr [RDX + RCX*0x8 + 0x10]
+1408e3232 MOVSS XMM2,dword ptr [RDX + 0x4c]
+1408e3237 MOVSS dword ptr [RAX],XMM0
+1408e323b MOVSS dword ptr [RAX + 0x4],XMM2
+1408e3240 MOVSS dword ptr [RAX + 0x8],XMM1
+1408e3245 RET

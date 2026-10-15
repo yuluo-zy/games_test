@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\critters\\snapshot-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\critters\\snapshot-analysis.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\critters\\snapshot-analysis.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "## SheepMoveState — serializer 0x1413ff520 (rcx = &SheepMoveState, byte-tag at +0)\n\n| tag | variant | JSON |\n|---|---|---|\n| 0 | `Idle { timeout_s }` | `{\"Idle\":{\"timeout_s\":v}}` |\n| ≠0 (branch only tests zero/non-zero) | `Walking { timeout_s, goal_change_timeout, force_reach_goal }` | `{\"Walking\":{\"timeout_s\":v,\"goal_change_timeout\":v,\"force_reach_goal\":v}}` |\n\nVariant names: `\"Idle\"` @0x142c5b4cf len 4, `\"Walking\"` @0x142c5b4dc len 7. Field keys: `\"timeout_s\"` @0x142c5b4d3 len 9 (emitted by **both** variants — same address/length), `\"goal_change_timeout\"` @0x142c5b4e3 len 0x13, `\"force_reach_goal\"` @0x142c5b4f6 len 0x10.\n\nOffsets (memory order ≠ serialized order):\n- +0 u8 discriminant (`cmp byte ptr [rcx],0`)\n- +1 `force_reach_goal` — passed as `&`(rsi+1), 1-byte, distinct `serialize_entry` monomorphization (h87d…) ⇒ bool\n- +4 `timeout_s` — same monomorphization as `goal_change_timeout` (h56bd…) ⇒ same 4-byte scalar type (f32/u32 not distinguishable here)\n- +8 `goal_change_timeout` — 4-byte scalar; size 12, ends +0x0b\n\n## Whole Sheep vs snapshot\n\n**Whole Sheep** = 104-byte (stride 0x68) component array, base `[rdx+0x70]`. Its live `move_state` sits at **Sheep+0x30** (tag +0x30, `force_reach_goal` +0x31, `timeout_s` +0x34, `goal_change_timeout` +0x38). No other Sheep fields appear in this assembly.\n\n**SheepSnapshot** = struct serialized by 0x1416f9eb0 (declaration order `position, goal, move_state`); filled at 0x1412f05fa:\n- **+0x00 `goal`**: 16 bytes, wholesale `movups` from the 16-byte-stride array `[rdx+0x90]` (Option<Vec3>)\n- **+0x10 `move_state`**: 12 bytes copied from Sheep — 8 bytes (tag/bool/timeout_s) from Sheep+0x30, 4 bytes (goal_change_timeout) from Sheep+0x38\n- **+0x1c `position`**: Vec3 12 bytes — 8 from Transform+0x10 (`[rdx+0x50]`, stride 48), 4 from Transform+0x18\n\nIndexing: r8 = cursor, stored back as r8+1 at `[rdx+0xb8]`; component index = u32 at +8 of `[rdx+0x40] + r8*16`. Snapshot is a copy, not the live Sheep.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 102.502
+}

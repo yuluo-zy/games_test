@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 180.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\terrain\\claude-delay-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\terrain\\claude-delay.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\terrain\\claude-delay.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "A copy issued this frame pushes its delay2 after the loop, so it isn't decremented until the next frame and is read only once that delay reaches 0 — never in the issuing frame.\n\nCoincident expirations coalesce: the `copied=false` guard lets only the first zero-delay entry, in vector order, perform the authority and visual SSBO→CPU copies and the event. Every other delay hitting 0 in that same pass is simply dropped by the final retain — at most one readback per frame.\n\n`OnTerrainChange` is emitted unconditionally alongside the copy, not gated on whether pixel values actually changed, so identical contents still fire it.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 8.535
+}

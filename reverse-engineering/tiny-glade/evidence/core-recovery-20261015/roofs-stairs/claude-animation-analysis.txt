@@ -1,0 +1,11 @@
+**16-byte claim: not warranted.** `xorps xmm0,xmm0; xorps xmm1,xmm1` proves only that the compiler zeroed two XMM registers. `xorps` is the idiomatic zeroing idiom for any float aggregate from 4 to 16 bytes, and a >16-byte aggregate would normally be returned via sret, not in two registers. `new` is an all-zero initializer whose return may not even be consumed; nothing in it constrains layout. This is exactly the register-width→ABI inference to reject.
+
+**Controlling evidence, in precedence order:**
+
+1. Native differential runs — direct behavioral comparison against the original consumer, including delta/NaN edge cases. Strongest.
+2. Consumer at 0x1421a2da0 — stride 8, exactly two float accesses per row (`*pfVar21`, `pfVar21[1]`), so the row payload is 8 bytes; the changed-tick store is a *separate* 4-byte-stride structure, not part of the row.
+3. Constructor register width — weakest, and uninformative here.
+
+So the owned model is two `f32` channels (8 bytes) plus a separate per-row dirty store. Caveat: the observed footprint bounds the *row*, not necessarily the whole component; other fields are unobserved, not disproven — don't invent them.
+
+**Change detection.** Bevy's `Mut<T>` sets the component's changed tick inside `DerefMut`, so any `get_mut`-then-write dirties the entire component, and `iter_mut` dirties everything. To keep dt=0 from marking rows: compute candidate values from an immutable query first, and take `get_mut` only when at least one row meets the original predicate. Reproduce the predicate on the *delta*, not on equality: NaN makes `d != 0.0` true, so it fires — matching "delta != 0 or NaN" — whereas `new != old` diverges when both are infinite (delta is NaN but the values compare equal). Keep per-row changed ticks in your own array; component-level ticks are coarser and cannot express per-row semantics. Read dt from resource+0x28 rather than mirroring it into the component.

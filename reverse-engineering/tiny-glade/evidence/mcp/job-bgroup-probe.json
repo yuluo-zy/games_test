@@ -1,0 +1,9 @@
+[
+ {"tool":"open_database","args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","run_auto_analysis":false,"database_id":"bgrp_probe","keep_open":true},"timeout_ms":300000},
+ {"tool":"wait_for_analysis","args":{"database":"bgrp_probe"},"timeout_ms":300000},
+ {"tool":"get_database_info","args":{"database":"bgrp_probe"},"timeout_ms":60000},
+ {"tool":"list_functions","args":{"database":"bgrp_probe","filter_pattern":"14008be360","limit":10},"timeout_ms":60000},
+ {"tool":"list_functions","args":{"database":"bgrp_probe","filter_pattern":"MusicPlayer","limit":20},"timeout_ms":60000},
+ {"tool":"disassemble_function","args":{"address":"0x14008be360","database":"bgrp_probe"},"timeout_ms":60000},
+ {"tool":"close_database","args":{"database":"bgrp_probe","save":false},"timeout_ms":60000}
+]

@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\raster\\replay-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\raster\\replay-analysis.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\raster\\replay-analysis.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "## Command struct (proven from ctor `FUN_141700430`)\n\n`out` = 4 qwords + float + 3 bytes (0x1b bytes):\n\n| off | type | value |\n|---|---|---|\n| +0x00 | ptr | `param_3` payload handle |\n| +0x08 | ptr | `param_2` = `Arc<RasterStroke>` |\n| +0x10 | f32 | 0 (progress accumulator; written as u32 0) |\n| +0x14 | f32 | duration |\n| +0x18 | u8 | 0 |\n| +0x19 | u8 | 0 |\n| +0x1a | u8 | `param_4` |\n\n`+0x18`/`+0x19` are zeroed together via `*(u16*)(p+3)=0`. `Arc<RasterStroke>` layout confirmed: `+0x10` pts ptr, `+0x18` cap, `+0x20` len, `+0x28` radius (f32), `+0x2c` draw (u8).\n\n**Duration:** `len = *(u64)(stroke+0x20)`.\n- `len == 1` → length 0 → duration = 0.4.\n- else sum `|p[i]-p[i-1]|` over Vec3 stride 0xc, 2× unrolled (`uVar2 = len-2` trip count, odd tail handled), then `d = (len_total / 5.0) * 0.025` (`_UNK_142925988`, `_UNK_1429cd0f4`), then `if (d <= 0.4) d = 0.4` (`_UNK_142925970`). **No upper clamp.**\n- `len == 0` → `len-2` underflows → panic path `FUN_1428d9518(…,&UNK_142adb0d0)` (index-out-of-range). Empty strokes are not constructible.\n\n## Forward executor `FUN_1409f4650(param_1 cmd-list, param_2 world, param_3 lookup, param_4 cb, param_5 history)`\n\n`cmd = *param_1`; `dt = *(f32)(param_1[0xc] + 0x28)`; `scratch = param_1[0x10]`.\n\n**First frame (`cmd+0x19 == 0`)** — *instant* state:\n1. scan pending batch; if stroke not already committed → set `cmd+0x19 = 1`.\n2. memset `scratch+0x1200`, 0x200.\n3. re-render every committed stroke: `FUN_140a16960(param_2, 0, pts+0x10, pts+len*0xc+0x10, color@Arc+0x28, draw@Arc+0x2c, Arc+0x10, Arc+0x14)`; each element also passed to `param_4` callback.\n4. for prior commands with `+0x1a != 0` → `FUN_140a01560(param_5, {pts[0].xy, color})` (push to undo history).\n5. `FUN_140ade620(scratch+0x1200, pts+0x10, pts+len*0xc+0x10, radius)` — rasterize full polyline into mask.\n6. OR mask `scratch+0x1200` **and** `scratch+0x1000` (512 B each) into `param_2+0x98..+0x297`.\n7. `FUN_140a161a0(param_2)` → flush/commit.\n8. `FUN_140a16960(param_2, 1, …)` — draw at layer 1.\n9. lookup `FUN_140969720(res_id, &UNK_142c2e250)` (type hash 0x42 compared at `+0x18`); `FUN_140a172d0(param_2, 1, *obj, obj[1])`.\n10. **history push** (only when `cmd+0x1a != 0`): 0x20-byte record into `*param_5`: `[0]=prev/ptr, [8]=pts ptr, [0x10]=u32 color, [0x14]=u32 radius, [0x18]=1`; push `u64` mirror index into `param_5[1]`; `atomic_inc(param_5[2])`.\n\n**Steady frame (`cmd+0x19 != 0`)** — *forward / undo*:\n`progress = *(f32)(cmd+0x10) + dt * *(f32)(cmd+0x28)`; `t = clamp01(progress / *(f32)(cmd+0x14))`; store back.\n`memset(scratch+0x1200, 0, 0x200)`; then:\n- `cmd+0x18 == 0` (**forward**): sub-polyline = points `[0..t]`, `uVar33 = pts+0x10`.\n- `cmd+0x18 != 0` (**undo**): `t = 1 - t`, sub-polyline = points `[t..1]`, `uVar33 = pts + (t·count)*0xc + 0x10`, start advanced by the trimmed prefix.\n\n`FUN_140ade620(scratch+0x1200, begin, end, radius@Arc+0x28)`; OR `+0x1200` and `+0x1000` blocks into `param_2+0x98..`; **swap** `scratch+0x1200..0x1218` ↔ `scratch+0x1000..0x1018` (double buffer); `FUN_140a161a0`; `FUN_140a16960(param_2,1,…)`; lookup + `FUN_140a172d0`; push history if `+0x1a`.\nThen `if (t >= 1.0)`: if forward, `FUN_140a16580()`; push index into pending-removal vec; the reverse/swap_remove loop at `joined_r0x0001409f61b9` drops the finished command from `param_1`.\n\n**Instant path:** `if (duration < _UNK_142960674) goto 0x1409f4e21` — skips first-frame setup and saturates `t→1` in one tick.\n\n## Undo sources (proven)\n`param_5` = `{ Vec<Rec0x20>, Vec<u64>, *AtomicUsize }`. Records carry pts ptr + color + radius + flag — enough to re-rasterize. Prior strokes are also replayed from the committed container `param_1[4]` (0x28-B elements) via `param_4` + `FUN_140a16960(…,0,…)`.\n\n## Unknown\n`param_3`/`param_4` callbacks; meaning of the dual 512-B masks (`+0x1000` vs `+0x1200`); `_UNK_142925904` (assumed 1.0), `_UNK_142960674`; `param_1[0xc]` batch structure; who sets `+0x18=1` (undo) and `+0x1a`; `FUN_140a16580`/`FUN_140a172d0` internals.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 59.433
+}

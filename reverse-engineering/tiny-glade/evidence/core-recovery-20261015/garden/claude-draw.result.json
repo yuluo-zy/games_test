@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\garden\\claude-draw-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\garden\\claude-draw.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\garden\\claude-draw.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "States: 0 idle, 1 begin, 2 extend, 3 commit. Inactive AppMode → return, state untouched.\n\n| old | r | allowed | new | cmd |\n|---|---|---|---|---|\n| any | 0 | — | 0 | — |\n| 0,3 | 3 | — | 0 | — |\n| 1,2 | 3 | — | 3 | Commit(3) |\n| 0,3 | 1,2 | no | 0 | — |\n| 0,3 | 1,2 | yes | 1 | Begin(draw=!erase, s=.5, r=brush) |\n| 1,2 | 1,2 | no | 2 | — |\n| 1,2 | 1,2 | yes | 2 | pinned shape + Extend(2) |\n\nSurprises: default drag=2 → r=0 → unconditional reset, so a live stroke is dropped with no Commit; only tag≥2 + matching widget draws. u8(drag−2) underflows when drag<2 → r=3 → spurious Commit. Extend mutates state *before* the allowed check; Begin encodes it as state=allowed. 1/2 collapse to 2. erase forces allowed; the draw border test uses 0.32·brush, roughly a third of the brush, so paint may spill outside.\n\nLeave border: state stays 2, no Extend — the stroke freezes, never cancelled. Reenter: Extend(2) resumes from the last in-border point, bridging the excursion with a straight chord across the disallowed region — no break, no re-Begin. Losing the tag/widget mid-excursion → drag=2 → r=0 → state 0, stroke silently lost. erase toggled mid-stroke re-allows but cannot flip draw/erase, since Extend carries no flag.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 34.294
+}

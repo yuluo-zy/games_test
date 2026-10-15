@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\music\\claude-load-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\music\\claude-load.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\music\\claude-load.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Scope:** only what the listing shows; 0x1408b45c0 is unresolved and not inferred.\n\n**Entry reset.** Both owned vectors are drained before anything else: len at `[self+0xf8]` (0x30-byte elements) and `[self+0xe0]` (0x18-byte elements) are zeroed after each element is dropped — `AudioInstance::drop` (0x14089a280) plus `__rust_dealloc`, and plain `__rust_dealloc` for the 0x18-byte ones. Nothing from the previous load is retained.\n\n**Per input element** (0x18 bytes: ptr at +8, len at +0x10, treated as `String`):\n- `[rdx] == 0` → a value is built by `memcpy` (tag 2 at +0x28), whose first-byte bit 0 is clear → dropped at 0x1408b6e80. Rejected.\n- otherwise `instantiate_audio`; if its result discriminant is 2 → jumps straight to the panic site with `called \\`Result::unwrap()\\` on an \\`Err\\` value`. So a callback/instantiate error **aborts the whole load**, it is not a graceful skip.\n- result payload bit 0 clear → `AudioInstance::drop`, rejected.\n- bit set → `EventInstance::set_callback` (mask 0x1000, fn 0x1408b7620); the word at `[rbp]` must then equal `0x8000000000000004`, else the instance is dropped.\n\n**Acceptance** (all checks passed): instance moved into the 0xf0 vector (`grow_one` when full) and a `String::clone` pushed into the 0xd8 vector, keeping indices aligned.\n\n**Exit:** `[self+0x118] = 0` on every return path.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 49.128
+}

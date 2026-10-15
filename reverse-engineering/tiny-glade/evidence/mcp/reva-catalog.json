@@ -1,0 +1,2840 @@
+{
+  "tools": [
+    {
+      "name": "get-symbols-count",
+      "title": "Get Symbols Count",
+      "description": "Get the total count of symbols in the program (use this before calling get-symbols to plan pagination)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeExternal": {
+            "type": "boolean",
+            "description": "Whether to include external symbols in the count",
+            "default": false
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "filterDefaultNames": {
+            "type": "boolean",
+            "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+            "default": true
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-symbols",
+      "title": "Get Symbols",
+      "description": "Get symbols from the selected program with pagination (use get-symbols-count first to determine total count)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeExternal": {
+            "type": "boolean",
+            "description": "Whether to include external symbols in the result",
+            "default": false
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "filterDefaultNames": {
+            "type": "boolean",
+            "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+            "default": true
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 200
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-strings-count",
+      "title": "Get Strings Count",
+      "description": "Get the total count of strings in the program (use this before calling get-strings to plan pagination)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-strings",
+      "title": "Get Strings",
+      "description": "Get strings from the selected program with pagination. Optionally filter by regex (regexPattern) or sort by similarity (searchString). Use get-strings-count first to determine total count.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "searchString": {
+            "description": "Optional: sort results by similarity to this string (scored by longest common substring). Mutually exclusive with regexPattern.",
+            "type": "string"
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination",
+            "default": 0
+          },
+          "includeReferencingFunctions": {
+            "type": "boolean",
+            "description": "Include list of functions that reference each string (max 100 per string).",
+            "default": false
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "regexPattern": {
+            "description": "Optional: filter results to strings matching this regex pattern. Mutually exclusive with searchString.",
+            "type": "string"
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 100
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-function-count",
+      "title": "Get Function Count",
+      "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program to get functions from",
+            "type": "string"
+          },
+          "filterDefaultNames": {
+            "type": "boolean",
+            "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+            "default": true
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-functions",
+      "title": "Get Functions",
+      "description": "Get functions from the selected program (use get-function-count to determine the total count)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (0-based)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program to get functions from",
+            "type": "string"
+          },
+          "filterDefaultNames": {
+            "type": "boolean",
+            "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+            "default": true
+          },
+          "untagged": {
+            "type": "boolean",
+            "description": "Only return functions with no tags (mutually exclusive with filterByTag)",
+            "default": false
+          },
+          "filterByTag": {
+            "description": "Only return functions with this tag (applied after filterDefaultNames)",
+            "type": "string"
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of functions to return (recommended to use get-function-count first and request chunks of 100 at most)",
+            "default": 100
+          },
+          "verbose": {
+            "type": "boolean",
+            "description": "Return full function details. When false (default), returns compact results (name, address, sizeInBytes, tags, callerCount, calleeCount). Note: counts may be -1 if computation timed out.",
+            "default": false
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-functions-by-similarity",
+      "title": "Get Functions by Similarity",
+      "description": "Get functions from the selected program with pagination, sorted by similarity to a given function name (use get-function-count first to determine total count)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "searchString": {
+            "description": "Function name to compare against for similarity (scored by longest common substring length between the search string and each function name in the program)",
+            "type": "string"
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (0-based)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program to get functions from",
+            "type": "string"
+          },
+          "filterDefaultNames": {
+            "type": "boolean",
+            "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+            "default": true
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of functions to return (recommended to use get-function-count first and request chunks of 100 at most)",
+            "default": 100
+          },
+          "verbose": {
+            "type": "boolean",
+            "description": "Return full function details. When false (default), returns compact results (name, address, sizeInBytes, tags, callerCount, calleeCount, similarity). Note: counts may be -1 if computation timed out.",
+            "default": false
+          }
+        },
+        "required": [
+          "programPath",
+          "searchString"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set-function-prototype",
+      "title": "Set Function Prototype",
+      "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "signature": {
+            "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+            "type": "string"
+          },
+          "location": {
+            "description": "Address or symbol name where the function is located",
+            "type": "string"
+          },
+          "createIfNotExists": {
+            "type": "boolean",
+            "description": "Create function if it doesn't exist at the location",
+            "default": true
+          }
+        },
+        "required": [
+          "programPath",
+          "location",
+          "signature"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-undefined-function-candidates",
+      "title": "Get Undefined Function Candidates",
+      "description": "Find addresses in executable memory with valid instructions that are referenced but not defined as functions. Includes both CALL references and DATA references (function pointers, callbacks, exception handlers). Use get-decompilation to preview candidates, then create-function to define them permanently.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (0-based)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxCandidates": {
+            "type": "integer",
+            "description": "Maximum number of candidates to return (default: 100)",
+            "default": 100
+          },
+          "minReferenceCount": {
+            "type": "integer",
+            "description": "Minimum number of references required to be a candidate (default: 1)",
+            "default": 1
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create-function",
+      "title": "Create Function",
+      "description": "Create a function at an address with auto-detected signature. Ghidra will analyze the code to determine the function body, parameters, and return type. Use this after get-undefined-function-candidates to define discovered functions. For explicit signature control, use set-function-prototype instead.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "address": {
+            "description": "Address where the function should be created (e.g., '0x401000')",
+            "type": "string"
+          },
+          "name": {
+            "description": "Optional name for the function. If not provided, Ghidra will generate a default name (FUN_xxxxxxxx)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "address"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "function-tags",
+      "title": "Function Tags",
+      "description": "Manage function tags. Tags categorize functions (e.g., 'AI', 'rendering'). Use mode='list' for all tags in program.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "get",
+              "set",
+              "add",
+              "remove",
+              "list"
+            ],
+            "type": "string",
+            "description": "Operation: 'get' (tags on function), 'set' (replace), 'add', 'remove', 'list' (all tags in program)"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "function": {
+            "description": "Function name or address (required for get/set/add/remove modes)",
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag names (required for add; optional for set/remove). Empty/whitespace names are ignored.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath",
+          "mode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-decompilation",
+      "title": "Get Function Decompilation",
+      "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionNameOrAddress": {
+            "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+            "type": "string"
+          },
+          "includeCallers": {
+            "type": "boolean",
+            "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+            "default": false
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program containing the function",
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Line number to start reading from (1-based). Defaults to 1.",
+            "default": 1
+          },
+          "includeDisassembly": {
+            "type": "boolean",
+            "description": "Whether to include assembly listing alongside decompilation for sync",
+            "default": false
+          },
+          "includeIncomingReferences": {
+            "type": "boolean",
+            "description": "Whether to include incoming cross references to this function on the function declaration line",
+            "default": true
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+            "default": 50
+          },
+          "includeReferenceContext": {
+            "type": "boolean",
+            "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+            "default": true
+          },
+          "includeComments": {
+            "type": "boolean",
+            "description": "Whether to include comments in the decompilation output",
+            "default": false
+          },
+          "includeCallees": {
+            "type": "boolean",
+            "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+            "default": false
+          },
+          "signatureOnly": {
+            "type": "boolean",
+            "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+            "default": false
+          }
+        },
+        "required": [
+          "programPath",
+          "functionNameOrAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "search-decompilation",
+      "title": "Search Function Decompilations",
+      "description": "Search for patterns across all function decompilations in a program. Returns function names and line numbers where patterns match. If looking for calls or references to data, try the cross reference tools first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program to search",
+            "type": "string"
+          },
+          "overrideMaxFunctionsLimit": {
+            "type": "boolean",
+            "description": "Whether to override the maximum function limit for decompiler searches. Use with caution as large programs may take a long time to search.",
+            "default": false
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of search results to return",
+            "default": 50
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "description": "Whether the search should be case sensitive",
+            "default": false
+          },
+          "pattern": {
+            "description": "Regular expression pattern to search for in decompiled functions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "pattern"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "rename-variables",
+      "title": "Rename Function Variables",
+      "description": "Rename variables in a decompiled function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionNameOrAddress": {
+            "description": "Function name, address, or symbol to rename variables in (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be used.",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program containing the function",
+            "type": "string"
+          },
+          "variableMappings": {
+            "type": "object",
+            "description": "Mapping of old variable names to new variable names. Only rename the variables that need to be changed.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath",
+          "functionNameOrAddress",
+          "variableMappings"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "change-variable-datatypes",
+      "title": "Change Variable Data Types",
+      "description": "Change data types of variables in a decompiled function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionNameOrAddress": {
+            "description": "Function name, address, or symbol to change variable data types in (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be used.",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program containing the function",
+            "type": "string"
+          },
+          "datatypeMappings": {
+            "type": "object",
+            "description": "Mapping of variable names to new data type strings (e.g., 'char*', 'int[10]'). Only change the variables that need new data types.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "archiveName": {
+            "type": "string",
+            "description": "Optional name of the data type archive to search for data types. If not provided, all archives will be searched.",
+            "default": ""
+          }
+        },
+        "required": [
+          "programPath",
+          "functionNameOrAddress",
+          "datatypeMappings"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set-decompilation-comment",
+      "title": "Add Decompilation Comment",
+      "description": "Set a comment at a specific line in decompiled code. The comment will be placed at the address corresponding to the decompilation line.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionNameOrAddress": {
+            "description": "Function name, address, or symbol (e.g. 'main', '0x00401000', or 'start')",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program containing the function",
+            "type": "string"
+          },
+          "commentType": {
+            "type": "string",
+            "description": "Type of comment: 'pre' or 'eol' (end-of-line)",
+            "default": "eol"
+          },
+          "comment": {
+            "description": "The comment text to set",
+            "type": "string"
+          },
+          "lineNumber": {
+            "description": "Line number in the decompiled function (1-based)",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionNameOrAddress",
+          "lineNumber",
+          "comment"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-callers-decompiled",
+      "title": "Get Callers Decompiled",
+      "description": "Decompile all functions that call a target function. Returns bulk decompilation results with optional call site highlighting. Use for understanding how a function is used throughout the codebase.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionNameOrAddress": {
+            "description": "Target function name or address to find callers for",
+            "type": "string"
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (0-based)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "includeCallContext": {
+            "type": "boolean",
+            "description": "Whether to highlight the line containing the call in each decompilation",
+            "default": true
+          },
+          "maxCallers": {
+            "type": "integer",
+            "description": "Maximum number of calling functions to decompile (default: 10)",
+            "default": 10
+          }
+        },
+        "required": [
+          "programPath",
+          "functionNameOrAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-referencers-decompiled",
+      "title": "Get Referencers Decompiled",
+      "description": "Decompile all functions that reference a specific address or symbol. Useful for understanding how global variables, data, or code locations are used. Includes both code and data references by default.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (0-based)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxReferencers": {
+            "type": "integer",
+            "description": "Maximum number of referencing functions to decompile (default: 10)",
+            "default": 10
+          },
+          "addressOrSymbol": {
+            "description": "Target address or symbol name to find references to (e.g., '0x00401000', 'global_var', 'my_label')",
+            "type": "string"
+          },
+          "includeRefContext": {
+            "type": "boolean",
+            "description": "Whether to include reference line numbers in decompilation",
+            "default": true
+          },
+          "includeDataRefs": {
+            "type": "boolean",
+            "description": "Whether to include data references (reads/writes), not just calls",
+            "default": true
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-memory-blocks",
+      "title": "Get Memory Blocks",
+      "description": "Get memory blocks from the selected program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "read-memory",
+      "title": "Read Memory",
+      "description": "Read memory at a specific address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to read from (e.g. '00400000' or 'main')",
+            "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "description": "Number of bytes to read",
+            "default": 16
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format: 'hex', 'bytes', or 'both'",
+            "default": "hex"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-cross-references",
+      "title": "Find Cross References",
+      "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeContext": {
+            "type": "boolean",
+            "description": "Include decompilation context snippets for code references",
+            "default": false
+          },
+          "contextLines": {
+            "type": "integer",
+            "description": "Number of lines before and after to include in context snippets",
+            "default": 2
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program to get references from",
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Starting offset for pagination (0-based)",
+            "default": 0
+          },
+          "includeFlow": {
+            "type": "boolean",
+            "description": "Include flow references (calls, jumps, branches)",
+            "default": true
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of references to return per direction",
+            "default": 100
+          },
+          "location": {
+            "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+            "type": "string"
+          },
+          "includeData": {
+            "type": "boolean",
+            "description": "Include data references (reads, writes)",
+            "default": true
+          },
+          "direction": {
+            "enum": [
+              "to",
+              "from",
+              "both"
+            ],
+            "type": "string",
+            "default": "both",
+            "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)"
+          }
+        },
+        "required": [
+          "programPath",
+          "location"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-constant-uses",
+      "title": "Find Constant Uses",
+      "description": "Find all locations where a specific constant value is used as an immediate operand in instructions. Useful for finding magic numbers, error codes, buffer sizes, or other significant values.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of results to return (default: 500)",
+            "default": 500
+          },
+          "value": {
+            "description": "The constant value to search for. Supports decimal (123), hex (0x7b), negative (-1), or named constants. For hex, use 0x prefix.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-constants-in-range",
+      "title": "Find Constants in Range",
+      "description": "Find all constant values within a specified range. Useful for finding error codes (e.g., 400-599 for HTTP errors), enum values, or constants that fall within expected bounds.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "minValue": {
+            "description": "Minimum value (inclusive). Supports decimal or hex (0x) format.",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxValue": {
+            "description": "Maximum value (inclusive). Supports decimal or hex (0x) format.",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of results to return (default: 500)",
+            "default": 500
+          }
+        },
+        "required": [
+          "programPath",
+          "minValue",
+          "maxValue"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-common-constants",
+      "title": "List Common Constants",
+      "description": "Find the most frequently used constant values in the program. Helps identify important magic numbers, sizes, flags, or other significant values. By default filters out small values (0-255) which are often noise.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "minValue": {
+            "description": "Optional minimum value to consider (filters out small constants)",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "includeSmallValues": {
+            "type": "boolean",
+            "description": "Include small values (0-255) which are often noise (default: false)",
+            "default": false
+          },
+          "topN": {
+            "type": "integer",
+            "description": "Number of most common constants to return (default: 50)",
+            "default": 50
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-imports",
+      "title": "List Imports",
+      "description": "List all imported functions from external libraries. Useful for understanding what external APIs a binary uses.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (default: 0)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "groupByLibrary": {
+            "type": "boolean",
+            "description": "Group imports by library name (default: true)",
+            "default": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of imports to return (default: 500)",
+            "default": 500
+          },
+          "libraryFilter": {
+            "description": "Optional: filter by library name (case-insensitive partial match)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-exports",
+      "title": "List Exports",
+      "description": "List all exported symbols from the binary. Shows functions and data that the binary exports for use by other modules.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination (default: 0)",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of exports to return (default: 500)",
+            "default": 500
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-import-references",
+      "title": "Find Import References",
+      "description": "Find all locations where a specific imported function is called. Also finds references through thunks (IAT stubs).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "libraryName": {
+            "description": "Optional: specific library name to narrow search (case-insensitive)",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of references to return (default: 100)",
+            "default": 100
+          },
+          "importName": {
+            "description": "Name of the imported function to find references for (case-insensitive)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "importName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "resolve-thunk",
+      "title": "Resolve Thunk",
+      "description": "Follow a thunk chain to find the actual target function. Thunks are wrapper functions that jump to another location.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "address": {
+            "description": "Address of the thunk or jump stub to resolve",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "address"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-project-files",
+      "title": "List Project Files",
+      "description": "List files and folders in the Ghidra project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folderPath": {
+            "description": "Path to the folder to list contents of. Use '/' for the root folder.",
+            "type": "string"
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Whether to list files recursively",
+            "default": false
+          }
+        },
+        "required": [
+          "folderPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "checkin-program",
+      "title": "Checkin Program",
+      "description": "Checkin (commit) a program to version control with a commit message",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program to checkin (e.g., '/Hatchery.exe')",
+            "type": "string"
+          },
+          "message": {
+            "description": "Commit message for the checkin",
+            "type": "string"
+          },
+          "keepCheckedOut": {
+            "type": "boolean",
+            "description": "Whether to keep the program checked out after checkin",
+            "default": false
+          }
+        },
+        "required": [
+          "programPath",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analyze-program",
+      "title": "Analyze Program",
+      "description": "Run Ghidra's auto-analysis on a program as a background job, then persist the result. Waits inline up to waitSeconds for completion: small programs finish in that window and return the full result (success, analyzersRun, durationMs, persisted, saved, ...) in one call with status=completed. Longer analyses return {status:running, jobId, log} so you can poll analysis-status with the jobId (or stop it with analysis-cancel). Only one analysis runs per program at a time — calling again while one is in flight reuses the running job. Supports per-call analyzer overrides via enableAnalyzers / disableAnalyzers (use list-analyzers for valid names) and a persist mode (auto/save/none). After import-file, call this tool to populate functions, strings, and references.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "forceFullAnalysis": {
+            "default": false,
+            "description": "Force a full re-analysis even if the program is already marked analyzed (default: false). When false, the first call on a fresh program runs full analysis and subsequent calls are incremental.",
+            "type": "boolean"
+          },
+          "programPath": {
+            "description": "Path to the program to analyze (e.g., '/Hatchery.exe')",
+            "type": "string"
+          },
+          "disableAnalyzers": {
+            "description": "Names of analyzers to disable for this run only (does not persist). Each name must be a top-level analyzer enable flag (no dots in the name) -- use list-analyzers to discover valid names.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to wait inline for analysis to finish before returning a job handle to poll. Small programs finish within this window and return the full result in one call; long analyses return {status:running, jobId} to poll with analysis-status. Keep this safely below your MCP client's tool-call timeout — the inline wait holds the request open, so a value above the client timeout would drop the call (the job still runs and stays pollable).",
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeoutSeconds": {
+            "description": "Maximum analysis time in seconds. Defaults to the configured analysis timeout. Pass -1 to disable the timeout entirely (analysis runs until done).",
+            "type": "integer"
+          },
+          "persist": {
+            "default": "auto",
+            "description": "How to persist the analysis when it finishes: auto = save locally then checkin if the file is under version control; save = local save only; none = don't persist (read-only).",
+            "type": "string",
+            "enum": [
+              "auto",
+              "save",
+              "none"
+            ]
+          },
+          "enableAnalyzers": {
+            "description": "Names of analyzers to enable for this run only (does not persist). Each name must be a top-level analyzer enable flag (no dots in the name) -- use list-analyzers to discover valid names.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analysis-status",
+      "title": "Analysis Status",
+      "description": "Poll a background analysis job started by analyze-program. Call repeatedly, feeding back logCursor as sinceLogSeq, until status is terminal (completed/failed/cancelled/timed_out). Each call returns the new log lines since the cursor and the live function count, and long-polls up to waitSeconds for progress — returning immediately when the job finishes. When terminal, the response also carries the full result (persisted, saved, durationMs, ...). Identify the job by jobId (preferred) or by programPath (resolves to that program's latest job).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "description": "The analysis job to poll (e.g., 'analysis-3'), as returned by analyze-program. Provide exactly one of jobId or programPath.",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Alternative to jobId: the program path (e.g., '/Hatchery.exe') whose LATEST analysis job should be polled. Provide exactly one of jobId or programPath.",
+            "type": "string"
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to long-poll: the call holds open up to this long waiting for progress, then returns. It returns the instant the job terminates. Keep this safely below your MCP client's tool-call timeout — the inline wait holds the request open, so a value above the client timeout would drop the call (the job still runs and stays pollable).",
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxLogEntries": {
+            "default": 50,
+            "description": "Maximum number of log entries to return per call. When more are available, truncated is true and you should call again with sinceLogSeq=logCursor to drain them.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "sinceLogSeq": {
+            "default": 0,
+            "description": "Return only log entries with seq greater than this cursor. Feed back the previous call's logCursor here to get just the new lines.",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analysis-cancel",
+      "title": "Analysis Cancel",
+      "description": "Request cancellation of a running background analysis job started by analyze-program. Cancellation is asynchronous: this returns immediately after requesting it; poll analysis-status until the job reaches a terminal state (cancelled) to confirm. Partial analysis work is still persisted when the job unwinds. If the job has already finished, this is a no-op and reports alreadyTerminal:true.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "description": "The analysis job to cancel (e.g. 'analysis-3').",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-analyzers",
+      "title": "List Analyzers",
+      "description": "List the auto-analyzers that apply to the given program, including each analyzer's name, description, type, priority, default and current enabled state, and any registered sub-options. Use the returned 'name' field as input to analyze-program's enableAnalyzers / disableAnalyzers parameters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program whose analyzers to list (e.g., '/Hatchery.exe').",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "change-processor",
+      "title": "Change Processor",
+      "description": "Change the processor architecture of an existing program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program to modify (e.g., '/Hatchery.exe')",
+            "type": "string"
+          },
+          "languageId": {
+            "description": "Language ID for the new processor (e.g., 'x86:LE:64:default')",
+            "type": "string"
+          },
+          "compilerSpecId": {
+            "description": "Compiler spec ID (optional, defaults to the language's default)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "languageId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "import-file",
+      "title": "Import File",
+      "description": "Import files, directories, or archives into the Ghidra project using batch import. By default this does NOT run auto-analysis; the response flags imported programs with analyzed=false and analysisRecommended=true so callers know to follow up with the analyze-program tool. Set analyzeAfterImport=true to bundle analysis into the import call (slower, no per-analyzer progress).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "destinationFolder": {
+            "description": "Project folder path for imported files (default: root folder)",
+            "type": "string"
+          },
+          "maxDepth": {
+            "description": "Maximum container depth to recurse into (default: 10)",
+            "type": "integer"
+          },
+          "stripLeadingPath": {
+            "description": "Omit the source file's leading path from imported file locations (default: true)",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Absolute file system path to import (file, directory, or archive). Use absolute paths to ensure proper file resolution as the MCP client and Ghidra may have different working directories.",
+            "type": "string"
+          },
+          "enableVersionControl": {
+            "description": "Automatically add imported files to version control (default: true)",
+            "type": "boolean"
+          },
+          "analyzeAfterImport": {
+            "description": "Run auto-analysis on each imported program before returning (default: false). Prefer leaving this off for LLM-driven workflows and calling analyze-program explicitly so progress is reported and analyzer choices are visible.",
+            "type": "boolean"
+          },
+          "stripAllContainerPath": {
+            "description": "Completely flatten container paths in imported file locations (default: false)",
+            "type": "boolean"
+          },
+          "mirrorFs": {
+            "description": "Mirror the filesystem layout when importing (default: false)",
+            "type": "boolean"
+          },
+          "recursive": {
+            "description": "Whether to recursively import from containers/archives (default: true)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "capture-reva-debug-info",
+      "title": "Capture ReVa Debug Information",
+      "description": "Creates a zip file containing ReVa debug information for troubleshooting issues. Includes system info, Ghidra config, ReVa settings, MCP server status, open programs, and logs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "Optional message describing the issue being debugged",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-data",
+      "title": "Get Data",
+      "description": "Get data at a specific address or symbol in a program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to get data from (e.g., '0x00400000' or 'main')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "apply-data-type",
+      "title": "Apply Data Type",
+      "description": "Apply a data type to a specific address or symbol in a program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "dataTypeString": {
+            "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+            "type": "string"
+          },
+          "archiveName": {
+            "type": "string",
+            "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+            "default": ""
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to apply the data type to (e.g., '0x00400000' or 'main')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "dataTypeString"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create-label",
+      "title": "Create Label",
+      "description": "Create a label at a specific address in a program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "setAsPrimary": {
+            "type": "boolean",
+            "description": "Whether to set this label as primary if other labels exist at the address",
+            "default": true
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to create label at (e.g., '0x00400000' or 'main')",
+            "type": "string"
+          },
+          "labelName": {
+            "description": "Name for the label to create",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "labelName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-data-type-archives",
+      "title": "Get Data Type Archives",
+      "description": "Get data type archives for a specific program",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-data-types",
+      "title": "Get Data Types",
+      "description": "Get data types from a data type archive",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "archiveName": {
+            "description": "Name of the data type archive",
+            "type": "string"
+          },
+          "categoryPath": {
+            "type": "string",
+            "description": "Path to category to list data types from (e.g., '/Structure'). Use '/' for root category.",
+            "default": "/"
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 100
+          },
+          "includeSubcategories": {
+            "type": "boolean",
+            "description": "Whether to include data types from subcategories",
+            "default": false
+          }
+        },
+        "required": [
+          "programPath",
+          "archiveName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-data-type-by-string",
+      "title": "Get Data Type by String",
+      "description": "Get a data type by its string representation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "dataTypeString": {
+            "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+            "type": "string"
+          },
+          "archiveName": {
+            "type": "string",
+            "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+            "default": ""
+          }
+        },
+        "required": [
+          "programPath",
+          "dataTypeString"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "parse-c-structure",
+      "title": "Parse C Structure",
+      "description": "Parse and create or replace a structure from a C-style definition. If a structure with the same name already exists, it will be replaced with the new definition (fields are completely rebuilt). Use get-structure-info to see the current layout before modifying.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "cDefinition": {
+            "description": "C-style structure definition",
+            "type": "string"
+          },
+          "category": {
+            "description": "Category path (default: /)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "cDefinition"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "validate-c-structure",
+      "title": "Validate C Structure",
+      "description": "Validate C-style structure definition without creating it",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "cDefinition": {
+            "description": "C-style structure definition to validate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cDefinition"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-structure-info",
+      "title": "Get Structure Info",
+      "description": "Get detailed information about a structure or union, including a C representation of its layout",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "structureName": {
+            "description": "Name of the structure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "structureName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-structures",
+      "title": "List Structures",
+      "description": "List structures and unions in a program with optional filtering and pagination",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "startIndex": {
+            "type": "integer",
+            "description": "Starting index for pagination",
+            "default": 0
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "includeBuiltIn": {
+            "description": "Include built-in types (default: false)",
+            "type": "boolean"
+          },
+          "category": {
+            "description": "Filter by category path",
+            "type": "string"
+          },
+          "nameFilter": {
+            "description": "Filter by name (substring match)",
+            "type": "string"
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 100
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "apply-structure",
+      "title": "Apply Structure",
+      "description": "Apply a structure at a specific address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "clearExisting": {
+            "description": "Clear existing data",
+            "type": "boolean"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "structureName": {
+            "description": "Name of the structure",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to apply structure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "structureName",
+          "addressOrSymbol"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete-structure",
+      "title": "Delete Structure",
+      "description": "Delete a structure from the program. Checks for references (function signatures, variables, memory) before deletion. Use force=true to delete anyway despite references.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "structureName": {
+            "description": "Name of the structure to delete",
+            "type": "string"
+          },
+          "force": {
+            "description": "Force deletion even if structure is referenced (default: false)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "programPath",
+          "structureName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "parse-c-header",
+      "title": "Parse C Header",
+      "description": "Parse an entire C header file and create all structures",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "headerContent": {
+            "description": "C header file content",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "category": {
+            "description": "Category path (default: /)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "headerContent"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-call-graph",
+      "title": "Get Call Graph",
+      "description": "Get the call graph around a function, showing both callers (functions that call this one) and callees (functions this one calls) up to the specified depth. Useful for understanding a function's context in the overall program flow.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "depth": {
+            "type": "integer",
+            "description": "How many levels of callers/callees to include (default: 1, max: 10)",
+            "default": 1
+          },
+          "functionAddress": {
+            "description": "Address or name of the function to analyze",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-call-tree",
+      "title": "Get Call Tree",
+      "description": "Get a hierarchical call tree starting from a function. Can traverse upward (callers - who calls this function) or downward (callees - what functions this calls). Detects and marks cycles.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "maxDepth": {
+            "type": "integer",
+            "description": "Maximum depth to traverse (default: 3, max: 10)",
+            "default": 3
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "functionAddress": {
+            "description": "Address or name of the function to analyze",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "callers",
+              "callees"
+            ],
+            "type": "string",
+            "default": "callees",
+            "description": "Direction to traverse: 'callers' (who calls this) or 'callees' (what this calls)"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-common-callers",
+      "title": "Find Common Callers",
+      "description": "Find functions that call ALL of the specified target functions. Useful for finding dispatch points, main loops, or common entry points that orchestrate multiple related functions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "functionAddresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of function addresses or names to find common callers for"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddresses"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "trace-data-flow-backward",
+      "title": "Trace Data Flow Backward",
+      "description": "Trace where a value at an address comes from. Follows the data dependency chain backward to find origins (constants, parameters, memory loads, etc.).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "address": {
+            "description": "Address within a function to trace backward from",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "address"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "trace-data-flow-forward",
+      "title": "Trace Data Flow Forward",
+      "description": "Trace where a value at an address flows to. Follows the data dependency chain forward to find uses (stores, function calls, returns, etc.).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "address": {
+            "description": "Address within a function to trace forward from",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "address"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-variable-accesses",
+      "title": "Find Variable Accesses",
+      "description": "Find all reads and writes to a variable within a function. Useful for understanding how a variable is used throughout a function.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "variableName": {
+            "description": "Name of the variable to find accesses for",
+            "type": "string"
+          },
+          "functionAddress": {
+            "description": "Address of the function to analyze",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddress",
+          "variableName"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analyze-vtable",
+      "title": "Analyze Vtable",
+      "description": "Analyze a virtual function table (vtable) at the given address. Returns the list of function pointers with their slot indices and offsets. Useful for understanding C++ class hierarchies and virtual method dispatch.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "vtableAddress": {
+            "description": "Address of the vtable to analyze",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxEntries": {
+            "type": "integer",
+            "description": "Maximum number of vtable entries to read (default: 200)",
+            "default": 200
+          }
+        },
+        "required": [
+          "programPath",
+          "vtableAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-vtable-callers",
+      "title": "Find Vtable Callers",
+      "description": "Find all indirect calls that could be calling a function through its vtable slot. Given a function that appears in a vtable, finds all indirect call instructions with the matching offset. If vtableAddress is not provided, will first search for vtables containing the function. Essential for finding callers of virtual methods. Note: Offset extraction patterns are optimized for x86/x64 instruction formats.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "vtableAddress": {
+            "description": "Address of the vtable containing the function (optional - will search if not provided)",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of results to return (default: 500)",
+            "default": 500
+          },
+          "functionAddress": {
+            "description": "Address or name of the function that is called via vtable",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "find-vtables-containing-function",
+      "title": "Find Vtables Containing Function",
+      "description": "Find all vtables that contain a pointer to the given function. Returns the vtable addresses and slot indices where the function appears. Useful for discovering which classes implement a virtual method.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "functionAddress": {
+            "description": "Address or name of the function to search for in vtables",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "functionAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-create-session",
+      "title": "Create Binary Diff Session",
+      "description": "Correlate two programs with Ghidra Version Tracking and cache the result as a background job. Waits inline up to waitSeconds (default 10): small binaries finish in that window and return the full summary; large binaries return {status:running, jobId} to poll via diff-status. Idempotent unless force=true or the correlators selection changes. Both programs must already be analyzed. NOTE: if a correlation for this same pair is already running, this call attaches to that in-flight job and the force/correlators overrides on this call are ignored until it finishes. Returns summary counts and the correlators that ran.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to wait inline for correlation to finish before returning a job handle. Small binaries finish in this window and return the full summary; large ones return {status:running, jobId} to poll via diff-status. Keep below your MCP client tool-call timeout.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "description": "Hard cap on correlation time in seconds; -1 (default) for unlimited.",
+            "default": -1
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Re-correlate even if a session already exists for this pair.",
+            "default": false
+          },
+          "sourceScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional: restrict the initial correlation to these source functions (names or addresses). Omitted = all functions, then auto-scoped to the residual per stage."
+          },
+          "correlators": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "symbol-name",
+                "exact-bytes",
+                "exact-instructions",
+                "exact-mnemonics",
+                "duplicate-instructions",
+                "function-reference",
+                "combined-reference"
+              ],
+              "type": "string"
+            },
+            "description": "Ordered VT correlators to run. Omit for the default sequence: [symbol-name, exact-bytes, exact-instructions, exact-mnemonics, duplicate-instructions, function-reference]. Drop 'symbol-name' to match by structure/bytes instead of trusting symbol names (e.g. when names are stripped, unreliable, or you want a body-based diff that surfaces decompilation changes). 'combined-reference' is an opt-in reference-based correlator (not in the default sequence) that can match functions across body changes when their call/data references are stable — useful for stripped binaries; caveat: leaf functions with no references still won't match (Ghidra VT has no body-similarity correlator). Changing the selection re-correlates this pair."
+          },
+          "destinationScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional: restrict the initial correlation to these destination functions (names or addresses). Omitted = all functions."
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-add-correlator",
+      "title": "Refine Diff With Another Correlator",
+      "description": "Run one more VT correlator over the existing session's still-unmatched residual (or an agent-chosen scope) and persist. The refine step: correlate broadly with diff-create-session, read the residual (diff-list-functions category=removed/added), then aim a sharper correlator at a chosen subset. Runs as a background job.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "correlator": {
+            "enum": [
+              "symbol-name",
+              "exact-bytes",
+              "exact-instructions",
+              "exact-mnemonics",
+              "duplicate-instructions",
+              "function-reference",
+              "combined-reference"
+            ],
+            "type": "string",
+            "description": "Which correlator to run over the residual (or chosen scope)."
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to wait inline before returning a {status:running, jobId}.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          },
+          "sourceScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional source functions (names/addresses) to scope this correlator to. Omitted = the current unmatched residual."
+          },
+          "destinationScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional destination functions to scope this correlator to. Omitted = residual."
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath",
+          "correlator"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-summary",
+      "title": "Binary Diff Summary",
+      "description": "Counts plus a ranked teaser of the most-changed matched functions, each tagged with a changeTypes profile (similarity/callees/size, plus body-bytes when includeBodyByteChanges=true). The 'what changed?' entry point.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          },
+          "includeBodyByteChanges": {
+            "type": "boolean",
+            "description": "Recall knob (default false). Also flag matched functions whose raw instruction bytes differ — catches operand/control-flow tweaks that VT scores as identical (changeType 'body-bytes'). Precise on relocatable objects (.ko); noisy on fully-linked images where unchanged functions shift, so the agent enables it deliberately and filters the residual.",
+            "default": false
+          },
+          "topN": {
+            "type": "integer",
+            "description": "How many most-changed matched functions to include in the teaser.",
+            "default": 10
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-list-functions",
+      "title": "List Diffed Functions",
+      "description": "Paginated list of function diff rows for one category (changed/added/removed/identical). Each matched row carries a changeTypes profile (similarity/callees/size, plus body-bytes when includeBodyByteChanges=true), sizeDelta, and any calleeChanges — no bodies.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Pagination start.",
+            "default": 0
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          },
+          "includeBodyByteChanges": {
+            "type": "boolean",
+            "description": "Recall knob (default false). Also treat matched functions whose raw instruction bytes differ as changed (changeType 'body-bytes') — catches operand/control-flow tweaks VT scores as identical. Precise on .ko; noisy on linked images. Affects which rows land in the changed vs identical category.",
+            "default": false
+          },
+          "sortBy": {
+            "type": "string",
+            "description": "similarity | name | address",
+            "default": "similarity"
+          },
+          "category": {
+            "type": "string",
+            "description": "changed | added | removed | identical",
+            "default": "changed"
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Page size.",
+            "default": 50
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-function",
+      "title": "Diff One Function Pair",
+      "description": "Side-by-side decompiler diff for one matched function pair: changed-line snippets, similarity, matching correlator, and both signatures.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "includeArtifactHunks": {
+            "description": "Show decompiler-artifact hunks (variable renumbering, string-label content) in full instead of collapsing them. Default false — artifacts are tagged and counted under suppressedHunks but their content is omitted.",
+            "type": "boolean"
+          },
+          "function": {
+            "description": "Function name or address on EITHER side; the matched counterpart is resolved via the session.",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath",
+          "function"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-strings",
+      "title": "Diff Strings",
+      "description": "Added/removed defined strings between source and destination. Signal for signature updates and C2/protocol changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-data",
+      "title": "Diff Defined Data",
+      "description": "Added/removed defined data (by representation + address) between source and destination.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-transfer-markup",
+      "title": "Transfer Analysis Markup",
+      "description": "Auto-apply VT markup (names/prototypes/datatypes/comments) from source to destination for matches at/above the confidence floor, in a transaction. Returns applied matches and the below-floor proposals for selective review. Runs as a background job: waits inline up to waitSeconds, then returns {status:running, jobId} for large match sets.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Similarity floor for auto-apply (0..1). Matches below are returned as proposals.",
+            "default": 0.9999
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to wait inline for the transfer to finish before returning a job handle. Small match sets finish in this window; large-image transfers return {status:running, jobId} to poll via diff-status.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-apply-match",
+      "title": "Apply One Diff Match",
+      "description": "Apply VT markup for exactly one matched function pair (a proposal the agent chose). Mutates the destination program in a transaction.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "sourceAddress": {
+            "description": "Source function address of the match to apply.",
+            "type": "string"
+          },
+          "destinationAddress": {
+            "description": "Destination function address of the match to apply.",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath",
+          "sourceAddress",
+          "destinationAddress"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-list-sessions",
+      "title": "List Diff Sessions",
+      "description": "List persisted diff sessions (kept durably until explicitly deleted): each source/destination pair and the correlators run so far.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-delete-session",
+      "title": "Delete Diff Session",
+      "description": "Permanently delete a persisted diff session (its Version Tracking DomainFile). This is the only thing that removes a session — sessions are never auto-deleted; the next diff-create-session for the pair re-correlates fresh.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceProgramPath",
+          "destinationProgramPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-status",
+      "title": "Poll Diff Job",
+      "description": "Poll a background diff job (correlation or markup transfer) started by diff-create-session / diff-transfer-markup. Returns new log lines since the cursor and, when terminal, the full result (the summary, or the applied/proposed markup). Identify by jobId, or by the source+destination pair (resolves to the latest job).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sourceProgramPath": {
+            "description": "Project path of the trusted/analyzed/old program (markup flows FROM here).",
+            "type": "string"
+          },
+          "jobId": {
+            "description": "The diff job to poll (e.g. 'diff-3'), as returned by diff-create-session or diff-transfer-markup. Provide jobId, or the source+destination pair.",
+            "type": "string"
+          },
+          "waitSeconds": {
+            "default": 10,
+            "description": "Seconds to long-poll; returns the instant the job terminates. Keep below your MCP client tool-call timeout.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "destinationProgramPath": {
+            "description": "Project path of the variant/new/patched program (markup flows TO here; changes are relative to source).",
+            "type": "string"
+          },
+          "maxLogEntries": {
+            "minimum": 1,
+            "default": 50,
+            "type": "integer",
+            "description": "Max log entries per call; drain more with sinceLogSeq=logCursor."
+          },
+          "sinceLogSeq": {
+            "default": 0,
+            "description": "Return only log entries with seq greater than this cursor (feed back the previous logCursor).",
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "diff-cancel",
+      "title": "Cancel Diff Job",
+      "description": "Request cancellation of a running diff job started by diff-create-session or diff-transfer-markup. Asynchronous: poll diff-status until status is cancelled. A cancelled markup transfer rolls back (all-or-nothing).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "description": "The diff job to cancel (e.g. 'diff-3').",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set-comment",
+      "title": "Set Comment",
+      "description": "Set or update a comment at a specific address. Use this to keep notes or annotations for yourself and the human.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name where to set the comment",
+            "type": "string"
+          },
+          "commentType": {
+            "type": "string",
+            "description": "Type of comment: 'pre', 'eol', 'post', 'plate', or 'repeatable'",
+            "default": "eol"
+          },
+          "comment": {
+            "description": "The comment text to set",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "comment"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-comments",
+      "title": "Get Comments",
+      "description": "Get comments at a specific address or within an address range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to get comments from (optional if using addressRange)",
+            "type": "string"
+          },
+          "addressRange": {
+            "properties": {
+              "start": {
+                "description": "Start address of the range",
+                "type": "string"
+              },
+              "end": {
+                "description": "End address of the range",
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "description": "Address range to get comments from (optional if using address)"
+          },
+          "commentTypes": {
+            "type": "array",
+            "description": "Types of comments to retrieve (optional, defaults to all types)",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "remove-comment",
+      "title": "Remove Comment",
+      "description": "Remove a specific comment at an address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name where to remove the comment",
+            "type": "string"
+          },
+          "commentType": {
+            "description": "Type of comment to remove: 'pre', 'eol', 'post', 'plate', or 'repeatable'",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "commentType"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "search-comments",
+      "title": "Search Comments",
+      "description": "Search for comments containing specific text",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "searchText": {
+            "description": "Text to search for in comments",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "description": "Whether search is case sensitive",
+            "default": false
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 100
+          },
+          "commentTypes": {
+            "type": "array",
+            "description": "Types of comments to search (optional, defaults to all types)",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath",
+          "searchText"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set-bookmark",
+      "title": "Set Bookmark",
+      "description": "Set or update a bookmark at a specific address. Used to keep track of important locations in the program.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name where to set the bookmark",
+            "type": "string"
+          },
+          "comment": {
+            "description": "Bookmark comment text",
+            "type": "string"
+          },
+          "type": {
+            "description": "Bookmark type (e.g. 'Note', 'Warning', 'TODO', 'Bug', 'Analysis')",
+            "type": "string"
+          },
+          "category": {
+            "description": "Bookmark category for organizing bookmarks (optional)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "type",
+          "comment"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get-bookmarks",
+      "title": "Get Bookmarks",
+      "description": "Get bookmarks at a specific address or within an address range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of bookmarks to return (default 200)",
+            "default": 200
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name to get bookmarks from (optional if using addressRange)",
+            "type": "string"
+          },
+          "addressRange": {
+            "properties": {
+              "start": {
+                "description": "Start address of the range",
+                "type": "string"
+              },
+              "end": {
+                "description": "End address of the range",
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "description": "Address range to get bookmarks from (optional if using address)"
+          },
+          "type": {
+            "description": "Filter by bookmark type (optional)",
+            "type": "string"
+          },
+          "category": {
+            "description": "Filter by bookmark category (optional)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "remove-bookmark",
+      "title": "Remove Bookmark",
+      "description": "Remove a specific bookmark",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "addressOrSymbol": {
+            "description": "Address or symbol name of the bookmark",
+            "type": "string"
+          },
+          "type": {
+            "description": "Bookmark type",
+            "type": "string"
+          },
+          "category": {
+            "description": "Bookmark category (optional)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "addressOrSymbol",
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "search-bookmarks",
+      "title": "Search Bookmarks",
+      "description": "Search for bookmarks by text, type, category, or address range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "searchText": {
+            "description": "Text to search for in bookmark comments (optional)",
+            "type": "string"
+          },
+          "types": {
+            "type": "array",
+            "description": "Filter by bookmark types (optional)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "maxResults": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 100
+          },
+          "addressRange": {
+            "properties": {
+              "start": {
+                "description": "Start address of the range",
+                "type": "string"
+              },
+              "end": {
+                "description": "End address of the range",
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "description": "Limit search to address range (optional)"
+          },
+          "categories": {
+            "type": "array",
+            "description": "Filter by bookmark categories (optional)",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-bookmark-categories",
+      "title": "List Bookmark Categories",
+      "description": "List all categories for a given bookmark type",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "programPath": {
+            "description": "Path in the Ghidra Project to the program",
+            "type": "string"
+          },
+          "type": {
+            "description": "Bookmark type to get categories for",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programPath",
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "run-script",
+      "title": "Run Python Script",
+      "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scriptPath": {
+            "description": "Absolute path to an existing .py script to run.",
+            "type": "string"
+          },
+          "programPath": {
+            "description": "Path to the program in the Ghidra Project",
+            "type": "string"
+          },
+          "code": {
+            "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself — the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+            "type": "string"
+          },
+          "scriptName": {
+            "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+            "default": 60
+          }
+        },
+        "required": [
+          "programPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list-scripts",
+      "title": "List Scripts",
+      "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pathFilter": {
+            "type": "string",
+            "description": "Optional substring filter on script absolute path",
+            "default": ""
+          },
+          "startIndex": {
+            "type": "integer",
+            "description": "Pagination start (0-indexed)",
+            "default": 0
+          },
+          "nameFilter": {
+            "type": "string",
+            "description": "Optional substring filter on script file name",
+            "default": ""
+          },
+          "maxCount": {
+            "type": "integer",
+            "description": "Maximum entries to return",
+            "default": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "read-script",
+      "title": "Read Script",
+      "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scriptPath": {
+            "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "1-indexed starting line",
+            "default": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum lines to return",
+            "default": 2000
+          },
+          "scriptName": {
+            "description": "Script file name resolved across registered script directories.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "write-script",
+      "title": "Write Script",
+      "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scriptPath": {
+            "description": "Absolute path; must resolve under a writeable script directory.",
+            "type": "string"
+          },
+          "code": {
+            "description": "Script source to write.",
+            "type": "string"
+          },
+          "scriptName": {
+            "description": "File name (e.g., 'MyAnalysis.py') — written to the default writeable scripts directory.",
+            "type": "string"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Overwrite existing file. Default false: errors if file exists.",
+            "default": false
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "edit-script",
+      "title": "Edit Script",
+      "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "scriptPath": {
+            "description": "Absolute path to the script to edit (must be writeable).",
+            "type": "string"
+          },
+          "old_string": {
+            "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+            "type": "string"
+          },
+          "scriptName": {
+            "description": "Script file name resolved under the default writeable scripts directory.",
+            "type": "string"
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+            "default": false
+          },
+          "new_string": {
+            "description": "Replacement text. Must differ from old_string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_string",
+          "new_string"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

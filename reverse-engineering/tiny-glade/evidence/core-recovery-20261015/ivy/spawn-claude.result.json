@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\spawn-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\spawn-claude.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\spawn-claude.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Base**: offsets below are struct-relative, `+N = 0x128 − addr`. Confirmed by the next-id slot: `0xd0 → +0x58 = 1`.\n\n| addr | off | sz | value written |\n|---|---|---|---|\n|0x128|+0x00|8|uStack_98 ← uStack_88 (point-list header word 1)|\n|0x120|+0x08|8|lStack_90 ← lStack_80 (header word 2, element base)|\n|0x118|+0x10|4|lo(uStack_78) (header word 3)|\n|0x114|+0x14|4|hi(uStack_78)|\n|0x110|+0x18|8|lStack_70 = 1 (point count)|\n|0x108|+0x20|8|id = `*(param_1+0x40)` **pre-increment**|\n|0x100|+0x28|8|0 — unknown|\n|0xf8|+0x30|8|param_2 xy (point)|\n|0xf0|+0x38|4|param_2 z|\n|0xec|+0x3c|8|param_3 xy (direction) — Ghidra's 8-byte extent overlaps the +0x38 slot, so this boundary is uncertain|\n|0xe4|+0x44|4|param_3 z|\n|0xe0|+0x48|4|0 — unknown|\n|0xd8|+0x50|8|count = param_6 + less_than(param_7−param_6)|\n|0xd0|+0x58|8|1 = next_point_id|\n|0xc8|+0x60|8|param_8|\n|0xc0|+0x68|4|0 — unknown|\n|+0x6c..+0x80|20|never written by this code — unknown/padding|\n|0xa4|+0x84|4|0 — unknown|\n|0xa0|+0x88|4|angle = param_4 + (param_5−param_4)·u|\n|0x9c|+0x8c|1|0 — unknown flag|\n\nValue spans 0x128–0x9c (0x8d bytes); 0x99–0x9b unwritten.\n\n**RNG order** (only inside `param_6 <= param_7`), same state object `param_1+0x30`:\n1. `FUN_141625a50(param_1+0x30, param_7-param_6)` → point count, stored at +0x50 as `param_6 + result` (so count ∈ [param_6, param_7]).\n2. `FUN_141625ae0(param_1+0x30)` → uniform u, used for the angle at +0x88.\nCount is drawn first, angle second; both before `FUN_141527820`.\n\n**Id check (confirmed)**: `uVar1 = *(param_1+0x40)` is read before the range branch, before the insert, and copied to +0x20. `*(param_1+0x40)` is incremented only after the insert returns. So the Ivy's id is the counter's *old* value (0 for the root) — used before increment.\n\n**next_point_id check (confirmed)**: +0x58 is set to 1 unconditionally before the insert, while the root point's id is 0 — consistent with \"next id to hand out\", not \"own id\".\n\n`uStack_61` (1→0 just before insert) is a drop flag outside the value.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 84.599
+}

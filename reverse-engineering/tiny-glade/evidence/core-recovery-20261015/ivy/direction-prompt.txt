@@ -1,0 +1,77 @@
+Bounded reverse-engineering analysis, no tools. In the supplied original B x86-64, before address 141234785: xmm0=noise scalar, xmm6=1, xmm11=normalized x, xmm10 low lane=normalized y. Memory constants: 142925870=.5, 142959460=80, 142aab4b0=pi/180 as f32. Calls 142923fd0 and142923e80 are sinf/cosf. The following vector shuffle block is glam quaternion-vector multiplication then Vec2 normalization. Answer under 250 words: recover the quaternion axis/sign and exact rotation angle as a function of noise; explain why prior prose 'angle +-40 degrees returning (cos,sin)' is or is not correct. Preserve arithmetic order and identify assumptions. Do not reconstruct public dependency algorithms, only the game's math composition.
+0x141234785  addss    xmm0, xmm0
+0x141234789  addss    xmm0, xmm6
+0x14123478d  movss    xmm1, dword ptr [rip + 0x16f10db]
+0x141234795  mulss    xmm0, xmm1
+0x141234799  xorps    xmm2, xmm2
+0x14123479c  maxss    xmm2, xmm0
+0x1412347a0  movaps   xmm8, xmm6
+0x1412347a4  minss    xmm8, xmm2
+0x1412347a9  movaps   xmm0, xmm6
+0x1412347ac  subss    xmm0, xmm8
+0x1412347b1  movss    xmm2, dword ptr [rip + 0x1724ca7]
+0x1412347b9  mulss    xmm0, xmm2
+0x1412347bd  mulss    xmm8, xmm2
+0x1412347c2  subss    xmm8, xmm0
+0x1412347c7  mulss    xmm8, dword ptr [rip + 0x1876ce0]
+0x1412347d0  mulss    xmm8, xmm1
+0x1412347d5  movaps   xmm0, xmm8
+0x1412347d9  call     0x142923fd0
+0x1412347de  movaps   xmm7, xmm0
+0x1412347e1  movaps   xmm0, xmm8
+0x1412347e5  call     0x142923e80
+0x1412347ea  movaps   xmm1, xmm0
+0x1412347ed  movq     xmm0, xmm7
+0x1412347f1  xorps    xmm2, xmm2
+0x1412347f4  xorps    xmm3, xmm3
+0x1412347f7  shufps   xmm3, xmm0, 0x84
+0x1412347fb  movlhps  xmm1, xmm7
+0x1412347fe  xorps    xmm0, xmm0
+0x141234801  shufps   xmm0, xmm1, 0x24
+0x141234805  xorps    xmm1, xmm1
+0x141234808  movss    xmm1, xmm11
+0x14123480d  movlhps  xmm10, xmm11
+0x141234811  shufps   xmm10, xmm2, 0x42
+0x141234816  movaps   xmm5, xmm0
+0x141234819  mulps    xmm5, xmm0
+0x14123481c  movshdup xmm4, xmm5
+0x141234820  addss    xmm4, xmm5
+0x141234824  movaps   xmm8, xmm5
+0x141234828  unpckhpd xmm8, xmm5
+0x14123482d  addss    xmm8, xmm4
+0x141234832  shufps   xmm8, xmm8, 0
+0x141234837  shufps   xmm5, xmm5, 0xff
+0x14123483b  subps    xmm5, xmm8
+0x14123483f  mulps    xmm5, xmm10
+0x141234843  movaps   xmm4, xmm10
+0x141234847  mulps    xmm4, xmm3
+0x14123484a  movshdup xmm8, xmm4
+0x14123484f  addss    xmm8, xmm4
+0x141234854  movhlps  xmm4, xmm4
+0x141234857  addss    xmm4, xmm8
+0x14123485c  addss    xmm4, xmm4
+0x141234860  shufps   xmm4, xmm4, 0
+0x141234864  mulps    xmm4, xmm0
+0x141234867  addps    xmm4, xmm5
+0x14123486a  movss    xmm2, xmm7
+0x14123486e  mulps    xmm2, xmm1
+0x141234871  shufps   xmm10, xmm10, 0xd6
+0x141234876  mulps    xmm10, xmm3
+0x14123487a  subps    xmm2, xmm10
+0x14123487e  shufps   xmm2, xmm2, 0xe2
+0x141234882  addps    xmm0, xmm0
+0x141234885  shufps   xmm0, xmm0, 0xff
+0x141234889  mulps    xmm0, xmm2
+0x14123488c  addps    xmm0, xmm4
+0x14123488f  movshdup xmm1, xmm0
+0x141234893  movaps   xmm2, xmm0
+0x141234896  mulps    xmm2, xmm0
+0x141234899  movshdup xmm3, xmm2
+0x14123489d  addss    xmm3, xmm2
+0x1412348a1  xorps    xmm2, xmm2
+0x1412348a4  sqrtss   xmm2, xmm3
+0x1412348a8  divss    xmm6, xmm2
+0x1412348ac  mulss    xmm0, xmm6
+0x1412348b0  mulss    xmm6, xmm1
+0x1412348b4  movaps   xmm1, xmm6
+
