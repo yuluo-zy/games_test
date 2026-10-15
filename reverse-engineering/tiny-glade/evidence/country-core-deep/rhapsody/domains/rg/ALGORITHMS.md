@@ -302,3 +302,136 @@ tiny_glade render (0x1404e8010)
 - `../resolved-calls.json`：各关键函数调用目标→PDB 名解析。
 - `skeleton/B/crates/rhapsody/src/rg/*.rs`：PDB 元数据（函数/行号/依赖）。
 - `reconstruction/rhapsody-rebuild/src/rg/**`：对照基准。
+---
+
+## 5. 审查轮闭合（agent=rhapsody-rg-closure，2026-10-15）
+
+追加小节：闭合 REVIEW-UNEXPLORED 的 P0（11 NotFound rne-read 补证、into_sampled_rg_texture）与 P1（OOM 降分辨率、temporal Record 0x68B、SynchronizationScope 0x50B + 屏障 3 方法）。只追加不改动既有行。标注沿用 O/I/U。
+
+### 5.1 P0：11 个 Ghidra NotFound 函数 rne-read 补证（全 O）
+
+原始字节手解见 `evidence/country-core-deep/rhapsody/rne/rg-notfound-closure.md`。S_PUB32 权威名以 `render-architecture/public-symbols.json` 为准。
+
+| 函数 | 地址 | 原 verdict | 新 verdict | 手解结论 | evidence |
+|---|---|---|---|---|---|
+| `BatchCompiler::new` | 0x140be95e0 | I | **O** | 零初始化：batches Vec `{cap=0,ptr=8(悬垂,align 8),len=0}`@+0/+8/+0x10、current_range `{start=0@0x18,end=0@0x20}`、current_export_barriers=0@0x28；紧邻 flush_batch 0x140be9600 | rne 1 |
+| `pass_access_range_indices` | 0x140be9690 | U | **O** | 身份函数 `mov eax,ecx; mov edx,edx; ret`（无计算）。**用途由消费端定**：add_pre_pass_barriers 0x1402c3d00 内以 `pass_access_ranges[pass].start` 为入参、返回值作访问循环起始下标；pass_access_ranges Vec 在 CompiledRenderGraph+0x68/+0x70 | rne 2 + decomp-0x1402c3d00 |
+| `PassPgoNameId::from_name` | 0x14067dd80 | U | **O（纠错）** | 恒等 `mov rax,rcx; ret`（ICF 折叠 ≥8 符号同址：ComputePipeline Deref / TypedStorageBuffer buffer / ImageFormationConfigs::initial 等）。**PassPgoNameId = &str 指针，from_name 不做 hash**——record_batch 分块内 `from_name(pass+0x18,pass+0x20)` 返指针；真正 hash 在 duration_ns 的 hash_one。**ALGORITHMS §2.2 "rebuild FNV-1a 候选"应为偏差** | rne 3 |
+| `PassPgoDuration::new` | 0x140be9c70 | I | **O** | 平凡透传 `mov rdx,r8; mov rax,rcx; ret`（newtype 包装） | rne 4 |
+| `RenderPassApi::end_render_pass` | 0x1416f7850 | I | **O** | 取 cb（api 上下文+0x48）→ **尾调 device vtable+0x428**（vkCmdEndRenderPass） | rne 5 |
+| `RenderPassApi::set_line_width` | 0x1416f7960 | I | **O（纠错）** | device+0xad9==0 → 直接 ret（no-op）；否则取 cb 尾调 **vtable+0x2f0**（vkCmdSetLineWidth）。**+0xad9 门控原机器码证实（原 "rebuild 推断" 升级）** | rne 6 |
+| `PassResourceRef::resource_index` | 0x140bece40 | I | **O** | `mov eax,[rcx]; ret` 取 +0 u32；ICF 折叠 3 符号（LoopIdx::raw_idx/AtomicU32::unsync_load） | rne 7 |
+| `ResourceSyncGroup::new` | 0x140bece50 | I | **O** | `mov eax,1; lock xadd [全局@0x14362c230],eax; ret`：**全局 AtomicU32 初值=2（.data 实证 `02 00 00 00`）、递增 1、返旧值**。S_PUB32 显示 new 与 Default::default 折叠同址（同体）。"从 2 起"证实 | rne 8 |
+| `ResourceSyncGroup::is_equivalent` | 0x140bece60 | I | **O** | `mov eax,[rcx]; cmp eax,[rdx]; setz al; ret` = u32 相等 | rne 9 |
+| `PassResourceAccessType::new` | 0x140b25c90 | I | **O** | 平凡 `mov eax,edx; mov edx,ecx; ret`；布局 `{sync_group u32@0, access_code u8@4}`（can_be_concurrent_with 0x140bece70 证实） | rne 10 |
+| `ResourceHandle::raw` | 0x140833250 | I | **O** | `mov eax,ecx; ret` 恒等——**确证 rebuild "原 raw 入口直接返回 ECX"**；ICF 折叠 11 符号 | rne 11 |
+
+补充：`PassPgoStats::duration_ns`（0x140bea1e0，非 NF）机器码复核实为 **contains_key 返 bool**（hash_one + hashbrown probe 后 `return 1/0`），非时长 u64——PDB 名与行为错位；§2.2 "未命中返 0" 措辞需按 bool 语义读。
+
+### 5.2 P0：into_sampled_rg_texture（import_export::impl$2，唯一业务型无行 compiled）—— 已定位地址并反编译
+
+- **地址**：0x140bd6470（S_PUB32：`<&Texture as rhapsody::rg::import_export::IntoSampledRenderGraphTexture>::into_sampled_rg_texture`）。**trait 名 = `IntoSampledRenderGraphTexture`（非 ImportExportToRenderGraph）**——闭合 U 卡点#9 的 impl$2 归属。
+- **机器码/反编译**（decomp-0x140bd6470，2.6KB）：`LOCK(); *(texture+8) += 1`（**AtomicI32::fetch_add refcount**，PDB inline 亦证）→ 把 `&Texture` 拆字段（+0/+8/+0x14/+0x18/+0x20/+0x30）打包成 **0x48B 条目** append 到输出 `Vec`（cap/ptr/len 经 param_3），条目 `{tag u64=1, 0x2200 标志, 纹理 desc/handle 字段}`；返回条目索引 + 纹理句柄副本。
+- **PDB 内联依赖**：`managed::handle::impl$5::clone`、`texture::impl$26::clone`（纹理克隆）、`RenderGraph::create_resource_handle`（注册为图资源）、`Vec::push`、`AtomicI32::fetch_add`——职责 = 把原生 `&Texture` 转成**采样渲染图纹理绑定**：克隆纹理（+refcount）、经 create_resource_handle 挂图、把采样绑定条目（bindless 纹理描述符集路径）追加到绑定列表。
+- **rebuild 对照**：`resource.rs::Ref::into_sampled_rg_texture` = `bind_view(view, layout, false)`（采样绑定）——语义同向；原对象是 `&Texture` + 追加 0x48B 条目列表，rebuild 是 `Ref` + 返回 PassBinding，结构不同（半对）。
+- 消费端（bindless_textures_dset / import 链）在 release 中内联，S_PUB32 无独立调用点；职责已由机器码 + PDB 依赖闭合。
+
+### 5.3 P1：OOM 降分辨率路径（render 0x1404e8010，0x1404e8a3d..0x1404e9516）—— 消化完成
+
+世界图路径（`cVar21 != 0` 分支）重试链（decomp 0x1404e8010.c 行 384..879）：
+
+1. 首次 `FUN_140161cd0`（世界图 compile，ret 地址 0x1404e8914），结果在 stack+0x350；`&stack0x113c = !(result<0)` 记录成败。
+2. 失败（result 首 qword<0，niche 编码）→ 0x1404e8a64：
+   - bevy `World::get_resource`（`FUN_1400dd6f0`）按 **TypeId 0xa4c02661e67b048b / 0xeae761e6aa2a67ec**（128 位 TypeId）取分辨率尺度资源；`fVar51 = *(payload+0x18 的 float) + _UNK_1429eb6f8`，其中 `_UNK_1429eb6f8` = 0xbdcccccd = **-0.1f** → **scale -= 0.1**。
+   - `if (fVar51 <= 0.0)` → 退出（"cannot reduce below 0" 类日志 0x1429ebea8/0x1429ebeb8 族）。
+   - 写回：`*(res+0x5c)=旧 u32; *(payload+0x18)=新 scale`（0x1404e8cb5 区）。
+   - **`FUN_140be76f0` = ResourcePool::clear**（编译前清池释放）。
+   - 日志族："Out of memory while allocating render graph resources; reducing resolution scale -> "（0x1429ebc28 起）、"Building a render graph for the reduced resolution scale"（0x1429ebcf0/0x1429ebd00）。
+3. 降分辨率上下文构建（0x1404e8fbb..0x1404e940f）：
+   - bevy get_resource 按 **TypeId 0x3335386a5fbcee80 / 0x8f2a59f31a65ec60** 取资源 → `**(res+0x10)=2`（**写 2 到该资源**，CALL-CHAIN 记的 TypeId 0x3335386a 即此）；`*(res+0x5c)=*(World+0x5b0)`。
+   - 栈上构建 **min_extent `[32,32]` = 0x20000000000020**（0x1404e9376 常量区 `movabs rax,0x20000000000020`，decomp 行 806 写入 stack+0xa00），作为 compile 第 4 参传入（栈 0x570 参数块 +0x18 处）。
+4. **重试 `FUN_140161cd0`**（0x1404e940f），结果在 stack+0xd60：
+   - `FUN_140609f60` 查错；失败 → **panic "Minimum-resolution fallback render graph compile failed"**（UNK_1429ebd50，行 829）→ exit。
+   - 成功 → `func_0x000142923c00` 拷 0x220B（0x218 编译图+8）到 stack+0xb40 → 再拷 0x218 到 stack+0x570 最终位置；`2 < *puRam000000014362c3a8`（log level）时记 "render graph compiled"（0x1429ebdc0）。
+5. 加载图路径（`cVar21 == 0` 分支，0x1401647b0）：**无降分辨率重试**——失败直接 panic "Loading screen render graph" + "Out of memory..."（UNK_1429ebc08/0x1429ebc28，行 349-354）；无 swapchain 时 panic "The loading screen must have a swapchain"（0x1429ebbc8）。
+
+panic/日志串族 0x1429ebc17.. 完整映射见 §5.3 各步。**结论**：compile 失败（OOM 分配的 CompileError）→ 分辨率尺度资源减 0.1 → 清池 → 带 min_extent[32,32] 重编译一次 → 再失败 panic。rebuild 的 `Result`/`compile_frame` 未建模该降级语义（差距#1 闭合）。
+
+### 5.4 P1：temporal Record 0x68B 字段序 + 状态机收口
+
+从 get_or_create_temporal（0x1404f6e50）命中分支与 export_temporal（decomp-0x1404f7ca0）填充分支逐偏移落实：
+
+**Record（0x68B = 104B，O）**：
+
+| 偏移 | 字段 | 证据 |
+|---|---|---|
+| +0x00 | key `Ustr`（u64 指针） | 查找 `lStack_48 == *(record+0)`；`func_0x000140c0f640`=Ustr::from |
+| +0x08 | state u32：**0=待导出纹理 / 1=待导出缓冲 / 2=已导出（可复用）** | export `*(record+8)=2`；get 判 `==2` 复用 |
+| +0x0c | access u8（export 后写 **0x37**）+ 复用写回 u32 句柄区 | export `*(byte)(record+0xc)=0x37`；复用 `*(u32)(record+0xc)=import_unowned 结果` |
+| +0x10..+0x28 | 导出资源句柄 4×u64（Texture/Buffer export 输出） | export 写 4 qword；复用回读 4 qword |
+| +0x30 | 导入的 `Texture` 对象（复用 import_unowned 源 `&record+0x30`） | 复用 `FUN_140bd60a0(&out, record+0x30, ...)` |
+| +0x48..+0x67 | TextureDesc 0x20B（与请求 desc 逐项比较） | desc 匹配：u32[0..2]、u64[3..4]、u32[5..6]、byte[7 低]、byte 0x1d/0x1e |
+| +0x66 | flag u8（`'\a'`=7 → 错误路径） | `*(char)(record+0x66) != '\a'` 才进 desc 匹配 |
+
+**状态机（O）**：
+- 命中且 state==2 且 desc 匹配 → `Texture::import_unowned`（0x140bd60a0）复用，state 清 0，**tag=1**（0x28B 输出 `{4×u64, u32@+0x20, tag u8@+0x24}`）。
+- 命中 state==2 但 desc 不匹配 → **panic**（`FUN_1428a998a` 断言，消息族 "Recreating temporal image \nold ; new: " 0x1429ece38）。
+- 命中但 state!=2（同帧二次请求未导出）或 flag=='\a' → **错误路径 tag=2**（日志 0x1429ece10/0x1429ecf00 族）。
+- 未命中 → `Texture::create`（0x140311cc0）→ `import_unowned(access=0)` → hashbrown insert（FUN_1402c8f50）→ **tag=0**。
+- export_temporal：逐记录 state==0 → **`Texture::export`（0x140bd6380, access=0x37）**；state==1 → **`Buffer::export`（0x140bd5120, access=0x37）**；随后 state=2、access byte=0x37、写回导出句柄。
+- get_or_create_temporal_pair（0x1404f7450）：`Ustr("{name}:0"/"{name}:1")` 后缀后各调 get_or_create（内部 0x1404f6850 单态），`get_and_flip_parity`（0x140beced0）按奇偶排 first/second。
+
+**纠错/补足**：ALGORITHMS §1.2 Record 行 "key@-0x68、state@-0x60、handle@-0x5c" 保持；新增 +0xc access 字节（0x37）、+0x10..+0x28 句柄块、+0x30 纹理对象、+0x48..0x67 desc、+0x66 哨兵的落实；U 卡点#10（同帧二次请求 → tag=2 错误路径）收口。
+
+### 5.5 P1：SynchronizationScope 0x50B 布局 + 屏障计算 3 方法（P1/P2 升级）
+
+**SynchronizationScope1（0x50B，raw::barrier 域，O）**——由 new=Default（0x140bd6650）、reset（0x140bd6950）、is_empty（0x140bd6980）rne-read 手解 + image_barrier（0x140bd66a0）/buffer_barrier（0x140bd6810）/issue_pipeline_barrier（0x140bee030）反编译：
+
+| 偏移 | 字段 | 证据 |
+|---|---|---|
+| +0x00..0x17 | Vec1（memory_barriers，0x48B/项）`{cap@0,ptr@8,len@0x10}` | new 写 `{0,8(悬垂),0}`；is_empty 查 +0x10 |
+| +0x18..0x2f | Vec2（buffer_barriers，0x38B/项）`{cap@0x18,ptr@0x20,len@0x28}` | buffer_barrier push 用 cap@0x18/ptr@0x20/len@0x28 |
+| +0x30..0x47 | Vec3（image_barriers，0x48B/项）`{cap@0x30,ptr@0x38,len@0x40}` | image_barrier push 用 cap@0x30/ptr@0x38/len@0x40 |
+| +0x48 | u64 访问掩码累加器（默认 **0x2000000000001**；每次 add 后 `|= 新 barrier 掩码`） | new/reset 写常量；image/buffer_barrier 均 `scope+0x48 |= ...` |
+
+- `new` 与 `Default::default` 折叠同址（S_PUB32）：置 3 空 Vec + +0x48=0x2000000000001。
+- `reset`：len1/2/3 清 0 + +0x48 复位常量（不清 cap/ptr，标准 Vec::clear）。
+- `is_empty`：`[+0x10]!=0 → false；[+0x28]!=0 → false；否则返回 [+0x40]==0`。
+- `image_barrier(scope,&ImageBarrier)`：经 vk_sync `FUN_140c10af0` 转访问 → `+0x48 |= 掩码` → 展开成 0x48B VkImageMemoryBarrier2 条目 push 到 Vec3。
+- `buffer_barrier(scope,&BufferBarrier)`：经 `FUN_140c10940` → `+0x48 |= 掩码` → 0x38B 条目 push 到 Vec2。
+- `GraphicsDevice::issue_pipeline_barrier(device,cb,scope)`：**device vtable+0x3e0**（vkCmdPipelineBarrier2 系）`(cb, scope+0x48 低 u32, scope+0x4c 高 u32, flags=0, Vec1.count/ptr, Vec2.count/ptr, Vec3.count/ptr)`。
+
+**屏障计算 3 方法（P1）**：
+
+- **`add_pre_pass_barriers` = 0x1402c3d00（真实编译函数，本轮反编译，8.8KB）**——**核心决策算法**：
+  - 输入 `(compiled_graph, pass_access_range_start_idx, scope, device)`；取 `pass_access_ranges[pass]`（+0x68 Vec）边界，`pass_access_range_indices`（0x140be9690 恒等）得起始下标，`[start,end)` 逐 **0x14B ResourceAccessRecord**（`{resource u32@0, prev u32@4, next u32@8, sync_group u32@0xc, access u8@0x10}`）：
+  - `registry::resource`（0x140be78b0）解析资源 → `RuntimeResource::borrow`（0x140bd6c80）取类型（0=image/1=buffer）。
+  - prev == 0xffffffff（首访问）→ 跳过（无屏障）。
+  - 否则取 prev 访问记录与当前访问，**`PassResourceAccessType::can_be_concurrent_with`（0x140bece70，O）**判定：双非写 → access 相等即并发；否则 access 相等且双 sync_group 非 0 且相等才并发。
+  - **不并发 → 插屏障**：image → `ImageBarrier::new`（0x140bd65e0）+`scope.image_barrier`（0x140bd66a0）；buffer → `BufferBarrier::new`（0x140bd6610）+`scope.buffer_barrier`（0x140bd6810）。格式校验 device+0x648+0xa50。
+  - 这就是"为何发屏障"的决策逻辑（原 §3.1-3 只到调用点 O）。
+- **`gather_batch_preamble_barriers`（inline，体在 record_batch 0x1402c1d40 前段）**：
+  - CompiledRenderGraph::new（0x1402c4280）经 **`<Vec as SpecFromIter>::from_iter`（0x1402bf880）** 由 lifetime_events 构建 **+0x200 Vec<u32> 待发初始过渡资源索引**（**审查轮 "compute_batches 指向 0x1402bf880" 假设不成立**——0x1402bf880 是 from_iter，非 compute_batches）。
+  - record_batch 起始：读 +0x200（len@+0x210 读后清零，逐帧一次）→ 逐资源查 +0x128 per-resource 表 +0x10 的 prev access → 非 NO_ACCESS 则按类型 build ImageBarrier/BufferBarrier → scope；随后 `!is_empty` 时 `issue_pipeline_barrier` + `reset`。**初始过渡逐帧一次**。
+- **`compute_batches`（inline，体在 record_batch）**：贪心分块——`budget = clamp(max_ns, total>>4, total>>1)`（param_8+0x38=PassPgoStats::max_ns、+0x30=total_ns，均为 0x2c1d40 内现算）；逐 pass `PassPgoNameId::from_name` + `duration_ns`（**实为 contains_key bool**，见 §5.1）累加，`acc<budget` 停止切块；块存 `(ptr,count)` 对，块>1 走 bevy_tasks `scope_with_executor_inner`（0x1401058a0）并行。
+- **`record_postamble`（inline，record_batch 尾段）**：末条命令缓冲 end 前按 +0x20/+0x28 0x30B 屏障表逐条 build image/buffer barrier → scope → issue + reset（`puStack_1a0[2]` 标志门控）。
+
+**rebuild 对照更新**：ALGORITHMS §3 `CompiledRenderGraph` 行 "✓核心/半布局" 保持；新增 add_pre_pass_barriers 0x1402c3d00 为真实函数、compute_batches 定位修正（非 0x1402bf880）、SynchronizationScope 0x50B 布局 O、can_be_concurrent_with 判定规则确认为屏障决策（原 §2.9 已有）。U 卡点 #5（execute_compiled 批量状态字节）、#7（+0x128 表关系：本轮确认为 per-resource prev-access 表，供 record_batch/add_pre_pass_barriers 查 prev）闭合。
+
+### 5.6 本轮纠错汇总（供集成轮改判）
+
+1. **`PassPgoNameId::from_name` 原 hash 算法 U → 无 hash**（ID=&str 指针）；rebuild FNV-1a 为偏差（§5.1-3）。
+2. **`FUN_1402bf880` ≠ compute_batches**，实为 `<Vec as SpecFromIter>::from_iter`（+0x200 构建用）；compute_batches 内联于 record_batch（§5.5）。
+3. **`set_line_width` 的 device+0xad9 门控**由 rebuild 推断升级为原机器码 O（§5.1-6）。
+4. **`ResourceSyncGroup::new`** 与 Default::default 折叠同址；全局计数器 @0x14362c230 初值 **2**（§5.1-8）。
+5. **`duration_ns` 实返 bool（contains_key）**，非时长（§5.1 补充）。
+6. **`into_sampled_rg_texture` trait = IntoSampledRenderGraphTexture**（闭合 impl$2 归属，U 卡点#9 部分）。
+7. **`Buffer::export` = 0x140bd5120**（闭合 U 卡点#9 归属）。
+8. OOM 降分辨率语义（§5.3）与 temporal 状态机（§5.4）从 "identified/半" 升级为算法级闭合。
+
+### 5.7 遗留 U（本轮未动）
+
+- `validate_read_access` ×2：无编译符号，仍为 inline（rebuild no-op 断言为候选），无新机器码可升级。
+- `ResourceSyncGroup::can_be_concurrent_with`（组级）：S_PUB32 无编译符号（只有 0x140bece70 的 PassResourceAccessType 级），保持未分析。
+- `PassPgoStats::reset/extend`：inline，未直证（end_frame 交换已 O）。
+- `TemporalRenderGraphRecorder` 完整字段（+0xc8..+0x108 区间）部分仍 U（本轮只落实 Record 与 map 区）。
