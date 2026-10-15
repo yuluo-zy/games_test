@@ -394,3 +394,85 @@ crash 链（rebuild 对照 + crash-functional-validation）：
 13. **格式 word0/word1/byte8 字段语义**：表值经 816 案例验证但字段含义（通道数/存储字节/平面）是 I（rebuild observed 注明"未把这些推断当完整原字段名"）。
 14. **`Instance::create`/`InstanceBuilder::default`/`vulkan_debug_messenger` 回调**：均为 inlinee 或 va null，行为 I。
 15. **lib.rs `create_buffer/create_texture/update_buffer_bytes`**：PDB 归属 lib.rs CU 但实为 device.rs（0xc03460/0xc07950/0xbeefa0），raw-core 域覆盖；本域不重复取证。
+
+---
+
+## 5. 审查轮闭合（2026-10-15，agent=rhapsody-rawinit-closure）
+
+本小节为 REVIEW-UNEXPLORED.md 的 P0/P1 缺口闭合结果，证据落盘 `domains/raw-init/rne/`。标注 O/I/U。
+
+### 5.1 apply_vulkan_blocklist（P0-1）：env 链完整枚举 + 语义翻转
+
+- **FUN_140d6c690 = std::env::set_var 包装**（MCP 反编译 O：&str→UTF-16 → SetEnvironmentVariableW，
+  Result 0=Ok / GetLastError<<32|2）。apply_vulkan_blocklist 对它的 18 次调用（raw 字节 E8 目标扫描 O）都是
+  **写环境变量**，不是读/查。旧 §3.1"值含 1 触发"（读语义）**作废**。
+- env 变量表（O，地址/长度与字符串池切片完全连续，共 **18 个**；REVIEW 预估 ≥19 中 EOS 与 VULKAN_WIN64
+  实为单一 32B 名 `EOS_OVERLAY_DISABLE_VULKAN_WIN64`@0x142b195d8，非两个变量）：
+  `VK_LOADER_LAYERS_DISABLE`→写 `~implicit~`（@0x142b19428/0x142b19440）、`VK_LOADER_LAYERS_ALLOW`→写
+  过滤层名 join(",") 列表（@0x142b19508）、16 个 `DISABLE_*_LAYER`→写 `1`（@0x142b1951e..0x142b19688，
+  触发值固定 `1`@0x142b196f8）。
+- 流程（O）：① set_var(DISABLE,~implicit~) 全局禁 implicit；② 过滤入参 0x20B 层表（bit0 且匹配
+  "VK_LAYER_*"@0x142b19468）→ 0x18B 条目 → FUN_1418cd6c0 以 ","（0x142b1944a）join；③
+  set_var(ALLOW, join) 选择性启用（span "Selectively enabling implicit Vulkan layers: "）；④ 16 个
+  set_var(DISABLE_*_LAYER,"1") 顺序 .expect()。每个 set_var 失败 → panic "failed to set environment
+  variable `X` to `Y`: {e}"（消息@0x142d0a710、Location std/src/env.rs@0x142d0a770、panic 打印 FUN_1428d9390）。
+- rebuild 对照：通用过滤 + modern 空表 **确认偏差**；候选 = 上述 18 次 set_var 链。
+- 完整证据：`rne/apply_vulkan_blocklist-env-chain.md`。
+
+### 5.2 设备排序比较器（P0-2）：判据字段级恢复
+
+- 排序 = std sort_unstable（len<0x15 插入 FUN_1418b9130 / ≥0x15 driftsort FUN_1418bb250→FUN_14213bee0），
+  0xa0B AvailableGraphicsDevice，比较器内联进 std helper。
+- 比较器判据（O，字段级；精确权重序 I）：name contains "Direct3D12"/"Microsoft Basic Render Driver"
+  （FUN_140bd7250=contains 系）→ emulated 分类；`+0x88`（device_local）>> 0x1e 评分；`+0x99`（shared）switch 分派。
+- 排序后过滤 FUN_1418b5460/FUN_1418b5680：分离 `+0x88>1.0GB && +0x90>400MB`、共享 `和>1.4GB` → available；
+  否则构造 **0xf0B missing 条目** push。missing_devices 另行物化 0x28B 条目（vendor 0x1002/0x10de 匹配）。
+- 完整证据：`rne/device-sort-comparator.md`。
+
+### 5.3 refresh_memory_budget（P0-3）：滞回公式 + 快照排布
+
+- 钳位除数实为 **max(1, old>>3)**（16 处 `(old>>3)+(old>>3==0)` O）；`new = clamp(驱动值, [old-delta, old+delta])`。
+- ArcSwap@+0x608；快照 0x110B = {预算数组 +0x20、每堆 {budget u128, usage u128} 步长 0x20}；分配 0x120B
+  {refcount@+0, ?@+8, snapshot@+0x10}，+0x608 存分配+0x10。旧快照 refcount-- 释放。
+- GpuAllocator 峰值字段 rne-read 复核：+0x680 total / +0x620 report(Option) / +0x670 device_local /
+  +0x678 system / +0x688 track_peaks（getter 逐字节 O）。
+- 完整证据：`rne/refresh_memory_budget-clamp-snapshot.md`。
+
+### 5.4 implicit_layers（P1-4）：返回原始 0x208B 切片定案
+
+- FUN_140bda7b0 返回 `&[vk::LayerProperties]`（{ptr,len}，元素 0x208B，`param_1[3]=ptr+count*0x208`），
+  **非**过滤 implicit 清单、**非** 20B GraphicsInstanceLayer（O）。
+- 消费方 GraphicsInstance::new（0x140bd7dd0）逐 0x208B 条目 → GraphicsInstanceLayer（decomp line 317-350 O）。
+- rebuild `Option<&[GraphicsInstanceLayer]>` 恒 None 类型/语义双不对位（确认 doc 半判定）。
+- 完整证据：`rne/implicit-layers-slice.md`。
+
+### 5.5 disposal 锁拓扑（P1-5）：+0x28 vs +0x8 裁决
+
+- 结构定案（O）：`parking_lot::Mutex< hashbrown::HashMap<Seq, parking_lot::Mutex<DisposalBucket>> >`。
+- 外层锁 state@+0：CAS 0→8 抢锁 / 8→0 释放（remove/insert raw 字节 `lock cmpxchg` O），慢路径 1e9ns 超时。
+- **map base = +8**（remove_entry/insert_entry 以 map+8 操作）；**+0x28 是同一 hashbrown RawTable 的内部桶区**
+  （find 以 map+0x28 传入）——不是两个 map，REVIEW §3.3 矛盾消解。
+- 桶值 = Mutex<DisposalBucket>（0xf8B={state@+0, DisposalBucket 0xf0B@+8}）；remove 回传 0xf0B 桶；
+  缺桶 panic @0x142d069c1、重复 seq panic @0x142d06a40。
+- rebuild BTreeMap 无锁 → 结构/语义偏差确认（§3.7 原判定成立）。
+- 完整证据：`rne/disposal-lock-topology.md`。
+
+### 5.6 五处事实偏差验证（P1-6）：全部 O 确认
+
+1. NotFound **9→10**（summary.json 10 条 error）。
+2. dispose_cb_resource **6→7**（raw-init.json 7 条）。
+3. 滞回 `[旧±max(1,旧/8)]`（16 处 O）。
+4. dispose_in_order：**路径@0x142d06f88，断言 `assertion failed: seq > self.last_retired` 紧随其后**（约 0x142d06faa），doc §2.7 行 228 次序相反。
+5. init_logging 断言 `assertion failed: prev.is_none()` **@0x142b12f50**（逐字节）；0x142b12f70 非断言文本，
+   --fat 指向 **`crates/rhapsody/src/leek.rs`**（REVIEW §4#5"submit.rs"猜测不成立，doc §2.10 地址归属以本证为准）。
+- 完整证据：`rne/deviations-verification.md`。
+
+### 5.7 新增证据文件清单
+
+- `rne/apply_vulkan_blocklist-env-chain.md`（P0-1）
+- `rne/device-sort-comparator.md`（P0-2）
+- `rne/refresh_memory_budget-clamp-snapshot.md`（P0-3）
+- `rne/implicit-layers-slice.md`（P1-4）
+- `rne/disposal-lock-topology.md`（P1-5）
+- `rne/deviations-verification.md`（P1-6）
+- `decomp/decomp-0x1418b9130.txt`（排序 helper 全量反编译，242KB，供后续重解比较器）

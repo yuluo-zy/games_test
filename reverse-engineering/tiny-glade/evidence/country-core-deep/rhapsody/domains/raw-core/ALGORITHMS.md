@@ -395,3 +395,91 @@
 | 13 | **`RenderStats::snapshot_and_reset`** | 0x140c02da0 NotFound；统计字段布局 U | rne-read + `snapshot_render_stats`（render_frame.rs）消费点 |
 | 14 | **`Texture` 0x38B 布局** | 任务给出"0x38B 已在 country-core rhapsody_types.rs 核对"；但本域 decomp 中 create_texture 输出 80B（40B Texture+40B Err），0x38B 与 40B 关系待对齐 | 对照 rhapsody_types.rs 的 `Texture{id,width,height,format}` 与 create_texture 字段回填 |
 | 15 | **NotFound 微 getter 族** | `BufferDesc/TextureDesc/TextureViewDesc` 大部分 tiny getter（0x140bd4de0..0x140bd59f0 与 0x140bd5270..0x140bd55a0）Ghidra 无函数体；本表以消费端/rebuild 推断标 O(消费端)/I，未逐字节复验 | 有需时按 `rne-read.py --hex` 批量复核（PLAYBOOK §3.2） |
+
+---
+
+## 5. 审查轮闭合（2026-10-15，rhapsody-rawcore-closure）
+
+> 依据：`rne-read-closure-2026-10-15.md`（本域 decomp/，字节级证据）；`capdis.py`（本次新增 capstone 反汇编脚本）。不改任何既有结论行，仅追加。
+
+### 5.1 P0-1 Buffer 40B 生命周期链 —— 定案（U#1/#2/#3/#4 全闭合）
+
+**`Buffer` 40B = `create_buffer`（0x140c03460）Result 的 Ok 载荷（out+0x08..0x2f）；out+0x00 的 `0xb` 是 Result Ok 判别位（不属于 Buffer）**。机器码：create_buffer_impl（0x140bee200）0x140bee69c..0x140bee6dd 写 0x48B 结果；create_buffer 0x140c035ab..0x140c035c3 截取 out+0x08..0x2f。
+
+逐字段写入点/读取点：
+
+| Buffer 偏移 | 类型 | 值 | 写入点 | 读取点 |
+|---|---|---|---|---|
+| `+0x00` | u64 | `*(context)`（ManagedResources+0x00 = 退役队列 Mutex 头；游戏面 "id"） | create_buffer_impl out+0x10 → create_buffer out+0x08 | import_unowned 整拷；TypedStorageBuffer 整块 |
+| `+0x08` | u64 | **slot**（= 消费者侧 `inner`） | create_buffer_impl out+0x18 → create_buffer out+0x10 | 5 个消费者解引用 |
+| `+0x10` | u32 | `*(slot+0xc)`（分配内偏移） | create_buffer_impl out+0x20 → create_buffer out+0x18 | `inner+0xc == Buffer+0x10` 校验 |
+| `+0x14` | u16 | `*(context+0xa50)`（owning_device） | create_buffer_impl out+0x24 → create_buffer out+0x1c | `Buffer+0x14 == context+0xa50` 校验 |
+| `+0x16` | u8 | `1`（valid） | create_buffer_impl out+0x26 → create_buffer out+0x1e | `Buffer+0x16 == 1` 校验 |
+| `+0x18` | u64 | `BufferDesc.size` | create_buffer_impl out+0x28 → create_buffer out+0x20 | update_buffer_bytes / mapped_slice_mut 界校验 |
+| `+0x20` | u64 | `BufferDesc+0x08..0x0f` = `{usage, alignment, memory_location}` | create_buffer_impl out+0x30 → create_buffer out+0x28 | import_unowned 整拷（槽+0x30） |
+
+- **U#1**：`0xb` = Result Ok 判别（create_buffer 硬写 `mov [rsi], 0xb`）。
+- **U#2**：80B Result 的 Ok = 40B Buffer（out+0x08..0x2f 截取）。
+- **U#3**：`+0x20` = BufferDesc 尾（usage/align/mem），**不是 mapped/device_address 缓存**（修正 ALG 原注）。
+- **U#4**：`inner+0x28`（BufferDesc usage/align/mem 随描述符拷入槽，位 1 门控 update 路径）与 `inner+0x7c`（分配对象 memory-properties，`==2` → "不可映射" panic，文件 managed/buffer.rs）是**两个不同字段**，非并存矛盾。
+
+`inner` = slot（`ManagedResource<ManagedBuffer>`，FUN_1418ae8a0 返回）：`+0x0c` 偏移、`+0x10` VkBuffer、`+0x20` 容量、`+0x28` {usage/align/mem}、`+0x30` device_address、`+0x38` 内存块、`+0x7c` mem-props。
+
+### 5.2 P0-2 GraphicsDevice::create 分段纪要（0x140bf2560，155KB）
+
+| 段 | 证据（--unks 字符串） | 内容 |
+|---|---|---|
+| A 队列族枚举 | "Universal queue family: "（0x142b16008）、"Compute queue family: "（0x142b16060）、scope "rhapsody::raw::device" | 两次 0x1c-stride 扫描：`(*byte&1)==0` 选 GRAPHICS 通用队列；`(*u32&3)==2` 选 COMPUTE-only 队列；断言 `universal_queue.can_present`（0x142b162a0） |
+| B 扩展/特性 | VK_KHR_swapchain / maintenance1-3 / EXT_descriptor_indexing / KHR_image_format_list / EXT_shader_demote_to_helper_invocation / KHR_buffer_device_address / EXT_full_screen_exclusive / EXT_memory_budget / EXT_subgroup_size_control / KHR_external_memory_win32 / NV_device_diagnostic_checkpoints | 扩展名表 + 特性 pNext 链（runtime_descriptor_array / buffer_device_address / shader_demote_to_helper_invocation，0x142b16695 区） |
+| C 设备创建 | "Created a Vulkan device"（0x142b160b8） | vkCreateDevice + swapchain 扩展 |
+| D gpu-allocator | "device_memblock_size: " / "Device memory properties: " / "Device memory budget: " / "gpu-allocator creation" / "Initialized gpu-allocator" | 分配器初始化（读内存属性/预算） |
+| E 管线缓存 | "vkCreatePipelineCache"（0x142b16360） | 建管线缓存 |
+| F 描述符索引 | "maxDescriptorSetUpdateAfterBindSampledImages is too low (" | bindless sampled-images 上限校验 |
+| G 收尾 | "crash tracking buffer" / "Backend device fully initialized." | 崩溃缓冲 + 完成日志 |
+
+### 5.3 P1 大函数展开
+
+- **reclaim_command_buffer_resources（0x140bf0cc0）**：提交环 `Queue+0x20/0x28/0x30/0x38`（cap/基址/头/待决）、`+0x80` 完成时间线；环项 0x60B 时间线@+0x58；完成判定 `queue+0x80 >= 项时间线`；标记 `3` 回收命令缓冲（0x58B 回写池 `device+0x9c0` 数组 @next*0x58，池条目 0x18B `{状态, cb 数组, next}`，锁 `+0x9b0`），`4` 特殊路径；回收前 `FUN_1418c7ae0(queue+0x40)` 销毁该 cb 退役资源；尾部 `FUN_1405df600` + `func_0x140613c20(.., flags<<3, 8)` 释放项。
+- **wait_idle（0x140bf8980）**：日志门 + puffin marker（0x143634e40，tag=5）+ **提交锁握手 `device+0x800`（0→8 自旋 CAS）→ `(ash+0x98)(VkDevice)` = vkDeviceWaitIdle → 解锁**。"清空待决" = 与 queue_submit 共享的提交锁握手。
+- **wait_idle_and_recycle_resources（0x140bf8e60）**：`wait_idle()` → `FUN_1418c0a70(context, device)`（退役排水）→ 锁 `+0x718` → `FUN_1418c3300(+0x720)`（SubmissionEngine 推进）→ 回收图形 Queue(+0x730) + Vec\<Queue\>(+0x7e8/0xb0-stride/+0x7f0) → 解锁 → **全局退役哈希表 0x1436308f0 遍历**。
+
+### 5.4 P1 17 行 verdict U → O（rne-read 机器码，见证据 §2）
+
+5 个设备微函数 + get_vk_blend_mode + RenderStats + Swapchain format/any_present_successful + ImageBarrier/BufferBarrier + half_res + DynamicConstantsChunk 2 个 + ComputePipelineDesc/RasterPipelineDesc new + TrackedSwapchainTextureLease::image —— **全部机器码验证为 O**（摘要见证据 §2，逐条有 capdis/rne-read 字节）。
+
+- `refresh_memory_budget` = **stub**：`device+0x1a` 字节门控 → 尾调 raw-init 侧滞回算法 0x140c0160f。
+- `get_vk_blend_mode` = `(desc+0x1b)>>3 & 0xc` → 3 表查（0x142b139f8/0x142b13a08/0x142b13a18，内容 `{0,1,1,1}/{0,1,7,0x10}/{0,1,7,0x12}`）→ 0x1cB 输出；vulkan 枚举映射半。
+- `RenderStats::snapshot_and_reset` = 3×u64 原子 xchg 快照+清零。
+- `Swapchain::format` = `+0x18` u32；`any_present_successful` = `+0x1c` u8。
+- `ImageBarrier::new` 0x17B / `BufferBarrier::new` 0x12B（+0xc/+0x08 的 `-1` 哨兵）。
+
+### 5.5 P1 30 行 O(消费端) → O（rne-read --hex 批量，证据 §3）
+
+- **TextureDesc**：构造器（new/new_2d/new_2d_array/new_3d）与 usage 位（sampled=4 / storage=8 / transfer_dst=2 / color_attachment=0x10 / depth_stencil=0x20）、sampled_with_different_format（usage|=4, flags|=0x108）、mip_levels、all_mip_levels（`floor(log2(max(w,h)))+1`）、array_elements（掩码 0x4a 机器码确认）、sample_count、extent_2d、half_res（SSE ceil/2 + 0 修正）——**全部 O**。
+- **TextureViewDesc** 0x3cB 布局 + 9 个构造器机器码确认（6 个 `Option<u32>={tag,value}` @+0x00/+0x08/+0x10/+0x18/+0x20/+0x28 + base_mip_level@+0x30 + base_layer@+0x34 + bind_individual_mips@+0x38）。
+- **RenderPassAttachmentDesc** 0x10B：`{format@0, clear_input@4, u32@8(U), sample_count@0xc, 3B@0xd..0xf(U)}`；**修正** rebuild/ALG 的字段序（clear_input 在 +0x04 非 +0x08；sample_count 在 +0x0c 非 +0x04）。
+- **image_aspect_mask_from_format**：`format-0x7c`，>6 → COLOR_BIT(1)，否则 7 项深度/模板格式表查。
+
+### 5.6 P1 三处卡点
+
+- **U#8 全局退役哈希表 0x1436308f0**：fibonacci 散列（`-0x61c8864680b583eb`）、桶 0x40B、key=设备指针、lock/next/key/链 prev/时间戳字段；mark_stale / on_focus / wait_idle_and_recycle 三处遍历；构造 0x14290b400。条目精确字段表 U（与 managed/raw-init disposal 交叉）。
+- **U#9 init_texture_data 跳表**：`*desc&4` 门控 → 跳表 0x142b174fc 4 目标全恢复：0x140bfe5af（panic）/ 0x140bfe2c0（0x141738fe0 助手）/ 0x140bfe30b（0x1417390e0 助手）/ 0x140bfe3aa（本地组装）；`&4==0` = panic 链。各 format 助手逐格式写算法仍 U。
+- **U#11 DynamicConstantsChunk 双 region**：`into_uniform_and_storage_buffer_binding`（0x140c02370）证明 **uniform/storage 两绑定共享同一 region `{offset=chunk+0x40, size=chunk+0x18}`**（tag 6 / 5 各一，device_address 同源）；`+0x08`/`+0x30` 是分配/记账字段，非双 region。
+
+### 5.7 STALE 3 项改判（对照表修正，不改代码）
+
+| 原版 | ALG §3 旧判 | 复核（rebuild 当前代码 2026-10-15） | 改判 |
+|---|---|---|---|
+| `DescriptorSetState::allocate_descriptor_set`（0x140be5a40） | ✗（BTreeMap 内容寻址自造） | `descriptor_set.rs:653..678` 空闲池复用 + OUT_OF_POOL/FRAGMENTED_POOL 循环重试（line 621）+ 来源返还 | **✓/半**（原 +0x60 空闲池 Vec vs rebuild 池栈/来源批处理细节） |
+| `bind_persistent_descriptor_set`（0x140bee150） | ✗（缺） | `binding.rs:89` 已有 free fn | **半**（仅缺"GraphicsDevice 方法"身份） |
+| `bind_descriptor_set` ×4 | ✗（#4） | `binding.rs:112` 已有 free fn | **半**（缺 4 游戏闭包单态 + 设备方法身份） |
+
+### 5.8 遗留 U
+
+`inner+0x28` 位 1 的精确语义（usage.TRANSFER_DST vs memory_properties）半；`inner+0x0d..0x0f` 与 RenderPassAttachmentDesc `+0x08`/`+0x0d..0x0f` 身份 U；`create_mapped_buffer` 额外 24B（分配块信息/size）语义半；退役哈希表条目字段表 U；`get_vk_blend_mode` 表值→Vk 枚举映射半。
+
+### 5.9 数据卫生（回填）
+
+- **decomp 引用错域**：ALG §2.7 `issue_pipeline_barrier 0x140bee030` / `issue_full_pipeline_barrier 0x140bee090`（及 get_vk_buffer 0x140bef470 等）的本域 `decomp/` 无文件，真实反编译在 `evidence/render-recovery/producer-closure/n1-device/0x140bee0*.c`；本闭合轮未改既有行，仅在此登记引用路径应指向 n1-device。
+- **compiled 计数**：ALG §1.1 表内 texture 26 / shader 13 / swapchain 19 / barrier 9 / binding 8 / render_pass 3 / sampler 2 与骨架实际 compiled 数（47/17/18/10/7/1/1）不符，为登记偏差；本闭合轮不追溯骨架计数来源，仅留档。
+- 新增共享工具 `reconstruction/../scripts/capdis.py`（capstone x64 反汇编，`python scripts/capdis.py <va> <nbytes>`），供后续 rne-read 字节反汇编复核。

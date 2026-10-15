@@ -226,3 +226,83 @@
 12. **`get_access_info`（0x140c10dd0）**：字符→(access, stage) 两 u32 的**完整映射表** U（Ghidra NotFound；需从 get_*_barrier 输出反推每个字符位）。
 13. **`CompiledShaderPipeline` 0x140B 载荷 vs CALL-CHAIN 0x130B**：两数值来源不一致（0x140=本次 load_compiled Ok 复制长度；0x130/0x150=既有记录）；0x140 内是否含 trailing 字段 U。
 14. **rebuild 接入缺口（跨域）**：rebuild 的 shader_pipeline 无人调用（country-core 从未 use rhapsody）；`ShaderCompilerArtifacts::load_compiled` 游戏侧经 `ShaderBackend::load_compiled_compute/raster` trait 契约，rebuild 未接上该 trait 面。
+
+---
+
+## 5. 审查轮闭合（agent=rhapsody-crates-closure，2026-10-15）
+
+按 REVIEW-UNEXPLORED crates 部分 P0/P1 逐项闭合。证据：`rne/crates-notfound-closure.md` + `decomp/crates-get-access-info-table.md`。
+除 §0/§1/§2 既有结论行外，本节只追加、不改写既有行。
+
+### 5.1 P0：get_access_info 全表手解（0x140c10dd0）—— O 全解
+
+- 函数实为**三表查询**（rne-read 原字节 + capstone）：`out[0]=stage`、`out[1]=access`、`out[2]=image layout`，
+  三张 u32 表 = 同一 256×u32 数组 0x142b1a6c8 的三段（stage@[0x00..0x3f]、access@[0x40..0x7f]、layout@[0x80..0xbf]）。
+- **修正 §1.3/§2.3 角色**：首字节是 **stage**（非 access），第二字节是 **access**（非"write 才计入的 stage"）；
+  三个 barrier 转换函数把 `out[0]`（stage）OR 进 `param_1[0]`、把写字符的 `out[1]`（access）OR 进 `param_1[6]`。
+- 有效字符 0x00..0x3f 共 64 变体；读 0x00..0x27、写 0x28..0x37、0x38..0x3f 高位掩码读。**全表**见 `decomp/crates-get-access-info-table.md`。
+- 变体名锚点：写变体 16 个与公开 h3r2tic/vk-sync-rs 枚举逐一对上（ColorAttachmentWrite=0x2e、TransferWrite=0x34、
+  HostWrite=0x35、ColorAttachmentReadWrite=0x36、General=0x37 等，stage/access/layout 三列全对）；读变体锚点 =
+  layout 列（sampled=5、other=1、color=2、depth=4、transfer_src=6、present=哨兵）+ country-core 常量
+  （ACCESS_INDIRECT_READ=0x02、ACCESS_READ=0x1a、ACCESS_DRAW_READ=0x1f、ACCESS_CPU_MAPPED_WRITE=0x32、
+  ACCESS_TRANSFER_WRITE=0x34、ACCESS_WRITE=0x37 全部对上）。
+- **fork 改造点**：写区间由公开的 0x22..0x31 整体后移 +6 到 0x28..0x37（中间插入 6 个读变体，名 U）；uniform/input 读合并为
+  SHADER_READ(0x20)；stage/access 沿用 stage-1 位值。
+
+### 5.2 P0：read_from_buffer wire 布局（extra-0x1409e4670）—— O 分段反编译
+
+- **无 magic/版本头**：首 4 字节即 stages 计数（`*(uint*)param_2`），无 SPIR-V magic 扫描；rebuild 注释与机器码一致。
+- 最小长度门 `0x1e`=30B = 空流水线编码之和（stages 4 + source_deps 4 + descriptor_sets 4 + uniform_block tag 1 +
+  binding_names 4 + binding_name_hashes 4 + vertex_inputs 4 + local_size tag 1 + push_constant_size 4）——
+  **O 印证 ShaderReflection 七字段序**（descriptor_sets → uniform_block(Option) → binding_names → binding_name_hashes →
+  vertex_inputs → local_size(Option) → push_constant_size）。
+- 读取序 `stages → source_dependencies → reflection`；CompiledShaderStage 0x38B = {u32 stage(≤2), String entry_point, Vec<u32> spirv}。
+- **尾字节保留**：末字段读完后剩余字节不消费、不报错（speedy read_from_buffer 行为，rebuild `trailing_bytes` 建模正确）。
+- 返回 Result<0x140B, anyhow>：Ok={0, 0x140B}、Err={0x8000000000000000, err}；0x140B = {stages@0, source_deps@0x18, ShaderReflection@0x30(0x110)}。
+- 0x130/0x150 数值：0x140 为权威 Ok 复制长度；0x130=旧结构/与 GetDesc1 长度同值、0x150=Arc 块，不冲突。
+
+### 5.3 P1：Aftermath Drop + 悬空引用修正—— O，S_PUB32 定死函数身份
+
+- `Aftermath::Drop::drop` @0x140c107b0 = **`jmp 0x142923880`**（5B 尾调）→ import thunk → **`GFSDK_Aftermath_DisableGpuCrashDumps`**
+  （S_PUB32；IAT 槽 0x143192d38→目标 0x3194aaa）。0x38B 对象内存释放由 std drop 胶水另行处理（drop_in_place<AftermathUserData>@0x1400c04b0）。
+- **修正悬空引用**：`decomp/extra-0x140c107b0.txt` 不存在（头注"补取 7 个"与实 9 个不符——本轮补证据到 `rne/crates-notfound-closure.md` §5，非 decomp 目录）。
+- `Aftermath::new` 初始化函数 0x142923580（S_PUB32）= **`GFSDK_Aftermath_EnableGpuCrashDumps`**；调用 `(0x217, 2, 1, 4 回调, userData)`——
+  0x217 是第一参数（API 版本/特性位），非"opcode"；`get_shader_debug_info_identifier` 目标 0x142923870 = **`GFSDK_Aftermath_GetShaderDebugInfoIdentifier`**。
+- `wait_for_status` 轮询目标 0x142923860 = **`GFSDK_Aftermath_GetCrashDumpStatus`**；退出值 2/4 = CrashDumpStatus 枚举（精确名对照 Aftermath SDK 头，I）。
+
+### 5.4 P1：gpu-profiler 时间戳换算—— O
+
+- `GpuTick::duration_since`（0x140c10e50，rne-read）= `if self>=earlier {self-earlier} else {0}` 饱和差。
+- `GpuTickDuration::nanoseconds`（0x140c10e60，rne-read）= `(self as f64 * period_f32) as u64`；**period 为 f32 第二参数（xmm1）**，
+  非全局常量。**period 来源 = rhapsody::raw::profiler::timestamp_period**（对应 VkPhysicalDeviceLimits.timestampPeriod，游戏侧渲染初始化查询）。
+- `NanoSecond::from_raw_ns`（0x14067dd80）= newtype 恒等（与 S_PUB32 折叠 raw_ns 同址）；`marker_name`（0x140c10ee0）返回**完整 &str {ptr,len}**（修正 §4.7"返回 8B 丢 len"）。
+- `retrieve_results`（0x140294cf0）条目 = `(MarkerId, GpuTick)` 16B，配对复制后按 GpuTick **sort_unstable_by_key**；
+  FUN_1405c3580（<0x15）/FUN_1405c75b0（更大）= std slice sort 内部（**纯排序，非 ticks→ns 转换**，修正 §2.2"转换/排序"措辞）。
+- `0x140bd3c80` = profiler 数据读取器（0x140c113c0 读全局+0x30 有效位/返回+0x18 u64 值数组），非 period。
+
+### 5.5 P1：Type::nbyte case 映射—— O
+
+- 跳表 15 项（判别 `*p^0x8000000000000000`，default=case 10）：0=Scalar、1=Vector、2=Matrix、3..8=Image/CombinedImageSampler/
+  SampledImage/StorageImage/Sampler/SubpassData(→0)、9=Array、10=Struct(递归 0x50B/ty@+0x18)、11=AccelStruct(→0)、
+  12=DeviceAddress(→(1,8))、13=DevicePointer(→(1,8))。**rebuild Type 枚举序 = 机器序（0..13 全对上）**。
+- 返回约定 = (rax 非零标记, rdx 尺寸/累加)；opaque=0、复合/地址=1、DeviceAddress/Pointer=8。
+- `ScalarType::nbyte`（0x1420bd380，rne-read）：Void→0、Boolean→1、Signed/Unsigned/Float→**返回 payload u32（宽度字段原值）**；
+  bits-vs-bytes 契约 U（Boolean=1/DeviceAddress=8 暗示 payload 为字节数，I）；消费端 = raw `create_raster_pipeline`（S_PUB32 静态直调）。
+
+### 5.6 P1：with_suffix_dims 判定—— decomp NotFound 但 rne-read **O 升级**（非降 I）
+
+- `decomp/0x140c87650.txt` 为 NotFound JSON；但 rne-read 原字节 `48 8d 41 01 c3` = **`lea rax,[rcx+1]; ret`** =
+  `self.0.wrapping_add(1)`，与 rebuild 完全一致。verdict O/I → **O（rne-read 证据）**。S_PUB32 确认 1 符号非折叠。
+
+### 5.7 P2：dxgi 40B 字段映射、defines 哈希、shader_compiler 候选
+
+- **DxgiAdapter 40B**（enumerate 0x1418b29c0 元素写，O）= `{name: std String{ptr,len,cap}@0, AdapterLuid u64@0x18, VendorId u32@0x20}`。
+  只取 VendorId + AdapterLuid（修正 §4.11"含 vendor/device/subSys/rev/dedicated"）；desc1 栈拷贝基址 = rbp-0x50。
+- **defines 哈希**（U 保留）：发行 404 .bin 全部 raster 只有两个 hash `b903e43ffb3da915`/`f0adff76827e73ff`（117+117=每 raster 两变体，
+  defines 全局同组、单一宏开/关）；compute hash 恒 0=空 defines，与 rebuild XOR-fold 空列表=0 一致；但 FNV-1a64/SipHash-1-3(0,0)
+  对常见 PERM_* 名单暴力测试未复现两值 → 宏名/值未知，算法与输入均 U。
+- **shader_compiler 候选对照**（补 §3 行）：`preprocess.rs::prepare_file`（include 展开/#define/#line）+ `reflect.rs::generate_reflection`
+  （反射 producer，BindingNameHash 应用、跨 stage 合并冲突检测）+ `pack.rs::package`（prepare_spirv_for_package 重写 header/
+  压缩 Source 串 + Speedy 容器打包，`trailing_bytes=Vec::new()`）。MODULE_STATUS 核对：404 包/638 阶段生成、**397/404 typed 反射相等**、
+  "210" = 新编译包中**完整反射的包数**（210/404，REVIEW §四#3 疑问指认）；pack.rs `trailing_bytes=Vec::new()` 与 §5.2 尾字节
+  保留行为一致（原版允许尾字节，rebuild 候选不产生尾字节不冲突）。

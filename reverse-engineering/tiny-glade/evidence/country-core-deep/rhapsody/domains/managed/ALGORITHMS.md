@@ -280,3 +280,48 @@
 - 全部结论以 S_PUB32 demangled 名为权威（ICF 折叠：`create_vk_image_view`@0x140bdcba0 带 `.llvm` 后缀=与 create_texture 折叠；`drop_in_place` 各类型同址折叠）。
 - 依赖版本（O，骨架注解）：append-only-vec 0.1.2（git h3r2tic rev 4031d67）、arc-swap 1.7.1、parking_lot 0.12.1/0.11.2、lock_api 0.4.9、ash 0.38.0+1.3.281、log 0.4.27、puffin 0.14.1。按约束直接复用，不逆向实现。
 - rebuild 为候选实现，本文件只登记差距供接线，未改任何 reconstruction 源码。
+
+---
+
+## 6. 审查轮闭合（2026-10-15，agent=rhapsody-managed-closure）
+
+本小节追加 REVIEW-UNEXPLORED.md P0（退役分派链 / 槽位布局 / refcount 宽度）与 P1（GpuOwned / swapchain 锁字 / disposal 改判）的闭合结论。全部字节级证据落盘 `rne/managed-closure.md`。**本节不改写既有结论行，仅登记新事实与改判。**
+
+### 6.1 退役分派链全闭合（O，原 §1.3 / U#2 → 闭合）
+
+- `FUN_140bf92f0` = `GraphicsDevice::immediate_empty_bucket`、`FUN_140bdfcf0` = `drop_in_place<DisposalBucket>` 身份落实（S_PUB32 + 骨架 RVA 0xbf92f0 互证）。
+- take_out_dropped_waste 排水：锁 `Mutex<Vec>`（byte 0→1 parking_lot 锁，deadlock acquire/release）→ 取空 cap-first Vec {cap@+8, ptr@+0x10, len@+0x18}（`mem::take` 复位 {0, 8悬垂, 0}）→ 逐 16B 元素按 `+0xe` tag 分派 → 尾部 `__rust_dealloc(ptr, cap*16, 8)` + `immediate_empty_bucket(resources)` + `drop_in_place<DisposalBucket>(&栈桶)`。
+- **跳表（0x142d060f0，8×i32 相对偏移）与 tag→类型映射定死**：texture=0 / buffer=1 / swapchain=2 / (3=panic) / render_pass=4 / sampler=5 / descriptor_set=6 / framebuffer=7，分别调 `dispose_cb_resource<Managed*>@0x1418c65a0/0x1418c6af0/0x1418c55b0/0x1418c6050/0x1418c5b00/0x1418c7040/0x1418c7590`。**与 rebuild 依 TypeId 的候选映射完全一致**（原 §1.4 U#9 闭合）。
+- 元素 16B = {*mut 控制块@0, u32 checksum@8, u16 device@0xc, u8 tag@0xe}；`rdx=*元素=inner.seq` 作 CommandBufferSeq 键 → dispose_cb_resource 经 hashbrown RawTable 探测把销毁动作写入 `HashMap<CommandBufferSeq, Mutex<DisposalBucket>>` 对应桶。**序号时间线驱动桶回收的环路闭合**（原 §3.5 断点接上，rebuild `SharedResources::record_submission/complete` 的原版对照物成立）。
+- 桶结构：栈上 10×24B 槽（{cap@0, ptr@8, len@0x10} 空 Vec，ptr=8 悬垂），DisposalBucket 整体 0xF0B；`drop_in_place<DisposalBucket>` 逐槽 `__rust_dealloc(ptr, cap*8, 8)`。对应骨架 `impl$4..13::dispose_to_bucket` ×10。
+- 残留 U：dispose_cb_resource 首参 `&resources.owning_device`（+0xa50）在函数内被当 hashbrown RawTable 用，与 get_maybe_tracked 读为 u16 device 的字段双语义矛盾未解；每槽 8B 动作载荷未逐项解码。
+
+### 6.2 ManagedResource<T> 槽位布局 + 空闲链表（O，原 §1.2 U / U#1/#4 → 闭合）
+
+- **store 槽 = 控制块**（AppendOnlyVec 元素，也是空闲链表结点）：
+  - `+0x00 AtomicU64 seq`（init 0；track 时 fetch_max）
+  - `+0x08 AtomicI32 refcount`（init 1；clone/drop 均为 `lock inc/dec dword`）
+  - `+0x0c u32 checksum`
+  - `+0x10 T resource 内联`（buffer=8B→槽 0x18B；descriptor_set=112B→槽 0x78B）
+- **RawManagedHandle（24B，O）**：`+0x00 *mut Mutex<Vec<DisposedRawResourceHandle>>`（退役队列）、`+0x08 *mut 控制块`、`+0x10 u32 期望校验和`、`+0x14 u16 device`、`+0x16 u8 类型 tag`。**纠偏：+0x16 实为资源类型 tag（分派证据），非 §1.2 所述 “tracked 标志”**。
+- **空闲链表**：store+0x170 = 原子头；allocate（0x1418ae7e0 族）CAS head→槽+0x10（空闲时兼作 next），复用槽重初始化 {seq=0, refcount=1, resource}；空表则 `AppendOnlyVec::push`（0x1418bbeb0，元素 {0,1,resource}）+ `append_only_vec::indices`（0x140c111b0）→ 槽 = base[idx*24]（bounds vs store+0x160）。store 0x178B = AppendOnlyVec 头 + indices + 计数@0x160 + 空闲链表头@0x170。
+
+### 6.3 refcount 原子宽度定论（O，原 §2#2 / §4 首行 → 闭合）
+
+- clone 0x140bd6b00 `lock inc dword ptr [inner+8]`、drop 0x140be24b0 `lock dec dword ptr [inner+8]`：**32 位**，控制块 +0x08。PDB `AtomicI32::fetch_add/fetch_sub` 一致 → **原 refcount = AtomicI32**。rebuild `AtomicU32` 半对维持。
+
+### 6.4 GpuOwned 字段序（O，原 §1.2 / §3.3 / U#4 → 部分闭合）
+
+- `GpuOwned<T, Tracker>`，**Tracker 默认 = RawManagedHandle**（S_PUB32 见单参 `GpuOwned<[DSB;2]>` 与双参 `GpuOwned<(), ManagedHandle<ManagedBuffer>>` 并存）。
+- **字段序（O，clone 0x1403abd10 + drop_in_place 0x140161b50 互证）**：`GpuOwnedInner = { resource T @0x00, tracker @0x00+size(T) }`；以 `<[DSB;2], RawManagedHandle>` 为例：resource 0x40B@0、tracker 24B@0x40、**state Cell<GpuOwnedState> @0x58（克隆/新建=0）**。state 在末尾，非 §1.2 候选顺序。
+- GpuOwnedState 判别值（0=Unused? / 1=Tracked?）残留 U（track 宿主为 rg/country-core pass 闭包内联，本轮未取编译宿主）。
+
+### 6.5 swapchain 锁字编码（O，原 U#6 / §3.4 → 闭合）
+
+- 写锁（acquire_next 0x1418cb54f）`lock cmpxchg [lockword] 0→8`（bit3=写者）；读锁（desc 0x1418cb10d）`lock cmpxchg [lockword] cur→cur+0x10`（每读者 +0x10），快路径条件 `(state&8)==0 && state<0xfffffffffffffff0`，否则 lock_shared_slow（1s）。
+- **对照 Cargo.lock**（B-original / skeleton/B）：parking_lot 0.11.2 + 0.12.1 均 **registry 源、无 git/fork**。本二进制编码（写 bit3=8 / 读 +0x10）**与 stock parking_lot 0.12.1（写 LOCKED_BIT=1）不符** → 本地改常量/自定义 RwLock，**不能归因于 Cargo.lock 可见的 Bevy 分叉**；rebuild 委托 raw 承担锁语义的等价性以本编码为准。
+
+### 6.6 disposal 对照改判（原 §3 行 ✓ → ✗/半，纯文档口径）
+
+- 原 `CommandBufferDisposalBuckets = hashbrown::HashMap<CommandBufferSeq, Mutex<DisposalBucket>>`（每桶 Mutex，insert 断言 prev.is_none、remove 缺桶 panic @0x142d069c1）vs rebuild `BTreeMap<u64, Vec<DestroyAction>>` 无锁 → **判定 ✗/半**（容器/键/每桶互斥/insert-remove 语义均偏离；raw-init 证据 + 本证据 §6.1 hashbrown 探测确认）。
+- **补登记**：rebuild `raw/graveyard.rs`（设备级 idle submit epoch 延迟销毁）原 ALGORITHMS 未登记 —— 与原版“仅按 seq 时间线”双轨并存的等价性缺口保持 U/✗（需 submit 域 seq→timeline 环路闭合，§6.1 已把 managed 侧端闭合）。
