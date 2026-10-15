@@ -52,6 +52,8 @@ impl DescriptorSetBinding {
             .dst_binding(binding)
             .dst_array_element(array_element)
             .descriptor_type(self.descriptor_type());
+        // 原 `lock inc [device+0xab0]`：每次 vkUpdateDescriptorSets 之后 +1。
+        let count = &device.descriptor_update_count;
         unsafe {
             match self {
                 Self::Buffer { info, .. } => device
@@ -66,6 +68,7 @@ impl DescriptorSetBinding {
                 ),
             }
         }
+        count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -128,5 +131,26 @@ pub unsafe fn bind_descriptor_set(
             &[set],
             dynamic_offsets,
         )
+    }
+}
+
+/// 原 `GraphicsDevice::bind_persistent_descriptor_set`（0x140bee150）逐字形态：
+/// `get_tracked` 解析句柄 → 命令缓冲状态必须是 1（recording，否则 panic）→
+/// `vkCmdBindDescriptorSets(cmd=[rec+0x48], bindPoint=[pipeline+0x30], layout=[pipeline+0x20],
+/// firstSet=参数, setCount=1, &set, dynamicOffsetCount=0, null)`（机器码 0x140bee187..0x140bee1c1）。
+/// 即原版持久集绑定恒为 **1 个集合、无动态偏移**；上面的通用版本只是它的超集。
+///
+/// # Safety
+/// 与 `bind_persistent_descriptor_set` 相同。
+pub unsafe fn bind_persistent_descriptor_set_single(
+    device: &VulkanDevice,
+    command_buffer: vk::CommandBuffer,
+    point: vk::PipelineBindPoint,
+    layout: vk::PipelineLayout,
+    first_set: u32,
+    set: vk::DescriptorSet,
+) {
+    unsafe {
+        bind_persistent_descriptor_set(device, command_buffer, point, layout, first_set, &[set], &[])
     }
 }

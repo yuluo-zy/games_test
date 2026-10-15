@@ -511,6 +511,13 @@ impl PersistentPoolPlan {
     }
 }
 
+/// 原版每个 `DescriptorSetState` 的瞬时池容量：`vkCreateDescriptorPool.maxSets = 100`
+/// （0x140be5a40 的 CreateInfo `+0x14 = 0x64`），池尺寸 = 每种描述符类型 `Σ binding.descriptorCount × 100`
+/// （构造闭包 0x1418b3a00 的 `imul rdi,[entry-8],0x64` 与按类型线性累加）；flags 恒 0。
+pub const DESCRIPTOR_POOL_MAX_SETS: u32 = 100;
+/// `create_descriptor_set_layouts`（0x140be60a0）的 `assert!(set_count <= MAX_DESCRIPTOR_SETS)`，常量 4。
+pub const MAX_DESCRIPTOR_SETS: usize = 4;
+
 /// 原 0x140be5a40：栈顶池分配不同 set，耗尽池移交调用方，完成后归还共享来源。
 /// 不以写入内容查缓存；同内容的两个活跃请求仍得到不同 set。
 pub struct DescriptorSetState {
@@ -625,6 +632,10 @@ pub struct DescriptorWrite {
     pub value: DescriptorSetBinding,
 }
 impl DescriptorSetState {
+    /// 原版构造（`create_descriptor_set_states` 闭包 0x1418b3a00）：每池 100 个 set。
+    pub fn for_layout(layout: Arc<VulkanDescriptorSetLayout>) -> Result<Self, vk::Result> {
+        Self::new(layout, DESCRIPTOR_POOL_MAX_SETS)
+    }
     pub fn new(
         layout: Arc<VulkanDescriptorSetLayout>,
         sets_per_pool: u32,

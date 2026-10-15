@@ -92,6 +92,71 @@ pub enum Command<'a> {
     },
 }
 
+/// 原 EXE 里 `GraphicsDevice` 的 Vulkan 函数槽偏移（以 `GraphicsDevice` 指针为基址）。
+/// 证据：`RenderPassApi` 十个有符号方法（0x1416f6e90..0x1416f7d80）与 `PassBuilder::render` 的两类共享回调体
+/// （`dispatch_impl` 0x1415fc050→0x14169af70、`RasterPass::render` 0x140b649e0→0x141697ab0）的反汇编；
+/// 布局 = `+0x78` 起内嵌的 `ash::DeviceFnV1_0`（120 项）+ `DeviceFnV1_1`（16 项）+ `DeviceFnV1_2`（13 项）：
+/// `槽 = 0x78 + 8 × ash 字段序号`，`+0x4b8/+0x4c0` 即 `DeviceFnV1_2` 的前两项 `cmd_draw_indirect_count` /
+/// `cmd_draw_indexed_indirect_count`；`+0x898/+0x8a0` 是 `GraphicsDevice::begin_label/end_label`（0x140bf09b0 / 0x140bf0b40）
+/// 用的调试标签槽。`dispatch_groups_3d` / `dispatch_threads_3d` / `dispatch_indirect` / `draw*` 在原版没有独立符号，
+/// 内联进共享回调体，直接 `call [device+槽]`。
+pub mod original_slots {
+    use super::Command;
+    pub const SET_VIEWPORT: usize = 0x2e0;
+    pub const SET_SCISSOR: usize = 0x2e8;
+    pub const SET_LINE_WIDTH: usize = 0x2f0;
+    pub const SET_STENCIL_REFERENCE: usize = 0x320;
+    pub const BIND_DESCRIPTOR_SETS: usize = 0x328;
+    pub const BIND_INDEX_BUFFER: usize = 0x330;
+    pub const BIND_VERTEX_BUFFERS: usize = 0x338;
+    pub const DRAW: usize = 0x340;
+    pub const DRAW_INDEXED: usize = 0x348;
+    pub const DRAW_INDIRECT: usize = 0x350;
+    pub const DRAW_INDEXED_INDIRECT: usize = 0x358;
+    pub const DISPATCH: usize = 0x360;
+    pub const DISPATCH_INDIRECT: usize = 0x368;
+    pub const COPY_BUFFER: usize = 0x370;
+    pub const FILL_BUFFER: usize = 0x3a0;
+    pub const CLEAR_COLOR_IMAGE: usize = 0x3a8;
+    pub const PIPELINE_BARRIER: usize = 0x3e0;
+    pub const PUSH_CONSTANTS: usize = 0x410;
+    pub const BEGIN_RENDER_PASS: usize = 0x418;
+    pub const END_RENDER_PASS: usize = 0x428;
+    pub const DRAW_INDIRECT_COUNT: usize = 0x4b8;
+    pub const DRAW_INDEXED_INDIRECT_COUNT: usize = 0x4c0;
+    pub const BEGIN_LABEL: usize = 0x898;
+    pub const END_LABEL: usize = 0x8a0;
+
+    /// 每条 [`Command`] 在原版里落到的设备函数槽。`match` 不带通配分支：增删命令时必须同步更新。
+    pub const fn slot(command: &Command<'_>) -> usize {
+        match command {
+            Command::BeginRenderPass(_) => BEGIN_RENDER_PASS,
+            Command::EndRenderPass => END_RENDER_PASS,
+            Command::SetViewport(_) => SET_VIEWPORT,
+            Command::SetScissor(_) => SET_SCISSOR,
+            Command::SetStencilRef(_) => SET_STENCIL_REFERENCE,
+            Command::SetLineWidth(_) => SET_LINE_WIDTH,
+            Command::BindVertexBuffer { .. } => BIND_VERTEX_BUFFERS,
+            Command::BindIndexBuffer { .. } => BIND_INDEX_BUFFER,
+            Command::PushConstants { .. } => PUSH_CONSTANTS,
+            Command::CopyBuffer { .. } => COPY_BUFFER,
+            Command::FillBuffer { .. } => FILL_BUFFER,
+            Command::ClearColorImage { .. } => CLEAR_COLOR_IMAGE,
+            Command::Draw { .. } => DRAW,
+            Command::DrawIndexed { .. } => DRAW_INDEXED,
+            Command::DrawIndirect { .. } => DRAW_INDIRECT,
+            Command::DrawIndirectCount { .. } => DRAW_INDIRECT_COUNT,
+            Command::DrawIndexedIndirect { .. } => DRAW_INDEXED_INDIRECT,
+            Command::DrawIndexedIndirectCount { .. } => DRAW_INDEXED_INDIRECT_COUNT,
+            Command::DispatchGroups { .. } => DISPATCH,
+            Command::DispatchIndirect { .. } => DISPATCH_INDIRECT,
+        }
+    }
+
+    /// ash `DeviceFnV1_0` 起点（`GraphicsDevice` 内嵌函数表偏移）。
+    pub const ASH_TABLE_BASE: usize = 0x78;
+}
+
 /// 实际 Vulkan 后端或候选测试后端实现同一调用边界。
 pub trait CommandBackend {
     fn dispatch(&mut self, command_buffer: vk::CommandBuffer, command: Command<'_>);

@@ -66,14 +66,29 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
 }
 #[test]
 fn retirement_waits_for_completed_threshold_in_order() {
+    // 原语义：每个命令先 begin 桶，完成按序号经 SequentialDisposal 连续推进，乱序完成等待。
     let values = Arc::new(std::sync::Mutex::new(vec![]));
-    let mut buckets = CommandBufferDisposalBuckets::default();
-    for sequence in [9, 2, 5] {
+    let buckets = CommandBufferDisposalBuckets::default();
+    let mut bucket_ids = [1u64, 2, 3];
+    bucket_ids.reverse();
+    for sequence in 1..=3u64 {
+        buckets.begin(sequence);
         let values = values.clone();
-        buckets.insert(sequence, move || values.lock().unwrap().push(sequence));
+        assert!(
+            buckets
+                .append_existing(sequence, Box::new(move || values.lock().unwrap().push(sequence)))
+                .is_ok()
+        );
     }
-    assert_eq!(buckets.dispose_in_order(4), 1);
-    assert_eq!(buckets.pending(), 2);
-    assert_eq!(buckets.dispose_in_order(9), 2);
-    assert_eq!(*values.lock().unwrap(), vec![2, 5, 9]);
+    let mut sequential = rhapsody::raw::disposal::SequentialDisposal::new();
+    let mut retire = |sequence: u64| {
+        buckets.remove(sequence).dispose();
+    };
+    sequential.dispose_in_order(3, &mut retire);
+    sequential.dispose_in_order(2, &mut retire);
+    assert_eq!(buckets.pending(), 3, "1 未完成，2/3 必须等待");
+    sequential.dispose_in_order(1, &mut retire);
+    assert_eq!(buckets.pending(), 0);
+    assert_eq!(*values.lock().unwrap(), vec![1, 2, 3]);
+    assert_eq!(sequential.last_retired(), 3);
 }

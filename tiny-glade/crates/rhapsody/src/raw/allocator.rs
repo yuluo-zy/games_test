@@ -38,7 +38,7 @@ pub struct MemoryBlock {
     pub properties: vk::MemoryPropertyFlags,
     pub(crate) accounting_id: u64,
     /// 子分配时持有 gpu-allocator 的分配；专用分配为 None。
-    #[cfg(feature = "candidate-suballocation")]
+    #[cfg(feature = "suballocation")]
     pub(crate) sub: Option<gpu_allocator::vulkan::Allocation>,
 }
 impl MemoryBlock {
@@ -50,7 +50,7 @@ impl MemoryBlock {
         preferred: vk::MemoryPropertyFlags,
     ) -> Result<Self> {
         let flags = vk::MemoryAllocateFlags::empty();
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         if device.suballocation_enabled() {
             return Self::allocate_sub(device, requirements, required, preferred, flags, false);
         }
@@ -65,7 +65,7 @@ impl MemoryBlock {
         preferred: vk::MemoryPropertyFlags,
         flags: vk::MemoryAllocateFlags,
     ) -> Result<Self> {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         if device.suballocation_enabled() {
             return Self::allocate_sub(device, requirements, required, preferred, flags, true);
         }
@@ -126,7 +126,7 @@ impl MemoryBlock {
             size: requirements.size,
             properties,
             accounting_id,
-            #[cfg(feature = "candidate-suballocation")]
+            #[cfg(feature = "suballocation")]
             sub: None,
         })
     }
@@ -134,18 +134,18 @@ impl MemoryBlock {
 impl MemoryBlock {
     /// 脱离设备 Arc，把显存所有权转交延迟销毁场；之后由设备在确认 GPU 不再使用后释放。
     pub fn into_deferred(self) -> super::graveyard::DeferredMemory {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         let (memory, sub) = {
             let mut block = self;
             let sub = block.sub.take();
             (block, sub)
         };
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         let memory = self;
         let me = std::mem::ManuallyDrop::new(memory);
         // SAFETY: `me` 不会再被 Drop，Arc 只在此处读出并释放一次；调用者仍持有另一个设备 Arc。
         drop(unsafe { std::ptr::read(&me.device) });
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         return match sub {
             Some(allocation) => super::graveyard::DeferredMemory::Sub {
                 allocation,
@@ -156,7 +156,7 @@ impl MemoryBlock {
                 accounting_id: me.accounting_id,
             },
         };
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         super::graveyard::DeferredMemory::Dedicated {
             handle: me.handle,
             accounting_id: me.accounting_id,
@@ -166,45 +166,45 @@ impl MemoryBlock {
         self.accounting_id
     }
     pub fn is_suballocated(&self) -> bool {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         return self.sub.is_some();
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         false
     }
     /// 子分配且宿主可见时，gpu-allocator 已持久映射整块并给出本分配起点的指针（已含偏移）。
     /// 返回 None 表示需要调用者自己 `vkMapMemory`（专用分配）。
     pub fn host_ptr(&self) -> Option<*mut u8> {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         return self
             .sub
             .as_ref()
             .and_then(|a| a.mapped_ptr())
             .map(|p| p.as_ptr().cast::<u8>());
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         None
     }
     /// 刷新/失效范围 `(偏移, 大小)`：专用分配覆盖整个内存对象；子分配只覆盖本分配自己的范围
     /// （创建时已按非一致性粒度对齐，不会波及邻居）。
     pub fn host_range(&self) -> (u64, u64) {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         return match &self.sub {
             Some(allocation) => (allocation.offset(), allocation.size()),
             None => (0, vk::WHOLE_SIZE),
         };
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         (0, vk::WHOLE_SIZE)
     }
 }
 impl Drop for MemoryBlock {
     fn drop(&mut self) {
-        #[cfg(feature = "candidate-suballocation")]
+        #[cfg(feature = "suballocation")]
         match self.sub.take() {
             Some(allocation) => self.device.free_suballocation(allocation),
             None => unsafe {
                 self.device.device.free_memory(self.handle, None);
             },
         }
-        #[cfg(not(feature = "candidate-suballocation"))]
+        #[cfg(not(feature = "suballocation"))]
         unsafe {
             self.device.device.free_memory(self.handle, None)
         };

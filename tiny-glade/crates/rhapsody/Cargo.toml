@@ -8,9 +8,10 @@ description = "Render graph, graphics resource rules and shader interfaces"
 readme = "README.md"
 
 [features]
-default = []
-# Public 0.27 is a candidate adapter; the original local 0.26 fork is unidentified.
-candidate-suballocation = ["dep:gpu-allocator"]
+# 原版 gpu-allocator 是本地分叉（Cargo.lock 记 0.26.0，但 PDB 里 with_global_allocator 返回
+# AllocatorReport，该类型只在 0.27 的 generate_report 中出现），算法按公共 0.27 复用；原版就是子分配，故默认开启。
+default = ["suballocation"]
+suballocation = ["dep:gpu-allocator"]
 candidate-optimizations = []
 
 [dependencies]

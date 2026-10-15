@@ -295,6 +295,52 @@ impl ManagedPassResources {
             views: Mutex::new(BTreeMap::new()),
         })
     }
+    /// 逻辑资源 → 物理托管缓冲（pass 回调里直接发命令的路径用，如 `fill_buffer`/`copy_buffer`）。
+    pub fn buffer_for(
+        &self,
+        resource: u32,
+    ) -> Result<crate::raw::managed::buffer::ManagedBuffer, PassBindingError> {
+        let mapping = self
+            .registry
+            .resources
+            .get(resource as usize)
+            .ok_or(PassBindingError::MissingLogical)?;
+        match self
+            .registry
+            .backing_resources
+            .get(mapping.backing_index as usize)
+            .ok_or(PassBindingError::MissingPhysical)?
+        {
+            RegistryResource::OwnedBuffer(b) | RegistryResource::UnownedBuffer(b) => self
+                .buffers
+                .get(b.handle.key())
+                .ok_or(PassBindingError::MissingManagedGeneration),
+            _ => Err(PassBindingError::WrongResourceKind),
+        }
+    }
+    /// 逻辑资源 → 物理托管图像。
+    pub fn texture_for(
+        &self,
+        resource: u32,
+    ) -> Result<crate::raw::managed::texture::ManagedTexture, PassBindingError> {
+        let mapping = self
+            .registry
+            .resources
+            .get(resource as usize)
+            .ok_or(PassBindingError::MissingLogical)?;
+        match self
+            .registry
+            .backing_resources
+            .get(mapping.backing_index as usize)
+            .ok_or(PassBindingError::MissingPhysical)?
+        {
+            RegistryResource::OwnedTexture(t) | RegistryResource::UnownedTexture(t) => self
+                .textures
+                .get(t.handle.key())
+                .ok_or(PassBindingError::MissingManagedGeneration),
+            _ => Err(PassBindingError::WrongResourceKind),
+        }
+    }
     pub fn resolve(
         &self,
         pass: &PassDeclaration,

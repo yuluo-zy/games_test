@@ -21,6 +21,48 @@ impl RenderGraphState {
         self.pool.clear();
         self.temporal.clear();
     }
+    /// 原 `RenderGraphState::compile<Export, UD, F>`（0x140161cd0 / 0x1401647b0 / 0x140166510）的入口形态：
+    /// 在新图上调用构图闭包（返回 `Export`，如 `ResourceExportHandle<Texture>` 或 `()`），
+    /// 再按原顺序 导出 temporal → build → population → 校验导出。失败时 `Export` 随闭包结果一并丢弃。
+    pub fn compile<Export>(
+        &mut self,
+        backend: &mut impl ResourceBackend,
+        dependency: &mut impl AccessDependency,
+        build: impl FnOnce(&mut RenderGraph) -> Export,
+    ) -> Result<(CompiledFrame, Export), FrameCompileError> {
+        let mut graph = self.begin_frame();
+        let export = build(&mut graph);
+        let frame = self.compile_frame(graph, backend, dependency)?;
+        Ok((frame, export))
+    }
+    /// 0x1401647b0：加载图实例 `compile<ResourceExportHandle<Texture>, PassResources, compile_loading_screen_render_graph::closure>`。
+    /// 与 [`Self::compile`] 同一条链；单独命名只为对应原单态实例（`pass_entries::CompileInstance::LoadingScreen`）。
+    pub fn compile_loading_graph<Export>(
+        &mut self,
+        backend: &mut impl ResourceBackend,
+        dependency: &mut impl AccessDependency,
+        build: impl FnOnce(&mut RenderGraph) -> Export,
+    ) -> Result<(CompiledFrame, Export), FrameCompileError> {
+        self.compile(backend, dependency, build)
+    }
+    /// 0x140161cd0：世界图实例（闭包内是 `render_world` 的 59 个 pass 调用点，见 `pass_entries`）。
+    pub fn compile_world_graph<Export>(
+        &mut self,
+        backend: &mut impl ResourceBackend,
+        dependency: &mut impl AccessDependency,
+        build: impl FnOnce(&mut RenderGraph) -> Export,
+    ) -> Result<(CompiledFrame, Export), FrameCompileError> {
+        self.compile(backend, dependency, build)
+    }
+    /// 0x140166510：展示图实例，`Export = ()`，由 `GraphExecutionRecorder::execute` 内部调用。
+    pub fn compile_presentation_graph(
+        &mut self,
+        backend: &mut impl ResourceBackend,
+        dependency: &mut impl AccessDependency,
+        build: impl FnOnce(&mut RenderGraph),
+    ) -> Result<CompiledFrame, FrameCompileError> {
+        self.compile(backend, dependency, build).map(|(frame, ())| frame)
+    }
     /// 导出发生在 population 之前；后续失败不会回滚成旧的 raw 历史。
     pub fn compile_frame(
         &mut self,

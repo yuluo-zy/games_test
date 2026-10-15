@@ -64,7 +64,9 @@ impl ResourceOrigin {
     }
 }
 
-/// 已观察到的两个 validate_read_access 实例均只有 RET；保留空操作。
+/// ✅ 原版空操作：PDB 公共符号 `<Texture as Resource>::validate_read_access`（h83678d6fcc0889d6）与
+/// `<Buffer as Resource>::validate_read_access`（hfc3e91621b7af5dd）被 ICF 折叠到同一地址 0x14003bb80，
+/// 该地址的机器码只有一条 `ret`（C3，后跟 int3 填充）。故不存在读访问合法性断言/panic 文案；保留空操作。
 pub fn validate_read_access(_access: u8) {}
 
 use super::resource_registry::{Buffer, RegistryResource, Texture};

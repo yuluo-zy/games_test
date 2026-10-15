@@ -1,3 +1,4 @@
+pub mod access_table;
 pub mod allocator;
 pub mod barrier;
 pub mod binding;
@@ -9,6 +10,7 @@ pub mod debug;
 pub mod descriptor_binding;
 pub mod descriptor_set;
 pub mod device;
+pub mod device_api;
 pub mod disposal;
 pub mod dynamic_constants;
 pub mod error;
@@ -26,7 +28,7 @@ pub mod semaphore;
 pub mod setup;
 pub mod shader;
 pub mod stats;
-#[cfg(feature = "candidate-suballocation")]
+#[cfg(feature = "suballocation")]
 pub mod suballoc;
 pub mod submit;
 pub mod swapchain;
@@ -36,3 +38,6 @@ pub mod texture;
 pub mod resource_usage;
 
 pub mod texture_upload;
+pub mod aftermath;
+pub mod dxgi;
+pub mod gpu_profiler;

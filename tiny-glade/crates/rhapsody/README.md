@@ -27,7 +27,7 @@
 
 ## 候选集成与剩余功能
 
-有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、epoch graveyard、WSI 重建和诊断后端仍有登记的候选策略。原 `RasterPipelineOpts` 是 4 字节位域，当前选项载体/缓存键不是其完整还原。
+有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、epoch graveyard、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；固定状态里 `[device+0xad9]` 对应的 LINE_WIDTH 动态状态、子通道号恒 0 仍是候选。
 
 候选扩展默认关闭：`candidate-suballocation` 才启用公共 `gpu-allocator 0.27`；原本地 `0.26` 分叉尚未找到，不把此版本记为原依赖匹配。`candidate-optimizations` 才启用 Balanced 分块与 ADAPTIVE 轻帧门槛；默认 session 使用原 PGO 分块策略，序列号回收和原并行命令池来源仍需进一步原码对照。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
 

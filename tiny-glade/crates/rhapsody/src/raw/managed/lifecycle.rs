@@ -3,7 +3,7 @@
 //! 消费真实每队列命令序号的类型化生命周期模型。对象分配由后端提供；全局桶使用 u64。
 pub use crate::raw::device::DeviceCounters;
 use crate::raw::managed::tracking::{
-    CommandState, ControlBlock, TrackOutcome, drop_reference, track_handle,
+    CommandState, ControlBlock, TrackOutcome, drop_reference, try_track_handle,
 };
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::Ordering;
@@ -231,7 +231,8 @@ impl SequenceRuntime {
             .resources
             .get(&handle.id)
             .ok_or(Failure::UnknownResource)?;
-        let result = track_handle(
+        // 该 runtime 记账层返回 Result（不 panic）；原版 tag != 1 的 panic 见 `track_handle`。
+        let result = try_track_handle(
             &resource.control,
             handle.generation,
             CommandState {
@@ -456,7 +457,7 @@ impl SequenceRuntime {
         let r = self.resources.get(&handle.id)?;
         Some((
             r.control.last_sequence.load(Ordering::SeqCst),
-            r.control.references.load(Ordering::SeqCst),
+            r.control.references.load(Ordering::SeqCst) as u32,
         ))
     }
 }

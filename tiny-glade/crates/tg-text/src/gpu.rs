@@ -48,9 +48,9 @@ pub struct GpuTextRenderer {
     target: Option<([u32; 2], Arc<Texture>)>,
 }
 fn sampled_2d(texture: &Texture) -> bool {
-    texture.desc.image_type == vk::ImageType::TYPE_2D
-        && texture.desc.array_layers == 1
-        && texture.desc.samples == vk::SampleCountFlags::TYPE_1
+    texture.desc.image_type() == vk::ImageType::TYPE_2D
+        && texture.desc.array_layers() == 1
+        && texture.desc.samples() == vk::SampleCountFlags::TYPE_1
         && texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED)
         && rhapsody::raw::format::vk_format_info(texture.desc.format)
             .is_some_and(|f| f.aspect == vk::ImageAspectFlags::COLOR)
@@ -279,8 +279,8 @@ impl GpuTextRenderer {
         }
         let mut globals = Vec::with_capacity(24);
         for bytes in [
-            self.blue_noise.desc.extent.width.to_le_bytes(),
-            self.blue_noise.desc.extent.height.to_le_bytes(),
+            self.blue_noise.desc.extent().width.to_le_bytes(),
+            self.blue_noise.desc.extent().height.to_le_bytes(),
             (width as f32).to_le_bytes(),
             (height as f32).to_le_bytes(),
             atlas_desc.width.to_le_bytes(),
@@ -569,7 +569,7 @@ impl GpuTextRenderer {
                             .aspect_mask(vk::ImageAspectFlags::COLOR)
                             .layer_count(1),
                     )
-                    .image_extent(desc.extent)],
+                    .image_extent(desc.extent())],
             );
             self.device.device.cmd_pipeline_barrier(
                 command.handle,

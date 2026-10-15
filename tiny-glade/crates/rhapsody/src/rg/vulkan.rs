@@ -23,6 +23,27 @@ use std::{
     sync::Arc,
 };
 
+/// 后端导入 token 与跨帧 temporal token 共用的物理资源标识空间。
+///
+/// 两边曾各自从 1 起分配，会撞号：`bind_import_named` 会因“token 已属于其他物理资源”拒绝导入。
+/// 现在统一用一个全进程单调计数器；外部指定的 token（`bind_import_named`）通过 [`reserve_token`]
+/// 把计数器推过它，之后分配的 token 一定更大。0 与 `u64::MAX` 保留为无效。
+static NEXT_TOKEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+fn try_allocate_token() -> Option<u64> {
+    use std::sync::atomic::Ordering;
+    NEXT_TOKEN
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |t| {
+            (t < u64::MAX - 1).then_some(t + 1)
+        })
+        .ok()
+}
+fn allocate_token() -> u64 {
+    try_allocate_token().expect("token 空间耗尽")
+}
+fn reserve_token(token: u64) {
+    NEXT_TOKEN.fetch_max(token.saturating_add(1), std::sync::atomic::Ordering::Relaxed);
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AccessSpec {
     pub original_mask: u32,
@@ -47,6 +68,31 @@ impl Default for AccessTable {
         )]))
     }
 }
+impl AccessTable {
+    /// 原版全部 64 个访问码：`(stage, access, layout)` 取自 EXE 的表（`raw::access_table`），
+    /// 写分类为 `0x28..=0x37`，`original_mask` 即 access 掩码（资源用法推导的输入）。
+    pub fn original() -> Self {
+        use crate::raw::access_table::{ACCESS_TABLE, is_write};
+        Self(
+            ACCESS_TABLE
+                .iter()
+                .enumerate()
+                .map(|(code, info)| {
+                    (
+                        code as u8,
+                        AccessSpec {
+                            original_mask: info.access,
+                            write: is_write(code as u8),
+                            stages: info.stages(),
+                            access: info.access_flags(),
+                            layout: info.image_layout(),
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
+}
 impl graph::AccessDependency for AccessTable {
     fn access_mask(&mut self, code: u8) -> u32 {
         self.0[&code].original_mask
@@ -61,25 +107,32 @@ pub enum ResourceSpec {
     Image(texture::TextureDesc),
 }
 impl ResourceSpec {
-    /// 候选适配把尺寸编码到原比较组 +0xc..+0x17；不声称其余字段名已恢复。
+    /// 按原描述字节布局编码（缓冲：size@0 usage@8 alignment@0xc memory_location@0xe）。
     pub fn descriptor(self) -> graph::Descriptor {
         match self {
             Self::Buffer(d) => graph::Descriptor::Buffer(graph::BufferDesc {
                 word_at_00: d.size,
                 word_at_08: d.usage.as_raw(),
-                bytes_at_0c_through_0e: [0; 3],
+                // 原 `BufferDesc`：alignment u16 @0xc、memory_location u8 @0xe。
+                bytes_at_0c_through_0e: [
+                    d.alignment.to_le_bytes()[0],
+                    d.alignment.to_le_bytes()[1],
+                    d.memory_location.as_raw(),
+                ],
             }),
             Self::Image(d) => graph::Descriptor::Image(graph::TextureDesc {
+                // 原 `TextureDesc` 的字节布局：usage@0 flags@4 format@8 width@0xc height@0x10 depth@0x14
+                // array_elements@0x18；mip_levels@0x1c sample_count@0x1d kind@0x1e。
                 words_at_00_through_18: [
                     d.usage.as_raw(),
+                    d.flags.as_raw(),
                     d.format.as_raw() as u32,
-                    d.array_layers,
-                    d.extent.width,
-                    d.extent.height,
-                    d.extent.depth,
-                    d.mip_levels,
+                    d.width,
+                    d.height,
+                    d.depth,
+                    d.array_elements,
                 ],
-                bytes_at_1c_through_1e: [d.image_type.as_raw() as u8, d.samples.as_raw() as u8, 0],
+                bytes_at_1c_through_1e: [d.mip_levels, d.sample_count, d.kind as u8],
             }),
         }
     }
@@ -125,7 +178,6 @@ pub struct VulkanGraphBackend {
     pool: Arc<VulkanCommandPool>,
     commands: BTreeMap<u64, VulkanCommandBuffer>,
     managed: BTreeMap<u64, lifecycle::ResourceHandle>,
-    next_token: u64,
     queue: lifecycle::Queue,
     family: u32,
     queue_timelines: Vec<Arc<TimelineSemaphore>>,
@@ -193,8 +245,8 @@ fn add_transition(
                 .aspect_mask(crate::raw::format::vk_format_valid_aspect_flags(
                     image.desc.format,
                 ))
-                .level_count(image.desc.mip_levels)
-                .layer_count(image.desc.array_layers);
+                .level_count(u32::from(image.desc.mip_levels))
+                .layer_count(image.desc.array_layers());
             let barrier = vk::ImageMemoryBarrier::default()
                 .src_access_mask(source.access)
                 .dst_access_mask(target.access)
@@ -286,7 +338,6 @@ impl VulkanGraphBackend {
             specifications: BTreeMap::new(),
             commands: BTreeMap::new(),
             managed: BTreeMap::new(),
-            next_token: 1,
             queue,
             family,
             queue_timelines,
@@ -554,7 +605,7 @@ impl VulkanGraphBackend {
             GpuResource::Image(i) => RawResource::Image(i.handle),
         };
         self.resources.insert(token, resource);
-        self.next_token = self.next_token.max(token + 1);
+        reserve_token(token);
         self.import_families.insert(token, owner_family);
         self.resolver.0.write().insert(name.into(), raw);
         Ok(())
@@ -563,8 +614,7 @@ impl VulkanGraphBackend {
         self.bind_import_owned_by(resource, self.device.queue_family)
     }
     pub fn bind_import_owned_by(&mut self, resource: GpuResource, owner_family: u32) -> u64 {
-        let token = self.next_token;
-        self.next_token += 1;
+        let token = allocate_token();
         self.resources.insert(token, resource);
         self.import_families.insert(token, owner_family);
         token
@@ -902,7 +952,14 @@ impl ExecutionBackend for VulkanGraphBackend {
                     .signal_semaphore_values(&p.signal_values)
             })
             .collect::<Vec<_>>();
-        let info = prepared
+        let _guard = self.device.queue_lock.lock();
+        let retire = self.device.note_submit_on(queue);
+        // 末尾追加一个空提交，让退役时间线在本次所有批次之后 signal。
+        let retire_handles: Vec<_> = retire.iter().map(|(s, _)| *s).collect();
+        let retire_values: Vec<_> = retire.iter().map(|(_, v)| *v).collect();
+        let mut retire_timeline =
+            vk::TimelineSemaphoreSubmitInfo::default().signal_semaphore_values(&retire_values);
+        let mut info = prepared
             .iter()
             .zip(timelines.iter_mut())
             .map(|(p, t)| {
@@ -914,15 +971,23 @@ impl ExecutionBackend for VulkanGraphBackend {
                     .push_next(t)
             })
             .collect::<Vec<_>>();
-        let _guard = self.device.queue_lock.lock();
-        self.device.note_submit();
+        if retire.is_some() {
+            info.push(
+                vk::SubmitInfo::default()
+                    .signal_semaphores(&retire_handles)
+                    .push_next(&mut retire_timeline),
+            );
+        }
         let result = match unsafe {
             self.device
                 .device
                 .queue_submit(queue, &info, vk::Fence::null())
         } {
             Ok(()) => (0, false),
-            Err(e) => (e.as_raw(), false),
+            Err(e) => {
+                self.device.note_submit_failed(retire);
+                (e.as_raw(), false)
+            }
         };
         self.submissions.push(GpuSubmissionCapture {
             queue,
@@ -1036,12 +1101,19 @@ pub struct VulkanGraphSession {
     pub backend: VulkanGraphBackend,
     pub chain: ExecutionChain,
     pool: graph::Pool,
-    pending: VecDeque<PendingSessionFrame>,
+    /// 原 `GraphExecutor` 首字段 `VecDeque<PendingSubmission>`（0x140beabd0/0x140bec400/0x140bea680）。
+    pending: super::frame_throttle::FrameThrottle<PendingSessionFrame>,
+    /// 可选：挂接后把提交队列状态镜像给设备的 `SubmissionEngine`（原 `+0x720`）。
+    graphics_device: Option<Arc<crate::raw::device::GraphicsDevice>>,
     next_frame: u64,
     poisoned: Option<String>,
     failed_retire: Vec<graph::RetireCallback>,
     /// 上一帧从 begin_frame 到该帧完成的墙钟时长；仅统计用途。
     last_frame_duration_ns: u64,
+    /// 顶层 GPU 时间戳查询最近一次给出的 begin→end 时长（原 `last_known_frame_duration_ns` 的 `Option<u64>` 形态）。
+    last_gpu_frame_ns: Option<u64>,
+    /// 原 recorder 里 `+0x108` 回执标签 / `+0x164` 结束标记的等价物（`frame::FrameLedger`）。
+    ledger: super::frame::FrameLedger,
 }
 impl VulkanGraphSession {
     pub fn new(mut backend: VulkanGraphBackend) -> Self {
@@ -1057,11 +1129,14 @@ impl VulkanGraphSession {
             backend,
             chain,
             pool: graph::Pool::default(),
-            pending: VecDeque::new(),
+            pending: Default::default(),
+            graphics_device: None,
             next_frame: 1,
             poisoned: None,
             failed_retire: vec![],
             last_frame_duration_ns: 0,
+            last_gpu_frame_ns: None,
+            ledger: Default::default(),
         }
     }
     pub fn is_poisoned(&self) -> bool {
@@ -1083,7 +1158,20 @@ impl VulkanGraphSession {
         &mut self,
         command: vk::CommandBuffer,
     ) -> Result<Option<u64>, vk::Result> {
-        self.backend.end_top_level_timestamp_query(command)
+        let ns = self.backend.end_top_level_timestamp_query(command)?;
+        // 原 `last_known_frame_duration_ns`（0x140beaae0）：不小于 1e9 ns 视为无效 → None。
+        self.last_gpu_frame_ns = ns.filter(|&v| (v as f64) < super::frame::FRAME_DURATION_VALID_BELOW_NS);
+        Ok(ns)
+    }
+    /// 原 `GraphExecutor::last_known_frame_duration_ns` 的真实返回形态 `Option<u64>`（见 `rg::frame`）：
+    /// 最近一次顶层 GPU 时间戳时长，且小于 1 秒；没有或无效为 `None`。
+    /// 与 [`Self::last_known_frame_duration_ns`]（墙钟，候选统计）不同。
+    pub fn last_known_gpu_frame_duration_ns(&self) -> Option<u64> {
+        self.last_gpu_frame_ns
+    }
+    /// 本帧提交账本（`begin_frame` 清零，`execute_frame` 记提交，`end_frame` 校验）。
+    pub fn frame_ledger(&self) -> &super::frame::FrameLedger {
+        &self.ledger
     }
     /// 原 GraphExecutor::wait_submits_done：等待在途提交全部完成。
     /// wait_frame 对每个在途帧执行有界等待，超时以 Err 返回。
@@ -1096,13 +1184,23 @@ impl VulkanGraphSession {
     }
     pub fn begin_frame(&mut self) -> Result<graph::RenderGraph, String> {
         // 原 begin_frame 才排出队头，保留最近一帧；trim 只等待，不改变队列。
-        while self.pending.len() > 1 {
+        // 0x140beabd0：承接弹出项的是容量 2 的 ArrayVec，第三次弹出（在途 >= 4）panic。
+        // `execute_frame` 要求在途 <= 1 才能提交，所以会话内在途最多 2、此处至多弹 1 次，正常不可达；
+        // 保留断言使越界与原版同样是 panic 而非静默多排（见 `FrameThrottle::begin_frame_bounded`）。
+        let mut drained = 0usize;
+        while self.pending.in_flight() > 1 {
+            assert!(
+                drained < super::frame::BEGIN_FRAME_DRAIN_CAPACITY,
+                "begin_frame drained more in-flight submissions than the original ArrayVec holds"
+            );
             let frame = self.pending.front().unwrap().frame;
             self.wait_frame(frame, 10_000_000_000)?;
+            drained += 1;
         }
         if let Some(error) = &self.poisoned {
             return Err(format!("会话已停止: {error}"));
         }
+        self.ledger.begin();
         self.backend.specifications.clear();
         self.backend.resolver.0.write().clear();
         self.backend.synchronization.clear();
@@ -1115,8 +1213,12 @@ impl VulkanGraphSession {
         &mut self,
         built: graph::BuiltGraph,
     ) -> Result<SessionFrameReceipt, String> {
-        if self.pending.len() > 1 {
+        if self.pending.in_flight() > 1 {
             return Err("须先调用 begin_frame 执行帧节流".into());
+        }
+        // 上一帧已结束而调用方没有再 begin_frame（原版 begin_frame 重建 recorder）：开新账本，避免误报重复结束。
+        if self.ledger.has_ended() {
+            self.ledger.begin();
         }
         if let Some(error) = &self.poisoned {
             return Err(format!("会话已停止: {error}"));
@@ -1181,10 +1283,46 @@ impl VulkanGraphSession {
         }
     }
     fn end_frame(&mut self, pending: PendingSessionFrame) {
-        self.pending.push_back(pending);
+        // 原 end_frame 在 ensure_active_cb + submit_pending_cbs 之后检查"本帧是否有提交"，没有就 panic；
+        // 这里的 execute_frame 只在有回执时才到这一步，空图（无 pass）可能没有回执，所以只告警不 panic。
+        if !pending.execution.receipts.is_empty() {
+            self.ledger.note_submission();
+        }
+        if let Err(error) = self.ledger.end() {
+            log::warn!("end_frame 账本异常: {error:?}（原版此处 panic）");
+        }
+        self.pending.end_frame(pending);
+        self.mirror_submission_state();
+    }
+    /// 挂接设备：创建原 `+0x720` 提交引擎（镜像本会话 `chain.device` 的队列状态）。
+    /// 之后每次 end_frame / 帧完成都同步引擎，`GraphicsDevice::wait_idle_and_recycle_resources` 才真正推进队列。
+    pub fn attach_graphics_device(&mut self, device: Arc<crate::raw::device::GraphicsDevice>) {
+        device.attach_submission_engine(submit::SubmissionEngine::new(self.chain.device.clone()));
+        self.graphics_device = Some(device);
+    }
+    fn mirror_submission_state(&self) {
+        if let Some(device) = &self.graphics_device {
+            let state = self.chain.device.clone();
+            device.with_submission_engine(|engine| engine.state = state);
+        }
+    }
+    /// 原 `wait_idle_and_recycle_resources` 的第 4 步（推进图形/辅助队列时间线并回收）；
+    /// 该方法在原类型上取 `&mut self`，Arc 持有者无法调用，故在此经 `with_submission_engine` 复现。
+    fn recycle_submission_engine(&self) {
+        if let Some(device) = &self.graphics_device {
+            let raw = self.backend.device.clone();
+            device.with_submission_engine(|engine| {
+                engine.update_queue_pending_submissions_with(|queue| unsafe {
+                    raw.device
+                        .get_semaphore_counter_value(queue.timeline_semaphore)
+                        .unwrap_or(0)
+                });
+                engine.reclaim_command_buffer_resources_all_queues(0);
+            });
+        }
     }
     pub fn pending_frame_count(&self) -> usize {
-        self.pending.len()
+        self.pending.in_flight()
     }
     /// 有界等候队头；即使完成也不弹出，退役只在 begin_frame/wait_frame 发生。
     pub fn wait_gpu_queue_trim(&self, timeout: u64) -> Result<bool, String> {
@@ -1263,6 +1401,8 @@ impl VulkanGraphSession {
             callback();
         }
         self.last_frame_duration_ns = pending.started_at.elapsed().as_nanos() as u64;
+        self.mirror_submission_state();
+        self.recycle_submission_engine();
         Ok(())
     }
     /// 显式淘汰缓存，必须在当前帧完成后调用；保持 counter/timeline，避免 resize 残留无限增长。
@@ -1274,6 +1414,9 @@ impl VulkanGraphSession {
             .device
             .wait_idle()
             .map_err(|e| format!("{e:?}"))?;
+        // 缩放/收尾级等待（原版此处走 wait_idle_and_recycle_resources）：idle 后推进并回收提交引擎。
+        self.mirror_submission_state();
+        self.recycle_submission_engine();
         self.backend.pass_resources.take();
         for command in self.backend.commands.values_mut() {
             unsafe { command.release_completed_owners() };
@@ -1322,6 +1465,43 @@ impl VulkanGraphSession {
         }
         Ok(removed.len())
     }
+    /// 释放单个导入资源（`bind_import*` 登记的 token），不需要整设备空闲，也不清别的缓存。
+    ///
+    /// 只拒绝“仍被在飞帧引用”的 token：那种资源 GPU 可能还在用，必须等对应帧 `wait_frame` 之后。
+    /// 返回是否真的移除了东西（未登记的 token 返回 `Ok(false)`）。
+    /// 以前只能靠 `collect_after_completion`（要求在飞为空 + 设备级 `wait_idle`）才会放掉导入资源，
+    /// 每帧新建并导入的资源因此会一直堆到排空点。
+    pub fn release_import(&mut self, token: u64) -> Result<bool, String> {
+        if self.pending.iter().any(|frame| {
+            frame
+                .execution
+                .compiled
+                .snapshot
+                .physical_mapping
+                .iter()
+                .any(|mapping| mapping.token == Some(token))
+        }) {
+            return Err(format!("token {token} 仍被在飞帧引用，不能释放"));
+        }
+        // `pass_resources` 只在录制期用；录制结束后在飞命令缓冲靠自己的 keep_alive 持有资源，
+        // 这份缓存继续留着只会拖住已释放的导入资源。
+        self.backend.pass_resources.take();
+        let mut removed = self.backend.resources.remove(&token).is_some();
+        self.backend.import_families.remove(&token);
+        if let Some(handle) = self.backend.managed.remove(&token) {
+            self.chain.lifecycle.cpu_retire(handle);
+            self.chain
+                .lifecycle
+                .drop_handle(handle)
+                .map_err(|e| format!("{e:?}"))?;
+            self.chain.lifecycle.collect_waste();
+            // 与 `wait_frame` 相同：推进完成前缀，让已退役的托管资源真正离开 store。
+            self.backend
+                .collect_completed_managed(self.chain.lifecycle.prefix(self.backend.queue))?;
+            removed = true;
+        }
+        Ok(removed)
+    }
     pub fn clear_after_completion(&mut self) -> Result<usize, String> {
         self.collect_after_completion(&[])
     }
@@ -1348,7 +1528,6 @@ pub struct TemporalGpuResources {
     pub device: Arc<VulkanDevice>,
     specifications: BTreeMap<String, ResourceSpec>,
     resources: BTreeMap<u64, GpuResource>,
-    next_token: u64,
 }
 impl TemporalGpuResources {
     pub fn new(device: Arc<VulkanDevice>) -> Self {
@@ -1356,7 +1535,6 @@ impl TemporalGpuResources {
             device,
             specifications: BTreeMap::new(),
             resources: BTreeMap::new(),
-            next_token: 1,
         }
     }
     pub fn register(&mut self, name: &str, spec: ResourceSpec) -> graph::Descriptor {
@@ -1405,10 +1583,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
                 .map(|r| GpuResource::Image(Arc::new(r))),
         }
         .map_err(|e| graph::BuildError::ResourceCreationFailed(e.to_string()))?;
-        let token = self.next_token;
-        self.next_token = self
-            .next_token
-            .checked_add(1)
+        let token = try_allocate_token()
             .ok_or_else(|| graph::BuildError::ResourceCreationFailed("跨帧token耗尽".into()))?;
         self.resources.insert(token, resource);
         Ok(token)

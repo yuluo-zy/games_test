@@ -1,7 +1,7 @@
 //! 交换链托管。创建、获取与呈现复用 raw 层，CPU 退役与 GPU 完成分离。
 use super::{handle::Managed, resources::ResourceManager};
 use crate::raw::{
-    error::{Error, Result},
+    error::Result,
     swapchain::{
         ACQUIRE_TIMEOUT_NS, AcquiredSwapchainFrame, Swapchain, SwapchainDesc, SwapchainImageLease,
     },
@@ -46,19 +46,21 @@ impl Managed<Swapchain> {
     pub fn is_stale(&self) -> bool {
         self.resource().is_stale()
     }
+    /// 与 raw 层同一分派（见 `Swapchain::validate_swapchain_and_acquire_image`）：
+    /// `Ok(None)` = 本帧没有可用图像；stale / OUT_OF_DATE 重建后换入新托管句柄。
     pub fn validate_swapchain_and_acquire_image(
         store: &ResourceManager<Swapchain>,
         current: &mut Self,
-    ) -> Result<AcquiredSwapchainFrame> {
-        match current.acquire_next() {
-            Err(Error::Vulkan(vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
-                current.retire();
-                let replacement = current.resource().replacement()?;
-                *current = store.allocate(replacement);
-                current.acquire_next()
-            }
-            result => result,
+    ) -> Result<Option<AcquiredSwapchainFrame>> {
+        let mut chain = current.0.resource.clone();
+        let before = Arc::as_ptr(&chain);
+        let result = Swapchain::validate_swapchain_and_acquire_image(&mut chain);
+        if Arc::as_ptr(&chain) != before {
+            // 旧链退役（仅禁止后续获取，已有租约保护资源），换入重建出的新链。
+            current.retire();
+            *current = store.allocate_shared(chain);
         }
+        result
     }
 }
 

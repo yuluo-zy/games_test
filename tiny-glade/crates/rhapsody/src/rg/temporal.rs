@@ -85,6 +85,58 @@ impl TemporalRecordState {
         }
     }
 }
+/// 原 `TemporalRenderGraphRecorder`（0x110 字节）与表内 `Record`（0x68 字节）的已读偏移。
+/// 证据：`export_temporal` 0x1404f7ca0（以**输入**recorder 为基准读 `+0xb0..+0x108`，输出是去掉设备引用的
+/// `(RenderGraph, TemporalRenderGraphState)` 元组，所以输出里同样的表整体前移 8 字节：`+0xa8` 起）、
+/// `get_or_create_temporal<&str>` 0x14096c310 / `<String>` 0x1404f6850 / `get_or_create_temporal_pair` 0x1404f7450、
+/// `TemporalRenderGraphState::get_and_flip_parity` 0x140beced0。
+///
+/// * Recorder（输入基准）：`+0x00..0xa8` `RenderGraph`；**`+0xa8` = `&GraphicsDevice`**（`get_or_create_temporal`
+///   把 `[recorder+0xa8]` 作为 `GraphicsDevice::create_buffer`（0x1416a2dc0）的第 2 参；`export_temporal` 不拷它）；
+///   `+0xb0..+0x110` = 内嵌的 `TemporalRenderGraphState`（0x60 字节，两张 `HashMap<Ustr, _, RandomState>`）：
+///   - 表 1（temporal 资源，元素 0x68）：`+0xb0` 控制字节指针、`+0xb8` bucket_mask、`+0xc0` growth_left、`+0xc8` items、
+///     `+0xd0/+0xd8` 哈希种子 k0/k1（`hash_one` 0x1412e8120 的 `rcx = recorder+0xd0`）；
+///   - 表 2（奇偶翻转 `Ustr → u32`，`get_and_flip_parity(recorder+0xb0, key)`，体内读 `state+0x48` items、`state+0x50` 种子）：
+///     `+0xe0` 控制字节、`+0xe8` mask、`+0xf0` growth_left、`+0xf8` items、`+0x100/+0x108` 种子。
+///   即旧文档"+0xd8..+0x108 含义未读出"已读出：就是第二张表（奇偶表）。现 Rust `TemporalRenderGraphState` 的
+///   `resources` / `parity` 两张表与之对应，`retired_tokens`（候选）原版没有。
+/// * Record（相对元素起点；元素末尾地址 `P = 起点+0x68`，代码里的 `[P-0x60]` 即 `+0x08`）：`+0x00` 键 `Ustr`、
+///   `+0x08` 状态 u32（0 raw 纹理 / 1 raw 缓冲 / 2 已导出；`get_or_create_temporal` 命中时要求 `== 2` 否则报错，
+///   然后改写为 1）、`+0x0c` 起为负载。状态 0/1 时负载是 `{u32 资源下标 @0x0c, u64 @0x10, u64 @0x18, u64 @0x20, u64 @0x28}`
+///   （纹理 0x140bd6380 / 缓冲 0x140bd5120 的 `export` 入参，缓冲少一个字段）；导出后写回状态 2、
+///   `+0x0c` 字节 = 0x37（导出访问码）、其后原样放 export 的返回载体。
+///   命中路径：`+0x0c` 的字节作为 `import_unowned`（0x140bd4fc0）第 4 参（`initial_access`），`+0x30` 起为该调用的
+///   第 2 参（导出载体），调用返回 20 字节 `ImportedBuffer` 写回 `+0x0c..+0x20`；**`+0x66` 字节必须 == 7**（缓冲变体的
+///   后备资源类型标记，不等则报"wrong kind"）。
+///   返回值（`Result` 的 sret，0x20 字节）：`{ImportedBuffer 0x14 @0, tag u8 @0x18}`，tag 0 = 新建、1 = 复用、2 = 错误（载荷为 String）。
+///   `+0x24..+0x30`、`+0x67` 仍无读出的字段名。
+pub mod original_layout {
+    pub const RECORD_SIZE: usize = 0x68;
+    pub const RECORD_KEY: usize = 0x00;
+    pub const RECORD_STATE: usize = 0x08;
+    pub const RECORD_PAYLOAD: usize = 0x0c;
+    /// 命中路径里 `import_unowned` 的第 2 参（导出载体）所在偏移。
+    pub const RECORD_EXPORT_CARRIER: usize = 0x30;
+    /// 缓冲变体的后备资源类型标记所在字节，值必须为 [`RECORD_BUFFER_KIND`]。
+    pub const RECORD_KIND_TAG: usize = 0x66;
+    pub const RECORD_BUFFER_KIND: u8 = 7;
+    pub const RECORDER_GRAPH_BYTES: usize = 0xa8;
+    /// `&GraphicsDevice`。
+    pub const RECORDER_DEVICE: usize = 0xa8;
+    /// 内嵌 `TemporalRenderGraphState` 的起点与大小（Recorder 总长 = 起点 + 大小 = 0x110）。
+    pub const RECORDER_STATE: usize = 0xb0;
+    pub const RECORDER_STATE_BYTES: usize = 0x60;
+    pub const RECORDER_SIZE: usize = 0x110;
+    /// 表 1（temporal 资源）：控制字节指针 / mask / growth_left / items / 种子。
+    pub const RECORDER_TABLE_CTRL: usize = 0xb0;
+    pub const RECORDER_TABLE_LEN: usize = 0xc8;
+    pub const RECORDER_TABLE_SEEDS: usize = 0xd0;
+    /// 表 2（奇偶翻转）起点（相对 recorder）= `RECORDER_STATE + 0x30`。
+    pub const RECORDER_PARITY_TABLE: usize = 0xe0;
+    pub const RECORDER_PARITY_LEN: usize = 0xf8;
+    pub const RECORDER_PARITY_SEEDS: usize = 0x100;
+    pub const EXPORT_ACCESS_CODE: u8 = 0x37;
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TemporalLookup {
     pub handle: ResourceHandle,
@@ -210,8 +262,10 @@ impl TemporalRenderGraphState {
             };
             if !replace {
                 // buffer 命中保留物理描述符，不能把新请求描述符冒充已有资源。
+                // 原版复用与新建都走 `Texture::import_unowned`（0x1404f6e50）：
+                // 物理资源的所有权留在时态表里，图只借用。
                 let handle = graph
-                    .import_owned(
+                    .import_unowned(
                         name,
                         old.resource.descriptor,
                         old.resource.token,
@@ -232,7 +286,7 @@ impl TemporalRenderGraphState {
             token: create().map_err(TemporalError::Backend)?,
             access: 0,
         };
-        let handle = match graph.import_owned(name, descriptor, resource.token, 0) {
+        let handle = match graph.import_unowned(name, descriptor, resource.token, 0) {
             Ok(handle) => handle,
             Err(error) => {
                 // 原 import 是无失败分支的边界；候选图容量错误仍须释放新创建的拥有者引用。
@@ -359,5 +413,98 @@ fn raw_state(descriptor: Descriptor, handle: ResourceHandle) -> TemporalRecordSt
     match descriptor {
         Descriptor::Image(_) => TemporalRecordState::RawTexture(handle),
         Descriptor::Buffer(_) => TemporalRecordState::RawBuffer(handle),
+    }
+}
+
+/// 原 `TemporalRenderGraphRecorder`：把跨帧状态与正在录制的图绑在一起；
+/// 键是 `Ustr`（0x1404f6e50 用 `Ustr::from(ptr,len)`），`&str`/`String` 两种实例共用一份实现。
+pub struct TemporalRenderGraphRecorder<'a> {
+    pub state: &'a mut TemporalRenderGraphState,
+    pub graph: &'a mut RenderGraph,
+}
+/// 原 trait `GetOrCreateTemporal(Pair)`：`get_or_create_temporal` 与 `_pair` 两个入口。
+pub trait GetOrCreateTemporal {
+    fn get_or_create_temporal(
+        &mut self,
+        name: &str,
+        descriptor: Descriptor,
+        create: impl FnOnce() -> Result<u64, BuildError>,
+    ) -> Result<TemporalLookup, TemporalError>;
+    fn get_or_create_temporal_pair(
+        &mut self,
+        name: &str,
+        descriptor: Descriptor,
+        create: impl FnMut() -> Result<u64, BuildError>,
+    ) -> Result<TemporalPair, TemporalError>;
+    fn export_temporal(&mut self) -> Result<(), TemporalError>;
+}
+impl GetOrCreateTemporal for TemporalRenderGraphRecorder<'_> {
+    fn get_or_create_temporal(
+        &mut self,
+        name: &str,
+        descriptor: Descriptor,
+        create: impl FnOnce() -> Result<u64, BuildError>,
+    ) -> Result<TemporalLookup, TemporalError> {
+        self.state
+            .get_or_create_temporal(self.graph, name, descriptor, create)
+    }
+    fn get_or_create_temporal_pair(
+        &mut self,
+        name: &str,
+        descriptor: Descriptor,
+        create: impl FnMut() -> Result<u64, BuildError>,
+    ) -> Result<TemporalPair, TemporalError> {
+        self.state
+            .get_or_create_temporal_pair(self.graph, name, descriptor, create)
+    }
+    fn export_temporal(&mut self) -> Result<(), TemporalError> {
+        self.state.export_temporal(self.graph)
+    }
+}
+
+#[cfg(test)]
+mod recorder_tests {
+    use super::*;
+
+    #[test]
+    fn original_layout_constants_agree_with_the_implementation() {
+        assert_eq!(original_layout::EXPORT_ACCESS_CODE, TEMPORAL_EXPORT_ACCESS);
+        assert_eq!(TemporalRecordState::Exported.original_tag(), 2);
+        assert!(original_layout::RECORD_PAYLOAD < original_layout::RECORD_SIZE);
+        use original_layout as l;
+        // 表 1 在 +0xb0..0xe0，表 2 在 +0xe0..0x110，各 RawTable(0x20)+RandomState(0x10)=0x30。
+        assert_eq!(l::RECORDER_STATE, l::RECORDER_DEVICE + 8);
+        assert_eq!(l::RECORDER_STATE + l::RECORDER_STATE_BYTES, l::RECORDER_SIZE);
+        assert_eq!(l::RECORDER_PARITY_TABLE, l::RECORDER_STATE + 0x30);
+        assert_eq!(l::RECORDER_TABLE_LEN, l::RECORDER_TABLE_CTRL + 0x18);
+        assert_eq!(l::RECORDER_PARITY_LEN, l::RECORDER_PARITY_TABLE + 0x18);
+        assert_eq!(l::RECORDER_TABLE_SEEDS, l::RECORDER_TABLE_CTRL + 0x20);
+        assert_eq!(l::RECORDER_PARITY_SEEDS, l::RECORDER_PARITY_TABLE + 0x20);
+        assert!(l::RECORD_KIND_TAG < l::RECORD_SIZE && l::RECORD_EXPORT_CARRIER < l::RECORD_KIND_TAG);
+    }
+    use crate::rg::graph::TextureDesc;
+
+    fn image() -> Descriptor {
+        Descriptor::Image(TextureDesc {
+            words_at_00_through_18: [1, 2, 3, 4, 5, 6, 7],
+            bytes_at_1c_through_1e: [0; 3],
+        })
+    }
+
+    #[test]
+    fn recorder_creates_then_reuses_after_export_through_the_trait() {
+        let mut state = TemporalRenderGraphState::default();
+        let mut graph = RenderGraph::new();
+        {
+            let mut rec = TemporalRenderGraphRecorder { state: &mut state, graph: &mut graph };
+            let fresh = rec.get_or_create_temporal("hist", image(), || Ok(5)).unwrap();
+            assert!(!fresh.reused);
+            rec.export_temporal().unwrap();
+        }
+        let mut graph = RenderGraph::new();
+        let mut rec = TemporalRenderGraphRecorder { state: &mut state, graph: &mut graph };
+        let again = rec.get_or_create_temporal("hist", image(), || panic!("must reuse")).unwrap();
+        assert!(again.reused);
+        assert_eq!(again.resource.token, 5);
     }
 }

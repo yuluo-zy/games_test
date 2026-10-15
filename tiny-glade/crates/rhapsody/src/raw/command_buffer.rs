@@ -265,6 +265,13 @@ impl VulkanCommandBuffer {
         self.submit_to(queue, &[], &[])
     }
     /// 显式生产时间线 wait/signal 数组，并持有信号量到真实 fence 完成。
+    ///
+    /// 与原 `queue_submit`（0x140c04e20）的差异（wave2 读通，详见
+    /// `rhapsody-alignment/reports/wave2-queue-submit.md`）：原版 `fence = VK_NULL_HANDLE`，完成靠**每队列时间线**
+    /// （`Queue+0x88`，每条命令 signal 一个递增值）；提交依次持 `dev+0x800` 读锁与队列自身字节锁（`Queue+0x70`）；
+    /// 提交后 `FUN_1418c0a70(dev+0x648)` 处理延迟操作并对本队列 `reclaim_command_buffer_resources`。
+    /// 本函数仍是 fence + 设备级退役时间线（`retire_timeline`）的自设计路径，纯 CPU 对齐版见
+    /// [`super::submit::SubmissionEngine::queue_submit`]。
     pub fn submit_to(
         self,
         queue: super::device::DeviceQueue,
@@ -297,27 +304,36 @@ impl VulkanCommandBuffer {
         let wait_handles = waits.iter().map(|(s, _, _)| s.handle).collect::<Vec<_>>();
         let wait_values = waits.iter().map(|(_, value, _)| *value).collect::<Vec<_>>();
         let wait_stages = waits.iter().map(|(_, _, stage)| *stage).collect::<Vec<_>>();
-        let signal_handles = signals.iter().map(|(s, _)| s.handle).collect::<Vec<_>>();
-        let signal_values = signals.iter().map(|(_, value)| *value).collect::<Vec<_>>();
+        let mut signal_handles = signals.iter().map(|(s, _)| s.handle).collect::<Vec<_>>();
+        let mut signal_values = signals.iter().map(|(_, value)| *value).collect::<Vec<_>>();
         let fence = unsafe {
             device
                 .device
                 .create_fence(&vk::FenceCreateInfo::default(), None)?
         };
         let buffers = [self.handle];
-        let mut timeline = vk::TimelineSemaphoreSubmitInfo::default()
-            .wait_semaphore_values(&wait_values)
-            .signal_semaphore_values(&signal_values);
-        let submits = [vk::SubmitInfo::default()
-            .command_buffers(&buffers)
-            .wait_semaphores(&wait_handles)
-            .wait_dst_stage_mask(&wait_stages)
-            .signal_semaphores(&signal_handles)
-            .push_next(&mut timeline)];
         let result = {
             let _guard = device.queue_lock.lock();
-            device.note_submit();
-            unsafe { device.device.queue_submit(queue.handle, &submits, fence) }
+            // 退役信号必须与提交同在 queue_lock 内取 epoch，保证时间线值按提交顺序单调。
+            let retire = device.note_submit_on(queue.handle);
+            if let Some((semaphore, value)) = retire {
+                signal_handles.push(semaphore);
+                signal_values.push(value);
+            }
+            let mut timeline = vk::TimelineSemaphoreSubmitInfo::default()
+                .wait_semaphore_values(&wait_values)
+                .signal_semaphore_values(&signal_values);
+            let submits = [vk::SubmitInfo::default()
+                .command_buffers(&buffers)
+                .wait_semaphores(&wait_handles)
+                .wait_dst_stage_mask(&wait_stages)
+                .signal_semaphores(&signal_handles)
+                .push_next(&mut timeline)];
+            let result = unsafe { device.device.queue_submit(queue.handle, &submits, fence) };
+            if result.is_err() {
+                device.note_submit_failed(retire);
+            }
+            result
         };
         if let Err(error) = result {
             unsafe { device.device.destroy_fence(fence, None) };
@@ -385,5 +401,63 @@ impl Drop for PendingCommand {
                 device.device.destroy_fence(self.fence, None)
             }
         }
+    }
+}
+
+/// 设备级命令缓冲池（原 `CommandBufferPool`，`GraphicsDevice+0x9b0` 锁 / `+0x9c0` 数组 / `+0x9c8` 长度）。
+///
+/// 机器码事实（0x140bed4c0 `CommandBufferPool::new`、0x140bef4a0 `create_command_buffer`、
+/// 0x140bf0cc0 回收尾段）：
+/// - 数组元素 0x18B，即一个 `Vec<CommandBuffer>`（`{cap@0, ptr@8, len@0x10}`），按**队列族索引**寻址，
+///   初值 `{0, 8, 0}` = 空 `Vec`（`8` 是 `align_of::<CommandBuffer>()` 的悬垂指针，U#10 闭合）；
+///   数组长度 = 物理设备队列族数量（与 `*(dev+0x658)+0x38` 的 0x1c 步长族属性数组同长）。
+/// - 取：持 `+0x9b0` 自旋锁，越界索引 panic；`Vec` 非空则弹出末尾（LIFO，`len-1`，元素 0x58B），
+///   为空才新建（`CommandBuffer::new` = 每个命令缓冲一个独立 `vkCreateCommandPool`(flags=RESET) + 1 个主级
+///   `vkAllocateCommandBuffers`）。
+/// - 还：回收（`reclaim_command_buffer_resources`）完成项后持同一把锁把 0x58B 压回 `pool[cb.family]`。
+///
+/// 原版 `CommandBuffer` 自带状态机（0x58B，`begin` 内 reset），本重建的 `VulkanCommandBuffer` 在入池前
+/// 先 reset，使池内元素总是可直接 `begin`。
+pub struct CommandBufferPool {
+    lists: Mutex<Vec<Vec<VulkanCommandBuffer>>>,
+}
+impl CommandBufferPool {
+    /// 0x140bed4c0：`n` 个空 `Vec`。
+    pub fn new(family_count: usize) -> Self {
+        Self {
+            lists: Mutex::new((0..family_count).map(|_| Vec::new()).collect()),
+        }
+    }
+    /// 数组长度（`dev+0x9c8`）。
+    pub fn family_count(&self) -> usize {
+        self.lists.lock().len()
+    }
+    /// 某族空闲链长度。
+    pub fn free_count(&self, family: u32) -> usize {
+        self.lists.lock().get(family as usize).map_or(0, Vec::len)
+    }
+    /// 取：非空则 LIFO 弹出；越界与原版一样 panic（索引越界断言）。
+    pub fn take(&self, family: u32) -> Option<VulkanCommandBuffer> {
+        let mut lists = self.lists.lock();
+        let len = lists.len();
+        let list = lists
+            .get_mut(family as usize)
+            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"));
+        list.pop()
+    }
+    /// 还：压回命令缓冲所属族的空闲链。
+    ///
+    /// # Safety
+    /// 覆盖该命令缓冲全部提交的时间线必须已完成（与 `reset_after_completion` 同一契约）。
+    pub unsafe fn recycle_completed(&self, mut command: VulkanCommandBuffer) -> Result<(), vk::Result> {
+        unsafe { command.reset_after_completion()? };
+        let family = command.pool.family;
+        let mut lists = self.lists.lock();
+        let len = lists.len();
+        lists
+            .get_mut(family as usize)
+            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"))
+            .push(command);
+        Ok(())
     }
 }

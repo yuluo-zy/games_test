@@ -13,11 +13,18 @@ impl ComputePipelineDesc {
     pub fn new(source_path: impl Into<String>) -> Self {
         Self::with_entry(source_path, "cs_main")
     }
-    /// 候选显式输入构造，不等同原with_entry的所有Option/所有权分支。
+    /// 原 `with_entry`（0x140539370 / 0x1409e3ab0）：入口为空串时用默认 `cs_main`，否则 `to_owned`。
+    /// 原 `ComputePipelineDesc` 布局 = `{source_path String@0, entry String@0x18, defines Vec@0x30}`
+    /// （0x141795d10 读 `[desc+8/+0x10]` 路径、`[desc+0x38/+0x40]` defines）。
     pub fn with_entry(source_path: impl Into<String>, entry_point: impl Into<String>) -> Self {
+        let entry_point = entry_point.into();
         Self {
             source_path: source_path.into(),
-            entry_point: entry_point.into(),
+            entry_point: if entry_point.is_empty() {
+                "cs_main".into()
+            } else {
+                entry_point
+            },
             defines: ShaderDefines::default(),
         }
     }
@@ -32,6 +39,11 @@ impl ComputePipelineDesc {
         .into()
     }
 }
+/// 原 `RasterPipelineDesc` 是 0x48B（O，0x1409e3980 构造、0x141796080 取键）：
+/// `{source_path String@0, defines Vec<(String,String)>@0x18, String@0x30}`；第三个字符串在
+/// `new_vertex_fragment` 里是 path 的克隆，文件键只用 `@0`/`@0x18`（无入口名）。`@0x30` 的语义
+/// 未证实（下面的 `vertex_entry/fragment_entry` 是候选便利字段，不对应原布局；真正入口名来自
+/// 编译容器每个 stage 的 entry 字符串，见 0x141477105）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RasterPipelineDesc {
     pub source_path: String,
@@ -58,5 +70,36 @@ impl RasterPipelineDesc {
             self.defines.artifact_hash()
         )
         .into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raster_file_names_match_the_shipped_bins() {
+        let mut desc = RasterPipelineDesc::new_vertex_fragment("/billboard_forest.raster.hlsl");
+        desc.defines.0.push(("SHADER_VARIANT_DEPTH_ONLY".into(), "0".into()));
+        assert_eq!(
+            desc.compiled_file_path().to_str().unwrap(),
+            "compiled-shaders/_billboard_forest.raster.hlsl_b903e43ffb3da915.bin"
+        );
+        desc.defines.0[0].1 = "1".into();
+        assert!(desc
+            .compiled_file_path()
+            .to_str()
+            .unwrap()
+            .ends_with("_f0adff76827e73ff.bin"));
+    }
+
+    #[test]
+    fn compute_entry_defaults_to_cs_main_when_empty() {
+        let desc = ComputePipelineDesc::with_entry("/apply_screen_shadows.cs.hlsl", "");
+        assert_eq!(desc.entry_point, "cs_main");
+        assert_eq!(
+            desc.compiled_file_path().to_str().unwrap(),
+            "compiled-shaders/_apply_screen_shadows.cs.hlsl_cs_main_0.bin"
+        );
     }
 }

@@ -83,6 +83,28 @@ pub fn parse_gpu_debug_info(
     })
 }
 
+/// 原 `log_gpu_debug_info`（0x1418c46c0）里源名文件：`tmp/shader-cache/0x{src_id:x}.srcname`
+/// （片段 0x142d06d10 + `{:x}` + `.srcname`@0x142d06d23），读失败时显示 `???`。
+pub fn srcname_path(source_id: u32) -> String {
+    format!("tmp/shader-cache/0x{source_id:x}.srcname")
+}
+/// 原逐记录日志行（pieces @0x142d06d60：`"🔥 "`,`": "`,`" in "`,`":"`；参数序 idx/消息/源名/行号）。
+/// 原版以 info 级别输出（level 字段 3，门控 `max_level > 2`）。
+pub fn format_debug_record_line(index: usize, record: &GpuDebugRecord) -> String {
+    format!(
+        "\u{1f525} {index}: {} in {}:{}",
+        record.message,
+        record.source_name.as_deref().unwrap_or("???"),
+        record.source_line
+    )
+}
+/// 逐记录输出（info 级别）。
+pub fn log_debug_records(log: &GpuDebugLog) {
+    for (index, record) in log.records.iter().enumerate() {
+        log::info!("{}", format_debug_record_line(index, record));
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct GpuMarkerLabel {
     pub id: u32,
@@ -151,6 +173,7 @@ impl GpuCrashDiagnostics {
             .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
             .collect();
         let debug = parse_gpu_debug_info(&words, source_names)?;
+        log_debug_records(&debug);
         Ok(serde_json::to_value(debug).unwrap_or(serde_json::Value::Null))
     }
 }
@@ -328,5 +351,24 @@ impl GpuCrashDiagnostics {
             Err(cause) => serde_json::json!({"unavailable":cause.to_string()}),
         };
         serde_json::json!({"operation":operation,"error":error.to_string(),"gpu":snapshot,"vendor_crash_dump":false})
+    }
+}
+
+#[cfg(test)]
+mod debug_line_tests {
+    use super::*;
+
+    #[test]
+    fn srcname_path_and_log_line_match_the_original_pieces() {
+        assert_eq!(srcname_path(0xabc), "tmp/shader-cache/0xabc.srcname");
+        let words = [0, 1, 0, 0, (3 << 24) | 42, 0xabc, 5, 7];
+        let names = BTreeMap::from([(0xabc, "foo.slang".to_owned())]);
+        let log = parse_gpu_debug_info(&words, &names).unwrap();
+        assert_eq!(
+            format_debug_record_line(0, &log.records[0]),
+            "\u{1f525} 0: assertion failed (5 > 7) in foo.slang:42"
+        );
+        let unknown = parse_gpu_debug_info(&[0, 1, 0, 0, 9 << 24, 1, 0, 0], &BTreeMap::new()).unwrap();
+        assert_eq!(format_debug_record_line(2, &unknown.records[0]), "\u{1f525} 2: ??? in ???:0");
     }
 }

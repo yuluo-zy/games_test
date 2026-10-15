@@ -1,10 +1,10 @@
-//! 设备级延迟销毁场：Drop 路径 O(1) 入场，不再每次 `device_wait_idle`。
+//! 设备级延迟销毁场：Drop 路径 O(1) 入场，从不为销毁而整设备 idle。
 //!
-//! 安全性依据：所有真实 `vkQueueSubmit` 都在 `queue_lock` 内调用 `note_submit` 递增 epoch；
-//! 入场项记录入场时的 epoch。只有当 `completed_epoch >= epoch`（即入场前发出的所有提交
-//! 已由一次整设备 idle 确认完成）才销毁。没有新提交时完全不需要等待；有提交时把 N 次
-//! 全设备停顿摊成一次。显存以 [`DeferredMemory`] 随句柄一起延后释放，且不持有设备 Arc，
-//! 避免设备 ↔ 场的引用环。这是候选优化，不是原作 `dispose` 桶（桶按序号时间线排出）的镜像。
+//! 与原作 `dispose` 桶（按序号时间线排出）同构：每次主队列提交在 `queue_lock` 内取得单调递增的
+//! epoch，并在该次提交末尾让设备持有的“退役时间线信号量”signal 到这个 epoch；入场项记录入场时的
+//! epoch，只有时间线计数 `>= epoch`（入场前发出的所有主队列提交已由 GPU 完成）才销毁，查询用
+//! `vkGetSemaphoreCounterValue`，不阻塞。非主队列的提交不在这条时间线上，保守地要求一次整设备
+//! idle 才能确认。显存以 [`DeferredMemory`] 随句柄一起延后释放，且不持有设备 Arc，避免引用环。
 use super::device::VulkanDevice;
 use ash::vk;
 use parking_lot::Mutex;
@@ -21,7 +21,7 @@ pub enum DeferredMemory {
         accounting_id: u64,
     },
     /// 子分配：归还 gpu-allocator 里的区间。
-    #[cfg(feature = "candidate-suballocation")]
+    #[cfg(feature = "suballocation")]
     Sub {
         allocation: gpu_allocator::vulkan::Allocation,
         accounting_id: u64,
@@ -49,7 +49,10 @@ pub enum Doomed {
 pub struct Graveyard {
     entries: Mutex<Vec<(u64, Doomed)>>,
     submit_epoch: AtomicU64,
+    /// 已确认完成的 epoch 上界（时间线计数或整设备 idle 推进）。
     completed_epoch: AtomicU64,
+    /// 最近一次非主队列提交的 epoch；未被 idle 确认之前，时间线计数不能证明完成。
+    foreign_epoch: AtomicU64,
     idle_waits: AtomicU64,
 }
 
@@ -63,10 +66,81 @@ pub struct GraveyardStats {
     pub idle_waits: u64,
 }
 
+/// 原 `FUN_1418c7ae0(queue+0x40, cb_seq, dev)`：按命令序号（`cb_seq`，命令项 `+0x08`）**严格顺序**退役。
+///
+/// 机器码/反编译（`producer-closure/*/0x1418c7ae0.c`）：
+/// - 结构 `{cap, ptr, head, len}`（`VecDeque<u64>`，0 = 空洞）+ `next@+0x20`（已退役的最大序号）；
+/// - `seq <= next` → panic（已退役或重复，消息 0x142d06fd8，长 0x29）；
+/// - `seq == next + 1` → `next = seq`，发 profiler 事件 9（载荷 `0x1e, seq`），调用
+///   `dispose_in_order(dev+0xa50, seq)`（0x1418c4100）取出该序号桶，再 `FUN_140bf92f0(dev, 桶)` 销毁；
+///   然后弹出队首空洞，并循环：队首非 0 → 弹出、`next += 1`、断言 `next == 值`、同样退役；
+/// - `seq > next + 1` → 暂存于环内下标 `seq - next - 1`（不足补 0，非 0 槽重复 → panic）。
+///
+/// 本类型只做序号保序（返回应按序退役的序号列表）；“桶销毁”由 `VulkanDevice::bury` 的 epoch 机制承担
+/// （⚠️ 未改成原版按序号桶：原桶按 cb_seq 归属，重建按提交 epoch，语义等价于“序号 ≤ 完成线”）。
+#[derive(Debug, Default, Clone)]
+pub struct InOrderRetire {
+    next: u64,
+    slots: std::collections::VecDeque<u64>,
+}
+
+impl InOrderRetire {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// 已退役的最大序号（原 `+0x20`）。
+    pub fn next(&self) -> u64 {
+        self.next
+    }
+    /// 暂存环长度（原 `+0x18`）。
+    pub fn parked(&self) -> usize {
+        self.slots.len()
+    }
+    /// 登记 `seq` 完成；返回此刻可退役的序号（严格递增、连续）。
+    ///
+    /// # Panics
+    /// `seq <= next`、`seq` 重复暂存，或出队序号与期望不连续（原版同样 panic）。
+    pub fn retire(&mut self, seq: u64) -> Vec<u64> {
+        assert!(seq > self.next, "命令序号已退役或重复（0x1418c7ae0）");
+        let offset = seq - self.next - 1;
+        if offset != 0 {
+            let offset = offset as usize;
+            if offset > self.slots.len() {
+                self.slots.resize(offset, 0);
+            }
+            if offset == self.slots.len() {
+                self.slots.push_back(seq);
+            } else {
+                assert_eq!(self.slots[offset], 0, "暂存槽重复写入（0x1418c7ae0）");
+                self.slots[offset] = seq;
+            }
+            return Vec::new();
+        }
+        self.next = seq;
+        let mut out = vec![seq];
+        // 弹出队首（下标 0 对应刚退役的 seq，恒为空洞）。
+        self.slots.pop_front();
+        while let Some(&front) = self.slots.front() {
+            if front == 0 {
+                break;
+            }
+            self.slots.pop_front();
+            self.next += 1;
+            assert_eq!(self.next, front, "出队序号不连续（0x1418c7ae0）");
+            out.push(front);
+        }
+        out
+    }
+}
+
 impl Graveyard {
-    /// 调用者必须持有 `queue_lock`，保证与回收中的 idle 等待互斥。
-    pub fn note_submit(&self) {
-        self.submit_epoch.fetch_add(1, Ordering::AcqRel);
+    /// 调用者必须持有 `queue_lock`；返回本次提交的 epoch。
+    fn next_epoch(&self, primary: bool) -> u64 {
+        let epoch = self.submit_epoch.fetch_add(1, Ordering::AcqRel) + 1;
+        if !primary {
+            self.foreign_epoch.store(epoch, Ordering::Release);
+        }
+        epoch
     }
     pub fn stats(&self) -> GraveyardStats {
         GraveyardStats {
@@ -76,9 +150,11 @@ impl Graveyard {
             idle_waits: self.idle_waits.load(Ordering::Relaxed),
         }
     }
-    /// 当前 epoch 之前的所有提交均已由 idle 确认完成。
     fn is_quiescent(&self) -> bool {
         self.completed_epoch.load(Ordering::Acquire) >= self.submit_epoch.load(Ordering::Acquire)
+    }
+    fn foreign_unconfirmed(&self) -> bool {
+        self.foreign_epoch.load(Ordering::Acquire) > self.completed_epoch.load(Ordering::Acquire)
     }
     fn push(&self, doomed: Doomed) -> usize {
         let epoch = self.submit_epoch.load(Ordering::Acquire);
@@ -100,13 +176,32 @@ impl Graveyard {
 }
 
 impl VulkanDevice {
-    /// 提交前（持 `queue_lock`）调用；见模块说明。
-    pub fn note_submit(&self) {
-        self.graveyard.note_submit();
+    /// 提交前（持 `queue_lock`）调用。返回需要附在这次提交末尾的退役信号 `(信号量, 值)`；
+    /// 非主队列提交不在时间线上，返回 `None`，其完成只能由整设备 idle 确认。
+    pub fn note_submit_on(&self, queue: vk::Queue) -> Option<(vk::Semaphore, u64)> {
+        let primary = queue == self.queue;
+        let epoch = self.graveyard.next_epoch(primary);
+        primary.then_some((self.retire_timeline, epoch))
     }
-    /// 把对象送入延迟销毁场。达到阈值时尝试非阻塞回收（队列锁被占用则放弃，留待下次）。
+    /// 提交失败时由宿主补发退役信号，保证时间线不会停在这个 epoch 之前。
+    pub fn note_submit_failed(&self, signal: Option<(vk::Semaphore, u64)>) {
+        if let Some((semaphore, value)) = signal {
+            let info = vk::SemaphoreSignalInfo::default().semaphore(semaphore).value(value);
+            let _ = unsafe { self.device.signal_semaphore(&info) };
+        }
+    }
+    /// 用时间线计数推进完成线（非阻塞）；有未确认的非主队列提交时不推进。
+    fn refresh_completed(&self) {
+        if self.graveyard.foreign_unconfirmed() {
+            return;
+        }
+        if let Ok(value) = unsafe { self.device.get_semaphore_counter_value(self.retire_timeline) } {
+            self.graveyard.completed_epoch.fetch_max(value, Ordering::AcqRel);
+        }
+    }
+    /// 把对象送入延迟销毁场。入场前的提交都已完成则就地销毁；达到阈值时尝试非阻塞回收。
     pub fn bury(&self, doomed: Doomed) {
-        // 入场前发出的提交都已确认完成：无需等待，就地销毁（保持“无在飞 GPU 工作时立即释放”）。
+        self.refresh_completed();
         if self.graveyard.is_quiescent() {
             self.destroy_now(doomed);
             return;
@@ -118,59 +213,53 @@ impl VulkanDevice {
             drop(guard);
         }
     }
-    /// 阻塞回收：必要时做一次整设备 idle，然后销毁所有已确认完成的项，返回销毁数量。
+    /// 非阻塞回收：销毁所有已确认完成的项，返回销毁数量。
     pub fn collect_garbage(&self) -> usize {
         let _guard = self.queue_lock.lock();
         self.collect_locked()
     }
-    /// 整设备 idle 并回收：同时把完成线推进到当前提交上界，使之后的释放可就地进行。
+    /// 整设备 idle 并回收：把完成线推进到当前提交上界。
     pub fn wait_idle_and_collect(&self) -> Result<usize, vk::Result> {
         let _guard = self.queue_lock.lock();
         let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
         self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
         unsafe { self.device.device_wait_idle() }?;
-        self.graveyard
-            .completed_epoch
-            .fetch_max(target, Ordering::AcqRel);
+        self.graveyard.completed_epoch.fetch_max(target, Ordering::AcqRel);
         Ok(self.collect_locked())
     }
-    /// 宿主访问前的同步：仅当存在未确认完成的提交时才整设备 idle，并推进完成线。
-    /// 调用者必须已持有 `queue_lock`。
+    /// 宿主访问前的同步：等待时间线到当前 epoch（只等已提交的工作，不整设备停顿）；
+    /// 有非主队列提交时退回整设备 idle。调用者必须已持有 `queue_lock`。
     pub fn idle_if_in_flight_locked(&self) -> Result<(), vk::Result> {
+        self.refresh_completed();
         if self.graveyard.is_quiescent() {
             return Ok(());
         }
         let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
-        self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
-        unsafe { self.device.device_wait_idle() }?;
-        self.graveyard
-            .completed_epoch
-            .fetch_max(target, Ordering::AcqRel);
+        if self.graveyard.foreign_unconfirmed() {
+            self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
+            unsafe { self.device.device_wait_idle() }?;
+        } else {
+            let semaphores = [self.retire_timeline];
+            let values = [target];
+            let info = vk::SemaphoreWaitInfo::default().semaphores(&semaphores).values(&values);
+            unsafe { self.device.wait_semaphores(&info, u64::MAX) }?;
+        }
+        self.graveyard.completed_epoch.fetch_max(target, Ordering::AcqRel);
         Ok(())
     }
     pub fn garbage_stats(&self) -> GraveyardStats {
         self.graveyard.stats()
     }
-    /// 调用时必须已持有 `queue_lock`。
+    /// 调用时必须已持有 `queue_lock`。不等待 GPU：只销毁完成线已覆盖的项。
     fn collect_locked(&self) -> usize {
+        self.refresh_completed();
         let entries = self.graveyard.take_all();
         if entries.is_empty() {
             return 0;
         }
-        let newest = entries.iter().map(|(epoch, _)| *epoch).max().unwrap_or(0);
-        if self.graveyard.completed_epoch.load(Ordering::Acquire) < newest {
-            // 持锁期间不会有新的提交；此刻的 submit_epoch 即 idle 后确认完成的上界。
-            let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
-            self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
-            let _ = unsafe { self.device.device_wait_idle() };
-            self.graveyard
-                .completed_epoch
-                .fetch_max(target, Ordering::AcqRel);
-        }
         let completed = self.graveyard.completed_epoch.load(Ordering::Acquire);
-        let (ready, rest): (Vec<_>, Vec<_>) = entries
-            .into_iter()
-            .partition(|(epoch, _)| *epoch <= completed);
+        let (ready, rest): (Vec<_>, Vec<_>) =
+            entries.into_iter().partition(|(epoch, _)| *epoch <= completed);
         self.graveyard.put_back(rest);
         let count = ready.len();
         for (_, doomed) in ready {
@@ -225,7 +314,7 @@ impl VulkanDevice {
                 unsafe { self.device.free_memory(handle, None) };
                 accounting_id
             }
-            #[cfg(feature = "candidate-suballocation")]
+            #[cfg(feature = "suballocation")]
             DeferredMemory::Sub {
                 allocation,
                 accounting_id,

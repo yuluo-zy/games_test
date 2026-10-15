@@ -78,59 +78,91 @@ impl DynamicConstantsChunk {
     }
 }
 
+/// 原 `DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES`：每页大小，也是单次分配上限
+/// （0x140c02740 开头 `cmp r9,0x40001; jae` → `assert!(bytes <= DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)`）。
+pub const DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES: u64 = 0x40000;
+/// 页缓冲用途（0x140c029f0 写入 `BufferDesc.usage = 0x20033`）：
+/// TRANSFER_SRC | TRANSFER_DST | UNIFORM_BUFFER | STORAGE_BUFFER | SHADER_DEVICE_ADDRESS，
+/// 不随设备能力裁剪（原版要求 BDA）。
+pub const DYNAMIC_CONSTANTS_USAGE: vk::BufferUsageFlags = vk::BufferUsageFlags::from_raw(0x20033);
+/// 默认对齐：显式对齐 <= 16 或未请求时取 16。
+const DEFAULT_ALIGNMENT: u64 = 16;
+
 struct Page {
     buffer: Arc<Buffer>,
-    cursor: u64,
 }
+/// 原 `DynamicConstants`（0x140c02740 `allocate`）：只有一张“当前页”，线性 bump；放不下就新建
+/// 一页（256 KiB、CpuToGpu、持久映射、名字 `"dynamic constants buffer"`）并把旧页留在页列表里，
+/// 由持有它的 chunk / descriptor 通过 `Arc` 延续到 GPU 用完。没有 reset，也没有整设备等待：
+/// 页的回收完全交给资源生命周期（原版 0x140c02370 `into_gpu_lifetime_tracker` 同理）。
 pub struct DynamicConstants {
     device: Arc<VulkanDevice>,
-    page_size: u64,
-    alignment: u64,
+    /// 设备下限对齐（原版缓存在 `self+0x20`，值取自设备属性 `+0x340` 处的标量；具体对应哪个
+    /// Vulkan limit 未证实，这里取 uniform/storage 偏移对齐的较大者）。
+    device_alignment: u64,
+    cursor: u64,
     pages: Vec<Page>,
 }
 impl DynamicConstants {
-    /// alignment 必须来自本设备 uniform/storage offset 对齐要求的较大值。
-    pub fn new(device: Arc<VulkanDevice>, page_size: u64, alignment: u64) -> Result<Self> {
-        if page_size == 0 || alignment == 0 || !alignment.is_power_of_two() {
-            return Err(Error::Invalid("常量页大小或对齐无效"));
+    pub fn new(device: Arc<VulkanDevice>) -> Result<Self> {
+        let limits = unsafe {
+            device
+                .instance
+                .instance
+                .get_physical_device_properties(device.physical)
+        }
+        .limits;
+        let device_alignment = limits
+            .min_uniform_buffer_offset_alignment
+            .max(limits.min_storage_buffer_offset_alignment)
+            .max(1);
+        // 原版把该值放进 `BufferDesc.alignment`（u16），>= 0x10000 时 panic。
+        if device_alignment >= 0x10000 || !device_alignment.is_power_of_two() {
+            return Err(Error::Invalid("常量页对齐无效"));
         }
         Ok(Self {
             device,
-            page_size,
-            alignment,
+            device_alignment,
+            cursor: 0,
             pages: Vec::new(),
         })
     }
     pub fn allocate(&mut self, size: u64) -> Result<DynamicConstantsChunk> {
-        if size == 0 {
-            return Err(Error::Invalid("常量区段大小不能为零"));
+        self.allocate_aligned(size, None)
+    }
+    /// 原 `allocate(bytes, alignment)`：`alignment > 16` 才生效，再与设备对齐取较大者。
+    /// 超过页大小是原版的 `assert!`，这里同样 panic。
+    pub fn allocate_aligned(
+        &mut self,
+        size: u64,
+        alignment: Option<u64>,
+    ) -> Result<DynamicConstantsChunk> {
+        assert!(
+            size <= DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES,
+            "assertion failed: bytes <= DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES"
+        );
+        let requested = match alignment {
+            Some(a) if a > DEFAULT_ALIGNMENT => a,
+            _ => DEFAULT_ALIGNMENT,
+        };
+        let alignment = requested.max(self.device_alignment);
+        if !alignment.is_power_of_two() {
+            return Err(Error::Invalid("常量区段对齐必须是 2 的幂"));
         }
-        for page in &mut self.pages {
-            let offset = align_up(page.cursor, self.alignment)?;
-            if let Some(end) = offset
-                .checked_add(size)
-                .filter(|end| *end <= page.buffer.size)
-            {
-                page.cursor = end;
-                return Ok(DynamicConstantsChunk {
-                    buffer: page.buffer.clone(),
-                    offset,
-                    size,
-                });
-            }
+        let mut offset = align_up(self.cursor, alignment)?;
+        if self.pages.is_empty() || offset + size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
+            let buffer = Arc::new(Buffer::new(
+                self.device.clone(),
+                &BufferDesc::new_cpu_to_gpu(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, DYNAMIC_CONSTANTS_USAGE)
+                    .with_alignment(self.device_alignment as u16),
+            )?);
+            self.pages.push(Page { buffer });
+            offset = 0;
         }
-        let capacity = align_up(self.page_size.max(size), self.alignment)?;
-        let buffer = Arc::new(Buffer::new(
-            self.device.clone(),
-            &BufferDesc::new_cpu_to_gpu(capacity, self.buffer_usage()),
-        )?);
-        self.pages.push(Page {
-            buffer: buffer.clone(),
-            cursor: size,
-        });
+        self.cursor = offset + size;
         Ok(DynamicConstantsChunk {
-            buffer,
-            offset: 0,
+            buffer: self.pages.last().expect("current page").buffer.clone(),
+            offset,
             size,
         })
     }
@@ -139,17 +171,6 @@ impl DynamicConstants {
         chunk.write_bytes(bytes)?;
         Ok(chunk)
     }
-    pub fn allocate_buffer(&self, size: u64) -> Result<DynamicConstantsChunk> {
-        let buffer = Arc::new(Buffer::new(
-            self.device.clone(),
-            &BufferDesc::new_cpu_to_gpu(size, self.buffer_usage()),
-        )?);
-        Ok(DynamicConstantsChunk {
-            buffer,
-            offset: 0,
-            size,
-        })
-    }
     /// 原入口名；与 `allocate` 同一 bump 分配语义。
     pub fn push(&mut self, size: u64) -> Result<DynamicConstantsChunk> {
         self.allocate(size)
@@ -157,25 +178,6 @@ impl DynamicConstants {
     /// 原入口名；与 `allocate_with_data` 同一实现。
     pub fn push_slice(&mut self, bytes: &[u8]) -> Result<DynamicConstantsChunk> {
         self.allocate_with_data(bytes)
-    }
-    /// 先等待 GPU，且只复用没有任何外部 chunk/descriptor 持有的页。
-    pub fn reset(&mut self) -> Result<()> {
-        // wait_idle 已持队列锁，不能重复加锁造成 reset 永久等待。
-        self.device.wait_idle()?;
-        for page in &mut self.pages {
-            if Arc::strong_count(&page.buffer) == 1 {
-                page.cursor = 0;
-            }
-        }
-        Ok(())
-    }
-
-    fn buffer_usage(&self) -> vk::BufferUsageFlags {
-        let mut usage = vk::BufferUsageFlags::UNIFORM_BUFFER | vk::BufferUsageFlags::STORAGE_BUFFER;
-        if self.device.capabilities.buffer_device_address {
-            usage |= vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS;
-        }
-        usage
     }
     pub fn page_count(&self) -> usize {
         self.pages.len()

@@ -248,10 +248,11 @@ impl PassContext<'_> {
     }
 }
 
-fn access(record: &crate::rg::graph::ResourceAccessRecord) -> crate::raw::barrier::Access {
+fn access(record: &crate::rg::graph::ResourceAccessRecord, write: bool) -> crate::raw::barrier::Access {
     crate::raw::barrier::Access {
         code: record.access_code,
         group: record.synchronization_group,
+        write,
     }
 }
 
@@ -335,9 +336,16 @@ impl ExecutionChain {
         if synchronization.iter().any(|s| !s.valid()) {
             return Err(Error::InvalidSynchronization);
         }
+        // 读写分类按访问码查一次，闭包里不再借用 dependency。
+        let writes: Vec<bool> = compiled
+            .info
+            .accesses
+            .iter()
+            .map(|record| dependency.is_write(record.access_code))
+            .collect();
         let resolve_access = |index: u32| {
             (index != crate::rg::graph::NO_ACCESS)
-                .then(|| access(&compiled.info.accesses[index as usize]))
+                .then(|| access(&compiled.info.accesses[index as usize], writes[index as usize]))
         };
         let mut resources = Vec::new();
         let mut logical_handles = Vec::new();
@@ -395,10 +403,11 @@ impl ExecutionChain {
             .map(|(start, end)| record::Pass {
                 accesses: compiled.info.accesses[start.0 as usize..end.0 as usize]
                     .iter()
-                    .map(|current| record::PassAccess {
+                    .enumerate()
+                    .map(|(offset, current)| record::PassAccess {
                         resource: current.resource_index as usize,
                         previous: resolve_access(current.previous_access_index),
-                        current: access(current),
+                        current: access(current, writes[start.0 as usize + offset]),
                     })
                     .collect(),
                 callback_present: true,
@@ -549,9 +558,7 @@ impl ExecutionChain {
                 if !backend.retain_command_owners(handle, owners.into_inner()) {
                     return Err(Error::MissingCommand(handle));
                 }
-                for duration in durations {
-                    self.pgo.current.record(duration);
-                }
+                self.pgo.current.extend(durations);
                 let outcome = outcome?;
                 stats.count_barriers(&outcome.events);
                 events.extend(outcome.events);
@@ -845,9 +852,7 @@ impl ExecutionChain {
         // 串行：按块顺序合并耗时与 owner。
         let mut failed = false;
         for (command, result) in begun.iter().zip(results) {
-            for duration in result.durations {
-                self.pgo.current.record(duration);
-            }
+            self.pgo.current.extend(result.durations);
             if !backend.retain_command_owners(command.handle(), result.owners) {
                 return Err(Error::MissingCommand(command.handle()));
             }
@@ -1020,18 +1025,42 @@ impl ExecutionChain {
     }
 }
 
-/// PGO 名称→编号映射。原作按 pass 名收集每 pass 统计；候选用 FNV-1a 生成稳定编号，
-/// 不声称等价于原内部字符串表的具体编号。
+/// PGO 名称→编号映射。原作 `PassPgoNameId` 就是 pass 名 `&'static str` 的指针，
+/// `from_name` 恒等（0x14067dd80 `mov rax,rcx; ret`，ICF 折叠；record_batch 0x1402c22ba 把
+/// `(pass+0x18, pass+0x20)` 这个 `&str` 的指针直接当键），哈希发生在统计表 `hash_one`（0x1405b0d70），
+/// 桶比较的也只是这个 u64（0x140bea270 `cmp [r14], rsi`）。
+///
+/// 这里 pass 名是自有 `String`，自身指针跨帧不稳定，所以用**驻留池**：同名字符串只保留一份
+/// `&'static str`（首次见到时泄漏一份 `Box<str>`，上限为不同 pass 名的个数），`PassPgoNameId` 取该份的
+/// 数据指针。因此同名跨帧稳定、不同名必不同，且与原版一样是指针恒等；数值本身仍无原版对应物。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PassPgoNameId(pub u32);
+pub struct PassPgoNameId(pub usize);
+fn intern_pass_name(name: &str, stat: Option<&'static str>) -> &'static str {
+    use std::collections::HashSet;
+    use std::sync::{Mutex, OnceLock};
+    static POOL: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+    let mut pool = POOL
+        .get_or_init(|| Mutex::new(HashSet::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(existing) = pool.get(name) {
+        return existing;
+    }
+    let interned: &'static str = match stat {
+        Some(s) => s,
+        None => Box::leak(name.to_owned().into_boxed_str()),
+    };
+    pool.insert(interned);
+    interned
+}
 impl PassPgoNameId {
+    /// 原版调用形态：传入 `&'static str`，不分配、不泄漏。
+    pub fn from_static(name: &'static str) -> Self {
+        Self(intern_pass_name(name, Some(name)).as_ptr() as usize)
+    }
+    /// 自有 `String`/`&str` 入口：经驻留池取稳定指针。
     pub fn from_name(name: &str) -> Self {
-        let mut hash = 0x811c9dc5u32;
-        for byte in name.bytes() {
-            hash ^= u32::from(byte);
-            hash = hash.wrapping_mul(0x0100_0193);
-        }
-        Self(hash)
+        Self(intern_pass_name(name, None).as_ptr() as usize)
     }
 }
 
@@ -1057,23 +1086,28 @@ pub struct PassPgoStats {
     max_ns: u64,
 }
 impl PassPgoStats {
+    /// 对应 `end_frame`（0x140bec400）里对新 `current` 的就地清空：控制字节 memset 0xff、`len = 0`、
+    /// 重算 `growth_left`，并把 `total_ns@0x30`、`max_ns@0x38` 置 0——哈希种子（`+0x20..0x30`）保留。
+    /// `counts` 是候选实现自加的辅助表，原 0x40 字节结构里没有。
     pub fn reset(&mut self) {
         self.counts.clear();
         self.durations.clear();
         self.total_ns = 0;
         self.max_ns = 0;
     }
-    pub fn extend(&mut self, other: &Self) {
-        for (id, count) in &other.counts {
-            *self.counts.entry(*id).or_default() += count;
+    /// ✅ 原 `extend` 无独立符号，是 `record_batch`（0x1402c1d40）里的内联循环（0x1402c2xxx / 0x1402c2f..，
+    /// 串行与并行两条路径各一份）：对块返回的每个 `(name:u64, d:u64)`（16 字节 `PassPgoDuration`）依次
+    /// ① `FUN_1402ca150(current, name, d)`——hashbrown `insert`，命中时**覆盖**旧值（机器码
+    /// `0x1402ca255: mov rdx,[r15-8]; ...; 0x1402ca2a1: mov [r15],rsi`，不是累加）；
+    /// ② `total@0x30 += d`；③ `max@0x38 = max(max, d)`。
+    pub fn extend(&mut self, durations: impl IntoIterator<Item = PassPgoDuration>) {
+        for duration in durations {
+            self.record(duration);
         }
-        for (id, ns) in &other.durations {
-            *self.durations.entry(*id).or_default() += ns;
-        }
-        self.total_ns = self.total_ns.saturating_add(other.total_ns);
-        self.max_ns = self.max_ns.max(other.max_ns);
     }
-    /// 原 `duration_ns`：没有记录时返回 0（原作分块按 0 计）。
+    /// 原 `duration_ns`（0x140bea1e0）实返 `Option<u64>`（命中时 rax=1、rdx=桶内值；Ghidra 伪代码把它写成了
+    /// bool，是丢了 rdx）。唯一调用点 record_batch 0x1402c22ce 做 `unwrap_or(0)`，这里的 `u64` 版就是该折叠；
+    /// 需要原 `Option` 形态用 [`Self::get`]。
     pub fn duration_ns(&self, id: PassPgoNameId) -> u64 {
         self.get(id).unwrap_or(0)
     }
@@ -1092,10 +1126,12 @@ impl PassPgoStats {
     pub fn max_ns(&self) -> u64 {
         self.max_ns
     }
+    /// 单条记录 = `record_batch` 内联体的一次迭代：`insert`（覆盖，不累加）+ `total += d` + `max = max(max, d)`。
+    /// 同名 pass 一帧内出现多次时，表里只留最后一次，`total` 仍累加全部；`counts` 是候选辅助表（原版没有）。
     pub fn record(&mut self, duration: PassPgoDuration) {
         *self.counts.entry(duration.name).or_default() += 1;
-        *self.durations.entry(duration.name).or_default() += duration.duration_ns;
-        self.total_ns = self.total_ns.saturating_add(duration.duration_ns);
+        self.durations.insert(duration.name, duration.duration_ns);
+        self.total_ns = self.total_ns.wrapping_add(duration.duration_ns);
         self.max_ns = self.max_ns.max(duration.duration_ns);
     }
 }

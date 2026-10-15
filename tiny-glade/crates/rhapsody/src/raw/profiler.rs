@@ -1,5 +1,15 @@
 //! 可运行的 GPU 时间戳候选实现；原 puffin 输出格式与跨帧生产者尚未对照。
-use crate::raw::device::VulkanDevice;
+//!
+//! 原版 `raw::profiler`（CALL-CHAIN：`TimedFrame::{new,send_to_puffin}`、`ProfilerBuffer`、
+//! `create_gpu_profiler_output_buffer` 0x140bff4a0、`create_query_result_buffer` 0x140bff5a0、`mapped_slice`
+//! 0x140bd3c80）是 `gpu-profiler` 与 `GraphicsDevice` 之间的胶水；`gpu-profiler` 本体见 [`super::gpu_profiler`]。
+//! 本文件下方 `GpuProfiler`/`TimedFrame` 是候选（每区段两条时间戳），不是原版结构。
+use crate::raw::{
+    buffer::BufferDesc,
+    device::VulkanDevice,
+    error::Result as RawResult,
+    managed::buffer::ManagedBuffer,
+};
 use ash::vk;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -133,4 +143,25 @@ impl Drop for GpuProfiler {
         self.device
             .bury(super::graveyard::Doomed::QueryPool(self.pool));
     }
+}
+
+/// 原输出缓冲大小：`create_gpu_profiler_output_buffer`（0x140bff4a0）→ `create_query_result_buffer(size = 0x2000)`
+/// （0x140bff5a0 的 `VkBufferCreateInfo`：`sType=12, size=r8=0x2000, usage=2(TRANSFER_DST), sharing=0`；分配名 `"buffer"`、
+/// 位置 `GpuToCpu(4)`）。**纠正** raw-core ALGORITHMS 里的 "STORAGE|TRANSFER_DST"：usage 只有 `TRANSFER_DST`。
+pub const GPU_PROFILER_OUTPUT_BYTES: u64 = 0x2000;
+
+/// 输出缓冲描述（`GpuToCpu`、`TRANSFER_DST`、0x2000B）。
+pub fn gpu_profiler_output_buffer_desc() -> BufferDesc {
+    BufferDesc::new_gpu_to_cpu(GPU_PROFILER_OUTPUT_BYTES, vk::BufferUsageFlags::TRANSFER_DST)
+}
+
+/// 原 `ProfilerBuffer::mapped_slice`（0x140bd3c80）的读回形态：把输出缓冲解释为 u64 时间戳数组。
+///
+/// # Safety
+/// 调用者必须保证覆盖该缓冲的 GPU 写入已完成且对宿主可见。
+pub unsafe fn read_output_timestamps(buffer: &ManagedBuffer) -> RawResult<Vec<u64>> {
+    let mut bytes = vec![0u8; GPU_PROFILER_OUTPUT_BYTES as usize];
+    // SAFETY: 由调用者保证。
+    unsafe { buffer.read_bytes_after_completion(0, &mut bytes) }?;
+    Ok(bytes.chunks_exact(8).map(|c| u64::from_le_bytes(c.try_into().unwrap())).collect())
 }

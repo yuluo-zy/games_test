@@ -79,7 +79,7 @@ impl Attachment {
         let mut view = TextureViewDesc::new(&texture.desc);
         view.level_count = 1;
         let mut desc =
-            RenderPassAttachmentDesc::new(view.format).sample_count(texture.desc.samples);
+            RenderPassAttachmentDesc::new(view.format).sample_count(texture.desc.samples());
         if clear.is_some() {
             desc = desc.clear_input();
         }
@@ -352,7 +352,7 @@ impl AttachmentCache {
                 return Err(Error::Invalid("附件子通道布局与类型不兼容"));
             }
             if a.desc.format != a.view.format
-                || a.desc.samples != desc.samples
+                || a.desc.samples != desc.samples()
                 || a.desc.samples != samples
             {
                 return Err(Error::Invalid("附件格式或采样数不兼容"));
@@ -375,15 +375,15 @@ impl AttachmentCache {
             }
             let mip = a.view.base_mip_level;
             if a.view.level_count != 1
-                || mip >= desc.mip_levels
+                || mip >= u32::from(desc.mip_levels)
                 || mip >= 32
                 || a.view.layer_count < layers
                 || a.view
                     .base_layer
                     .checked_add(a.view.layer_count)
-                    .is_none_or(|n| n > desc.array_layers)
-                || extent.width > (desc.extent.width >> mip).max(1)
-                || extent.height > (desc.extent.height >> mip).max(1)
+                    .is_none_or(|n| n > desc.array_layers())
+                || extent.width > (desc.extent().width >> mip).max(1)
+                || extent.height > (desc.extent().height >> mip).max(1)
             {
                 return Err(Error::Invalid("帧缓冲范围越过附件子资源"));
             }

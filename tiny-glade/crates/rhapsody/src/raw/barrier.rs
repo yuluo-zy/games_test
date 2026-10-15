@@ -4,6 +4,8 @@
 pub struct Access {
     pub code: u8,
     pub group: u32,
+    /// 访问码的读写分类，由图的 `AccessDependency::is_write` 提供（原版取自 vk-sync 的类型表）。
+    pub write: bool,
 }
 
 /// 一个原同步scope汇总三类数组与阶段掩码，在phase边界一次提交。
@@ -106,12 +108,14 @@ pub struct Outcome {
     pub resets: usize,
 }
 
+/// 原 0x140bece70 `can_be_concurrent_with`：双方都不写时只要求访问码相同；
+/// 有写时还要求同步组非零且相等。
 pub fn concurrent(current: Access, previous: Access) -> bool {
-    // 原 can_be_concurrent_with 使用访问码区间，不使用后端为 Vulkan 投影提供的 write 标志。
-    let needs_group = |code: u8| code.wrapping_sub(0x28) < 0x10;
-    current.code == previous.code
-        && (!(needs_group(current.code) || needs_group(previous.code))
-            || (current.group != 0 && current.group == previous.group))
+    if !current.write && !previous.write {
+        current.code == previous.code
+    } else {
+        current.code == previous.code && current.group != 0 && current.group == previous.group
+    }
 }
 
 fn validate(resource: Resource) -> Result<(), &'static str> {

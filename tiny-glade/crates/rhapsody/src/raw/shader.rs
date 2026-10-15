@@ -192,6 +192,9 @@ pub struct RasterPipelineDesc {
     pub depth_test: bool,
     pub depth_write: bool,
     pub depth_compare: vk::CompareOp,
+    /// 模板测试；front/back 共用 `stencil`（原 0x1416a3720 两份同值）。
+    pub stencil_test: bool,
+    pub stencil: vk::StencilOpState,
     pub blend_attachments: Vec<vk::PipelineColorBlendAttachmentState>,
 }
 impl RasterPipelineDesc {
@@ -216,195 +219,188 @@ impl RasterPipelineDesc {
             depth_test: false,
             depth_write: false,
             depth_compare: vk::CompareOp::LESS_OR_EQUAL,
+            stencil_test: false,
+            stencil: vk::StencilOpState::default(),
             blend_attachments: Vec::new(),
         }
     }
 }
 
-/// 固定状态选项构建器。getter 返回 `Option`（未设置），`or_err` 在缺失时报错，
-/// `set_*` 直接覆盖，`set_*_checked` 先验证取值再写入。
-#[derive(Clone, Debug, Default)]
-pub struct RasterPipelineOpts {
-    pub topology: Option<vk::PrimitiveTopology>,
-    pub polygon_mode: Option<vk::PolygonMode>,
-    pub cull_mode: Option<vk::CullModeFlags>,
-    pub front_face: Option<vk::FrontFace>,
-    pub samples: Option<vk::SampleCountFlags>,
-    pub depth_test: Option<bool>,
-    pub depth_write: Option<bool>,
-    pub depth_compare: Option<vk::CompareOp>,
-    pub stencil_test: Option<bool>,
-    pub stencil_pass_op: Option<vk::StencilOp>,
-    pub stencil_compare_op: Option<vk::CompareOp>,
-    pub stencil_compare_mask: Option<u32>,
-    pub blend_mode: Option<u8>,
-    pub line_width: Option<f32>,
-}
+/// 原 `RasterPipelineOpts`：4 字节位域，同时是 `RasterPipelineKey.selector`（+0x18）。
+///
+/// 位分配读自 `create_raster_pipeline`（O 0x1416a3720，0x1416a3d08..0x1416a3f2f）和混合表函数
+/// 0x140be67f0（B patched）；本轮对照机器码逐位重核（跳转表 0x142c88ff0 / 0x142c89000 逐项解出）：
+///
+/// | 字节 | 位 | 含义（原机器码里的用途） |
+/// |---|---|---|
+/// | b0 | 0–1 | 图元拓扑：0 三角列表 / 1 线列表 / 2 线条带（跳转表 0x142c88ff0，3 不可达） |
+/// | b0 | 2–3 | 剔除模式（直接作 `VkCullModeFlags`） |
+/// | b0 | 4–5 | 深度比较：0 LESS / 1 GREATER / 2 EQUAL（跳转表 0x142c89000，3 不可达） |
+/// | b0 | 6 | 深度写 |
+/// | b0 | 7 | 深度测试 |
+/// | b1 | 0 | 模板测试 |
+/// | b1 | 1–3 | 模板 fail op |
+/// | b1 | 4–6 | 模板 pass op |
+/// | b1 bit7 + b2 bit0–1 | 3 位 | 模板 depth-fail op（`b1>>7 + (b2&3)*2`） |
+/// | b2 | 2–4 | 模板 compare op |
+/// | b2 bit5–7 + b3 bit0–4 | 8 位 | 模板 compare mask（`(b3<<3 | b2>>5) & 0xff`） |
+/// | b3 | 5–6 | 混合模式（`get_vk_blend_mode`） |
+/// | b3 | 7 | 多边形模式：1 = LINE |
+///
+/// 模板 write mask 恒 `0xffffffff`、reference 0（动态，`STENCIL_REFERENCE`），front/back 同值。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RasterPipelineOpts(pub u32);
 impl RasterPipelineOpts {
     pub fn new() -> Self {
-        Self::default()
+        Self(0)
     }
-    pub fn topology(&self) -> Option<vk::PrimitiveTopology> {
-        self.topology
+    fn byte(self, index: u32) -> u32 {
+        (self.0 >> (index * 8)) & 0xff
     }
-    pub fn topology_or_err(&self) -> Result<vk::PrimitiveTopology, vk::Result> {
-        self.topology.ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
+    fn set_bits(&mut self, shift: u32, width: u32, value: u32) {
+        let mask = ((1u32 << width) - 1) << shift;
+        self.0 = (self.0 & !mask) | ((value << shift) & mask);
+    }
+    pub fn topology(self) -> vk::PrimitiveTopology {
+        match self.byte(0) & 3 {
+            0 => vk::PrimitiveTopology::TRIANGLE_LIST,
+            1 => vk::PrimitiveTopology::LINE_LIST,
+            2 => vk::PrimitiveTopology::LINE_STRIP,
+            // 原跳转表 case 3 不可达（`b1 b7 a1 fe` 指向 unreachable 块）。
+            _ => unreachable!("RasterPipelineOpts topology value 3"),
+        }
     }
     pub fn set_topology(&mut self, value: vk::PrimitiveTopology) {
-        self.topology = Some(value);
+        let code = match value {
+            vk::PrimitiveTopology::TRIANGLE_LIST => 0,
+            vk::PrimitiveTopology::LINE_LIST => 1,
+            vk::PrimitiveTopology::LINE_STRIP => 2,
+            other => panic!("RasterPipelineOpts 不支持拓扑 {other:?}"),
+        };
+        self.set_bits(0, 2, code);
     }
-    pub fn set_topology_checked(&mut self, value: vk::PrimitiveTopology) -> Result<(), vk::Result> {
-        match value {
-            vk::PrimitiveTopology::POINT_LIST
-            | vk::PrimitiveTopology::LINE_LIST
-            | vk::PrimitiveTopology::TRIANGLE_LIST
-            | vk::PrimitiveTopology::TRIANGLE_STRIP => {
-                self.set_topology(value);
-                Ok(())
-            }
-            _ => Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
-        }
-    }
-    pub fn polygon_mode(&self) -> Option<vk::PolygonMode> {
-        self.polygon_mode
-    }
-    pub fn set_polygon_mode(&mut self, value: vk::PolygonMode) {
-        self.polygon_mode = Some(value);
-    }
-    pub fn set_polygon_mode_checked(&mut self, value: vk::PolygonMode) -> Result<(), vk::Result> {
-        match value {
-            vk::PolygonMode::FILL | vk::PolygonMode::LINE => self.set_polygon_mode(value),
-            _ => return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
-        }
-        Ok(())
-    }
-    pub fn cull_mode(&self) -> Option<vk::CullModeFlags> {
-        self.cull_mode
-    }
-    pub fn cull_mode_or_err(&self) -> Result<vk::CullModeFlags, vk::Result> {
-        self.cull_mode
-            .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
+    pub fn cull_mode(self) -> vk::CullModeFlags {
+        vk::CullModeFlags::from_raw((self.byte(0) >> 2) & 3)
     }
     pub fn set_cull_mode(&mut self, value: vk::CullModeFlags) {
-        self.cull_mode = Some(value);
+        self.set_bits(2, 2, value.as_raw());
     }
-    pub fn set_cull_mode_checked(&mut self, value: vk::CullModeFlags) -> Result<(), vk::Result> {
-        if value.contains(vk::CullModeFlags::NONE)
-            || value.contains(vk::CullModeFlags::FRONT)
-            || value.contains(vk::CullModeFlags::BACK)
-            || value.contains(vk::CullModeFlags::FRONT_AND_BACK)
-        {
-            self.set_cull_mode(value);
-            Ok(())
-        } else {
-            Err(vk::Result::ERROR_INITIALIZATION_FAILED)
+    pub fn depth_compare_op(self) -> vk::CompareOp {
+        match (self.byte(0) >> 4) & 3 {
+            0 => vk::CompareOp::LESS,
+            1 => vk::CompareOp::GREATER,
+            2 => vk::CompareOp::EQUAL,
+            _ => unreachable!("RasterPipelineOpts depth compare value 3"),
         }
     }
-    pub fn depth_compare_mode(&self) -> Option<vk::CompareOp> {
-        self.depth_compare
+    pub fn set_depth_compare_op(&mut self, value: vk::CompareOp) {
+        let code = match value {
+            vk::CompareOp::LESS => 0,
+            vk::CompareOp::GREATER => 1,
+            vk::CompareOp::EQUAL => 2,
+            other => panic!("RasterPipelineOpts 不支持深度比较 {other:?}"),
+        };
+        self.set_bits(4, 2, code);
     }
-    pub fn depth_compare_mode_or_err(&self) -> Result<vk::CompareOp, vk::Result> {
-        self.depth_compare
-            .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)
-    }
-    pub fn set_depth_compare_mode(&mut self, value: vk::CompareOp) {
-        self.depth_compare = Some(value);
-    }
-    pub fn set_depth_compare_mode_checked(
-        &mut self,
-        value: vk::CompareOp,
-    ) -> Result<(), vk::Result> {
-        self.set_depth_compare_mode(value);
-        Ok(())
+    pub fn depth_write(self) -> bool {
+        (self.byte(0) >> 6) & 1 != 0
     }
     pub fn set_depth_write(&mut self, value: bool) {
-        self.depth_write = Some(value);
+        self.set_bits(6, 1, u32::from(value));
     }
-    pub fn set_depth_write_checked(&mut self, value: bool) -> Result<(), vk::Result> {
-        self.set_depth_write(value);
-        Ok(())
+    pub fn depth_test(self) -> bool {
+        (self.byte(0) >> 7) & 1 != 0
     }
     pub fn set_depth_test_enable(&mut self, value: bool) {
-        self.depth_test = Some(value);
+        self.set_bits(7, 1, u32::from(value));
     }
-    pub fn set_depth_test_enable_checked(&mut self, value: bool) -> Result<(), vk::Result> {
-        self.set_depth_test_enable(value);
-        Ok(())
+    pub fn stencil_test(self) -> bool {
+        self.byte(1) & 1 != 0
     }
     pub fn set_stencil_test_enable(&mut self, value: bool) {
-        self.stencil_test = Some(value);
+        self.set_bits(8, 1, u32::from(value));
     }
-    pub fn set_stencil_test_enable_checked(&mut self, value: bool) -> Result<(), vk::Result> {
-        self.set_stencil_test_enable(value);
-        Ok(())
+    pub fn stencil_fail_op(self) -> vk::StencilOp {
+        vk::StencilOp::from_raw(((self.byte(1) >> 1) & 7) as i32)
+    }
+    pub fn set_stencil_fail_op(&mut self, value: vk::StencilOp) {
+        self.set_bits(9, 3, value.as_raw() as u32);
+    }
+    pub fn stencil_pass_op(self) -> vk::StencilOp {
+        vk::StencilOp::from_raw(((self.byte(1) >> 4) & 7) as i32)
     }
     pub fn set_stencil_pass_op(&mut self, value: vk::StencilOp) {
-        self.stencil_pass_op = Some(value);
+        self.set_bits(12, 3, value.as_raw() as u32);
     }
-    pub fn set_stencil_pass_op_checked(&mut self, value: vk::StencilOp) -> Result<(), vk::Result> {
-        match value {
-            vk::StencilOp::KEEP
-            | vk::StencilOp::REPLACE
-            | vk::StencilOp::INCREMENT_AND_CLAMP
-            | vk::StencilOp::DECREMENT_AND_CLAMP => self.set_stencil_pass_op(value),
-            _ => return Err(vk::Result::ERROR_FEATURE_NOT_PRESENT),
-        }
-        Ok(())
+    /// 3 位横跨 b1 bit7（低位）与 b2 bit0–1（高两位）。
+    pub fn stencil_depth_fail_op(self) -> vk::StencilOp {
+        vk::StencilOp::from_raw(((self.byte(1) >> 7) + (self.byte(2) & 3) * 2) as i32)
+    }
+    pub fn set_stencil_depth_fail_op(&mut self, value: vk::StencilOp) {
+        let raw = value.as_raw() as u32;
+        self.set_bits(15, 1, raw & 1);
+        self.set_bits(16, 2, raw >> 1);
+    }
+    pub fn stencil_compare_op(self) -> vk::CompareOp {
+        vk::CompareOp::from_raw(((self.byte(2) >> 2) & 7) as i32)
     }
     pub fn set_stencil_compare_op(&mut self, value: vk::CompareOp) {
-        self.stencil_compare_op = Some(value);
+        self.set_bits(18, 3, value.as_raw() as u32);
     }
-    pub fn set_stencil_compare_op_checked(
-        &mut self,
-        value: vk::CompareOp,
-    ) -> Result<(), vk::Result> {
-        self.set_stencil_compare_op(value);
-        Ok(())
+    /// 8 位横跨 b2 bit5–7（低 3 位）与 b3 bit0–4（高 5 位）。
+    pub fn stencil_compare_mask(self) -> u32 {
+        ((self.byte(3) << 3) | (self.byte(2) >> 5)) & 0xff
     }
     pub fn set_stencil_compare_mask(&mut self, value: u32) {
-        self.stencil_compare_mask = Some(value);
+        self.set_bits(21, 3, value & 7);
+        self.set_bits(24, 5, (value >> 3) & 0x1f);
     }
-    pub fn set_stencil_compare_mask_checked(&mut self, value: u32) -> Result<(), vk::Result> {
-        self.set_stencil_compare_mask(value);
-        Ok(())
+    pub fn blend_mode(self) -> u8 {
+        ((self.byte(3) >> 5) & 3) as u8
     }
-    /// blend_mode 编码与原 raster 状态 +0x1b 高两位一致；`get_vk_blend_mode` 展开成完整附件。
     pub fn set_blend_mode(&mut self, value: u8) {
-        self.blend_mode = Some(value);
+        self.set_bits(29, 2, u32::from(value));
     }
-    pub fn set_blend_mode_checked(&mut self, value: u8) -> Result<(), vk::Result> {
-        self.set_blend_mode(value);
-        Ok(())
+    pub fn polygon_mode(self) -> vk::PolygonMode {
+        if self.byte(3) >> 7 != 0 {
+            vk::PolygonMode::LINE
+        } else {
+            vk::PolygonMode::FILL
+        }
     }
-    /// 合并到 `RasterPipelineDesc`；缺失字段保持 desc 原值。
-    pub fn apply_to(&self, desc: &mut RasterPipelineDesc) {
-        if let Some(v) = self.topology {
-            desc.topology = v;
-        }
-        if let Some(v) = self.polygon_mode {
-            desc.polygon_mode = v;
-        }
-        if let Some(v) = self.cull_mode {
-            desc.cull_mode = v;
-        }
-        if let Some(v) = self.front_face {
-            desc.front_face = v;
-        }
-        if let Some(v) = self.samples {
-            desc.samples = v;
-        }
-        if let Some(v) = self.depth_test {
-            desc.depth_test = v;
-        }
-        if let Some(v) = self.depth_write {
-            desc.depth_write = v;
-        }
-        if let Some(v) = self.depth_compare {
-            desc.depth_compare = v;
-        }
-        if let Some(blend) = self.blend_mode {
-            desc.blend_attachments = vec![get_vk_blend_mode(blend)];
-        }
+    pub fn set_polygon_mode(&mut self, value: vk::PolygonMode) {
+        let code = match value {
+            vk::PolygonMode::FILL => 0,
+            vk::PolygonMode::LINE => 1,
+            other => panic!("RasterPipelineOpts 不支持多边形模式 {other:?}"),
+        };
+        self.set_bits(31, 1, code);
+    }
+    /// front/back 共用的模板状态；write mask 恒 `0xffffffff`，reference 0（动态）。
+    pub fn stencil_state(self) -> vk::StencilOpState {
+        vk::StencilOpState::default()
+            .fail_op(self.stencil_fail_op())
+            .pass_op(self.stencil_pass_op())
+            .depth_fail_op(self.stencil_depth_fail_op())
+            .compare_op(self.stencil_compare_op())
+            .compare_mask(self.stencil_compare_mask())
+            .write_mask(0xffff_ffff)
+            .reference(0)
+    }
+    /// 把位域展开到管线描述（固定状态部分；`front_face` 恒 COUNTER_CLOCKWISE=0，线宽 1.0）。
+    /// 混合附件状态对每个颜色附件复制同一份（原版把同一个 32 字节状态写满 `color_attachments` 份）。
+    pub fn apply_to(self, desc: &mut RasterPipelineDesc, color_attachments: usize) {
+        desc.topology = self.topology();
+        desc.polygon_mode = self.polygon_mode();
+        desc.cull_mode = self.cull_mode();
+        desc.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
+        desc.depth_test = self.depth_test();
+        desc.depth_write = self.depth_write();
+        desc.depth_compare = self.depth_compare_op();
+        desc.stencil_test = self.stencil_test();
+        desc.stencil = self.stencil_state();
+        desc.blend_attachments =
+            vec![get_vk_blend_mode((self.blend_mode() << 5) as u8); color_attachments];
     }
 }
 pub struct VulkanPipeline {
@@ -511,10 +507,28 @@ impl VulkanPipeline {
         let depth = vk::PipelineDepthStencilStateCreateInfo::default()
             .depth_test_enable(desc.depth_test)
             .depth_write_enable(desc.depth_write)
-            .depth_compare_op(desc.depth_compare);
+            .depth_compare_op(desc.depth_compare)
+            .depth_bounds_test_enable(false)
+            .stencil_test_enable(desc.stencil_test)
+            .front(desc.stencil)
+            .back(desc.stencil)
+            .min_depth_bounds(0.0)
+            .max_depth_bounds(1.0);
         let blend =
             vk::PipelineColorBlendStateCreateInfo::default().attachments(&desc.blend_attachments);
-        let dynamic_values = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+        // 原 0x142c88b20 / 0x142c88b2c：{VIEWPORT, SCISSOR, STENCIL_REFERENCE[, LINE_WIDTH]}，
+        // 个数 `3 + [device+0xad9]`；该字节在 `GraphicsDevice::create`（0x140bf3a6d `setne`，
+        // 源 `[rbp+0x22fc]` = 启用特性链里 wideLines 槽）里写入，所以由设备“实际启用 wideLines”
+        // 决定，而不是 desc 字段。
+        let line_width_dynamic = cache.device.capabilities.wide_lines;
+        let mut dynamic_values = vec![
+            vk::DynamicState::VIEWPORT,
+            vk::DynamicState::SCISSOR,
+            vk::DynamicState::STENCIL_REFERENCE,
+        ];
+        if line_width_dynamic {
+            dynamic_values.push(vk::DynamicState::LINE_WIDTH);
+        }
         let dynamic = vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_values);
         let info = vk::GraphicsPipelineCreateInfo::default()
             .stages(&stages)
@@ -609,6 +623,12 @@ fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
         u64::from(desc.depth_test),
         u64::from(desc.depth_write),
         desc.depth_compare.as_raw() as u64,
+        u64::from(desc.stencil_test),
+        desc.stencil.fail_op.as_raw() as u64,
+        desc.stencil.pass_op.as_raw() as u64,
+        desc.stencil.depth_fail_op.as_raw() as u64,
+        desc.stencil.compare_op.as_raw() as u64,
+        u64::from(desc.stencil.compare_mask),
         desc.entry.as_bytes().len() as u64,
     ];
     key.extend(desc.entry.as_bytes().iter().map(|byte| u64::from(*byte)));
@@ -704,10 +724,64 @@ pub enum InterfaceError {
     RuntimeBindingNotLast(u32, u32),
     InvalidLayout,
     IncompatibleLocation(u32, u32),
+    /// 原 `create_raster_pipeline` shader.rs:840:47 `Option::expect("vertex input attrib byte count")`：
+    /// `Type::nbyte()` 为 None（opaque 资源类型当顶点输入）。
+    VertexInputByteCount,
+    /// 原 shader.rs:838:26 `panic!("Unsupported vertex attribute type: {:?}", ty)`，载荷是类型的 Debug 文本。
+    UnsupportedVertexAttributeType(String),
+    /// 原 compute 管线创建 shader.rs:397:9 `assert!(compiled.reflection.inputs.is_empty())`。
+    ComputeHasVertexInputs,
+    /// 原 compute 管线创建 shader.rs:460:60 `.expect("a valid group size")`（`local_size` 为 None）。
+    MissingGroupSize,
+}
+/// 原 `rhapsody/src/raw/shader.rs` 管线创建路径的 panic 文案（`.rne` 0x1416a3720 / 0x1416a4f1a 冷尾段读出）。
+pub mod original_panics {
+    /// 0x1416a4f21（shader.rs:397:9，字串 0x142c88c30，55 字节）。
+    pub const COMPUTE_INPUTS_NOT_EMPTY: &str = "assertion failed: compiled.reflection.inputs.is_empty()";
+    /// 0x1416a50ed（shader.rs:460:60，字串 0x142c88cf8，18 字节）。
+    pub const VALID_GROUP_SIZE: &str = "a valid group size";
+    /// 0x1416a50d1（shader.rs:453:39，片段 0x142c88d50）：`"Failed creating shader pipeline {name}: {err}"`。
+    pub const FAILED_CREATING_SHADER_PIPELINE_PREFIX: &str = "Failed creating shader pipeline ";
+    pub const FAILED_CREATING_SHADER_PIPELINE_SEP: &str = ": ";
+    /// 0x1416a46c4（shader.rs:972:18，字串 0x142c88b3c，34 字节）：raster 管线 `.expect(..)`，Err 为 ash 的
+    /// `(Vec<Pipeline>, vk::Result)`。
+    pub const UNABLE_TO_CREATE_GRAPHICS_PIPELINE: &str = "Unable to create graphics pipeline";
+    /// 0x1416a451d（shader.rs:840:47，字串 0x142c88b78，30 字节）。
+    pub const VERTEX_INPUT_ATTRIB_BYTE_COUNT: &str = "vertex input attrib byte count";
+    /// 0x1416a458c（shader.rs:838:26，片段 0x142c88be0，35 字节）。
+    pub const UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX: &str = "Unsupported vertex attribute type: ";
+    /// `Result::unwrap()` 失败的固定前缀（0x142c88708，43 字节），用于 shader.rs:796:18（vkCreatePipelineLayout，
+    /// 调用 `[device+0x210]`）、426:18 / 437:18 / 428:78（compute 路径的 vkCreate*）。
+    pub const UNWRAP_ON_ERR: &str = "called `Result::unwrap()` on an `Err` value";
+
+    /// compute 管线创建失败（453:39）的完整 panic 文本。
+    pub fn failed_creating_shader_pipeline(name: &str, err: &dyn std::fmt::Debug) -> String {
+        format!("{FAILED_CREATING_SHADER_PIPELINE_PREFIX}{name}{FAILED_CREATING_SHADER_PIPELINE_SEP}{err:?}")
+    }
+}
+/// 原 compute 管线创建在使用反射前的两个检查（shader.rs:397 assert + 460 expect，顺序按机器码：
+/// 先 assert 再取 local_size）。
+pub fn validate_compute_reflection(
+    reflection: &crate::shader_pipeline::reflection::ShaderReflection,
+) -> Result<[u32; 3], InterfaceError> {
+    if !reflection.vertex_inputs.is_empty() {
+        return Err(InterfaceError::ComputeHasVertexInputs);
+    }
+    reflection.local_size.ok_or(InterfaceError::MissingGroupSize)
 }
 impl std::fmt::Display for InterfaceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "着色器接口无效：{self:?}")
+        match self {
+            Self::VertexInputByteCount => f.write_str(original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT),
+            Self::UnsupportedVertexAttributeType(ty) => {
+                write!(f, "{}{ty}", original_panics::UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX)
+            }
+            Self::ComputeHasVertexInputs => f.write_str(original_panics::COMPUTE_INPUTS_NOT_EMPTY),
+            Self::MissingGroupSize => f.write_str(original_panics::VALID_GROUP_SIZE),
+            // 原 `get_built_in_sampler`（0x140bfc5b0，源 sampler.rs:201）：`panic!("Sampler not found: {name}")`。
+            Self::MissingSampler(name) => write!(f, "Sampler not found: {name}"),
+            _ => write!(f, "着色器接口无效：{self:?}"),
+        }
     }
 }
 impl std::error::Error for InterfaceError {}
@@ -887,6 +961,13 @@ impl ShaderInterfacePlan {
         device: Arc<VulkanDevice>,
         samplers: &[Arc<crate::raw::sampler::Sampler>],
     ) -> Result<Vec<Arc<VulkanDescriptorSetLayout>>, vk::Result> {
+        // 原 0x140be60a0：`assert!(set_count <= MAX_DESCRIPTOR_SETS)`（panic）；这里返回错误。
+        // 原版没有布局缓存：每个 set 每次调用都 `vkCreateDescriptorSetLayout`（+0x230），
+        // 空 set 也建一个空布局（sType 32，bindingCount 0）。0x140d4d740 是 std `RandomState` 的
+        // 线程局部 KEYS（为空 set 的 HashMap 记录取 seed），不是布局缓存。
+        if self.sets.len() > super::descriptor_set::MAX_DESCRIPTOR_SETS {
+            return Err(vk::Result::ERROR_TOO_MANY_OBJECTS);
+        }
         self.sets
             .iter()
             .map(|plan| {
@@ -898,13 +979,13 @@ impl ShaderInterfacePlan {
             })
             .collect()
     }
+    /// 原 `create_descriptor_set_states`（0x140be66c0）：每个布局一个状态，池容量固定 100。
     pub fn create_descriptor_set_states(
         layouts: &[Arc<VulkanDescriptorSetLayout>],
-        sets_per_pool: u32,
     ) -> Result<Vec<DescriptorSetState>, vk::Result> {
         layouts
             .iter()
-            .map(|layout| DescriptorSetState::new(layout.clone(), sets_per_pool))
+            .map(|layout| DescriptorSetState::for_layout(layout.clone()))
             .collect()
     }
     pub fn create_pipeline_layout(
@@ -965,6 +1046,59 @@ pub fn map_vertex_attribute_format(
         return Err(InterfaceError::InvalidLayout);
     }
     Ok(vk::Format::from_raw(base + 3 * (bytes as i32 / 4 - 1)))
+}
+
+
+/// 反射里的顶点输入 → 每个 location 一个顶点绑定（binding == location，offset 0，
+/// stride = 类型字节数，输入率 VERTEX），读自 `create_raster_pipeline`（O 0x1416a3720，0x1416a3a60 起的循环）。
+/// 只接受 32 位标量/向量（`map_vertex_attribute_format` 的 tag 2/3/4 = 有符号/无符号/浮点）。
+/// 原版按 `hashbrown` 表顺序迭代（任意序），这里按 location 升序；Vulkan 语义等价。
+pub fn vertex_input_from_reflection(
+    reflection: &crate::shader_pipeline::reflection::ShaderReflection,
+) -> Result<
+    (
+        Vec<vk::VertexInputBindingDescription>,
+        Vec<vk::VertexInputAttributeDescription>,
+    ),
+    InterfaceError,
+> {
+    use crate::shader_pipeline::reflection_ty::{ScalarType, Type};
+    let mut bindings = Vec::new();
+    let mut attributes = Vec::new();
+    for input in reflection.effective_vertex_inputs().into_values() {
+        // 原版先 `ty.nbyte().expect("vertex input attrib byte count")`（0x1416a3ba2），
+        // 再按类型分派；非标量/向量 → `panic!("Unsupported vertex attribute type: {:?}")`。
+        input.ty.nbyte().ok_or(InterfaceError::VertexInputByteCount)?;
+        let (scalar, count) = match &input.ty {
+            Type::Scalar(s) => (s.clone(), 1),
+            Type::Vector(v) => (v.scalar_ty.clone(), v.nscalar),
+            other => {
+                return Err(InterfaceError::UnsupportedVertexAttributeType(format!("{other:?}")))
+            }
+        };
+        let tag = match scalar {
+            ScalarType::Signed(32) => 2,
+            ScalarType::Unsigned(32) => 3,
+            ScalarType::Float(32) => 4,
+            _ => return Err(InterfaceError::InvalidLayout),
+        };
+        let bytes = u64::from(count) * 4;
+        let format = map_vertex_attribute_format(tag, bytes)?;
+        bindings.push(
+            vk::VertexInputBindingDescription::default()
+                .binding(input.location)
+                .stride(bytes as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+        );
+        attributes.push(
+            vk::VertexInputAttributeDescription::default()
+                .location(input.location)
+                .binding(input.location)
+                .format(format)
+                .offset(0),
+        );
+    }
+    Ok((bindings, attributes))
 }
 
 /// 已解析发行容器中的一个模块。容器 offset/word_count 来自原 spirq catalog。
@@ -1122,6 +1256,9 @@ impl ShaderLibrary {
             }
         }
         let plan = if let Some(compiled) = self.compiled_computes.get(key) {
+            // 原 compute 管线创建的两个检查（shader.rs:397 / 460）。
+            validate_compute_reflection(&compiled.reflection)
+                .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
             ShaderInterfacePlan::from_compiled_pipeline(compiled, &by_name, runtime_device_scalar)?
         } else {
             ShaderInterfacePlan::from_reflection(
@@ -1639,5 +1776,127 @@ impl ShaderLibrary {
         self.compiled_rasters
             .insert((vertex_key, fragment_key), Arc::new(compiled));
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod raster_opts_tests {
+    use super::*;
+
+    /// 逐位核对：每个字段只落在原机器码解码的位上（0x1416a3d08..0x1416a3f2f）。
+    #[test]
+    fn bit_positions_match_the_exe_decode() {
+        let mut o = RasterPipelineOpts::new();
+        o.set_topology(vk::PrimitiveTopology::LINE_STRIP);
+        assert_eq!(o.0, 0b10);
+        let mut o = RasterPipelineOpts::new();
+        o.set_cull_mode(vk::CullModeFlags::BACK);
+        assert_eq!(o.0, 0b10 << 2);
+        let mut o = RasterPipelineOpts::new();
+        o.set_depth_compare_op(vk::CompareOp::EQUAL);
+        o.set_depth_write(true);
+        o.set_depth_test_enable(true);
+        assert_eq!(o.0, (2 << 4) | (1 << 6) | (1 << 7));
+        let mut o = RasterPipelineOpts::new();
+        o.set_stencil_test_enable(true);
+        o.set_stencil_fail_op(vk::StencilOp::INCREMENT_AND_CLAMP);
+        o.set_stencil_pass_op(vk::StencilOp::REPLACE);
+        assert_eq!(o.0, (1 << 8) | (3 << 9) | (2 << 12));
+        // depth-fail op 3 位：b1 bit7 为低位，b2 bit0–1 为高两位。
+        let mut o = RasterPipelineOpts::new();
+        o.set_stencil_depth_fail_op(vk::StencilOp::INVERT); // 5 = 0b101
+        assert_eq!(o.0, (1 << 15) | (2 << 16));
+        assert_eq!(o.stencil_depth_fail_op(), vk::StencilOp::INVERT);
+        let mut o = RasterPipelineOpts::new();
+        o.set_stencil_compare_op(vk::CompareOp::ALWAYS); // 7
+        assert_eq!(o.0, 7 << 18);
+        // compare mask 8 位：b2 bit5–7 低 3 位，b3 bit0–4 高 5 位。
+        let mut o = RasterPipelineOpts::new();
+        o.set_stencil_compare_mask(0xff);
+        assert_eq!(o.0, (7 << 21) | (0x1f << 24));
+        assert_eq!(o.stencil_compare_mask(), 0xff);
+        let mut o = RasterPipelineOpts::new();
+        o.set_blend_mode(3);
+        o.set_polygon_mode(vk::PolygonMode::LINE);
+        assert_eq!(o.0, (3 << 29) | (1 << 31));
+    }
+
+    #[test]
+    fn split_fields_round_trip() {
+        let mut o = RasterPipelineOpts::new();
+        for (op, mask) in [(0u32, 0u32), (7, 0xa5), (3, 0x5a), (5, 0xff)] {
+            o.set_stencil_depth_fail_op(vk::StencilOp::from_raw(op as i32));
+            o.set_stencil_compare_mask(mask);
+            o.set_stencil_compare_op(vk::CompareOp::LESS_OR_EQUAL);
+            o.set_blend_mode(2);
+            assert_eq!(o.stencil_depth_fail_op().as_raw(), op as i32);
+            assert_eq!(o.stencil_compare_mask(), mask);
+            assert_eq!(o.stencil_compare_op(), vk::CompareOp::LESS_OR_EQUAL);
+            assert_eq!(o.blend_mode(), 2);
+        }
+    }
+
+    /// 跳转表 0x142c88ff0 / 0x142c89000 逐项解出的枚举次序（不是 Vulkan 原值次序）。
+    #[test]
+    fn jump_table_enums_use_the_exe_ordering() {
+        for (code, topology) in [
+            (0, vk::PrimitiveTopology::TRIANGLE_LIST),
+            (1, vk::PrimitiveTopology::LINE_LIST),
+            (2, vk::PrimitiveTopology::LINE_STRIP),
+        ] {
+            assert_eq!(RasterPipelineOpts(code).topology(), topology);
+        }
+        for (code, op) in [
+            (0, vk::CompareOp::LESS),
+            (1, vk::CompareOp::GREATER),
+            (2, vk::CompareOp::EQUAL),
+        ] {
+            assert_eq!(RasterPipelineOpts(code << 4).depth_compare_op(), op);
+        }
+    }
+
+    #[test]
+    fn apply_to_replicates_one_blend_state_per_color_attachment() {
+        let device = match crate::raw::init::create_headless_device() {
+            Ok(device) => device,
+            Err(_) => return,
+        };
+        let module = Arc::new(ShaderModule {
+            device: device.clone(),
+            handle: vk::ShaderModule::null(),
+        });
+        let layout = Arc::new(PipelineLayout {
+            device,
+            handle: vk::PipelineLayout::null(),
+            sets: Vec::new(),
+            push_constants: Vec::new(),
+        });
+        let mut desc = RasterPipelineDesc::new(module, layout);
+        let mut o = RasterPipelineOpts::new();
+        o.set_blend_mode(2);
+        o.set_stencil_test_enable(true);
+        o.set_stencil_compare_mask(0x81);
+        o.apply_to(&mut desc, 3);
+        assert_eq!(desc.blend_attachments.len(), 3);
+        // 原 0x140be67f0：模式 2 → dstColor/dstAlpha = ONE_MINUS_SRC_ALPHA(7)。
+        assert_eq!(desc.blend_attachments[0].dst_color_blend_factor.as_raw(), 7);
+        assert!(desc.stencil_test);
+        assert_eq!(desc.stencil.compare_mask, 0x81);
+        assert_eq!(desc.stencil.write_mask, 0xffff_ffff);
+        assert_eq!(desc.front_face, vk::FrontFace::COUNTER_CLOCKWISE);
+    }
+
+    #[test]
+    fn map_vertex_attribute_format_follows_the_exe_table() {
+        // 0x140be6850：`(bytes-4)/4*3 + base`，base：tag2→99(SINT) / tag3→98(UINT) / tag4→100(SFLOAT)。
+        assert_eq!(map_vertex_attribute_format(4, 4).unwrap(), vk::Format::R32_SFLOAT);
+        assert_eq!(map_vertex_attribute_format(4, 8).unwrap(), vk::Format::R32G32_SFLOAT);
+        assert_eq!(map_vertex_attribute_format(4, 12).unwrap(), vk::Format::R32G32B32_SFLOAT);
+        assert_eq!(map_vertex_attribute_format(4, 16).unwrap(), vk::Format::R32G32B32A32_SFLOAT);
+        assert_eq!(map_vertex_attribute_format(3, 4).unwrap(), vk::Format::R32_UINT);
+        assert_eq!(map_vertex_attribute_format(2, 16).unwrap(), vk::Format::R32G32B32A32_SINT);
+        assert!(map_vertex_attribute_format(4, 20).is_err());
+        assert!(map_vertex_attribute_format(5, 4).is_err());
     }
 }

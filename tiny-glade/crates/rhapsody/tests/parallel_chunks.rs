@@ -226,16 +226,20 @@ fn pgo_double_buffer_uses_only_the_previous_frame_and_never_accumulates() {
 }
 
 #[test]
-fn stats_extend_adds_totals_and_keeps_the_maximum() {
+fn stats_extend_overwrites_per_name_but_accumulates_total_and_max() {
+    // record_batch 内联体（0x1402c1d40）：insert 覆盖 + total += d + max = max(max, d)。
     let a = PassPgoNameId::from_name("a");
     let b = PassPgoNameId::from_name("b");
-    let mut left = PassPgoStats::default();
-    left.record(PassPgoDuration::new(a, 10));
-    let mut right = PassPgoStats::default();
-    right.record(PassPgoDuration::new(b, 70));
-    right.record(PassPgoDuration::new(a, 5));
-    left.extend(&right);
-    assert_eq!(left.total_ns(), 85);
-    assert_eq!(left.max_ns(), 70);
-    assert_eq!(left.duration_ns(a), 15);
+    let mut s = PassPgoStats::default();
+    s.extend([
+        PassPgoDuration::new(a, 10),
+        PassPgoDuration::new(b, 70),
+        PassPgoDuration::new(a, 5),
+    ]);
+    assert_eq!(s.total_ns(), 85);
+    assert_eq!(s.max_ns(), 70);
+    assert_eq!(s.duration_ns(a), 5, "同名后者覆盖前者（hashbrown insert）");
+    assert_eq!(s.duration_ns(b), 70);
+    s.extend(std::iter::empty());
+    assert_eq!(s.total_ns(), 85);
 }

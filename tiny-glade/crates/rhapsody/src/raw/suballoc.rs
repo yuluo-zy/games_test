@@ -1,12 +1,12 @@
 //! 显存子分配：把公开 `gpu-allocator` 接到 [`AllocationBackend`] 边界上，不自写次分配算法。
 //!
-//! 原作 `rhapsody` 依赖 `gpu-allocator 0.26.0`（本地分叉：改到 ash 0.38，另依赖 arc-swap/egui/puffin），
-//! 本身就做块内子分配；候选实现此前每个资源一次 `vkAllocateMemory`，是偏离。
-//! 公开 0.26.0 依赖 ash <=0.37，与本工程的 ash 0.38 类型不兼容，所以用最接近且兼容的公开 0.27.0。
-//! 它**不是**原分叉：块大小策略、统计口径、arc-swap 的使用都可能不同，只能标为候选。
+//! 原作 `rhapsody` 依赖 gpu-allocator 的本地分叉（Cargo.lock 记 0.26.0，另依赖 arc-swap/egui/puffin），
+//! 本身就做块内子分配。PDB 中 `with_global_allocator` 返回 `AllocatorReport`，该类型只存在于 0.27 系
+//! （`generate_report`），公开 0.26.0 又依赖 ash <=0.37，所以算法按公开 0.27.0 复用；
+//! 分叉相对 0.27 的附加项（egui 可视化、puffin、arc-swap 的用法）未恢复，不影响分配行为。
 //!
-//! 模式：`Dedicated`（每资源一块专用内存，默认，已被全部测试验证）与 `Suballocated`。
-//! 默认值由进程级开关决定，初值取环境变量 `RHAPSODY_ALLOCATION`（`sub`/`dedicated`）。
+//! 模式：`Suballocated`（默认，与原版一致）与 `Dedicated`（逐资源专用内存，仅作对比回退）。
+//! 默认值由进程级开关决定；未设置时看环境变量 `RHAPSODY_ALLOCATION=dedicated`。
 use super::{
     allocator::{
         AllocationBackend, AllocationRequest, AllocatorReport, MemoryBlock, MemoryLocation,
@@ -47,9 +47,10 @@ pub fn default_allocation_mode() -> AllocationMode {
     match DEFAULT_MODE.load(Ordering::SeqCst) {
         DEDICATED => AllocationMode::Dedicated,
         SUBALLOCATED => AllocationMode::Suballocated,
+        // 原版就是子分配（gpu-allocator）；环境变量只用于回退到逐资源专用分配做对比。
         _ => match std::env::var("RHAPSODY_ALLOCATION").as_deref() {
-            Ok("sub" | "suballocated") => AllocationMode::Suballocated,
-            _ => AllocationMode::Dedicated,
+            Ok("dedicated") => AllocationMode::Dedicated,
+            _ => AllocationMode::Suballocated,
         },
     }
 }
