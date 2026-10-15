@@ -14,6 +14,15 @@
 
 `default` 等 1 项（DeferredRasterResources 默认）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `deferred_raster`（0x1409d20b0，6203B）—— 完整接线（d_gap §3）
+- **ABI 表**（O）：`rcx` rg、`rdx` world、`r8` = `[Handle<Texture>;2]`（`[1]` = 颜色附件 tag1、`[0]` = 视口来源）、`r9` = 深度（tag0 可写、无清除）、栈参 5..13（逐个对应 binding hash）。
+- **5 条目** `ENTRIES = [(1,F),(3,F),(0,F),(0,T),(2,F)]` × 着色器数组（资源 `0x78cac557…`，None → `Option::unwrap` panic）；`flag` 决定 `byte3=(b3&0x9f)|0x20` 与模板 `|0x80`；收尾状态 `byte0&=0x7f, byte1|=1, byte2=(b2&3)|0xe8, byte3=(b3&0xe0)|0x10`；`draw_no_vao(3)`。
+- **绑定序列 33 步**（逐条 hash/来源见 `bind_all`）：`Time` = `ctx.elapsed.as_secs_f32()`；Lantern uniform = `PassHost::ssbo_buffer_word(LanternSsbo)`；`bind_ray_tracing::<Tri,Meta,Bvh,Wall>`（i_api 版）；读 ssgi_tex/screen_shadows_tex/rdi_reservoir_tex/light_indirection_grid/grid_light_indices + LanternSsbo/SpatialResolveOffsetsSsbo。
+- 着色器 `/deferred/{solid,grass,plant,canopy}_light_sun_sky.raster.hlsl`；"Apply deferred lighting"。
+- 帧序：GI 链（W37 ssgi → W40 bin_lights → W41 restir → W42 apply_screen_shadows）→ **W43 deferred_raster** → W34 late_forward（注：W43 在 W34 之后注册但同帧，deferred 光照目标）。
+
 ## 关键事实
 
 - 结构体：`DeferredRasterResources`（U 字段）。

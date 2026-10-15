@@ -43,6 +43,35 @@
 
 `closure`、`next` 等 19 项（RenderSublistsIter::next 等迭代器胶水）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. `gpu_generate_draw_lists`（0x140987dd0）—— round0/round≠0 双路径编排
+处理链（O，c1 §2 + decomp）：
+1. World 查 GpuWorld（TypeId `0x662978458699a5ef`）；subset 槽（`world+0x5b0`→subset+0x5c 帧计数）；
+2. 建缓冲：`BufferDesc::new_gpu_only(0x6c000, 0)`（清空）+ `(subset_inst_count[0x60]<<2)` 第二块；
+3. `ComputePass::new ×2`：**clear_draw_lists**（`dispatch_1d 108`）/ **clear_histogram**（`dispatch_1d 0x1b000`）——固定形状 `.rdata` 描述符；
+4. **round 分叉**（第三参）：round0 → `get_rg_buffer` 0x1412d1180 + `clear_rg_buffer`；round≠0 → 0x1412ce810（带 hzb 的第 2 轮路径）；
+5. `ComputePass::new` cull_and_bucket + `bind_external_storage_buffer`（subset@+0x1458/+0x1480）→ multiunzip（0x140b2b7a0）→ `create_cull_and_bucket_pass<Main>`（0x140a28950）→ `dispatch_with`（0x14160a2e0 闭包逐项 push_constants(20B) + `dispatch_3d(count,1,1)`，closure_env$1 0x1415fa2f0）；
+6. `dispatch_indirect_with<group_draw_cmd_prefix_sum::closure_env$0>`（0x14160b850）执行排序链。
+
+### 2. 15 个 nani pass 链（O 序，shader URI 全部证实）
+```
+clear_draw_lists(108) → clear_histogram(0x1b000) → prepare_unsorted_draw_lists → cull_and_bucket*
+→ histogram_prefix_sum(dispatch_1d 1) → group_draw_cmd_prefix_sum(间接) → clear_subtotals
+→ allocate_draw_commands → generate_draw_lists(间接) → draw_indexed_indirect_to_dispatch
+→ fill_sorted_instance_list(间接) → fill_unsorted_instance_indirection(间接)
+→ prefix_sum_unsorted_instances_per_atlas_entry → generate_dispatch_args
+```
+（round≠0 带 hzb：cull_and_bucket 的 hzb 分支读 `hzb_tex`，access 0x19。）
+
+### 3. 墙两轮
+- **generate_wall_draw_lists**（0x14098aaf0，W21）：`/wall/generate_draw_lists.cs.hlsl:cs_pass1` + `/wall/reset_pass2_inst_counts.cs.hlsl`；读 wall 实例（UnsafeWorldCell::get_entity 闭包），`ssbo_to_rg_handle` + `ComputePass::write_draw_indirect_cmd_buffer`。
+- **generate_wall_draw_lists_pass2**（0x14098b2a0，W27）：`:cs_pass2`（读 `hzb_tex`）+ `reset_wall_draw_indirect_args`（DrawBuilder::uniform + dispatch_1d）。**门控 `*0x14362c0d8（freeze_occlusion_culling）==0`**（round3 O）。
+- 帧序：W21 → **W22（round0）** → shadow/main/hzb → W27/W28（round≠0）仅在 `freeze_occlusion_culling==0` 时（render_world 章）。
+
+### 4. 资源/绑定（O）
+读 `NaniMeshAtlasPartInfo`、`NaniInstanceIndirectionSsbo`；写 `NaniDrawListSsbo`、`NaniDrawListLengthSsbo`、histogram/counter SSBO；`frame_constants` uniform；`hzb_tex`（第 2 轮）。**RenderSublistsIter**（27 子集迭代器）驱动 `dispatch_indirect_with` 的闭包（PushConstants [u32;5] 20B，c1 纠错）。
+
 ## 关键事实
 
 - Shader URI（O）：`/nani/{clear_draw_lists,clear_histogram,prepare_unsorted_draw_lists,cull_and_bucket*,histogram_prefix_sum,group_draw_cmd_prefix_sum,subtotal_prefix_sum,allocate_draw_commands,generate_draw_lists,draw_indexed_indirect_to_dispatch,fill_sorted_instance_list,fill_unsorted_instance_indirection,prefix_sum_unsorted_instances_per_atlas_entry,clear_subtotals,generate_dispatch_args}.cs.hlsl`；`/wall/generate_draw_lists.cs.hlsl:cs_pass1|cs_pass2`；`/wall/reset_pass2_inst_counts.cs.hlsl`。

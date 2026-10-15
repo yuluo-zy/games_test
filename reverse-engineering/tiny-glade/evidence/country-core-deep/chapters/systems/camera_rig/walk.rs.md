@@ -21,3 +21,19 @@
 | `impl$2::update` | 0x140993d30 | 288 | dolly rig 迭代（共享） | O | camera-time\decomp\decomp-0x140993d30.txt |
 | `free::impl$1::rotate_yaw_pitch` | 0x140993750 | 66 | 同共享函数 | O | camera-time\decomp\decomp-0x140993750.txt |
 | `free::impl$1::update` | 0x140993d30 | 288 | 同共享函数 | O | camera-time\decomp\decomp-0x140993d30.txt |
+
+## 实现方式（算法级）
+
+```
+translate_screen_space（0x140994700）：
+  quat@+0x18..0x24 旋转 movement → flat（allow_vertical 时保留 y）→ step=8/60 归一
+  → 8 次 spherecast（半径 0.5、filter 0x30cf、法向滑移 t·0.9；1e-10 阈值）→ clamp xz ±34
+  → smooth → Position.translate
+constrain_to_be_above_terrain（0x140994320）：
+  两段 spherecast（filter 0x20 先、0x30cf/0 后，半径 0.45@0x142a7fca4，XZ clamp ±64.9）
+  → 地面下界 y−1.9−1.4 → terrain walk_height_blend（skip_blend 分支 +0x298 选 vtable 对）
+  → y=lerp(y,target,1−exp(−last_dt·20))；ground_hit kind 0xb/0x11
+teleport（0x140994130）：Position driver 写 (x,y,z)；方向向量 → yaw/pitch 度（FUN_140334d80/FUN_141766a90 × rad2deg）
+rotation（0x140994310）：16B 拷贝 [self+0x18] = 完整四元数（分叉 rotation-first）
+rotate_yaw_pitch / update = free 共享（0x140993750/0x140993d30）
+```

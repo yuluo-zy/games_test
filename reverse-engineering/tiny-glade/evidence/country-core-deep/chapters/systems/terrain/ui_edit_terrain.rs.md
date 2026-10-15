@@ -17,3 +17,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+
+## 实现方式（算法级）
+
+`ui_edit_terrain`（0xaef1f0）：按鼠标落点 + hover 笔画 id 生成 EditTerrainStrokeCmd/SetTerrainStrokePtsCmd；事件组含 CursorCaptureCmd/EnableArrowGizmoStretch/AddTerrainHighlightCmd 等；维护 MouseActivityTimer/TerrainStrokeParamsCache。ui-input 域主责。

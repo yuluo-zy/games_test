@@ -30,3 +30,29 @@
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::systems::world_raster::_::impl$0::validate_param`（行 65）— 谓词/校验
+
+## 实现方式（算法级）
+
+### draw_raster<T> 状态机（10 实例；水 0x142260ae0 精读）
+
+```
+state==0 → start_new(stroke, cursor, mode, brush)
+state==1：
+  last()（空→panic）→ dist(last,point) ≤ 0.0005（0x1429cd060）早退
+  add_point → resample_and_smooth
+  DirtyTiles::clear(stroke.bitmap@+0x270)
+  rasterize_world_space_stroke(bitmap, iter_points_xz(smoothed@+0x48), first, brush@+0x60)
+  DirtyTiles::extend(worldraster.bitmap@+0x98, stroke.bitmap)（×2）
+  swap(stroke.bitmap 0x70.. 与 0x270.. 双 512B 半)
+  copy_composite_to_scratch(worldraster)
+  rasterize_stroke(worldraster, iter_points_xz(smoothed), ..., mode, brush)
+  map StagingSsbo → copy_to_staging(selector=0)
+其余状态 → commit_scratch_to_composite 发布
+按 +0x64 模式发 Draw/Erase 事件（WaterDraw/WaterErase 等）
+```
+
+### 输入源 / 槽位
+
+- 点：CursorTerrainRaycast::position（func_0x000140a12650）；平滑后曲线列 Vec3@+0x48 是 rasterize_stroke 唯一输入（iter_points_xz 0x140a97860）。
+- ActiveRasterStroke 槽位：index_mut 0x868cf0，imul 0x470；记录_raster_history 同槽位（record_raster_history 0x957990 = 12B 元素 Vec 克隆 → History::add → 重置 cap 4）。
+- upload_world_raster_buffers_to_staging（0x957bf0）：脏输入流（EventReader 双缓冲差）非空 → upload_to_staging（6 光栅 composite→staging SSBO）；log/panic module path country_core::systems::world_raster。

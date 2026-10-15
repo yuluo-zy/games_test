@@ -15,3 +15,11 @@
 - `country_core::systems::history::replay_auto_clutter::replay_auto_clutter::closure$0`（行 38）— 见文件作用（O；decomp-0x140aa4a60.txt）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖；骨架见 history/ALGORITHMS.md §2.6）
+
+- **replay_auto_clutter 0x140aa4a60**：前桶迭代骨架（speed = ReplayBuffer+0x28）；
+  每命令：`undo(+0x1c)==0 → HashMap<WallId,()> insert`（墙派生装饰恢复）；
+  `!=0 → DeletedAutoClutter.erase((DecoratorId, DecoratorId))`；instant/动画节奏
+  （elapsed += dt*speed，完成后索引入列表）；收尾逆序移除（tag 9 → 0x1402e5d80
+  drop）。
+

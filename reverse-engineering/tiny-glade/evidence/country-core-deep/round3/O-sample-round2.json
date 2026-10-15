@@ -1,0 +1,2047 @@
+[
+ {
+  "domain": "??",
+  "rel": "components/mod.rs",
+  "fn": "`country_core::components::impl$23::clone_behavior`",
+  "addr": "0x140002370",
+  "claim": "共享 `clone_behavior` 0x140002370 = `xor eax,eax; ret`（返回 0 = 无克隆行为）。Bevy 默认胶水。",
+  "evid": "decomp-0x140002370.txt",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/mesh_library.rs",
+  "fn": "`transient_meshes`",
+  "addr": "0x140002450",
+  "claim": "猜测：返回瞬时网格集合；证实：`&Arc<Mutex<Vec<_>>>` 访问器",
+  "evid": "A3_mesh.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "render/render_config.rs",
+  "fn": "`…impl$0::deserialize::visit_str<ron::Error>`",
+  "addr": "0x14003ae40",
+  "claim": "O（胶水）：ron 字符串枚举反序列化 visitor（RENDER_GAP §2.1 已判 serde derive；字符串枚举名可核对）",
+  "evid": "render-gap\\DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "utils/mod.rs",
+  "fn": "`get_last_event<OsCursorCaptureCmd>`",
+  "addr": "0x1402b4aa0",
+  "claim": "同上（枚举变体）",
+  "evid": "同注册表",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::impl$3::read_storage_buffer<country_core::resources::world_raster_defs::Cobblestone1RasterStagingSsbo>`",
+  "addr": "0x140588820",
+  "claim": "O",
+  "evid": "B_a4_compute §2/§3.3；wp1/contracts/compute_pass_builder.md §6（0x14160c290 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "components/drawable.rs",
+  "fn": "`country_core::components::drawable::impl$9::register_required_components`",
+  "addr": "0x14082cad0",
+  "claim": "Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。",
+  "evid": "decomp-0x14082cad0.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "components/drawable.rs",
+  "fn": "`country_core::components::drawable::impl$12::register_required_components`",
+  "addr": "0x14082d1c0",
+  "claim": "Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。",
+  "evid": "decomp-0x14082d1c0.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "components/drawable.rs",
+  "fn": "`country_core::components::drawable::impl$27::register_required_components`",
+  "addr": "0x140830250",
+  "claim": "Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。",
+  "evid": "decomp-0x140830250.txt",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "components/mod.rs",
+  "fn": "`country_core::components::impl$52::register_required_components`",
+  "addr": "0x140850aa0",
+  "claim": "Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。",
+  "evid": "decomp-0x140850aa0.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "components/mod.rs",
+  "fn": "`country_core::components::impl$82::register_required_components`",
+  "addr": "0x140855030",
+  "claim": "Bevy `register_required_components` 注册胶水（monomorphized，bevy_ecs component.rs；18KB 哈希/类型表 + 每 impl 独立组件类型名表）。required-components 策略按类型合同恢复，无独立业务。",
+  "evid": "decomp-0x140855030.txt",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "game_key_bindings.rs",
+  "fn": "`KeyBindings::assign_mouse_button`",
+  "addr": "0x14089b280",
+  "claim": "指定鼠标键",
+  "evid": "写 `{key,mouse} u16` @0x1bc+action*4（重建已证）",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "game_key_bindings.rs",
+  "fn": "`KeyBindings::assign_key`",
+  "addr": "0x14089b2a0",
+  "claim": "指定按键（冲突交换）",
+  "evid": "26 块逐槽扫描、清 0xc3、冲突交换、变更事件",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "game_key_bindings.rs",
+  "fn": "`keycode_to_str`",
+  "addr": "0x14089d490",
+  "claim": "键码→标签",
+  "evid": "跳表",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/configwatch.rs",
+  "fn": "`ConfigWatch::watch`",
+  "addr": "0x1408ba290",
+  "claim": "猜测：注册监视路径；证实：clone 路径 + hotwatch.watch + 回调捕获",
+  "evid": "A3_shader.md",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_stream.rs",
+  "fn": "`country_core::render::pass_builder::draw_stream::impl$8::to_texture_binding_key`",
+  "addr": "0x1408eefd0",
+  "claim": "O",
+  "evid": "B_a4_draw §1；wp1/contracts/draw_stream.md §4（0x1408eefd0）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_builder.rs",
+  "fn": "`country_core::render::pass_builder::draw_builder::DrawBuilder::multi_draw_indexed_indirect`",
+  "addr": "0x140907990",
+  "claim": "O",
+  "evid": "B_a4_draw §2；B_i_api §2（0x140907990）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_builder.rs",
+  "fn": "`country_core::render::pass_builder::draw_builder::DrawBuilder::draw_indexed_indirect_raw`",
+  "addr": "0x140907cc0",
+  "claim": "O",
+  "evid": "B_a4_draw §2（0x140907cc0）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "game_config.rs",
+  "fn": "`GameConfig::upgrade`",
+  "addr": "0x14090df90",
+  "claim": "O：`cmp byte[rcx+0x88],1; je +1; ret`（+0x88==1 已升级即返回）；随后 f32 比较 `[rcx+0x84]` vs 常量 0x14202018e（0.5?）、`cmp dword[rcx+0x80],0`、写 `[rcx+0x80]=0`——**配置版本迁移：旧配置清零 0x80 字段、新常量回填**（字段语义 U）",
+  "evid": "expansion-b2\\decomp\\decomp-0x14090df90.txt（NotFound，手解）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "game_profile.rs",
+  "fn": "`profile_file_path`",
+  "addr": "0x140916440",
+  "claim": "`config_dir()+\"profile.ron\"`",
+  "evid": "UNK_142aaca1c len 0xb",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "game_profile.rs",
+  "fn": "`save_game_profile`",
+  "addr": "0x140917230",
+  "claim": "保存配置",
+  "evid": "→ write_profile_via_tmp；错误 log",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/vao_library.rs",
+  "fn": "`AssetVAOLibrary::new`",
+  "addr": "0x140924030",
+  "claim": "猜测：构造；证实：两张空表",
+  "evid": "A3_mesh.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/mesh_library.rs",
+  "fn": "`AssetMeshLibrary::add`",
+  "addr": "0x14092cc60",
+  "claim": "猜测：注册网格；证实：**入参一个 0x90 B 结构 `{ asset: Mesh(0x78)@0, name: Option<String>@0x78 }`**",
+  "evid": "A3_mesh.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/mesh_library.rs",
+  "fn": "`AssetMeshLibrary::get`",
+  "addr": "0x14092d2e0",
+  "claim": "猜测：按 handle 取；证实：FrozenMap::get",
+  "evid": "A3_mesh.md",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/shader_library.rs",
+  "fn": "`AssetShaderLibrary::new`",
+  "addr": "0x140936c60",
+  "claim": "猜测：构造；证实：两张空表 + RandomState",
+  "evid": "A3_shader.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/shader_library.rs",
+  "fn": "`AssetShaderLibrary::debug_raster_get_name`",
+  "addr": "0x140937cb0",
+  "claim": "猜测：调试取名字；证实：读锁下线性扫描返回 `Option<&str>`",
+  "evid": "A3_shader.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/color_library.rs",
+  "fn": "`update_color_library`",
+  "addr": "0x14093b530",
+  "claim": "猜测：更新系统；证实：**bevy 系统** `(设置, &AssetSsboLibrary, &Arc<GraphicsDevice>, &mut ColorLibrarySsbo)`",
+  "evid": "A3_color.md §一；decomp: backend-misc/decomp/decomp-0x14093b530.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/texture_library.rs",
+  "fn": "`AssetTextureLibrary::create_name_mapping`",
+  "addr": "0x14093c720",
+  "claim": "猜测：名字→现有纹理映射；证实：target 查找 + 别名登记",
+  "evid": "A3_texture.md",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/texture_library.rs",
+  "fn": "`AssetTextureLibrary::handle_to_bindless_index`",
+  "addr": "0x14093d310",
+  "claim": "猜测：分配 bindless 槽；证实：`&self`，读写锁两段式",
+  "evid": "A3_texture.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "asset_libraries/texture_library.rs",
+  "fn": "`impl$2::image_name_to_index`",
+  "addr": "0x14093d690",
+  "claim": "猜测：名字→bindless 下标；证实：NameHash::compute + handle_to_bindless_index",
+  "evid": "A3_texture.md",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::render::nani::buffers::NaniNextVisibilityBitmaskSsbo>`",
+  "addr": "0x140970b20",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::systems::render_loop::draw_passes::ui_2d_pass::ShapeStreamSsbo>`",
+  "addr": "0x140971020",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::read_access_buffer<country_core::systems::render_loop::compute_passes::dof_autofocus::DofAutofocusSsbo>`",
+  "addr": "0x140972220",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1/§3.3；wp1/contracts/pass_resource_access.md §1（0x1402b00e0/0x140970620 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::render::nani::buffers::NaniFilteredInstanceAllocatorSsbo>`",
+  "addr": "0x140973c20",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>`",
+  "addr": "0x140973d20",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>`",
+  "addr": "0x140974020",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems::render_loop::indirect_params::DrawIndirectBuffer>`",
+  "addr": "0x140974d20",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::write_access_buffer<country_core::systems::render_loop::compute_passes::compute_garden::Flower03Ssbo>`",
+  "addr": "0x140975020",
+  "claim": "O",
+  "evid": "B_a4_compute §3.1；wp1/contracts/pass_resource_access.md §1（0x140973720 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/raster_single.rs",
+  "fn": "`…raster_single_object<1,ColorAttachment[1],resolve_to_swapchain::closure_env$0>`",
+  "addr": "0x1409d00a0",
+  "claim": "O：同上（resolve_to_swapchain 变体；渲染图单例光栅化）",
+  "evid": "render-loop\\decomp",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/mesh.rs",
+  "fn": "`VertexAttributeValues::append`",
+  "addr": "0x140a08440",
+  "claim": "猜测：追加；证实：同变体跳表分派",
+  "evid": "wp4 mesh",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/pass_resource_access.rs",
+  "fn": "`country_core::render::pass_builder::pass_resource_access::impl$0::dims`",
+  "addr": "0x140a59860",
+  "claim": "O",
+  "evid": "B_i_api §3.2（0x140a59860）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "game_profile.rs",
+  "fn": "`serialize<ron>`",
+  "addr": "0x140a658a0",
+  "claim": "ron 序列化",
+  "evid": "同字段表",
+  "fmt": "B",
+  "supp": "non-render-top-level"
+ },
+ {
+  "domain": "??",
+  "rel": "utils/dirty_tiles.rs",
+  "fn": "`DirtyTiles::iter_world_space_rect_cells<intersects closure>`",
+  "addr": "0x140adec50",
+  "claim": "矩形范围遍历（碰撞闭包）",
+  "evid": "闭包置 bool",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "render/view_constants.rs",
+  "fn": "`ViewportConstantBuilder::build`",
+  "addr": "0x140b18f60",
+  "claim": "猜测：构建常量；证实：完整矩阵链",
+  "evid": "wp4；decomp: backend-misc/decomp/decomp-0x140b18f60.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "startup/load_mesh_atlases.rs",
+  "fn": "`country_core::startup::load_mesh_atlases::load_mesh_atlases`",
+  "addr": "0x14129f400",
+  "claim": "`load_mesh_atlases`：生成图集 parts — `Vertex_Position`+`stone_floor_`、`plaster`/`plaster_strip`、`stairs_floor_chunk_`、`smoke`；调 grid_gen_cw/ccw（0x140928100/350）、load_nani_meshes（0x1415f7190）。",
+  "evid": "decomp-0x14129f400.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::render::nani::instance_data::SolidVertexColorWindowInstanceData>`",
+  "addr": "0x14156e880",
+  "claim": "O",
+  "evid": "B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::render::nani::instance_data::VelocityOnlyInstanceData>`",
+  "addr": "0x14156f290",
+  "claim": "O",
+  "evid": "B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::OwnedGpuWorldSubset::update_instance_data<country_core::render::nani::instance_data::SolidVertexColorWindowGlassInstanceData>`",
+  "addr": "0x14156f950",
+  "claim": "O",
+  "evid": "B_n_world §1/§2.2；B_n_sys §3（0x14156db40 系/0x14156fff0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$14::as_any<country_core::render::nani::instance_data::SolidAlbedoMapInstanceData>`",
+  "addr": "0x1415722c0",
+  "claim": "O",
+  "evid": "B_n_world §1/§2.6（0x141572280 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$14::as_any<country_core::render::nani::instance_data::SolidVertexColorBricksInstanceData>`",
+  "addr": "0x141572340",
+  "claim": "O",
+  "evid": "B_n_world §1/§2.6（0x141572280 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::WrenInstanceData>`",
+  "addr": "0x141576500",
+  "claim": "O",
+  "evid": "B_n_world §1/§7（0x141572d80 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::BalconyDoorInstanceData>`",
+  "addr": "0x1415780c0",
+  "claim": "O",
+  "evid": "B_n_world §1/§7（0x141572d80 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::SolidVertexColorBricksInstanceData>`",
+  "addr": "0x141579590",
+  "claim": "O",
+  "evid": "B_n_world §1/§7（0x141572d80 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/gpu_world.rs",
+  "fn": "`country_core::render::nani::gpu_world::impl$36::register_required_components<country_core::render::nani::instance_data::PlantInstanceData>`",
+  "addr": "0x14157aa60",
+  "claim": "O",
+  "evid": "B_n_world §1/§7（0x141572d80 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref$<dyn$<country_core::render::pass_builder::shader_uri::AsComputeShaderSource> > >`",
+  "addr": "0x141600570",
+  "claim": "O",
+  "evid": "B_a4_compute §2/§3；wp1/contracts/compute_pass_builder.md §2（0x1405876a0/String、0x140587eb0/&str、nani cull ×5 0x1415fcf10 系；2311B 带 PERM_* 变体与 1943B 不同形态）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>`",
+  "addr": "0x1416056e0",
+  "claim": "O",
+  "evid": "B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country_core::render::nani::buffers::NaniDrawListLengthSsbo>`",
+  "addr": "0x141606900",
+  "claim": "O",
+  "evid": "B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country_core::systems::render_loop::resources::critters::FireflyVisibilitySsbo>`",
+  "addr": "0x141607040",
+  "claim": "O",
+  "evid": "B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_storage_buffer<country_core::geometry::instanced_wall::BrickDrawListSsbo>`",
+  "addr": "0x141607cf0",
+  "claim": "O",
+  "evid": "B_a4_compute §2（0x1416044c0 系/0x141607cf0 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_to_cpu_mapped_storage_buffer<country_core::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo>`",
+  "addr": "0x1416093d0",
+  "claim": "O",
+  "evid": "B_a4_compute §2；wp1/contracts/compute_pass_builder.md §6（0x141609770）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::write_to_cpu_mapped_storage_buffer<country_core::systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo>`",
+  "addr": "0x1416095a0",
+  "claim": "O",
+  "evid": "B_a4_compute §2；wp1/contracts/compute_pass_builder.md §6（0x141609770）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::ComputePass::dispatch_with<country_core::systems::render_loop::compute_passes::gpu_generate_draw_lists::cull_and_bucket::closure_env$1>`",
+  "addr": "0x14160a2e0",
+  "claim": "O",
+  "evid": "B_a4_compute §2/§3.5；wp1/contracts/compute_pass_builder.md §5（0x14160a2e0）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/compute_pass_builder.rs",
+  "fn": "`country_core::render::pass_builder::compute_pass_builder::impl$3::read_storage_buffer<country_core::systems::render_loop::compute_passes::dof_autofocus::DofAutofocusSsbo>`",
+  "addr": "0x14160ddc0",
+  "claim": "O",
+  "evid": "B_a4_compute §2/§3.3；wp1/contracts/compute_pass_builder.md §6（0x14160c290 系）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/shader_uri.rs",
+  "fn": "`country_core::render::nani::cull_shaders::impl$30::as_compute_pipeline`",
+  "addr": "0x1416247a0",
+  "claim": "O",
+  "evid": "B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/shader_uri.rs",
+  "fn": "`country_core::render::nani::cull_shaders::impl$34::as_compute_pipeline`",
+  "addr": "0x141624c40",
+  "claim": "O",
+  "evid": "B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/shader_uri.rs",
+  "fn": "`country_core::render::nani::cull_shaders::impl$38::source_hash`",
+  "addr": "0x1416250c0",
+  "claim": "O",
+  "evid": "B_n_sys cull_shaders §1（0x141624770/0x141624c10/0x1416250c0/0x141625560）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/shader_uri.rs",
+  "fn": "`country_core::render::nani::cull_shaders::impl$38::as_compute_pipeline`",
+  "addr": "0x1416250f0",
+  "claim": "O",
+  "evid": "B_n_sys cull_shaders §1（0x141623120..0x141625590；路径长 29/39/37/34/42/47/37/35/42）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_builder.rs",
+  "fn": "`country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems::render_loop::compute_passes::stairs::StairsTransformSsbo>`",
+  "addr": "0x14162cb90",
+  "claim": "O",
+  "evid": "B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME=\"WallColorIds\" 0x14162c290）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_builder.rs",
+  "fn": "`country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems::render_loop::compute_passes::apply_screen_shadows::ShadowMaskMeanSsbo>`",
+  "addr": "0x14162f890",
+  "claim": "O",
+  "evid": "B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME=\"WallColorIds\" 0x14162c290）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/pass_builder/draw_builder.rs",
+  "fn": "`country_core::render::pass_builder::draw_builder::impl$2::read_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>`",
+  "addr": "0x141630790",
+  "claim": "O",
+  "evid": "B_a4_draw §2（0x141629e90 系；WALL_COLOR_ID_SLOT_NAME=\"WallColorIds\" 0x14162c290）",
+  "fmt": "A"
+ },
+ {
+  "domain": "??",
+  "rel": "render/nani/systems.rs",
+  "fn": "`country_core::render::nani::systems::nani_update_solid_albedo_map_emissive`",
+  "addr": "0x142072b50",
+  "claim": "O",
+  "evid": "B_n_sys §1/§4；wp3/contracts/systems.md §3；src/nani/systems.rs",
+  "fmt": "A"
+ },
+ {
+  "domain": "audio-misc",
+  "rel": "startup/debug.rs",
+  "fn": "`country_core::startup::debug::debug`",
+  "addr": "0x1408efd40",
+  "claim": "`debug`：载入 `assets/meshes/{decorator_delete_scribble,decorator_test,decorator_test_turret,decorator_test_door,decorator_test_cupola,decorator_test_dormer,decorator_outline,stair_step,particle_plane}.json` + debug_sphere_{white,red,blue,green,grey} 等网格。",
+  "evid": "decomp-0x1408efd40.txt",
+  "fmt": "B"
+ },
+ {
+  "domain": "audio-misc",
+  "rel": "utils/debug_viz.rs",
+  "fn": "`DebugSphere::radius`",
+  "addr": "0x140b024e0",
+  "claim": "设置半径",
+  "evid": "原字节短函数",
+  "fmt": "B"
+ },
+ {
+  "domain": "audio-misc",
+  "rel": "utils/debug_viz.rs",
+  "fn": "`DebugRectangle3d::dashed_line`",
+  "addr": "0x140b02ea0",
+  "claim": "虚线开关",
+  "evid": "原字节短函数",
+  "fmt": "B"
+ },
+ {
+  "domain": "audio-misc",
+  "rel": "utils/debug_viz.rs",
+  "fn": "`DebugRectangle2d::show`",
+  "addr": "0x140b04640",
+  "claim": "4 f32 角点 + box + fmt + 排队",
+  "evid": "FUN_140c991f0/FUN_140d79f90",
+  "fmt": "B"
+ },
+ {
+  "domain": "audio-misc",
+  "rel": "name_hash.rs",
+  "fn": "`NameHash::eq`",
+  "addr": "0x140c9cd70",
+  "claim": "O",
+  "evid": "同上",
+  "fmt": "A"
+ },
+ {
+  "domain": "backend-misc",
+  "rel": "systems/brush_preview.rs",
+  "fn": "`country_core::systems::brush_preview::brush_preview`",
+  "addr": "0x140865050",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140865050.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "backend-misc",
+  "rel": "systems/backend/flush_screen_log.rs",
+  "fn": "`country_core::systems::backend::flush_screen_log::log_warning_to_screen`",
+  "addr": "0x1408c1310",
+  "claim": "O",
+  "evid": "decomp/decomp-0x1408c1310.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "backend-misc",
+  "rel": "systems/mod.rs",
+  "fn": "`country_core::systems::is_gameplay_active`",
+  "addr": "0x140a90e00",
+  "claim": "O",
+  "evid": "机器码 rne-read --hex 0x140a90e00（手解）",
+  "fmt": "A"
+ },
+ {
+  "domain": "backend-misc",
+  "rel": "systems/mod.rs",
+  "fn": "`country_core::systems::_::impl$0::dyn_hash`",
+  "addr": "0x140a90e80",
+  "claim": "O",
+  "evid": "decomp/decomp-0x140a90e80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "backend-misc",
+  "rel": "systems/backend/texture_watch.rs",
+  "fn": "`country_core::systems::backend::texture_watch::texture_watch`",
+  "addr": "0x140aab370",
+  "claim": "O",
+  "evid": "decomp/decomp-0x140aab370.txt；rne-read --unks/--hex 0x142add810、0x142add878",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/butterfly.rs",
+  "fn": "`impl$0::constrain_to_be_above_terrain`",
+  "addr": "0x14003bb80",
+  "claim": "O：`ret` trampoline",
+  "evid": "camera-time\\decomp\\decomp-0x14003bb80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/free.rs",
+  "fn": "`impl$1::constrain_to_be_above_terrain`",
+  "addr": "0x14003bb80",
+  "claim": "O：实证",
+  "evid": "camera-time\\decomp\\decomp-0x14003bb80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "resources/time_of_day.rs",
+  "fn": "`_::impl$0::serialize<serde_json::value::Serializer>`",
+  "addr": "0x1400802c0",
+  "claim": "O：字段名串实证（round2）",
+  "evid": "round2\\decomp\\r2-0x1400802c0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/despawn.rs",
+  "fn": "`despawn_glade_entities`",
+  "addr": "0x1408b3510",
+  "claim": "O：实证",
+  "evid": "camera-time\\decomp\\decomp-0x1408b3510.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/main_camera.rs",
+  "fn": "`main_camera_update`",
+  "addr": "0x140912c20",
+  "claim": "O：实证",
+  "evid": "camera-time\\decomp\\decomp-0x140912c20.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/normal.rs",
+  "fn": "`impl$1::translate_screen_space`",
+  "addr": "0x140949e70",
+  "claim": "O：实证（50@1429cd070）",
+  "evid": "camera-time\\decomp\\decomp-0x140949e70.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/walk.rs",
+  "fn": "`free::impl$1::rotate_yaw_pitch`",
+  "addr": "0x140993750",
+  "claim": "O",
+  "evid": "camera-time\\decomp\\decomp-0x140993750.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/free.rs",
+  "fn": "`impl$1::update`（free/walk 共享）",
+  "addr": "0x140993d30",
+  "claim": "O：实证",
+  "evid": "camera-time\\decomp\\decomp-0x140993d30.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/camera_rig/butterfly.rs",
+  "fn": "`impl$0::update`",
+  "addr": "0x140a0d090",
+  "claim": "O：实证",
+  "evid": "camera-time\\decomp\\decomp-0x140a0d090.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "camera-time",
+  "rel": "systems/time_of_day.rs",
+  "fn": "`time_of_day`",
+  "addr": "0x140a73460",
+  "claim": "O：22KB 反编译全析（DIGEST §2.6）",
+  "evid": "camera-time\\decomp\\decomp-0x140a73460.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/stairs/stairs_state.rs",
+  "fn": "`country_core::resources::stairs::stairs_state::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >`",
+  "addr": "0x1402e0630",
+  "claim": "O：serde derive（复用依赖，不计业务）",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/clutter_meshes.rs",
+  "fn": "`country_core::resources::clutter_meshes::impl$1::register_required_components`",
+  "addr": "0x1408b9170",
+  "claim": "O：register_required_components（Bevy 组件注册）",
+  "evid": "collision-eco\\decomp\\decomp-0x1408b9170.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/collision/world.rs",
+  "fn": "`country_core::systems::collision::world::RaycastWorld::legacy_raycast`",
+  "addr": "0x1408cc680",
+  "claim": "O：legacy_raycast——mask=0 的 rapier raycast（无命中语义，遗留）",
+  "evid": "collision-eco\\decomp\\decomp-0x1408cc680.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/collision/world.rs",
+  "fn": "`country_core::systems::collision::world::rapier_hit_to_raycast_world_result`",
+  "addr": "0x1408ce4a0",
+  "claim": "O：rapier_hit_to_raycast_world_result——三角形 feature==2 时 barycentric 插值法线/uv+quat 旋转；无索引法线取原始命中；组装 0x40B 结果",
+  "evid": "collision-eco\\decomp\\decomp-0x1408ce4a0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/stairs/stairs_state.rs",
+  "fn": "`country_core::resources::stairs::stairs_state::StairsState::add_edge`",
+  "addr": "0x1408ffd70",
+  "claim": "O：add_edge——自环 panic；归一化(min,max)；端点命中短路；3 处边/桩表插",
+  "evid": "collision-eco\\decomp\\decomp-0x1408ffd70.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/stairs/stairs_state.rs",
+  "fn": "`country_core::resources::stairs::stairs_state::StairsState::remove_node`",
+  "addr": "0x1408ffef0",
+  "claim": "O：remove_node——邻边插桩 (min,max)+自环 (n,n)→GraphMap::remove_node",
+  "evid": "collision-eco\\decomp\\decomp-0x1408ffef0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/ivy/mod.rs",
+  "fn": "`country_core::systems::ivy::impl$0::add_ivy_systems`",
+  "addr": "0x140944070",
+  "claim": "O：add_ivy_systems——插件系统注册",
+  "evid": "collision-eco\\decomp\\decomp-0x140944070.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/ivy/ivy_spawner.rs",
+  "fn": "`country_core::systems::ivy::ivy_spawner::ivy_spawner`",
+  "addr": "0x14094cf90",
+  "claim": "O：ivy_spawner——try_random_ivy_root/try_ivy_root_next_to_cursor/is_point_inside_wall_segment",
+  "evid": "collision-eco\\decomp\\decomp-0x14094cf90.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/ivy/ivy_leaf_spawner.rs",
+  "fn": "`country_core::systems::ivy::ivy_leaf_spawner::ivy_leaf_spawner`",
+  "addr": "0x140996080",
+  "claim": "O：ivy_leaf_spawner——消费 IvySegmentDoneGrowingMsg（\"Received IvySegmentDoneGrowingMsg with ivy id \"）沿末段放叶",
+  "evid": "collision-eco\\decomp\\decomp-0x140996080.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/ivy/wall_coord.rs",
+  "fn": "`country_core::resources::ivy::wall_coord::WallCoord::into_world_space`",
+  "addr": "0x140b199e0",
+  "claim": "O：WallCoord::into_world_space——PublicWallState 曲线采样+法向偏移 0.63*0.5（按侧±）",
+  "evid": "collision-eco\\decomp\\decomp-0x140b199e0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/collision/world.rs",
+  "fn": "`country_core::systems::collision::world::impl$22::to_offset_collider_builder`",
+  "addr": "0x140b26bd0",
+  "claim": "O：new_compound 闭包",
+  "evid": "collision-eco\\decomp\\decomp-0x140b26bd0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/critters.rs",
+  "fn": "`country_core::resources::critters::impl$12::register_required_components`",
+  "addr": "0x140f88c80",
+  "claim": "O：Bevy 组件注册（复用 derive，不计业务）",
+  "evid": "collision-eco\\decomp\\decomp-0x140f88c80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/collision/world.rs",
+  "fn": "`country_core::systems::collision::world::RaycastWorld::upsert_collider<country_core::resources::stairs::stairs_state::StairGraphEdge,utils::IsoTransform>`",
+  "addr": "0x141296510",
+  "claim": "O：upsert_collider<StairGraphEdge,IsoTransform>",
+  "evid": "collision-eco\\decomp\\decomp-0x141296510.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "systems/collision/world.rs",
+  "fn": "`country_core::systems::collision::world::RaycastWorld::iter_shape_overlaps<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$0,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$1>`",
+  "addr": "0x14129b780",
+  "claim": "O：iter_shape_overlaps（calculate_distortion_from_structural_graph 闭包实例1）——QBVH 相交遍历",
+  "evid": "collision-eco\\decomp\\decomp-0x14129b780.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "collision-eco",
+  "rel": "resources/critters/sheep.rs",
+  "fn": "`country_core::resources::critters::sheep::_::impl$0::deserialize<ref_mut$<serde_json::de::Deserializer<serde_json::read::StrRead> > >`",
+  "addr": "0x1413ff8a0",
+  "claim": "O：serde derive（复用依赖，不计业务）",
+  "evid": "collision-eco\\decomp\\decomp-0x1413ff8a0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/path_edit.rs",
+  "fn": "`country_core::resources::history::path_edit::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >`",
+  "addr": "0x1404896f0",
+  "claim": "O(入口)",
+  "evid": "见文件作用所列 serde 地址",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/replay_cmd_buffer.rs",
+  "fn": "`country_core::resources::history::replay_cmd_buffer::ReplayBuffer::len`",
+  "addr": "0x140949170",
+  "claim": "O",
+  "evid": "符号 0x140949170",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_wall.rs",
+  "fn": "`country_core::systems::history::replay_wall::replay_wall`",
+  "addr": "0x140951b80",
+  "claim": "O",
+  "evid": "decomp-0x140951b80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_wall.rs",
+  "fn": "`country_core::systems::history::replay_wall::_deprecated_morph_curve`",
+  "addr": "0x140952570",
+  "claim": "O",
+  "evid": "decomp-0x140952570.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_mode.rs",
+  "fn": "`country_core::systems::history::replay_mode::replay_mode`",
+  "addr": "0x140a7c550",
+  "claim": "O",
+  "evid": "decomp-0x140a7c550.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/mod.rs",
+  "fn": "`country_core::resources::history::History::insert_starting_edit`",
+  "addr": "0x140a844f0",
+  "claim": "O",
+  "evid": "decomp-0x140a844f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/mod.rs",
+  "fn": "`country_core::resources::history::History::iter_resolved_snapshots`",
+  "addr": "0x140a84a40",
+  "claim": "O",
+  "evid": "decomp-0x140a84a40 区；符号 0x140a84a40",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/history_process.rs",
+  "fn": "`country_core::systems::history::history_process::HistoryCmd::interrupt`",
+  "addr": "0x140af5b20",
+  "claim": "O",
+  "evid": "history\\decomp\\decomp-0x140af5b20.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/history_process.rs",
+  "fn": "`country_core::systems::history::history_process::replay_edit`",
+  "addr": "0x140af6170",
+  "claim": "O",
+  "evid": "decomp-0x140af5b30.txt；DIGEST §3.3",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_stairs.rs",
+  "fn": "`country_core::systems::history::replay_stairs::replay_stairs`",
+  "addr": "0x140af75b0",
+  "claim": "O",
+  "evid": "decomp-0x140af75b0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/mod.rs",
+  "fn": "`country_core::resources::history::history_chain::HistoryEditChain::iter`",
+  "addr": "0x140b31cf0",
+  "claim": "O",
+  "evid": "符号 0x140b31cf0（iter_mut 同址族）",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_pop_bucket.rs",
+  "fn": "`country_core::systems::history::replay_pop_bucket::replay_pop_bucket`",
+  "addr": "0x140b38250",
+  "claim": "O",
+  "evid": "decomp-0x140b38250.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/history_process.rs",
+  "fn": "`country_core::systems::history::history_process::generate_replay_cmds_from_edit<country_core::systems::history::replay_water::replay_water::closure$1::closure_env$0>`",
+  "addr": "0x141444c70",
+  "claim": "O",
+  "evid": "DIGEST §3.5；decomp-0x14143fb50/0x14143d2c0/0x1414423e0/0x141444c70.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "systems/history/replay_path.rs",
+  "fn": "`country_core::systems::history::replay_path::generate_path_replay_cmds`",
+  "addr": "0x1416286d0",
+  "claim": "O",
+  "evid": "history\\decomp\\decomp-0x1416286d0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "history",
+  "rel": "resources/history/tree_edit.rs",
+  "fn": "`country_core::resources::history::tree_edit::_::impl$0::serialize<serde_json::value::ser::Serializer>`",
+  "addr": "0x1417c2770",
+  "claim": "O(入口)",
+  "evid": "见文件作用所列 serde 地址",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/grass.rs",
+  "fn": "`bevy_ecs::system::schedule_system::impl$1::is_exclusive<…FunctionSystem…>`",
+  "addr": "0x140002370",
+  "claim": "O（识别为依赖）",
+  "evid": "audio-misc\\decomp\\decomp-0x140002370.txt（多域同址）",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/vermeer.rs",
+  "fn": "`country_core::systems::render_loop::vermeer::startup_vermeer`",
+  "addr": "0x1408aa720",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1408aa720.txt；reconstruction vermeer.rs",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/menu_background.rs",
+  "fn": "`country_core::systems::render_loop::menu_background::render_menu_bg`",
+  "addr": "0x1408c9a30",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1408c9a30.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/draw_passes/final_post.rs",
+  "fn": "`country_core::systems::render_loop::draw_passes::final_post::resolve_to_swapchain`",
+  "addr": "0x14090d850",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x14090d850.txt（串：Resolve to swapchain、raster_resolve_to_swapchain、raster_resolve_msaa_to_swapchain）；wp5 draw-passes §6",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/prefix_scan.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::prefix_scan::inclusive_prefix_scan_u32_1m`",
+  "addr": "0x14098bf60",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x14098bf60.txt（串：_Prefix merge、/prefix_scan/inclusive_prefix_scan_merge.cs.hlsl、/prefix_scan/inclusive_prefix_scan_subtotals.cs.hlsl）；wp5 compute-passes §22",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/draw_passes/transparency_pass.rs",
+  "fn": "`country_core::systems::render_loop::draw_passes::transparency_pass::post_taa_transparency_pass`",
+  "addr": "0x1409c40b0",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1409c40b0.txt；wp5 draw-passes §4",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/draw_passes/wireframe_pass.rs",
+  "fn": "`country_core::systems::render_loop::draw_passes::wireframe_pass::wireframe_pass`",
+  "addr": "0x1409ccb20",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1409ccb20.txt；wp5 draw-passes §10",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/draw_passes/object_grass_push.rs",
+  "fn": "`country_core::systems::render_loop::draw_passes::object_grass_push::object_grass_push_pass`",
+  "addr": "0x1409daaa0",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1409daaa0.txt（串：Grass object push pass、grass_object_push）；wp5 draw-passes §8",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/reprojection.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::reprojection::calculate_reprojection_map`",
+  "addr": "0x140a0d190",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a0d190.txt（串：Reprojection map、/calculate_reprojection_map.cs.hlsl、Copy depth、/copy_depth_to_r.cs.hlsl）；wp5 compute-passes §9",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/rasterize_buildings.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::rasterize_buildings::rasterize_buildings`",
+  "addr": "0x140a32770",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a32770.txt（串：Animate buildings mask、/rasterize_buildings_animate.cs.hlsl、Blur buildings mask、/gauss_blur_building_mask.cs.hlsl、buildings blur temp）；wp5 compute-passes §21",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/apply_screen_shadows.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::apply_screen_shadows::apply_screen_shadows`",
+  "addr": "0x140a39e70",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a39e70.txt（串：Screen shadows temporal、/apply_screen_shadows.cs.hlsl、Shadow mask mean、/shadow_mask_mean.cs.hlsl）；wp5 compute-passes §6",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/taa.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::taa::calculate_tgsr`",
+  "addr": "0x140a3ba60",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a3ba60.txt；wp5 compute-passes §3",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/dof.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::dof::calc_dof`",
+  "addr": "0x140a5a570",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a5a570.txt（串：CoC dilated、DoF tile offsets、DoF tile coords、DoF dispatch args、Depth of field、/dof/fused.cs.hlsl）；wp5 compute-passes §2",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/compute_passes/grass.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::grass::impl$4::register_required_components`",
+  "addr": "0x140a66970",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x140a66970.txt；wp5 compute-passes §5",
+  "fmt": "A"
+ },
+ {
+  "domain": "render-loop",
+  "rel": "systems/render_loop/draw_passes/draw_shaders/leaf_particle_draw.rs",
+  "fn": "`…draw_shaders::leaf_particle_draw::leaf_particle_draw`",
+  "addr": "0x140a8a090",
+  "claim": "O（分派目标）",
+  "evid": "render-loop\\decomp\\decomp-0x140a8a090.txt；wp5 draw-passes §1",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/render/mod.rs",
+  "fn": "`country_core::resources::render::Affine3Packed::from_cols`",
+  "addr": "0x14089d500",
+  "claim": "O",
+  "evid": "手解（rne-read --hex 0x14089d500）",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/render/mod.rs",
+  "fn": "`country_core::resources::render::Affine3Packed::add_y`",
+  "addr": "0x14089d550",
+  "claim": "O",
+  "evid": "手解（rne-read --hex 0x14089d550）",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/roofs/roof_ridge.rs",
+  "fn": "`inverse_ridge_01_param`",
+  "addr": "0x1408e30f0",
+  "claim": "O",
+  "evid": "已由 reconstruction/roof/ridge.rs 恢复；evidence/roof-ridge/tg_...inverse_ridge_01_param.c",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/roofs/roof_shape.rs",
+  "fn": "`roof_uv_at_ws_pos`",
+  "addr": "0x1408e4040",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x1408e4040.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/roofs/roof_trigger_volume.rs",
+  "fn": "`RoofTriggerVolume::set_triangles`",
+  "addr": "0x1408e45b0",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x1408e45b0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/roofs/roof_trigger_volume.rs",
+  "fn": "`RoofTriggerVolume::set_normals`",
+  "addr": "0x1408e45f0",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x1408e45f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/mod.rs",
+  "fn": "`country_core::resources::impl$1::insert_resources`",
+  "addr": "0x140940d80",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x140940d80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/tree_storage.rs",
+  "fn": "`country_core::resources::tree_storage::TreeStorage::get`",
+  "addr": "0x140a38460",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x140a38460.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/tree_storage.rs",
+  "fn": "`country_core::resources::tree_storage::TreeStorage::remove`",
+  "addr": "0x140a385a0",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x140a385a0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "roofs-rt",
+  "rel": "resources/render/mesh_atlas_library.rs",
+  "fn": "`country_core::resources::render::mesh_atlas_library::impl$2::from`",
+  "addr": "0x140ae6570",
+  "claim": "O",
+  "evid": "roofs-rt/decomp/decomp-0x140ae6570.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/prefab.rs",
+  "fn": "``country_core::systems::prefab::update_prefabs``",
+  "addr": "0x140841d60",
+  "claim": "O：update_prefabs = GPU 实例数据刷新（触 audio_trigger_library.rs 路径）",
+  "evid": "session-save\\decomp\\decomp-0x140841d60.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/prefab.rs",
+  "fn": "``country_core::systems::prefab::impl$3::register_required_components``",
+  "addr": "0x1408446b0",
+  "claim": "O：Bevy 注册胶水（ComponentId/registry/drop，非业务）",
+  "evid": "session-save\\decomp\\decomp-0x1408446b0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "resources/session.rs",
+  "fn": "``country_core::resources::session::GladeType::is_flowery``",
+  "addr": "0x14092e6a0",
+  "claim": "O：tag==2 判定",
+  "evid": "ui-input\\decomp\\decomp-0x14092e6a0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "resources/session.rs",
+  "fn": "``country_core::resources::session::GladeType::is_autumn``",
+  "addr": "0x14092e6c0",
+  "claim": "O：tag==3 判定",
+  "evid": "session-save\\DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/save/save_game.rs",
+  "fn": "``country_core::systems::save::save_game::add_history_edit_to_save_file``",
+  "addr": "0x140a439b0",
+  "claim": "O：add_history_edit_to_save_file / v1 双名 ensure_current_snapshot = 追加 edit 计数+序列化 0x80B+\",\\n\"(0xa2c)+ShadowFile::mark_dirty(start,end)",
+  "evid": "session-save\\decomp\\decomp-0x140a439b0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/save/load_completion_checker.rs",
+  "fn": "``country_core::systems::save::load_completion_checker::SessionLoadReadiness::deny_load``",
+  "addr": "0x140a9fa70",
+  "claim": "O：deny_load = tag==1 判定（与 GladeType::is_olden 同址折叠）",
+  "evid": "session-save\\DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "resources/session.rs",
+  "fn": "``country_core::resources::session::SessionId::save_folder_path``",
+  "addr": "0x140b46000",
+  "claim": "O：paths::saves()(0x140b9db60)/uuid",
+  "evid": "round2\\session-save-CLOSURE.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "resources/prefab.rs",
+  "fn": "``country_core::resources::prefab::PrefabLibrary::get<ref$<asset::prefab::PrefabName> >``",
+  "addr": "0x141552d70",
+  "claim": "O：hashbrown 查表（0x1405b1a70 哈希 + SIMD group probe + memcmp）返回 &Prefab",
+  "evid": "session-save\\DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/save/save_thread.rs",
+  "fn": "``country_core::systems::save::save_thread::CurrentSaveFile::flush_deferred_and_sync``",
+  "addr": "0x14171f7f0",
+  "claim": "O：flush_deferred_and_sync（游戏线程断开时落盘；错误日志 Error flushing save file on game thread disconnect.）",
+  "evid": "session-save\\decomp\\decomp-0x14171f7f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "session-save",
+  "rel": "systems/save/save_thread.rs",
+  "fn": "``country_core::systems::save::save_thread::snapshot_gc_thread``",
+  "addr": "0x14172b280",
+  "claim": "O：snapshot_gc_thread = parse_save_file_snapshots→目录比对→Deleting unreferenced snapshot；竞态守卫 Save file changed before snapshot GC could finish...",
+  "evid": "session-save\\decomp\\decomp-0x14172b280.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/world_raster.rs",
+  "fn": "`country_core::systems::world_raster::_::impl$0::apply`",
+  "addr": "0x14003bb80",
+  "claim": "O",
+  "evid": "terrain-water/DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/terrain_editing.rs",
+  "fn": "`country_core::resources::color_id::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >`",
+  "addr": "0x1400e7480",
+  "claim": "O",
+  "evid": "terrain-water/DIGEST.md",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/render_loop/compute_passes/upload_world_raster.rs",
+  "fn": "`…upload_raster_staging_to_texture<PathRaster>`",
+  "addr": "0x1403d8bd0",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1403d8bd0.txt；terrain-water\\decomp\\decomp-0x1403d8bd0.txt；wp5 §20",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/world_raster.rs",
+  "fn": "`country_core::resources::world_raster_defs::AllWorldRasterWrite::would_write_succeed`",
+  "addr": "0x14083f410",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x14083f410.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/history/terrain_edit.rs",
+  "fn": "`country_core::resources::history::terrain_edit::TerrainEdit::reapply`",
+  "addr": "0x1408592d0",
+  "claim": "O",
+  "evid": "decomp-0x1408592d0.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/active_raster_stroke.rs",
+  "fn": "`country_core::resources::active_raster_stroke::ActiveRasterStroke::resample_and_smooth`",
+  "addr": "0x140868e40",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140868e40.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/active_raster_stroke.rs",
+  "fn": "`country_core::resources::active_raster_stroke::InProgressRasterStroke::solidify_fluid_into`",
+  "addr": "0x1408691b0",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x1408691b0.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/terrain_editing.rs",
+  "fn": "`…impl$0::serialize<serde_json::PrettyFormatter>`",
+  "addr": "0x1408e5bc0",
+  "claim": "O（胶水）：serde_json 派生 serialize（PrettyFormatter 变体）",
+  "evid": "terrain-water\\decomp\\decomp-0x1408e5bc0.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/terrain_editing.rs",
+  "fn": "`country_core::resources::terrain_editing::TerrainEditingData::new_stroke`",
+  "addr": "0x140924a10",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140924a10.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "startup/startup_terrain.rs",
+  "fn": "`country_core::startup::startup_terrain::grid_gen_ccw`",
+  "addr": "0x140928350",
+  "claim": "`grid_gen_ccw`：同族 CCW 缠绕变体。",
+  "evid": "decomp-0x140928350.txt",
+  "fmt": "B",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/render_loop/compute_passes/mouse_read_terrain_stroke_index.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::mouse_read_terrain_stroke_index`",
+  "addr": "0x1409768b0",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1409768b0.txt（串：Read terrain stroke、/read_terrain_stroke.cs.hlsl）；terrain-water\\decomp\\decomp-0x1409768b0.txt；wp5 compute-passes §21",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/render_loop/compute_passes/read_terrain_data.rs",
+  "fn": "`country_core::systems::render_loop::compute_passes::read_terrain_data::read_terrain_data`",
+  "addr": "0x14098c680",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x14098c680.txt（串：Visual terrain height、Read terrain rock mask、Read water、Read garden、/terrain_editing/read_terrain_height.cs.hlsl、/water/read_water_mask.cs.hlsl、/garden/read_garden_mask.cs.hlsl）；terrain-water\\decomp\\decomp-0x14098c680.txt；wp5 compute-passes §21",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/terrain_height.rs",
+  "fn": "`country_core::resources::terrain_height::TerrainHeightsData::sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>`",
+  "addr": "0x1409e9640",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x1409e9640.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/audio/water_ambience_audio.rs",
+  "fn": "`country_core::systems::audio::water_ambience_audio::water_ambience_audio_system`",
+  "addr": "0x1409ecea0",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x1409ecea0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/brush_sizes.rs",
+  "fn": "`country_core::resources::brush_sizes::BrushSizes::set_path`",
+  "addr": "0x1409f1870",
+  "claim": "O",
+  "evid": "terrain-water/DIGEST.md",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/brush_sizes.rs",
+  "fn": "`country_core::resources::brush_sizes::BrushSizes::reset_water`",
+  "addr": "0x1409f1890",
+  "claim": "O",
+  "evid": "terrain-water/DIGEST.md",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/world_raster.rs",
+  "fn": "`country_core::resources::world_raster::impl$2::commit_scratch_to_composite<512>`",
+  "addr": "0x140a16580",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140a16580.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/world_raster.rs",
+  "fn": "`country_core::resources::world_raster::impl$2::rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl$2::iter_points_xz::closure_env$0> >`",
+  "addr": "0x140a16960",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140a16960.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/audio/garden_audio.rs",
+  "fn": "`country_core::systems::audio::garden_audio::garden_audio_system`",
+  "addr": "0x140a89480",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140a89480.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "resources/terrain_stroke.rs",
+  "fn": "`country_core::resources::terrain_stroke::TerrainStroke::insert_or_morph_last_point`",
+  "addr": "0x140a97880",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140a97880.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/terrain/delayed_terrain_changed_msg.rs",
+  "fn": "`country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback::on_terrain_modified`",
+  "addr": "0x140aabdc0",
+  "claim": "O",
+  "evid": "terrain-water/DIGEST.md",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/world_raster.rs",
+  "fn": "`country_core::systems::world_raster::draw_raster<country_core::resources::world_raster_defs::Cobblestone2RasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::paths::draw_path::erase_other_path_variants::closure_env$3<country_core::resources::world_raster_defs::Cobblestone1Raster,country_core::resources::world_raster_defs::Cobblestone2Raster,country_core::resources::world_raster_defs::Cobblestone3Raster>,country_core::systems::paths::draw_path::erase_other_path_variants::closure_env$4<country_core::resources::world_raster_defs::Cobblestone1Raster,country_core::resources::world_raster_defs::Cobblestone2Raster,country_core::resources::world_raster_defs::Cobblestone3Raster>,country_core::systems::paths::draw_path::erase_other_path_variants::closure_env$5<country_core::resources::world_raster_defs::Cobblestone1Raster,country_core::resources::world_raster_defs::Cobblestone2Raster,country_core::resources::world_raster_defs::Cobblestone3Raster> >`",
+  "addr": "0x140ab6de0",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140ab6de0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/world_raster.rs",
+  "fn": "`country_core::systems::world_raster::draw_raster<country_core::resources::world_raster_defs::PathRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::paths::draw_path::draw_path::closure_env$0,country_core::systems::paths::draw_path::draw_path::closure_env$1,country_core::systems::paths::draw_path::draw_path::closure_env$2>`",
+  "addr": "0x140aba770",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140aba770.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/terrain/deferred_terrain_history.rs",
+  "fn": "`country_core::systems::terrain::deferred_terrain_history::history_record_terrain`",
+  "addr": "0x140ac9770",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140ac9770.txt",
+  "fmt": "A",
+  "supp": "terrain-water 补抽（主 shard）"
+ },
+ {
+  "domain": "terrain-water",
+  "rel": "systems/terrain/ui_edit_terrain.rs",
+  "fn": "`country_core::systems::terrain::ui_edit_terrain::ui_edit_terrain`",
+  "addr": "0x140aef1f0",
+  "claim": "O",
+  "evid": "terrain-water\\decomp\\decomp-0x140aef1f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "resources/gui.rs",
+  "fn": "`country_core::resources::gui::_::impl$0::first`",
+  "addr": "0x140002370",
+  "claim": "O：折叠单行（NotFound；容器 first 元素）",
+  "evid": "ui-input\\decomp\\decomp-0x140002370.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "input/input_stream.rs",
+  "fn": "`serialize<Compact>`",
+  "addr": "0x1402e0060",
+  "claim": "`{replay_initial_state, first_frame}`",
+  "evid": "两键（0x1429b3d4e/0x1429b3d62）",
+  "fmt": "B"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/ui/signifiers/mod.rs",
+  "fn": "`country_core::systems::ui::signifiers::SignifierEntityBuilder::new`",
+  "addr": "0x14089d9b0",
+  "claim": "O（wp15 b6）：35 callers，默认值序列见文件作用",
+  "evid": "wp15/analysis/b6_widgets/new_0x14089d9b0.c",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/ui/signifiers/mod.rs",
+  "fn": "`country_core::systems::ui::signifiers::impl$6::register_required_components`",
+  "addr": "0x1408a15f0",
+  "claim": "O：bevy 组件注册（SignifierAnimation 族）",
+  "evid": "ui-input\\decomp\\decomp-0x1408a15f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/ui/resources/ui_state.rs",
+  "fn": "`country_core::systems::ui::resources::slider3d::impl$1::into_drag_state`",
+  "addr": "0x14092df10",
+  "claim": "O：折叠单行（NotFound）；语义=拖拽中（DragState::is_started）",
+  "evid": "ui-input\\decomp\\decomp-0x14092df10.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "resources/gui.rs",
+  "fn": "`country_core::resources::gui::ShowDebugRaycastGeo::as_string`",
+  "addr": "0x140940170",
+  "claim": "O（手解结构）：`movzx eax,[rcx]; 两张相对偏移表 {rel_ptr u32, rel_len i32} 查表拼 &str`（表址校准 U）",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "input/input_stream.rs",
+  "fn": "`InputStream::on_history_sync`",
+  "addr": "0x1409494c0",
+  "claim": "推同步点（截断/裁剪）",
+  "evid": "非 recording 截断两队列；sync≥9 或 frames≥10000 删最老；push 11 qwords 翻译态 + 帧数",
+  "fmt": "B"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/ui_move_shapes.rs",
+  "fn": "`country_core::systems::ui_move_shapes::move_gizmo_and_trigger_vol`",
+  "addr": "0x14097d280",
+  "claim": "O：move_gizmo_and_trigger_vol（wp20 既有）",
+  "evid": "wp20/analysis/0x14097d280_move_gizmo_and_trigger_vol.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/ui/resources/widget_params.rs",
+  "fn": "`country_core::systems::ui::resources::widget_params::UiSounds::on_drag_release`",
+  "addr": "0x1409a90c0",
+  "claim": "O：折叠（NotFound；槽 6-8）",
+  "evid": "ui-input\\decomp\\decomp-0x1409a90c0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/render_loop/draw_passes/ui_2d_pass.rs",
+  "fn": "`country_core::systems::render_loop::draw_passes::ui_2d_pass::mei_pass`",
+  "addr": "0x1409c6700",
+  "claim": "O",
+  "evid": "render-loop\\decomp\\decomp-0x1409c6700.txt（串：Mei 2D、mei temp、UI shadow combine、mei_shadow）；ui-input\\decomp\\decomp-0x1409c6700.txt；wp5 draw-passes §7",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "resources/toolbar.rs",
+  "fn": "`country_core::resources::toolbar::Toolbar::new`",
+  "addr": "0x140af8c50",
+  "claim": "O(部分)：SOURCE_MAP 地址；此变体 alloc 0x30×8B 元素表（与 0x140af9000 的 11 类 0x10B 表不同——两地址为 new 的不同单态/内联，关系待核 I）",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/mod_key.rs",
+  "fn": "`country_core::systems::mod_key::update_mod_key_state`",
+  "addr": "0x140af9c00",
+  "claim": "O（手解）：ResMut<Modifiers> tick 回写；读键态 @+0x78 计数与 f32@+0x7c 阈值；键码索引 0..6 跳表 7 handler；Decor 模式 0x38..0x3f 区间判定并入；写 {u32@0, byte@1}。SOURCE_MAP 地址（重建代码写的 0x140af9000 = Toolbar::new，错）",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/mode_manager.rs",
+  "fn": "`country_core::systems::mode_manager::check_if_can_switch<country_core::systems::mode_manager::mode_manager::closure_env$13>`",
+  "addr": "0x140afa060",
+  "claim": "O：idx8(Meadow) 同 env_10 模式（entry@0x110）",
+  "evid": "ui-input\\decomp\\decomp-0x140afa060.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "resources/photo_mode.rs",
+  "fn": "`country_core::resources::photo_mode::impl$0::build`",
+  "addr": "0x140b59640",
+  "claim": "O：register_event + 组件注册（bevy event/registry.rs 路径证据）",
+  "evid": "ui-input\\decomp\\decomp-0x140b59640.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "ui-input",
+  "rel": "systems/backend/input/translate_input.rs",
+  "fn": "`country_core::systems::backend::input::translate_input::translate_input`",
+  "addr": "0x1417cd0a0",
+  "claim": "O：输入映射主系统（wp20 合同 + 本域 34KB decomp 复核一致）",
+  "evid": "ui-input\\decomp\\decomp-0x1417cd0a0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::DeferredDecoratorOpEvents::events`",
+  "addr": "0x14067dd80",
+  "claim": "O",
+  "evid": "audio-misc\\decomp\\decomp-0x14067dd80.txt, collision-eco\\decomp\\decomp-0x14067dd80.txt, terrain-water\\decomp\\decomp-0x14067dd80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::ClutterVersion::is_initial`",
+  "addr": "0x140833230",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140833230.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::DecoratorInfo::dst_as_wall`",
+  "addr": "0x140833260",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140833260.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::DecoratorInfo::dst_as_wall_mut`",
+  "addr": "0x1408332c0",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x1408332c0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::DecoratorDst::as_wall_mut`",
+  "addr": "0x140833540",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140833540.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::impl$96::from`",
+  "addr": "0x140839550",
+  "claim": "O",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator.rs",
+  "fn": "`country_core::resources::walls::decorator::impl$97::from`",
+  "addr": "0x140839560",
+  "claim": "O",
+  "evid": "",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/inner_walls.rs",
+  "fn": "`country_core::resources::walls::inner_walls::InnerWalls::remove_all`",
+  "addr": "0x14085a730",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x14085a730.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/merge_walls.rs",
+  "fn": "`country_core::systems::wall::merge_walls::merge_walls`",
+  "addr": "0x140999920",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140999920.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_storage.rs",
+  "fn": "`country_core::resources::walls::decorator_storage::DecoMoveToStorage::new`",
+  "addr": "0x140a1b430",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a1b430.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_storage.rs",
+  "fn": "`country_core::resources::walls::decorator_storage::DecoratorStorageAddr::as_wall`",
+  "addr": "0x140a1c240",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a1c240.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_storage.rs",
+  "fn": "`country_core::resources::walls::decorator_storage::DecoratorStorage::get_or_insert_default`",
+  "addr": "0x140a1cf30",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a1cf30.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_storage.rs",
+  "fn": "`country_core::resources::walls::decorator_storage::DecoratorStorage::iter_terrain_decorators`",
+  "addr": "0x140a1e280",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a1e280.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/material_stats.rs",
+  "fn": "`country_core::resources::walls::material_stats::MaterialStats::add_gate_length`",
+  "addr": "0x140a884f0",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a884f0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/calc_wall_bend.rs",
+  "fn": "`country_core::systems::wall::calc_wall_bend::calc_wall_bend`",
+  "addr": "0x140a8a710",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140a8a710.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/wall_state/wall_spatial_hash.rs",
+  "fn": "`country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::add_segment`",
+  "addr": "0x140aa5dd0",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140aa5dd0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/wall_state/wall_spatial_hash.rs",
+  "fn": "`country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::bounds_ws`",
+  "addr": "0x140aa6600",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140aa6600.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs",
+  "fn": "`country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height`",
+  "addr": "0x140ac79e0",
+  "claim": "O",
+  "evid": "ui-input\\decomp\\decomp-0x140ac79e0.txt, wall\\decomp\\decomp-0x140ac79e0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/shapes/rectangle/ui_edit_rectangle_dims.rs",
+  "fn": "`country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_dims::ui_edit_rectangle_dims`",
+  "addr": "0x140ad6250",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140ad6250.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs",
+  "fn": "`country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::ui_edit_rectangle_rotate`",
+  "addr": "0x140ad8000",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140ad8000.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/wall_attachment.rs",
+  "fn": "`country_core::resources::walls::wall_attachment::WallCornerAttachment::is_attached`",
+  "addr": "0x140b256b0",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b256b0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_subtype.rs",
+  "fn": "`country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same`",
+  "addr": "0x140b25ef0",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b25ef0.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/public_wall_state.rs",
+  "fn": "`country_core::resources::walls::public_wall_state::PublicWallState::u_space`",
+  "addr": "0x140b2a770",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b2a770.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_archivist.rs",
+  "fn": "`country_core::resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_wall`",
+  "addr": "0x140b2bc00",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b2bc00.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/decorator_outline.rs",
+  "fn": "`country_core::resources::walls::decorator_outline::DecoratorOutline::display`",
+  "addr": "0x140b33b00",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b33b00.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/mod.rs",
+  "fn": "`country_core::resources::walls::split_height_into_skirts`",
+  "addr": "0x140b34f80",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140b34f80.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/wall_holes.rs",
+  "fn": "`country_core::resources::walls::wall_holes::PrevWallHoles::wall_holes`",
+  "addr": "0x140f86d00",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140f86d00.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/wall_holes.rs",
+  "fn": "`country_core::resources::walls::wall_holes::WallHoleStorage::finalize`",
+  "addr": "0x140f87300",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x140f87300.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "systems/wall/valid_enclosure/mod.rs",
+  "fn": "`country_core::systems::wall::valid_enclosure::ShapeParameters::get_pos_at_u`",
+  "addr": "0x1411ff620",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x1411ff620.txt",
+  "fmt": "A"
+ },
+ {
+  "domain": "wall",
+  "rel": "resources/walls/wall_path_segment.rs",
+  "fn": "`country_core::resources::walls::wall_path_segment::WallPathSegment::pt_count`",
+  "addr": "0x141234970",
+  "claim": "O",
+  "evid": "wall\\decomp\\decomp-0x141234970.txt",
+  "fmt": "A"
+ }
+]

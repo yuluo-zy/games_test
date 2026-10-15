@@ -15,3 +15,13 @@
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `calculate_delta_seconds`（行 45）— 查询/计算：GameTime Duration(secs@+0x10,nanos@+0x18)→f32 秒（内联的 f32→Duration 位运算族，并入 time_update 主体）
+
+## 实现方式（算法级）
+
+`time_update`（0x140922c30）：56B 游戏时钟 {secs@+0x0, nanos@+0x4, flag@+0x6, total **f64**@+0x10（纠错合同 f32）, 60ths@+0x18, frac@+0x20, frame_count@+0x2c, flag@+0x30}。
+```
+dt = replaying（InputRecordReplayState+0x40==i64::MIN+2）? replay_frame.delta@+0xc8（0xd0B 帧）
+   : GameTime delta Duration（secs@+0x10/nanos@+0x18）
+前两帧 clamp dt ≤ 1/60（0.016666668@142aad4a8）
+```
+panic：Duration 加法溢出 "overflow when adding durations"（0x142aad928）；f32→Duration "cannot convert float seconds to Duration…"（std 内联）。

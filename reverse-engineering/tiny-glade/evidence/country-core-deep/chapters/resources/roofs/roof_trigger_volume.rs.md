@@ -33,3 +33,10 @@
 - `uvs`       Vec {cap@+0x30, ptr@+0x38, len@+0x40}，stride 0x18
 - 三个 Vec 长度必须一致（set_* 断言），三角为 cap-first 游戏 Vec 布局（PLAYBOOK 事实 1）。
 - 交叉域：物理交互（collision 域）与 roof uv 悬停（systems/collision/world.rs 的 collider registry）。
+
+## 实现方式（算法级）
+
+- `triangles()`（0x1408e4560）：`len@+0x10 == 0 → panic "assertion failed: !self.triangles.is_empty()"`（0x142aa5958, 0x2c=44 字符）；否则返回迭代器 `{start=ptr@+8, end=ptr@+8+len·0x24, idx}`（stride 0x24）。
+- `set_triangles`（0x1408e45b0）：drop 旧（0x140613c20 系）→ 整块拷入新 Vec（cap-first）。
+- `set_normals`（0x1408e45f0）：stride 0x24；断言 `triangles.len() == normals.len()`（0x142aa59e0）；`set_uvs`（0x1408e4660）：stride 0x18；断言 `triangles.len() == uvs.len()`（0x142aa5a38）。
+- `get_position_from_mesh_uv`（0x1408e46d0）：经 FUN_1416f34a0（utils position_from_mesh_uvs）三角/uv → 位置；返回 {found, pos}，found=0 丢弃输出。

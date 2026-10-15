@@ -9,7 +9,7 @@
 | 函数 | 地址 | 源码行 | 作用（猜测→证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
 | `DevSettings::live_link` | 0x14090df40 | 12 | 访问器 | O：`movzx eax,[rcx+7]; ret` —— 读 dev-settings **字节 @+0x07**（live_link 布尔标志） | expansion-b2\decomp\decomp-0x14090df40.txt（NotFound，手解） |
-| `GameConfig::upgrade` | 0x14090df90 | 44 | 版本升级迁移 | O：`cmp byte[rcx+0x88],1; je +1; ret`（+0x88==1 已升级即返回）；随后 f32 比较 `[rcx+0x84]` vs 常量 0x14202018e（0.5?）、`cmp dword[rcx+0x80],0`、写 `[rcx+0x80]=0`——**配置版本迁移：旧配置清零 0x80 字段、新常量回填**（字段语义 U） | expansion-b2\decomp\decomp-0x14090df90.txt（NotFound，手解） |
+| `GameConfig::upgrade` | 0x14090df90 | 44 | 版本升级迁移 | O（round3 round2 复查修正常量地址）：`test byte[rcx+0x88],1; je +1; ret`（+0x88 位 0 已置即返回）；随后 `[rcx+0x84]` f32 比较常量 1.0@0x142925904（原行 0x14202018e 错——该址非浮点常量）、再 vs 0.125@0x142aab384；`cmp dword[rcx+0x80],0`、写 `[rcx+0x80]=0`、末写 `[rcx+0x88]=1` 且 `[rcx+0x8c]=旧值`——配置版本迁移：清零 0x80、标记已升级（字段语义 U） | objdump（dis.py 0x14090df90）；rne-read 0x142925904/0x142aab384 |
 | `is_within_glade_shape` | 0x14090dfe0 | 80 | 形状包含测试 | O：读全局字节 `0x14362d6dd`（门控）；`mulps/movsd` 序列把向量分量与常量 0x1420319d8/0x1420319dc 比较——**glade 形状椭圆边界测试（x²/a²+y²/b²≤1），启用位 0x14362d6dd==0 时短路** | expansion-b2\decomp\decomp-0x14090dfe0.txt（NotFound，手解） |
 | `developer_hotkeys_enabled` | 0x14090e070 | 112 | 开发者热键开关 | O：`movzx eax,[rip+0x02d26c61]` → 读全局字节 **0x14362d6dd**（与 is_within_glade_shape 同一全局）——**开发者模式字节，直接返回** | expansion-b2\decomp\decomp-0x14090e070.txt（NotFound，手解） |
 

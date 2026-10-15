@@ -15,3 +15,7 @@
 ## 派生胶水
 
 `add_new`/`get_rg_buffer`/`write_storage_buffer` 等泛型胶水（不计独立业务）
+
+## 实现方式（算法级）
+
+无独立业务过程（name-only）。GardenMaskSsbo = 花园掩码回读缓冲（世界栅格 512² 域，read_terrain_data 槽 0x14 回拷）。字段布局 U。

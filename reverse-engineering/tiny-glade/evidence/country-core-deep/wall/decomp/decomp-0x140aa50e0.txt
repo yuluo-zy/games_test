@@ -1,2 +1,6 @@
-country_core::systems::wall::wall_state::wall_spatial_hash::WallSegment::terrain_height_closest_to_ws_pos::h51f7c99b290bdf59
-{"error":"No function at 0x140AA50E0","error_type":"NotFound","database":"tg_a2_v2c1"}
+/* 手解（rne-read --hex），WallSegment::terrain_height_closest_to_ws_pos（f64 距离加权地形高） */
+/* 0f14ca f20f1001 f20f105108 f20f105918 0f5cc8 0f5cd0 0f59ca f30f16c1 f30f58c1 0f59d2 f30f16ca f30f58ca f30f5f0d<disp> f30f5ec1 f30f57c9 f30f5fc8 f30f1015<disp> 0f28c2 f30f5dc1 f30f5cd0 0f14d0 0f59d3 f30f16c2 f30f58c2 c3 */
+/* SIMD 链：unpcklps 组合 f64 对 → movsd 加载 {x,y,z?}@+0/+8/+0x18 → subps 差分 → mulps 距离方 → */
+/*   movshdup/addss（水平加）→ maxss（下限钳制，常量 @ 0x142a8d94e 域）→ sqrtss → 距离倒数权重 → */
+/*   movsd 另一常量 → 加权求和（f32 输出）*/
+/* 逐字段证据 O；具体常量值待 rne-read 定点复核（本文件仅登记机器码骨架）*/

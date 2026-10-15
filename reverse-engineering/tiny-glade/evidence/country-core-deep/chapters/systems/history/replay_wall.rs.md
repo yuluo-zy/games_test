@@ -25,3 +25,22 @@
 - `country_core::systems::history::replay_wall::WallReplayEditCmd::process_animated`（行 618）— 动画路径应用（I；内联；源行 618）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖；骨架见 history/ALGORITHMS.md §2.6）
+
+- **replay_wall 0x140951b80**（前桶迭代骨架）：
+  1. `active(+0x18)==0 → return`；speed = ReplayBuffer+0x28；
+  2. 前桶 cmds（ptr@+0x08, len@+0x10）0x30 步长迭代，仅 tag 4：
+     - 全局序列 FUN_1400d9b20（墙变更事件代）；
+     - `count@+0x20 != 0` 循环：对元素内 24B WallReplayEditCmd 子记录（fat 指针
+       {ptr@+0x08, len@+0x10}）逐个 `process 0x140abfb30(cmd, dt*speed, …)`（自递归，
+       instant/动画两路径分派）；`done = 子记录+0x15` AND 聚合；非全 done → 本帧停止；
+     - 全 done → **收集已改墙**：每子记录 niche 解码（+0x10 - 0x7fffffffffffffff）
+       经 vtable 0x142ab4910 取目标，FUN_1402ca2f0 收集入局部 Vec；count>1 再收集
+       下一条元素墙集，FUN_1408b1fb0 合并（非 0 才 count-- 消费）；
+  3. 收尾：完成索引**逆序**移除（边界断言 → memmove 压缩 → 按判别字节 drop 分派：
+     tag 4 → FUN_140891eb0 墙内联 drop）。
+- **_deprecated_morph_curve 0x140952570**：已弃用形态曲线应用（保留兼容，无调用方
+  业务路径）。
+- **WallReplayEditCmd::process 0x140abfb30**：8 参自递归分派（instant →
+  process_instant 按判别 cubic_in_out；动画 → process_animated）。
+

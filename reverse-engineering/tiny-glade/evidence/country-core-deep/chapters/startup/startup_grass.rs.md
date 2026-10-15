@@ -17,3 +17,9 @@
 ## 派生胶水
 
 - 1 项：closure$0 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_grass 0x140a21620（O）**：grass blade/grass_blade 网格（load_mesh_into_library）
+  + 3x shader（grass_object_push、grass，'/grass_object_push.raster.hlsl'、'/grass.raster.hlsl'）
+  + 2 个 spawn 记录（FUN_1412dc470）+ 特殊注册 FUN_1412fff70（grass 实例化后端接线）。

@@ -17,3 +17,8 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_blit 0x140901430（O）**：3x load_shader_into_library<&str>（FUN_140b3fe40）：
+  resolve_to_swapchain、resolve_msaa_to_swapchain、blit_stretch_decode_srgb（`/blit/*.raster.hlsl`）。

@@ -92,3 +92,17 @@
 - `country_core::resources::history::wall_compound_edit::_::impl$0::deserialize::impl$2::visit_enum::impl$3::visit_str`（行 301）— serde 手写/derive visitor 胶水（本类型 serde 的 monomorph/visitor 入口）（O(入口)；见文件作用所列 serde 地址）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **CompoundEditBuilder**：new_edit_sequence 0x140a82b20（开始新序列）→ next
+  0x140a82b40（推进到下一组）→ build 0x140a82d50（组装 Option<WallHistoryCompoundEdit>
+  0x108B）；`wall_deleted 0x140a876a0` = systems::wall::deferred_wall_history 的 trait
+  impl（墙删除合并入口）。panic_deprecated_operation 0x140a82e20 = 已弃用操作 panic。
+- **WallHistoryEdit Debug::fmt 0x140a82eb0**：首字段 niche 判别（`*p -
+  0x7fffffffffffffff` 得变体）经跳表 0x142ad888c 分派打印各操作变体。
+- **update_compatibility / gather_wall_ids**：无独立符号（内联；CLOSURE §1 排除
+  0x140a82940..0x140a82b20 全为 drop/fmt glue）。
+- serde deserialize 族（0x141401960/0x1414022c0/0x141402680/0x141402790）：操作 tag
+  串 ChangeFreehandHeightType / PlasterPeelAmount / ChangePlasterPeelAmount /
+  MorphPremadeShape / MorphFreehandWall…（~40 变体 visitor）。
+

@@ -15,3 +15,10 @@
 ## 备注
 
 - 重构 `DeleteDroppedTransientMeshes { registry: Arc<TransientMeshRegistry> }` 与证据方向一致（Arc 共享 registry），但为推断映射。
+
+## 实现方式（算法级）
+
+**delete_dropped_transient_meshes（全内联，I）**：
+- 无独立地址；为 `TransientMeshRegistry::drain_meshes_to_delete`（0x1412e9e70，O 地址）的消费闭包，逻辑并入 drain 消费处。（I）
+- 处理链：drain 排空待删网格句柄 → 逐网格释放 GPU 网格；组件在 backend 每帧运行。（I）
+- 重构 `DeleteDroppedTransientMeshes { registry: Arc<TransientMeshRegistry> }` 与证据方向一致（Arc 共享 registry），为推断映射。（I）

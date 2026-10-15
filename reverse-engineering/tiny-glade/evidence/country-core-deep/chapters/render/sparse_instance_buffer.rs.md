@@ -46,18 +46,18 @@ dirty_bitset(ptr,len)@0x50/0x58、`current_chunk: u32`@0x60。
 
 | 族 | 实例数 | 代表地址 | 逆向结论 | 证据 |
 |---|---|---|---|---|
-| `impl$10::new_storage_buffer<T>` | 4 | 0x1412e4a90（RoofTile）/ 0x1412e5800（Brick）/ 0x1412e5170（WoodenPlank）/ 0x1412e5f50（Sparkle） | **O**：分配并初始化 byte_map（零 + 哨兵 0x20）、slot_meta（0x40000 u32 零）、free_chunks（降序）、双位图（from_iter AtomicUsize::new(0)）、Arc<RwLock<Vec<Allocation>>>、TSB、pending-handles RwLock；设备参数守卫（`if (in_R8 != 0) panic`，语义 U） | wp2 合同 |
-| `SparseInstanceBuffer::hide` | 4（每类型 1） | 0x1412e3c00 | **O**：unwrap handle.allocation；逐块 bounds `chunk_id/64 < bitset_len`，清 active 位（AtomicUsize fetch_and） | wp2 合同 |
-| `SparseInstanceBuffer::show` | 4 | 0x1412e3c80 | **O**：hide 镜像，置 active 位 | wp2 合同 |
-| `SparseInstanceBuffer::take_out_waste` | 4 | 0x1412e3d00（BrickTransform） | **O**：扫描 allocations：每块 byte_map=0、清 active 位、压回 free_chunks（reserve + reverse copy）、释放 Allocation box 与 field0 指针；用 pending-handles RwLock 快路径 | wp2 合同 |
-| `SparseInstanceBuffer::gpu_flush<T>` | 4 | 0x1412e2f10（BrickTransform） | **O**：先 take_out_waste；扫 dirty_bitset（trailing zeros 找最低置位块）累积非重叠块区间 `[start,end)`，逐词清零；每区间转元素范围 `[chunk*32, chunk*32+32)`（`<<5`）→ `TypedStorageBuffer::gpu_write_ranges_nonoverlapping<T>`；puffin scope | wp2 合同 |
-| `SparseInstanceBuffer::allocation_to_draw_multi_instanced<T>` | 4 | 0x1412e3a60（RoofTile） | **O**：unwrap handle；逐块 `start_slot=chunk*32`、`count=byte_map[chunk]`；累积连续槽段 `(start_slot, count)` 对（grow_one 输出缓冲）；返回 `(0, 4, range_count)`（多绘制命令三元组，I：first=0/stride=4/count） | wp2 合同 |
-| `impl$3::to_draw_multi_instanced<T>` | 4 | 0x1412e4250（RoofTile） | **O**：同形但遍历整个 active_bitset（全部活跃块），返回 `(0, 4, count)` | wp2 合同 |
-| `SparseInstanceBuffer::buffer` | 1 | 0x140005c50（5 B 桩） | **O**：`mov rax,rcx; ret`——访问器（`&TypedStorageBuffer<T>`）；与 `impl$12::handle` ICF | wp2 合同 + 本批字节复核 |
-| `impl$12::{as_any, as_any_mut, handle}` | 3×4 | 0x1412e6640..0x1412e6670（11 B 桩） | **O**：trait-object 接口（`as_any`/`as_any_mut` = 自身指针 + Any 虚表；`handle` = `lea rax,[rcx+0x68]`）——供 `AssetSsboLibrary::get_rg_buffer<T>` 使用 | wp2 合同 |
-| `AllocationHandle::is_null` | 1 | 0x140985f30 | **O**：`self.word == 0` | wp2 合同 + skeleton task-index 证据 |
+| `impl$10::new_storage_buffer<T>` | 4 | 0x1412e4a90（RoofTile）/ 0x1412e5800（Brick）/ 0x1412e5170（WoodenPlank）/ 0x1412e5f50（Sparkle） | **O**：分配并初始化 byte_map（零 + 哨兵 0x20）、slot_meta（0x40000 u32 零）、free_chunks（降序）、双位图（from_iter AtomicUsize::new(0)）、Arc<RwLock<Vec<Allocation>>>、TSB、pending-handles RwLock；设备参数守卫（`if (in_R8 != 0) panic`，语义 U） | render-top/decomp/decomp-0x1412e4a90.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::hide` | 4（每类型 1） | 0x1412e3c00 | **O**：unwrap handle.allocation；逐块 bounds `chunk_id/64 < bitset_len`，清 active 位（AtomicUsize fetch_and） | render-top/decomp/decomp-0x1412e3c00.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::show` | 4 | 0x1412e3c80 | **O**：hide 镜像，置 active 位 | render-top/decomp/decomp-0x1412e3c80.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::take_out_waste` | 4 | 0x1412e3d00（BrickTransform） | **O**：扫描 allocations：每块 byte_map=0、清 active 位、压回 free_chunks（reserve + reverse copy）、释放 Allocation box 与 field0 指针；用 pending-handles RwLock 快路径 | render-top/decomp/decomp-0x1412e3d00.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::gpu_flush<T>` | 4 | 0x1412e2f10（BrickTransform） | **O**：先 take_out_waste；扫 dirty_bitset（trailing zeros 找最低置位块）累积非重叠块区间 `[start,end)`，逐词清零；每区间转元素范围 `[chunk*32, chunk*32+32)`（`<<5`）→ `TypedStorageBuffer::gpu_write_ranges_nonoverlapping<T>`；puffin scope | render-top/decomp/decomp-0x1412e2f10.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::allocation_to_draw_multi_instanced<T>` | 4 | 0x1412e3a60（RoofTile） | **O**：unwrap handle；逐块 `start_slot=chunk*32`、`count=byte_map[chunk]`；累积连续槽段 `(start_slot, count)` 对（grow_one 输出缓冲）；返回 `(0, 4, range_count)`（多绘制命令三元组，I：first=0/stride=4/count） | render-top/decomp/decomp-0x1412e3a60.txt（原 wp2 合同） |
+| `impl$3::to_draw_multi_instanced<T>` | 4 | 0x1412e4250（RoofTile） | **O**：同形但遍历整个 active_bitset（全部活跃块），返回 `(0, 4, count)` | render-top/decomp/decomp-0x1412e4250.txt（原 wp2 合同） |
+| `SparseInstanceBuffer::buffer` | 1 | 0x140005c50（5 B 桩） | **O**：`mov rax,rcx; ret`——访问器（`&TypedStorageBuffer<T>`）；与 `impl$12::handle` ICF | hex 手解 0x140005c50（rne-read --hex 本批；原 wp2 合同 + 本批字节复核） |
+| `impl$12::{as_any, as_any_mut, handle}` | 3×4 | 0x1412e6640..0x1412e6670（11 B 桩） | **O**：trait-object 接口（`as_any`/`as_any_mut` = 自身指针 + Any 虚表；`handle` = `lea rax,[rcx+0x68]`）——供 `AssetSsboLibrary::get_rg_buffer<T>` 使用 | hex 手解 0x1412e6640（rne-read --hex 本批；原 wp2 合同） |
+| `AllocationHandle::is_null` | 1 | 0x140985f30 | **O**：`self.word == 0` | hex 手解 0x140985f30（rne-read --hex 本批；原 wp2 合同 + skeleton task-index 证据） |
 | `SparseInstanceBufferWriter::push<T>` | 4 | 0x1412e4450（BrickTransform 元素 0x60，块步长 0xc00） | **O**：`current_chunk` 未满（byte_map<32）→ 槽写 + byte_map+1 + 置脏位；满 → 锁 free_chunks（空则 no-op）pop 新块、append allocated_chunks、写 `chunk*32` 槽、置 active+dirty 位、current_chunk=新块 | wp2 合同 |
-| `SparseInstanceBufferWriter::clear<T>` | 3 | 0x1412e4760（BrickTransform） | **O**：current_chunk = byte_map_len-1（满哨兵）；逐 allocated_chunks 块 byte_map=0 + 清 active 位；drain 回 free_chunks（reverse append）；**脏位不清**（留给 gpu_flush 上传） | wp2 合同 |
+| `SparseInstanceBufferWriter::clear<T>` | 3 | 0x1412e4760（BrickTransform） | **O**：current_chunk = byte_map_len-1（满哨兵）；逐 allocated_chunks 块 byte_map=0 + 清 active 位；drain 回 free_chunks（reverse append）；**脏位不清**（留给 gpu_flush 上传） | render-top/decomp/decomp-0x1412e4760.txt（原 wp2 合同） |
 
 ## 族明细（每类型 VA 对）
 
@@ -83,6 +83,27 @@ SparkleSsbo:      new_storage_buffer@0x1412e5f50  + 其他 5 个 @0x141209f40..0
 - `drain_chunk_bitmap` / `iter_chunk_bitmap` / `iter_all_chunks` / `iter_allocation_chunks` — **I**：位图迭代器族
 - `to_draw_multi_instanced_impl` — **I**：两绘制构建器的共享实现
 - `take_out_waste` 的 RwLock 快路径辅助（I）
+
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. 分配/回收算法
+- **分配（allocate，内联）**：pop free_chunks → 置 byte_map[chunk]=32、active 位 → 建 `Allocation{field0, chunk_ids(ptr,len)}` → 返回 16B `AllocationHandle{word:u64, allocation:Option<NonNull>}`；`is_null = word==0`（0x140985f30）。
+- **hide/show**（0x1412e3c00/0x1412e3c80）：unwrap handle.allocation；逐块 bounds `chunk_id/64 < bitset_len`；`AtomicUsize::fetch_and/fetch_or` 清/置 active 位。
+- **take_out_waste**（0x1412e3d00）：扫描 allocations：每块 `byte_map=0`（0 活跃）→ 清 active 位 → 压回 free_chunks（reserve+reverse copy）→ 释放 Allocation box 与 field0 指针；pending-handles RwLock 快路径（写者标志 0/8）。
+- **Writer::push**（0x1412e4450）：`current_chunk` 未满（byte_map<32）→ 槽写 `instance_data_ptr + chunk*32*es + slot*es` + byte_map+1 + 置脏位；**满 → 锁 free_chunks（空则 no-op）pop 新块**、append allocated_chunks、写 `chunk*32` 槽、置 active+dirty、current_chunk=新块。
+- **Writer::clear**（0x1412e4760）：current_chunk = byte_map_len-1（满哨兵）；逐 allocated_chunks 块 byte_map=0 + 清 active；drain 回 free_chunks（reverse append）；**脏位不清**（留给 gpu_flush 上传）。
+
+### 2. `gpu_flush<T>`（0x1412e2f10）—— 脏块上传
+先 take_out_waste → 扫 dirty_bitset（**trailing zeros 找最低置位块**）累积非重叠块区间 `[start,end)`，逐词清零 → 每区间转元素范围 `[chunk*32, chunk*32+32)`（`<<5`）→ `TypedStorageBuffer::gpu_write_ranges_nonoverlapping<T>`；puffin scope。
+
+### 3. 绘制范围构建
+- `allocation_to_draw_multi_instanced`（0x1412e3a60）：unwrap handle；逐块 `start_slot=chunk*32`、`count=byte_map[chunk]`；累积连续槽段 `(start_slot,count)` 对（grow_one 输出缓冲）；返回 `(0, 4, range_count)`。
+- `to_draw_multi_instanced`（0x1412e4250）：同形但遍历**整个 active_bitset**（全部活跃块），返回 `(0,4,count)`。
+- 消费方：`DrawBuilder::draw_multi_instanced`/`multi_draw_indirect`（0xb8B 命令）；stride 4 与 WP1 对编码跨包一致。
+
+### 4. 常量（O，impl$10::new_storage_buffer 单态化）
+RoofTile chunk_count 0x2000/slots 0x40000；BrickTransform 0x10000/0x200000/es 0x60；WoodenPlank 0x10000/0x200000/es 0x40；Sparkle 0x6000/0x300000。
+- 纠错：`slot_meta` u32 表与 `Allocation.field0` 无已反编译消费者——不编造语义；旧骨架把 push 写直接当 flush 内容（实际 push 写映射缓冲，gpu_flush 再从 CPU 数组重传脏块）。
 
 ## 派生胶水（9 项：closure ×7、drop ×2）
 

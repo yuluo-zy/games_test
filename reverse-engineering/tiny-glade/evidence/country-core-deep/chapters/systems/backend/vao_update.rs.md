@@ -11,6 +11,19 @@
 | `country_core::systems::backend::vao_update::build_missing_vaos` | 0x1408646b0 | 9 | Bevy 系统（ResMut +0x1c tick）。遍历网格位图索引（0xa0B 组件结构 @ mesh 库 +0x100），`FUN_140969550` 构建 + `FUN_140924180` 建 VAO；失败日志 `'Couldn't build VAO: '`（0x142a96490）；空网格日志 `'Mesh is empty. Skip building VAO'`（0x142a96508）。 | O | decomp/decomp-0x1408646b0.txt；rne-read --unks |
 | `country_core::systems::backend::vao_update::rebuild_vaos` | 0x140864bf0 | 39 | Bevy 系统。遍历全部网格，`FUN_1409243f0` 重建 VAO（`FUN_1405b0d70` 辅助）；无 VAO 网格警告 `'WARNING: Tried rebuilding a mesh that has no VAOs!'`（0x142a96568）；失败日志 `'Couldn't rebuild VAO: '`（0x142a965c0）。 | O | decomp/decomp-0x140864bf0.txt；rne-read --unks |
 
+## 实现方式（算法级）
+
+**build_missing_vaos @0x1408646b0（系统，O）**：
+1. 遍历网格位图索引（0xa0B 组件结构 @ mesh 库 +0x100）。（O）
+2. 网格空 → log `'Mesh is empty. Skip building VAO'`（0x142a96508）跳过。（O）
+3. `FUN_140969550` 构建 + `FUN_140924180` 建 VAO；失败 → log `'Couldn't build VAO: '`（0x142a96490）。（O）
+4. 跨域：VAO 句柄插入命令（`InsertVaoCommand`）→ asset_libraries::vao_library `AssetVAOLibrary::add`。（O）
+
+**rebuild_vaos @0x140864bf0（系统，O）**：
+1. 遍历全部网格，`FUN_1409243f0` 重建 VAO（`FUN_1405b0d70` 辅助，按绑定变化）。（O）
+2. 无 VAO 网格 → WARNING `'WARNING: Tried rebuilding a mesh that has no VAOs!'`（0x142a96568）。（O）
+3. 失败 → log `'Couldn't rebuild VAO: '`（0x142a965c0）→ vao_library `rebuild_vao`。（O）
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项（build_missing_vaos 行 20 闭包）

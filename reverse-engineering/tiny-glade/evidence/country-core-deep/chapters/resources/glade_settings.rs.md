@@ -20,3 +20,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default`、`deserialize`、`expecting`、`visit_map`、`visit_seq` 等 6 项
+
+## 实现方式（算法级）
+
+`GladeSettings::load`（0x1408bbbc0）：glade_settings.json serde_json Option → 失败回退 Default{+0 u32=0、+8 f32=0.01、+0xc f32=1.0、+0x10 u32=8、+0x18 f32=0.0、+0x1c f32=1.0、+0x20 u8=1}（Default 0x8c2240）。字段语义 U。

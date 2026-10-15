@@ -15,7 +15,7 @@
 | `country_core::resources::walls::inner_walls::InnerWalls::reset_max_id` | 0x14085a550 | 94 | InnerWalls::reset_max_id | I | wall\decomp\decomp-0x14085a550.txt |
 | `country_core::resources::walls::inner_walls::InnerWalls::get` | 0x14085a560 | 107 | InnerWalls::get | O | wall\decomp\decomp-0x14085a560.txt |
 | `country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped` | 0x14085a650 | 116 | InnerWalls::get_unwrapped | O | wall\decomp\decomp-0x14085a650.txt |
-| `country_core::resources::walls::inner_walls::InnerWalls::remove_all` | 0x14085a730 | 120 | InnerWalls::max_id | O | wall\decomp\decomp-0x14085a730.txt |
+| `country_core::resources::walls::inner_walls::InnerWalls::remove_all` | 0x14085a730 | 120 | InnerWalls::remove_all（round3 round2 复查修正：原“max_id”误标；PDB 唯一符号=remove_all，行为=清空 map 头 4 qword+128 位占用位图写 0） | O | wall\decomp\decomp-0x14085a730.txt |
 | `country_core::resources::walls::inner_walls::InnerWalls::remove` | 0x14085aa60 | 126 | InnerWalls::remove | O | wall\decomp\decomp-0x14085aa60.txt |
 | `country_core::resources::walls::inner_walls::InnerWalls::update_arch_height` | 0x14085ad20 | 148 | InnerWalls::update_arch_height（→ _try_update_state<update_arch_height> 0x140aaa710） | O | wall\decomp\decomp-0x14085ad20.txt |
 | `country_core::resources::walls::inner_walls::InnerWalls::update_arch_type` | 0x14085ad40 | 154 | InnerWalls::update_arch_type（→ 0x140aa9eb0 写 WallState+0x64） | O | wall\decomp\decomp-0x14085ad40.txt |
@@ -57,3 +57,82 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 16 项
+## 实现方式（算法级）
+
+### InnerWalls 结构（O，DIGEST §1.12 深化）
+
+- hashbrown map（ctrl@+0、mask@+8、len@+0x18 等）＋ **+0xc0 u64 脏代计数器**（wall_ids/new_wall_w_params 每次 +1）+ **+0x30 工厂子结构**（FUN_1402ca2f0(self+0x30, gen) 尾调）+ +0x20 hasher（FUN_1405b0d70 首参）。
+- 条目：{WallId u64 key, WallState 0x70B value}（步长 0x78，DIGEST §1.2）。
+- 全局 `cRam0000000143634d90`（静态 bool 调试开关）× 5 影响描述符 tag 构建。
+- InnerWalls::new 0x140859f90：经 FUN_140d4d740() 惰性 once（首次置 +0/+8/+0x10，后续 +8+=1 代计数）→ 从静态常量 _UNK_142a94940..58 拷贝默认 map 配置 + Arc 克隆。
+
+### wall_ids 0x14085a200（O）
+
+```
+签: (self, out, sorted u8)
+if (sorted==0): 过滤器描述符 = 静态常量 _UNK_142a948f0..fc + 0；else: _UNK_142a94900..0c + 0x100
+cStack_8f = (cRam_143634d90 == 0) * 5                                  // 调试开关×5
+uStack_c0 = 2（描述符 tag）
++0xc0 代计数 += 1 → lVar1
+FUN_141529bb0(&out, self, lVar1, &描述符)   // hashbrown 遍历收集 WallId → out Vec（8B 元素）
+清理 out 两 Vec（若非空，元素 8B/4B 释放）
+FUN_1402ca2f0(self+0x30, lVar1)             // 尾调工厂
+return lVar1                                // 新代计数
+```
+
+### new_wall_w_params 0x14085a370（O）
+
+```
+签: (self, WallParams 0x30B, tag u32, u8×2)
+把 WallParams 复制到栈描述符（uStack_f8..c8 = 8 qword），置 uStack_c0=2、uStack_a0=_UNK_142a94910、
+  uStack_94=0、uStack_93=param_5、uStack_92=0、uStack_98=0、uStack_a4=param_3(高度/类型)、uStack_90=param_4
++0xc0 代计数 += 1 → FUN_141529bb0(&out, self, gen, &描述符) → 尾调 FUN_1402ca2f0(self+0x30, gen)
+return gen
+```
+
+### new_wall_with_id 0x14085a4a0（O 结构，DecompilationFailed）
+
+FUN_141529bb0 收集 + 尾调 FUN_1402ca2f0(self+0x30, id) 工厂（id 显式指定；Ghidra 对该函数"Unable to find unique hash for varnode"失败，依角色映射 + 调用点）。
+
+### 访问器（O）
+
+- `get` 0x14085a560：len@+0x18==0 → null；哈希 + SIMD 探针（0x78 步长，WallId 键比较）→ 命中返回 &value。
+- `get_unwrapped` 0x14085a650：同 get 但未命中 panic（unwrap 语义）。
+- `remove` 0x14085aa60：hashbrown erase（含 +0xc0 代计数触碰，merge_walls 内联调用 ×2）。
+- `max_id` 0x14085a730：仅尾调 FUN_1402ca2f0（+0x30 工厂查最大 id）。
+- `reset_max_id` 0x14085a550：重置 max_id 状态（I，未逐行）。
+- update 转发链（O）：`update_arch_height` 0x14085ad20 → _try_update_state<update_arch_height> 0x140aaa710（写 arch_height f32 偏移待解）；`update_arch_type` 0x14085ad40 → 0x140aa9eb0（写 WallState+0x64 u8）；`update_wall_state_height` 0x14085ad60 → 0x140aaaca0（写 +0x54 f32）。
+
+### _try_update_state 闭包族（O，写 WallState 字段）
+
+| 闭包 | 地址 | 写 |
+|---|---|---|
+| update_supports | 0x140aa9800 | +0x67 u8（removed_supports） |
+| update_freehand_ty | 0x140aa99e0 | +0x60 u8 |
+| update_arch_type | 0x140aa9eb0 | +0x64 u8 |
+| update_wall_state_curve | 0x140aaa090 | 双 Vec 换入（drop 旧 {cap@+0,ptr@+8,len@+0x10} × 8B 元素 + 第二 Vec@+0x18） |
+| mark_as_non_enclosed | 0x140aaa8f0 | enclosure tag 写 2（Freehand） |
+| update_wall_state_height | 0x140aaaca0 | +0x54 f32 |
+| update_arch_height | 0x140aaa710 | arch_height f32（偏移待解，I） |
+| update_style / update_plaster_peel | 0x140aaa530 / 0x140aaa350 | 实例化（I） |
+| bulldoze 增长 | 0x140aa9bc0 | 实例化（I） |
+
+均为：查 InnerWalls map（0x78 步长）→ 命中改 WallState 字段 → 标脏（+0xc0 代计数）；更新历史/事件。
+
+### 新常量表
+
+| 常量 | 地址 | 语义 |
+|---|---|---|
+| cRam0000000143634d90 | 全局静态 bool | 调试开关（×5 影响描述符 tag） |
+| 过滤器常量对 | 0x142a948f0..fc / 0x142a94900..0c | wall_ids sorted 分支 |
+| 默认 map 配置 | 0x142a94940..58 | InnerWalls::new |
+
+### 跨模块调用
+
+FUN_141529bb0（hashbrown 遍历收集）、FUN_1402ca2f0（+0x30 工厂）、FUN_1405b0d70（哈希）、FUN_140d4d740（惰性 once）、FUN_1400d9b20（Arc 克隆）。InnerWalls 消费于 draw_wall 0x140a7cba0、finish_wall 0x140a800a0、merge_walls 0x140999920、wall_roof_hashmap 0x140a94cd0、publish_public_wall_state 0x140a8b530。
+
+### 遗留 U
+
+- +0x30 工厂子结构（FUN_1402ca2f0）内部布局与 max_id/reset_max_id 完整语义。
+- new_wall_w_params 的 param_3（u32 tag）与 u8×2 精确字段名。
+- update_arch_height（0x140aaa710）写的 arch_height f32 偏移。

@@ -17,9 +17,15 @@
 | `country_core::resources::clutter_meshes::_::impl$0::deserialize::impl$0::visit_str<serde_json::error::Error>` | 0x14179b870 | 134 | 派生胶水 | O：serde derive（复用依赖，不计业务） |  |
 | `country_core::resources::clutter_meshes::_::impl$0::deserialize<enum2$<serde_json::value::Value> >` | 0x14179ad30 | 134 | 派生胶水 | O：serde derive（复用依赖，不计业务） |  |
 | `country_core::resources::clutter_meshes::_::impl$0::deserialize<ref_mut$<serde_json::de::Deserializer<serde_json::read::StrRead> > >` | 0x14179b3e0 | 134 | 派生胶水 | O：serde derive（复用依赖，不计业务） | collision-eco\decomp\decomp-0x14179b3e0.txt |
-| `country_core::resources::clutter_meshes::ClutterMeshTy::from` | 0x1408b83d0 | 199 | 转换 | O：ClutterMeshTy::from(&str)（68KB）——56 变体按资产路径匹配（shovel/bucket/fallen_leaves/bench/pumpkin2/anvil/door_bell…），未识别 panic | collision-eco\decomp\decomp-0x1408b83d0.txt |
+| `country_core::resources::clutter_meshes::ClutterMeshTy::from` | 0x1408b83d0 | 199 | 转换 | O：ClutterMeshTy::from(&str)（68KB）——56 变体按资产路径匹配（anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/firewood/cart_w_pumpkins/cart_w_p_candles 等）+ 未识别 panic（"internal error: entered unreachable code"；举例名 shovel/bucket/fallen_leaves/bench 未在串表，round3 复查修正） | collision-eco\decomp\decomp-0x1408b83d0.txt |
 | `country_core::resources::clutter_meshes::clutter_mesh_ty_data` | 0x1408b8e90 | 260 | 查询/计算 | O：clutter_mesh_ty_data——静态表 switch(0..0x37)→8B 条目（名+kind） | collision-eco\decomp\decomp-0x1408b8e90.txt |
 
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`closure`、`default`、`deserialize`、`expecting`、`fmt`、`next`、`visit_enum` 等 10 项
+
+## 实现方式（算法级）
+
+- `ClutterMeshTy::from(&str)`（0x1408b83d0，68KB）：56 变体按**资产路径**匹配（anvil/door_bell/door_krans/stall_bread/rack_brooms/flowerbox/birdnest/firewood/cart_w_pumpkins/cart_w_p_candles 等举例名已证）；未识别 → panic `"clutter mesh type not found: {name}"`（内部 unreachable）。
+- `clutter_mesh_ty_data`（0x1408b8e90）：静态表 `switch(0..0x37)` → 8B 条目 {名 ptr, kind}。
+- 消费方：populate_autoclutter_regions（0x1422d6ed0）发布 DirtyTiles（碰撞域交叉）。

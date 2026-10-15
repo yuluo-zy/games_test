@@ -17,3 +17,10 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **init_color_library 0x14082c000（O）**：读 `assets/colors.json`（0x142a920a6, 16 字符；失败 OOM abort）
+  → 构造 0x12B 个颜色条目（color 值 + 名字串）→ FUN_1408ba290 注册进 color library 资源；
+  条目经 cap-first Vec push（FUN_1428a9a60）+ FUN_1412bbcf0/FUN_1412d8420（条目构造/登记）。
+- reload_color_library（内联，行 29）：重建同一注册。

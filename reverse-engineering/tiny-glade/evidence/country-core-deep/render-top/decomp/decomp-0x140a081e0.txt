@@ -1,0 +1,40 @@
+
+void FUN_140a081e0(undefined8 param_1)
+
+{
+  code *pcVar1;
+  ulonglong uVar2;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  uint *puStack_20;
+  uint *puStack_18;
+  longlong lStack_10;
+  ulonglong uStack_8;
+  
+  FUN_140a07b30(&puStack_20,param_1);
+  if (puStack_20 == puStack_18) {
+    return;
+  }
+  fVar3 = 0.0;
+  do {
+    uVar2 = (ulonglong)*puStack_20;
+    if (uStack_8 <= uVar2) {
+      FUN_1428d9518(uVar2,uStack_8,&UNK_142acc918);
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)();
+      return;
+    }
+    puStack_20 = puStack_20 + 1;
+    fVar5 = *(float *)(lStack_10 + uVar2 * 0xc);
+    fVar4 = *(float *)(lStack_10 + 8 + uVar2 * 0xc);
+    fVar4 = SQRT(fVar4 * fVar4 + fVar5 * fVar5);
+    fVar5 = fVar4;
+    if (fVar4 <= fVar3) {
+      fVar5 = fVar3;
+    }
+    fVar3 = (float)(~-(uint)NAN(fVar3) & (uint)fVar5 | -(uint)NAN(fVar3) & (uint)fVar4);
+  } while (puStack_20 != puStack_18);
+  return;
+}
+

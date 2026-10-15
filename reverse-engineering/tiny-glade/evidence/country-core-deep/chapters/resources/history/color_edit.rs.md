@@ -61,3 +61,12 @@
 - `country_core::resources::history::color_edit::impl$1::fmt`（行 15）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **ColorEdit 负载**：目标类型（Wall/Roof/Halftimber/Decorator/StairRailing/FlatRoof/
+  StairLadder/Brightness）+ from/to 颜色 + 目标 id + chimney_h_offset/allow_connection
+  字段；手写 serde visitor 族（serialize 0x14003c5d0 / deserialize 0x1417befe0 /
+  visit_str 0x1417bf8a0，字段名 lantern_brightness/chimney_smoke/…）。
+- 运行侧消费：load_game 旧版颜色 ID 升级（{1→2,2→5,4→8,5→3,8→4}，+0x52∈
+  {0x38..0x3a} 记录 +0x30 字段）与 save_game Colors 节（to_json_string 0x14085ee90）。
+

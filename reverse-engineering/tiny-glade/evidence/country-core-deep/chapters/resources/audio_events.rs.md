@@ -24,3 +24,16 @@
 | `PlayElevationSupportSoundCmd` | (数据型) | 14 | 抬升支撑音效命令（#14） | O | 同上 |
 | `PlayClutterSoundCmd` | (数据型) | 15 | 杂物音效命令（#15；槽 stride 0x18） | O | 同上 §3f |
 | `PlayTreeSoundCmd` | (数据型) | 16 | 树木音效命令（#16，tree-tool 写入） | O | 同上 |
+
+## 实现方式（算法级）（O，multi-baseline §8 事件槽布局）
+
+16 个 bevy Event 类型定义 + `add_audio_events`（0x140941450）依 #1–#16 顺序 register_event。
+各消费系统钉死的**事件槽布局**（bevy 书签放置不统一）：
+- `PlayWallAudio`：stride 0x28，payload 从 @+0x8 起——kind u8@+8、f32@+c、
+  position Vec3@+0x10（x,y u64 / z u32）、volume f32@+0x1c、byte@+0x20。（O）
+- `PlayBuildingAudio`：stride 0x20，**payload 从槽 @+0 起（无 bevy 书签）**——id u64@+0、
+  position@+8、editing_speed f32@+0x14、kind u8@+0x18。（O）
+- `PlayStairsAudioCmd`：stride 0x38——kind@+8、字节@+9/+a/+b、f32×4@+c..0x18、
+  position u64/u32@+0x1c/+0x24、f32×2@+0x28/+0x2c。（O）
+- `PlayClutterSoundCmd`：stride 0x18，kind@+0x14。（O）
+- 其余事件槽 stride 未钉死 U。O/I 混合

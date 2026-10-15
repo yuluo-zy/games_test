@@ -29,3 +29,26 @@
 
 - 旧版错：50 ms（实 100 ms）；吞错误造空壳；队列类型 `Option<Vec<u8>>` 且把变更文件字节读进队列（原版根本不读文件）。
 - `take_pending` 非本模块过程：消费者 `systems::backend::configwatch` 0x14085b1c0 对同一 Mutex lock+take 后调 `update_color_library`（0x14093b530）。
+
+## 算法要点（本批深挖 2026-10-15，decomp: asset-libraries/decomp/）
+
+证据：tg_m1 反编译 `decomp-0x1408ba290`（watch）、`decomp-0x14091e430`（closure 875 B）+ 消费端 `backend-misc/decomp/decomp-0x14085b1c0`。
+
+### 热重载全算法（O）
+
+1. **注册**：`watch(path)` → Arc 强计数 +1 → `String::clone(path)` → hotwatch None 则静默释放返回 → `hotwatch.watch(path, closure{watched: String, pending: Arc<Mutex<Option<String>>>})`，非 Ok → `unwrap_failed("failed to watch file!", :37:14)`。**不读文件**。
+2. **回调闭包**（0x14091e430）：`DebouncedEvent` 判别 = `tag ^ 0x8000000000000000`（i64::MIN 基址变体编码）；**仅 == 3（Write）处理**，其余 drop。处理：`log::info!(target="country_core::asset_libraries::configwatch", "Configwatch: {} has changed", watched)`（级别 3，pieces 0x142aadc80）→ `pending.lock()`（poison → unwrap panic）→ `*guard = Some(watched.clone())`。**写入的是闭包捕获的注册路径，不是事件路径**；事件自身（PathBuf）drop。
+3. **消费端**（systems::backend::configwatch 0x14085b1c0，bevy 系统）：锁同一 Mutex（futex @+0x10、poison @+0x11）→ 判 `Option<String>`（cap-first String：cap@+0x18、ptr@+0x20、len@+0x28；**cap >= 0 为 Some**，niche = i64::MIN）→ Some：级别 > 2 时 log::info（同一文案）→ **`update_color_library(settings, &AssetSsboLibrary, &Arc<GraphicsDevice>, &mut ColorLibrarySsbo)`**（FUN_14093b530 直调；ResMut tick @+0x1c 回写）→ 释放 String（`dealloc(ptr, cap, 1)`）→ 置 None（cap = i64::MIN 全零）。
+
+### 关键常量
+
+| 常量 | 值 | 含义 |
+|---|---|---|
+| 监视延迟 | 100 ms（Duration{0, 0x5f5e100}） | new_with_custom_delay（旧版 50 ms 错） |
+| 事件变体 | Write = 3（0x8000000000000003） | notify 4.x DebouncedEvent（i64::MIN 基址） |
+| Arc 载荷 | 0x30 B：强/弱=1、futex@+0x10、poison@+0x11、Option<String>@+0x18 | Arc<Mutex<Option<String>>> |
+| 队列 | 单槽 Option<String> | **新事件覆盖旧事件**（非队列，watch 不累积） |
+
+### 模块间调用
+
+- `ConfigWatch` ← hotwatch（GenericHotwatch）；→ `color_library::update_color_library`（0x14093b530）；watcher 由 `use_watch` 门控（false 时全部静默 no-op，不 panic）。

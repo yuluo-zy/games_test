@@ -14,4 +14,19 @@
 ## 关键事实
 
 - 结构体（U 布局）：`BushSsbo/FlowerSsbo/Flower03Ssbo/GardenStoneSsbo`（wp5 记名）。
+- **round3 闭合（2026-10-15）**：`Flower03Ssbo` 库 SsboId = **`0xF78C9C2EB9E1F6FB`**（O：`add_new<Flower03Ssbo>` 0x1412c4480 `movabs rdx,-0x837363d1461e905`）；
+  **NAME 仍 U**（全二进制串/SPIR-V 标识符/HLSL 标识符/花名组合穷尽无命中；reconstruction 占位 `"Flower03Ssbo"` 的 xxh3=0x5f3a187f0dd4b356≠键，确认错误）。
+  同态 U：`IvyFlowerSsbo`=0x1d6de5e69ac50d2a、`LilypadFlowerSsbo`=0xAE37CBCAFBE88DA4（add_new 立即数 O）。详见 `round3/RENDER-U-CLOSURE.md` §8。
 - 帧序 W12→W16（frame-wiring）。
+
+## 实现方式（算法级）
+
+### garden_rasterize_from_cpu（W12，0x140a22140）
+
+同 water 模板：+0x29b 判 → ssbo.version(+0x5c) ← 库(+0x5b0)；清 +0x29b；memset(bitmap@+0x98, 0, 0x200)；建纹理（0x61）；on_texture_processed + write_texture + dispatch_2d。
+
+### garden_spawn_vegetation（W16，0xa22b80）
+
+"Garden Marching Squares" /garden/marching_squares.cs.hlsl（方格行进，CPU 掩码→SSBO）+ /garden/spawn_small_flowers_garden.cs.hlsl + /garden/spawn_{bushes_garden,flowers_garden}.cs.hlsl；bind_terrain_heightmap + write_draw_indirect_cmd_buffer + dispatch。
+
+**round3 闭合**：Flower03Ssbo 库 SsboId = 0xF78C9C2EB9E1F6FB（add_new 立即数 O）；IvyFlowerSsbo=0x1d6de5e69ac50d2a、LilypadFlowerSsbo=0xAE37CBCAFBE88DA4。帧序 W12→W16。

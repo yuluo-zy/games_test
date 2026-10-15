@@ -62,11 +62,11 @@ prior 证据（`evidence/multi-baseline/water-cpu-analysis.md`、`water-extra-an
 | +0x30..+0x47 | DirtyTiles 位图 Vec：{cap=0x1000@+0x30, ptr@+0x38, len=0x1000@+0x40}（u32 单位；0x4000B = **4096 个 u32 = 64×64 瓦片（每瓦片 8×8 px）状态字**） | new 写 {0x1000,ptr,0x1000}；write 路径 memset(+0x98…) |
 | +0x48..+0x5f | 次级 Vec {0x40@+0x48, ptr@+0x50, 0x40@+0x58}（0x100B？）+ 4B；copy_to_staging 读 +0x50..+0x5c 为 4×u32“脏瓦片元数据” | new + copy_to_staging |
 | +0x60..+0x97 | DirtyTiles 头部（7×u64，由 param_2 原型拷贝 56B 初始化；含 parking_lot Mutex@+0x60/+0x68——subscribe/copy_to_staging 走 lock_slow，skeleton 依赖注解 parking_lot 0.11/0.12 O） | new 的 7 次 u64 拷贝 |
-| +0x98..+0x297 | 512B 内部 staging 缓冲 | memset 0x200（new 清零；write 置 0xff 全脏） |
+| +0x98..+0x297 | **4096-bit（512B = 64×u64）脏瓦片位图**（每 8×8px 瓦片 1 bit；DirtyTiles::retain/copy_to_staging 的位图本体）——**round1 误标"512B staging 缓冲"已修正** | memset 0x200（new 清零；**write 置 0xff = 全瓦片置脏**；water/garden/path-masks rasterize_from_cpu 清 0；copy_to_staging 的 retain 首参） |
 | +0x298 | 读缓冲选择字节（0→composite，1→scratch） | copy_to_staging 第 45 行；terrain_hover_idx 同读 |
 | +0x299 | staging 脏字节（rasterize_world_space_stroke 置位；**AllWorldRasterWrite::write 置位（0x83ebe0，O）**；copy_to_staging 清零） | 三处 O |
 | +0x29a | published 字节 | copy_to_staging 尾置 1 |
-| +0x29b | 再上传脏字节（water_rasterize_from_cpu 判 0 后清；置位方 = upload_to_staging 路径之外，仍 U——本轮未定位新置位点） | 0xa12680 第 129-131 行 |
+| +0x29b | 再上传脏字节（mask 重传协议）：**置位方 = upload_raster_staging_to_texture\<T>（W1）发布后 `*(u16*)(+0x29a)=0x100` → +0x29a=0/+0x29b=1（0x1403d8bd0 第 59 行；round3 闭合 round2 的 U）**；消费方 = water/garden/path-masks 三处 rasterize_from_cpu 判非 0 后清 | 0xa12680 第 129-131 行 / 0x1403d8bd0 |
 
 - 栅格：**512×512 u8**（composite/scratch 各 0x40000B；bilinear_sample 行/列 clamp 0x1ff，行距 SHL 9——prior O，本域复验一致）。
 - 世界映射：`grid = (world/130.0 + 0.5) * 512`（O，0x142a7b658=130、0x1429258e0=0.5、0x1429a3c80/84=512）。
@@ -123,7 +123,7 @@ subscribe 在**非 primary** 发布器上 panic：**"Can't subscribe to a second
 | +0x50/+0x54 | min/max 高度 f32（默认 **-2.5 / 24.0**，O：0x142a9f3f0 打包对，与 prior schema 一致） | copy_from_gpu 比对+复位 |
 | （其余：脏瓦片位图 64×u64 等） | copy_from_gpu 的 auStack_270[64] 8×8 瓦片位图（O） | 16B 块 diff 拷贝 |
 
-- `sample_at_world_xz`：`u=(x/130+0.5)` clamp[0,1] → `idx = u*512 − 0.5 + 1`（0x14295a0e8=-0.5）clamp[0,511]；权威实例返回 **u16 原始值**；视觉实例（0x141246fb0）为**双线性变体**（4 角 `load_index_unchecked`（0x1408b54c0，O）+ 3×lerp，u16→f32 解码用 +0x50/54 min/max）。debug 路径（全局字节 *0x14362c308≠0）用 `+0x201` 偏移索引（视觉/调试网格变体）。
+- `sample_at_world_xz`：`u=(x/130+0.5)` clamp[0,1] → `idx = u*512 − 0.5 + 1`（0x14295a0e8=-0.5）clamp[0,511]；权威实例返回 **u16 原始值**；视觉实例（0x141246fb0）为**双线性变体**（4 角 `load_index_unchecked`（0x1408b54c0，O）+ 3×lerp，u16→f32 解码用 +0x50/54 min/max）。**+0x201 偏移（`grid[(z<<9|x)+0x201]`）出现在 *0x14362c308==0 的正常分支（round3 修正：不是"debug 路径"）；语义（halo/边际行缓冲候选）U**。
 - `intersect_ray`：先对高度场 AABB（min/max@+0x50/54）求进出 t（FUN_141240860），再 **32 步行进 + 每步 3 次 0.5 二分**逼近交点，逐步调 sample_at_world_xz 采样（O）。命中写 {t, …} 到 out。
 - `copy_from_gpu(gpu)`：min/max 非默认 → 复位；**8×8 瓦片粒度 diff**（每块 16B = 8×u16），不同才拷贝并置 64 位位图位（O）。
 
@@ -162,7 +162,7 @@ subscribe 在**非 primary** 发布器上 panic：**"Can't subscribe to a second
 
 | 函数 | 行为 | 级别 |
 |---|---|---|
-| WorldRaster::new\<512> | 分配 composite+scratch（0x40000B×2）+ DirtyTiles 位图（0x4000B=4096 u32，初始 0x07954dbb）；初始化 7×u64 DirtyTiles 头；清零 0x204B staging+flags | O |
+| WorldRaster::new\<512> | 分配 composite+scratch（0x40000B×2）+ 瓦片状态 Vec（0x4000B=4096 u32，初始 0x07954dbb）；初始化 7×u64 DirtyTiles 头；清零 0x204B（4096-bit 脏位图 + flags） | O |
 | WorldRaster::subscribe\<512> | primary 校验（secondary → panic 串见 §4）；建 0x28B Arc 记录压入订阅 Vec（+0x78）；锁竞争走 parking_lot slow path | O |
 | impl$2::clear_buffer\<512> | 按选择字节清 composite 或 scratch（0x200 或全 0x40000，param_2 字节选） | O（0xa15a10） |
 | impl$2::clear_all\<512> | 双缓冲全清（0xa15da0） | O |
@@ -202,7 +202,7 @@ subscribe 在**非 primary** 发布器上 panic：**"Can't subscribe to a second
 
 - 0x07954dbb 瓦片状态字语义；+0x48..+0x5f 次级 Vec 用途；subscribe 记录的消费方（谁读订阅 Vec@+0x78——candidate：AllWorldRasterRead::read，未证实）。
 - WorldRaster::new 的 param_2 原型来源（静态表 DATA xref 0x1436953d0）。
-- +0x29b 的**另一置位点**（write 只置 +0x299；0x29b 谁置仍 U）。
+- ~~+0x29b 的置位点~~ **round3 闭合**：upload_raster_staging_to_texture\<T>（W1，0x1403d8bd0 第 59 行）发布后 `*(u16*)(+0x29a)=0x100`（word 写 0x100 → +0x29a=0/+0x29b=1）；消费 = water/garden/path-masks 三处 rasterize_from_cpu。round2 的直接寻址扫描没覆盖 word 宽写 0x100 的 +0x29a..0x29b（被当作"只到 +0x299 的 false positive"）。
 - ActiveRasterStroke +0x00/+0x08 字段名；solidify_fluid_into 的固化数学（间隔/权重）。
 - ui_terrain_focus_mode 四闭包体语义；drawing_input_smoother 具体平滑核参数。
 - rasterize_stroke 三 blend 闭包写入公式的 zeno 覆盖度定点细节（prior 已标边界，本域不重开）。
@@ -241,7 +241,7 @@ subscribe 在**非 primary** 发布器上 panic：**"Can't subscribe to a second
 2. **water.md §2 “初始水位值/解码语义 unknown”**：初始瓦片字 0x07954dbb 已 O 提取（语义仍 U，但值已定位 0x142ac7e50）。
 3. **water.md 栅格行数**：已由 512×512 澄清（prior water-extra），本域复验一致（0x40000B 分配）。
 4. **water-systems.md §1b draw_raster 状态机**：与 0x2260ae0 反编译一致；补充状态机字段位置（+0x60 笔刷/+0x64 模式/+0x68 blend flag/+0x6c 计数，O）。
-5. **water-extra-analysis 的“+0x29b 置位点未定位”**：仍 U，但注意 **AllWorldRasterWrite::write 置的是 +0x299 并 memset(+0x98,0xff)**——全脏上传由 +0x299 驱动，+0x29b 是另一个（更上层）再上传标志。
+5. **water-extra-analysis 的”+0x29b 置位点未定位”**：**round3 已闭合**——置位方 = `upload_raster_staging_to_texture\<T>`（W1）发布后的 `*(u16*)(+0x29a)=0x100`（0x1403d8bd0 第 59 行）；+0x29b 是 W1→mask 重传（W2/W12/path-masks）的握手标志。另注意 **AllWorldRasterWrite::write 置的是 +0x299 并 memset(+0x98,0xff,0x200)=4096-bit 位图全脏**——全脏上传由 +0x299 驱动。
 6. 合同 §1 “typed gap：BrushSizes” 已闭合（§2.5）：path 默认 0.8、garden 默认 3.0 为新 O 事实。
 
 ### 5.2 vs `reconstruction/country-core-render/wp8/contracts/*`（terrain 3 份 + world-raster-defs）
@@ -258,7 +258,7 @@ subscribe 在**非 primary** 发布器上 panic：**"Can't subscribe to a second
 
 1. **brush_sizes.rs**：现有代码把 `water` 放结构体 +0（`pub water: f32` 为首字段）。原布局 **path@+0, water@+4, garden@+8**（代码写 X，证据为 Y——重排 + 补 path/garden clamp 与默认）。
 2. **active_raster_stroke.rs**：stub 无布局。可落：0x470B 记录、三 Vec 列（+0x10/+0x28/+0x48）、+0x60 笔刷/+0x64 模式/+0x68 flag/+0x6c 计数、+0x70 起双位图；resample_and_smooth=**10 遍 0.25/0.5/0.25 平滑**（代码是 unimplemented）。
-3. **world_raster.rs / world_raster_defs.rs**：现有 `WorldRaster(pub Gap)` 与 `*Raster(pub RasterBufferRef<512>)` 都是占位。O 事实：WorldRaster 本体 = composite/scratch 双缓冲 + DirtyTiles（位图+头+staging 512B+4 flags），named rasters 是 Deref 到 WorldRaster 的资源。`AllWorldRasterWrite` 6 槽名序可落。
+3. **world_raster.rs / world_raster_defs.rs**：现有 `WorldRaster(pub Gap)` 与 `*Raster(pub RasterBufferRef<512>)` 都是占位。O 事实：WorldRaster 本体 = composite/scratch 双缓冲 + DirtyTiles（+0x30 瓦片状态 Vec + 头 + **+0x98 4096-bit 脏位图** + 4 flags），named rasters 是 Deref 到 WorldRaster 的资源。`AllWorldRasterWrite` 6 槽名序可落。
 4. **terrain_height.rs**：`copy_from_gpu(&mut self, &[u16])` 签名方向对（u16 O）；补：+0x50/54 min/max 与默认复位、8×8 瓦片 diff、sample_at_world_xz 的 u16 返回与 -0.5/+1 索引。
 5. **mouse_terrain_raycast.rs**：现有 `camera_mouse_ray` 是 unimplemented；O 事实：0x8ef1c0 布局可补（CursorPositionSS→世界射线，Ray::from_mouse_ss 依赖）。
 6. **read_mouse_depth_value.rs**：现有纯 Gap；O：MouseDepthValue = {w f32@0, xyz@+8} + 帧哨兵@+0x40，来源 MouseDepthValueSsbo 2×float4。

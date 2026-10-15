@@ -18,3 +18,13 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 2 项
+
+## 实现方式（算法级）
+
+- `ui_update` @0x140b2de60（O，75KB decomp，wp15 合同 + 本域复核）：UI 主状态机。
+  - 遍历 UiState 注册表 `HashMap<WidgetId, Arc<WidgetParams>>`（hashbrown 控制字节 SIMD probe，与 get_ui_volume 同款查找）；每 widget 由 `get_ui_volume` 算世界空间体积。
+  - hover/click/drag 状态转移：按键码 0x5c/0x2f 分支（鼠标键），HoverState/DragState 判别字节驱动。
+  - 事件输出走 bevy `Events::send`（`FUN_140562c30`/`FUN_140b5c330`，grow Location `UNK_142c3a148`）；观察到事件 tag `0x100000002/0x100000003`（u32 载荷对）。
+  - panic 分支（O）：`FUN_1428d9430(&UNK_142ada193, 0x32,...)` = `assertion failed: w.simplified_curve_2d.is_valid()`（public_walls.rs:0x32）；`FUN_1428d9518(uVar20,...,&UNK_142abd928)` = 越界 bounds panic。
+- `get_ui_volume` @0x140b2dc60（O）：读锁取 UiState（`LOCK; [p+0x60]==0 → +0x10` counting 读锁），hashbrown 控制字节 SIMD probe 按 WidgetId 查 `Arc<WidgetParams>`，未命中走空表分支；4 callers 复用。
+- `enter_hover`（行 295，无独立符号，U）：hover 状态迁移辅助，内联于调用点。

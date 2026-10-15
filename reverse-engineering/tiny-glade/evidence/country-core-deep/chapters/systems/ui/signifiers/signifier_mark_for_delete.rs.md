@@ -14,3 +14,9 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+- `signfier_mark_for_delete` @0x140929160（O，wp15 b7；PDB 拼写如此）：按 `signifier_config_hash` 关联 UiState，对匹配 widget 的 signifier 实体打 `SignifierMarkedForDeletion` 标记；2 callers。
+- `despawn_marked` @0x140929a90（O，wp15 b7）：遍历带 `SignifierMarkedForDeletion` 的实体并 despawn；3 callers。
+- 回收链（I 组合）：ui_update 标记 → despawn_marked 销毁；与 signifier_create（生成）构成 signifier 实体生命周期闭合。

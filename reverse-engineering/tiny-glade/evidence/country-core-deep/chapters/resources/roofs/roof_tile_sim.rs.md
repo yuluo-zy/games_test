@@ -21,3 +21,7 @@
 
 - +0x00 state u32、+0x04 timer f32（new 入参）、+0x08 起零化至 ≥0x14（重叠零写由编译器生成，字段边界需下游确认）。
 - 交叉域：roof_tiles_gravity compute pass 消费。
+
+## 实现方式（算法级）
+
+- `new`（0x140939390）：`dword[+0]=0; movss[+4]=timer 入参; qword[+8]=0; qword[+0xd]=0` —— 状态+计时+余量零化（编译器重叠零写）。消费方 roof_tiles_gravity compute 按 timer 推进瓦片坠落。

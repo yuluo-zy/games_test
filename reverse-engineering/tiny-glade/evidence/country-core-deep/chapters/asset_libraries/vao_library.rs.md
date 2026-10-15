@@ -41,3 +41,42 @@
 - 全局 handle 计数器 0x143634cd0 与 mesh_library 共用（`lock xadd`）。
 - 旧版 `rebuild_vao` 空函数、`remove` 只删单表、`add` 无设备无校验——全错。
 - `render::vao::build_vao` 0x140909690 本体见 render/vao.rs.md（wp2 合同）。
+
+## 算法要点（本批深挖 2026-10-15，decomp: asset-libraries/decomp/）
+
+证据：tg_m1 反编译 `decomp-0x140924180`（add 611 B）、`decomp-0x1409243f0`（rebuild_vao 937 B）。
+
+### add 流程（0x140924180，返回 Result<Handle<Vao>, anyhow::Error>）
+
+1. `mesh_to_vao` 非空且命中 → `Ok(已有 handle)`（幂等）。
+2. **`HANDLE_COUNT++`（先于任何校验，失败也消耗 id）**。
+3. `mesh_lib.get(mesh)` 缺失 → `anyhow!("Mesh is not in the  mesh library")`（0x142aae830，**两个空格**，文案忠实保留）。
+4. `mesh.indices.len()==0` → `anyhow!("Mesh is invalid")`（0x142aae800）。
+5. `build_vao`（0x140909690）→ 结果 Err 透传（build_vao 内部全 unwrap，I：不可达）。
+6. `vaos.insert(vao_handle, {vao, index_count=indices.len()})` + `mesh_to_vao.insert(mesh, vao_handle)`。
+
+### rebuild_vao 流程（0x1409243f0，返回 Option<anyhow::Error>，rax==0 = Ok）
+
+1. `mesh_lib.get(mesh).expect("Mesh is not in the mesh library")`（0x142aae840，len 0x1f=31，单空格；:84:14——**与 add 的 anyhow 文案是两个不同字符串**）。
+2. `indices.len()==0`（`[mesh+0x10]==0`）→ 返回 Ok（静默跳过）。
+3. mesh_to_vao 空/未命中 → `anyhow!("The requested mesh doesn't exist")`（0x142aae898）。
+4. vaos 空/未命中 → `anyhow!("VAO handle is invalid")`（0x142aae8c0）。
+5. `build_vao` 成功 → drop 旧 bindings、drop 旧索引缓冲（rhapsody managed handle drop）→ 写 `VaoEntry+0x48 = indices.len()` → Ok。
+
+### 消费端重建循环（vao_update::rebuild_vaos 0x140864bf0，O，既有 decomp）
+
+遍历 `mesh_lib.modified`（get_mut/remove 压入的 handle 列表）：仅处理 `has_vao(mesh)` 的（否则 warn 跳过）；`rebuild_vao` 返回 Err 的 handle 收集后**写回 modified**（下次帧再试）+ error 日志。→ modified 是"脏标记队列"，重建后由消费方清空。
+
+### 关键常量/布局
+
+| 项 | 值 | 含义 |
+|---|---|---|
+| 表 A | HashMap<Handle<Vao>, VaoEntry> @+0x00（桶 0x50） | VaoEntry{key@0, Vao@8(bindings@8, index_buffer@0x20), index_count@0x48} |
+| 表 B | HashMap<Handle<Mesh>, Handle<Vao>> @+0x30（桶 16 B） | mesh→vao 映射 |
+| build_vao | 0x140909690 | render::vao::build_vao（本体见 render/vao.rs.md） |
+| 全局 handle | 0x143634cd0 | 与 mesh/shader/ssbo/placement 共用 |
+
+### 模块间调用
+
+- add/rebuild_vao → `mesh_lib.get`（FrozenMap）+ `render::vao::build_vao`；remove → 双表 remove_entry + Vao drop。
+- 消费者：`vao_update::rebuild_vaos`（0x140864bf0）← mesh_library.modified；渲染 draw 面经 `get`（内联 vaos 查）。

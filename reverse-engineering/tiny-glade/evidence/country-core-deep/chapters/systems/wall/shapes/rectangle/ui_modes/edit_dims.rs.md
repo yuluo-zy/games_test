@@ -20,3 +20,15 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 2 项
+
+## 实现方式（算法级）
+
+**UiRectangleDimsEdit::signifier（O，0x14155eba0）**：维度编辑 signifier/widget。处理链：
+1. `FUN_140c99600 ×4`（**矩形 get_pos_at_u/角**）——四边端点采样；
+2. 曲线生成（`func_0x000140c9cde0`）→ signifier 流（`FUN_140d79f90/FUN_140d4ba00/FUN_14146c880`）；
+3. 常量 **1.0 @0x1429258e0/1429258e4**（dim 归一）、`FUN_1415610f0 ×2`（矩形预览构造）；
+4. 名字串族 UNK_142c6e400/510（"dims_edit_" 前缀）。
+
+**UiRectangleDimsEdit::widget（I，0x14155fc70）**：widget 层 UI（`to_widget_name_hash` = 名字哈希；`trigger_volume` = 构造触发体）。
+**内联**：`new`（行 52）构造；`to_widget_name_hash`（行 45）名字哈希；`trigger_volume`（行 194）触发体。
+**边界**：`.unwrap()`/alloc panic（UNK_142c6e510 路径）。

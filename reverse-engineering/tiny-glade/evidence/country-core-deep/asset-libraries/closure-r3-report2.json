@@ -1,0 +1,175 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_ca1",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_ca1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_ca1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_ca1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_ca1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_ca1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "find_code_by_string",
+      "args": {
+        "database": "tg_ca1",
+        "string": "bend_vector"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "2 validation errors for call[find_code_by_string]\npattern\n  Missing required argument [type=missing_argument, input_value={'string': 'bend_vector'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing_argument\nstring\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='bend_vector', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "find_code_by_string",
+      "args": {
+        "database": "tg_ca1",
+        "string": "rotation_degrees"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "2 validation errors for call[find_code_by_string]\npattern\n  Missing required argument [type=missing_argument, input_value={'string': 'rotation_degrees'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing_argument\nstring\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='rotation_degrees', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "get_xrefs_from",
+      "args": {
+        "database": "tg_ca1",
+        "address": "0x140b3b960"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":100,\"has_more\":false,\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 100,
+          "has_more": false,
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_ca1",
+        "address": "0x140ad5020"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140ad5020\",\"address\":\"0x140AD5020\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nfloat * FUN_140ad5020(float *param_1,float *param_2)\\r\\n\\r\\n{\\r\\n  float fVar1;\\r\\n  float fVar2;\\r\\n  float fVar3;\\r\\n  float fVar4;\\r\\n  float fVar5;\\r\\n  float fVar6;\\r\\n  float fVar7;\\r\\n  float fVar8;\\r\\n  float fVar9;\\r\\n  float fVar10;\\r\\n  float fVar11;\\r\\n  float fVar12;\\r\\n  float fVar13;\\r\\n  float fVar14;\\r\\n  float fVar15;\\r\\n  \\r\\n  fVar9 = param_2[4] * _UNK_142925870;\\r\\n  fVar4 = (float)func_0x000142923fd0(fVar9);\\r\\n  fVar5 = (float)func_0x000142923e80(fVar9);\\r\\n  fVar6 = fVar4 * 0.0;\\r\\n  fVar9 = *param_2;\\r\\n  fVar1 = param_2[1];\\r\\n  fVar2 = param_2[2];\\r\\n  fVar3 = param_2[3];\\r\\n  fVar7 = fVar4 + fVar4;\\r\\n  fVar8 = fVar6 + fVar6;\\r\\n  fVar12 = fVar6 * fVar8;\\r\\n  fVar10 = fVar8 * fVar5;\\r\\n  fVar13 = _UNK_142925904 - (fVar4 * fVar7 + fVar12);\\r\\n  fVar14 = fVar12 - fVar7 * fVar5;\\r\\n  fVar11 = _UNK_142925904 - (fVar12 + fVar12);\\r\\n  fVar15 = fVar4 * fVar8 + fVar10;\\r\\n  *param_1 = fVar3 * fVar13;\\r\\n  param_1[1] = fVar3 * (fVar6 * fVar7 + fVar10);\\r\\n  param_1[2] = fVar3 * fVar14;\\r\\n  param_1[3] = fVar3 * fVar14;\\r\\n  param_1[4] = fVar3 * (fVar6 * fVar7 - fVar10);\\r\\n  param_1[5] = fVar3 * fVar11;\\r\\n  param_1[6] = fVar3 * fVar15;\\r\\n  param_1[7] = fVar3 * fVar15;\\r\\n  param_1[8] = fVar3 * (fVar7 * fVar5 + fVar12);\\r\\n  param_1[9] = fVar3 * (fVar4 * fVar8 - fVar10);\\r\\n  param_1[10] = fVar3 * fVar13;\\r\\n  param_1[0xb] = fVar3 * fVar13;\\r\\n  param_1[0xc] = fVar9;\\r\\n  param_1[0xd] = fVar1;\\r\\n  param_1[0xe] = fVar2;\\r\\n  param_1[0xf] = fVar2;\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140ad5020",
+          "address": "0x140AD5020",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nfloat * FUN_140ad5020(float *param_1,float *param_2)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  float fVar11;\r\n  float fVar12;\r\n  float fVar13;\r\n  float fVar14;\r\n  float fVar15;\r\n  \r\n  fVar9 = param_2[4] * _UNK_142925870;\r\n  fVar4 = (float)func_0x000142923fd0(fVar9);\r\n  fVar5 = (float)func_0x000142923e80(fVar9);\r\n  fVar6 = fVar4 * 0.0;\r\n  fVar9 = *param_2;\r\n  fVar1 = param_2[1];\r\n  fVar2 = param_2[2];\r\n  fVar3 = param_2[3];\r\n  fVar7 = fVar4 + fVar4;\r\n  fVar8 = fVar6 + fVar6;\r\n  fVar12 = fVar6 * fVar8;\r\n  fVar10 = fVar8 * fVar5;\r\n  fVar13 = _UNK_142925904 - (fVar4 * fVar7 + fVar12);\r\n  fVar14 = fVar12 - fVar7 * fVar5;\r\n  fVar11 = _UNK_142925904 - (fVar12 + fVar12);\r\n  fVar15 = fVar4 * fVar8 + fVar10;\r\n  *param_1 = fVar3 * fVar13;\r\n  param_1[1] = fVar3 * (fVar6 * fVar7 + fVar10);\r\n  param_1[2] = fVar3 * fVar14;\r\n  param_1[3] = fVar3 * fVar14;\r\n  param_1[4] = fVar3 * (fVar6 * fVar7 - fVar10);\r\n  param_1[5] = fVar3 * fVar11;\r\n  param_1[6] = fVar3 * fVar15;\r\n  param_1[7] = fVar3 * fVar15;\r\n  param_1[8] = fVar3 * (fVar7 * fVar5 + fVar12);\r\n  param_1[9] = fVar3 * (fVar4 * fVar8 - fVar10);\r\n  param_1[10] = fVar3 * fVar13;\r\n  param_1[0xb] = fVar3 * fVar13;\r\n  param_1[0xc] = fVar9;\r\n  param_1[0xd] = fVar1;\r\n  param_1[0xe] = fVar2;\r\n  param_1[0xf] = fVar2;\r\n  return param_1;\r\n}\r\n\r\n",
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_ca1",
+        "address": "0x140ad51a0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140AD51A0\",\"error_type\":\"NotFound\",\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_ca1",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

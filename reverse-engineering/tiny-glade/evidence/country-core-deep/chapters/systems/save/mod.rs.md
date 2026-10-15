@@ -14,3 +14,10 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`deserialize`、`serialize` 等 3 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- add_save_load_systems 0x1409443b0 = 注册 save_game/load_game/save_thread/
+  check_load_completion 等系统；add_save_load_events_and_resources 0x1409447e0 =
+  注册事件/资源（SaveGameCmd/SavingGameComplete/LoadingGameComplete 等）——Bevy
+  注册胶水，按依赖过滤不计业务（系统本体算法见各章 + ALGORITHMS.md）。

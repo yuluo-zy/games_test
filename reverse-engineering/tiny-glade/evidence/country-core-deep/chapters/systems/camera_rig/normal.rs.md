@@ -28,3 +28,18 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 2 项
+
+## 实现方式（算法级）
+
+```
+update（0x140949fe0）：smooth 推进、radial_max@+0x60 clamp、loose@+0x6c 地面投影
+  （lookahead=forward·18、anchor 边界 46.0、radial_min 投影；TiltShift/TopDown 半正交：
+    distance=((pos.y−10)/max(−fwd.y,0.15)).max(11.0125)、anchor 边界 33.45）
+  ActiveRotation 弧长插值（28B：pitch/yaw_delta）；pending 应用；pos.y≥1.0；retain(|pitch_delta|<0.001 && |yaw_delta|<0.001)
+rotate_yaw_pitch（0x140949cc0）：base=Σrotations.pitch_delta+pitch@+0x50；
+  bounded=clamp(−(pitch+base), pitch_min@+0x58, pitch_max@+0x5c)；active.pitch_delta+=−bounded−base；yaw_delta+=yaw
+constrain（0x140949dc0）：pending.y=max(pending.y, terrain(pos.xz+pending.xz)+clearance@+0x68−pos.y)
+translate_screen_space（0x140949e70）：ratio=max(pos.y/−fwd.y,1)/50（0x1429cd070）；
+  pending += 绕 Y(yaw) 旋转 movement×ratio
+rotation：pitch/yaw（度）→ 四元数（YXZ × π/180，pitch_yaw_rot）
+```

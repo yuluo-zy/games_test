@@ -15,3 +15,20 @@
 
 - 结构体（U 布局）：`LilypadSsbo/LilypadFlowerSsbo/ReedSsbo/BoatSsbo`（wp5 记名）。
 - 帧序 W2→W13（frame-wiring）。
+
+## 实现方式（算法级）
+
+### water_rasterize_from_cpu（W2，0x140a12680）
+
+```
+ssbo = 库按 type-id 0x1ad182936286a0ee 查 WaterRasterStagingSsbo
+if raster+0x29b（mask 重传脏）:
+  ssbo.version(+0x5c) ← 库 version(+0x5b0)；清 +0x29b；memset(bitmap@+0x98, 0, 0x200)
+  建纹理（格式 0x61 = rgba16fr16f）
+  pass：puffin "water blur temp"/"Blur water mask" + /gauss_blur_mask.cs.hlsl
+  → 水 draw mask 上传 → write_texture + dispatch_2d
+```
+
+### water_spawn_vegetation（W13，0xa13970）
+
+两 compute pass："Spawn lilypads" /water/spawn_lilypads.cs.hlsl（LilypadSsbo+LilypadFlowerSsbo）、"Spawn reeds" /water/spawn_reeds.cs.hlsl（ReedSsbo）+ indirect draw 缓冲；ActiveSession::is_autumn + bind_terrain_heightmap + dispatch。帧序 W2→W13。

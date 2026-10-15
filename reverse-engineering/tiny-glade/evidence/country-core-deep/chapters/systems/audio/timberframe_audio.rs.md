@@ -11,6 +11,13 @@
 | country_core::systems::audio::timberframe_audio::timberframe_audio | 0x140a67b90 | 0 | 构造 TimberframeAudioState（瞬发+循环混合） | I | audio-misc\decomp\decomp-0x140a67b90.txt |
 | country_core::systems::audio::timberframe_audio::timberframe_audio_init_system | 0x140a67810 | 30 | kind→TimberframeMove/Length/Width（+RectangleAppear 等）→instantiate+set_parameter(editing_speed) | O | audio-misc\decomp\decomp-0x140a67810.txt |
 
+## 实现方式（算法级）（O，decomp-0x140a67810/0x140a67b90）
+
+**timberframe_audio_init_system @0x140a67810**：kind 分派 → `TimberframeMove/Length/Width`
+（+RectangleAppear 等瞬发）→ instantiate_audio + set_parameter(editing_speed)。O
+**timberframe_audio @0x140a67b90**：构造 `TimberframeAudioState`（瞬发+循环混合资源）；
+函数体为装配态，无独立 FMOD 链。I
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项

@@ -1,0 +1,88 @@
+/* FUN_1408ba290 */
+void FUN_1408ba290(int *param_1,longlong *param_2)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  longlong lStack_b8;
+  longlong lStack_b0;
+  longlong lStack_a8;
+  undefined4 uStack_98;
+  undefined4 uStack_94;
+  undefined4 uStack_90;
+  undefined4 uStack_8c;
+  undefined8 uStack_88;
+  undefined4 uStack_80;
+  undefined4 uStack_7c;
+  undefined4 uStack_78;
+  undefined4 uStack_74;
+  undefined8 uStack_70;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  undefined4 uStack_60;
+  undefined4 uStack_5c;
+  undefined8 uStack_58;
+  longlong *plStack_50;
+  longlong *plStack_40;
+  longlong *plStack_38;
+  undefined1 uStack_2a;
+  undefined1 uStack_29;
+  undefined8 uStack_28;
+  
+  uStack_28 = 0xfffffffffffffffe;
+  plVar2 = *(longlong **)(param_1 + 0xc);
+  LOCK();
+  lVar1 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 == 0 || SCARRY8(lVar1,1) != *plVar2 < 0) {
+code_r0x0001408ba3af:
+                    /* WARNING: Does not return */
+    pcVar3 = (code *)invalidInstructionException();
+    (*pcVar3)();
+  }
+  uStack_29 = 1;
+  plStack_40 = plVar2;
+  plStack_38 = param_2;
+  FUN_140d7bd90(&uStack_80);
+  if (*param_1 == 3) {
+    if (CONCAT44(uStack_7c,uStack_80) != 0) {
+      func_0x000140613c20(CONCAT44(uStack_74,uStack_78),CONCAT44(uStack_7c,uStack_80),1);
+    }
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (*plVar2 == 0) {
+      uStack_2a = 1;
+      FUN_140b5c990(&plStack_40);
+    }
+    if (*plStack_38 != 0) {
+      func_0x000140613c20(plStack_38[1],*plStack_38,1);
+    }
+  }
+  else {
+    lStack_a8 = plStack_38[2];
+    lStack_b8 = *plStack_38;
+    lStack_b0 = plStack_38[1];
+    uStack_58 = uStack_70;
+    uStack_68 = uStack_80;
+    uStack_64 = uStack_7c;
+    uStack_60 = uStack_78;
+    uStack_5c = uStack_74;
+    uStack_29 = 0;
+    plStack_50 = plVar2;
+    FUN_14091da10(&uStack_98,param_1,&lStack_b8,&uStack_68);
+    if (CONCAT44(uStack_94,uStack_98) != -0x7ffffffffffffffc) {
+      uStack_58 = uStack_88;
+      uStack_68 = uStack_98;
+      uStack_64 = uStack_94;
+      uStack_60 = uStack_90;
+      uStack_5c = uStack_8c;
+      FUN_1428d9760(&UNK_142aa07b0,0x15,&uStack_68,&UNK_142aa0378,&UNK_142aa07c8);
+      goto code_r0x0001408ba3af;
+    }
+  }
+  return;
+}
+

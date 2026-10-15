@@ -22,3 +22,33 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default`、`deserialize`、`eq`、`fmt`、`hash`、`partial_cmp`、`serialize`、`visit_newtype_struct` 等 10 项
+## 实现方式（算法级）
+
+### WallId（O）
+
+- `is_valid` 0x140b34f20：`cmp qword[rcx],0; setne` → u64 内值 != 0（**纠错**：PDB 索引名 get_inner 错位）。
+- `get_inner` 0x1400885d0：`mov rax,[rcx]` 返回内值 u64（真身）。
+
+### HighlightColor::to_rgb 0x140b34f30（O）
+
+判别==1 → (0.1, 0.03, 0)；否则 → (0.07, 0.08, 0.07)（两常量色，角色映射 O-d）。
+
+### split_height_into_skirts 0x140b34f80（O）
+
+墙裙边高度带分段算法：
+- 起始阈值 **5.9**：height >= 5.9 起第一个裙带；
+- 每带高度 **4.5**（基础带），此后每 +3.5 递增一条；
+- 条件：height > f + 1.4（当前累计带高 + 1.4 余量）才追加下带。
+（数值常量 5.9/4.5/3.5/1.4 角色映射 O-d）
+
+### 新常量表
+
+| 常量 | 地址 | 语义 |
+|---|---|---|
+| (0.1,0.03,0) / (0.07,0.08,0.07) | to_rgb 两分支 | 高亮色 |
+| 5.9 / 4.5 / 3.5 / 1.4 | split_height_into_skirts | 裙带分段阈值 |
+
+### 遗留 U
+
+- HighlightColor 判别值域全表（==1 之外变体）U。
+- register_required_components 0x140b35ae0（U）。

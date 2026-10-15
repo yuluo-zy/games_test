@@ -19,3 +19,19 @@
 | `impl$1::update`（free/walk 共享） | 0x140993d30 | 103 | dolly rig 迭代：逐 driver vtable+0x30(driver, parent_transform, dt)，写回 rig+0x18..0x34，sret 28B {pos,rot} | O：实证 | camera-time\decomp\decomp-0x140993d30.txt |
 | `walk::impl$2::rotate_yaw_pitch` | 0x140993750 | 44 | 同 free（共享函数） | O：同上 | camera-time\decomp\decomp-0x140993750.txt |
 | `walk::impl$2::update` | 0x140993d30 | 103 | 同 free（共享函数） | O：同上 | camera-time\decomp\decomp-0x140993d30.txt |
+
+## 实现方式（算法级）
+
+```
+rotate_yaw_pitch（0x140993750，free/walk 共享）：
+  查 YawPitch driver（typeid 0x718e4fd258330fe5，vtable+0x40）→ 未找到 panic "No <…YawPitch…> driver found in the CameraRig"
+  yaw   = fmodf(yaw   + delta_yaw·0.5, 720.0)     // 0.5@0x142925870、720@0x142aba9ac
+  pitch = clamp(pitch + delta_pitch·0.5, −90, 90) // ±90@0x142aba9b0/0x1429edb94
+translate_screen_space（0x1409938b0）：
+  quat 旋转移动 → clamp xz ±91（0x142aba9b4/8）→ terrain.max(0)+0.75 贴地
+  smooth(dt)=1−exp(−8dt) → delta×20/60 → Position.translate
+get_position/get_yaw_pitch：typeid 查 driver sret。
+set（0x140993100）：重建 rig Position+YawPitch+Smooth(1,1)（Smooth 0x40B 初始化）→ dt=0 跑一遍。
+update（0x140993d30，free/walk 共享）：rig 迭代 vtable+0x30 写回 final_transform@+0x18..0x34，sret 28B。
+constrain_to_be_above_terrain → 折叠 0x14003bb80（ret，Free 不约束）。
+```

@@ -1,9 +1,25 @@
 # utils/mod.rs
 
-> 文件作用：**游戏自有杂项工具**（事件注册表读取、地图边界、屏幕投影、资源取值、标题转换）。
-> `get_last_event`/`drain_events` 走**自定义 `EventRegistry`**（TypeId→Events HashMap，hasher@+0x38,
-> buckets@+0x1e0, len@+0x210, cap@+0x218, tick@+0x5b0），**非 Bevy Events**；未注册事件 panic
-> `Event not registered`。`world_space_to_screen_space` 为 4×4 VP 矩阵变换 + 透视除 + 屏幕缩放。
+> 文件作用：**游戏自有杂项工具（事件注册表读取、地图边界、屏幕投影、资源取值、标题转换）**。
+> `get_last_event`/`drain_events` 走**自定义 `EventRegistry`**（TypeId→Events HashMap，
+> hasher@+0x38, buckets@+0x1e0, len@+0x210, cap@+0x218, tick@+0x5b0），**非 Bevy Events**
+> （0.16 Bevy Events 是双 VecDeque 结构，与此不同）；未注册事件 panic
+> `Event not registered: {TypeName}`。`world_space_to_screen_space` 为 4×4 VP 矩阵变换 +
+> 透视除 + 屏幕缩放。与共享 `utils` 无重叠（共享无事件注册表/屏幕投影）。
+
+## 核心算法
+
+```
+get_last_event<T>() -> Option<T>:
+  按 T 的 TypeId（`type_id::of`）哈希（实例：0x6ecb4684a4c9e1f9 / 0xdac2c590678dd6c0）查注册表
+  → 未注册 panic `Event not registered: {TypeName}`（UNK_1429ae260）
+  → 取 Events 末条（拷贝载荷）
+drain_events<T>() -> Vec<T>: 同注册表，排空入 Vec
+world_space_to_screen_space(world_pt, view_proj, screen_size):
+  4×4 矩阵乘列（world 乘 VP）+ 透视除（w 分量）+ 屏幕尺寸缩放（原字节手解）
+get_res/get_res_mut/is_inside_map_bounds/convert_function_expr_to_title:
+  内联宿主，名称推断（I）
+```
 
 函数总计 10：业务 5 / 内联无独立符号 3 / 派生胶水 2
 

@@ -43,3 +43,21 @@
 - DirtyCow 引用计数经 LOCK/INC/DEC（PLAYBOOK 事实 4 的 Arc 语义）；refcount==1 → get_mut 原地（copy-on-write 就绪）。
 - update/upload 两系统经 func_0x000140c18130（世界共享锁）+ 全局 0x14362c3a8（帧阈值）与 0x14362c420（worker 停止标志）协调。
 - 交叉域：与 walls::WallId（wall 域）、mesh_atlas_library（render 域）、render-passes 软件 BVH SSBO、roof_tiles_gravity 等关联。
+
+## 实现方式（算法级）
+
+完整算法见 `roofs-rt/ALGORITHMS.md` §2。要点：
+
+### update_rt_world（0x1408bc650）处理链
+1. puffin scope（模块 `crates/country-core/src/resources/rt/mod.rs`）；
+2. **双事件游标差**：`cur−prev` 饱和 0 → 有效剩余 → 游标更新；任一流有新事件 → 帧>4 时 `log!("UpdateRtWorldEvent requested")` + **资源 +0x38 字节 |= 脏位**；
+3. **新条目两数组 walk**（16B 条目，0x10 步长）：逐条计数 + hash 查找（FUN_1405b14b0）+ FUN_140b78550（get/create）+ **DirtyCow refcount 块**（LOCK；`(*Arc)[−1]+0xf` 唯一性；归零释放）+ 置脏；
+4. 脏位置位 → **全表扫描**：16B 组占用掩码（每字节高位取反）→ 脏字节数组（`entry−8−bit·0x20`）→ 处理；
+5. **worker 握手**：LOCK cmpxchg busy@+0x10 0→0x3fffffff（抢注，非空闲 panic）→ 停止标志 0x14362c420（低 63 位非零 → fastrand 随机）+ 0x18 状态字节检查（panic "called `Result::unwrap()` on an `Err` value" 0x142aa03b8）→ 装配工作包（脏字节 uVar36 + 条目引用 +0x68..+0xa7）→ state@+0xa0 != 2 时 `FUN_1400524e0(工作包, 0x20, 0x10)`（触发构建）→ 释放抢注（busy −= 0x3fffffff，下溢 panic）。
+
+### upload_rt_world（0x1408bcff0）处理链
+抢 worker → 断言状态 → 快照 pending（+0x20..+0x5c）→ **+0x20 = 0x8000000000000000（None 哨兵）** → 释放抢注 → 容量守卫（<0x40000 / <0x10000）→ **三 SSBO 按名解析**（FUN_140969720 字典，键名 @0x142c2e3d8/270/350，len+memcmp 校验，不匹配 panic）→ vtable 取缓冲 → 三角/元数据/节点三路 append（stride 0x50/4/0x30）→ 上传。
+
+### DirtyCow / RtWorld
+- `get_mut`（0x1415626f0）：LOCK；refcount==1 → 原地 mut；否则克隆；返回网格指针（+0x24/+0x2c/…）。
+- 条目 16B {key,value}；占用位图经 pmovmskb 每字节高位；脏字节存负偏移数组（`entry−8−bit·0x20`）。

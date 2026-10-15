@@ -15,6 +15,12 @@
 
 `closure` 等 1 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `BillboardForestPlugin::build`（0x140ae8070）：`mov rcx,rdx; jmp <shared>` 尾调用 thunk → 共享插件 build（Clouds/Stars 同型，d_cb/startup 族）。
+- `startup_billboard_forest`（0x140ae8080）：`load_mesh_into_library + load_shader_into_library`（/billboard_forest.raster.hlsl + `billboard_forest_shader`）+ spawn_empty。
+- draw_lists 分派目标之一（nani_billboard_forest 材质族）；shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - draw_lists 分派目标之一（nani_billboard_forest 材质族）。

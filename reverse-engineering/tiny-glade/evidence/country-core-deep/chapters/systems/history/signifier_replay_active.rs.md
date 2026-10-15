@@ -16,3 +16,12 @@
 - `country_core::systems::history::signifier_replay_active::ease_out_elastic_jiggle`（行 75）— 缓出函数（系数歧义 U）（U；内联；reconstruction 用 1-(1-t)^3）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **signifier_replay_active 0x140b1b860**：ReplayModeElapsedTime（enum2$ 判别）活跃
+  时累加；`Query<(&mut Transform, &SignifierReplayIndex)>` 对每实体把 Transform 朝
+  光标目标做弹性抖动：`0.5 * exp2(-10t) * sin(7.853982t)`（ease_out_elastic_jiggle；
+  系数来自反编译常量，精确系数以 reconstruction 的 1-(1-t)^3 族为准，U）。
+- register_required_components 0x140b1d680：SignifierReplayIndex 的必需组件注册
+  （Bevy 胶水）。
+

@@ -15,3 +15,12 @@
 - `country_core::resources::drawing_input_smoother::RawInputSmoothed::point_count`（行 16）— 平滑后点数
 - `country_core::resources::drawing_input_smoother::RawInputSmoothed::is_empty`（行 20）— 平滑后点列空谓词
 - `country_core::resources::drawing_input_smoother::RawInputSmoothed::points`（行 24）— 平滑后点列视图
+
+## 实现方式（算法级）
+
+`DrawingInputSmoother::process`（0x145c350）= **弧长均匀重采样 + 最小间距抽稀**（非拉普拉斯平滑）：
+```
+沿输入折线 t=i/N 参数步进 lerp 取样（fVar18 = t·fVar1 + (fVar5−t)·prev.x）
+fVar6 < dist && fVar7 < dist·fVar11 → 跳过过密点
+输出 8B (x,z) 对入 Vec；回写 param_2（首个输出点）+ 置位标志
+```

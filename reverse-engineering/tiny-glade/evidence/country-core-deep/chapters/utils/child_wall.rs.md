@@ -1,9 +1,19 @@
 # utils/child_wall.rs
 
-> 文件作用：**墙分割子墙工具**。`ChildWall {a, b}` 子墙；`slice` 读 a.y/a.z 两标量分别
-> `f32::clamp` 入区间，越界/NaN panic，返回 `{param_3, t1, t2}`。
-> 证据：0x140a24000 反编译（clamp 双值 + panic 源 child_wall.rs）。
-> 注意：重建签名 `slice(&self, t) -> (ChildWall, ChildWall)` 与机器码返回形不符，见 DIGEST §5/§7。
+> 文件作用：**墙分割子墙工具（游戏自有，wall 域）**。`ChildWall {a, b}` 子墙；`slice` 读
+> a.y/a.z 两标量分别 `f32::clamp` 入区间，越界/NaN panic，返回 `{param_3, t1, t2}`。
+> 注意：重建签名 `slice(&self, t) -> (ChildWall, ChildWall)` 与机器码返回形不符（机器码返
+> 3 值：param_3 原样 + 两个 clamp 结果），见 utils-input-config DIGEST §7。
+
+## 核心算法
+
+```
+ChildWall::slice(t):
+  t1 = clamp(a.y@+8, min, max)   // a = {…, y@+8, z@+0xc}
+  t2 = clamp(a.z@+0xc, min, max)
+  越界/NaN → panic（UNK_142aa53c0 / UNK_142ac9aa0 / UNK_142ac9ab8，f32::clamp）
+  返回 {param_3, t1, t2}         // param_3 透传（调用方上下文，语义 U）
+```
 
 函数总计 2：业务 1 / 内联无独立符号 1 / 派生胶水 0
 

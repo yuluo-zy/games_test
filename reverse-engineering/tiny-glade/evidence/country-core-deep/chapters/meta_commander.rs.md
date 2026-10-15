@@ -26,6 +26,25 @@
 | `MetaCommander::consume` | 0x14091f100 | 159 | 弹出队首命令 | **O** | pop_front（head 环绕 + len-1），拷贝 0x38 B（原字节） |
 | `serialize (MemoryLog Pretty)` | 0x1413fc1b0 | 377 | MemoryLog JSON 序列化 | **O** | PrettyFormatter |
 
+## 实现方式（算法级）（O，commander_update/peek/consume/is_profiling 原字节）
+
+**commander_update @0x14091f180**：每帧处理一个 MetaCommand——`niche ^0x8000000000000000`
+判别（空哨兵），case 0..0x13：会话加载（NextSession+fence）/复队/TimeUpdateStrategy/
+InputRecordReplayState/手动时间/设备列表/建目录/puffin profiling/GPU+内存报告/despawn/
+写设置/ShutdownGame/exit（0xd 合并/共享）；串 `No such profiling ID`/`writing profiler
+output`/`GPU peak memory report not available`。（O）
+**MetaCommander 结构（80B）**：`{commands: VecDeque<MetaCommand>（cap-first 4 qwords）,
+profiler_sinks HashMap（4 qwords）, RandomState（2 qwords）}`；MetaCommand element=0x38B，
+tag 0..0x13，空哨兵 `0x8000000000000000`。（O）
+- `peek @0x14091f0c0`：VecDeque ring front()——`ptr+(head−(head>=cap?cap:0))*0x38`，
+  len==0 → null。（O）
+- `consume @0x14091f100`：pop_front（head 环绕 + len−1），拷贝 0x38B。（O）
+- `is_profiling @0x14091f0f0`：`[+0x38]!=0`（该偏移在 hashbrown 表语义未钉死 **U**，
+  DIGEST §7）。（O）
+- `new_pair_blocked @0x14091ef90`：MetaCommandFence=Arc<Mutex<(bool,bool)>>，分配 0x18B，
+  strong=2，两 flag true。（O）
+- `new @0x14091eff0`：空 commands + 空 sinks + RandomState 种子（FUN_140d4d740）。（O）
+
 ## 内联/无独立符号函数
 
 - `MetaCommandFence::unblock`（行 117）— **I**（清除阻塞标志，名称推断）

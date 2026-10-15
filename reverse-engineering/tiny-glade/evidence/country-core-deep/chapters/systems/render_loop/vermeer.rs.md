@@ -28,6 +28,25 @@
 
 `closure` 等 1 项（GenerateStrokes::pipeline_desc 的 `as_compute_pipeline` 胶水，reconstruction O）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. 状态机（O，手解机器码）
+- `VermeerState` enum2$：判别 **+0x48**（0 待采集 / 1 已采集 / 2 未启用，Default/插件 enabled=false → 2）；+8 = `Option<托管纹理>`（+0x3e==7 = None niche）；+0x54/+0x55 bool。
+- `activate`（0x1408a8060）：`(+0x48 != 2 && +0x3e != 7)` 先 drop 旧 +8 托管纹理；置 判别=0（待采集）+ hold(+0x54)=param_2 + freeze_camera(+0x55)=param_3。
+- `into_disable_hold`（0x1408a81e0，**按值消费**）：阶段==2 → panic "must be activated first"（len 0x17）。
+- `is_active = (+0x48 != 2)`；`should_freeze_camera = (≠2) && byte+0x55`。
+
+### 2. `vermeer_pass`（0x1408a82f0，2679B）—— 渐进揭示算法
+- **acquire pass 每帧无条件执行**（无复用跳过，B_s_h 纠错）；
+- `dt = min(delta, 1/30)`；**进度 `(frame<2 || hold) 不推进，否则 += dt/3`**；
+- 冻结取控制资源 f32；**完成 = progress>=1 && !control.freeze && !hold** → 释放纹理、phase=2、发 `WriteSettingsFileCmd`、Info 日志 "Game reveal complete."。
+- 笔触数 `photomode ? 0xa00 : 0x8000`（STROKES_PHOTOMODE/DEFAULT）；strokes SSBO = count<<4 字节。
+
+### 3. `vermeer_render_from_target`（0x1408a8d70，6569B）
+处理链：generate_strokes compute（`GenerateStrokes{photomode}`，PERM_photomode，hash=calculate_hash(URI 0x29, &self)）→ raster_strokes → combine（原版名 **"Vermeer debug target"**）。WARMUP_FRAMES 2、REVEAL_SECONDS 3.0、MAX_DT 0.0333。
+- 帧序：会话开始（AppMode 进入）→ reveal 3s 动画 → phase=2 → 设置文件写回；`should_freeze_camera` 门控相机冻结。
+- 静态 0x143634d90（背景名切换）/0x143634c9c（prev_active）语义 I。
+
 ## 关键事实
 
 - Pass 名（O）："Vermeer acquire target" / "Vermeer generate strokes" / "Vermeer raster strokes" / "Vermeer debug target"（combine 原版名）；shader URI：`/vermeer/{acquire_target.cs.hlsl, generate_strokes.cs.hlsl:cs_main, raster_strokes.raster.hlsl, combine.raster.hlsl}`。

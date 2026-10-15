@@ -16,3 +16,7 @@
 
 - 结构 ≥ 0x808 字节；偏移表为编译期静态常量拷贝（default_value 是 `ConstDefault` 型初始化）。
 - 交叉域：空间解析 offset 表与 terrain-water 的 world_raster / 水 mask 网格消费相关。
+
+## 实现方式（算法级）
+
+- `default_value`（0x140b31d10，54KB 反编译含完整初始化体）：首字段置 1 → 0x800+ 字节 const 偏移表（`_UNK_142aeca*`，步长 8B {f32 偏移, u32 0} 对）逐项写入 +0x7e*..+0x800。语义：空间解析（water/raster 世界坐标→格子偏移）查找表。

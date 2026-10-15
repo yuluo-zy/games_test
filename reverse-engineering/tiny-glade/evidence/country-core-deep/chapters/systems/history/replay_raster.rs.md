@@ -35,3 +35,18 @@
 - `country_core::systems::history::replay_raster::duration_based_on_stroke_length`（行 472）— 按 stroke 长度算动画时长（与 TerrainEdit::duration 同公式族）（I；内联）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖；骨架见 history/ALGORITHMS.md §2.6）
+
+- **replay_raster<T,R,F> 泛型**（六单态 0x1409f1cf0 Cobblestone2 / 0x1409f4650
+  Water / 0x1409f6ff0 Garden / 0x1409f9930 Cobblestone3 / 0x1409fc290 Cobblestone1 /
+  0x1409febf0 Path，57-67KB 重内联）：前桶过滤本域命令 → **undo 清缓冲 + 重绘存储
+  stroke，redo 画 stroke + 发绘制事件**（RasterReplayCmd 载荷驱动）；panic
+  "assertion failed: !cmd.edit.stroke.points.is_empty()"（replay_raster.rs，
+  @0x142ac5958）；"Tried to init CurveU from an invalid u: "（@0x142aa53c0）复用。
+- **RasterReplayCmd::forward 0x141700430 / backward 0x141700620**（同构 1533B）：
+  构造 {ptr, +0x8=0, duration f32@+0xc, +0x10=2}。
+- **get_stroke_from_0_to_t**（内联）：按进度 t 切取 stroke 点段（与 0x140859740 的
+  fold 同族）；**duration_based_on_stroke_length**（内联）：与 TerrainEdit::duration
+  同公式族（clamp(Σ点距*0.01, 0.4, 3.0)）。
+- **RasterReplayResources SystemParam**（0x140ae5830 get_param）：Bevy 胶水。
+

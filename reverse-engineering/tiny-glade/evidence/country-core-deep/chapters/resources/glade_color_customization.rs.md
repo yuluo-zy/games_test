@@ -12,6 +12,13 @@
 | country_core::resources::glade_color_customization::_::impl$0::serialize<serde_json::value::ser::Serializer> | 0x1401746e0 | 9 | serde 序列化派生（value::Serializer） | O（serde 派生） |  |
 | country_core::resources::glade_color_customization::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > > | 0x14085f980 | 59 | serde json 序列化派生 | O（serde 派生） |  |
 
+## 实现方式（算法级）（O 派生级）
+
+**GladeColorCustomization**：谷地自定义配色 serde 存档类型——无独立业务函数体，全部
+serde 派生（deserialize visit_str @0x14085f550、serialize value @0x1401746e0、serialize
+Compact @0x14085f980）；默认字节 O。算法链：存档读写即 serde 往返（I），无游戏自有
+计算过程。O/I 混合
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`default`、`deserialize`、`eq`、`expecting`、`serialize`、`visit_map`、`visit_seq`、`visit_str` 等 13 项

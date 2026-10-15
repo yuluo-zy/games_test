@@ -25,3 +25,14 @@
 - `country_core::resources::history::stairs_history_edit::impl$1::fmt`（行 10）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **StairsHistoryEdit/StairsHistoryDiff**（边对 before/after + hash）：手写 serde
+  （serialize 0x140259af0 / deserialize 0x140a18ee0）。
+- **运行时 StairsDiffTable 96B**（add_decorator_diff 实证）：{tag0@+0x00, tag1@+0x08,
+  图标志@+0x10, checksum@+0x18, +0x20..+0x2f u32×4, vec_a@+0x30 {cap,ptr,len},
+  vec_b@+0x48 {cap,ptr,len}}；Arc 包装版 = 表体整体后移 0x10（{1,1}@+0x00/+0x08）。
+  is_stairs_history_diff_empty 0x140a842a0 读 cap(+0x30/+0x48)（对空 Vec 与 len 等价）。
+- **checksum 语义**（add_decorator_diff 消费）：入参 tag1 必须 == edit_chain 中最近
+  一个图标志表（Arc 表 +0x20==1）的 +0x28；不符 → log + panic checksum mismatch。
+

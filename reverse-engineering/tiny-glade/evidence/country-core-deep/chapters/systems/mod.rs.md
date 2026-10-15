@@ -13,6 +13,17 @@
 | `country_core::systems::_::impl$0::as_dyn_eq` | 0x140a90e70 | 86 | `as_dyn_eq`：`mov rax,rcx; lea rdx,[rip+static_vtable]; ret` → 返回 `self` + 静态 DynEq vtable 的胖指针（`&dyn DynEq` 转换）。 | O | 机器码 rne-read --hex 0x140a90e70（手解） |
 | `country_core::systems::_::impl$0::dyn_hash` | 0x140a90e80 | 86 | `dyn_hash`：先 `state.write_u64(0x3da5601bd502516a)`（类型标签），再 `state.write_u8(判别)`。 | O | decomp/decomp-0x140a90e80.txt |
 
+## 实现方式（算法级）
+
+**is_gameplay_active @0x140a90e00（O）**：两 Res 参数：先查 `[rcx]→byte@+0x30 == 1`（失败返回 0），再查 `[rdx]→byte@0 == 1`；双状态均满足 → 1。两个 Res 的资源身份 U（无 xref 证据）。（O）
+
+**GameSystemSet dyn SystemSet 方法（O）**：
+- `dyn_clone @0x140a90e20`：分配 1 字节并拷贝判别 → **判别仅 1 字节**。（O）
+- `as_dyn_eq @0x140a90e70`：`mov rax,rcx; lea rdx,[rip+static_vtable]; ret` —— 返回 self + 静态 DynEq vtable 胖指针（`&dyn DynEq` 转换）。（O）
+- `dyn_hash @0x140a90e80`：先 `state.write_u64(0x3da5601bd502516a)`（类型标签）再 `state.write_u8(判别)`。（O）
+
+**数据结构（O）**：GameSystemSet 判别 1 字节（与重构 9 变体一致）；经 `add_stages`（utils.rs）configure_sets(Update) 全局接线。（O）
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `eq`、`fmt`、`hash`、`next` 等 4 项（`impl$0::next`=GameSystemSet 变体迭代 next，`fmt`@0x140037760、`hash`、`eq` 为枚举 derive）

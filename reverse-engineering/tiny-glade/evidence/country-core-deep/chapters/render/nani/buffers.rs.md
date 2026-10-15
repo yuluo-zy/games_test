@@ -8,8 +8,8 @@
 
 | 函数 | 地址 | 源码行 | 作用（猜测→待证实） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `country_core::render::nani::buffers::nani_calculate_draw_list_params` | 0x1408baed0 | 133 | 27 kind × 4 list 前缀和：cmd_offsets += T[k]；draws 钳制（!FORCE_FINE && (k>=2||FORCE_NO_FINE) → 0x40）；fine=draws>>5（掩码 **0x3fe** 非 0x3ff）；batch=(fine>>10)+(fine&0x3fe!=0)；循环体机器码展开 4 份（0x1408bb0bc 系） | O | B_n_world §1/§2.8/§2.9；B_i_nani §2.1（LISTS_PER_KIND=4、108 项、总 3788800/71936/2048/8）；wp3/contracts/buffers.md（0x1408baed0；与 default_value 是**两个独立函数**） |
-| `country_core::render::nani::buffers::impl$9::default_value` | 0x1408bb650 | 258 | NaniDrawListOffsetDefaults（[u32;108]，0x1b0B）：offsets[4k+j] = base + j*T[k]，base += 4*T[k]；跳表 0x142aa1618 | O | B_n_world §1/§2.9（0x1408bb650；wp3 合同称两者反编译重叠 = Ghidra 跳表误读，已纠正） |
+| `country_core::render::nani::buffers::nani_calculate_draw_list_params` | 0x1408baed0 | 133 | 27 kind × 4 list 前缀和：cmd_offsets += T[k]；draws 钳制（!FORCE_FINE && (k>=2|| FORCE_NO_FINE) → 0x40）；fine=draws>>5（掩码 **0x3fe** 非 0x3ff）；batch=(fine>>10)+(fine&0x3fe!=0)；循环体机器码展开 4 份（0x1408bb0bc 系） | O | render-top/decomp/decomp-0x1408baed0.txt（原 B_n_world §1/§2.8/§2.9；B_i_nani §2.1（LISTS_PER_KIND=4、108 项、总 3788800/71936/2048/8）；wp3/contracts/buffers.md（0x1408baed0；与 default_value 是**两个独立函数**）） |
+| `country_core::render::nani::buffers::impl$9::default_value` | 0x1408bb650 | 258 | NaniDrawListOffsetDefaults（[u32;108]，0x1b0B）：offsets[4k+j] = base + j*T[k]，base += 4*T[k]；跳表 0x142aa1618 | O | render-top/decomp/decomp-0x1408bb650.txt（原 B_n_world §1/§2.9（0x1408bb650；wp3 合同称两者反编译重叠 = Ghidra 跳表误读，已纠正）） |
 
 ## 内联/无独立符号函数
 
@@ -18,9 +18,30 @@
 - `country_core::render::nani::buffers::NaniDrawListParams::list_draw_merge_window_range`（行 111）— draw-list 合并窗口范围（内联；语义由名+draw 列表接线推断）—— I
 - `country_core::render::nani::buffers::NaniDrawListParams::list_draw_merge_window_subtotal_range`（行 121）— 合并窗口小计范围 —— I
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. `nani_calculate_draw_list_params`（0x1408baed0）—— 每 kind 4 列表前缀和
+算法（O，循环体机器码展开 4 份 0x1408bb0bc 系）：
+```
+cmd_offsets[k*4+j] += T[k]（T = 每 kind 步长表）
+draws 钳制：!FORCE_FINE && (k>=2 || FORCE_NO_FINE) → 0x40
+fine 数 = draws >> 5（掩码 0x3fe 非 0x3ff 判定）
+batch = (fine >> 10) + (fine & 0x3fe != 0)
+```
+每 kind 向 4 个 Vec 各 push 4 次 → 每 Vec 长 **108**；汇总 (3788800, 71936, 2048, 8)。`NaniDrawListParams` 0x70B = 4 Vec<u32> + 4 u32 汇总；`list_index_to_cmd_offset` 读第二个 Vec（max_instance_offsets）。
+
+### 2. `NaniDrawListOffsetDefaults::default_value`（0x1408bb650）—— [u32;108] 偏移表
+算法（O，跳表 0x142aa1618 逐项解码）：`offsets[4k+j] = base + j*T[k]`；`base += 4*T[k]`。`NaniDrawListInfo` 缓冲 0x1b0B = 108×4B 与该表逐项相等（互证）。
+- 纠错：与 `nani_calculate_draw_list_params` 是**两个独立函数**（0x1408baed0+0x77e / 0x1408bb650+0x570 不重叠；旧合同"反编译重叠"是 Ghidra 跳表误读）。
+
+### 3. 常量表
+`MAX_DRAWS_PER_LIST`（0x142aa14c0，27 值）= `max_instances`（0x142aba790/0x142c77010 逐值相同）：8192,8192,4096,32768,8192,8192,8192,8192,262144,40960,1024,53120,9600,131072,512,8192,4096,1024,32768,65536,2048,1024,2048,131072,81920,256,32768。`nani_draw` 的 count 路径用它作 max_draw_count。
+- 数据流：`GpuWorld::new` 以克隆的 `max_instance_offsets` 初始化 `NaniDrawListInfo` 缓冲 → `gpu_generate_draw_lists` 的 nani pass 读它 → `nani_draw` 用 `list_index_to_cmd_offset`。
+
 ## 证据注记（tg_rn1）
 - **MAX_DRAWS_PER_LIST**（O，27 值从 0x142aa14c0 读出）：8192,8192,4096,32768,8192,8192,8192,8192,262144,40960,1024,53120,9600,131072,512,8192,4096,1024,32768,65536,2048,1024,2048,131072,81920,256,32768；同一张表也是 max_instances（0x142aba790/0x142c77010 逐值相同）。
 - **108 项互证**：`NaniDrawListInfo` 缓冲 0x1b0B = 108×4B = `NaniDrawListOffsetDefaults`；汇总 (3788800, 71936, 2048, 8)（B_i_nani §2.1）。
 - **纠错**：`nani_calculate_draw_list_params` 与 `default_value` 是**两个独立函数**（0x1408baed0+0x77e / 0x1408bb650+0x570 不重叠；wp3 合同称 Ghidra 跳表误读为重叠）。
 - 掩码是 **0x3fe** 不是 0x3ff（`test ebx, 0x3fe; setne`，照抄）。
+- **decomp 注记（round3 复核）**：`render-top/decomp/decomp-0x1408baed0.txt` 是 Ghidra 跳表失败桩（"Could not recover jumptable at 0x0001408baf7d"，间接跳转经 UNK_142aa15a8 分发表），函数体未还原；上表算法结论来自**机器码展开深挖**（0x1408bb0bc 系 4 份循环体，render-top 已落证），两路互证成立，不因反编译桩为空而回退。
 - U：`GpuInstance` 字段；`list_draw_merge_window_range/subtotal_range` 语义（I）；7 个 SSBO 载体（NaniDrawListLength/NaniDrawList/NaniInstanceIndirection/Allocator 等）的库 `SsboType` 注册已由 B_i_nani §2 接线。

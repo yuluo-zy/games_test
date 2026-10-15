@@ -23,3 +23,30 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default`、`deserialize`、`eq`、`expecting`、`fmt`、`serialize`、`visit_enum`、`visit_map`、`visit_seq`、`visit_str` 等 14 项
+## 实现方式（算法级）
+
+### WallCornerAttachment（O，DIGEST §1.4 深化）
+
+- `is_attached` 0x140b256b0：字节 != 0。
+- `from_rectangle_corner_id` 0x140b256c0：`if (id < 4)` → 返回 `低字节 = id+1`（Option<u32> 编码，0=None、1..=4=角 id+1）；`id >= 4` → panic_str "assertion failed: id < 4"（0x142ae9ae8, line 0x18=24, file 0x142ae9b40 = wall_attachment.rs）。
+- `to_rectangle_corner_id` 0x140b256f0（手解）：`xor eax,eax; test cl,cl; setne al; movzx edx,cl; dec rdx; ret` → 返回 {present: self!=0, id: self-1}（Option<u32>）。
+
+### WallAttachmentAnchor / WallAttachmentSide（U 结构）
+
+- 字段：platform WallId / wall_height_relative_y / anchor_ws[3] / corner / is_bottom_door / side（serde 兼容层 0x1416fa8d0/0x1400eed40 等为 derive 胶水）。
+- WallAttachmentSide 0/1 判别（I）。
+
+### 新常量表
+
+| 串 | 地址 | 语义 |
+|---|---|---|
+| "assertion failed: id < 4" | 0x142ae9ae8 | from_rectangle_corner_id（line 0x18） |
+
+### 跨模块调用
+
+panic_str FUN_1428d9430。WallCornerAttachment 供装饰角吸附/门窗锚定位（decorator_archivist/trigger 域消费）。
+
+### 遗留 U
+
+- WallAttachmentAnchor 字段级布局（serde 名表已有，二进制偏移 U）。
+- is_default（内联行 40）语义 I。

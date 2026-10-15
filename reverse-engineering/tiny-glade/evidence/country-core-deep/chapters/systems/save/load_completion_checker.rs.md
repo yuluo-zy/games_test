@@ -16,3 +16,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **check_load_completion 0x140a9f810**：save_folder_path + join + FUN_140d69590 +
+  File::create×2（文件存在性/就绪探测；精确条件 I）。
+- **is_session_ok_to_load 0x140a9fa80**：save_folder_path×2 + join×2 + File::create×4
+  （会话文件就绪检查）。
+- SessionLoadReadiness::is_ok 0x140833230（is_initial 折叠）；deny_load 0x140a9fa70
+  （tag==1 判定，与 GladeType::is_olden 同址折叠）。

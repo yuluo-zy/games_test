@@ -4,9 +4,9 @@ systems\ui\resources\ui_state.rs.md	`bevy_ecs::system::schedule_system::impl$1::
 systems\ui\resources\ui_state.rs.md	`country_core::asset_libraries::mesh_library::AssetMeshLibrary::transient_meshes`	0x140002450	O：折叠单行（NotFound），语义=取当前 active widget 状态对（U 细节）	ui-input\decomp\decomp-0x140002450.txt	A
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiState::active_widget_state`	0x140002450	O：折叠单行（NotFound），语义=取当前 active widget 状态对（U 细节）	ui-input\decomp\decomp-0x140002450.txt	A
 systems\mode_manager.rs.md	`country_core::systems::mode_manager::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >`	0x1400368a0	O：AppMode CompactFormatter 序列化（u8 判别-0xfa 界 0x10 的跳表分发，变体名在跳表外）	ui-input\decomp\decomp-0x1400368a0.txt	A
-systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::apply`	0x14003bb80	O：折叠（NotFound）——SystemParam 状态获取/入队（bevy 胶水面）	ui-input\decomp\decomp-0x14003bb80.txt	A
-systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::new_archetype`	0x14003bb80	O：折叠（NotFound）——SystemParam 状态获取/入队（bevy 胶水面）	ui-input\decomp\decomp-0x14003bb80.txt	A
-systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::queue`	0x14003bb80	O：折叠（NotFound）——SystemParam 状态获取/入队（bevy 胶水面）	ui-input\decomp\decomp-0x14003bb80.txt	A
+systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::apply`	0x14003bb80	SystemParam get_param/queue	rne-read 0x14003bb80；PDB 过程表	B
+systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::new_archetype`	0x14003bb80	SystemParam get_param/queue	rne-read 0x14003bb80；PDB 过程表	B
+systems\ui\resources\slider3d.rs.md	`country_core::systems::ui::resources::slider3d::_::impl$0::queue`	0x14003bb80	SystemParam get_param/queue	rne-read 0x14003bb80；PDB 过程表	B
 resources\ui_settings.rs.md	`country_core::resources::ui_settings::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >`	0x1400ee430	O：serde_json Compact serialize		A
 resources\ui_settings.rs.md	`country_core::resources::ui_settings::_::impl$0::serialize<ref_mut$<ron::ser::Serializer<ref_mut$<alloc::string::String> > > >`	0x1400ee5c0	O：ron Pretty serialize（UiSettings 7 字段，串 @0x142acec66）		A
 resources\ui_settings.rs.md	`country_core::resources::ui_settings::_::impl$0::deserialize::impl$0::visit_str<enum2$<ron::error::Error> >`	0x1400ef110	O：ron visit_str（ToolbarAlignment 变体名 Bottom/Left/Right/Top 解析）		A
@@ -20,8 +20,8 @@ systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::Signifie
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::new`	0x14089d9b0	构造（SignifierEntityBuilder::new）	wp15/analysis/b6_widgets/new_0x14089d9b0.c	B
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass`	0x14089dad0	O：字节@0x8a 置位（UI pass 标志）		A
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::custom_shader`	0x14089db00	O：String 写 @0x60..0x70	wp15/analysis/b6_widgets/custom_shader_0x14089db00.c	A
-systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::position`	0x14089dc00	O：Vec2 @0x7c（24 callers）		A
-systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation`	0x14089dc30	O：f32 写（13 callers）	wp15/analysis/b7_signifiers/rotation_0x14089dc30.c	A
+systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::position`	0x14089dc00	O：12B 足迹 @0x7c..0x87（mov [rdx+0x7c],rax(8B)+mov [rdx+0x84],eax(4B)——Vec3 或 Vec2+extra f32；review-audit 纠错：非仅 Vec2）（24 callers）		A
+systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::rotation`	0x14089dc30	rotation	wp15/analysis/b7_signifiers/rotation_0x14089dc30.c + round3 get_xrefs_to	B
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::scale`	0x14089dc60	O：f32 写（21 callers）	wp15/analysis/b7_signifiers/scale_0x14089dc60.c	A
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration`	0x14089dc90	O：f32 写（35 callers）	wp15/analysis/b7_signifiers/animation_duration_0x14089dc90.c	A
 systems\ui\signifiers\mod.rs.md	`country_core::systems::ui::signifiers::SignifierEntityBuilder::minimum_lifespan`	0x14089dcc0	O：f32 写	wp15/analysis/b7_signifiers/minimum_lifespan_0x14089dcc0.c	A
@@ -50,12 +50,11 @@ systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_st
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiState::clearing_canvas`	0x14092e390	O：转发 _w_layer_and_sound	wp15/analysis/b5_ui_state/clearing_canvas_0x14092e390.c	A
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiState::add_with_id`	0x14092e3e0	O：LOCK [p+0x60]==0→写 8 取写锁；拷贝 0xb0B WidgetParams；alloc 0xc0B Arc；HashMap@+0x68 insert	ui-input\decomp\decomp-0x14092e3e0.txt	A
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::clicked`	0x14092e5f0	O：hover>1 && click<2 && click&1（wp15 合同）	ui-input\decomp\decomp-0x14092e5f0.txt	A
-systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered`	0x14092e620	O：hover 字节 != 0 且 id@+0x38 == ctx id（注意重建代码缺 id 匹配）	ui-input\decomp\decomp-0x14092e620.txt	A
+systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::hovered`	0x14092e620	O：hover **==1** 且 id@+0x38 == ctx id，返回值=byte@+0x19（click 字节）（review-audit 纠错：hover==1 非 !=0）	ui-input\decomp\decomp-0x14092e620.txt	A
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting`	0x14092e640	O：交点载荷 7 qword 拷贝或 tag-2 None	ui-input\decomp\decomp-0x14092e640.txt	A
-systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active`	0x14092e680	O：hover!=0 && id 匹配（同 hovered）	ui-input\decomp\decomp-0x14092e680.txt	A
-systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::ActiveWidget::is_dragging`	0x14092e6a0	O：折叠单行（NotFound）	ui-input\decomp\decomp-0x14092e6a0.txt	A
+systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active`	0x14092e680	O：hover!=0 && id 匹配 && **dword@+0x28 != 2**（review-audit 纠错：缺 [+0x28]!=2 门控）	ui-input\decomp\decomp-0x14092e680.txt	A
+systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::ActiveWidget::is_dragging`	0x14092e6a0	ActiveWidget::is_dragging	rne-read 0x14092e6a0 机器码	B
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::DragState::is_some`	0x14092e6b0	O：折叠 = 判别非 None	camera-time\decomp\decomp-0x14092e6b0.txt	A
-systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::DragState::is_started`	0x14092e6c0	O：∈ {Started, Dragging}（wp15 b5 既有）	wp15/analysis/b5_ui_state/is_started_0x14092e6c0.c	A
 systems\ui\resources\ui_state.rs.md	`country_core::systems::ui::resources::ui_state::DragState::is_finished`	0x14092e6d0	O：== Finished（wp15 b5 既有）	wp15/analysis/b5_ui_state/is_finished_0x14092e6d0.c	A
 resources\gui.rs.md	`country_core::resources::gui::NextEscMenuState::set`	0x14093fad0	NextEscMenuState::set		B
 resources\gui.rs.md	`country_core::resources::gui::PrevEscMenuState::get`	0x14093fbb0	PrevEscMenuState::get		B
@@ -86,7 +85,7 @@ systems\ui_move_shapes.rs.md	`country_core::systems::ui_move_shapes::move_gizmo_
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::UiFocus::is_none`	0x140985f30	O：== 0（u32 判别；与 is_null 折叠）		A
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::new`	0x1409a8e10	O：0xb0B 默认值序列（wp15 合同 + 本域复核）	ui-input\decomp\decomp-0x1409a8e10.txt	A
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::sounds`	0x1409a8e80	O：写 96B sounds 区 @0x18..0x78	ui-input\decomp\decomp-0x1409a8e80.txt	A
-systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world`	0x1409a8ee0	O：字节@0xa8 bit0	ui-input\decomp\decomp-0x1409a8ee0.txt	A
+systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::occlude_by_world`	0x1409a8ee0	O：字节@0xa8 **整字节 bool 字段**（mov [rdx+0xa8],r8b；非 bit0；review-audit 纠错）	ui-input\decomp\decomp-0x1409a8ee0.txt	A
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::no_history_recording`	0x1409a8f10	O：字节@0xa9 bit0	ui-input\decomp\decomp-0x1409a8f10.txt	A
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::WidgetParams::allow_negative_distance`	0x1409a8f40	O：字节@0xa9 bit2	ui-input\decomp\decomp-0x1409a8f40.txt	A
 systems\ui\resources\widget_params.rs.md	`country_core::systems::ui::resources::widget_params::UiSounds::boop`	0x1409a8f80	O：折叠单行（NotFound；boop 音效槽）	ui-input\decomp\decomp-0x1409a8f80.txt	A

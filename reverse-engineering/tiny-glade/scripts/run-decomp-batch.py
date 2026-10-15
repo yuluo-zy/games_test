@@ -39,6 +39,7 @@ def release_lock():
 
 DOMAINS = {
     "history": ["/history"],
+    "render-top": ["render/"],
     "wall": ["resources/walls/", "systems/wall/", "stairs_walls", "shape_intersections"],
     "session-save": ["session.rs", "systems/save/", "systems/prefab", "resources/prefab/",
                      "loading_screen", "logo_animation"],

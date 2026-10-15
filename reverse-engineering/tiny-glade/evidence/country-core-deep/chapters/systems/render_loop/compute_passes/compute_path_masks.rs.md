@@ -15,6 +15,25 @@
 
 - `blur_exclusion_mask`（行 158）— 排除区掩码模糊（`/gauss_blur_mask.cs.hlsl` 族，wp5 I）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `compute_path_masks`（0x1409014e0，W10）
+处理链（O，B_c2 §2 + round3）：
+1. **5 资源全部先取**（A/B/C/D/E）；**运行条件 A∥B∥C∥E非空∥D**；
+2. A/B/C/D **无条件清**；
+3. `combine_path_exclusions`（`/paths/combine_path_exclusions.cs.hlsl`）→ `directional_contract`（`/paths/directional_contract.cs.hlsl`）→ 两次 blur → **4×`blur_path_mask`**（`Blur Path Stroke/gauss_blur_r16f.cs.hlsl`）→ `path_mask_visual`（`/paths/path_mask_visual.cs.hlsl`）；全部 512²；
+4. `on_texture_processed` + write_texture + dispatch_2d。
+- **round3 闭合**：资源 E = **`Events<RecalculateHeightMapCmd>`**（全 EXE 9 处命中；"非空" = events_a/events_b 两 Vec 长度）。`PathStrokeQueues` 占位名作废。
+- 数据流：路径掩码 → `path_pebbles`（W17）+ 植被放置采样（garden/water spawn 避开路径）。
+
+### `blur_path_mask` / `blur_exclusion_mask`
+`Blur Path Stroke` r16f 高斯（`/gauss_blur_r16f.cs.hlsl` + `/gauss_blur_mask.cs.hlsl` 族，wp5 I）。
+
 ## 关键事实
 
 - 路径掩码为后续路径光栅/pebbles 提供输入（W17 path_pebbles 消费）。
+- **round3 闭合（2026-10-15）**：B_c2 U 项"资源 E"（TypeId `0xcda6af2f6afb130e/0x036e88a927bd70aa`，只读 +0x10/+0x30 两 u64）
+  = **`Events<rasterize_terrain_stroke::RecalculateHeightMapCmd>`**（全 EXE 9 处命中全为 `Events<RecalculateHeightMapCmd>` 的
+  init_state/register_event 实例，O）；"非空"判断 = events_a/events_b 两 Vec 长度（同 `Events<ShowDemoBorderOverlay>` 形制，
+  B_d_cb_a §2）。`PathStrokeQueues` 占位名作废。运行条件 A∥B∥C∥E非空∥D 中的 E = 该事件队列（高度重算后重算路径掩码，I）。
+  详见 `round3/RENDER-U-CLOSURE.md` §8。

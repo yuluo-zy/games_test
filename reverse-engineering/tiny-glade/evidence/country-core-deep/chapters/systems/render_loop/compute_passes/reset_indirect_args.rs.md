@@ -18,6 +18,15 @@
 
 `closure` 等 1 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `reset_indirect_args`（0x14090a870 + 0x14169a830 闭包）—— 4 块暂存区 + 4 copy_buffer
+处理链（O，round3 §5 + B_c3 §2）：
+1. **4 块暂存区**：0x80 = 8×`[0,1,1,0]`（0x142aaa1e0/e8）；**0x1e0 = memcpy 自静态表 0x142aaaa78**（24 × 20B DrawIndexedIndirectCommand，仅 index_count 非零，round3 纠错"无写入"判据）；0x10 = `[0,1,0,0]`（0x142aaaf74/7c）；8B = `0x0009000000000000`；
+2. "Reset indirect args" pass：**4 次 `add_resource_access(id, 0x34, 0)`**（传输写）；
+3. 闭包（0x14169a830）4 次 `ResourceRegistry::buffer` + `RenderPassApi::copy_buffer`。
+- 用途：nani/植被/水的 DrawIndirect 缓冲清零复用；reconstruction 应改为先 memcpy 表内容（index_init()）。
+
 ## 关键事实
 
 - 供 nani/植被/水的 DrawIndirect 缓冲清零复用（wp5 原语/调试族）。

@@ -14,3 +14,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 4 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **try_approx_parse_save_file_identity 0x141e58f20**：alloc 0x800B 缓冲 → Windows
+  ReadFile → UTF-8 转换 → 搜索字面量 `"Identity"`（**带引号**，@0x142f92a40 len 10）
+  → 解析其后 JSON 值为 SaveFileIdentity（与 SaveFileSection::json_key "Identity"
+  的 len 8 变体互为印证）。
+- **derive_fallback_save_file_identity 0x141673140**：解析失败回退：SystemTime 取时 +
+  FUN_14145aa70 二次尝试 + 文件元数据派生（字段序 U）。

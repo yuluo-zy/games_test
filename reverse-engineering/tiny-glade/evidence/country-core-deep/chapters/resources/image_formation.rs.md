@@ -16,6 +16,17 @@
 | country_core::resources::image_formation::ImageFormationConfigs::get | 0x1408aea80 | 114 | 0x1408aea80：self+(i<<6)（无边界检查） | O | audio-misc\decomp\decomp-0x1408aea80.txt |
 | country_core::resources::image_formation::ImageFormationConfigs::switch_kind | 0x1408aea90 | 118 | 0x1408aea90：[+0xc0]=kind | O | audio-misc\decomp\decomp-0x1408aea90.txt |
 
+## 实现方式（算法级）（O，DIGEST §2.7 手解）
+
+**ImageFormationConfigs**：三档 config（stride 0x40=64B）+ 当前档 kind@+0xc0（缺省档=1）：
+- `current_mut @0x1408aea50`：`self + (kind<<6)`（O）。
+- `get @0x1408aea80`：`self + (i<<6)`，**无边界检查**（O）。
+- `iter_non_default_mut @0x1408aea60`：`{begin, begin+0xc0, 0}` 三档遍历（O）。
+- `switch_kind @0x1408aea90`：`[+0xc0] = kind`（O）。
+- 与现有 WP21 代码逐条一致（无需改）。（O）
+- `initial @0x14067dd80` PDB 名错位（实为 AppSteamIntegration::client mov rax,rcx）；
+  ImageFormationConfigs::initial 为内联（default 折叠），真实体无独立符号。O
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::resources::image_formation::ImageFormationConfigs::current`（行 94）— 查询/计算

@@ -1,10 +1,10 @@
 import sys,struct,re,bisect
 import os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-from cca import EXE,BASE
+from cca import EXE,BASE,PROCS_TSV
 e=open(EXE,'rb').read()
 # procs
 P=[]
-for l in open('/home/ubuntu/test/games_test/reverse-engineering/tiny-glade/evidence/country-core-audit/data/procs.tsv'):
+for l in open(PROCS_TSV, encoding='utf8'):
     p=l.rstrip('\n').split('\t')
     if len(p)>=5: P.append((int(p[0],16),int(p[1]),p[4]))
 P.sort(); starts=[x[0] for x in P]

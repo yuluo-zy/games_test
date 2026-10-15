@@ -19,3 +19,18 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 2 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **LogoAnimation 布局**：5 阶段进度 f32@+0x00..+0x14 + 5 阶段时长 f32@+0x14..+0x28；
+  is_waiting = (+0x0c) > 0.0（0x140b19d10）；is_finished = (+0x10) >= 1.0（0x140b19d22，
+  常量 @0x142ae8b10）；finish_wait = (+0x0c) = 1.0f（0x140b19d33）；play 0x140b19d00 =
+  清零进度区；build 0x140b19d40 = insert_resource + Startup + Update 注册（默认
+  durations {const×4, 0.5f}）。
+- **animate_logo 0x140b1a6b0**（Update 系统 (ResMut<LogoAnimation>, Res<Time>,
+  Res<AudioCore>)）：顺序找第一个 progress<1.0 的阶段 i → `stage[i] = clamp(stage[i]
+  + dt/duration[i], 0, 1)`；**阶段 0 起始（stage[0]==0.0）播 FMOD
+  event:/UI/Logo/Scribble、阶段 2 起始播 event:/UI/Logo/Branches**（串
+  @0x142ae945b/0x142ae9472，代码内联拼 23 字符事件名）。
+- startup_animated_logo 0x140b19d90：load tiny_glade_logo/logo_branches JSON 网格 +
+  logo_animation.raster.hlsl/logo_branches_animation.raster.hlsl + spawn。

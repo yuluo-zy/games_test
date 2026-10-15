@@ -37,3 +37,20 @@
 - `country_core::resources::history::terrain_edit::impl$1::update_terrain_curve::closure$0`（行 265）— 进度 lerp 闭包（fold+全局时间，(1-t)*u+t）（I；宿主 0x140859740）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **TerrainEdit 判别**（Debug::fmt 0x140858c80）：首字段 niche `x^0x8000000000000000
+  < 2` → 变体 0/1/2（0=NewStroke(+4 处 stroke id)、1=+1 处 0x11B 载荷、2=+4 处
+  0x10B 载荷）。
+- **revert 0x140858d30 / reapply 0x1408592d0**（对称）：判别 0（NewStroke）且
+  `param_6 < 0.99f`（静态 0x142a948d8 = 动画进度阈值）→ panic "Requested terrain
+  stroke {id}"（terrain_edit.rs，@0x142a94cf8）；否则 hashbrown 查 48B/元素 stroke
+  表（FUN_1405b0ed0），命中 → 清/置该 stroke active 标志（+0x28）。
+- **duration**：无独立符号；公式内联于 `TerrainReplayCmd::forward 0x140994f30`：
+  `clamp(Σ相邻点距*0.01, 0.4, 3.0)`（cm→m 换算），无点默认 0.3；"assertion failed:
+  stroke_length.is_finite()"（terrain_edit.rs:43，@0x142a94c34）。
+- **update_terrain_curve 0x140859740**（reapply 闭包宿主）：hash 查 48B stroke 表 →
+  拷贝 12B 点集 → FUN_141469230 fold 求进度 → 与全局时间 FUN_140c95ef0
+  (&0x142a94d48) 做 `(1-t)*u + t` lerp → 0..1 范围断言（复用 "Tried to init CurveU
+  from an invalid u: "）→ 回写 stroke 记录 Vec。
+

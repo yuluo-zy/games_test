@@ -63,3 +63,19 @@
     wall_index/roof_shape_params/bend_vector/pad0/custom0/custom1、
     StairsRemovedSupports/edges。快照真正主场在 save::snapshot 域
     （validate_and_load_closest_snapshot_data 0x1417a6e50 等，已登记跨域）。
+
+## 算法级深挖（2026-10-15）
+
+- history_process 0x140af5b30 42KB 全文解码：HistoryCmd byte[1]==4||byte[0]==2=Interrupt；
+  undo 反转 = 0x30 元素两两交换；第二事件流消费 = 清 Events+计数器 push；每条记录
+  追加 Vec<16B> {计数器, byte[+0xb]} 命令日志。
+- add_decorator_diff 0x140a854a0 全文：两循环均 push tag 0xE（type 0/1 区分移除/新增，
+  修正早前 tag 1 结论）；checksum 扫描比对 stairs 表（非装饰表）；尾部 Arc 替换
+  = 表体整体后移 0x10 重包 Arc{1,1}。
+- ReplayBucket 布局修正：cmds Vec cap-first @+0x00（replay_wall/history_process 直读）。
+- History::add tag-7 校验三串新读（曲线无效/None CreateWall/DeleteWall）；nuke =
+  truncate+clamp count+retain snapshots+无条件重随机 nonce。
+- 快照二分族统一算法：partition_point + 距离平局（|prev-idx| vs |next-idx|，平局取后）；
+  current_snapshot 仅 idx==cursor 返回；set_current_snapshot 断言不替换+有序插入。
+- 0x14362c011（楼梯 checksum 开关）= load_game 版本门控（v > 0x1a）——跨域闭合。
+- 交付：history/ALGORITHMS.md（处理链图/逐函数算法/状态机/常量表）+ 27 章就地升级。

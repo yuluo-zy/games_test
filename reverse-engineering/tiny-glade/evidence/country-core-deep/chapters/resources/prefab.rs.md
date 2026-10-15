@@ -20,3 +20,12 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `clone`、`closure`、`default` 等 3 项
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **PrefabLibrary（hashbrown HashMap<PrefabName, Prefab>）**：桶 0x28B = {hash u64,
+  PrefabName 16B, **Prefab 值 16B {ptr,len} 胖指针类**}（0x141552d70 get / 0x141552ff0
+  has：FUN_1405b1a70 哈希 + SIMD group probe + memcmp 0x142923bf0）——
+  reconstruction 的 `Prefab { parts: Vec<PrefabPart> }`（24B）布局存疑（DIGEST #16）。
+- **add 0x1408e2540**：HashMap::insert（被替换旧值逐 PrefabPart drop）。
+- register_required_components 0x1408e5d10：Bevy 组件注册胶水（非业务）。

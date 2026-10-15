@@ -21,3 +21,8 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+- `IvyLeafStorage::add`（0x1408fe280）：push 104B IvyLeaf 到对应 ivy（容器 = HashMap<usize, Vec<IvyLeaf>>，键 = ivy id；重建 Vec 建模不符）。
+- 内联面：`all_leaves` / `all_leaves_mut`（全量叶迭代，GPU 上传/动画用）；`delete_affected_leaves` 按 ivy id 过滤删除（pruner 联动）；`delete_all_leaves` 全清。

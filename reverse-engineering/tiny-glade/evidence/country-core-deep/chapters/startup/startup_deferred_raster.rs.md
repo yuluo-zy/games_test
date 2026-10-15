@@ -17,3 +17,8 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **startup_deferred_raster 0x140a97a30（O）**：4x load_shader_into_library<&str>（FUN_140b3fe40）
+  → 句柄对 {key, handle} 写入 param_4 数组（每项 2x8B，供 deferred raster pass 消费）。

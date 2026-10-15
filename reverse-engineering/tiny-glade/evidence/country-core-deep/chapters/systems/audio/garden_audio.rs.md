@@ -14,3 +14,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 4 项
+
+## 实现方式（算法级）
+
+`garden_audio_system`（0xa89480）：消费花园编辑/掩码事件驱动音频（4 循环 + update_draw_audio 模板）；init 0xa88fa0。细节归 audio-misc 域。

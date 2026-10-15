@@ -1,2 +1,7 @@
-country_core::resources::walls::inner_wall_state::is_default_arch_height::h3422a3c9d71ae3d6
-{"error":"No function at 0x1408C5690","error_type":"NotFound","database":"tg_a2_v2c0"}
+/* 手解（rne-read --hex），is_default_arch_height（contract 0x8c5690；B patched 同址） */
+/* f30f1005c8751c02 f30fc20100 660f7ec0 83e001 c3 */
+/* = movss xmm0,[rip+disp32]; cmpeqss xmm0,[rcx]; movd eax,xmm0; and eax,1; ret */
+/* 语义：arch_height(rcx+0x54 处 f32) == 2.8f（常量 0x40333333 @0x142a8cc60，rne-read 已核）→ bool */
+/* 注：B patched 二进制中该指令 disp 指向 0x142a51c60 区域（字符串区）——B 与原件 .text 偏移错位； */
+/*     常量地址 0x142a8cc60 以 rne-read（原件 .rdata）为准，两版 .rdata 一致。 */
+/*     0x1408c56b0 的 PDB 名 is_default_arch_height 实为 get_enclosure_params（见 DIGEST §7.3）。*/

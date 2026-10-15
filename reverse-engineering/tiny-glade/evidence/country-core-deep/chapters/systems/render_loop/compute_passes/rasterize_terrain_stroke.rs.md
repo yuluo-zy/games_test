@@ -18,6 +18,17 @@
 
 `closure`、`hash` 等 3 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### `rasterize_terrain_stroke`（0x1408c7120 + 0x1415fb550 closure，W3）
+处理链（O，B_c1 §2）：
+1. 早退条件（事件/笔画表空）；`width > 0.01`；点数 **0x400 上限**；>0x3fff 一次性错误日志 `"Ran out of live terrain strokes"`；
+2. `StrokeInfo`（16B = `(id<<10)|(count&0x3ff)` + `pack_2x16f_uint`）+ 断言文案；
+3. **5 个 pass**：上传 → `GaussBlur`（`/gauss_blur.cs.hlsl:cs_main`，`GaussBlur{fmt}`，PERM_fmt/PERM_ty）→ `Terrain Derivative`（`/terrain_derivative.cs.hlsl`）→ blur → 高度图重算（RecalculateHeightMapCmd 事件）；
+4. 栅格化 pass 的 `dispatch_with` 闭包（closure_env$1 0x1415fb550）：每 tracker `track` + `dispatch_3d(512,512,..)`。
+- 数据流：地形笔触掩码/高度 → W4 displace_rocky_terrain + 地形网格跟随；`compute_path_masks`（W10）的 E 资源 = `Events<RecalculateHeightMapCmd>`（round3 闭合）。
+- 帧序 W3（W2 water_rasterize 后）。
+
 ## 关键事实
 
 - 输出地形高度/掩码（供 W4 displace_rocky_terrain、地形网格跟随等）。

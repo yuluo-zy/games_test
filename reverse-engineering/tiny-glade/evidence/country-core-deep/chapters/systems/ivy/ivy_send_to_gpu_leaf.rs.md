@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 3 项
+
+## 实现方式（算法级）
+
+- ivy_send_to_gpu_leaf（0x1408c1580）：全量叶迭代（IvyLeafStorage::all_leaves）→ 104B 叶实例参数打包 → 叶 SSBO 上传（render 域交叉）。

@@ -23,6 +23,27 @@
 | `country_core::resources::gui::_::impl$0::first` | 0x140002370 | 385 | impl$0::first | O：折叠单行（NotFound；容器 first 元素） | ui-input\decomp\decomp-0x140002370.txt |
 | `country_core::resources::gui::ShowDebugRaycastGeo::as_string` | 0x140940170 | 425 | ShowDebugRaycastGeo::as_string | O（手解结构）：`movzx eax,[rcx]; 两张相对偏移表 {rel_ptr u32, rel_len i32} 查表拼 &str`（表址校准 U） |  |
 
+## 实现方式（算法级）（O 手解）
+
+**EscMenuState 8B `{sub u32@0, disc u32@4}`**（本地判别 = qword 首 8B，方法读全 8B）：
+- `is_open @0x14093fbc0`：`qword∉{2,0xa}` → true；`==2` → false；`==0xa` → `(sub != 1)`。
+- `is_closed @0x14093fbe0`：`qword==2` → true；`==0xa` → `(sub != 0xff)`；其余 false（与 is_open 互补）。
+- `cast_ui_shadows @0x14093fc00`：`qword∈{3,4}`（单位变体）|| `(disc==7 && sub==1)`。
+- `should_show_world @0x14093fc20`：`qword-0xfe < 9` 时按位掩码 0xaf（位 4/6 → true）、再按 0x50
+  （位 4/6 → `(sub+1)`）判定；越界按位 4(=0) → true。
+- `can_limit_frame_rate @0x14093fc60`：`!(disc==7 && sub==1)`（时间冻结判定）。
+- `allow_time_passage`（内联）= 同码：`!(disc7 && sub1)`。
+判别语义图（round2）：{2,2}/{3,2}（mouse_capture 推）、{3,0}/{4,0} = 开、{7,1} = 时间冻结。
+
+**NextEscMenuState::set @0x14093fad0（O）**：当前状态==0xb 或 ∈{0xfe..0x106} 且 !=4 走不同分支；
+释放 `self+0x30` 字符串资源；拷贝新状态 `{qword@0, 16B@+0x50}`。
+**PrevEscMenuState::get @0x14093fbb0（O）**：`xor eax,eax; cmp dword[rcx],0xb; cmovne rax,rcx`
+= `state==0xb → None` 否则 `Some(&self)`（0xb 哨兵）。
+
+**DebugTriggerProxyVis::as_string @0x14093ffd0（O 结构）**：按 u8 索引查串表
+（`FUN_1428d8fe3(1, 0x12/0xe/0x10, ...)` 长度 18/14/16 + 不可恢复跳表 = match 分发），
+生成调试代理可见性描述串（egui 调试面板）。
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::resources::gui::EscMenuState::allow_time_passage`（行 168）— I：内联；语义由 can_limit_frame_rate（0x14093fc60 同码区）佐证：!(disc7&&sub1)

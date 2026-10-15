@@ -16,6 +16,13 @@
 
 `closure` 等 2 项
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- 三个 nani roof 实例绘制（`draw_instanced_roof_shader_nani` 0x1409d9070 / `_spire` 0x1409d96a0 / `_support_beam` 0x1409d98a0）：DrawBuilder draw_instanced。
+- 回调（d_cb_b §2 屋顶族）：`roof_nani_cb`（`RoofHighlight`）、`roof_spire_cb`、`roof_support_beam_cb`（`AssetSsboLibrary`→`LibView`）；`roof_tiles_gravity`（W19）生成屋顶砖；`RoofSpireSsbo`/`RoofSupportBeamSsbo` 实例缓冲消费。
+- 数据流：`RoofTileSsbo`/`WoodenPlankSsbo`（SparseInstanceBuffer 分块，sparse 章）→ nani draw list → draw_instanced。
+- shader body 不挖（GPU 后置）。
+
 ## 关键事实
 
 - 消费 roof 域实例缓冲（WoodenPlank/RoofTile 相关）。

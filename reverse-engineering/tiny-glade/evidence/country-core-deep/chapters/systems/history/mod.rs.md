@@ -13,3 +13,11 @@
 | `country_core::systems::history::impl$0::add_history_events` | 0x140943f40 | 97 | 添加 HistoryCmd 等事件类型 | O | decomp-0x140943f40.txt |
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- add_history_systems 0x1409438a0 / insert_history_resources 0x140943e10 /
+  add_history_events 0x140943f40：Bevy 注册胶水（~10 系统注册、History/ReplayBuffer
+  等资源插入、HistoryCmd 事件添加；0x14362c370 静态经 FUN_140b218a0 读写）——
+  按依赖过滤不计业务；AppMode::Replay = 0xd 的边界定义在此（replay_mode 0x140a7c550
+  同址复核）。
+

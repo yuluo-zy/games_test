@@ -52,3 +52,20 @@
     append_on_load<MetaCommandFence> 为 builder（memcpy 0xa0 返回）。
 
 （详见 DIGEST.md；批量 66 目标 57 成功 9 NotFound 全部手解。）
+
+## 算法级深挖（2026-10-15）
+
+- save_thread 主循环全文：1s tick 逐文件 flush → condvar ≤1s → 错误列表 diff/log/回传
+  → drop 当前存档 → recv → Shutdown=0xb（flush_deferred_and_sync+确认+退出）。
+- execute_save_cmd：switch {3,4,5,6,7,9,10}+default（8=ManualBackup 落 default）；
+  公共 truncate 断言；OpenFile = 旧态 flush → save_game_to_file<Cursor> 全量重写 →
+  ShadowFile::create("history.json") → 0x270B 状态组装；state==3 = "无活动档"的
+  No-active panic 门控。
+- mark_dirty = 4KB 块位图（修正 8 槽说）；ensure_current_snapshot = offset 入
+  edit_offsets → ",\n" → MultiEdit::serialize → mark_dirty 增量写协议实锤。
+- 备份节拍器除数桶 {300,600,3600,7200} 整除匹配 + 一次消耗多间隔。
+- load_game：NextSessionKind 解码（1=parse_saved_game_data 含 upgrade 备份 /
+  2=on_load 命令回放）、版本→全局开关（0x14362c011 = v>0x1a 供 history 楼梯校验）、
+  颜色 ID 升级映射、max wall id 恢复。
+- 交付：session-save/ALGORITHMS.md（存档/读档流链图/逐函数算法/状态机/常量表）+
+  17 章就地升级。

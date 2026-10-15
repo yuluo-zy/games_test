@@ -1,1 +1,16 @@
-{"error":"No function at 0x140B12F30","error_type":"NotFound","database":"tg_a5"}
+country_core::resources::ui_settings::_::impl$0::previous::<icf-folded>
+[Ghidra NotFound @0x140b12f30 — ICF 折叠无独立函数，改用 RNE 原字节手解（候选U收尾闭合）]
+RNE disasm (scripts/rne-disasm.py 0x140b12f30 0x10):
+
+0x140b12f30  movzx    ecx, byte ptr [rcx]   ; ecx = variant index t (u8)
+0x140b12f33  shl      cl, 3                 ; cl = t*8
+0x140b12f36  mov      eax, 0x2010004        ; 打包字节表 {b0=0x04, b1=0x00, b2=0x01, b3=0x02}
+0x140b12f3b  shr      eax, cl               ; eax = 0x02010004 >> (t*8)
+0x140b12f3d  ret
+
+结论: previous(t) = 取打包表字节 t：{0:0x04, 1:0x00, 2:0x01, 3:0x02}
+= enum_iterator::Sequence::previous 的 const 表查表实例化（Option 判据: 0x04 = None niche）：
+  previous(Bottom=0)=None、previous(Left=1)=Some(Bottom)、
+  previous(Right=2)=Some(Left)、previous(Top=3)=Some(Right)。
+与 render_config.rs QualityPreset::previous @0x140968f40（O 0x140968f40，checked_sub(1) 语义）同族。
+判定: 依赖 enum_iterator Sequence::previous（derive/宏生成 trait 默认方法）→ 胶水排除。

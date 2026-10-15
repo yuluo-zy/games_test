@@ -54,7 +54,7 @@
 ### RoofTriggerVolume：triangles {cap@0, ptr@8, len@0x10} stride 0x24；normals {cap@0x18, ptr@0x20, len@0x28} stride 0x24；uvs {cap@0x30, ptr@0x38, len@0x40} stride 0x18；三者长度断言相等。
 ### TreeStorage：哈希表 {base@0, mask@8, …, len@0x18}，16 字节条目（key@0, value@8），next_index@+0x30；iter 输出 {cur@0,next@8,end@0x10,occupied@0x18}。
 ### RtWorld/DirtyCow：RtWorld 哈希表同族；DirtyCow refcount 经 LOCK/INC/DEC，==1 时 get_mut 原地。
-### RtBvhBuilderGlueResource：+0x10 busy refcount、+0x14 state、+0x15 processing、+0x98 数据指针；全局 0x14362c420 停止标志。
+### RtBvhBuilderGlueResource：+0x10 busy refcount（cmpxchg 0→0x3fffffff 抢注）、+0x18 退出/停止字节、+0x68/+0x70 条目 Arc 对、+0x78..+0x9c 计数、+0x98 数据计数、+0xa0 state（2=空闲）、+0xa8 processing、+0xa1..0xa7 脏字节；全局 0x14362c420 停止标志。**【round3 更正：原"+0x14 state/+0x15 processing"为旧读，raw bytes 0x140b24d50 前导证实 +0xa0/+0xa8】**
 ### build_gpu_bvh：输入三角 stride 0x28，输出 BVH 节点 stride 0x30；空→3 节点退化根。
 ### GpuRtTriangle 上传三 SSBO：stride 0x50 / 0x18 / 4×u32（upload_rt_world）。
 

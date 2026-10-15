@@ -27,3 +27,22 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`drop` 等 4 项
+
+## 实现方式（算法级，2026-10-15 深挖；全文见 session-save/ALGORITHMS.md）
+
+- **ShadowFile 布局**（本域机器码新证）：数据 Vec cap-first {cap@+0x20, ptr@+0x28,
+  len@+0x30}、追加偏移@+0x38、文件状态@+0x40（i64::MIN 哨兵 = Some/已开）、句柄
+  @+0x48、脏位图 ptr@+0x60、位计数@+0x68、flushed_block_count@+0x78。
+- **flush 0x1409193d0**（unwrap_open_mut 同址）：未开 → 建 `<path>.tmp`（.tmp
+  @0x142aaca18）→ 写数据（"Write data"）→ "Setting file length" → "Sync data" →
+  log "Save file successfully opened and written to disk"；错误 "Could not create
+  temp file for save rewrite: " / "Error writing save data to temp file: "。
+- **sync_all 0x14091a230**（flush_impl）：先 flush → 断言 +0x40 < 0（否则 panic
+  "ShadowBackendFile is not open" @0x142aace80）→ OS sync → "Asking the OS to sync
+  writes to disk"（@0x142aad1d8）→ flushed_block_count@+0x78 → 返回 ok-bool。
+- **mark_dirty 0x14091a450**（脏区间协议）：`end <= start → return`；**4KB 块**：
+  start_block = start>>12、end_block = ceil(end/4096)；位图不足 → grow
+  （FUN_140915c20 @+0x60）；越界 → 格式化 panic @0x142aabe08；置位 [start, end)；
+  debug log "Marking block range dirty: .."（级别>4，@0x142aad220）。
+  **DIGEST 的"8 槽 &7"修正为 4KB 块位图**（&7 是字内位偏移运算）。
+- create 0x1409184d0 = 未开状态初始化（"ShadowBackendFile is not open" 前置语义）。

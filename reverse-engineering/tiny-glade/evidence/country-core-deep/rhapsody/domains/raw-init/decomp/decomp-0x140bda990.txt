@@ -1,0 +1,27 @@
+
+undefined4 * FUN_140bda990(undefined4 *param_1,longlong param_2)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  char cVar3;
+  undefined4 *puVar4;
+  
+  uVar1 = *(undefined8 *)(param_2 + 0x18);
+  uVar2 = *(undefined8 *)(param_2 + 0x20);
+  cVar3 = FUN_140bd7250(uVar1,uVar2,&UNK_142b1188b,10);
+  if (cVar3 == '\0') {
+    cVar3 = FUN_140bd7250(uVar1,uVar2,&UNK_142b11895,0x1d);
+    if (cVar3 == '\0') {
+                    /* WARNING: Could not recover jumptable at 0x000140bda9fc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      puVar4 = (undefined4 *)
+               (*(code *)(&UNK_142b12544 +
+                         *(int *)(&UNK_142b12544 + (ulonglong)*(uint *)(param_2 + 0x58) * 4)))();
+      return puVar4;
+    }
+  }
+  *param_1 = 2;
+  return param_1;
+}
+

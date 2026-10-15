@@ -1,0 +1,65 @@
+0x1413fe800  mov	rax, rcx
+0x1413fe803  add	r8, -0x11
+0x1413fe807  cmp	r8, 9
+0x1413fe80b  ja	0x1413fe8eb
+0x1413fe811  lea	rcx, [rip + 0x185d288]   <<< const@0x142c5baa0 = 822d7afeee2d7afe4b2e7afe4b2e7afe  '�-z��-z�K.z�K.z�'
+0x1413fe818  movsxd	r8, dword ptr [rcx + r8*4]   <<< const@0x1413fe81c = 4901c841ffe0f30f6f020fb64a10660f  'I\x01�A���\x0fo\x02\x0f�J\x10f\x0f'
+0x1413fe81c  add	r8, rcx
+0x1413fe81f  jmp	r8
+0x1413fe822  movdqu	xmm0, xmmword ptr [rdx]   <<< const@0x1413fe826 = 0fb64a10660f6ec9660f7405cac68501  '\x0f�J\x10f\x0fn�f\x0ft\x05�ƅ\x01'
+0x1413fe826  movzx	ecx, byte ptr [rdx + 0x10]   <<< const@0x1413fe83a = a2965301660fdbc8660fd7c981f9ffff  '��S\x01f\x0f��f\x0f�Ɂ���'
+0x1413fe82a  movd	xmm1, ecx
+0x1413fe82e  pcmpeqb	xmm0, xmmword ptr [rip + 0x185c6ca]   <<< const@0x142c5af00 = 7472616e736c6174696f6e5f73746174  'translation_stat'
+0x1413fe836  pcmpeqb	xmm1, xmmword ptr [rip + 0x15396a2]   <<< const@0x142937ee0 = 65000000000000000000000000000000  'e'
+0x1413fe83e  pand	xmm1, xmm0
+0x1413fe842  pmovmskb	ecx, xmm1
+0x1413fe846  cmp	ecx, 0xffff
+0x1413fe84c  jne	0x1413fe8eb
+0x1413fe852  mov	byte ptr [rax + 1], 0   <<< const@0x1413fe857 = 0000c3f30f6f02f30f6f4a05660f740d  ''
+0x1413fe856  mov	byte ptr [rax], 0   <<< const@0x1413fe859 = c3f30f6f02f30f6f4a05660f740d45c6  '��\x0fo\x02�\x0foJ\x05f\x0ft\rE�'
+0x1413fe859  ret	
+0x1413fe85a  movdqu	xmm0, xmmword ptr [rdx]   <<< const@0x1413fe85e = f30f6f4a05660f740d45c68501660f74  '�\x0foJ\x05f\x0ft\rEƅ\x01f\x0ft'
+0x1413fe85e  movdqu	xmm1, xmmword ptr [rdx + 5]   <<< const@0x1413fe868 = c68501660f74054dc68501660fdbc166  'ƅ\x01f\x0ft\x05Mƅ\x01f\x0f��f'
+0x1413fe863  pcmpeqb	xmm1, xmmword ptr [rip + 0x185c645]   <<< const@0x142c5aeb0 = 616374696f6e5f7365745f76616c7565  'action_set_value'
+0x1413fe86b  pcmpeqb	xmm0, xmmword ptr [rip + 0x185c64d]   <<< const@0x142c5aec0 = 6d61696e5f616374696f6e5f7365745f  'main_action_set_'
+0x1413fe873  pand	xmm0, xmm1
+0x1413fe877  pmovmskb	edx, xmm0
+0x1413fe87b  lea	rcx, [rax + 1]   <<< const@0x1413fe880 = faffff0000746fc60104c60000c3f30f  '���'
+0x1413fe87f  cmp	edx, 0xffff
+0x1413fe885  je	0x1413fe8f6
+0x1413fe887  mov	byte ptr [rcx], 4   <<< const@0x1413fe88a = c60000c3f30f6f020fb74a10660f6ec9  '�'
+0x1413fe88a  mov	byte ptr [rax], 0   <<< const@0x1413fe88d = c3f30f6f020fb74a10660f6ec9660f74  '��\x0fo\x02\x0f�J\x10f\x0fn�f\x0ft'
+0x1413fe88d  ret	
+0x1413fe88e  movdqu	xmm0, xmmword ptr [rdx]   <<< const@0x1413fe892 = 0fb74a10660f6ec9660f74052ec68501  '\x0f�J\x10f\x0fn�f\x0ft\x05.ƅ\x01'
+0x1413fe892  movzx	ecx, word ptr [rdx + 0x10]   <<< const@0x1413fe8a6 = 76f25501660fdbc8660fd7c981f9ffff  'v�U\x01f\x0f��f\x0f�Ɂ���'
+0x1413fe896  movd	xmm1, ecx
+0x1413fe89a  pcmpeqb	xmm0, xmmword ptr [rip + 0x185c62e]   <<< const@0x142c5aed0 = 74696d655f64656c74615f7365636f6e  'time_delta_secon'
+0x1413fe8a2  pcmpeqb	xmm1, xmmword ptr [rip + 0x155f276]   <<< const@0x14295db20 = 64730000000000000000000000000000  'ds'
+0x1413fe8aa  pand	xmm1, xmm0
+0x1413fe8ae  pmovmskb	ecx, xmm1
+0x1413fe8b2  cmp	ecx, 0xffff
+0x1413fe8b8  jne	0x1413fe8eb
+0x1413fe8ba  mov	byte ptr [rax + 1], 2   <<< const@0x1413fe8bf = 0000c3f30f6f02f30f6f4a0a660f740d  ''
+0x1413fe8be  mov	byte ptr [rax], 0   <<< const@0x1413fe8c1 = c3f30f6f02f30f6f4a0a660f740d0dc6  '��\x0fo\x02�\x0foJ\nf\x0ft\r\r�'
+0x1413fe8c1  ret	
+0x1413fe8c2  movdqu	xmm0, xmmword ptr [rdx]   <<< const@0x1413fe8c6 = f30f6f4a0a660f740d0dc68501660f74  '�\x0foJ\nf\x0ft\r\rƅ\x01f\x0ft'
+0x1413fe8c6  movdqu	xmm1, xmmword ptr [rdx + 0xa]   <<< const@0x1413fe8d5 = 740515c68501660fdbc1660fd7c881f9  't\x05\x15ƅ\x01f\x0f��f\x0f�ȁ�'
+0x1413fe8cb  pcmpeqb	xmm1, xmmword ptr [rip + 0x185c60d]   <<< const@0x142c5aee0 = 6c697a65645f637572736f725f706f73  'lized_cursor_pos'
+0x1413fe8d3  pcmpeqb	xmm0, xmmword ptr [rip + 0x185c615]   <<< const@0x142c5aef0 = 707265765f6e6f726d616c697a65645f  'prev_normalized_'
+0x1413fe8db  pand	xmm0, xmm1
+0x1413fe8df  pmovmskb	ecx, xmm0
+0x1413fe8e3  cmp	ecx, 0xffff
+0x1413fe8e9  je	0x1413fe8fd
+0x1413fe8eb  lea	rcx, [rax + 1]   <<< const@0x1413fe8f0 = 0104c60000c3c60103c60000c3c64001  '\x01\x04�'
+0x1413fe8ef  mov	byte ptr [rcx], 4   <<< const@0x1413fe8f2 = c60000c3c60103c60000c3c6400101c6  '�'
+0x1413fe8f2  mov	byte ptr [rax], 0   <<< const@0x1413fe8f5 = c3c60103c60000c3c6400101c60000c3  '��\x01\x03�'
+0x1413fe8f5  ret	
+0x1413fe8f6  mov	byte ptr [rcx], 3   <<< const@0x1413fe8f9 = c60000c3c6400101c60000c3cccccccc  '�'
+0x1413fe8f9  mov	byte ptr [rax], 0   <<< const@0x1413fe8fc = c3c6400101c60000c3cccccccccccccc  '��@\x01\x01�'
+0x1413fe8fc  ret	
+0x1413fe8fd  mov	byte ptr [rax + 1], 1   <<< const@0x1413fe902 = 0000c3cccccccccccccccccccccc5657  ''
+0x1413fe901  mov	byte ptr [rax], 0   <<< const@0x1413fe904 = c3cccccccccccccccccccccc56575348  '������������VWSH'
+0x1413fe904  ret	
+0x1413fe905  int3	
+0x1413fe906  int3	
+0x1413fe907  int3	

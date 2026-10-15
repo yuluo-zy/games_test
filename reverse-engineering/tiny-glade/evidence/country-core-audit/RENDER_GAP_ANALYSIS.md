@@ -242,3 +242,20 @@ country-core 中与之重复的位置：
 - 依赖身份：`tracking/original-Cargo.lock`（有无 `source` 字段区分本地 crate 与 crates.io）、`FOUNDATION_BUSINESS_FUNCTIONS.md`、
   `SHARED_FOUNDATION_README.md`、`reconstruction/shared-foundation/`。
 - 各项 U 与 stub 的逐条来源：`evidence/country-core-audit/B_*.md`（共 20 份）。
+
+## 10. U 项闭合记录（2026-10-15 round3，逐条证据见 `evidence/country-core-deep/round3/RENDER-U-CLOSURE.md`）
+
+§5.2 / §5.4 各项状态（本文为分析快照，闭合以 round3 文档为准）：
+
+| §5.2/§5.4 项 | 状态 | 一句话结论 |
+|---|---|---|
+| 全局 `*0x14362c0d8` / `*0x14362c098` | **O 闭合** | `freeze_occlusion_culling` 调试开关（do_gui_debug 按钮绑定；门控 wall draw list pass2+gpu_generate_draw_lists）与进程级 demo 开关（main 写 0；门控 refraction_copy+refraction source+water/ice surface 链）；两名字分别经 uniform 哈希 `0x6d7707561ec0da2b` 与全游戏读取语义证实 |
+| CENTERED_PATH `*0x14362c308` | **O 闭合** | **写入者 = load_game 0x14146dc92**（`setge [rax]`，值=配置字段+0xc0 >= 0x1a，与楼梯开关 0x14362c011 同 cmp 共写）——render-gap"无写入者、恒向量路径"结论反转 |
+| 3 个只有 TypeId 的组件 | **O 闭合** | `0x66476a13…`=BackgroundTerrain、`0xa6c0fc01…`=DontReceiveContactShadows、`0x192600af…`=OverwriteRoughness（bundle component_ids 处理序 + rrc call 配对，128 位全对） |
+| shader_refactoring disc 6..=9 | **O 闭合** | 6/7 = 第二表 idx2/idx3-4 同一转移码（第一表入口 UB），5/8/9 = 指令中部死条目；不可达结论维持，reconstruction 注释应从 no-op 改"死变体" |
+| reset_indirect_args 0x1e0 暂存区 | **O 闭合** | `memcpy(staging, 0x142aaaa78, 0x1e0)`（24×20B DrawIndexedIndirectCommand index_count 初值表）——"无写入"判据不成立（漏 memcpy 调用），真实初始化 |
+| roof_tiles_gravity uniform `0x601a45ce43af912f` | **O 闭合** | 名字 = **`delta_seconds`**（fnv1a 吻合）；资源 = `GameTime`（TypeId 53 处证实），值 = delta_f32@+0x28，mode!=8 才写 |
+| TextureDesc::from(preset) 0xa59890 | **O 闭合** | 0..0x18 全映射表 O（尺寸/格式/用法链/key）；key = xxh3(预设名)，11/25 名字还原（brdf_lut/terrain_lighting/ShadowMap/water_mask/garden_mask/rocky_terrain/…）；0x19..0x1f 死变体 |
+| Flower03Ssbo NAME | **U 卡点** | SsboId `0xF78C9C2EB9E1F6FB` O；NAME 穷举（全二进制串/SPIR-V/HLSL/花名组合）无命中；同态 U：IvyFlowerSsbo/LilypadFlowerSsbo |
+| compute_path_masks 资源 E | **O 闭合** | = `Events<RecalculateHeightMapCmd>`（全 EXE 9 处命中）；"非空" = events_a/b 长度 |
+| grass 主题资源 | **O 闭合** | = `systems::mode_manager::AppMode`（34 处命中）；`GladeThemeId` 占位作废 |

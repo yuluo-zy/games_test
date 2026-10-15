@@ -1,2 +1,4 @@
-country_core::resources::walls::wall_path_segment::WallPathSegment::length_ws_2d::h76313f6eaba93535
-{"error":"No function at 0x141234AD0","error_type":"NotFound","database":"tg_a2_v2c1"}
+/* 手解（rne-read --hex），WallPathSegment::length_ws_2d（XY 平面逐段长度） */
+/* 同 length_ws 骨架但无 z 分量参与：0f14c3 unpcklps / 0f5cc3 subps（XY 差分）→ 0f59c0 平方和 → */
+/*   f30f51c3 sqrtss 逐段 → 累加；0f84ca000000 分支 + 48c1e002（×4 点步长，f32 点数组）*/
+/* 段长 = Σ|P[i+1]-P[i]| 仅 XY */

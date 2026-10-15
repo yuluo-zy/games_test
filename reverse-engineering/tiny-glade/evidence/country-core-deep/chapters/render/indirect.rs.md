@@ -25,6 +25,15 @@
 
 ## 派生胶水（0 项）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- **结构体语义**（O 步长证据）：`DrawIndexedIndirectCommand` 20B（`draw_indexed_indirect_raw` 步长 0x14）、`DrawIndirectCommand` 16B、`DispatchIndirectCommand` 12B —— 与 Vulkan ABI 对齐（I）。
+- **消费链**：
+  1. `reset_indirect_args` 的 0x1e0B 暂存区 = **24 × 20B `DrawIndexedIndirectCommand`，仅 `index_count` 非零**（round3 O：memcpy 静态表 0x142aaaa78，`[0x1b,0x12c,0x60,0x39,0x24,0x6,0x3c,0x6,0x30,0xae,0,0,0x10b,0x126c,0x42,0xb4,0xf,0x384,0x12,0x384,0x12,0x12,0x12,0x12]`）——初始化间接绘制命令；
+  2. `indirect_params` 四个真 SSBO（AtomicCounter 8B / DrawIndirect 0x10 / DispatchIndirect 0x80 / DrawIndexedIndirect 0x1e0，SsboId=xxh3(类型名)）经 AssetSsboLibrary 注册；
+  3. GPU 侧：nani/grass 的 `draw_indexed_indirect_count/raw` 消费这些命令（`DrawBuilder` 种类 7/8）。
+- 字段顺序不升级为 O 的原因：需对照着色器侧 `StructuredBuffer` 消费（WP1 nani cull）后才能定。
+
 ## 纠错/差异
 
 - 字段顺序按 Vulkan ABI（I）；若 WP1 以字节传 `ash::vk` 结构，字节序须与 `Vk*IndirectCommand`（20/16/12 B）一致——在对照着色器侧 `StructuredBuffer` 消费（WP1 nani cull）前，字段顺序不升级为 O。

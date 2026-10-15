@@ -23,3 +23,8 @@
 - 输出 48 字节 = 3 个 xmm 寄存器（每行 16 字节），行写在 +0x00/+0x10/+0x20；平移 y 在 +0x28。
 - 均为 Ghidra NotFound 的小函数（≤0x50 字节），已用原字节手解并落盘证据记录。
 - 交叉域：下游为 render loop 实例变换上传；与 country-core-render 的 transform 上传合同对照。
+
+## 实现方式（算法级）
+
+- 输出 48B = 3 行 × 16B（行写 +0x00/+0x10/+0x20）；`add_y`（0x14089d550）= `addss [rcx+0x28]` —— 平移 y@+0x28。
+- `from_cols`（0x14089d500）：Mat4 列重排（shufps/unpcklpd 16 f32 → 3×vec4）；`from_mat3_translation`（0x14089d4d0）：movups/shuffle 重排；`From<Mat4>`（0x14089d560）：3 行×4 列逐行打包。

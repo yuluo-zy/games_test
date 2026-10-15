@@ -15,6 +15,13 @@
 
 - `startup`（行 33）— 启动时加载 logo 纹理（生命周期控制）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+- `LogoOverlayPlugin::build`（0x1408a5f40）：插件注册（sub rsp 0x900 框架；手解 `48 89 d1 e9…` thunk 型；d_main §2 判定 build = 空，函数体仅 ret 区）。
+- `render_logo_overlay`（0x1408a5f50）：RasterPass::new + DrawPacket::new + read_texture（`LogoAnimation` 纹理，+0/+8/+0x10 f32 时间/透明度，d_cb_a env37 同源）+ set_depth_test_enable/blend。
+- 着色器 `/logo_overlay.raster.hlsl`；`startup`（行 33）启动时加载 logo 纹理。
+- 帧序：加载图实例（compile 0x1401647b0 内 vermeer_render_from_target/mei_pass/loading_screen_pass 链）+ 世界图闭包尾部 `logo_overlay`（CALL-CHAIN §2.2 0x148a8 区）。
+
 ## 关键事实
 
 - shader：`/logo_overlay.raster.hlsl`（feedback_report_bg 复用）。

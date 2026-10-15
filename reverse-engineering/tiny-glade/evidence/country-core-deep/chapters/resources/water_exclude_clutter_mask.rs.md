@@ -15,3 +15,7 @@
 ## 派生胶水
 
 `add_new`/`get_rg_buffer`/`write_storage_buffer` 等泛型胶水（不计独立业务）
+
+## 实现方式（算法级）
+
+无独立业务过程（name-only）。WaterExcludeClutterMaskSsbo = 水域 shoreline .y>0.2 位打包回读（水域内不摆 clutter/装饰物）。字段布局 U。

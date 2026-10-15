@@ -28,6 +28,32 @@
 | country_core::resources::audio_resources::impl$10::set_parameter | 0x140a57670 | 629 | AudioInstance::set_parameter(&str,f32)（PDB 名 pause 错位）：set_parameter_by_name；失败→全局报告槽 0x143634d60 | O | audio-misc\decomp\decomp-0x140a57670.txt |
 | country_core::resources::audio_resources::impl$10::set_position | 0x140a57da0 | 642 | 判别==1→set_3d_attributes：position=入参，forward=(0,0,-1)/up=(0,1,0)/velocity=0(常量 0x142ad0460)；失败 anyhow "Failed to set 3d attributes for FMOD event "+报告槽 0x143634d80/d78 | O | audio-misc\decomp\decomp-0x140a57da0.txt |
 
+## 实现方式（算法级）（O，DIGEST §2.1 + ALGORITHMS §2.1）
+
+**AudioInstance 判别 u64@+0**：`0=Disabled / 1=Active / 2=Err(anyhow)`。Active 布局：
+`{disc@0, *mut FMOD EventInstance@+8（8B 句柄）, name String cap-first@+0x10{cap,ptr,len},
+state u8@+0x28（初值 2）}`（0x140a54440 写序 O）。（O）
+- `start @0x140a57240`：`[+0]==1` → EventInstance::start（0x1414372d0）；Err 判别
+  `0x8000000000000004`（=niche Ok）。（O）
+- `start_if_not_playing @0x140a57300`：`[+0]&1` → get_playback_state → 位掩码 **0xb**
+  （state∈{0,1,3}=Playing/Sustaining/Starting 跳过）→ 否则 start。（O）
+- `stop @0x140a57470`：`[+0]==1` → `stop(0)`=STOP_IMMEDIATE（0x141437440，r8d=0）。`stop_on_drop
+  @0x140a57540`：Drop 时 [+0]==1→stop。（O）
+- `set_position @0x140a57da0`：set_3d_attributes 常量 forward(0,0,-1)/up(0,1,0)/velocity 0
+  （0x142ad0460）；失败 anyhow `"Failed to set 3d attributes for FMOD event "`。（O）
+- `set_parameter @0x140a57670`（PDB 名 pause 错位）：`set_parameter_by_name(&str, f32)`；
+  失败 → **全局报告注册表**（槽 0x143634d60/d58）。`AudioCoreInner::set_parameter @0x140a53db0`
+  同机制（全局参数）。锁失败 panic `"Mutex was poisonned"`（0x142ad2a48，双 n）。（O）
+- `AudioCoreInner::update @0x140a53a00`（PDB 名 DelayedBankLoader::load 错位）：听者三断言
+  → set_listener_attributes(listener=0) → Studio::update，失败 log `"FMOD update error: "`。（O）
+- `set_vca_volume @0x140a54810`（PDB 名 instantiate_audio::closure$0 错位）：get_vca →
+  set_volume → unwrap panic。（O）
+- `Bank::load @0x140a53640`：`loaded[+0]&1` 早退；`Studio::load_bank_file(path@+0x10, flags=0)`；
+  **失败 = panic**（fmt `"Error loading FMOD bank file: {path} {err}"` 0x142ad25b0）；成功
+  loaded=1 + 句柄@+8。`load_sample_data @0x140a53870`：log `"Loading sample data of FMOD bank "`。（O）
+- `AudioSamplesLoadedPromise::recv @0x140a57100`：crossbeam 三通道（array/list/zero）
+  `recv_timeout(1s)`；超时丢弃 payload 正常返回；通道断开 → unwrap panic（audio_resources.rs）。（O）
+
 ## 内联/无独立符号函数（名称仍揭示意图；逻辑并入调用点）
 
 - `country_core::resources::audio_resources::DelayedBankLoader::load`（行 64）— IO/解析

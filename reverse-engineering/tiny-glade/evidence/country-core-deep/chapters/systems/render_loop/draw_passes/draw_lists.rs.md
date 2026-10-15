@@ -25,6 +25,23 @@
 
 `closure`、`default`、`fmt` 等 61 项（`DrawData::new*` 闭包族 closure$0..closure$60 行 297–1313：按材质族绑定 `bind_common`/`bind_wall_color_customization`/`bind_brick_erase_highlight`/`bind_stone_floor_textures`/`bind_wooden_floor_textures` 等）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. `build_draw_lists`（0x1409ba540，14103B）—— 分发表（d_gap §1 完整解码）
+- **查询**（O，PDB QueryState::new 实例名）：`(Entity, &Handle<Vao>, &Handle<RasterShaderProgram>, &Transform, Option<&DrawTopology>, Option<&DesignatedRenderPass>, Option<&UiPass>, Option<&WireframePass>, Option<&DontCastShadow>, Option<&OcclusionCulled>)`；各 Option 存在性 = 栈上 `{ptr, matches}` 对。
+- **着色器名**：`AssetShaderLibrary::debug_raster_get_name`，None → `expect("Oops! This shader handle doesn't have a named shader")`。
+- **分派**：编译器展开的 `match name`（按长度分支 + 8B movabs 异或 / 16B pcmpeqb 窗口 / bcmp）。**87 个名字 / 85 个叶子**（`distant_billboard`/`tree_billboard`、`ice_plane`/`water_plane` 各共用一个叶子），用 x86 子集模拟器（tools/country-core-audit/dg/emu.py）逐名验证全部命中。叶子写 `[rbp+0x380]` kind dword、`[rbp+0x384]` variant dword、`[rbp+0x388]` 回调指针、`[rbp+0x390]` 排序键 i32。**未命中 → `panic!("{name} doesn't have a draw function")`**（draw_lists.rs:1321:21）。
+- **目标列表**（0x1409bc717..0x1409bcd14）：`DesignatedRenderPass(n)` → `[n]`（无阴影、无 OC/2）；`UiPass` → `[19]`；`WireframePass` → `[20]`；否则按 kind/variant 选主列表，`!DontCastShadow` 追加 `[0]`（kind 4 无阴影），`OcclusionCulled` 追加 OC/2 列表。21 列表下标：0 SHADOW、1..6 main、7..11 OC/2、12/13 Late、14 REFRACTION、15 WATER_SURFACE、16 PRE_TAA、17 POST_TAA、18 LOADING、19 UI、20 WIREFRAME。
+- **模板参考值**（跳转表 0x142abf3f0）：kind 0/4 → None；1/2 → Some(variant)；3 → Some(variant|0x80)；5 → Some(4)；variant = MaterialId 数值。
+- **回调**：82 个不同函数指针（24 个 draw_shaders 直接函数 + 58 个 closure_env$N）；d_cb_a 恢复 35 个、d_cb_b 恢复 34 个（详见两 B 报告；每个回调 = 资源读取 → bind_common/额外绑定 → state 位改写 → draw/nani_draw/discard 终结）。
+
+### 2. `DrawLists::sort`（0x1409ba4b0）
+21 个 `{ptr@+8,len@+0x10}`（0x18 步进至 0x1f8）；len>1 时 **len<0x15 走小表插入排序（FUN_1413396b0）否则 std `sort_by_key`（FUN_140b4c720）**（driftsort，稳定，键 = i32@元素+0x60，见 draw_list 章）。
+- **帧序 R2**：`DrawLists::new → build_draw_lists → DrawLists::sort`（render R2，CALL-CHAIN §2.1）。
+
+### 3. 差异（待中央裁决）
+`DrawLists::new`（0x1409ba340）机器码 = 小结构初始化（`{cap=0,ptr=self+0x10,len=0}`、+0x20=1、+0x38=1），与 reconstruction `default(21 空 Vec)` 不符——疑 PDB 名错位（PLAYBOOK 事实 7），render-loop DIGEST §5 同列。
+
 ## 关键事实
 
 - 图层索引（wp5 O；reconstruction 行 90–104）：POST_TAA=17、LOADING_SCREEN=18、UI=19、WIREFRAME=20，共 21 层。

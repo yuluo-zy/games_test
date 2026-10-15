@@ -18,3 +18,9 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`default` 等 3 项
+
+## 实现方式（算法级）
+
+`ScheduledTerrainReadback {counter AtomicUsize@0, flag bool@8, delays Vec<u32>}`：
+- `on_terrain_modified`（0xaabdc0）= `LOCK inc [rcx]; ret`（修改计数原子自增）。
+- `delayed_terrain_changed_msg`（0xaabdd0）：delays 逐项递减 → 0：FrozenMap 取 SSBO（尺寸断言 0x3a/0x40）→ cpu_readback → `copy_from_gpu×2`（权威+视觉）→ 压实完成项；flag 置位 push(2)（延迟 2 帧）发 OnTerrainChange。

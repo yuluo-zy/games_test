@@ -13,3 +13,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 1 项
+
+## 实现方式（算法级）
+
+`terrain_hover_idx`（0xaff720）：AppMode 位掩码 0x421 门 → MouseTerrainRaycastSsbo（名 0x6c=108 字符）映射读 `id=*(i32*)(buf+0x10)`（-1 哨兵）；水位采样≤0 / 光标无效 / 距离≤0.5 不更新 → 写 HoveredTerrainStrokeId{tag=1, id}。

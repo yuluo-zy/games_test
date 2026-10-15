@@ -38,3 +38,11 @@ movdqa xmm0,[rcx]; pmovmskb r9d,xmm0; not r9d
 mov [rax+0x18],r9w; mov [rax],rcx; add rcx,0x10; mov [rax+8],rcx; mov [rax+0x10],r8
 ```
 16 字节条目同时充当 ctrl/占用位（高比特），符合树存储稀疏表设计。
+
+## 实现方式（算法级）
+
+- `iter`（0x140a1b100）：迭代器 `{cur@+0, next@+8, end@+0x10, occupied@+0x18}`；16B 槽取高位（pmovmskb+NOT）得占用位图；cur/next 步进 0x10。
+- `get`（0x140a38460）：FUN_1405b0d70 哈希 → 桶探测（16B key 逐字节比较位图）→ 命中返回 entry+8 值指针；未命中/空表返回 0。
+- `insert`（0x140a38560）：`max(+0x30, id+1)` 更新 + FUN_140eec970 句柄（高 32 位 0 → None 哨兵）。
+- `remove`（0x140a385a0）：FUN_1405b0d70(self+0x20) + FUN_140b76f90 移除；返回被删 Tree。
+- `next_index`（0x140a38600）：`mov rax,[rcx+0x30]; lea rdx,[rax+1]; mov [rcx+0x30],rdx` —— 自增返旧值。

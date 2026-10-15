@@ -1,10 +1,24 @@
 # utils/debug_viz.rs
 
-> 文件作用：**调试可视化图元**（DebugSphere / DebugColor / DebugRectangle3d / DebugRectangle2d /
-> DebugLine）。builder 结构 + `show()` 把图元构造成 box 结构（0x48/0x50 B，含 fmt `Arguments`
-> 数据表）并经 `FUN_14146c880`（Commands 族写入）排队渲染（非 bevy Gizmos，是游戏自有命令队列）。
-> 证据：DebugRectangle3d::show 4 角点+点变换+边长、DebugLine::show 折线总长、DebugSphere::new 布局
-> （原字节：radius@0x10=0.1f, center@0x14, alpha@0x20）。
+> 文件作用：**调试可视化图元（DebugSphere / DebugColor / DebugRectangle3d / DebugRectangle2d /
+> DebugLine）**。builder 结构 + `show()` 把图元构造成 box 结构（0x48/0x50 B，含 fmt `Arguments`
+> 数据表）并经 `FUN_14146c880`（Commands 族写入）排队渲染——**非 bevy Gizmos，是游戏自有
+> 命令队列**。算法级：show 全为"几何端点计算 → box 打包 → fmt 渲染 → 队列写"四步；与共享
+> `utils` 无重叠（共享 geometry 无调试图元族）。
+
+## 核心算法
+
+```
+DebugSphere::new:   {tag/type@0, radius=0.1f@0x10, center Vec3@0x14, alpha=1.0f@0x20}（原字节）
+  .color/.radius/.solid: 字段 setter（短函数）
+  .show: FUN_14146c880 排队（box + fmt Arguments）
+DebugRectangle3d::show(center, size, rot?):
+  4 角点 = 中心 ± 半尺寸经 FUN_140c99600（角点展开）+ FUN_140c9cde0（点变换，rotation 应用）
+  边长@box+0x3c；默认线宽 1.0；dashed_line 开关
+DebugRectangle2d::show: 4 f32 角点（FUN_140c991f0，2D 版本）+ box 0x48 + fmt
+DebugLine::show(points): 折线总长 = 逐段 sqrt 累加（0x50B box）+ 判别跳表 UNK_142ae731c
+  （按段数选 box 形状）+ FUN_1412f7540（fmt）+ FUN_14146c880（排队）
+```
 
 函数总计 29：业务 17 / 内联无独立符号 4 / 派生胶水 8
 
@@ -39,4 +53,5 @@
 
 ## 派生胶水（8 项：closure、fmt 等）
 
-- `impl$6::fmt`（0x140b05b60）/ `impl$7::fmt`（0x140b05c70）— Debug fmt 胶水 **O**
+- `impl$6::fmt`（0x140b05b60）/ `impl$7::fmt`（0x140b05c70）— Debug fmt 胶水 **O**；fmt 经
+  `FUN_140d79f90`（fmt::format，与 load_json 共用）渲染 box 内 Arguments。

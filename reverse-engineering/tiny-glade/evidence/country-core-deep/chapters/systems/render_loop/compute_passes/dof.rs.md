@@ -20,6 +20,19 @@
 
 `closure`、`next` 等 2 项（AsComputeShaderSource 实现：FullResDof/HalfResDof 等）
 
+## 实现方式（算法级）（2026-10-15 render 域算法级深挖）
+
+### 1. `dof_prepare`（0x140a5a020，W49）
+处理链（O，B_c1 §2）：读 `DofAutofocusSsbo` → 建 `CoC`（fmt 0x4c）与 `CoC tiles`（`div_up_extent([8,8,1])`，fmt 0x53）→ "DoF prepare" 绑定序 → `dispatch_2d(depth extent)`。
+
+### 2. `calc_dof`（0x140a5a570，W51）—— fused/全分辨率/多分辨率三分支
+- **全局开关 `*0x14362c080`**（O）选路径；`fused` 单 pass（`/dof/fused.cs.hlsl`）。
+- **multires 9 个 pass 顺序 + 绑定 + 间接偏移**（O）：tile 偏移 = **独占前缀和**；间接偏移 0x60/0x40/0x50/0x30（全分辨率三项 `0x10*i`，I）；RG 缓冲名/大小。
+- **fullres**（`/dof/fullres.cs.hlsl`）直接 dispatch。
+- `IndirectArgsType` 7 个变体（B_c1 §4 补全）。
+- 5 个 `AsComputeShaderSource`（`FullResAllLod0/Lod1`、`FullRes`、`HalfRes`、`HalfResAll`）各带 `quality: u32`；`source_hash = calculate_hash(&("uri:entry", &self))`；define `PERM_quality`。纠错：impl$3=lod0、$7=lod1、$11=fullres。
+- 门控：W50/W51 由 `param_6[0xa9+(res_type==0x13?1:0)] != 0`（render_world 章）。
+
 ## 关键事实
 
 - W50/W51 由 `param_6[0xa9+(res_type==0x13?1:0)] != 0` 门控（frame-wiring §3）。

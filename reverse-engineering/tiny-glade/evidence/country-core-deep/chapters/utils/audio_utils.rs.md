@@ -1,9 +1,23 @@
 # utils/audio_utils.rs
 
-> 文件作用：**循环音效播放包装**。`AudioLoop` 是**自包含游标结构（非 Entity 非 Resource，≈0x38 B）**，
-> 挂在 `AudioCore` resource（resources/audio_resources.rs）下：48 B entries Vec + Instant 计时 +
-> 游标索引，驱动 **kira** `set_parameter("loop")`；失败 `warn!("Failed to set parameter named …")`。
-> 证据：stop/start_if_not_playing 计时门控 + 游标遍历、current 越界 panic、instantiate_loop 构造。
+> 文件作用：**循环音效播放包装（游戏自有）**。`AudioLoop` 是**自包含游标结构（非 Entity 非
+> Resource，≈0x38 B）**，挂在 `AudioCore` resource（resources/audio_resources.rs）下：
+> `{ entries: Vec<AudioLoopEntry 48B> (ptr@+0x08, len@+0x10), start: Instant @+0x18,
+> unset 哨兵 1e9 @+0x20, cursor @+0x28, elapsed 阈值 @+0x30, flags @+0x34/+0x35/+0x36 }`。
+> 驱动 **kira** `set_parameter("loop")`；失败 `warn!("Failed to set parameter named …")`
+> （@0x140a57670 编译助手，串 @0x142ad2cc8）。
+
+## 核心算法
+
+```
+start_if_not_playing():  幂等启动；重置 1e9 哨兵；flag@+0x34 早退；游标遍历 48 B entries
+  检查 playing flag；kira 增益（_UNK_142925904）；跳过已在播
+stop():  计时门控：首次调用记录 Instant::now()（哨兵 1e9），否则 elapsed ≤ 阈值(1e9ns)
+  早退；遍历 entries 按 flag 停播；kira set_parameter("loop", 0)
+current():  &entries[cursor]（cursor*0x30 + base@+8），越界 panic（audio_utils.rs）
+instantiate_loop(desc):  AudioLoopDesc{path: String} → entries Vec；失败返 None 哨兵；
+  内部 unwrap panic
+```
 
 函数总计 8：业务 4 / 内联无独立符号 3 / 派生胶水 1
 

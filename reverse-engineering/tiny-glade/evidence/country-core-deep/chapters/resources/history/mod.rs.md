@@ -106,7 +106,7 @@
 - `country_core::resources::history::History::edit_chain_mut`（行 578）— edit_chain 可变访问器（I；内联）
 - `country_core::resources::history::impl$15::current_snapshot::closure$0`（行 592）— 二分比较闭包（chain_index 键）（I；内联进 0x140a84650）
 - `country_core::resources::history::impl$15::set_current_snapshot::closure$0`（行 600）— 二分比较闭包（chain_index 键）（I；内联进 0x140a84650）
-- `country_core::resources::history::impl$15::iter_resolved_snapshots::closure$0`（行 616）— filter_map 谓词（TryFrom 0x140a84260 ok 过滤）（I；内联进 0x140a84a40）
+- `country_core::resources::history::impl$15::iter_resolved_snapshots::closure$0`（行 616）— filter_map 谓词（TryFrom 0x140a84260 ok 过滤）（I；round3 round2 修正：不内联进 0x140a84a40——该址 16B 仅为切片迭代器构造 mov rax,[rcx+0x20]; mov rdx,[rcx+0x28]; shl rdx,4; add rdx,rax; ret，谓词调用在消费点）
 - `country_core::resources::history::History::closest_snapshot`（行 619）— 最近快照二分辅助（非公开方法）（I；内联；CLOSURE §2）
 - `country_core::resources::history::History::remove_snapshot_record`（行 640）— 移除快照记录（无独立符号=内联；sysres 名址错位）（U；CLOSURE §1）
 - `country_core::resources::history::impl$15::remove_snapshot_record::closure$0`（行 642）— 移除谓词闭包（随宿主内联，无独立符号）（U；CLOSURE §1）
@@ -120,3 +120,44 @@
 - `country_core::resources::history::impl$16::deserialize::impl$0::expecting`（行 1087）— MultiEdit::deserialize（serde 巨函数；与 visit_seq/visit_map 合并区）（O；decomp-0x140b36460/0x140b365e0/0x140b36840.txt）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖；全文见 history/ALGORITHMS.md）
+
+- **History::add 0x140a84ec0**（3 参：`(&mut self, edit: &HistoryEdit 24B, file: &'static str)`）：
+  1) `pending(+0x30) < 0` → panic "Tried writing {edit:?}…"（@0x142ad8250，参数 = EditType Debug::fmt 0x140a842c0 + track-caller 文件）；2) 桶空且 `cursor - len < -2` →
+  先 `nuke_future_states 0x140a84c50` 再重建 pending 桶（64B 装饰表 Arc{1,1}+模板指针
+  0x142af1470..0x142af1488+全局序列 FUN_1400d9b20；96B 楼梯表 Arc{1,1}+两空 Vec）；
+  3) **tag 7（墙）校验**：records = 组数组（16B {入口指针数组, 组数}），逐条目 niche
+  解码（`载荷+0x10 - 0x7fffffffffffffff`）：变体 0 → 断言 +0x100 f32 > +0xfc f32
+  （否则 panic "Slice start_u must be smaller than end_u. Otherwise an invalid curve
+  will be created!" @0x142ad8170）；变体 1/2 → 断言 +0x18 >= 0（panic "None is not
+  allowed in `CreateWall`/`DeleteWall` history command" @0x142ad81b8/0x142ad8200）；
+  4) push 24B {tag, records, count} 进 pending.edits（元素 0x18）。
+- **nuke_future_states 0x140a84c50**：`cursor == len-1` → 仅重随机 nonce；`cursor < 0`
+  → 全重置（drop edit_chain + 重建 {cap=0,ptr=8,len=0, pending=i64::MIN, cursor=-1,
+  tail=0}）；否则 truncate 至 cursor+1（逐个 drop 尾元素）+ `count(+0x58)=min(count,len)`
+  + `FUN_1412f5320` = snapshots.retain(chain_index<=cursor)；末尾**无条件**
+  `nonce(+0x60) = fastrand u64`。
+- **insert_starting_edit 0x140a844f0**：断言 cursor>=-1 → cursor+1 → edit_chain 首部
+  插入（`func_0x000142923c10` memmove 右移 0x28）→ nonce=fastrand、count=0。
+- **finish_input_recording 0x140a86730**：pending 先置 i64::MIN（原值 <0 → panic
+  "Called finish_input_recording when history recording was already Finished"
+  @0x142ad84a8）；MultiEdit::is_empty 四条件（edits.len==0 && 装饰表+0x28==0 &&
+  楼梯表+0x40==0 && +0x58==0）→ drop 返回 0；非空 → push 0x28B 上链、cursor+1
+  （断言 >=-1）、nonce=fastrand；仅当 cursor == len-1 时快照追加（48B 记录
+  {i64::MIN 待定 id, 1, 计数器}，否则 panic @0x142ad8440）。
+- **start_input_recording 0x140a86270**：谓词 `func_0x000140a825e0(mode, 0xd)` =
+  `app_mode != Replay(0xd)`，失败 → panic "assertion failed: **app_mode !=
+  AppMode::Replay"（@0x142ad83f8）；建新桶。**try_start 0x140a86510**：谓词通过且
+  pending < 0 → 建桶返回 1，否则 0。
+- **current_snapshot 0x140a84650**：snapshots（+0x20/+0x28，元素 16B {Arc, idx@+8}）
+  partition_point(idx < cursor) 二分 + **距离平局**（|prev-idx| vs |next-idx|，平局取
+  后者）；Arc clone 后 **idx == cursor 才返回 Some**。**closest_resolved_snapshot
+  0x140a84a50**：先 filter_map（TryFrom 0x140a84260 谓词）收集，再同一二分+平局，
+  不 clone（借用）。**set_current_snapshot 0x140a84760**：二分后若存在 idx==cursor
+  快照 → panic（断言不替换，@0x142ad8050 mod.rs:0x33）；否则在 partition_point 处
+  memmove 右移 0x10 有序插入 {Arc, cursor}。
+- **finish_potential_mutation 0x140a86980**：was_active → 清空 snapshots（逐记录
+  LOCK dec Arc，归零 drop 0x1402e5d80）+ nonce=fastrand；token 未消费 panic
+  "History was mutated, but wasn't told about it"（@0x142a98ad8）由 Drop 守卫触发，
+  panic-in-progress 门控 `*0x14362c420`。
+

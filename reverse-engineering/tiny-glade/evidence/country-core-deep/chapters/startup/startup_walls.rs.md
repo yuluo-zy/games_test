@@ -18,3 +18,13 @@
 ## 派生胶水
 
 - 0 项： 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **glade_startup_walls 0x140a92670（O）**：
+  1. 2x load_shader_into_library<&str>（FUN_140b3fe40）：'/wall/wall_brick_lod0.raster.hlsl' +
+     'wall_brick_lod0'、'/wall/wall_brick_lod1.raster.hlsl' + 'wall_brick_lod1'（串 0x142ada29e 区）
+  2. 2x load_mesh_into_library（FUN_140b1aca0）：'half_cube'（0x142ada295）/'brick half cube'（0x142ada2fe）
+  3. **7x 顶点/索引构造调用**（FUN_1428a9a60/FUN_141564d30/FUN_140d146a0 三件套 x7 =
+     create_half_cube_mesh 内联：字节常量 0x01–0x07 三角索引族）
+- 消费：wall_brick LOD shader → 墙渲染 LOD（systems/wall 域）。

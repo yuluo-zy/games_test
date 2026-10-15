@@ -57,3 +57,16 @@
 - `Roof` 0x58 字节：`+8` tag（0=圆/1=矩）、`+0xc/+0x10` 圆 frame（cos/sin）、`+0x14/+0x18` 圆 center、`+0x1c/+0x20` 矩 dims、`+0x24/+0x28` tip_offset_01、`+0x2c` profile、`+0x30` height、`+0x34` ridge、`+0x38` eave、`+0x3c` ridge_dir bit、`+0x3d` rim、`+0x4c` floor 高、`+0x50` 动画初态、`+0x54` tag 字节。
 - `RoofShapeParams` 28 字节块 = `{tip[2]@0, profile@8, height@12, ridge@16, eave@20, ridge_dir@24}`（parameters.rs 已建立 B 序列化映射）。
 - 风格枚举 serde 变体串：`"Matching"`（0x676e69686374614d）与 `"Override"`（0x656469727265764f），均 8 字节。
+
+## 实现方式（算法级）
+
+完整算法见 `roofs-rt/ALGORITHMS.md` §6.2。要点：
+
+### roof_uv_and_point_at_ws_pos（0x1408e4090）全管线（collider 注册表接线）
+1. 注册表（RaycastWorld+0x48 非空守卫）→ FUN_1405b0d70(world+0x50) 哈希 + 双哈希探测（16B 组字节比较 + 占用掩码 + 第二哈希序列）；
+2. 命中 → 值 {slot u8 区, index u32} → 竞技场注册表（world+0x3e18，同探测）→ slot 字节 != 0x11 → `func_0x000140b93940(world + slot·0x390 + 0x20, index, gen)`（17 槽 0x390 布局复核）；
+3. 有效性断言（0x142aa3d50/0x142aa3d98 = world.rs 一致性串）；读命中视图 {mesh ptr@+0x34/+0x3c/+0x44, f32@+0x4c} → FUN_140c91b60 装配网格视图 + FUN_140c9cde0 由 ws_pos 建 ray；
+4. shape vtable [view+0x38] 虚调 cast_ray_and_get_normal → 命中 → FUN_1408ce4a0（barycentric 插值）→ 输出 {found, uv@+0x4, point@+0xc}；未命中 → 0x301 标记。
+
+### roof_uv_at_ws_pos（0x1408e4040）
+包 roof_uv_and_point_at_ws_pos 返回 {found, uv}。

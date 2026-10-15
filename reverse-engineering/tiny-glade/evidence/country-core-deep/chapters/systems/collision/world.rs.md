@@ -78,7 +78,7 @@
 | `country_core::systems::collision::world::upsert_collider_entry<bevy_ecs::entity::Entity,tuple$<glam::f32::vec3::Vec3,glam::f32::sse2::quat::Quat> >` | 0x140b40b50 | 2169 | 系统:写入 | O：upsert_collider_entry——同 handle+同几何→未变(status2)；几何变→dispose+新建 rapier collider（user_data 编码 handle）+pipeline update；panic 一致性断言 | collision-eco\decomp\decomp-0x140b40b50.txt |
 | `country_core::systems::collision::world::dispose_collider_mesh_instance` | 0x1408d9590 | 2299 | 释放 | O：dispose_collider_mesh_instance——回收 collider 网格实例（v2 名） | collision-eco\decomp\decomp-0x1408d9590.txt |
 | `country_core::systems::collision::world::xz_flatten_aabb` | 0x1408d98a0 | 2335 | 几何/碰撞 | O：xz_flatten_aabb——输出 **{min.x,min.z,max.x,max.z}**（4×f32：in[0]/in[8]/in[0xc]/in[0x14]；review-audit 纠错：非 {min.x,min.y,max.y}） | collision-eco\decomp\decomp-0x1408d98a0.txt |
-| `country_core::systems::collision::world::impl$41::into_transformed_shape` | 0x14155d340 | 2486 | 几何/碰撞 | U：v1 清单误标 xz_flatten_aabb；真实函数名待定（v2 无此符号） | collision-eco\decomp\decomp-0x14155d340.txt |
+| `country_core::systems::collision::world::impl$41::into_transformed_shape` | 0x14155d340 | 2486 | 几何/碰撞 | O：**impl$41::into_transformed_shape**（PDB 名；v1 误标 xz_flatten_aabb 排除——真 xz_flatten_aabb=0x1408d98a0）——**朝向盒 collider 变换**（0x28B=16+12+12）：Quat@+0x00=from_rotation_arc(x 轴→足迹方向(p0,0,p1)，FUN_140d4ae30)，Vec3 **中心**@+0x10={base_x,base_y,(min+max)/2}，Vec3 **半尺寸**@+0x1c={footprint_x/2,footprint_y/2,(max-min)/2}（缩放常量 0.5）；输入 {dir Vec2@+0,base Vec2@+8,size Vec2@+0x10,竖直{min@+0x18,max@+0x1c}}；机器码逐字节核（movsd 成对缩放 0x3f000000）；helper 手解（c98660={p0x10,p0x14,p1c-p18}、c9cde0={in,in+4,z}、c9cdc0=flatten{in0,0,in1}） | collision-eco\decomp\decomp-0x14155d340.txt + decomp-0x140d4ae30.txt, round3\SESSION-RENDER-U-CLOSURE.md（机器码核 + helper 手解） |
 | `country_core::systems::collision::world::impl$42::into_transformed_shape` | 0x1408d98c0 | 2505 | 转换 | O：into_transformed_shape 族之一（parry 形状变换） | collision-eco\decomp\decomp-0x1408d98c0.txt |
 | `country_core::systems::collision::world::impl$43::into_transformed_shape` | 0x1408d9960 | 2520 | 转换 | O：as_collider_shape——0x30B 拷贝（parry 形状转换） | collision-eco\decomp\decomp-0x1408d9960.txt |
 | `country_core::systems::collision::world::impl$45::into_transformed_shape` | 0x140b26d20 | 2550 | 转换 | O：into_transformed_shape 族 | collision-eco\decomp\decomp-0x140b26d20.txt |
@@ -126,3 +126,29 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `Global> > >`、`clone`、`closure`、`closure_env`、`cmp`、`default`、`eq`、`fmt`、`hash`、`index`、`index_mut`、`partial_cmp` 等 54 项
+
+## 实现方式（算法级）
+
+完整逐函数算法见 `collision-eco/ALGORITHMS.md`。要点：
+
+### flush_colliders（0x1408cd5c0）处理链
+1. puffin scope（模块串 `country_core::systems::collision::world`）；
+2. 逐 17 槽（步长 0x390）：脏标志 `slot+0x388` 非零 →
+   a. memcpy 0x200B 脏瓦片缓冲（`slot+0x188`）到局部（drain）
+   b. memset 清零 0x200B
+   c. `FUN_141453350(slot+0x150 publisher, 瓦片)` = tabloid **publish<DirtyTiles>**（每槽独立 publisher）
+   d. 清脏标志
+   e. 帧计数 `0x14362c3a8 > 4` 时 `log::debug!("Flushing colliders of {slot}")`
+   f. `QueryPipeline::update(slot+0x30, slot+0x00 ColliderSet)` —— 仅脏槽
+
+### 查询族结果布局（机器码复核）
+- **Rapier::raycast**（0x1408cdc60）：17 槽 mask 遍历 + `cast_ray_and_get_normal`（pipeline 全局 0x142aa3858）；**后命中覆盖先命中**（不比较距离）；命中 → 竞技场回查 {index,gen}（entry 0x28B：{handle 24B@+0, 命中视图 ptr@+0x18, gen|1@+0x20, index@+0x24}）→ `rapier_hit_to_raycast_world_result`（0x1408ce4a0）。
+- **rapier_hit_to_raycast_world_result 算法**：命中点 = origin+toi·dir；视图无法线 → 几何法线直写（marker=0）；feature≠2（非三角）→ 只写 marker@+0x34=2；三角 → 3 索引（stride 0xc，越界 panic）+ 叉积式重心坐标 → 法线/uv 按重心插值（视图 {indices ptr@+0x10/len@+0x18, normals ptr@+0x40/len@+0x48, uvs ptr@+0x50/len@+0x58, normals 存在检查@+0x28}）；uv 存在 → marker=1，否则 0。**marker 三值：0=命中无 uv、1=命中带 uv、2=无命中**。
+- **Rapier::raycast_simple**（0x1408ce180）：cast_ray（pipeline 0x142aa37f8）；后命中覆盖；无命中 byte0=0x11；命中写**小结果 0x28B** {handle 24B@+0, point@+0x18, toi@+0x24}（无法线/marker/uv）—— 与 0x40B 族为不同结构。
+- **raycast_simple_exclude_wall_id**（0x1408ccc50）：尾调用转发；exclude_wall_id 仅进 filter 槽，函数体不分支 —— exclude 本构建无效。
+- **spherecast**（0x1408ccfc0）：17 槽 mask + cast_shape（球心全局常量 (0,0,0)）；命中法线按射线侧符号翻转（xor 0x80000000）；写标准 0x40B {handle, point@+0x18, normal@+0x24, toi@+0x30, marker@+0x34}。
+- **legacy_spherecast**（0x1408ccc90）：**固定 10 槽序 {0,1,3,7,6,4,11,2,12,13}**；球参数 {radius=param_5[0], 1.0, 0x101}；写**专用小结果** {handle 24B@+0, point@+0x18, 零 12B@+0x24, marker@+0x30}（无 normal/toi；marker 在 +0x30 而非 +0x34）—— 消费方 critters avoid/move（0x1423179a0/0x142318fa0）按此读。
+- **raycast_w_terrain**（0x1408cd430）：mask&0x20=0 → 纯 raycast；否则先碰撞：无命中 → 地形 raycast（FUN_1409e9a20）；命中 → 地形以碰撞 toi 为上限；地形更近 → 合成命中 {byte0=0xb（Terrain 判别）, 法线 (0,1,0), marker=0}。
+
+### upsert_collider_entry（0x140b40b50）
+同 handle+同几何 → status=2 未变；几何变 → `dispose_collider_mesh_instance`（0x1408d9590）+ 新建（user_data 编码 handle）+ QueryPipeline::update；一致性断言串 0x142aa3d50/0x142aa4250。

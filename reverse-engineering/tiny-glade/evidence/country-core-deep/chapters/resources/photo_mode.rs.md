@@ -15,3 +15,7 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `eq`、`next` 等 3 项
+
+## 实现方式（算法级）
+
+`PhotoModeCameraMode` u8 {0..3}：`next` 0x140b59720 表 {0→1,1→2,2→3,3→0}；`next_demo` 0x140b596b0 表 {0→1,1→2,2→0}，**变体 3 → panic "this camera mode is not part of the demo!"**（串 @0x142af1188/file @0x142af11c8）。`impl$1::from` 0x14090e500 = `lea eax,[rcx+1]; ret`（+1 恒等映射）。PhotomodeState::on_enable_photomode f32@0=3.0/1.0(demo)+u32@4=-1。与 CameraMode 槽 6..12 联动（round2 PARTIAL，写入点 toolbar::photomode）。

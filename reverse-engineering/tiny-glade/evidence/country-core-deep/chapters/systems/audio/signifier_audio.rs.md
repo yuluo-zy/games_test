@@ -11,6 +11,14 @@
 | country_core::systems::audio::signifier_audio::signifier_audio_system | 0x1409d6b90 | 0 | UiSignifierStream→set_parameter×21（含 FirstPersonOn/Off、Tool 参数） | O | audio-misc\decomp\decomp-0x1409d6b90.txt |
 | country_core::systems::audio::signifier_audio::signifier_audio_init_system | 0x1409d6320 | 38 | 1×loop+4×instantiate：UI Boop(0x142ac2465)/Cursor/Grab/Cursor/Release/HoldTimeSiginfier(原版拼写)/UiRotateGizmoMovingBack | O | audio-misc\decomp\decomp-0x1409d6320.txt |
 
+## 实现方式（算法级）（O，DIGEST §2.13 + decomp-0x1409d6320/0x1409d6b90）
+
+**signifier_audio_init_system @0x1409d6320**：1×loop + 4×instantiate：`UI Boop`(0x142ac2465)、
+`Cursor/Grab`、`Cursor/Release`、`UI/HoldTimeSiginfier`（**原版拼写**）、
+`UI/UiRotateGizmoMovingBack`；system 参数 `event:/UI/camera/FirstPersonOn|Off` + `Tool`。（O）
+**signifier_audio_system @0x1409d6b90**：UiSignifierStream → **set_parameter×21**（含
+FirstPersonOn/Off、Tool 等参数面更新）。O
+
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure` 等 2 项

@@ -234,3 +234,22 @@
 - execute_save_cmd 变体 0/1/2 归属；ChangeSection/ReplaceEdits 的载荷细节；快照 GC 的触发频率。
 - update_loading_screen 的 UUID 键业务含义与增删时机。
 - try_approx_parse_save_file_identity 的近似解析规则。
+
+## 9. 算法级深挖补充/纠错（2026-10-15，见 ALGORITHMS.md）
+
+- **mark_dirty = 4KB 块位图**（0x14091a450）：start_block = start>>12、end_block =
+  ceil(end/4096)；位图 {ptr@+0x60, 位计数@+0x68}；"8 槽脏块区间 &7"描述修正（&7
+  为字内位偏移）。ShadowFile 数据 Vec cap-first {cap@+0x20, ptr@+0x28, len@+0x30}。
+- **ensure_current_snapshot 0x140a439b0**：+0x38 是影子缓冲的**追加偏移**
+  （round2 CLOSURE 的"History+0x38 快照 id 域"描述修正）；协议 = push offset 进
+  edit_offsets → ", \n"(0x0a2c) → MultiEdit::serialize（0x80B 缓冲，FUN_140b39b80）
+  → mark_dirty(旧端, 新端)。
+- **备份节拍器除数桶语义**（save_game 0x140a3f470 行 ~507-591 全文）：counter % 
+  {7200,3600,600,300} 从大到小匹配，命中后 counter -= 除数，内层升序重校验可一次
+  消耗多个间隔（桶内容 0 → panic 除零 @0x142c6e9d8）。
+- **load_game 版本开关**：`0x14362c308 = (v > 0x19)`、`0x14362c011 = (v > 0x1a)`
+  （后者供 history 域 add_decorator_diff 楼梯 checksum 校验——跨域互证闭合）。
+- **execute_save_cmd 公共断言**：case 3-10 头部共用 truncate <=
+  history_edit_offsets.len()（@0x142cca478，51 字 + 源路径反向扫描取文件名）；
+  Shutdown 分支 = flush_deferred_and_sync 0x14171f7f0 + 发回确认 + 线程退出（state==3
+  时睡 10ms 继续）。

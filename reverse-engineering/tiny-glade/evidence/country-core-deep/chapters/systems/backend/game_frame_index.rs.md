@@ -15,3 +15,14 @@
 ## 备注
 
 - 帧号写 `frame_constants+0x108` 与 `& 3`（TAA jitter 循环）由 prepare_frame_constants 章节交叉证实。
+
+## 实现方式（算法级）
+
+**game_frame_index（全内联，I）**：
+- 帧推进并入调用点，无独立物理符号（dependencies.json inline_instances [560,40168]/[1611,2310144]）。（I）
+
+**消费侧算法（prepare_frame_constants @0x140af40b0，O）**：
+1. `Res<GameFrameIndex>` 读作 2×u32：首 u32 为门槛，`if (1 < uVar44)` 才写帧号。（O）
+2. `frame_constants+0x108 = 次 u32 & 3`（帧号 `idx & 3`，TAA jitter 周期）。（O）
+
+**数据结构（I）**：`GameFrameIndex` 布局 ≥2×u32（门槛@+0x00 / 当前帧号@+0x04）；重构单字段 `GameFrameIndex(pub u32)` 可能不完整。（I）

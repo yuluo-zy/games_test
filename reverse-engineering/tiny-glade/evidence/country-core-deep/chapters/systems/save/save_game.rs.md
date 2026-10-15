@@ -38,3 +38,35 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `closure`、`drop`、`eq`、`fmt`、`hash`、`next` 等 11 项
+
+## 实现方式（算法级，2026-10-15 深挖；全文见 session-save/ALGORITHMS.md）
+
+- **save_game 0x140a3f470**（6 段 SystemParam，行 ~507-591 内联节拍器）：
+  1. **备份节拍器**：{counter u32@+0x140, 累计 f32@+0x144 clamp[0,1], 阈值
+     f32@+0x148}；仅当阈值 < 60.0（或 NaN）累计（断言 delta>=0.0
+     @0x142a9f2c0）；累计 >= 1.0 → counter++ 并扫**除数桶 {300,600,3600,7200}**
+     （@0x142a9f348，从大到小整除匹配），命中后 counter -= 除数，**可一次消耗多个
+     间隔**（内层按升序重新校验，桶内容为 0 → panic 除零）；
+  2. 触发备份：log "Capturing a game snapshot" → capture_game_snapshot_save_data
+     0x1417a0430 → Arc 克隆 → History::set_current_snapshot 0x140a84760 →
+     FUN_1408da280 枚举分发发送 AsyncSaveCmd::CaptureSnapshot(9)；
+  3. 同步保存：GameSaveData 组装（~9 资源 +0x28..+0x100 密集字段）→
+     save_game_to_file；错误串 "Error while performing a synchronous save: " /
+     "Sync response from save thread" / "Failed writing session meta: "。
+- **save_game_to_file<Cursor 0x141750c90 / File 0x140241ca0>**：**手工拼 JSON**——
+  写 '{' 0x7b、`"History":{` 字面量、edit 间 `",
+"` 0xa2c；节名走 json_key
+  （0x140a43810 双查表 @0x142ace328 len + @0x142ace378 ptr）；padding @0x142ace3c8
+  = [0,16,0,128,32,128,64,8,8,2048]（10 节协议：Version/Identity/BackwardCompatibility/
+  Camera/TimeOfDay/Sheep/Colors/chain_index/history_start/snapshot）。
+- **write_json_sections<Cursor 0x141751c90 / File 0x140242b40>**：遍历 0x28B 节条目：
+  json_key（FUN_140d79f90）+ 载荷 to_json_string（FUN_140b883f0）。
+- **ensure_current_snapshot 0x140a439b0**（= add_history_edit_to_save_file）：
+  1) `offset = 影子文件+0x38`（追加偏移）→ push 进 edit_offsets 列表；2) 零填充扩容 +
+   写 u16 0x0a2c (",
+") + mark_dirty(offset, offset+2)；3) alloc 0x80B 缓冲 →
+   **MultiEdit::serialize**（FUN_140b39b80，h63c9 单态）→ 扩容 + memcpy + 更新 len +
+   mark_dirty(旧端, 新端)。**增量写协议实锤**（round2 CLOSURE 的"History+0x38 快照
+   id"描述修正为影子缓冲追加偏移）。
+- **save_session_meta_to_file 0x1417522e0**：SessionMeta serialize → File::create
+  （FUN_140d59dc0）→ write_all → sync → 错误日志族。

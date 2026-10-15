@@ -25,3 +25,11 @@
 | country_core::resources::color_icon::impl$18::register_required_components | 0x140b0b770 | 111 | 图标组件 bevy 注册胶水 | O（胶水） | audio-misc\decomp\decomp-0x140b0b770.txt |
 | country_core::resources::color_icon::impl$19::register_required_components | 0x140b0be60 | 116 | 图标组件 bevy 注册胶水 | O（胶水） | audio-misc\decomp\decomp-0x140b0be60.txt |
 | country_core::resources::color_icon::impl$20::register_required_components | 0x140b0c550 | 120 | 图标组件 bevy 注册胶水 | O（胶水） | audio-misc\decomp\decomp-0x140b0c550.txt |
+
+## 实现方式（算法级）（O，DIGEST §2.6 + decomp-0x140b06770/0x140b06780）
+
+**ColorMenuBrightnessValue**（三变体**无载荷**枚举，重建 `{Default,Custom(f32)}` 错）：
+- `to_f32 @0x140b06770`：判别式索引 f32 表 0x142ae785c —— `{0:0.25, 1:1.0, 2:4.0}`
+  （Quarter/Normal/Quadruple 语义 I）。（O）
+- `default_f32 @0x140b06780`：返回常量 1.0（0x142925904）→ 缺省变体=1(Normal)。（O）
+- 15×`register_required_components` = bevy 组件注册胶水（TypeId 查表同构样板，非业务）。O

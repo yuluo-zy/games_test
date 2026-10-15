@@ -16,3 +16,10 @@
 
 - `country_core::resources::glade_border::GladeBorder::is_curve2_inside`（行 44）— 曲线（Curve2）界内判定
 - `country_core::resources::glade_border::init_glade_border`（行 128）— 初始化边界资源（曲线/形状数据）
+
+## 实现方式（算法级）
+
+- `is_pos_inside`（0xad2950）= 跳板：`test [rax],1; jnz 共享主体` → 委派 `is_shape_inside`（0xad2970）主实现。
+- `is_shape_inside`：CurveU 边界校验（u∉[0,1) → panic "Tried to init CurveU from an invalid u: "，0x142aa53c0，utils circle.rs）+ 形状采样比较。
+- `search_lerped_shape_that_fits_into_glade`（0xad2ce0）：界内 lerp 缩放搜索可容纳形状（6.6KB）。
+- 常量：1.5/0.3/0.4/0.5/1.0/2.0/4.0/0.8（draw_garden 用）。

@@ -18,3 +18,12 @@
 ## 派生胶水
 
 - 1 项：closure$0 等（derive 直接复用，不计业务）。
+
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **load_glade_tod_and_weather 0x140ae7810（O）**：按 theme 路径（assets/gladestate/<theme>，0x142aef51a 区）
+  → 2x 打开 + 拼接（FUN_140d76ed0/FUN_140d62810）→ **共用 ToD 载入器 FUN_140d59140 +
+  FUN_1414051e0**（2 变体：theme 目录与 'assets/tod/default.json' 0x142a99540(23)）→ 3x unwrap panic。
+- **load_snow_particles 0x140ae7d90（O）**：全局生成器/RNG 状态（FUN_140d4d740/FUN_140d64e00）
+  + 记录注册（FUN_1412fa8e0 + FUN_1412dc470）+ assert panic（FUN_1428d9310）。
+- 跨模块：startup_time_of_day 复用同一 ToD 载入器（FUN_140d59140 + FUN_1414051e0）。

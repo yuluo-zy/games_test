@@ -11,3 +11,9 @@
 | `impl$0::add_terrain_systems` | 0x1409455f0 | 37 | 构造/注册/生成 | O：系统注册（Bevy Plugin 接线；register_required_components 胶水 + add_systems 族） | terrain-water\decomp\decomp-0x1409455f0.txt |
 | `impl$0::insert_terrain_resources` | 0x1409457c0 | 56 | 构造/注册/生成 | O：地形资源插入（TerrainHeightsData 双实例/网格等 init） | terrain-water\decomp\decomp-0x1409457c0.txt |
 | `impl$0::add_terrain_events` | 0x140945a20 | 65 | 构造/注册/生成 | O：地形事件注册（Bevy 事件声明；注册胶水） | terrain-water\decomp\decomp-0x140945a20.txt |
+
+## 实现方式（算法级）
+
+- `add_terrain_systems`（0x9455f0）：Bevy Plugin 系统注册（register_required_components 胶水 + add_systems 族）。
+- `insert_terrain_resources`（0x9457c0）：TerrainHeightsData 双实例（权威/视觉）+ 网格等资源插入。
+- `add_terrain_events`（0x945a20）：地形事件声明/注册。

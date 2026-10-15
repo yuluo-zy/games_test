@@ -1,0 +1,18 @@
+[
+  {"tool": "open_database",
+   "args": {"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+            "run_auto_analysis": false, "database_id": "tg_rh_rg", "keep_open": true},
+   "timeout_ms": 600000},
+  {"tool": "wait_for_analysis", "args": {"database": "tg_rh_rg"}, "timeout_ms": 600000},
+  {"tool": "decompile_function", "args": {"database": "tg_rh_rg", "address": "0x1402c4280"},
+   "timeout_ms": 240000, "allow_error": true, "_note": "rhapsody::rg::compiled::CompiledRenderGraph::new<PassResources>"},
+  {"tool": "decompile_function", "args": {"database": "tg_rh_rg", "address": "0x140166510"},
+   "timeout_ms": 240000, "allow_error": true, "_note": "rhapsody::rg::state::RenderGraphState::compile<(),...,execute_presentation_render_graph::closure_env>"},
+  {"tool": "decompile_function", "args": {"database": "tg_rh_rg", "address": "0x1404f7450"},
+   "timeout_ms": 240000, "allow_error": true, "_note": "rhapsody::rg::temporal::GetOrCreateTemporalPair::get_or_create_temporal_pair"},
+  {"tool": "decompile_function", "args": {"database": "tg_rh_rg", "address": "0x1404f7ca0"},
+   "timeout_ms": 240000, "allow_error": true, "_note": "rhapsody::rg::temporal::TemporalRenderGraphRecorder::export_temporal"},
+  {"tool": "decompile_function", "args": {"database": "tg_rh_rg", "address": "0x140bea680"},
+   "timeout_ms": 240000, "allow_error": true, "_note": "GraphExecutor::wait_gpu_queue_trim"},
+  {"tool": "close_database", "args": {"database": "tg_rh_rg", "save": false}, "timeout_ms": 180000}
+]

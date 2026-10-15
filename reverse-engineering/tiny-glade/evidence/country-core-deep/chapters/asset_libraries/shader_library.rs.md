@@ -38,3 +38,27 @@
 - 旧版形参 `(name, program)`/`&mut self`/相等判据 `source_name+compiled_variants`/panic 文案/键用拥有的 String/无 `force_new`——全错。
 - 旧版 `add_compute` 文案 `{:016x} … already in the library` 臆造；键类型 u64 newtype 无 Debug 形态。
 - I：`force_new` 语义名；`ComputeShaderSourceHash` 定义于 `shader_uri`（O 符号路径）；`RasterPipelineDesc` 第二字段原版为 `Option<String>`（O 比较序列 niche 判别）。
+
+## 算法要点（本批深挖 2026-10-15，decomp: asset-libraries/decomp/）
+
+证据：tg_m1 反编译 `decomp-0x140936ef0`（add_raster 1639 B）、`decomp-0x140937560`（add_compute 886 B）、`decomp-0x1409378e0`（get_compute_by_name）、`decomp-0x140937aa0`（get_raster_handle_by_name）。
+
+### 注册算法与查重判据
+
+- `add_raster(&self, program: *RasterShaderProgram(0xd8 B), force_new: bool)`：写锁（0x140936ef0 `cmpxchg [+0x80],8`）→ `!force_new && items != 0` 才查重 → 命中则 `FrozenMap::get(existing).unwrap()` 并**逐字段比较 desc**：`+0x08/0x10` path（&str）、`+0x20/0x28` `Vec<(String,String)>` 元素 0x30 B、`+0x30/0x38/0x40` `Option<String>`（niche 判别）→ 全等：放锁、drop 新程序、返回已有 handle（**重复注册幂等复用**）；不等：`panic_fmt("AssetShaderLibrary: the shader name {} is already taken")`（pieces 0x142ab10d0/0x142ab10f0，:62:21）。未命中/跳过：`lock xadd [0x143634cd0],1` 取 handle → `raster_names.insert(&str, handle)` → Box(0xd8) → `FrozenMap::insert`，Err → 断言 panic（:75:9）→ 返回 handle。
+- `add_compute(&self, program: *ComputeShaderProgram(0xa0 B), hash: u64)`：写锁 → `items != 0 && 键存在` → `panic_fmt`（同一 pieces，参数 = `ComputeShaderSourceHash` derive(Debug)，:89:13）——**只比键不比内容**（compute 无"内容相等复用"路径）；否则 handle → `compute_names.insert(hash, handle)`（键直接当哈希 = NoHash）→ Box(0xa0) → FrozenMap::insert → 失败断言（:100:9）。
+- 查询：`get_compute_by_name(&ComputeShaderSourceHash) -> Option<(Handle,&Program)>`：读锁查 compute_names → **放锁** → `FrozenMap::get(handle)`（缺失 → None，不 unwrap）；`get_raster_handle_by_name(&str) -> Option<Handle>`：items==0 → None，否则 `hash_one<RandomState,&str>` → h2 探测 + len + bcmp；`debug_raster_get_name(Handle) -> Option<&str>`：读锁下整表线性扫描（SSE 组位图），桶 `[-8]==handle` 时返回桶 `[-0x18]/[-0x10]` 的键 &str。
+
+### 关键常量/布局
+
+| 项 | 值 | 含义 |
+|---|---|---|
+| raster 表 | FrozenMap @+0x00 | Handle<RasterShaderProgram> → Box(0xd8) |
+| compute 表 | FrozenMap @+0x40 | Handle<ComputeShaderProgram> → Box(0xa0) |
+| raster_names | RwLock<HashMap<String,Handle>> @+0x80（桶 0x18 B） | 名字→句柄 |
+| compute_names | RwLock<HashMap<u64,Handle>> @+0xb8（桶 0x10 B，NoHash） | 源码哈希→句柄 |
+| 全局 handle | 0x143634cd0 lock xadd | 与 mesh/vao/ssbo/placement 共用 |
+
+### 模块间调用
+
+- `ComputePass::new` 经 `get_compute_by_name` 复用已编译 compute（A4 O）；`add_raster` 的名字取程序 `+0x48/+0x50`（&'static str）；`force_new` 语义名 I（行为 O：true 跳过查重直接注册）。

@@ -1,0 +1,85 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_rh_rg_cls",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {"database": "tg_rh_rg_cls"},
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x1402c3d00"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rhapsody::rg::compiled::CompiledRenderGraph<UD>::add_pre_pass_barriers"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd6470"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "<&Texture as IntoSampledRenderGraphTexture>::into_sampled_rg_texture"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd66a0"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SynchronizationScope1::image_barrier"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd6810"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SynchronizationScope1::buffer_barrier"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd6650"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rhapsody::raw::barrier::SynchronizationScope1::new"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd6980"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "SynchronizationScope1::is_empty"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bee030"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "GraphicsDevice::issue_pipeline_barrier"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd65e0"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rhapsody::raw::barrier::ImageBarrier::new"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {"database": "tg_rh_rg_cls", "address": "0x140bd6610"},
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "rhapsody::raw::barrier::BufferBarrier::new"
+ },
+ {
+  "tool": "close_database",
+  "args": {"database": "tg_rh_rg_cls", "save": false},
+  "timeout_ms": 180000
+ }
+]

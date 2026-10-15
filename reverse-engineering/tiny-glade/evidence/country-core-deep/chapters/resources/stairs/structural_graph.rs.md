@@ -19,3 +19,13 @@
 ## 派生胶水（derive/宏生成；不计独立业务）
 
 `default` 等 1 项
+
+## 实现方式（算法级）
+
+完整算法见 `collision-eco/ALGORITHMS.md` §3.4。要点：
+
+### upsert_span（0x140869d20）8 表接线
+1. **旧关联解绑**（span→collider map @+0xc0 命中且判别 != 0x11）：遍历旧 collider 邻边（FUN_14093b1c0 迭代器，判别 0x11 终止）逐个插入 connections 集 @+0x150（FUN_141265a10）；从 collider→span map @+0x90 移除旧 span（FUN_140b77fd0）；`graph.remove_node(prev)` 断言失败 panic `"assertion failed: self.graph.remove_node(prev)"`（0x142a96b48）；从 @+0xf0 表移除旧条目（FUN_140b787d0）。
+2. **新 collider 挂接**：graph 节点确保（FUN_14093afc0）→ collider→span @+0x90 插入（FUN_14152c190）→ span→collider @+0xc0 插入（FUN_14152ba60）→ span→height @+0xf0 插入（FUN_1412668d0，param_4）→ connections @+0x150 插入（FUN_141265a10）。
+
+表分布（本轮复核）：+0x90 collider→span、+0xb0 collider map hash、+0xc0 span→collider（= `span_to_collider_handle` 字段，断言串 0x142a96c50）、+0xe0 span hash、+0xf0 span→height、+0x110 hash、+0x150 connections。

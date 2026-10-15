@@ -58,3 +58,18 @@
 - `country_core::resources::history::decorator_edit::impl$32::clone`（行 477）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
 
 <!-- 未覆盖函数数：0 -->
+## 实现方式（算法级，2026-10-15 深挖）
+
+- **DecoratorHistoryState::From 0x140b3f930**：源状态 type 字节 @+0x41 == 8（preview）
+  → panic "Attempting to capture a DecoratorHistoryState of a preview "
+  （decorator_edit.rs，@0x142aeeea0）；变体 2/3 读 u32@+0x30、4/5/6/7 读 byte@+0x30、
+  其余读 +0x34；输出 0x50B+ 记录（字节字段 @+0x44..+0x4e）。
+- **convert_before_after_states_to_changes 0x140b3fab0**（`(out, before, after)`）：
+  按 style 字节（+0x32）分变体比较浮点（变体 2/3 比 4 个 f32、4 比 6 个、default 比
+  8 个 f32 + 字节 + u64）；style 族字节（+0x5a，-0x38 后 clamp 6）不等 → 输出 '@'
+  哨兵；输出 = after 拷贝 + changed 布尔 @+0x40/@+0x52。
+- **is_default_lantern_brightness 0x140b3f910**（= is_default_stair_width 同址 ICF）：
+  `x == 1.0f`（常量 @0x142925904）；reconstruction 的 `(record)->bool` 签名错。
+- **send_state_diff_events 0x1417bdae0**：replay_pop_bucket 消费（restore_decorators
+  宿主 0x140b38250 的 9 参参数面）。
+
