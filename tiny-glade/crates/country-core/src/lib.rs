@@ -29,8 +29,10 @@ pub mod startup;
 pub mod utils;
 
 pub mod systems {
+    pub mod backend;
     pub mod camera_rig;
     pub mod render_loop;
+    pub mod wall;
 }
 
 pub mod recovered_building;

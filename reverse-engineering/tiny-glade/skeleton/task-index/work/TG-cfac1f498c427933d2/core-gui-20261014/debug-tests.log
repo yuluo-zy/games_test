@@ -1,0 +1,1406 @@
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.43s
+     Running unittests src/lib.rs (target/debug/deps/country_core-8df198ef786ba065)
+
+running 1350 tests
+test asset_libraries::audio_trigger_library::tests::layout_matches_slotmap_resource ... ok
+test asset_libraries::audio_trigger_library::tests::update_shape_replaces_in_place_and_rejects_stale_handle ... ok
+test asset_libraries::audio_trigger_library::tests::empty_library_has_no_boxes ... ok
+test asset_libraries::audio_trigger_library::tests::get_triggers_for_valid_kind_returns_the_only_collection ... ok
+test asset_libraries::audio_trigger_library::tests::clear_removes_everything ... ok
+test asset_libraries::audio_trigger_library::tests::boxes_is_keyed_and_skips_vacant_slots ... ok
+test asset_libraries::color_library::tests::default_and_default_value_are_magenta ... ok
+test asset_libraries::audio_trigger_library::tests::add_rejects_count - should panic ... ok
+test asset_libraries::audio_trigger_library::tests::get_triggers_rejects_count - should panic ... ok
+test asset_libraries::color_library::tests::deserialize_from_path_missing_file_panics - should panic ... ok
+test asset_libraries::color_library::tests::deserialize_from_writes_rgb_and_forces_alpha_one ... ok
+test asset_libraries::color_library::tests::deserialize_from_later_entry_overrides_and_runs_in_order ... ok
+test asset_libraries::color_library::tests::layout_is_0x250_bytes_four_byte_aligned ... ok
+test asset_libraries::color_library::tests::named_getters_read_their_slot ... ok
+test asset_libraries::color_library::tests::name_longer_than_19_panics - should panic ... ok
+test asset_libraries::color_library::tests::out_of_range_name_length_takes_the_same_panic - should panic ... ok
+test asset_libraries::color_library::tests::json_schema_requires_name_and_color_and_ignores_extras ... ok
+test asset_libraries::color_library::tests::slot_table_matches_decoded_machine_code ... ok
+test asset_libraries::color_library::tests::storage_element_contract ... ok
+test asset_libraries::color_library::tests::deserialize_from_path_bad_json_panics - should panic ... ok
+test asset_libraries::color_library::tests::deserialize_from_path_reads_json_for_str_and_pathbuf ... ok
+test asset_libraries::color_library::tests::theme_dirs_and_paths ... ok
+test asset_libraries::color_library::tests::unknown_name_panic_message - should panic ... ok
+test asset_libraries::color_library::tests::unknown_name_panics_after_earlier_entries_were_applied ... ok
+test asset_libraries::configwatch::tests::debounce_is_100ms ... ok
+test asset_libraries::configwatch::tests::new_without_watch_has_no_hotwatch_and_empty_queue ... ok
+test asset_libraries::configwatch::tests::non_write_events_are_ignored ... ok
+test asset_libraries::color_library::tests::update_with_unregistered_buffer_panics - should panic ... ok
+test asset_libraries::configwatch::tests::new_with_watch_creates_hotwatch ... ok
+test asset_libraries::color_library::tests::update_missing_base_file_panics - should panic ... ok
+test asset_libraries::configwatch::tests::repeated_writes_overwrite_single_slot ... ok
+test asset_libraries::color_library::tests::update_without_theme_file_uses_base_only ... ok
+test asset_libraries::color_library::tests::update_loads_base_then_theme_override_uploads_and_writes_cpu_copy ... ok
+test asset_libraries::configwatch::tests::take_pending_drains ... ok
+test asset_libraries::color_library::tests::update_failure_does_not_touch_cpu_copy ... ok
+test asset_libraries::configwatch::tests::poisoned_queue_panics_on_write - should panic ... ok
+test asset_libraries::configwatch::tests::watch_without_hotwatch_is_silent_noop ... ok
+test asset_libraries::configwatch::tests::write_event_records_registered_path_not_event_path ... ok
+test asset_libraries::mesh_library::tests::add_registers_source_path_only_when_present ... ok
+test asset_libraries::mesh_library::tests::add_allocates_distinct_increasing_handles_and_registers_name ... ok
+test asset_libraries::mesh_library::tests::add_same_name_overwrites_previous_mapping ... ok
+test asset_libraries::mesh_library::tests::add_without_name_registers_no_name ... ok
+test asset_libraries::mesh_library::tests::get_by_name_returns_none_when_mesh_removed_but_name_kept ... ok
+test asset_libraries::mesh_library::tests::get_by_name_panics_when_name_missing - should panic ... ok
+test asset_libraries::mesh_library::tests::get_handle_by_name_panics_with_debug_quoted_name - should panic ... ok
+test asset_libraries::mesh_library::tests::get_mut_pushes_handle_before_lookup_even_when_missing ... ok
+test asset_libraries::mesh_library::tests::get_unknown_handle_is_none ... ok
+test asset_libraries::mesh_library::tests::new_library_is_empty ... ok
+test asset_libraries::mesh_library::tests::reload_failure_keeps_old_mesh_but_still_marks_modified ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_does_not_touch_modified_list ... ok
+test asset_libraries::mesh_library::tests::reload_path_without_extension_asserts ... ok
+test asset_libraries::mesh_library::tests::reload_replaces_mesh_in_place_and_marks_modified ... ok
+test asset_libraries::mesh_library::tests::reload_non_json_extension_asserts_and_does_not_mark_modified - should panic ... ok
+test asset_libraries::mesh_library::tests::reload_unknown_path_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::remove_drops_mesh_and_every_name_pointing_at_it_but_keeps_path ... ok
+test asset_libraries::mesh_library::tests::remove_unknown_handle_is_noop ... ok
+test asset_libraries::mesh_library::tests::reload_with_empty_path_table_panics - should panic ... ok
+test asset_libraries::mesh_library::tests::shared_handle_counter_is_monotonic_across_types ... ok
+test asset_libraries::meshwatch::tests::debounce_is_100_ms ... ok
+test asset_libraries::meshwatch::tests::event_callback_inserts_watched_path_not_event_path ... ok
+test asset_libraries::meshwatch::tests::event_callback_panics_on_poisoned_set - should panic ... ok
+test asset_libraries::meshwatch::tests::new_without_watch_has_no_hotwatch_and_empty_set ... ok
+test asset_libraries::meshwatch::tests::non_create_write_events_are_ignored ... ok
+test asset_libraries::meshwatch::tests::watch_without_hotwatch_is_noop ... ok
+test asset_libraries::meshwatch::tests::new_with_watch_creates_hotwatch ... ok
+test asset_libraries::meshwatch::tests::watch_with_source_panics_when_lock_poisoned - should panic ... ok
+test asset_libraries::meshwatch::tests::watch_without_source_file_is_noop_even_if_lock_poisoned ... ok
+test asset_libraries::placement_data_library::tests::load_registers_buffer_and_path_and_returns_data_with_handle ... ok
+test asset_libraries::placement_data_library::tests::failed_load_leaves_tables_untouched ... ok
+test asset_libraries::placement_data_library::tests::duplicate_message_tail - should panic ... ok
+test asset_libraries::placement_data_library::tests::empty_array_creates_zero_element_entry ... ok
+test asset_libraries::placement_data_library::tests::bad_json_panics_via_unwrap - should panic ... ok
+test asset_libraries::placement_data_library::tests::loading_the_same_path_twice_panics - should panic ... ok
+test asset_libraries::placement_data_library::tests::each_load_gets_a_fresh_handle ... ok
+test asset_libraries::placement_data_library::tests::new_has_two_empty_tables ... ok
+test asset_libraries::shader_library::tests::add_compute_registers_and_looks_up ... ok
+test asset_libraries::placement_data_library::tests::missing_file_panics_with_couldnt_find - should panic ... ok
+test asset_libraries::shader_library::tests::add_raster_handles_are_distinct_and_increasing ... ok
+test asset_libraries::shader_library::tests::add_compute_duplicate_hash_panics_even_if_program_differs - should panic ... ok
+test asset_libraries::shader_library::tests::add_raster_force_new_skips_dedup_and_remaps_name ... ok
+test asset_libraries::shader_library::tests::add_raster_registers_name_and_program ... ok
+test asset_libraries::shader_library::tests::add_raster_same_name_same_desc_returns_existing ... ok
+test asset_libraries::shader_library::tests::add_raster_same_name_different_desc_panics - should panic ... ok
+test asset_libraries::shader_library::tests::compute_and_raster_share_one_handle_counter ... ok
+test asset_libraries::shader_library::tests::debug_raster_get_name_scans_all_entries ... ok
+test asset_libraries::shader_library::tests::get_compute_by_name_none_when_program_missing ... ok
+test asset_libraries::shader_library::tests::new_is_empty ... ok
+test asset_libraries::shader_library::tests::no_hash_hasher_uses_key_as_hash ... ok
+test asset_libraries::ssbo_library::tests::add_new_without_data_uses_default_creation_path ... ok
+test asset_libraries::ssbo_library::tests::export_from_rg_exports_and_forces_reimport_next_frame ... ok
+test asset_libraries::ssbo_library::tests::export_skips_buffers_never_imported ... ok
+test asset_libraries::ssbo_library::tests::fresh_state_has_no_rg_handle ... ok
+test asset_libraries::ssbo_library::tests::get_mut_is_none_when_missing_and_downcasts_when_present ... ok
+test asset_libraries::ssbo_library::tests::get_rg_buffer_imports_once_then_reuses_the_handle ... ok
+test asset_libraries::ssbo_library::tests::instance_count_matches_the_instance_buffer_and_defaults_to_zero ... ok
+test asset_libraries::ssbo_library::tests::get_with_a_colliding_short_name_asserts_on_the_full_name ... ok
+test asset_libraries::ssbo_library::tests::lookup_is_type_erased_and_reports_instance_info_only_for_instance_buffers ... ok
+test asset_libraries::ssbo_library::tests::mapped_buffers_can_be_library_ssbos_and_mutated_through_get_mut ... ok
+test asset_libraries::ssbo_library::tests::missing_message_tail - should panic ... ok
+test asset_libraries::ssbo_library::tests::same_short_name_different_type_reports_both - should panic ... ok
+test asset_libraries::ssbo_library::tests::registering_the_same_type_twice_panics - should panic ... ok
+test asset_libraries::ssbo_library::tests::get_rg_buffer_of_unregistered_type_panics_with_forgot_to_register - should panic ... ok
+test asset_libraries::ssbo_library::tests::ssbo_id_depends_only_on_short_name ... ok
+test asset_libraries::ssbo_library::tests::ssbo_impls_expose_buffer_and_handle_for_each_storage_kind ... ok
+test asset_libraries::texture_library::tests::add_duplicate_leaves_library_untouched ... ok
+test asset_libraries::texture_library::tests::add_duplicate_name_panics - should panic ... ok
+test asset_libraries::texture_library::tests::assign_auto_resize_semantics ... ok
+test asset_libraries::texture_library::tests::add_pushes_textures_and_registers_names ... ok
+test asset_libraries::texture_library::tests::bindless_dset_flushes_pending_once ... ok
+test asset_libraries::texture_library::tests::bindless_index_allocation_reuse_and_gap_fill ... ok
+test asset_libraries::texture_library::tests::bindless_poisoned_lock_unwraps - should panic ... ok
+test asset_libraries::texture_library::tests::create_name_mapping_creates_virtual_alias ... ok
+test asset_libraries::texture_library::tests::clear_preset_texture_missing_panics - should panic ... ok
+test asset_libraries::texture_library::tests::create_name_mapping_over_real_overwrites_before_panicking ... ok
+test asset_libraries::texture_library::tests::clear_preset_texture_writes_zeros_sized_by_format ... ok
+test asset_libraries::texture_library::tests::create_name_mapping_missing_target_panics - should panic ... ok
+test asset_libraries::texture_library::tests::create_name_mapping_over_real_texture_panics - should panic ... ok
+test asset_libraries::texture_library::tests::empty_presets_are_noops ... ok
+test asset_libraries::texture_library::tests::create_preset_textures_makes_all_25_and_replaces ... ok
+test asset_libraries::texture_library::tests::create_preset_textures_unwraps_error - should panic ... ok
+test asset_libraries::texture_library::tests::export_without_import_panics - should panic ... ok
+test asset_libraries::texture_library::tests::get_by_name_index_out_of_range_panics - should panic ... ok
+test asset_libraries::texture_library::tests::get_handle_and_texture_out_of_range_is_none ... ok
+test asset_libraries::texture_library::tests::get_by_name_missing_lists_available - should panic ... ok
+test asset_libraries::texture_library::tests::get_rg_texture_missing_preset_panics - should panic ... ok
+test asset_libraries::texture_library::tests::get_by_name_missing_message_has_available_keys ... ok
+test asset_libraries::texture_library::tests::image_name_to_index_goes_through_alias ... ok
+test asset_libraries::texture_library::tests::image_name_to_index_missing_panics - should panic ... ok
+test asset_libraries::texture_library::tests::rg_import_export_roundtrip ... ok
+test asset_libraries::texture_library::tests::get_rg_texture_not_imported_panics - should panic ... ok
+test asset_libraries::texture_library::tests::import_twice_asserts - should panic ... ok
+test asset_libraries::texture_watch::tests::new_with_watch_uses_100ms_delay ... ok
+test asset_libraries::texture_watch::tests::new_without_watch_has_no_hotwatch ... ok
+test asset_libraries::texture_watch::tests::create_write_rename_record_the_registered_name_not_the_path ... ok
+test asset_libraries::texture_watch::tests::only_create_write_rename_are_handled ... ok
+test asset_libraries::texture_watch::tests::repeated_events_dedupe_and_multiple_names_accumulate ... ok
+test asset_libraries::texture_library::tests::bindless_limit_is_0x1fe0_and_next_already_incremented ... ok
+test asset_libraries::texture_watch::tests::watch_without_hotwatch_is_noop ... ok
+test asset_libraries::texture_watch::tests::poisoned_mutex_panics_in_handler - should panic ... ok
+test asset_libraries::vao_library::tests::add_builds_vao_and_records_index_count ... ok
+test asset_libraries::vao_library::tests::add_existing_mesh_returns_same_handle_without_building ... ok
+test asset_libraries::vao_library::tests::add_mesh_without_indices_is_invalid ... ok
+test asset_libraries::vao_library::tests::add_missing_mesh_errors_with_double_space_text_and_burns_a_handle ... ok
+test asset_libraries::vao_library::tests::layout_constants_match_original ... ok
+test asset_libraries::vao_library::tests::new_is_empty ... ok
+test asset_libraries::vao_library::tests::rebuild_replaces_vao_and_updates_index_count ... ok
+test asset_libraries::vao_library::tests::rebuild_missing_mesh_panics_via_expect - should panic ... ok
+test asset_libraries::vao_library::tests::rebuild_with_empty_indices_is_silent_ok_and_keeps_old_vao ... ok
+test asset_libraries::vao_library::tests::rebuild_with_dangling_vao_handle_errors ... ok
+test asset_libraries::vao_library::tests::remove_clears_both_tables ... ok
+test asset_libraries::vao_library::tests::rebuild_without_registered_vao_errors ... ok
+test name_hash::tests::debug_is_struct_style ... ok
+test recovered_systems::audio::tests::original_music_parameter_boundaries ... ok
+test recovered_systems::audio::tests::original_wall_jump_table_contract ... ok
+test recovered_systems::critters::tests::original_other_branch_predicates ... ok
+test recovered_systems::critters::tests::original_locomotion_mask_selects_observed_values ... ok
+test recovered_systems::clutter::tests::original_externally_tagged_delete_wire_contract ... ok
+test recovered_systems::tree::tests::original_deletion_boundary_and_marker_contract ... ok
+test recovered_systems::water::tests::original_counters_change_only_on_bit_transition ... ok
+test recovered_systems::water::tests::original_frame_bit_and_wrapping_counter_contract ... ok
+test recovered_systems::water::tests::original_raster_dispatch_and_fixed_point_contract ... ok
+test recovered_systems::water::tests::original_raster_write_callback_results ... ok
+test render::atmosphere::tests::lerp_endpoints_are_exact ... ok
+test render::directional_light::tests::layout_matches_original ... ok
+test render::directional_light::tests::look_at_maps_eye_to_origin_and_target_down_minus_z ... ok
+test render::directional_light::tests::set_direction_keeps_distance_and_target ... ok
+test render::dirty_index_range::tests::add_is_inclusive_end_and_merges ... ok
+test render::dirty_index_range::tests::empty_sentinel ... ok
+test render::frame_constants::tests::reset_flag_is_zero_test ... ok
+test render::frame_constants::tests::size_and_default ... ok
+test render::frame_constants::tests::view_indexing ... ok
+test render::load_texture::tests::contract_device_creates_texture_from_desc ... ok
+test render::load_texture::tests::bad_magic_panics_with_path - should panic ... ok
+test render::load_texture::tests::bad_version_panics_with_path - should panic ... ok
+test render::load_texture::tests::mip_count_over_255_panics - should panic ... ok
+test render::load_texture::tests::parses_footer_fields_and_data_slice ... ok
+test render::load_texture::tests::misaligned_pointer_panics - should panic ... ok
+test render::load_texture::tests::path_has_dir_and_texture_extension ... ok
+test render::load_texture::tests::shorter_than_header_panics - should panic ... ok
+test render::mesh::tests::add_color_and_builder ... ok
+test render::mesh::tests::append_same_kind ... ok
+test render::mesh::tests::append_mismatch_panics_with_discriminants - should panic ... ok
+test render::mesh::tests::bounds_and_collision ... ok
+test render::mesh::tests::empty_positions_give_inverted_box ... ok
+test render::mesh::tests::from_vec_rejects_empty - should panic ... ok
+test render::mesh::tests::missing_or_wrong_attribute_panics ... ok
+test render::mesh::tests::retain_vertices_remaps_flags_and_indices ... ok
+test render::mesh::tests::tags_and_strides ... ok
+test render::mesh::tests::set_attribute_replaces_in_place ... ok
+test render::mesh::tests::triangles_and_arrayed_indices_drop_remainder ... ok
+test render::mesh::tests::retain_vertices_out_of_range_index_panics - should panic ... ok
+test render::nani::buffers::tests::batch_mask_is_3fe_not_3ff ... ok
+test render::nani::buffers::tests::cmd_offsets_equal_offset_defaults ... ok
+test render::nani::buffers::tests::draw_list_params_default_flags ... ok
+test render::nani::buffers::tests::draw_list_params_force_flags ... ok
+test render::nani::buffers::tests::offset_defaults_is_uniform_with_default_value ... ok
+test render::nani::buffers::tests::offset_defaults_layout ... ok
+test render::nani::buffers::tests::table_matches_exe_constants ... ok
+test render::nani::cull_shaders::tests::kind_to_family ... ok
+test render::nani::cull_shaders::tests::path_lengths_match_machine_code_allocations ... ok
+test render::nani::cull_shaders::tests::pipeline_desc_shape ... ok
+test render::nani::cull_shaders::tests::source_hash_depends_on_family_and_pass ... ok
+test render::nani::cull_shaders::tests::source_uri_lengths_match_source_hash_immediates ... ok
+test render::nani::draw_ext::tests::list_index_packs_kind_and_variant ... ok
+test render::nani::draw_ext::tests::dispatch_branching ... ok
+test render::nani::draw_ext::tests::max_draws_table_is_27_entries_from_rdata ... ok
+test render::nani::gpu_world::tests::buffer_copy_checks_src_then_dst_and_marks_dst_dirty ... ok
+test render::nani::draw_ext::tests::pass_variant_table_matches_immediate ... ok
+test render::nani::draw_ext::tests::plan_offsets_and_max_count ... ok
+test render::nani::draw_ext::tests::nani_draw_with_empty_slot_panics - should panic ... ok
+test render::nani::gpu_world::tests::create_instances_records_pending_and_total_counts_requested ... ok
+test render::nani::gpu_world::tests::empty_slot_unwraps_none - should panic ... ok
+test render::nani::gpu_world::tests::double_import_asserts - should panic ... ok
+test render::nani::gpu_world::tests::external_subset_is_not_owned - should panic ... ok
+test render::nani::draw_ext::tests::nani_draw_count_path_packs_max_draw_count_and_count_offset ... ok
+test render::nani::gpu_world::tests::id_allocation_skips_taken_ids ... ok
+test render::nani::gpu_world::tests::instance_key_is_12_bytes_and_cull_data_16 ... ok
+test render::nani::gpu_world::tests::capacity_is_warn_once_and_skip_not_panic ... ok
+test render::nani::gpu_world::tests::kind_deserializes_from_variant_name ... ok
+test render::nani::gpu_world::tests::kind_limits_follow_exe_tables ... ok
+test render::nani::gpu_world::tests::kind_table_is_the_real_27_names ... ok
+test render::nani::gpu_world::tests::new_creates_buffers_in_machine_code_order ... ok
+test render::nani::gpu_world::tests::remove_instance_swaps_last_into_hole ... ok
+test render::nani::gpu_world::tests::rg_handle_before_import_panics - should panic ... ok
+test render::nani::gpu_world::tests::rg_import_export_skip_external_and_follow_assert ... ok
+test render::nani::gpu_world::tests::stale_hint_falls_back_to_hash_and_rewrites_it ... ok
+test render::nani::instance_data::tests::curved_level_clamps_to_2_and_5 ... ok
+test render::nani::gpu_world::tests::unknown_key_unwraps_none - should panic ... ok
+test render::nani::gpu_world::tests::wrong_data_type_panics_with_exe_message - should panic ... ok
+test render::nani::instance_data::tests::curved_xy_layout_and_pow2_level ... ok
+test render::nani::instance_data::tests::curved_xz_differs_only_in_w24_and_w2c ... ok
+test render::nani::instance_data::tests::element_sizes_match_exe_strides ... ok
+test render::nani::instance_data::tests::straight_layout_is_byte_exact ... ok
+test render::nani::instance_data::tests::storage_names_are_type_names ... ok
+test render::nani::instance_updates::gb_tests::affine_identity_and_scale ... ok
+test render::nani::instance_data::tests::registers_markers_in_world ... ok
+test render::nani::instance_updates::gb_tests::flower_cell_math ... ok
+test render::nani::instance_updates::gb_tests::flower_payloads ... ok
+test render::nani::instance_updates::gb_tests::gothic_layout ... ok
+test render::nani::instance_updates::gb_tests::flower_visibility_branches ... ok
+test render::nani::instance_updates::gb_tests::flower_mask_bounds_checked - should panic ... ok
+test render::nani::instance_updates::gb_tests::halftimber_colour_selection ... ok
+test render::nani::instance_updates::gb_tests::halftimber_payload ... ok
+test render::nani::instance_updates::gb_tests::max_abs_scale_nan_and_neg ... ok
+test render::nani::instance_updates::gb_tests::halftimber_missing_id_panics - should panic ... ok
+test render::nani::instance_updates::gb_tests::pack_2x16f_matches_half ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_discriminants ... ok
+test render::nani::instance_updates::gb_tests::rock_mask_name_assert - should panic ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_floor_only ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_requires_roof_or_floor - should panic ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_curved ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_axis_select ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_low ... ok
+test render::nani::gpu_world::tests::extend_no_data_allocates_ids_and_calls_back_before_cull_write ... ok
+test render::nani::instance_updates::gb_tests::stone_floor_roof_straight_tall ... ok
+test render::nani::instance_updates::gb_tests::wren_layout ... ok
+test render::nani::instance_updates::group_a_tests::albedo_table_matches_binary ... ok
+test render::nani::instance_updates::group_a_tests::bricks_packing ... ok
+test render::nani::instance_updates::group_a_tests::albedo_texture_out_of_range_panics - should panic ... ok
+test render::nani::instance_updates::group_a_tests::glass_packs_color_semi_bit_and_albedo ... ok
+test render::nani::instance_updates::group_a_tests::glass_color_id_bit31_panics - should panic ... ok
+test render::nani::instance_updates::group_a_tests::pack_2x16f_order ... ok
+test render::nani::instance_updates::group_a_tests::solid_vertex_color_flags ... ok
+test render::nani::instance_updates::group_a_tests::trs_identity_and_scale_translation ... ok
+test render::nani::instance_updates::group_a_tests::trs_rotation_90deg_z_scales_columns ... ok
+test render::nani::instance_updates::group_a_tests::window_color_id_word13 ... ok
+test render::nani::instance_updates::group_c_tests::balcony_layout ... ok
+test render::nani::instance_updates::group_c_tests::cloth_layout ... ok
+test render::nani::instance_updates::group_c_tests::lantern_flags_and_packing ... ok
+test render::nani::instance_updates::group_c_tests::pack_2x16f_low_is_first_arg ... ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_few_points - should panic ... ok
+test render::nani::instance_updates::group_c_tests::plaster_layout_and_constants ... ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_zero_length - should panic ... ok
+test render::nani::instance_updates::group_c_tests::plaster_invalid_curve_nan_length - should panic ... ok
+test render::nani::instance_updates::group_c_tests::plaster_peel_override_and_freehand ... ok
+test render::nani::instance_updates::group_c_tests::plaster_view_from_words ... ok
+test render::nani::instance_updates::group_c_tests::smoke_layout ... ok
+test render::nani::instance_updates::group_c_tests::trs_identity_layout ... ok
+test render::nani::instance_updates::group_c_tests::trs_rotation_90_about_z ... ok
+test render::nani::instance_updates::group_c_tests::trs_sort_key_is_max_abs_scale ... ok
+test render::nani::instance_updates::group_d_tests::affine_identity_layout ... ok
+test render::nani::instance_updates::group_d_tests::affine_rot_z_90 ... ok
+test render::nani::instance_updates::group_d_tests::max_abs_uses_abs_and_ignores_nan ... ok
+test render::nani::instance_updates::group_d_tests::stairs_floor_zero_tail_unit_key ... ok
+test render::nani::instance_updates::group_d_tests::uber_flags_and_index ... ok
+test render::nani::instance_updates::group_d_tests::velocity_only_two_affines_key_from_current ... ok
+test render::nani::mesh_atlas::tests::first_mesh_is_cloned_and_gets_part_zero ... ok
+test render::nani::mesh_atlas::tests::attribute_mismatch_errors_after_indices_were_already_extended ... ok
+test render::nani::mesh_atlas::tests::empty_indices_panic_with_debug_name - should panic ... ok
+test render::nani::mesh_atlas::tests::non_float3_position_panics - should panic ... ok
+test render::nani::mesh_atlas::tests::duplicate_name_panics - should panic ... ok
+test render::nani::mesh_atlas::tests::radius_ignores_nan_like_f32_max ... ok
+test render::nani::mesh_atlas::tests::second_mesh_offsets_indices_by_vertex_count_and_appends_attributes ... ok
+test render::nani::systems::tests::flush_rolls_the_instance_counter ... ok
+test render::nani::systems::tests::named_mesh_resolves_through_the_atlas_for_that_shader ... ok
+test render::nani::systems::tests::named_mesh_for_another_shader_panics - should panic ... ok
+test render::nani::systems::tests::maintain_creates_then_updates_then_removes ... ok
+test render::nani::mesh_atlas::tests::sixty_fifth_part_is_rejected - should panic ... ok
+test render::nani::systems::tests::update_wrapper_writes_the_builder_payload ... ok
+test render::nani::systems::tests::removing_an_unknown_entity_panics_like_the_original - should panic ... ok
+test render::nani::trimesh::tests::attrib_descending_alignment_is_allowed ... ok
+test render::nani::trimesh::tests::attrib_rejects_empty - should panic ... ok
+test render::nani::trimesh::tests::attrib_alignment_must_descend - should panic ... ok
+test render::nani::systems::tests::writing_with_the_wrong_instance_type_panics - should panic ... ok
+test render::nani::trimesh::tests::attrib_requires_covering_the_max_index - should panic ... ok
+test render::nani::trimesh::tests::attrib_vertex_count_must_match - should panic ... ok
+test render::nani::trimesh::tests::build_packs_triangles_then_gathered_attributes ... ok
+test render::nani::trimesh::tests::builder_dedups_vertices_into_local_indices ... ok
+test render::nani::trimesh::tests::builder_empty_input ... ok
+test render::nani::trimesh::tests::build_requires_positions - should panic ... ok
+test render::nani::trimesh::tests::positions_records_attrib_index ... ok
+test render::nani::trimesh::tests::build_chunk_offsets_are_back_to_back ... ok
+test render::pass_builder::bind_resources::tests::binding_name_hashes_are_the_exe_immediates ... ok
+test render::nani::trimesh::tests::builder_splits_at_64_triangles_and_drops_remainder ... ok
+test render::pass_builder::bind_resources::tests::generic_color_library_path_reuses_the_slot_and_appends_range_on_hit ... ok
+test render::pass_builder::bind_resources::tests::generic_color_library_path_without_registry_entry_adds_no_range ... ok
+test render::pass_builder::bind_resources::tests::generic_ray_tracing_path_walks_three_slots_then_wall_colors ... ok
+test render::pass_builder::bind_resources::tests::ssbo_hash_trait_is_the_library_ssbo_id ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_raw_overwrites_binding_and_drops_on_miss ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_builds_tag5_record ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_from_disk_is_an_external_image_binding_not_an_rg_access ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_missing_vk_buffer_unwraps - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_external_storage_buffer_set_index_asserts_before_vk_lookup - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_preset_resolves_through_the_texture_library ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_from_disk_registry_miss_only_writes_dims ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_miss_only_writes_dims_uniform_lazily ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_read_and_write_groups_views_and_dims_uniform ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_rg_handle_uses_handle_value ... ok
+test render::pass_builder::compute_pass_builder::tests::bind_texture_with_view_stores_the_view_desc_in_the_image_binding ... ok
+test render::pass_builder::compute_pass_builder::tests::dispatch_modes_and_discriminants ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_groups_skips_division_and_pushes_constants_first ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_indirect_and_closure_modes ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_threads_divides_by_local_size_rounding_up_with_barrier_first ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_indirect_with_missing_buffer_panics - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::indirect_dispatch_registers_0x02_group1_before_recording ... ok
+test render::pass_builder::compute_pass_builder::tests::execute_threads_with_zero_local_size_panics_before_the_barrier - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::new_allocates_uniform_block_of_reflected_size ... ok
+test render::pass_builder::compute_pass_builder::tests::external_branch_asserts_read_only_and_rejects_views ... ok
+test render::pass_builder::compute_pass_builder::tests::new_binds_color_library_read_access_and_range ... ok
+test render::pass_builder::compute_pass_builder::tests::new_with_empty_registry_skips_range_lookup_entirely ... ok
+test render::pass_builder::compute_pass_builder::tests::new_compiles_once_per_source_hash_then_reuses_the_library_program ... ok
+test render::pass_builder::compute_pass_builder::tests::new_without_color_binding_still_registers_access_but_no_range ... ok
+test render::pass_builder::compute_pass_builder::tests::perm_defines_reach_the_shader_backend_in_order ... ok
+test render::pass_builder::compute_pass_builder::tests::read_and_write_storage_buffer_use_0x1a_and_0x32 ... ok
+test render::pass_builder::compute_pass_builder::tests::ray_tracing_reads_four_ssbos_in_order_and_writes_two_uniforms ... ok
+test render::pass_builder::compute_pass_builder::tests::rg_nonzero_set_index_asserts - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::read_only_types_panic_before_the_registry_lookup_when_written ... ok
+test render::pass_builder::compute_pass_builder::tests::rg_binding_table_overflow_unwraps_after_access_registration - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::rg_read_write_concurrent_constants_groups_and_tags ... ok
+test render::pass_builder::compute_pass_builder::tests::with_suffix_dims_is_plus_one ... ok
+test render::pass_builder::compute_pass_builder::tests::rg_unknown_hash_is_a_silent_noop ... ok
+test render::pass_builder::compute_pass_builder::tests::uniform_writes_at_reflected_offset ... ok
+test render::pass_builder::compute_pass_builder::tests::unregistered_ssbo_panics_inside_get_rg_buffer - should panic ... ok
+test render::pass_builder::compute_pass_builder::tests::world_without_graphics_device_resource_unwraps ... ok
+test render::pass_builder::compute_pass_builder::tests::write_storage_buffer_concurrent_uses_0x37_and_the_callers_group ... ok
+test render::pass_builder::draw_builder::tests::bind_brick_erase_highlight_is_silent_without_constants ... ok
+test render::pass_builder::draw_builder::tests::bind_common_skips_flag_uniforms_without_constants ... ok
+test render::pass_builder::draw_builder::tests::bind_common_flag_selects_preset_and_writes_uniforms ... ok
+test render::pass_builder::draw_builder::tests::bind_brick_erase_highlight_writes_three_uniforms ... ok
+test render::pass_builder::draw_builder::tests::bind_external_storage_buffer_inserts_whole_buffer_binding ... ok
+test render::pass_builder::draw_builder::tests::bind_external_storage_buffer_without_vk_buffer_panics - should panic ... ok
+test render::pass_builder::draw_builder::tests::bind_ray_tracing_draw_reads_four_slots_then_writes_the_two_buffer_words ... ok
+test render::pass_builder::draw_builder::tests::bind_disk_texture_groups_bind_every_table_entry ... ok
+test render::pass_builder::draw_builder::tests::bind_tables_have_observed_shape ... ok
+test render::pass_builder::draw_builder::tests::color_attachment_pass_is_unaffected_by_builder ... ok
+test render::pass_builder::draw_builder::tests::bind_ray_tracing_draw_reuses_existing_slots_and_unwraps_missing_buffers ... ok
+test render::pass_builder::draw_builder::tests::common_draw_flag_bytes_are_0_to_4_and_shadow_is_cascade_plus_two ... ok
+test render::pass_builder::draw_builder::tests::constants_match_binary_immediates ... ok
+test render::pass_builder::draw_builder::tests::discard_disarms_every_binding ... ok
+test render::pass_builder::draw_builder::tests::disk_texture_rejects_write_access - should panic ... ok
+test render::pass_builder::draw_builder::tests::draw_kinds_and_payloads ... ok
+test render::pass_builder::draw_builder::tests::drawn_or_discarded_builders_drop_silently ... ok
+test render::pass_builder::draw_builder::tests::entity_draw_params_exposes_the_entity ... ok
+test render::pass_builder::draw_builder::tests::indexed_indirect_table_has_the_24_exe_entries ... ok
+test render::pass_builder::draw_builder::tests::dropping_an_undrawn_builder_panics_with_program_name - should panic ... ok
+test render::pass_builder::draw_builder::tests::indexed_indirect_table_matches_binary ... ok
+test render::pass_builder::draw_builder::tests::indirect_draws_register_accesses_and_fields ... ok
+test render::pass_builder::draw_builder::tests::later_draw_overwrites_kind_payload ... ok
+test render::pass_builder::draw_builder::tests::new_sets_variant_allocates_constants_and_inserts_uniform_binding ... ok
+test render::pass_builder::draw_builder::tests::more_than_256_pass_bindings_panic - should panic ... ok
+test render::pass_builder::draw_builder::tests::no_drop_only_take_semantics ... ok
+test render::pass_builder::draw_builder::tests::new_without_uniform_block_skips_allocation ... ok
+test render::pass_builder::draw_builder::tests::new_with_unknown_shader_panics - should panic ... ok
+test render::pass_builder::draw_builder::tests::optional_uniform_mat4_is_64_bytes_column_major ... ok
+test render::pass_builder::draw_builder::tests::no_drop_only_take_take_twice_panics - should panic ... ok
+test render::pass_builder::draw_builder::tests::optional_uniform_writes_at_offset_and_ignores_misses ... ok
+test render::pass_builder::draw_builder::tests::placement_data_binds_buffer_then_draws_with_stored_flag ... ok
+test render::pass_builder::draw_builder::tests::placement_message_length_matches_expect_failed_arg ... ok
+test render::pass_builder::draw_builder::tests::placement_data_missing_entry_panics_with_original_text - should panic ... ok
+test render::pass_builder::draw_builder::tests::preset_texture_allows_write_with_group_zero ... ok
+test render::nani::draw_ext::tests::nani_draw_raw_path_uses_draw_count_stride_and_rg_handle ... ok
+test render::pass_builder::draw_builder::tests::raw_and_disk_textures_insert_sampled_image_bindings ... ok
+test render::pass_builder::draw_builder::tests::raw_texture_rejects_views - should panic ... ok
+test render::pass_builder::draw_builder::tests::read_storage_buffer_reuses_slot_by_name ... ok
+test render::pass_builder::draw_builder::tests::raw_texture_rejects_write_access - should panic ... ok
+test render::pass_builder::draw_builder::tests::read_storage_buffer_unknown_binding_still_registers_slot ... ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_access_types_and_groups ... ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_missing_name_is_noop ... ok
+test render::pass_builder::draw_builder::tests::rg_handle_write_access_panics - should panic ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_binds_once_per_key_and_writes_dims ... ok
+test render::pass_builder::draw_builder::tests::rg_storage_buffer_nonzero_set_asserts - should panic ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_unknown_name_only_writes_dims ... ok
+test render::pass_builder::draw_builder::tests::rg_texture_with_view_gets_a_distinct_key ... ok
+test render::pass_builder::draw_builder::tests::uniform_noop_without_block_or_offsets_or_constants ... ok
+test render::pass_builder::draw_list::tests::sort_is_stable_on_the_signed_i32_key ... ok
+test render::pass_builder::draw_list::tests::to_draw_packet_uses_head_one_vao_and_the_item_shader ... ok
+test render::pass_builder::draw_list::tests::topology_tag_and_payload_match_the_element_layout ... ok
+test render::pass_builder::draw_builder::tests::uniform_write_past_block_end_panics - should panic ... ok
+test render::pass_builder::draw_stream::tests::access_is_write_range_matches_0x140c10e10 ... ok
+test render::pass_builder::draw_stream::tests::draw_packet_new_defaults_match_0x140867850 ... ok
+test render::nani::gpu_world::tests::update_instance_data_writes_cull_and_typed_data ... ok
+test render::pass_builder::draw_stream::tests::host_provides_rg_resources_before_a_pass_exists ... ok
+test render::pass_builder::draw_stream::tests::host_without_a_render_graph_reports_it ... ok
+test render::pass_builder::draw_stream::tests::invalid_color_format_stops_collection ... ok
+test render::pass_builder::draw_stream::tests::kind_discriminants_are_the_observed_values ... ok
+test render::pass_builder::draw_stream::tests::dropping_an_unrendered_pass_panics - should panic ... ok
+test render::pass_builder::draw_stream::tests::new_registers_color_and_depth_accesses ... ok
+test render::pass_builder::draw_stream::tests::more_than_five_color_attachments_panic - should panic ... ok
+test render::pass_builder::draw_stream::tests::raster_state_bit_edits_match_raster_single ... ok
+test render::pass_builder::draw_stream::tests::raw_texture_key_conversion_panics - should panic ... ok
+test render::pass_builder::draw_stream::tests::render_check_silent_when_rendered ... ok
+test render::pass_builder::draw_stream::tests::render_check_panics_when_not_rendered - should panic ... ok
+test render::pass_builder::draw_stream::tests::render_creates_and_caches_on_miss_and_flags_rendered ... ok
+test render::pass_builder::draw_stream::tests::render_dedupes_render_passes_via_the_device_cache ... ok
+test render::pass_builder::draw_stream::tests::rg_handle_keys_use_the_tagged_id ... ok
+test render::pass_builder::draw_stream::tests::tag2_color_registers_view_access_and_overrides_the_description_tag ... ok
+test render::pass_builder::framebuffer_binding::tests::color_access_types_match_from_iter ... ok
+test render::pass_builder::draw_stream::tests::texture_binding_key_tag_and_view_xor ... ok
+test render::pass_builder::framebuffer_binding::tests::color_desc_returns_texture_for_both_variants ... ok
+test render::pass_builder::framebuffer_binding::tests::depth_tags_and_access ... ok
+test render::pass_builder::framebuffer_binding::tests::from_placeholder_texture_maps_fields ... ok
+test render::pass_builder::framebuffer_binding::tests::handle_mut_edits_the_referenced_texture_id ... ok
+test render::pass_builder::framebuffer_binding::tests::tag2_has_view_access_no_view_words_and_texture_at_plus8 ... ok
+test render::pass_builder::pass_resource_access::tests::access_is_registered_before_the_binding_limit_check ... ok
+test render::pass_builder::pass_resource_access::tests::binding_tags_match_the_two_bind_constructors ... ok
+test render::pass_builder::pass_resource_access::tests::binding_index_limit_is_0x100 ... ok
+test render::pass_builder::pass_resource_access::tests::is_write_is_the_0x28_to_0x37_window ... ok
+test render::pass_builder::pass_resource_access::tests::managed_handle_tag_1_clones_handle_and_keeps_view ... ok
+test render::pass_builder::pass_resource_access::tests::observed_access_constants ... ok
+test render::pass_builder::pass_resource_access::tests::managed_handle_view_failure_unwraps - should panic ... ok
+test render::pass_builder::pass_resource_access::tests::read_write_concurrent_register_access_and_binding ... ok
+test render::pass_builder::pass_resource_access::tests::rg_texture_dims_and_tag ... ok
+test render::pass_builder::pass_resources::tests::layout_is_56_bytes_like_the_original ... ok
+test render::pass_builder::pass_resources::tests::lookup_order_is_a_b_c_d_e_f_g ... ok
+test render::pass_builder::pass_resources::tests::mandatory_missing_panics_with_unwrap_failed - should panic ... ok
+test render::pass_builder::pass_resources::tests::optional_b_missing_is_null_not_an_error ... ok
+test render::pass_builder::pass_resources::tests::typeid_constants_match_exe_immediates ... ok
+test render::pass_builder::rg_resources::tests::temporal_resources_are_reused_by_name_and_flag_the_first_creation ... ok
+test render::pass_builder::rg_resources::tests::raw_resources_get_distinct_ids_and_keep_their_desc ... ok
+test render::pass_builder::shader_uri::tests::defines_default_to_empty_and_with_define_formats_display ... ok
+test render::pass_builder::shader_uri::tests::hash_is_siphash13_key0 ... ok
+test render::pass_builder::shader_uri::tests::parse_with_entry ... ok
+test render::pass_builder::shader_uri::tests::desc_defaults_entry ... ok
+test render::pass_builder::shader_uri::tests::parse_without_entry_and_dir ... ok
+test render::pass_builder::uniform_binder::tests::bool_is_written_as_u32 ... ok
+test render::pass_builder::shader_uri::tests::parse_without_dot_panics - should panic ... ok
+test render::pass_builder::uniform_binder::tests::guards_return_silently ... ok
+test render::pass_builder::uniform_binder::tests::mat4_and_vec3_bytes ... ok
+test render::pass_builder::uniform_binder::tests::new_allocates_reflection_size_and_keeps_set_index ... ok
+test render::pass_builder::uniform_binder::tests::new_without_uniform_block_is_none_and_does_not_allocate ... ok
+test render::pass_builder::uniform_binder::tests::offset_equal_to_len_passes_the_start_check_like_the_original ... ok
+test render::pass_builder::uniform_binder::tests::optional_closure_runs_only_on_hit_and_reports_bool ... ok
+test render::pass_builder::uniform_binder::tests::offset_past_end_is_slice_start_index_len_fail - should panic ... ok
+test render::pass_builder::uniform_binder::tests::write_widths_match_the_nine_instances ... ok
+test render::raster_single::tests::closure_that_drops_the_builder_panics_via_drop_check - should panic ... ok
+test render::raster_single::tests::viewport_is_the_first_attachment_extent ... ok
+test render::raster_single::tests::runs_closure_then_fullscreen_triangle_then_render ... ok
+test render::render_config::tests::display_keys ... ok
+test render::render_config::tests::last_known_graphics_device_formats_physical_device_first_then_uuid ... ok
+test render::render_config::tests::previous_walks_down_and_stops_at_zero ... ok
+test render::render_config::tests::resolution_only_for_discriminant_one ... ok
+test render::render_config::tests::scale_table_matches_binary_bytes ... ok
+test render::rg_helpers::tests::clear_passes_have_original_names_and_calls ... ok
+test render::shader::tests::compute_program_loads_then_creates ... ok
+test render::rg_helpers::tests::copy_rejects_oversized_data - should panic ... ok
+test render::rg_helpers::tests::copy_stages_data_then_copies ... ok
+test render::shader::tests::contract_device_is_a_shader_backend ... ok
+test render::shader::tests::compute_program_panics_when_artifact_missing - should panic ... ok
+test render::shader::tests::get_or_generate_caches_per_key ... ok
+test render::shader::tests::new_draw_keeps_desc_name_and_two_variants ... ok
+test render::shader::tests::second_variant_failure_is_an_error_not_a_panic ... ok
+test render::shader::tests::variants_load_in_order_and_start_empty ... ok
+test render::shader::tests::pipeline_creation_failure_panics - should panic ... ok
+test render::shadowed_buffer::tests::flush_without_dirty_is_noop ... ok
+test render::shadowed_buffer::tests::copy_within_shadow_is_marked_dirty ... ok
+test render::shadowed_buffer::tests::get_mut_marks_everything_and_flush_does_not_overrun ... ok
+test render::shadowed_buffer::tests::new_keeps_the_initial_data_in_the_shadow ... ok
+test render::shadowed_buffer::tests::write_then_flush_uploads_only_the_dirty_window ... ok
+test render::sparse_instance_buffer::tests::dropping_allocation_after_buffer_is_a_noop ... ok
+test render::sparse_instance_buffer::tests::draw_runs_merge_only_full_adjacent_chunks_and_skip_empty ... ok
+test render::sparse_instance_buffer::tests::dropping_allocation_feeds_waste_and_take_out_waste_reclaims ... ok
+test render::sparse_instance_buffer::tests::hide_and_show_toggle_active_bits ... ok
+test render::sparse_instance_buffer::tests::gpu_flush_reclaims_waste_before_uploading ... ok
+test render::sparse_instance_buffer::tests::gpu_flush_uploads_merged_dirty_runs_and_clears_them ... ok
+test render::sparse_instance_buffer::tests::initial_data_is_rejected - should panic ... ok
+test render::sparse_instance_buffer::tests::is_null_follows_option ... ok
+test render::sparse_instance_buffer::tests::initial_state_matches_binary ... ok
+test render::sparse_instance_buffer::tests::hide_with_null_handle_panics - should panic ... ok
+test render::sparse_instance_buffer::tests::push_claims_chunks_in_order_and_fills_32_per_chunk ... ok
+test render::ssbo::contract_device_tests::contract_device_is_a_ssbo_device ... ok
+test render::sparse_instance_buffer::tests::push_reports_exhaustion_with_err ... ok
+test render::ssbo::tests::byte_creator_uses_memory2_and_byte_len ... ok
+test render::sparse_instance_buffer::tests::writer_clear_returns_chunks_in_reverse_and_keeps_dirty ... ok
+test render::ssbo::tests::byte_creator_without_data_panics - should panic ... ok
+test render::ssbo::tests::byte_creator_rejects_partial_element - should panic ... ok
+test render::ssbo::tests::dynamic_buffer_sizes_and_usage ... ok
+test render::ssbo::tests::cpu_write_copies_prefix_and_rejects_longer_slices ... ok
+test render::ssbo::tests::fixed_len_buffer_zero_fills_and_keeps_full_size ... ok
+test render::ssbo::tests::instance_buffer_counts ... ok
+test render::ssbo::tests::dynamic_buffer_without_data_panics - should panic ... ok
+test render::ssbo::tests::instance_buffer_reports_its_count_through_the_trait ... ok
+test render::ssbo::tests::instance_buffer_rejects_partial_element - should panic ... ok
+test render::ssbo::tests::mapped_staging_family_is_0x40000_bytes_align1_memory2 ... ok
+test render::ssbo::tests::mapped_without_data_fills_the_default_element ... ok
+test render::ssbo::tests::ranges_are_scaled_to_bytes_and_empty_is_noop ... ok
+test render::ssbo::tests::single_element_buffer_uses_default_and_uniform_usage ... ok
+test render::ssbo::tests::mapped_data_limit_is_buffer_len_elements_and_partial_elements_assert ... ok
+test render::ssbo::tests::mapped_size_is_buffer_len_times_element_size_not_a_constant ... ok
+test render::ssbo::tests::too_many_elements_panics - should panic ... ok
+test render::vao::tests::index_and_vertex_buffers_are_created_with_original_flags ... ok
+test render::vao::tests::layout_sizes ... ok
+test render::view_constants::tests::clip_from_world_jittered_is_product ... ok
+test render::view_constants::tests::jittered_inverse_is_inverse ... ok
+test render::view_constants::tests::jittered_projection_shifts_ndc_by_jitter ... ok
+test render::view_constants::tests::layout_matches_original ... ok
+test render::view_constants::tests::reprojection_identity_when_static ... ok
+test render::view_constants::tests::set_pixel_offset_agrees_with_build ... ok
+test render::ssbo::tests::mapped_without_device_mapping_unwraps_none ... ok
+test resources::active_raster_stroke::tests::constants_match_the_exe ... ok
+test resources::active_raster_stroke::tests::crossing_the_threshold_duplicates_the_point_and_resets_length ... ok
+test resources::active_raster_stroke::tests::nan_length_never_triggers_solidify ... ok
+test resources::active_raster_stroke::tests::last_of_an_empty_stroke_panics - should panic ... ok
+test resources::active_raster_stroke::tests::resample_and_smooth_keeps_endpoints_and_rebuilds_from_scratch ... ok
+test resources::active_raster_stroke::tests::second_crossing_solidifies_and_drains_all_but_one_point ... ok
+test resources::active_raster_stroke::tests::smoothing_is_ten_passes_of_the_quarter_half_quarter_kernel ... ok
+test resources::active_raster_stroke::tests::solidify_dedupes_adjacent_duplicates_only ... ok
+test resources::active_raster_stroke::tests::solidify_into_non_empty_output_skips_the_first_resampled_point ... ok
+test resources::active_raster_stroke::tests::start_new_keeps_the_fluid_cursor_and_dirty_bitmaps ... ok
+test resources::active_raster_stroke::tests::start_new_resets_and_seeds_both_lists ... ok
+test resources::active_raster_stroke::tests::storage_has_six_independent_slots ... ok
+test resources::active_raster_stroke::tests::swap_dirty_exchanges_the_two_bitmaps ... ok
+test resources::active_raster_stroke::tests::storage_index_past_the_sixth_slot_panics - should panic ... ok
+test resources::brush_sizes::tests::layout_is_path_water_garden ... ok
+test resources::brush_sizes::tests::range_constants_match_the_exe_float_bits ... ok
+test resources::brush_sizes::tests::nan_survives_both_clamps_like_maxss_minss ... ok
+test resources::brush_sizes::tests::resets_write_the_exe_immediates ... ok
+test resources::brush_sizes::tests::setters_clamp_to_the_exe_ranges_and_touch_one_field ... ok
+test resources::gothic_window_profile::tests::door_points_match_observed_native_words ... ok
+test resources::gothic_window_profile::tests::half_dormer_points_match_observed_native_words ... ok
+test resources::grading_lut::tests::load_cube_missing_file_is_err_before_any_texture ... ok
+test resources::gothic_window_profile::tests::unsupported_sizes_follow_observed_panic_branches ... ok
+test resources::grading_lut_cube::tests::bad_data_line_reports_line_number_and_trimmed_text ... ok
+test resources::grading_lut_cube::tests::crlf_and_indentation_and_missing_final_newline ... ok
+test resources::grading_lut_cube::tests::default_size_is_31_when_never_declared ... ok
+test resources::grading_lut_cube::tests::data_before_size_is_too_many_entries ... ok
+test resources::grading_lut_cube::tests::domain_checks ... ok
+test resources::grading_lut_cube::tests::identity_2x2x2_cube ... ok
+test resources::grading_lut_cube::tests::lut_size_parse_errors_carry_context ... ok
+test resources::grading_lut_cube::tests::one_d_luts_rejected ... ok
+test resources::grading_lut_cube::tests::parse_rgb_errors ... ok
+test resources::grading_lut_cube::tests::parse_rgb_takes_three_words_and_ignores_extra ... ok
+test resources::grading_lut_cube::tests::resize_truncates_when_size_shrinks ... ok
+test resources::grading_lut_cube::tests::short_data_leaves_zero_texels_without_error ... ok
+test resources::grading_lut_cube::tests::short_lines_are_data_lines_not_keywords ... ok
+test resources::grading_lut_cube::tests::too_many_entries ... ok
+test resources::image_formation::tests::defaults_follow_the_machine_code ... ok
+test resources::image_formation::tests::each_config_is_0x40_bytes_and_the_array_is_0xc0 ... ok
+test resources::image_formation::tests::switch_kind_selects_the_config_by_index ... ok
+test resources::grading_lut::tests::load_cube_create_texture_failure_panics_like_the_original - should panic ... ok
+test resources::render::mesh_atlas_library::tests::add_then_lookup_by_each_name_form ... ok
+test resources::render::mesh_atlas_library::tests::clear_by_name_keeps_key_and_forgets_parts ... ok
+test resources::render::mesh_atlas_library::tests::add_error_panics_with_alternate_error - should panic ... ok
+test resources::grading_lut::tests::load_cube_builds_sampled_3d_e5b9g9r9_texture ... ok
+test resources::grading_lut::tests::load_cube_parse_error_is_err_before_any_texture ... ok
+test resources::render::mesh_atlas_library::tests::conversions_prefix_only_for_prefab_names ... ok
+test resources::render::mesh_atlas_library::tests::clear_subset_empties_atlas_and_filters_prefab_lists ... ok
+test resources::render::mesh_atlas_library::tests::debug_matches_original_format ... ok
+test resources::render::mesh_atlas_library::tests::default_has_all_27_subsets ... ok
+test resources::render::mesh_atlas_library::tests::register_meshes_adds_then_updates_in_place ... ok
+test resources::render::mesh_atlas_library::tests::unknown_prefab_panics - should panic ... ok
+test resources::render::mesh_atlas_library::tests::unknown_subworld_panics - should panic ... ok
+test resources::render::spatial_resolve_offsets::tests::size_and_alignment_match_option_layout ... ok
+test resources::render::tests::from_affine3a_drops_padding ... ok
+test resources::render::tests::from_cols_and_add_y ... ok
+test resources::render::tests::from_mat3_translation_layout ... ok
+test resources::render::spatial_resolve_offsets::tests::payload_bytes_hash_matches_machine_code_replay ... ok
+test resources::render::tests::layout_is_twelve_floats ... ok
+test resources::render::spatial_resolve_offsets::tests::storage_element_contract ... ok
+test resources::render_ssbo::tests::element_layouts_match_the_machine_code ... ok
+test resources::render::spatial_resolve_offsets::tests::last_entry_and_extent ... ok
+test resources::render_ssbo::tests::mouse_depth_value_is_a_mapped_readback_buffer ... ok
+test resources::render_ssbo::tests::ssbo_ids_are_the_exe_immediates ... ok
+test resources::render_ssbo::tests::lantern_is_an_instance_buffer_in_the_library ... ok
+test resources::render::spatial_resolve_offsets::tests::first_entries_and_group_structure ... ok
+test resources::terrain_height::tests::decode_uses_v_times_max_plus_one_minus_v_times_min ... ok
+test resources::terrain_height::tests::defaults_and_decode_endpoints_match_the_exe ... ok
+test resources::terrain_height::tests::copy_from_gpu_with_non_default_range_resets_it_and_dirties_everything ... ok
+test resources::terrain_height::tests::copy_from_gpu_flags_only_the_changed_tiles_and_publishes ... ok
+test resources::terrain_height::tests::plane_hit_inside_the_box_is_ignored ... ok
+test resources::terrain_height::tests::ray_outside_the_box_falls_back_to_the_y_zero_plane ... ok
+test resources::terrain_height::tests::flat_terrain_samples_the_decoded_height_on_both_paths ... ok
+test resources::texture_presets::tests::only_preset_8_has_mips_and_only_the_two_arrays_have_layers ... ok
+test resources::texture_presets::tests::table_matches_the_decompiled_switch ... ok
+test resources::terrain_height::tests::nan_height_range_counts_as_non_default ... ok
+test resources::terrain_height::tests::nan_t_max_skips_the_plane_hit_like_ucomiss_jb ... ok
+test resources::world_raster::tests::blend_mode_selection_follows_the_exe_branches ... ok
+test resources::texture_presets::tests::there_are_25_presets_and_the_26th_is_out_of_range ... ok
+test resources::texture_presets::tests::usage_bits_follow_the_builder_chain ... ok
+test resources::terrain_height::tests::straight_down_ray_hits_flat_terrain_at_its_height ... ok
+test asset_libraries::configwatch::tests::watch_with_hotwatch_registers_without_panicking ... ok
+test resources::world_raster::tests::clear_buffer_touches_only_the_selected_buffer_and_not_the_bitmap ... ok
+test resources::world_raster::tests::empty_tile_hashes_to_the_initial_state_word ... ok
+test resources::world_raster::tests::composite_scratch_copies_do_not_dirty_anything ... ok
+test resources::terrain_height::tests::upward_ray_misses_and_short_t_max_misses ... ok
+test resources::world_raster::tests::odd_flags_without_draw_hit_unimplemented - should panic ... ok
+test resources::world_raster::tests::raster_ref_samples_u8_over_255_with_130_extent ... ok
+test resources::world_raster::tests::new_layout_matches_the_exe_constructor ... ok
+test resources::terrain_height::tests::sample_interpolates_between_adjacent_columns ... ok
+test resources::world_raster::tests::clear_all_resets_buffers_hashes_and_marks_everything_dirty ... ok
+test resources::world_raster::tests::staging_dirty_clears_the_output_first_and_resets_the_flag ... ok
+test resources::world_raster::tests::stroke_blend_modes_apply_the_exe_closures ... ok
+test resources::world_raster::tests::copy_to_staging_writes_changed_tiles_in_tile_major_order ... ok
+test resources::world_raster::tests::tile_hash_constants_are_consistent_with_the_compiler_folded_immediate ... ok
+test resources::world_raster::tests::tile_hash_matches_independent_transcription_vectors ... ok
+test resources::world_raster::tests::subscribing_to_a_secondary_publisher_panics - should panic ... ok
+test resources::world_raster::tests::rasterize_stroke_saturating_add_scales_coverage ... ok
+test resources::world_raster::tests::rasterize_stroke_erase_clears_under_the_stroke_only ... ok
+test resources::world_raster::tests::write_composite_length_mismatch_unwraps_the_formatted_error - should panic ... ok
+test resources::world_raster::tests::write_composite_marks_all_dirty_and_staging_dirty ... ok
+test resources::world_raster_defs::tests::six_slots_in_the_exe_order ... ok
+test resources::world_raster_defs::tests::named_rasters_deref_to_the_world_raster ... ok
+test resources::world_raster_defs::tests::write_fills_leading_slots_and_dirties_only_those ... ok
+test resources::world_raster::tests::shared_primary_receives_secondary_publications ... ok
+test resources::world_raster::tests::rasterize_stroke_paints_a_round_line_through_the_centre ... ok
+test resources::world_raster::tests::selector_chooses_scratch_buffer ... ok
+test startup::startup_terrain::tests::empty_ranges_and_zero_rows_emit_nothing ... ok
+test startup::startup_terrain::tests::blocking_changes_the_order_but_not_the_triangle_set ... ok
+test startup::startup_terrain::tests::reversed_range_panics - should panic ... ok
+test resources::world_raster_defs::tests::write_ignores_entries_past_the_sixth_slot ... ok
+test startup::startup_terrain::tests::single_quad_has_the_two_exe_triangles ... ok
+test systems::camera_rig::free_camera::tests::dt_zero_pass_puts_the_rig_at_the_target_pose ... ok
+test systems::camera_rig::free_camera::tests::match_normal_reproduces_position_and_angles ... ok
+test resources::world_raster_defs::tests::write_with_wrong_length_panics_with_the_exe_message - should panic ... ok
+test systems::camera_rig::free_camera::tests::missing_driver_panics_with_dollys_message - should panic ... ok
+test startup::startup_terrain::tests::the_two_windings_are_mirror_images ... ok
+test resources::world_raster::tests::too_short_staging_buffer_panics_like_the_exe_bounds_check - should panic ... ok
+test systems::camera_rig::free_camera::tests::update_moves_the_smoothed_pose_toward_the_driver ... ok
+test systems::camera_rig::main_camera::tests::aspect_is_width_over_height ... ok
+test systems::camera_rig::main_camera::tests::fov_slots_follow_the_mode_byte ... ok
+test systems::camera_rig::main_camera::tests::mode_range_is_thirteen_slots ... ok
+test systems::camera_rig::main_camera::tests::previous_follows_the_packed_table_including_the_wraparound ... ok
+test systems::camera_rig::main_camera::tests::record_layout_is_0x24_bytes_in_the_exe_order ... ok
+test systems::camera_rig::main_camera::tests::store_parameters_sanitises_each_field_separately ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::ssbo_layout_tests::element_sizes_and_buffer_lens_match_buffer_desc ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::ssbo_layout_tests::buffers_are_storage_0x22_even_for_buffer_len_1 ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::ssbo_layout_tests::ssbo_ids_are_the_exe_immediates ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::apply_volumetrics::tests::declares_one_pass_in_exe_order ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::tests::mean_pass_is_a_256_thread_1d_dispatch_over_two_ssbos ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::tests::apply_binds_in_machine_code_order_and_returns_current ... ok
+test systems::render_loop::compute_passes::apply_volumetrics::tests::scales_by_camera_mode ... ok
+test systems::render_loop::compute_passes::apply_screen_shadows::tests::temporal_pair_failure_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::apply_volumetrics::tests::non_camera_modes_keep_unit_scales ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::bin_lights_variants_have_distinct_hashes_and_defines ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::buffer_wiring_per_pass ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::zero_lanterns_creates_only_the_two_placeholders ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::full_pipeline_order_names_and_dispatches ... ok
+test systems::render_loop::compute_passes::bin_lights::tests::unregistered_lantern_buffer_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::extent_helpers ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::div_extent_by_zero_panics - should panic ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::mip_count_rule ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::bidirectional_is_forward_then_reverse ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::names_and_hashes_match_machine_code ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::bush_and_flower_elements_match_the_buffer_sizes_in_the_machine_code ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::tiny_source_gets_a_single_pass ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::forward_pyramid_pass_sequence_and_dims ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::bush_initial_data_above_capacity_panics - should panic ... ok
+test systems::render_loop::compute_passes::blur_pyramid::tests::reverse_pyramid_walks_mips_top_down_with_sample_self_flag ... ok
+test resources::world_raster::tests::unchanged_tiles_are_dropped_on_the_next_call ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::bush_and_flower_buffers_are_fixed_size_in_the_library ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::clean_staging_does_nothing ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::dirty_staging_clears_flags_then_blurs_horizontally_then_vertically ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::flower_initial_data_must_be_a_whole_number_of_elements - should panic ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::missing_staging_resource_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::all_four_rasters_are_consumed_even_if_only_one_triggered ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::blur_wiring_contract_to_preset5_and_blur_path_mask_returns_temp1 ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::full_pass_order_and_counts ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::four_spawn_passes_in_order_with_grid_sizes ... ok
+test systems::render_loop::compute_passes::compute_garden::tests::spawn_pass_access_sequences ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::nothing_dirty_does_nothing ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::missing_queue_resource_unwraps_before_any_decision - should panic ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::standalone_blur_path_mask_returns_the_vertical_target ... ok
+test systems::render_loop::compute_passes::compute_water::tests::clean_staging_declares_nothing_and_touches_nothing ... ok
+test systems::render_loop::compute_passes::compute_water::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::compute_water::tests::demo_mode_skips_vegetation_and_non_autumn_clears_flag ... ok
+test systems::render_loop::compute_passes::compute_water::tests::world_to_grid_maps_origin_to_cell_256 ... ok
+test systems::render_loop::compute_passes::displace_rocky_terrain::tests::divides_first_word_by_three_and_truncates ... ok
+test systems::render_loop::compute_passes::compute_water::tests::dirty_staging_is_cleared_and_four_blur_passes_follow ... ok
+test systems::render_loop::compute_passes::displace_rocky_terrain::tests::preset_slots_and_hashes_match_machine_code ... ok
+test systems::render_loop::compute_passes::displace_rocky_terrain::tests::missing_mesh_resource_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::compute_water::tests::vegetation_two_passes_with_original_grid_and_offsets ... ok
+test systems::render_loop::compute_passes::dof::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::displace_rocky_terrain::tests::zero_triangles_still_records_a_zero_sized_dispatch ... ok
+test systems::render_loop::compute_passes::displace_rocky_terrain::tests::records_one_pass_with_declared_resources_in_order ... ok
+test systems::render_loop::compute_passes::dof::tests::indirect_offsets_match_the_exe_immediates ... ok
+test systems::render_loop::compute_passes::dof::tests::fused_path_declares_one_pass ... ok
+test systems::render_loop::compute_passes::dof::tests::dof_prepare_creates_coc_and_tiles_then_dispatches_on_depth_extent ... ok
+test systems::render_loop::compute_passes::dof::tests::source_uris_hashes_and_defines ... ok
+test systems::render_loop::compute_passes::dof::tests::tile_offsets_are_an_exclusive_prefix_sum ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::autofocus_buffer_is_8_elements_device_local_storage ... ok
+test systems::render_loop::compute_passes::dof::tests::multires_chain_order_offsets_and_buffers ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::exactly_8_initial_elements_are_uploaded_whole ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::dof_focus_layout_matches_the_hlsl_and_the_shader_store_offsets ... ok
+test systems::render_loop::compute_passes::compute_path_masks::tests::each_trigger_alone_runs_the_pipeline ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::more_than_8_initial_elements_panics - should panic ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::readback_buffer_is_mapped_memory_4 ... ok
+test systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests::ssbo_ids_are_the_exe_immediates ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::lock_gate_requires_low_mode_and_view_kind_0x13 ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::mode_three_and_default_use_camera_offsets ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::mode_two_uses_mouse_over_window_and_flags_dual ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::declares_the_original_pass ... ok
+test systems::render_loop::compute_passes::dof_autofocus::tests::missing_lock_resource_panics_like_unwrap_failed - should panic ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::all_mips_is_log2_plus_one ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::all_three_passes_dispatch_half_extent_in_order ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::creates_hzb_texture_and_records_group_dispatch ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::radiance_is_three_times_wider_than_half_res ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::write_access_codes_match_the_exe ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::history_valid_follows_radiance_pair_flag ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::hzb_dimension_rule ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::allow_non_determinism_is_state_equals_zero ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::mip_count_is_clamped_to_13 ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::binding_names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::tiny_depth_buffers_clamp_to_one_texel ... ok
+test systems::render_loop::compute_passes::generate_hzb::tests::temporal_failure_unwraps_before_creating_the_texture - should panic ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::last_view_base_is_min_of_mips_minus_one_and_six ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::exactly_13_mips_is_allowed_and_atomic_is_created_before_the_pass ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::push_constants_layout ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::tile_division_rounds_up ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::more_than_13_mips_asserts_before_anything_is_created - should panic ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::records_spd_pass_with_three_views_atomic_and_group_dispatch ... ok
+test resources::world_raster::tests::rasterize_stroke_selector_and_short_input ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::temporal_creation_failure_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::cull_dispatch_closure_pushes_then_dispatches_each_subset ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::generate_mips::tests::wrong_format_asserts - should panic ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::clear_draw_lists_binding_order ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::push_constants_are_twenty_bytes_le ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::cull_and_bucket_binding_order_and_hzb_variant ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::fixed_shape_passes_use_the_rdata_dispatch_sizes ... ok
+test systems::render_loop::compute_passes::grass::tests::brush_table_and_theme_mapping ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::prepare_and_external_cull_declare_the_expected_extras ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::wall_passes_declare_the_original_names_and_entries ... ok
+test systems::render_loop::compute_passes::grass::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::gpu_generate_draw_lists::tests::rg_buffers_created_by_helpers ... ok
+test systems::render_loop::compute_passes::grass::tests::object_grass_push_registers_as_a_plain_component ... ok
+test systems::render_loop::compute_passes::grass::tests::buffers_are_created_with_sizes_and_usages ... ok
+test systems::render_loop::compute_passes::grass::tests::final_pass_uniforms_theme_brush_and_disk_texture ... ok
+test systems::render_loop::compute_passes::grass::tests::missing_theme_resource_unwraps_before_the_last_pass - should panic ... ok
+test systems::render_loop::compute_passes::grass::tests::eight_grass_passes_and_the_prefix_scan_in_machine_code_order ... ok
+test systems::render_loop::compute_passes::grass::tests::disk_texture_binding_resolves_through_the_texture_library_by_name_hash - should panic ... ok
+test systems::render_loop::compute_passes::grass::tests::prefix_scan_runs_on_the_bundle_index_buffer_between_gen_and_dispatch_args ... ok
+test systems::render_loop::compute_passes::half_res::tests::div_up_rounds_each_axis_up ... ok
+test systems::render_loop::compute_passes::grass::tests::temporal_failure_unwraps_first - should panic ... ok
+test systems::render_loop::compute_passes::half_res::tests::creates_two_half_res_targets_and_one_dispatch ... ok
+test systems::render_loop::compute_passes::half_res::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::highlight_active_terrain_stroke::tests::index_selection_follows_mode_events_and_suppress ... ok
+test systems::render_loop::compute_passes::highlight_active_terrain_stroke::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::grass::tests::calc_tiles_binds_hzb_and_forwards_the_debug_flag ... ok
+test systems::render_loop::compute_passes::highlight_active_terrain_stroke::tests::with_a_highlight_it_blurs_horizontally_then_vertically ... ok
+test systems::render_loop::compute_passes::highlight_active_terrain_stroke::tests::without_a_highlight_only_the_mask_pass_runs ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::clamps_to_0x340_and_dispatches_1d ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::zero_emitters_registers_no_pass ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::small_count_passes_through_and_declares_buffers_in_order ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::missing_count_resource_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::mouse_depth_value::tests::frac_is_clamped_and_nan_maps_to_zero ... ok
+test systems::render_loop::compute_passes::leaf_particles::tests::missing_second_resource_unwraps_after_first_uniform - should panic ... ok
+test systems::render_loop::compute_passes::mouse_depth_value::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::mouse_depth_value::tests::declares_uniforms_in_exe_order_and_dispatches_one_thread ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::binding_hash_matches_exe_immediates ... ok
+test systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::tests::push_constants_follow_tag_bit0 ... ok
+test systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::tests::declares_one_thread_dispatch_with_push_constants ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::binding_module_matches_exe_immediates ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::blue_noise_constant_is_namehash_of_blue_noise ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::const_hash_agrees_with_fnv_crate ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::dims_suffix_is_stripped_and_adds_one ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::div_up_extent_rounds_up_and_clamps ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::half_res_rounds_up_and_clamps_to_one ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::div_up_extent_zero_divisor_panics - should panic ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::new_2d_has_depth_one_and_format ... ok
+test systems::render_loop::compute_passes::pass_kit::tests::ssbo_carriers_use_verified_names ... ok
+test systems::render_loop::compute_passes::path_pebbles::tests::element_is_48_bytes_and_buffer_is_0x6c00 ... ok
+test systems::render_loop::compute_passes::path_pebbles::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::prefix_scan::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::path_pebbles::tests::declares_buffers_uniforms_and_five_textures ... ok
+test systems::render_loop::compute_passes::prefix_scan::tests::subtotal_buffer_pads_to_1024_entries ... ok
+test systems::render_loop::compute_passes::prefix_scan::tests::three_passes_in_order_with_exe_dispatch_sizes ... ok
+test systems::render_loop::compute_passes::prefix_scan::tests::non_multiple_of_1024_elements_asserts - should panic ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::filter_map_matches_the_exe_closure ... ok
+test systems::render_loop::compute_passes::primary_rt_debug::tests::declares_exe_sequence_and_dispatches_target_extent ... ok
+test systems::render_loop::compute_passes::prefix_scan::tests::pass_buffer_directions ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::unregistered_buffer_skips_the_upload_silently ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::no_buildings_zeroes_the_instance_count_without_writing ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::four_passes_with_exe_names_extents_and_blur_direction ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::upload_sets_instance_count_and_writes_32_bytes_per_building ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::gauss_blur_source_identity ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::pack_two_f16 ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::skip_only_when_nothing_pending_and_already_rasterized ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::full_pass_chain ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::upload_allocation_size_and_point_layout ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::upload_filters_narrow_and_empty_strokes ... ok
+test systems::render_loop::compute_passes::ray_trace_gi::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::upload_caps_points_at_0x400_and_wraps_count_into_ten_bits ... ok
+test systems::render_loop::compute_passes::ray_trace_gi::tests::update_writes_the_three_returned_current_handles ... ok
+test systems::render_loop::compute_passes::read_bush_positions_for_cpu::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::ray_trace_gi::tests::two_passes_dispatch_half_extent ... ok
+test systems::render_loop::compute_passes::ray_trace_gi::tests::resources_are_created_in_exe_order_at_half_res_rounded_up ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::read_bush_positions_for_cpu::tests::writes_cpu_buffer_first_then_reads_and_dispatches_9601 ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::on_gpu_copy_issued_only_ors_never_clears ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::raster_plan_constants ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::full_readback_declares_four_passes_after_the_raster ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::water_bits_follow_the_shader_thresholds ... ok
+test systems::render_loop::compute_passes::read_terrain_data::tests::demo_mode_skips_only_the_water_pass ... ok
+test systems::render_loop::compute_passes::ray_trace_gi::tests::update_history_valid_requires_all_three_flags ... ok
+test systems::render_loop::compute_passes::reprojection::tests::copy_pass_writes_prev_history_with_its_own_extent ... ok
+test systems::render_loop::compute_passes::reprojection::tests::creates_map_with_depth_extent_and_format_0x5c ... ok
+test systems::render_loop::compute_passes::reprojection::tests::map_pass_reads_three_writes_map_and_dispatches_map_extent ... ok
+test systems::render_loop::compute_passes::reprojection::tests::history_valid_flag_passes_through_unmodified ... ok
+test systems::render_loop::compute_passes::reprojection::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::draw_indexed_table_matches_the_exe_static_blob ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::closure_copies_each_staging_into_its_buffer_in_order ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::initial_values_are_the_exe_constants ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::registers_one_pass_with_four_transfer_writes_in_call_order ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::missing_ssbo_registration_panics - should panic ... ok
+test systems::render_loop::compute_passes::restir_di::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::five_thousand_buildings_panic - should panic ... ok
+test systems::render_loop::compute_passes::reset_indirect_args::tests::staging_length_mismatch_panics_like_copy_from_slice - should panic ... ok
+test systems::render_loop::compute_passes::restir_di::tests::history_valid_is_the_pair_flag ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::restir_di::tests::no_lanterns_returns_a_1x1_placeholder_and_no_pass ... ok
+test systems::render_loop::compute_passes::restir_di::tests::with_lanterns_declares_one_pass_at_half_res ... ok
+test systems::render_loop::compute_passes::rasterize_buildings::tests::four_thousand_nine_hundred_ninety_nine_is_accepted ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::push_constants_are_20_bytes_little_endian ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::dispatch_sizes_follow_instance_counts ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::push_constants_flatten_rows_in_order_and_skip_rows_without_allocation ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::empty_query_still_registers_a_pass_that_does_nothing ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::missing_second_resource_unwraps_after_reading_the_buffer - should panic ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::classify_matches_the_first_jump_table ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::records_one_pass_whose_closure_pushes_then_dispatches_each_draw ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::disabled_state_returns_untouched ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::next_state_matches_the_second_jump_table ... ok
+test systems::render_loop::compute_passes::roof_tiles_gravity::tests::unregistered_roof_tile_buffer_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::state_five_panics_with_result_unwrap_failed - should panic ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::failed_temporal_creation_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::state_one_only_creates_the_feedback_texture_and_advances ... ok
+test systems::render_loop::compute_passes::spawn_boats::tests::library_key_name_is_boats ... ok
+test systems::render_loop::compute_passes::spawn_boats::tests::double_registration_panics - should panic ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::state_two_every_fourth_frame_captures_the_reference ... ok
+test systems::render_loop::compute_passes::spawn_boats::tests::register_then_import_into_the_render_graph ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::off_beat_frames_create_feedback_but_no_passes ... ok
+test systems::render_loop::compute_passes::shader_refactoring::tests::states_three_and_four_capture_then_compare ... ok
+test systems::render_loop::compute_passes::spawn_vegetation_around_buildings::tests::grid_uniform_key_is_the_grid_dims_name_hash ... ok
+test systems::render_loop::compute_passes::spawn_vegetation_around_buildings::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::spawn_vegetation_around_buildings::tests::bushes_pass_dispatch_uniforms_and_binding_counts ... ok
+test systems::render_loop::compute_passes::spawn_vegetation_around_buildings::tests::flowers_pass_rebinds_terrain_twice ... ok
+test systems::render_loop::compute_passes::ssgi::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::ssgi::tests::pass_chain_dispatch_extents_and_directions ... ok
+test systems::render_loop::compute_passes::ssgi::tests::resource_sizes_and_formats ... ok
+test systems::render_loop::compute_passes::stairs::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::ssgi::tests::temporal_pair_failure_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::spawn_vegetation_around_buildings::tests::only_gate_byte_exactly_one_spawns ... ok
+test systems::render_loop::compute_passes::ssgi::tests::history_valid_comes_from_the_temporal_pair_flag ... ok
+test systems::render_loop::compute_passes::stairs::tests::counter_pass_reads_draw_commands_and_writes_the_counter ... ok
+test systems::render_loop::compute_passes::taa::tests::hashes_are_exe_immediates ... ok
+test systems::render_loop::compute_passes::taa::tests::history_valid_uniform_follows_the_global ... ok
+test systems::render_loop::compute_passes::stairs::tests::marching_squares_uniforms_and_access_sequence ... ok
+test systems::render_loop::compute_passes::stairs::tests::two_passes_with_expected_dispatches ... ok
+test systems::render_loop::compute_passes::taa::tests::tgsr_main_permutations ... ok
+test systems::render_loop::compute_passes::terrain_lighting_texture::tests::constants_match_machine_code ... ok
+test systems::render_loop::compute_passes::terrain_lighting_texture::tests::eye_position_is_translation_column ... ok
+test systems::render_loop::compute_passes::taa::tests::temporal_pair_error_panics_like_result_unwrap - should panic ... ok
+test systems::render_loop::compute_passes::taa::tests::taa_pass_declaration_and_uniforms ... ok
+test systems::render_loop::compute_passes::taa::tests::tgsr_creates_resources_then_three_passes_in_order ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::consume_clears_flag_and_rows ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::flag_layout_matches_machine_code_offsets ... ok
+test systems::render_loop::compute_passes::terrain_lighting_texture::tests::missing_camera_resource_unwraps - should panic ... ok
+test systems::render_loop::compute_passes::terrain_lighting_texture::tests::records_lighting_pass_then_spd_mips ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::not_pending_returns_without_touching_anything ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::six_instances_have_distinct_type_ids_and_staging_names ... ok
+test systems::render_loop::compute_passes::visibility_queries::tests::binding_names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::rgba16f_uses_the_other_entry_point ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::format_panic_precedes_flag_mutation ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::r16f_upload_records_one_pass_and_flips_flags ... ok
+test systems::render_loop::compute_passes::upload_world_raster::tests::other_formats_are_todo_and_leave_state_untouched - should panic ... ok
+test systems::render_loop::draw_passes::common_draw_params::tests::brick_erase_inputs_map_to_the_a4_form ... ok
+test systems::render_loop::draw_passes::common_draw_params::tests::new_converts_duration_like_as_secs_f32 ... ok
+test systems::render_loop::compute_passes::visibility_queries::tests::declares_reads_then_writes_and_dispatches_96 ... ok
+test systems::render_loop::draw_passes::d_main_tests::constants_decoded_from_negative_immediates ... ok
+test systems::render_loop::draw_passes::d_main_tests::common_params_time_follows_duration_as_secs_f32 ... ok
+test systems::render_loop::draw_passes::d_main_tests::deferred_entry_and_final_state_masks_match_the_machine_code ... ok
+test systems::render_loop::draw_passes::d_main_tests::custom_cursor_gates_on_visibility_and_saturates_the_window_size ... ok
+test systems::render_loop::draw_passes::d_main_tests::deferred_raster_tables_match_the_material_ids ... ok
+test systems::render_loop::draw_passes::d_main_tests::custom_cursor_without_shader_panics_like_expect ... ok
+test systems::render_loop::draw_passes::d_main_tests::feedback_report_bg_gates_and_draws_one_fullscreen_triangle ... ok
+test systems::render_loop::draw_passes::d_main_tests::final_post_scale_class_and_env_packing ... ok
+test systems::render_loop::draw_passes::d_main_tests::final_post_runs_one_blit_pass_with_tag2_color_and_fullscreen_triangle ... ok
+test systems::render_loop::draw_passes::d_main_tests::deferred_raster_panics_when_a_material_shader_is_missing - should panic ... ok
+test systems::render_loop::draw_passes::d_main_tests::final_post_panics_without_the_shader_resource - should panic ... ok
+test systems::render_loop::draw_passes::d_main_tests::foliage_exclusion_mask_clear_only_then_draw_paths ... ok
+test systems::render_loop::draw_passes::d_main_tests::deferred_raster_runs_five_entries_with_stencil_state_and_one_pass ... ok
+test systems::render_loop::draw_passes::d_main_tests::logo_overlay_draws_six_vertices_with_overlay_state ... ok
+test systems::render_loop::draw_passes::d_main_tests::main_pass_item_without_stencil_ref_panics - should panic ... ok
+test systems::render_loop::draw_passes::d_main_tests::late_passes_are_skipped_when_their_list_is_empty ... ok
+test systems::render_loop::draw_passes::d_main_tests::mei_pass_draws_text_then_combines_into_the_target ... ok
+test systems::render_loop::draw_passes::d_main_tests::main_pass_items_get_stencil_ref_and_stencil_write_state ... ok
+test systems::render_loop::draw_passes::d_main_tests::main_pass_skips_forward_subpasses_when_shader_refactoring_is_not_disabled ... ok
+test systems::render_loop::draw_passes::d_main_tests::main_pass_runs_six_subpasses_in_order_with_observed_attachments ... ok
+test systems::render_loop::draw_passes::d_main_tests::object_grass_push_draws_one_quad_per_vec4_and_caps_at_thirteen ... ok
+test systems::render_loop::draw_passes::d_main_tests::resolve_to_swapchain_picks_msaa_shader_by_sample_count ... ok
+test systems::render_loop::draw_passes::d_main_tests::state_edit_helpers_match_the_observed_masks ... ok
+test systems::render_loop::draw_passes::d_main_tests::oc2_has_five_subpasses_without_a_forward_gate_and_loads_everything ... ok
+test systems::render_loop::draw_passes::d_main_tests::ui_2d_pass_sorts_by_order_picks_shader_by_tint_and_draws_ws_after ... ok
+test systems::render_loop::draw_passes::d_main_tests::water_and_ice_plans_are_selected_by_season ... ok
+test systems::render_loop::draw_passes::d_main_tests::shadow_pass_runs_three_cascades_with_layer_clear_and_variant_one ... ok
+test systems::render_loop::draw_passes::d_main_tests::ui_and_loading_screen_use_lists_19_and_18_and_are_named_ui ... ok
+test systems::render_loop::draw_passes::d_main_tests::wireframe_pass_matches_the_machine_code_sequence ... ok
+test systems::render_loop::draw_passes::d_main_tests::transparency_passes_names_lists_and_state ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::bricks_without_the_proxy_panics ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::bricks_discard_happens_before_any_resource_read ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::cloth_third_key_scans_session_bytes_for_values_up_to_one ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::cull_state_matches_and_0xf3_or_v ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::draw_lists_points_my_ids_at_this_file ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env0_without_cursor_hit_writes_zero_vec3 ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env0_reads_resources_and_sets_cull_mode_4 ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env11_second_texture_depends_on_the_session_variant ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::cloth_callbacks_require_color_id ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env16_roof_highlight_uniforms ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env14_wooden_gate_sequence ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env16_and_env17_share_the_floor_binding_sequence ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env20_and_env40_bind_presets ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env19_uniform_from_component ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env23_roof_cloth_sequence ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env22_wall_cloth_sequence ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env27_marker_overrides_the_albedo_key ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env27_reads_markers_and_defaults ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env2_callback_requires_both_components ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env37_writes_logo_floats ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env2_uniforms_matrix_and_ssbo ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env3_flags_are_false_for_other_values ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env41_sets_byte3_field_and_writes_progress ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env3_discards_when_weather_is_not_positive_without_reading_other_resources ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env3_draws_with_mode_and_season_flags ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env45_binds_five_disks_and_draws ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env48_and_env53_share_four_disks_but_differ_in_instance_count ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env55_reads_the_arrow_gizmo_with_swapped_offsets ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env52_discards_without_events_and_draws_with_them ... ok
+test systems::render_loop::compute_passes::rasterize_terrain_stroke::tests::too_many_strokes_logs_once_and_skips ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env57_applies_the_alt_topology_before_reading_the_world ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env52_missing_events_resource_panics ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env57_reads_mesh_index_count_and_dashed_length ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env6_binds_in_order_with_defaults_for_missing_optional_maps ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::erase_highlight_reads_the_four_resources ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env6_uses_alpha_and_normal_keys_when_present ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::env6_callback_requires_the_albedo_map ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::ivy_branch_draws_instances_summed_with_saturating_sub ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::ivy_segment_counts_come_from_the_storage ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::ivy_leaf_needs_the_camera_resource - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::nani_binds_precede_nani_draw ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::helpers_follow_the_machine_code_panics ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::negative_movabs_constants_match_the_machine_code ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::nani_kinds_match_the_immediates ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::ssbo_ids_are_xxh3_of_the_slot_names ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::brick_erase_inputs_missing_resource_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::stairs_without_the_component_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::brick_erase_inputs_reads_the_four_resources ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::cull_state_replaces_bits_2_and_3_only ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::duck_adapter_missing_state_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::stairs_flag_comes_from_the_first_byte_of_the_component ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env15_cull_8_five_disks ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::duck_adapter_reads_three_components ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env12_and_env13_share_the_front_half ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env18_missing_entity_panics_with_result_unwrap - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env21_last_texture_depends_on_session_bytes ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env1_env7_env26_end_in_multi_draw_indexed_indirect ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env18_uniforms_follow_contains ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env21_order_and_uniforms ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env21_missing_component_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env21_reads_two_components_and_the_session ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env24_cull_4_smoke ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env25_is_a_bare_nani_draw ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env29_cull_4_and_two_disks ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env31_binds_two_disks ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env34_uniform_order_cull_and_kind ... ok
+test systems::render_loop::draw_passes::draw_callbacks_a::tests::nani_callbacks_panic_when_gpu_world_is_missing ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env36_draws_sparse_ranges_with_the_sparkle_buffer ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env36_unregistered_sparkle_buffer_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env43_passes_false_and_the_vertex_count_resource ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env44_binds_preset_f ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env43_without_the_resource_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env36_without_the_library_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env49_is_a_bare_nani_draw ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env38_logo_uniforms ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env54_env51_env60_draw_kinds_and_cull ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env9_binds_9_a_then_disk ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env5_binds_eye_then_eight_presets_then_placement_id ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::tag_ids_are_xxh3_of_the_slot_names ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::env5_without_the_camera_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::firefly_adapters_read_critter_control ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::leaf_particle_adapter_needs_glade_settings - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::spire_and_beam_adapters_draw_zero_when_unregistered ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::tree_canopy_adapter_indexes_the_season_table - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::tree_trunk_adapter_reaches_nani_draw - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::roof_nani_and_wren_adapters_need_gpu_world - should panic ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::wall_highlight_param_zeroes_the_value_when_tag_is_zero ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::world_helpers_report_the_original_failure_texts ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::water_planes_adapter_needs_the_session - should panic ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::dispatch_rows_match_machine_code_constants ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::explicit_pass_markers_override_everything_in_priority_order ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::forward_material_goes_to_forward_lists ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::dispatch_table_has_the_87_decoded_names_without_duplicates ... ok
+test systems::render_loop::draw_passes::draw_callbacks_b::tests::wren_adapter_needs_gpu_world - should panic ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::kind0_without_a_pass_marker_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::list_indices_match_the_observed_vec_offsets ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::new_has_21_empty_lists ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::opaque_goes_to_gbuffer_and_shadow_and_oc2 ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::push_row_fills_item_fields_like_the_machine_code ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::recovered_bodies_flag ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::sort_handles_lists_longer_than_the_insertion_threshold ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::sort_is_stable_on_signed_i32_key ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::variants_are_material_ids ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::unknown_shader_name_panics_with_the_original_message - should panic ... ok
+test systems::render_loop::draw_passes::draw_lists::tests::velocity_kinds_and_stencil_encodings ... ok
+test systems::render_loop::draw_passes::draw_shaders::billboard_forest::tests::build_registers_exactly_one_startup_system ... ok
+test systems::render_loop::draw_passes::draw_shaders::billboard_forest::tests::mesh_name_has_a_space_but_the_library_key_has_an_underscore ... ok
+test systems::render_loop::draw_passes::draw_shaders::billboard_forest::tests::no_designated_render_pass_and_longer_shader_names ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::blend_is_linear_between_15_and_30 ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::canopy_factor_clamps_at_0_07_before_scaling ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::canopy_has_five_textures_no_preset_and_nani_canopy ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::cull_only_applies_when_the_draw_mode_byte_is_non_zero ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::season_table_and_param_offset ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::trunk_and_canopy_share_textures_with_the_expected_overlap ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::trunk_and_canopy_uniform_layout ... ok
+test systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tests::trunk_binds_six_textures_then_preset_e_and_calls_nani_with_trunk ... ok
+test systems::render_loop::draw_passes::draw_shaders::clouds::tests::build_registers_exactly_one_startup_system ... ok
+test systems::render_loop::draw_passes::draw_shaders::clouds::tests::startup_loads_the_cloud_mesh_and_shader_and_spawns_with_designated_pass ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes::tests::disk_helper_goes_through_get_by_name_with_the_sampled_image_access ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes::tests::observed_constants ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes::tests::terrain_helpers_use_presets_9_and_10_in_that_order ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes::tests::water_object_push_binds_two_presets_around_the_ripple_buffer ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes_compute::tests::constants_are_binding_name_hashes_of_the_hlsl_names ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::bricks_mode_rules ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes_compute::tests::garden_exclusion_binds_four_presets_read_only ... ok
+test systems::render_loop::draw_passes::draw_shaders::common_includes_compute::tests::water_object_push_is_texture_ripple_buffer_texture ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod0_gate ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod0_discards_when_the_mode_byte_or_proxy_says_so ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod0_regular_path_sequence ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod1_gate_proxy_and_regular_paths ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod1_discards_proxies_in_the_wrong_mode ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod1_mode_bits_table ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod1_proxy_path_draws_right_after_the_two_buffers ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::lod1_regular_path_uses_base_0x12_and_clears_the_cull_bits ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::missing_entity_panics_like_result_unwrap - should panic ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::proxy_index_table_is_the_jump_table ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::missing_proxy_panics_like_option_unwrap - should panic ... ok
+test systems::render_loop::draw_passes::draw_shaders::floor_shader::tests::flag_is_written_as_a_u32_bool_uniform ... ok
+test systems::render_loop::draw_passes::draw_shaders::floor_shader::tests::state_rewrite_clears_bits_2_3_and_sets_bit_3 ... ok
+test systems::render_loop::draw_passes::draw_shaders::floor_shader::tests::bind_order_matches_the_machine_code ... ok
+test systems::render_loop::draw_passes::draw_shaders::draw_bricks::tests::missing_transform_buffer_panics - should panic ... ok
+test systems::render_loop::draw_passes::draw_shaders::floor_shader::tests::without_a_constant_block_the_flag_is_dropped_silently ... ok
+test systems::render_loop::draw_passes::draw_shaders::grass_shader::tests::common_binds_three_presets_two_ssbos_and_the_constant ... ok
+test systems::render_loop::draw_passes::draw_shaders::grass_shader::tests::lod0_is_multi_draw_indexed_indirect_index_zero ... ok
+test systems::render_loop::draw_passes::draw_shaders::grass_shader::tests::lod1_is_multi_draw_indirect_not_indexed ... ok
+test systems::render_loop::draw_passes::draw_shaders::grass_shader::tests::slot_names_are_the_original_ones ... ok
+test systems::render_loop::draw_passes::draw_shaders::grass_shader::tests::without_a_uniform_block_the_constant_is_silently_skipped ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::butterfly_draws_all_24_instances_in_order ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::duck_draw_uses_the_default_draw_kind_and_matrix_is_srt ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::firefly_hidden_at_zero_intensity_is_discarded ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::firefly_writes_intensity_then_reads_the_buffer_and_draws_96 ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::duck_uniform_values_and_order ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::wren_hands_the_wren_subset_to_nani_draw ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_critters::tests::glow_additionally_reads_visibility_and_dof ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_ivy::tests::branch_count_is_a_saturating_sum ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_ivy::tests::branch_sequence_and_instance_count ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_ivy::tests::eye_and_flower_uniforms_are_written_first_and_after_the_texture ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_ivy::tests::missing_library_entry_means_zero_instances ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_ivy::tests::leaf_and_flower_thunks_differ_only_in_flag_and_texture_key ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_roof::tests::nani_param_uniforms_follow_the_tag ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_roof::tests::nani_roof_order_uniforms_and_kind ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_roof::tests::no_registered_buffer_draws_zero ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_roof::tests::the_three_roof_shaders_share_one_ssbo_binding_name ... ok
+test systems::render_loop::draw_passes::draw_shaders::instanced_roof::tests::spire_and_beam_draw_the_library_instance_count ... ok
+test systems::render_loop::draw_passes::draw_shaders::leaf_particle_draw::tests::ssbo_then_two_disk_textures_then_instanced_draw_with_the_count ... ok
+test systems::render_loop::draw_passes::draw_shaders::leaf_particle_draw::tests::zero_particles_still_issue_a_draw ... ok
+test systems::render_loop::draw_passes::draw_shaders::path_pebble_shader::tests::reads_the_pebbles_then_the_stone_texture_then_draws_mesh_3 ... ok
+test systems::render_loop::draw_passes::draw_shaders::path_pebble_shader::tests::the_stone_texture_is_the_same_file_as_the_floor_shader ... ok
+test systems::render_loop::draw_passes::draw_shaders::rocky_terrain_draw::tests::order_and_draw_without_index_buffer ... ok
+test systems::render_loop::draw_passes::draw_shaders::rocky_terrain_draw::tests::slot_names_come_from_the_binary ... ok
+test systems::render_loop::draw_passes::draw_shaders::rocky_terrain_draw::tests::state_rewrite_sets_cull_bit_2 ... ok
+test systems::render_loop::draw_passes::draw_shaders::ssbo_tags::tests::every_tag_id_is_xxh3_of_its_slot_name ... ok
+test systems::render_loop::draw_passes::draw_shaders::ssbo_tags::tests::indirect_buffer_ids_match_the_names_of_their_types ... ok
+test systems::render_loop::draw_passes::draw_shaders::ssbo_tags::tests::instance_count_defaults_to_zero_when_unregistered_or_not_an_instance_buffer ... ok
+test systems::render_loop::draw_passes::draw_shaders::ssbo_tags::tests::roof_spire_slot_keeps_the_original_spelling ... ok
+test systems::render_loop::draw_passes::draw_shaders::ssbo_tags::tests::instance_lookup_checks_the_registered_type_name - should panic ... ok
+test systems::render_loop::draw_passes::draw_shaders::stairs_draw::tests::flag_truth_table ... ok
+test systems::render_loop::draw_passes::draw_shaders::stairs_draw::tests::uniform_values ... ok
+test systems::render_loop::draw_passes::draw_shaders::stairs_draw::tests::sequence_uniforms_and_mesh_index_follow_the_flag ... ok
+test systems::render_loop::draw_passes::draw_shaders::stars::tests::startup_loads_the_star_mesh_and_shader_and_spawns_with_designated_pass ... ok
+test systems::render_loop::draw_passes::draw_shaders::stars::tests::build_registers_exactly_one_startup_system ... ok
+test systems::render_loop::draw_passes::draw_shaders::startup_quad::tests::closure_matches_the_stack_stores ... ok
+test systems::render_loop::draw_passes::draw_shaders::startup_quad::tests::range_0_to_1_gives_a_single_quad ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::all_nonzero_scan_matches_the_loop ... ok
+test systems::render_loop::draw_passes::draw_shaders::startup_quad::tests::startup_order_is_mesh_shader_spawn ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::lilypad_flower_texture_and_slot_names ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::lilypad_flower_uses_mesh_0xf_which_is_beyond_the_first_ten_table_entries ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::closure_entry_with_the_real_bind_equals_the_rt_entry ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::lilypad_sequence_and_mesh_index ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::plane_bind_order_with_duplicated_helper_bindings ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::ray_tracing_is_bound_before_the_snow_texture_and_writes_the_buffer_words ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::skip_discards_the_builder ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::state_clears_bits_5_and_6_of_byte_3 ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::reed_has_no_disk_texture_and_uses_mesh_9 ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::water_color_table ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::snow_texture_only_for_variant_4 ... ok
+test systems::render_loop::draw_passes::draw_shaders::water_planes_draw::tests::water_color_uniform_is_written_as_three_floats ... ok
+test systems::render_loop::draw_passes::material_id::tests::debug_names_match_the_exe_string_table ... ok
+test systems::render_loop::draw_passes::object_grass_push::radius_tests::extra_item_follows_query_items_and_picks_eye_or_cursor ... ok
+test systems::render_loop::draw_passes::object_grass_push::radius_tests::jump_table_radii_match_the_machine_code ... ok
+test systems::render_loop::draw_passes::object_grass_push::radius_tests::theme_19_needs_camera_mode_3 ... ok
+test systems::render_loop::draw_passes::transparency_pass::gap_tests::names_and_lengths_match_the_string_pool ... ok
+test systems::render_loop::draw_passes::transparency_pass::gap_tests::ray_buffer_size_follows_the_32bit_formula ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::att_maps_rg_textures_to_attachments ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::binding_hashes_are_fnv1a_of_the_hlsl_reflection_names ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::half_res_rounds_up_and_never_reaches_zero ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ray_buffer_size_formulas_follow_the_32bit_arithmetic ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_pass_call_sequence_equals_the_golden_table ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::water_pass_call_sequence_equals_the_golden_table ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_compute_passes_names_uris_dispatches_and_resources ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::water_compute_passes_names_uris_and_dispatches ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::water_pass_creates_buffers_clears_count_and_sizes_the_ray_buffer_from_a ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_raster_pass_has_five_colors_with_the_observed_tags_and_binds_in_order ... ok
+test systems::render_loop::indirect_params::tests::buffer_sizes_match_new_storage_buffer_immediates ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_pass_creates_the_thirteen_named_resources_with_the_observed_formats_and_sizes ... ok
+test systems::render_loop::indirect_params::tests::names_are_the_type_names ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_refr_resolve_and_refl_resolve_bind_the_radiance_textures_with_a_view ... ok
+test systems::render_loop::indirect_params::tests::ssbo_ids_are_distinct ... ok
+test systems::render_loop::lut_gallery::tests::build_matches_original_alloc ... ok
+test systems::render_loop::lut_gallery::tests::demo_mode_override_short_circuits_before_any_lookup ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::water_with_an_empty_list_still_creates_the_raster_pass_but_binds_nothing_per_item ... ok
+test systems::render_loop::lut_gallery::tests::empty_gallery_still_opens_and_renders_the_pass ... ok
+test systems::render_loop::lut_gallery::tests::highlight_needs_a_present_matching_index ... ok
+test systems::render_loop::draw_passes::transparency_pass::surface_tests::water_raster_pass_shape_and_bindings ... ok
+test systems::render_loop::lut_gallery::tests::missing_or_empty_preview_returns_without_a_pass ... ok
+test systems::render_loop::lut_gallery::tests::draws_one_quad_per_cell_with_exact_uniform_order ... ok
+test systems::render_loop::lut_gallery::tests::only_photography_mode_with_flag_draws ... ok
+test systems::render_loop::lut_gallery::tests::startup_loads_the_thumbnail_shader ... ok
+test systems::render_loop::menu_background::tests::blocked_mode_does_nothing ... ok
+test systems::render_loop::menu_background::tests::build_default_is_empty ... ok
+test systems::render_loop::lut_gallery::tests::real_gui_metrics_reach_the_draw_uniforms_in_both_grid_orders ... ok
+test systems::render_loop::lut_gallery::tests::zip_stops_at_the_shorter_side ... ok
+test systems::render_loop::menu_background::tests::existing_current_is_redrawn_without_changed_tick ... ok
+test systems::render_loop::menu_background::tests::mode_gate_exhaustive_against_reference_model ... ok
+test systems::render_loop::menu_background::tests::mode_gate_truth_table_matches_machine_code ... ok
+test systems::render_loop::menu_background::tests::no_texture_means_no_pass ... ok
+test systems::render_loop::menu_background::tests::pending_texture_is_swapped_in_and_blitted ... ok
+test systems::render_loop::menu_background::tests::replacing_current_drops_old_handle_first ... ok
+test systems::render_loop::menu_background::tests::state_10_with_flag_1_goes_through_k8_branch_requiring_flag_zero ... ok
+test systems::render_loop::painterly::tests::acquire_binds_and_dispatch_match_asm ... ok
+test systems::render_loop::painterly::tests::app_mode_7_with_flag_returns_before_anything ... ok
+test systems::render_loop::painterly::tests::count_80_zero_also_means_instant_but_only_when_flag_ff_clear ... ok
+test systems::render_loop::painterly::tests::disabled_flag_sets_phase_2_and_stops ... ok
+test systems::render_loop::painterly::tests::extent_formula_and_div_by_zero ... ok
+test systems::render_loop::painterly::tests::first_frame_acquires_then_generates_and_rasters_in_machine_order ... ok
+test systems::render_loop::painterly::tests::has_target_is_phase_bit0 ... ok
+test systems::render_loop::painterly::tests::instant_mode_reveals_everything_with_timer_100000 ... ok
+test systems::render_loop::painterly::tests::plugin_inserts_disabled_state_then_registers_startup ... ok
+test systems::render_loop::painterly::tests::missing_raster_shader_unwraps - should panic ... ok
+test systems::render_loop::painterly::tests::progress_advances_by_dt_times_1638_4_and_generates_delta_strokes ... ok
+test systems::render_loop::painterly::tests::ready_but_not_reused_target_reacquires ... ok
+test systems::render_loop::painterly::tests::progress_is_capped_at_1024_and_no_generate_when_floor_unchanged ... ok
+test systems::render_loop::painterly::tests::startup_loads_two_raster_shaders_in_order ... ok
+test systems::render_loop::painterly::tests::unreused_strokes_buffer_resets_progress_before_stepping ... ok
+test systems::render_loop::painterly::tests::temporal_failure_unwraps - should panic ... ok
+test systems::render_loop::painterly::tests::zero_height_target_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::fallback_compile_failure_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::loading_graph_compile_error_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::loading_screen_uses_loading_graph ... ok
+test systems::render_loop::render_frame::tests::duration_conversion_matches_std_and_panics_like_original ... ok
+test systems::render_loop::render_frame::tests::missing_device_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::missing_game_config_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::loading_screen_without_swapchain_panics - should panic ... ok
+test systems::render_loop::render_frame::tests::missing_resolution_resource_panics_on_oom - should panic ... ok
+test systems::render_loop::render_frame::tests::oom_message_and_vram_message_formats ... ok
+test systems::render_loop::render_frame::tests::oom_at_scale_floor_panics_with_swapchain_info - should panic ... ok
+test systems::render_loop::render_frame::tests::oom_at_floor_logs_before_panicking ... ok
+test systems::render_loop::render_frame::tests::oom_recompiles_once_with_reduced_scale_and_skips_presentation ... ok
+test systems::render_loop::render_frame::tests::pacing_skipped_when_disabled_or_gpu_time_unknown ... ok
+test systems::render_loop::render_frame::tests::pacing_waits_when_gpu_slower_than_cpu_window ... ok
+test systems::render_loop::render_frame::tests::puffin_scope_wraps_frame_when_on ... ok
+test systems::render_loop::render_frame::tests::queue_trim_is_clamped_at_zero_and_uses_min_gpu_max_cpu ... ok
+test systems::render_loop::render_frame::tests::reduced_scale_steps_by_point_one_and_stops_at_zero ... ok
+test systems::render_loop::render_frame::tests::presentation_failure_panics_with_error - should panic ... ok
+test systems::render_loop::render_frame::tests::render_mode_byte_mapping ... ok
+test systems::render_loop::render_frame::tests::ring4_window_and_extrema ... ok
+test systems::render_loop::render_frame::tests::screenshot_error_logging ... ok
+test systems::render_loop::render_frame::tests::second_frame_measures_gap_since_previous_frame_end ... ok
+test systems::render_loop::render_frame::tests::unavailable_swapchain_image_skips_presentation_and_present ... ok
+test systems::render_loop::render_frame::tests::world_frame_happy_path_order ... ok
+test systems::render_loop::render_frame::tests::world_without_swapchain_compiles_but_does_not_present ... ok
+test systems::render_loop::render_world::tests::full_world_frame_order_taa_path ... ok
+test systems::render_loop::render_world::tests::dof_flag_index_follows_multires_mode ... ok
+test systems::render_loop::render_world::tests::panic_line_table_matches_location_statics ... ok
+test systems::render_loop::render_world::tests::history_pair_error_panics - should panic ... ok
+test systems::render_loop::render_world::tests::missing_dof_resource_panics - should panic ... ok
+test systems::render_loop::render_world::tests::missing_world_config_resource_panics - should panic ... ok
+test systems::render_loop::render_world::tests::prev_depth_temporal_error_panics_before_uploads - should panic ... ok
+test systems::render_loop::render_world::tests::refraction_and_surface_skipped_when_flag_c098_set ... ok
+test systems::render_loop::render_world::tests::second_cull_round_skipped_when_flag_c0d8_set ... ok
+test systems::render_loop::render_world::tests::prev_depth_error_emits_no_pass ... ok
+test systems::render_loop::render_world::tests::taa_output_extent_follows_dof_result ... ok
+test systems::render_loop::render_world::tests::texture_desc_matches_rhapsody_bytes ... ok
+test systems::render_loop::render_world::tests::tgsr_path_uses_display_dims_and_other_pass ... ok
+test systems::render_loop::render_world::tests::tgsr_without_display_resource_panics - should panic ... ok
+test systems::render_loop::render_world::tests::upload_slots_and_temporal_constants ... ok
+test systems::render_loop::render_world::tests::zero_height_dims_panic - should panic ... ok
+test systems::render_loop::render_world::tests::winter_selects_ice_surface ... ok
+test systems::render_loop::resources::critters::tests::butterfly_from_components_rotates_negative_z ... ok
+test systems::render_loop::resources::critters::tests::butterfly_default_is_the_unrolled_constant_element ... ok
+test systems::render_loop::resources::critters::tests::element_sizes_match_the_original_buffers ... ok
+test systems::render_loop::render_world::tests::zero_width_dims_panic_before_any_pass - should panic ... ok
+test systems::render_loop::resources::critters::tests::firefly_from_translation_zeroes_the_pad ... ok
+test systems::render_loop::resources::critters::tests::rg_hashes_equal_the_ssbo_ids_in_the_binary ... ok
+test systems::render_loop::resources::critters::tests::mapped_critters_are_library_ssbos_with_the_original_buffer_sizes ... ok
+test systems::render_loop::session_selection::tests::assign_uses_first_free_entry_and_resets_modified ... ok
+test systems::render_loop::session_selection::tests::assign_panics_when_pool_is_exhausted - should panic ... ok
+test systems::render_loop::session_selection::tests::build_creates_an_empty_pool ... ok
+test systems::render_loop::session_selection::tests::components_compare_ignores_separator_style ... ok
+test systems::render_loop::session_selection::tests::error_key_and_message_texts ... ok
+test systems::render_loop::session_selection::tests::empty_session_list_still_draws_background_and_new_card ... ok
+test systems::render_loop::session_selection::tests::extract_takes_the_first_match_even_if_already_taken ... ok
+test systems::render_loop::session_selection::tests::extract_marks_matching_paths_and_clears_old_flags ... ok
+test systems::render_loop::session_selection::tests::flag_uniform_table ... ok
+test systems::render_loop::session_selection::tests::flag_uniform_follows_session_flag_and_demo_override ... ok
+test systems::render_loop::session_selection::tests::hidden_modes_do_nothing ... ok
+test systems::render_loop::session_selection::tests::highlight_and_position_formulas ... ok
+test systems::render_loop::session_selection::tests::full_frame_orders_background_new_glade_cards_then_painterly ... ok
+test systems::render_loop::session_selection::tests::index_array_pads_with_max_and_checks_bounds ... ok
+test systems::render_loop::session_selection::tests::inactive_carousel_panics_with_todo - should panic ... ok
+test systems::render_loop::session_selection::tests::index_array_rejects_out_of_range - should panic ... ok
+test systems::render_loop::session_selection::tests::index_array_rejects_unassigned_window_slot - should panic ... ok
+test systems::render_loop::session_selection::tests::mode_gate_hides_for_states_2_to_10_except_6 ... ok
+test systems::render_loop::session_selection::tests::metadata_errors_propagate_their_context ... ok
+test systems::render_loop::session_selection::tests::refresh_errors_are_logged_once_and_retried ... ok
+test systems::render_loop::session_selection::tests::startup_loads_four_shaders_then_six_textures ... ok
+test systems::render_loop::session_selection::tests::startup_shader_table_matches_string_table ... ok
+test systems::render_loop::session_selection::tests::sessions_outside_the_window_use_the_placeholder_texture ... ok
+test systems::render_loop::session_selection::tests::startup_skips_failed_textures_and_logs ... ok
+test systems::render_loop::session_selection::tests::window_follows_scroll_and_clamps ... ok
+test systems::render_loop::session_selection::tests::update_texture_failure_uses_updating_texture_context ... ok
+test systems::render_loop::session_selection::tests::skip_outcome_neither_updates_nor_logs ... ok
+test systems::render_loop::tests::dynamic_allocations_advance_the_cursor ... ok
+test systems::render_loop::session_selection::tests::up_to_date_screenshots_are_not_reloaded_but_new_assignments_always_are ... ok
+test systems::render_loop::session_selection::tests::wrong_mode_tag_fails_the_assert_eq - should panic ... ok
+test systems::render_loop::tests::helpers_register_passes_in_order_with_original_names ... ok
+test systems::render_loop::tests::oversized_copy_is_rejected_before_any_pass_is_registered - should panic ... ok
+test systems::render_loop::vermeer::tests::active_frame_runs_acquire_then_chain_in_machine_order ... ok
+test systems::render_loop::vermeer::tests::completion_releases_background_sends_event_and_logs_info ... ok
+test systems::render_loop::vermeer::tests::disabled_with_restart_resets_state_but_keeps_prev_active ... ok
+test systems::render_loop::vermeer::tests::disabled_without_restart_clears_prev_active_and_returns_false ... ok
+test systems::render_loop::vermeer::tests::generate_ops_and_uniform_values ... ok
+test systems::render_loop::vermeer::tests::generate_strokes_pipeline_defines_photomode_permutation ... ok
+test systems::render_loop::vermeer::tests::hold_blocks_completion ... ok
+test systems::render_loop::vermeer::tests::into_disable_hold_clears_hold_and_keeps_everything_else ... ok
+test systems::render_loop::vermeer::tests::into_disable_hold_panics_when_disabled - should panic ... ok
+test systems::render_loop::vermeer::tests::plugin_build_initial_phase_follows_enabled_flag ... ok
+test systems::render_loop::vermeer::tests::prev_active_and_reused_target_feed_the_reuse_uniform ... ok
+test systems::render_loop::vermeer::tests::progress_rules_warmup_hold_freeze_and_dt_clamp ... ok
+test systems::render_loop::vermeer::tests::missing_settings_event_resource_panics - should panic ... ok
+test systems::render_loop::vermeer::tests::raster_strokes_and_combine_descriptors ... ok
+test systems::render_loop::vermeer::tests::render_without_source_uses_library_name_selected_by_static_flag ... ok
+test systems::render_loop::vermeer::tests::skip_generate_omits_the_compute_pass_only ... ok
+test systems::render_loop::vermeer::tests::startup_loads_two_shaders ... ok
+test systems::render_loop::vermeer::tests::state_machine_activate_deactivate_flags ... ok
+test systems::render_loop::vermeer::tests::stroke_count_toggle ... ok
+test utils::child_wall::tests::slice_lerps_both_ends_inside_the_interval ... ok
+test utils::child_wall::tests::nan_takes_the_same_panic - should panic ... ok
+test utils::components::transform::tests::affine_is_trs ... ok
+test utils::child_wall::tests::slice_panics_when_the_result_leaves_unit_range - should panic ... ok
+test utils::components::transform::tests::default_is_identity ... ok
+test utils::components::transform::tests::layout_is_rotation_translation_scale_at_0_0x10_0x1c ... ok
+test utils::conservative_line_raster::tests::diagonal_is_conservative ... ok
+test utils::conservative_line_raster::tests::horizontal_line_covers_a_band_of_rows ... ok
+test utils::conservative_line_raster::tests::nan_input_does_not_loop_forever ... ok
+test utils::conservative_line_raster::tests::negative_slope_band_follows_the_line ... ok
+test utils::conservative_line_raster::tests::point_like_segment_marks_its_cell ... ok
+test utils::conservative_line_raster::tests::vertical_line_uses_the_swapped_axes ... ok
+test utils::conservative_line_raster::tests::reversed_endpoints_give_the_same_cells ... ok
+test utils::debug_viz::tests::sphere_defaults_match_the_constructor_bytes ... ok
+test utils::debug_viz::tests::rectangle_and_line_defaults ... ok
+test utils::dirty_tiles::tests::intersects_matches_rasterized_region ... ok
+test utils::dirty_tiles::tests::all_dirty_is_memset_ff_over_512_bytes ... ok
+test utils::dirty_tiles::tests::nan_rect_maps_to_zero_cells ... ok
+test utils::dirty_tiles::tests::rasterize_sets_row_major_bits_with_row_as_y ... ok
+test utils::dirty_tiles::tests::rect_cells_use_the_exe_constants ... ok
+test utils::dirty_tiles::tests::retain_visits_in_row_then_bit_order_and_clears_rejected ... ok
+test utils::dirty_tiles::tests::stroke_marks_the_tiles_along_a_world_space_polyline ... ok
+test utils::dirty_tiles::tests::stroke_needs_two_points_and_clips_to_the_grid ... ok
+test utils::float_grid::tests::centered_path_shifts_by_half_a_cell_and_clamps_to_511 ... ok
+test utils::dirty_tiles::tests::tabloid_delta_ors_per_subscriber ... ok
+test utils::float_grid::tests::lerp_is_a_plus_b_minus_a_times_t ... ok
+test utils::float_grid::tests::public_entry_uses_switch_and_130_wrapper_matches_explicit_extent ... ok
+test utils::float_grid::tests::vector_path_clamps_to_510_with_frac_two_at_the_edge ... ok
+test utils::float_grid::tests::vector_path_interpolates_between_columns ... ok
+test utils::float_grid::tests::vector_path_nan_maps_to_origin_cell ... ok
+test utils::float_grid::tests::vector_path_world_origin_is_cell_256 ... ok
+test utils::float_grid::tests::z_selects_rows_and_x_selects_columns ... ok
+test utils::geo::tests::mesh_from_pts_has_white_colours_and_sequential_indices ... ok
+test utils::geo::tests::rewire_refuses_sentinel_and_tiny_pieces ... ok
+test utils::geo::tests::mesh_from_pts_rejects_empty_input - should panic ... ok
+test utils::geo::tests::rewire_rotates_a_closed_loop_to_start_at_the_split ... ok
+test utils::geo::tests::update_curve_mesh_replaces_existing_contents ... ok
+test utils::geo::tests::update_curve_mesh_panics_without_a_mesh - should panic ... ok
+test utils::index_condenser::tests::empty_map_fails_fast ... ok
+test utils::index_condenser::tests::push_resolve_and_fast_path ... ok
+test utils::index_condenser::tests::remove_swaps_last_into_hole_and_fixes_map ... ok
+test utils::load_json::tests::builds_every_attribute_kind ... ok
+test utils::load_json::tests::empty_indices_use_minus_one_as_max ... ok
+test utils::load_json::tests::index_beyond_attribute_length_asserts - should panic ... ok
+test utils::project_cursor_onto_ray::tests::degenerate_ray_hits_the_epsilon_floor_without_nan ... ok
+test utils::project_cursor_onto_ray::tests::from_window_size_is_the_exe_16_byte_record ... ok
+test utils::project_cursor_onto_ray::tests::identity_matrices_project_to_the_cursor_point_along_the_ray ... ok
+test utils::load_json::tests::unknown_type_panics_before_the_buffer_is_read - should panic ... ok
+test utils::load_json::tests::missing_file_panics_with_the_path - should panic ... ok
+test utils::load_json::tests::unknown_type_panics_with_the_type_text - should panic ... ok
+test utils::project_cursor_onto_ray::tests::perspective_w_changes_the_interpolation_weight ... ok
+test utils::project_cursor_onto_ray::tests::reversed_range_panics_like_f32_clamp - should panic ... ok
+test utils::project_cursor_onto_ray::tests::t_is_clamped_to_the_range ... ok
+test utils::project_cursor_onto_ray::tests::transform_screen_space_follows_the_helper_exactly ... ok
+test utils::tests::world_origin_lands_in_the_screen_centre_with_identity_matrices ... ok
+test utils::tests::y_is_flipped_and_w_divides ... ok
+test utils::load_json::tests::loads_from_disk ... ok
+
+test result: ok. 1350 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/core_foundation.rs (target/debug/deps/core_foundation-6da52197c4e35f56)
+
+running 11 tests
+test core_transform_reuses_shared_orientation_and_comparison_policy ... ok
+test event_consumption_drains_both_epochs_and_keeps_dependency_counters ... ok
+test selecting_last_event_drops_unselected_payloads ... ok
+test missing_event_resource_does_not_silently_become_an_empty_stream - should panic ... ok
+test menu_prefix_predicates_match_original_without_claiming_payload_schema ... ok
+test brightness_selector_matches_native_table ... ok
+test both_draw_consumers_read_the_same_highlight_resource_after_clear ... ok
+test dirty_cell_mapping_matches_original_truncation_nan_and_bounds_policy ... ok
+test window_state_and_screen_parameters_match_original_entries ... ok
+test settings_deserialization_matches_all_native_field_presence_combinations ... ok
+test settings_default_and_alignment_match_original_bytes ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/gui_contracts.rs (target/debug/deps/gui_contracts-4a8d6b37043ab9b8)
+
+running 4 tests
+test thumbnail_default_matches_native_without_comparing_uninitialized_option_payload ... ok
+test settings_payload_and_time_policy_match_original_time_update ... ok
+test debug_labels_match_both_native_return_contracts ... ok
+test thumbnail_positions_match_original_allocating_iterator ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wall_authority.rs (target/debug/deps/wall_authority-6a70a58595230a2e)
+
+running 7 tests
+test core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime ... ok
+test a_failed_core_publication_is_visible_and_is_cleared_by_delete ... ok
+test removing_all_preserves_counter_and_both_prior_notice_sets ... ok
+test constructor_counter_defaults_and_notification_match_native ... ok
+test equal_writes_notify_missing_writes_do_not_and_reset_only_clears_counter ... ok
+test explicit_restore_duplicate_panic_keeps_the_native_replacement_side_effect ... ok
+test authority_stores_match_the_original_instruction_fixtures ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/wall_highlight.rs (target/debug/deps/wall_highlight-f6d77c7cf9fef5dc)
+
+running 2 tests
+test scheduled_highlight_clears_kind_next_frame_and_keeps_eraser_state ... ok
+test ecs_highlight_matches_original_last_event_and_state_writes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

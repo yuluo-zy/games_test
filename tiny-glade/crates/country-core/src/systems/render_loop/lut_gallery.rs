@@ -2,7 +2,7 @@
 //!
 //! 证据（O = 机器码观测，I = 推断，U = 未知）：
 //! - `LutGalleryPlugin::build`（0x1408b04c0，149 B）：分配 0x48 B 的 `Arc<Mutex<LutGalleryInner>>`
-//!   （strong=1、weak=1、mutex=0、数据 0x34 B 全 0 @+0x14），以 `LutGalleryState { state, preview: None }`
+//!   （strong=1、weak=1、mutex=0、metrics 默认值 @+0x14；Option::None 载荷未初始化），以 `LutGalleryState { state, preview: None }`
 //!   （两个寄存器字：`rdx = Arc`、`r8 = 0`）调用 `insert_resource`，随后 `add_systems(PreStartup, startup)`。（O）
 //! - `startup`（无独立 PDB 过程）：加载 `/lut_gallery/thumbnail.raster.hlsl` 为 `lut_gallery_thumbnail`（O：字符串表）。
 //! - `render_photomode_lut_gallery`（0x1408b0560，6721 B）：见 [`render_photomode_lut_gallery`]。
@@ -13,7 +13,9 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use super::menu_background::{AppModeView, ManagedTexture};
+use crate::resources::gui::{EscMenuState, LoadMenuThumbnailMetrics};
+
+use super::menu_background::ManagedTexture;
 
 /// 着色器 URI（O：.rdata 字符串表）。
 pub const SHADER_URI: &str = "/lut_gallery/thumbnail.raster.hlsl";
@@ -23,7 +25,7 @@ pub const SHADER_NAME: &str = "lut_gallery_thumbnail";
 pub const PASS_NAME: &str = "LUT thumbnail";
 /// 每格 6 个顶点（O：`draw_no_vao(edx = 6)`）。
 pub const VERTICES_PER_CELL: u32 = 6;
-/// 摄影模式的 `AppMode` 判别式（O：`cmp dword [mode], 0xa` + `byte [mode+8] == 1`）。
+/// 摄影模式的 `EscMenuState` 判别式（O：`cmp dword [mode], 0xa` + `byte [mode+8] == 1`）。
 pub const PHOTOGRAPHY_MODE_STATE: u32 = 0xa;
 
 /// 纹理绑定名哈希与访问类型（均 O：`bind_texture_to_draw_builder` 的 `r8` / `r9b`）。
@@ -48,24 +50,8 @@ pub const RASTER_STATE_BYTE0_MASK: u8 = 0x7f;
 pub const RASTER_STATE_BYTE3_KEEP: u8 = 0x9f;
 pub const RASTER_STATE_BYTE3_SET: u8 = 0x40;
 
-/// 锁内的画廊状态（O：0x34 B @Arc+0x14；只列出观测到的读取）。
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct LutGalleryInner {
-    /// `+0x00`（绝对 +0x14）：低字节为“高亮开关”（`and r9b, al`）。
-    pub highlight_enabled: u32,
-    /// `+0x04`（+0x18）：被选中的格下标（`cmp dword [..+0x18], edi`）。
-    pub selected_index: u32,
-    /// `+0x08..+0x10`：U（`positions` 闭包可能读取，整块以 `+0x14` 为环境传入）。
-    pub unobserved_08: [u32; 2],
-    /// `+0x10`、`+0x14`（+0x24/+0x28）：格子宽高（Vec2 uniform `U_CELL_SIZE`）。
-    pub cell_size: [f32; 2],
-    /// `+0x18..+0x28`：U。
-    pub unobserved_18: [u32; 4],
-    /// `+0x28`（+0x3c）：格数（`positions` 迭代器的 `Range<u32>` 终点）。
-    pub cell_count: u32,
-    /// `+0x2c..+0x34`：U。
-    pub unobserved_2c: [u32; 2],
-}
+/// B uses the same gui metrics owner as the load menu (Arc data at +0x14).
+pub type LutGalleryInner = LoadMenuThumbnailMetrics;
 
 /// `LutGalleryState` 资源（O 16 B：`+0` 状态 Arc，`+8` 预览纹理共享槽，`build` 里为 `None`）。
 pub struct LutGalleryState {
@@ -100,8 +86,8 @@ pub trait LutGalleryHost {
     fn demo_mode_override(&self) -> bool;
     /// `Res<LutGalleryState>`（hash `0xaca0d6d443d3ae2e`）；缺失 → `Option::unwrap` panic（O @0x1408b150e）。
     fn gallery_state(&self) -> &LutGalleryState;
-    /// `Res<AppMode>`（hash `0xd38dae617fb79c7a`）；缺失 → unwrap panic（O @0x1408b151a）。
-    fn app_mode(&self) -> AppModeView;
+    /// `Res<EscMenuState>`（hash `0xd38dae617fb79c7a`）；缺失 → unwrap panic（O @0x1408b151a）。
+    fn esc_menu_state(&self) -> &EscMenuState;
     /// 第三个资源（hash `0x4a142e09642375b9`，O @0x1408b0718）：`+8` 起 0x40 B 条目数组，选择字节 @+0xc0，
     /// 条目的 16 B 名字 @+8 —— 当前生效的 LUT 名（条目 `[selected]`，O 0x1408b0b86）。
     fn active_lut_name(&self) -> LutName;
@@ -111,8 +97,6 @@ pub trait LutGalleryHost {
     fn raster_shader(&self, name: &str) -> u64;
     /// 第四个资源（hash `0xd387f1aea6230aea`）：0x28 B 元素的 LUT 列表，元素 +8 为 16 B 名字。
     fn lut_names(&self) -> Vec<LutName>;
-    /// `Vec<Vec2>::from_iter(Map<Range<u32>, gui::positions::closure>)`（O 0x1408b0c5f）。
-    fn cell_positions(&self, state: &LutGalleryInner) -> Vec<[f32; 2]>;
     /// `NameHash::compute(&str)`（O 0x1408b101d）。
     fn name_hash(&self, name: &str) -> u64;
     /// `RasterPass::new_impl(PASS_NAME, [ColorAttachment(target)], no depth)`。
@@ -154,8 +138,8 @@ pub fn cell_uniforms(
     CellUniforms {
         alpha: 1.0,
         position,
-        size: state.cell_size,
-        highlighted: (state.highlight_enabled as u8 != 0) & (state.selected_index == i),
+        size: state.cell_size.to_array(),
+        highlighted: state.highlighted_index == Some(i),
         is_current,
         is_first: i == 0,
     }
@@ -163,19 +147,19 @@ pub fn cell_uniforms(
 
 /// O：0x1408b0560，参数 `(pass_resources, world, target: &Texture)`。
 ///
-/// 顺序（O）：演示模式开关 → 资源 → `AppMode` 须为 (0xa, 1) → 预览槽（`None` Arc 或槽内 `None` 都直接返回，
+/// 顺序（O）：演示模式开关 → 资源 → `EscMenuState` 须为 (0xa, 1) → 预览槽（`None` Arc 或槽内 `None` 都直接返回，
 /// 锁先放）→ 第三资源 → 着色器 → LUT 列表 → 锁画廊状态 → 取 3 个名字 → "LUT thumbnail" 光栅 pass →
 /// 逐格（`zip(luts, positions)`）绘制 → `render`。
 pub fn render_photomode_lut_gallery<H: LutGalleryHost>(host: &mut H) {
     if host.demo_mode_override() {
         return;
     }
-    let mode = host.app_mode();
-    if mode.state as u32 != PHOTOGRAPHY_MODE_STATE || mode.flag != 1 {
+    let gallery = host.gallery_state();
+    if !matches!(host.esc_menu_state(), EscMenuState::Photomode(true)) {
         return;
     }
     // 预览槽：Arc 缺失 / 槽空 → 返回。
-    let Some(preview_arc) = host.gallery_state().preview.clone() else {
+    let Some(preview_arc) = gallery.preview.clone() else {
         return;
     };
     let preview_guard = preview_arc.lock();
@@ -190,8 +174,8 @@ pub fn render_photomode_lut_gallery<H: LutGalleryHost>(host: &mut H) {
     let state = *state_arc.lock();
     let active_name = active.to_string();
     host.begin_pass(PASS_NAME);
-    let positions = host.cell_positions(&state);
-    for (i, (lut, pos)) in luts.iter().zip(positions.iter()).enumerate() {
+    let positions = state.positions();
+    for (i, (lut, pos)) in luts.iter().zip(positions).enumerate() {
         let i = i as u32;
         let name = lut.to_string();
         let is_current = name == active_name;
@@ -202,7 +186,7 @@ pub fn render_photomode_lut_gallery<H: LutGalleryHost>(host: &mut H) {
         host.bind_disk_texture(hash, LUT_BINDING, TEXTURE_ACCESS);
         let extent = host.target_extent();
         host.optional_uniform_u32x2(U_TARGET_EXTENT, extent);
-        let u = cell_uniforms(&state, i, *pos, is_current);
+        let u = cell_uniforms(&state, i, pos.to_array(), is_current);
         host.uniform_f32(U_ALPHA, u.alpha);
         host.uniform_vec2(U_CELL_POS, u.position);
         host.uniform_vec2(U_CELL_SIZE, u.size);
@@ -226,7 +210,7 @@ pub const STARTUP_SHADERS: [(&str, &str); 1] = [(SHADER_URI, SHADER_NAME)];
 pub struct LutGalleryPlugin;
 
 impl LutGalleryPlugin {
-    /// O：0x1408b04c0。`insert_resource(LutGalleryState { state: Arc(全 0), preview: None })` +
+    /// O：0x1408b04c0。`insert_resource(LutGalleryState::default())` +
     /// `add_systems(PreStartup, startup)`（`startup` 加载 [`STARTUP_SHADERS`]）。
     pub fn build(&self) -> LutGalleryState {
         LutGalleryState::default()
@@ -240,7 +224,7 @@ mod tests {
     #[derive(Default)]
     struct Rec {
         demo: bool,
-        mode: Option<AppModeView>,
+        mode: Option<EscMenuState>,
         state: Option<LutGalleryState>,
         active: u128,
         luts: Vec<u128>,
@@ -254,8 +238,8 @@ mod tests {
         fn gallery_state(&self) -> &LutGalleryState {
             self.state.as_ref().expect("LutGalleryState")
         }
-        fn app_mode(&self) -> AppModeView {
-            self.mode.expect("AppMode")
+        fn esc_menu_state(&self) -> &EscMenuState {
+            self.mode.as_ref().expect("EscMenuState")
         }
         fn active_lut_name(&self) -> LutName {
             LutName(self.active)
@@ -269,11 +253,6 @@ mod tests {
         }
         fn lut_names(&self) -> Vec<LutName> {
             self.luts.iter().map(|&v| LutName(v)).collect()
-        }
-        fn cell_positions(&self, s: &LutGalleryInner) -> Vec<[f32; 2]> {
-            (0..s.cell_count)
-                .map(|i| [i as f32, 10.0 + i as f32])
-                .collect()
         }
         fn name_hash(&self, name: &str) -> u64 {
             name.len() as u64 * 1000 + u64::from_str_radix(&name[28..], 16).unwrap()
@@ -319,14 +298,16 @@ mod tests {
     fn ready(cells: u32, luts: &[u128]) -> Rec {
         let st = LutGalleryState::default();
         *st.state.lock() = LutGalleryInner {
-            highlight_enabled: 1,
-            selected_index: 1,
-            cell_size: [0.25, 0.5],
+            highlighted_index: Some(1),
+            origin: glam::Vec2::new(0.0, 10.0),
+            step: glam::Vec2::new(0.5, 0.75),
+            cell_size: glam::Vec2::new(0.25, 0.5),
             cell_count: cells,
+            cells_per_line: 2,
             ..Default::default()
         };
         let mut r = Rec {
-            mode: Some(AppModeView { state: 10, flag: 1 }),
+            mode: Some(EscMenuState::Photomode(true)),
             active: luts.get(1).copied().unwrap_or(0),
             luts: luts.to_vec(),
             ..Default::default()
@@ -357,11 +338,15 @@ mod tests {
 
     #[test]
     fn only_photography_mode_with_flag_draws() {
-        for (state, flag) in [(9u64, 1u8), (11, 1), (10, 0), (10, 2)] {
+        for state in [
+            EscMenuState::Credits,
+            EscMenuState::Closed,
+            EscMenuState::Photomode(false),
+        ] {
             let mut r = ready(1, &[1]);
-            r.mode = Some(AppModeView { state, flag });
+            r.mode = Some(state);
             render_photomode_lut_gallery(&mut r);
-            assert!(r.log.is_empty(), "{state} {flag}");
+            assert!(r.log.is_empty());
         }
     }
 
@@ -425,22 +410,55 @@ mod tests {
     }
 
     #[test]
-    fn highlight_needs_both_the_enable_byte_and_matching_index() {
+    fn highlight_needs_a_present_matching_index() {
         let s = LutGalleryInner {
-            highlight_enabled: 0x100,
-            selected_index: 3,
+            highlighted_index: None,
             ..Default::default()
         };
-        // 低字节为 0 → 关
         assert!(!cell_uniforms(&s, 3, [0.0; 2], false).highlighted);
         let s = LutGalleryInner {
-            highlight_enabled: 0x101,
-            selected_index: 3,
+            highlighted_index: Some(3),
             ..Default::default()
         };
         assert!(cell_uniforms(&s, 3, [0.0; 2], false).highlighted);
         assert!(!cell_uniforms(&s, 2, [0.0; 2], false).highlighted);
         assert!(cell_uniforms(&s, 0, [0.0; 2], false).is_first);
+    }
+
+    #[test]
+    fn real_gui_metrics_reach_the_draw_uniforms_in_both_grid_orders() {
+        for column_major in [false, true] {
+            let mut r = ready(5, &[1, 2, 3, 4, 5]);
+            r.state.as_ref().unwrap().state.lock().column_major = column_major;
+            render_photomode_lut_gallery(&mut r);
+            let positions: Vec<_> = r
+                .log
+                .iter()
+                .filter(|entry| entry.starts_with(&format!("v2 {U_CELL_POS:#x} ")))
+                .cloned()
+                .collect();
+            let expected = if column_major {
+                [
+                    [0.0, 10.0],
+                    [0.0, 10.75],
+                    [0.5, 10.0],
+                    [0.5, 10.75],
+                    [1.0, 10.0],
+                ]
+            } else {
+                [
+                    [0.0, 10.0],
+                    [0.5, 10.0],
+                    [0.0, 10.75],
+                    [0.5, 10.75],
+                    [0.0, 11.5],
+                ]
+            };
+            assert_eq!(
+                positions,
+                expected.map(|pos| format!("v2 {U_CELL_POS:#x} {pos:?}"))
+            );
+        }
     }
 
     #[test]

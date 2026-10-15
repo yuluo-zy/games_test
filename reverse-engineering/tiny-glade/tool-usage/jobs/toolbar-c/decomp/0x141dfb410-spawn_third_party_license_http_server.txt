@@ -1,0 +1,53 @@
+SIG: void __cdecl spawn_third_party_license_http_server(void)
+SIZE: 520
+ADDR: 141dfb410
+
+DECOMP:
+
+void __cdecl toolbar::menu::credits::spawn_third_party_license_http_server(void)
+
+{
+  undefined8 extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *in_RCX;
+  short local_c8;
+  undefined4 uStack_c6;
+  undefined2 uStack_c2;
+  undefined8 uStack_c0;
+  undefined8 *puStack_b8;
+  
+  third_party_licenses_server::SingleFileServer::http<ref_<str_>_>();
+  if (local_c8 == 2) {
+    alloc::fmt::format::format_inner();
+    anyhow::Error::msg<alloc::string::String>();
+    if ((code *)*puStack_b8 != (code *)0x0) {
+      (*(code *)*puStack_b8)(uStack_c0);
+    }
+    if (puStack_b8[1] != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    in_RCX[1] = extraout_RAX;
+    *in_RCX = 0x8000000000000000;
+  }
+  else {
+    std::thread::
+    spawn<toolbar::menu::credits::spawn_third_party_license_http_server::closure_env_1,enum2_<core::result::Result<tuple_<>,anyhow::Error>_>_>
+              ();
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *(undefined8 *)((longlong)extraout_RAX_00 + 6) = 0x333231383a312e30;
+    *extraout_RAX_00 = 0x2e302e302e373231;
+    in_RCX[5] = puStack_b8;
+    in_RCX[3] = CONCAT26(uStack_c2,CONCAT42(uStack_c6,local_c8));
+    in_RCX[4] = uStack_c0;
+    *in_RCX = 0xe;
+    in_RCX[1] = extraout_RAX_00;
+    in_RCX[2] = 0xe;
+  }
+  return;
+}
+
+

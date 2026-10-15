@@ -1,0 +1,75 @@
+SIG: void __cdecl http<ref$<str$>_>(void)
+SIZE: 612
+ADDR: 14234d690
+
+DECOMP:
+
+void __cdecl toolbar::third_party_licenses_server::SingleFileServer::http<ref_<str_>_>(void)
+
+{
+  code *extraout_RAX;
+  short *in_RCX;
+  undefined8 in_RDX;
+  undefined8 in_R8;
+  longlong local_150;
+  undefined8 uStack_148;
+  longlong local_b0;
+  undefined8 local_a8;
+  undefined8 local_70;
+  undefined8 uStack_68;
+  undefined8 local_60;
+  code *local_58;
+  undefined **ppuStack_50;
+  code *local_48;
+  undefined8 uStack_40;
+  undefined8 local_38;
+  undefined *local_30 [2];
+  undefined8 local_20;
+  
+  local_20 = 0xfffffffffffffffe;
+  local_70 = in_RDX;
+  uStack_68 = in_R8;
+  if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    local_60 = &local_70;
+    local_58 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+    ppuStack_50 = local_30;
+    local_48 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+    mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  std::net::socket_addr::impl$8::to_socket_addrs();
+  if ((local_150 == 0) ||
+     (alloc::vec::spec_from_iter::impl$1::from_iter<enum2_<core::net::socket_addr::SocketAddr>_>(),
+     uStack_148 = local_a8, SBORROW8(0,local_b0))) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (code *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *(undefined8 *)extraout_RAX = uStack_148;
+    ppuStack_50 = &PTR_drop_in_place<std::io::error::Error>_14304f458;
+    local_58 = extraout_RAX;
+  }
+  else {
+    tiny_http::Server::new();
+    if ((short)local_60 != 2) {
+      in_RCX[3] = local_60._6_2_;
+      *(undefined4 *)(in_RCX + 1) = local_60._2_4_;
+      *(code **)(in_RCX + 0xc) = local_48;
+      *(undefined8 *)(in_RCX + 0x10) = uStack_40;
+      *(undefined8 *)(in_RCX + 0x14) = local_38;
+      *in_RCX = (short)local_60;
+      *(code **)(in_RCX + 4) = local_58;
+      *(undefined ***)(in_RCX + 8) = ppuStack_50;
+      *(undefined8 *)(in_RCX + 0x18) = local_70;
+      *(undefined8 *)(in_RCX + 0x1c) = uStack_68;
+      return;
+    }
+  }
+  *(code **)(in_RCX + 4) = local_58;
+  *(undefined ***)(in_RCX + 8) = ppuStack_50;
+  *in_RCX = 2;
+  return;
+}
+
+

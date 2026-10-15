@@ -166,20 +166,13 @@ pub struct WeatherView {
 pub struct TreeCanopyMaxCullDistanceView(pub f32);
 
 /// `EditingHighlight`（TypeId 0x6efcda1c77e106b4/0x7c999c10e7fa637f，真实类型 `raw: Gap`）：`byte @+0xc`。
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct EditingHighlightView {
-    pub enabled: bool,
-}
+pub use crate::resources::editing_highlight::EditingHighlight as EditingHighlightView;
 
 /// `DebugGui`（TypeId 0x48b321ef779dc301/0xbd65767194d9ddc8，真实类型 `raw: Gap`）：`byte @+0xfe`。
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct DebugGuiView {
-    pub suppress: bool,
-}
+pub use crate::resources::gui::DebugGui as DebugGuiView;
 
 /// `systems::wall::eraser::EraserSizeMultiplier`（TypeId 0x0ae77a86a2c6cefc/0xf5509a56b32e81d0）：首个 `f32`。crate 里不存在。
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct EraserSizeMultiplier(pub f32);
+pub use crate::resources::walls::EraserSizeMultiplier;
 
 /// `resources::roofs::roof_highlight::RoofHighlight`（TypeId 0x9311cf2688353878/0xfd54118f9a9ee3d4）：`u32 @+0`、`tag @+8`。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1185,13 +1178,16 @@ mod tests {
     #[test]
     fn brick_erase_inputs_reads_the_four_resources() {
         let mut w = World::new();
-        w.insert_resource(EditingHighlightView { enabled: true });
+        w.insert_resource(EditingHighlightView {
+            enabled: true,
+            ..Default::default()
+        });
         w.insert_resource(CursorTerrainRaycast {
             tag: 1,
             pos: Vec3::new(1.0, 2.0, 3.0),
         });
         w.insert_resource(EraserSizeMultiplier(2.5));
-        w.insert_resource(DebugGuiView { suppress: true });
+        w.insert_resource(DebugGuiView { suppress: true, ..Default::default() });
         let i = brick_erase_inputs(&w);
         assert!(i.enabled && i.suppress);
         assert_eq!(i.cursor_position, Some(Vec3::new(1.0, 2.0, 3.0)));
@@ -1211,7 +1207,10 @@ mod tests {
     #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
     fn brick_erase_inputs_missing_resource_panics() {
         let mut w = World::new();
-        w.insert_resource(EditingHighlightView { enabled: true });
+        w.insert_resource(EditingHighlightView {
+            enabled: true,
+            ..Default::default()
+        });
         let _ = brick_erase_inputs(&w);
     }
 

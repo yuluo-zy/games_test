@@ -85,3 +85,15 @@ pub fn custom_cursor_pass(
 
 #[allow(dead_code)]
 fn _unused(_: Handle<crate::render::shader::RasterShaderProgram>, _: ManagedHandle) {}
+
+/// World-owned WindowSize feeds the existing pass without manually built dims.
+/// Visibility still belongs to the original GameConfig cursor producer.
+pub fn custom_cursor_pass_from_world(
+    ctx: &mut DrawPassCtx<'_>,
+    target: &AttachmentTexture,
+    world: &bevy_ecs::world::World,
+    cursor_visible: bool,
+) {
+    let window = crate::utils::get_res::<crate::resources::window::WindowSize>(world);
+    custom_cursor_pass(ctx, target, (window.width, window.height), cursor_visible);
+}

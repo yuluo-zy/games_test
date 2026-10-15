@@ -1,0 +1,694 @@
+SIG: void __cdecl ui_slider_reset(void)
+SIZE: 928
+ADDR: 142347f90
+
+DECOMP:
+
+// WARNING: Control flow encountered bad instruction data
+// WARNING: Instruction at (ram,0x000142349df4) overlaps instruction at (ram,0x000142349df3)
+// 
+// WARNING: Removing unreachable block (ram,0x000142349cf0)
+// WARNING: Removing unreachable block (ram,0x000142349cfb)
+
+void __cdecl toolbar::photomode::ui_slider::ui_slider_reset(void)
+
+{
+  undefined4 uVar1;
+  byte bVar2;
+  ulonglong *puVar3;
+  code *pcVar4;
+  longlong *plVar5;
+  undefined8 **ppuVar6;
+  undefined1 uVar7;
+  char cVar8;
+  undefined8 *puVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  uint *puVar12;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  uint *extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong extraout_RAX_03;
+  longlong extraout_RAX_04;
+  uint *extraout_RAX_05;
+  undefined8 *in_RCX;
+  uint *puVar13;
+  uint *puVar14;
+  byte bVar17;
+  longlong *in_RDX;
+  code *pcVar15;
+  longlong lVar16;
+  undefined8 *puVar18;
+  undefined7 uVar21;
+  undefined8 *puVar19;
+  undefined8 uVar20;
+  undefined8 **ppuVar22;
+  undefined1 uVar23;
+  undefined8 *puVar24;
+  ulonglong uVar25;
+  longlong lVar26;
+  undefined8 *puVar27;
+  longlong in_R8;
+  code *pcVar28;
+  undefined8 *in_R9;
+  longlong lVar29;
+  ulonglong uVar30;
+  undefined8 *puVar31;
+  bool bVar32;
+  float extraout_XMM0_Da;
+  uint uVar33;
+  float fVar34;
+  undefined1 auVar35 [16];
+  float fVar36;
+  undefined4 unaff_XMM12_Da;
+  undefined4 unaff_XMM12_Db;
+  undefined8 *in_stack_00000028;
+  undefined8 *in_stack_00000030;
+  longlong in_stack_00000168;
+  undefined8 *puStack_158;
+  undefined1 auStack_150 [24];
+  undefined8 local_138;
+  longlong local_130;
+  undefined4 uStack_128;
+  undefined4 local_124;
+  longlong lStack_120;
+  longlong lStack_118;
+  longlong lStack_110;
+  undefined4 local_108;
+  undefined4 local_104;
+  undefined4 *local_100;
+  undefined8 local_f8;
+  longlong *local_f0;
+  undefined4 *local_e8;
+  undefined8 local_e0;
+  undefined4 *local_d8;
+  undefined8 local_d0;
+  undefined8 *local_c8;
+  undefined8 *local_c0;
+  undefined4 local_58;
+  undefined4 uStack_54;
+  
+  ppuVar22 = &puStack_158;
+  puVar3 = (ulonglong *)*in_RCX;
+  lVar26 = in_RCX[1];
+  uVar11 = *puVar3;
+  uVar30 = 0;
+  uVar10 = uVar11 - *(ulonglong *)(lVar26 + 0x18);
+  if (uVar11 < *(ulonglong *)(lVar26 + 0x18)) {
+    uVar10 = uVar30;
+  }
+  uVar25 = uVar11 - *(ulonglong *)(lVar26 + 0x38);
+  if (uVar11 < *(ulonglong *)(lVar26 + 0x38)) {
+    uVar25 = uVar30;
+  }
+  puVar27 = (undefined8 *)(uVar10 * 0x10 + *(longlong *)(lVar26 + 8));
+  uVar11 = *(ulonglong *)(lVar26 + 0x10) - uVar10;
+  if (*(ulonglong *)(lVar26 + 0x10) < uVar10) {
+    puVar27 = (undefined8 *)&DAT_00000008;
+    uVar11 = uVar30;
+  }
+  puVar18 = (undefined8 *)(uVar25 * 0x10 + *(longlong *)(lVar26 + 0x28));
+  uVar10 = *(ulonglong *)(lVar26 + 0x30) - uVar25;
+  if (*(ulonglong *)(lVar26 + 0x30) < uVar25) {
+    puVar18 = (undefined8 *)&DAT_00000008;
+    uVar10 = uVar30;
+  }
+  *puVar3 = (*(longlong *)(lVar26 + 0x40) - uVar10) - uVar11;
+  local_f0 = *(longlong **)(in_R8 + 8);
+  if (local_f0 == (longlong *)0x0) {
+    local_f0 = *(longlong **)(in_R8 + 0x10);
+  }
+  puVar31 = puVar27 + uVar11 * 2;
+  puVar24 = puVar18 + uVar10 * 2;
+  local_130 = *in_RDX;
+  pcVar4 = (code *)in_RDX[1];
+  local_104 = *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+  local_d0 = *in_stack_00000030;
+  local_d8 = (undefined4 *)in_stack_00000030[2];
+  local_108 = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+  local_e0 = *in_stack_00000028;
+  local_e8 = (undefined4 *)in_stack_00000028[2];
+  local_124 = *(undefined4 *)((longlong)in_R9 + 0x1c);
+  local_f8 = *in_R9;
+  local_100 = (undefined4 *)in_R9[2];
+  lVar26 = local_130;
+  local_c8 = puVar24;
+  local_c0 = puVar31;
+  local_58 = unaff_XMM12_Da;
+  uStack_54 = unaff_XMM12_Db;
+LAB_142348130:
+  do {
+    do {
+      if ((puVar27 == (undefined8 *)0x0) || (puVar27 == puVar31)) {
+        if ((puVar18 == (undefined8 *)0x0) || (puVar18 == puVar24)) {
+          return;
+        }
+        puVar19 = puVar18 + 2;
+        puVar9 = (undefined8 *)0x0;
+      }
+      else {
+        puVar9 = puVar27 + 2;
+        puVar19 = puVar18;
+        puVar18 = puVar27;
+      }
+      *puVar3 = *puVar3 + 1;
+      uVar11 = puVar18[1];
+      uVar10 = uVar11 & 0xffffffff;
+      puVar18 = puVar19;
+      puVar27 = puVar9;
+    } while ((*(ulonglong *)(pcVar4 + 0x10) <= uVar10) ||
+            (*(int *)(*(longlong *)(pcVar4 + 8) + uVar10 * 0x14) != (int)(uVar11 >> 0x20)));
+    lVar29 = *(longlong *)(pcVar4 + 8) + uVar10 * 0x14;
+    uVar10 = (ulonglong)*(uint *)(lVar29 + 4);
+  } while ((uVar10 == 0xffffffff) ||
+          ((*(ulonglong *)(lVar26 + 0x38) <= uVar10 ||
+           ((*(ulonglong *)
+              (*(longlong *)(lVar26 + 0x28) + (ulonglong)(*(uint *)(lVar29 + 4) >> 6) * 8) >>
+             (uVar10 & 0x3f) & 1) == 0))));
+  uVar10 = (ulonglong)*(uint *)(lVar29 + 0xc);
+  pcVar28 = (code *)(uVar10 * 9);
+  if (*(ulonglong *)(lVar26 + 0x110) <
+      *(ulonglong *)(*(longlong *)(pcVar4 + 0x1a8) + 0x40 + uVar10 * 0x48)) {
+    lVar16 = *(longlong *)(pcVar4 + 0x1a8) + uVar10 * 0x48;
+    pcVar28 = *(code **)(lVar16 + 0x38);
+    if (*(ulonglong *)(pcVar28 + *(ulonglong *)(lVar26 + 0x110) * 8) == 0) goto LAB_1423481ed;
+    lVar26 = *(longlong *)
+              (*(longlong *)(lVar16 + 0x18) + 0x10 +
+              ~*(ulonglong *)(pcVar28 + *(ulonglong *)(lVar26 + 0x110) * 8) * 0x30);
+  }
+  else {
+LAB_1423481ed:
+    lVar26 = 0;
+  }
+  uVar33 = *(uint *)(lVar29 + 0x10);
+  lVar29 = local_f0[2];
+  if ((ulonglong)(*local_f0 - lVar29) < 0x28) {
+    local_138 = 1;
+    pcVar28 = (code *)&DAT_00000028;
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+  }
+  lVar16 = local_f0[1];
+  *(code **)(lVar16 + lVar29) =
+       core::ops::function::FnOnce::
+       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::UiPlaySelectAnimation>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+  ;
+  pcVar15 = bevy_ecs::error::handler::panic;
+  *(code **)(lVar16 + 8 + lVar29) = bevy_ecs::error::handler::panic;
+  *(ulonglong *)(lVar16 + 0x10 + lVar29) = uVar11;
+  *(undefined8 *)(lVar16 + 0x18 + lVar29) = 0x3e4ccccd3dcccccd;
+  *(undefined4 *)(lVar16 + 0x20 + lVar29) = 0;
+  *(undefined1 *)(lVar16 + 0x24 + lVar29) = 0;
+  local_f0[2] = lVar29 + 0x28;
+  lVar29 = (ulonglong)*(byte *)(lVar26 + (ulonglong)uVar33) * 4;
+  fVar34 = *(float *)(&DAT_14304edc0 + lVar29);
+  fVar36 = *(float *)(&DAT_14304ed8c + lVar29);
+  ::utils::inverse_lerp();
+  puVar31 = local_c0;
+  puVar24 = local_c8;
+  fVar34 = (1.0 - extraout_XMM0_Da) * fVar34;
+  fVar36 = fVar36 * extraout_XMM0_Da + fVar34;
+  bVar2 = *(byte *)(lVar26 + (ulonglong)uVar33);
+  puVar13 = (uint *)&DAT_14304edf4;
+  uVar11 = (ulonglong)*(int *)(&DAT_14304edf4 + (ulonglong)bVar2 * 4);
+  bVar32 = 0xfffffffebcfb120b < uVar11;
+  puVar12 = (uint *)(&DAT_14304edf4 + uVar11);
+  lVar29 = 0xffffffff;
+  cVar8 = (char)puVar12;
+  bVar17 = (byte)((ulonglong)pcVar15 >> 8);
+  uVar21 = (undefined7)((ulonglong)puVar19 >> 8);
+  ppuVar6 = &puStack_158;
+  lVar26 = local_130;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+  switch(bVar2) {
+  case 0:
+    mei::widgets::tweaker::TweakerView::as_inner_mut();
+    uVar1 = *(undefined4 *)(extraout_RAX + 0x1c);
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(undefined4 *)(lVar29 + 0x1c) = uVar1;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 1:
+    mei::widgets::tweaker::TweakerView::as_inner_mut();
+    uVar1 = *(undefined4 *)(extraout_RAX_02 + 0x20);
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(undefined4 *)(lVar29 + 0x20) = uVar1;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 2:
+    mei::widgets::tweaker::TweakerView::as_inner_mut();
+    uVar1 = *(undefined4 *)(extraout_RAX_00 + 0x24);
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(undefined4 *)(lVar29 + 0x24) = uVar1;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 3:
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(float *)(lVar29 + 0x30) = fVar36;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 4:
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(float *)(lVar29 + 0x38) = fVar36;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 5:
+    *local_100 = local_124;
+    country_core::resources::image_formation::ImageFormationConfigs::iter_non_default_mut();
+    lVar16 = lStack_110;
+    for (lVar29 = lStack_120; lVar26 = local_130, lVar29 != lStack_118; lVar29 = lVar29 + 0x40) {
+      if (lVar16 != 0 && lVar29 != 0) {
+        *(float *)(lVar29 + 0x34) = fVar36;
+      }
+      lVar16 = lVar16 + 1;
+    }
+    goto LAB_142348130;
+  case 6:
+    *local_e8 = local_108;
+    country_core::systems::camera_rig::MainCamera::lens();
+    *(undefined4 *)(extraout_RAX_03 + 8) = *(undefined4 *)(extraout_RAX_03 + 0x14);
+    lVar26 = local_130;
+    goto LAB_142348130;
+  case 7:
+    *local_e8 = local_108;
+    country_core::systems::camera_rig::MainCamera::focus();
+    fVar34 = -2.0;
+    if (-2.0 <= fVar36) {
+      fVar34 = fVar36;
+    }
+    fVar36 = 2.0;
+    if (fVar34 <= 2.0) {
+      fVar36 = fVar34;
+    }
+    uVar33 = exp2f(fVar36 + -3.0);
+    extraout_RAX_01[6] = uVar33;
+    lVar26 = local_130;
+    if (*extraout_RAX_01 < 2) {
+      *extraout_RAX_01 = 3;
+      *(undefined8 *)(extraout_RAX_01 + 1) = *(undefined8 *)(extraout_RAX_01 + 4);
+    }
+    goto LAB_142348130;
+  case 8:
+    *local_e8 = local_108;
+    country_core::systems::camera_rig::MainCamera::lens();
+    *(undefined4 *)(extraout_RAX_04 + 0x18) = *(undefined4 *)(extraout_RAX_04 + 0x24);
+    lVar26 = local_130;
+  case 9:
+    goto LAB_142348130;
+  case 10:
+    *local_d8 = local_104;
+    country_core::resources::brush_sizes::BrushSizes::reset_path();
+    lVar26 = local_130;
+    goto LAB_142348130;
+  case 0xb:
+    *local_d8 = local_104;
+    country_core::resources::brush_sizes::BrushSizes::reset_water();
+    lVar26 = local_130;
+    goto LAB_142348130;
+  case 0xc:
+    *local_d8 = local_104;
+    country_core::resources::brush_sizes::BrushSizes::reset_garden();
+    lVar26 = local_130;
+    goto LAB_142348130;
+  case 0xd:
+    goto code_r0x000142349504;
+  case 0xe:
+    puVar19 = (undefined8 *)CONCAT71(uVar21,(byte)puVar19 ^ bVar17);
+    if (((*(float *)(&UNK_14304ee0c + uVar11) != fVar36) ||
+        (ppuVar22 = &puStack_158, NAN(*(float *)(&UNK_14304ee0c + uVar11)) || NAN(fVar36))) &&
+       (*(float *)(&UNK_14304ee0c + uVar11) = fVar36, ppuVar22 = &puStack_158, *puVar12 < 2)) {
+      *puVar12 = 3;
+      *(undefined8 *)(&UNK_14304edf8 + uVar11) = *(undefined8 *)(&UNK_14304ee04 + uVar11);
+      ppuVar22 = &puStack_158;
+    }
+    goto code_r0x0001423499ca;
+  case 0xf:
+    puVar19 = (undefined8 *)CONCAT71(uVar21,(byte)puVar19 + bVar17);
+    auVar35 = maxps(ZEXT416((uint)fVar34),ZEXT416((uint)fVar36));
+    fVar34 = 2.0;
+    if (auVar35._0_4_ <= 2.0) {
+      fVar34 = auVar35._0_4_;
+    }
+    **(undefined4 **)(in_stack_00000168 + 0x10) = *(undefined4 *)(in_stack_00000168 + 0x1c);
+    *(float *)CONCAT44(uStack_54,local_58) = fVar34;
+    ppuVar22 = (undefined8 **)auStack_150;
+    puVar24 = puStack_158;
+    goto code_r0x0001423499ca;
+  case 0x10:
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    while (pcVar15 = pcVar15 + 1, puVar14 = puVar13, puVar13 != puVar12) {
+      for (; (puVar13 = puVar14 + 0x10, puVar13 != (uint *)&DAT_00000040 && (pcVar15 != (code *)0x1)
+             ); pcVar15 = pcVar15 + 1) {
+        puVar14[9] = (uint)fVar36;
+        if (puVar13 == puVar12) goto code_r0x0001423499c5;
+        puVar14 = puVar13;
+      }
+    }
+    goto code_r0x0001423499c5;
+  case 0x11:
+    ppuVar22 = &puStack_158;
+    if (*puVar12 != 0x13) {
+      **(undefined4 **)(in_stack_00000168 + 0x10) = *(undefined4 *)(in_stack_00000168 + 0x1c);
+      country_core::resources::brush_sizes::BrushSizes::set_water();
+      uVar30 = CONCAT44(local_124,uStack_128);
+      ppuVar22 = &puStack_158;
+    }
+    goto code_r0x0001423499ca;
+  case 0x12:
+    while (pcVar15 = pcVar15 + 1, puVar14 = puVar13, puVar13 != puVar12) {
+      for (; (puVar13 = puVar14 + 0x10, puVar13 != (uint *)&DAT_00000040 && (pcVar15 != (code *)0x1)
+             ); pcVar15 = pcVar15 + 1) {
+        puVar14[8] = (uint)fVar36;
+        if (puVar13 == puVar12) goto code_r0x0001423499c5;
+        puVar14 = puVar13;
+      }
+    }
+    goto code_r0x0001423499c5;
+  case 0x13:
+    goto code_r0x000142349c17;
+  case 0x14:
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    while (pcVar15 = pcVar15 + 1, puVar14 = puVar13, puVar13 != puVar12) {
+      for (; (puVar13 = puVar14 + 0x10, puVar13 != (uint *)&DAT_00000040 && (pcVar15 != (code *)0x1)
+             ); pcVar15 = pcVar15 + 1) {
+        puVar14[0xc] = (uint)fVar36;
+        if (puVar13 == puVar12) goto code_r0x0001423499c5;
+        puVar14 = puVar13;
+      }
+    }
+    goto code_r0x0001423499c5;
+  case 0x15:
+    ppuVar22 = &puStack_158;
+    if (*puVar12 != 0x13) {
+      **(undefined4 **)(in_stack_00000168 + 0x10) = *(undefined4 *)(in_stack_00000168 + 0x1c);
+      country_core::resources::brush_sizes::BrushSizes::set_path();
+      uVar30 = CONCAT44(local_124,uStack_128);
+      ppuVar22 = &puStack_158;
+    }
+    goto code_r0x0001423499ca;
+  case 0x16:
+    ppuVar22 = &puStack_158;
+    if (*puVar12 != 0x13) {
+      **(undefined4 **)(in_stack_00000168 + 0x10) = *(undefined4 *)(in_stack_00000168 + 0x1c);
+      country_core::resources::brush_sizes::BrushSizes::set_garden();
+      uVar30 = CONCAT44(local_124,uStack_128);
+      ppuVar22 = &puStack_158;
+    }
+    goto code_r0x0001423499ca;
+  case 0x17:
+    *(char *)((longlong)puVar19 + 0x50c13b82c) = *(char *)((longlong)puVar19 + 0x50c13b82c) + -1;
+    fRam00000000e8000008 =
+         fVar36 * (float)((ulonglong)uRam00000000e800000c >> 0x20) +
+         (2.0 - fVar36) * (float)uRam00000000e800000c;
+    ppuVar22 = (undefined8 **)puStack_158;
+    goto code_r0x0001423499ca;
+  case 0x18:
+    goto code_r0x00014234958a;
+  case 0x19:
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    *(char *)puVar12 = (char)*puVar12 + cVar8;
+    while (pcVar15 = pcVar15 + 1, puVar14 = puVar13, puVar13 != puVar12) {
+      for (; (puVar13 = puVar14 + 0x10, puVar13 != (uint *)&DAT_00000040 && (pcVar15 != (code *)0x1)
+             ); pcVar15 = pcVar15 + 1) {
+        puVar14[0xe] = (uint)fVar36;
+        if (puVar13 == puVar12) goto code_r0x0001423499c5;
+        puVar14 = puVar13;
+      }
+    }
+    goto code_r0x0001423499c5;
+  case 0x1a:
+    puVar24 = (undefined8 *)*local_c8;
+    ppuVar22 = (undefined8 **)(local_c8 + 1);
+    goto code_r0x000142349a3a;
+  case 0x1b:
+    goto code_r0x000142349b9c;
+  case 0x1c:
+    uVar11 = (ulonglong)(uint)((int)puVar12 << 4);
+    ppuVar22 = &puStack_158;
+    goto code_r0x000142349a77;
+  case 0x1d:
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  case 0x1e:
+    *pcVar28 = (code)((char)*pcVar28 << 1 | (char)*pcVar28 < '\0');
+    goto LAB_142349db2;
+  case 0x1f:
+    goto code_r0x000142349e9e;
+  case 0x20:
+    break;
+  case 0x21:
+    pcVar4[(longlong)pcVar15 * 2 + -2] = (code)((byte)pcVar4[(longlong)pcVar15 * 2 + -2] | 0xf4);
+    break;
+  case 0x22:
+    puVar12 = (uint *)((ulonglong)puVar12 & 0xffffffffffffff70);
+    ppuVar22 = &puStack_158;
+    goto LAB_142349db2;
+  case 0x23:
+    goto code_r0x000142349ec4;
+  case 0x24:
+    goto code_r0x000142349ee5;
+  case 0x25:
+    break;
+  case 0x26:
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  case 0x27:
+    break;
+  case 0x28:
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  case 0x29:
+    if ((longlong)puVar12 < 0) {
+      puVar13 = (uint *)(ulonglong)uRam000000064f18a5c4;
+      goto code_r0x000142349de9;
+    }
+    puVar12 = (uint *)0x4304ecf0;
+    ppuVar22 = &puStack_158;
+    goto LAB_142349db2;
+  case 0x2a:
+code_r0x000142349de9:
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+    switch((ulonglong)puVar13 & 0xff) {
+    case 0:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+      break;
+    case 1:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+      break;
+    case 2:
+code_r0x000142349e9e:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+      break;
+    case 3:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+code_r0x000142349ec4:
+      break;
+    case 4:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+      break;
+    case 5:
+      country_core::resources::image_formation::ImageFormationConfigs::current_mut();
+      break;
+    case 6:
+      country_core::systems::camera_rig::MainCamera::lens();
+      goto code_r0x000142349faa;
+    case 7:
+      country_core::systems::camera_rig::MainCamera::focus();
+      puVar12 = extraout_RAX_05;
+code_r0x000142349ee5:
+      log2f(puVar12[6]);
+      break;
+    case 8:
+      country_core::systems::camera_rig::MainCamera::lens();
+code_r0x000142349faa:
+      ::utils::inverse_lerp();
+      break;
+    case 9:
+      break;
+    case 10:
+      break;
+    case 0xb:
+      break;
+    case 0xc:
+      break;
+    case 0xd:
+                    // WARNING: Bad instruction - Truncating control flow here
+      halt_baddata();
+    }
+    break;
+  case 0x2b:
+    *(uint *)((undefined1 *)((longlong)puVar9 + 0x2f9710ff) + (longlong)local_c8) =
+         *(uint *)((undefined1 *)((longlong)puVar9 + 0x2f9710ff) + (longlong)local_c8) << 1 |
+         (uint)bVar32;
+    (*pcVar4)();
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  }
+  return;
+code_r0x000142349504:
+                    // WARNING (jumptable): Read-only address (ram,0x00014304edf3) is written
+                    // WARNING: Read-only address (ram,0x00014304edf3) is written
+  UNK_14304edf3 = 0xb4;
+                    // WARNING: Bad instruction - Truncating control flow here
+  halt_baddata();
+code_r0x00014234958a:
+  while( true ) {
+    while ((puVar12 == (uint *)0x0 || (pcVar15 == (code *)0x1))) {
+      puVar12 = puVar12 + 0x10;
+      pcVar15 = pcVar15 + 1;
+      if (puVar12 == (uint *)&DAT_14304edf4) goto code_r0x0001423499c5;
+    }
+    puVar12[7] = (uint)fVar36;
+    puVar12 = puVar12 + 0x10;
+    if (puVar12 == (uint *)&DAT_14304edf4) break;
+    pcVar15 = pcVar15 + 1;
+  }
+code_r0x0001423499c5:
+  uVar30 = CONCAT44(local_124,uStack_128);
+  ppuVar22 = &puStack_158;
+code_r0x0001423499ca:
+  *(undefined4 *)((longlong)puVar9 + (longlong)pcVar4 * 4) =
+       *(undefined4 *)((longlong)ppuVar22 + 0x3c);
+  *(undefined4 *)((longlong)puVar19 + 0xc) = 0xc0400000;
+  if ((int)puVar3 == 0) goto LAB_142349b40;
+  puVar12 = (uint *)(ulonglong)*(uint *)((longlong)ppuVar22 + 0xcc);
+  uVar11 = 1;
+  if (((uint *)puVar24[2] <= puVar12) ||
+     (pcVar15 = (code *)puVar24[1], *(int *)(pcVar15 + (longlong)puVar12 * 0x14) != (int)puVar3))
+  goto LAB_142349d8b;
+  pcVar28 = pcVar15 + (longlong)puVar12 * 0x14;
+  pcVar15 = (code *)(ulonglong)*(uint *)(pcVar28 + 4);
+  if (pcVar15 == (code *)0xffffffff) goto LAB_142349d8b;
+  if (pcVar15 < *(code **)(uVar30 + 0x38)) {
+    puVar13 = *(uint **)(*(longlong *)(uVar30 + 0x28) + (ulonglong)(*(uint *)(pcVar28 + 4) >> 6) * 8
+                        );
+code_r0x000142349a3a:
+    if (((ulonglong)puVar13 >> ((ulonglong)pcVar15 & 0x3f) & 1) != 0) {
+      puVar13 = (uint *)(ulonglong)*(uint *)(pcVar28 + 0x10);
+      lVar29 = *(longlong *)(puVar24[0x35] + 0x18 + (ulonglong)*(uint *)(pcVar28 + 0xc) * 0x48);
+      uVar11 = ~*(ulonglong *)
+                 (*(longlong *)(puVar24[0x35] + 0x38 + (ulonglong)*(uint *)(pcVar28 + 0xc) * 0x48) +
+                 *(longlong *)(uVar30 + 0x118) * 8) * 0x30;
+code_r0x000142349a77:
+      switch(*(undefined1 *)
+              (*(longlong *)(lVar29 + 0x10 + uVar11) + 0x10 + (longlong)puVar13 * 0x18)) {
+      case 9:
+        if (*(int *)**(undefined8 **)((longlong)ppuVar22 + 0x2c8) == 9) goto LAB_142349b40;
+        plVar5 = *(longlong **)((longlong)ppuVar22 + 0x2d0);
+        *(undefined4 *)plVar5[2] = *(undefined4 *)((longlong)plVar5 + 0x1c);
+        lVar26 = *plVar5;
+        lVar29 = *(longlong *)(lVar26 + 0x30);
+        uVar20 = *(undefined8 *)(lVar26 + 0x40);
+        uVar23 = 4;
+        uVar7 = 4;
+        if (lVar29 == *(longlong *)(lVar26 + 0x20)) {
+code_r0x000142349b11:
+          uVar23 = uVar7;
+          *(undefined **)((longlong)ppuVar22 + -8) = &UNK_142349b21;
+          alloc::raw_vec::RawVec::
+          grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+                    ();
+        }
+        break;
+      case 10:
+        bVar32 = *(int *)**(undefined8 **)((longlong)ppuVar22 + 0x2c8) - 7U < 2;
+        ppuVar6 = ppuVar22;
+code_r0x000142349c17:
+        ppuVar22 = ppuVar6;
+        if (bVar32) goto LAB_142349b40;
+        plVar5 = *(longlong **)((longlong)ppuVar22 + 0x2d0);
+        *(undefined4 *)plVar5[2] = *(undefined4 *)((longlong)plVar5 + 0x1c);
+        lVar26 = *plVar5;
+        lVar29 = *(longlong *)(lVar26 + 0x30);
+        uVar20 = *(undefined8 *)(lVar26 + 0x40);
+        uVar23 = 1;
+        uVar7 = 1;
+        if (lVar29 == *(longlong *)(lVar26 + 0x20)) goto code_r0x000142349b11;
+        break;
+      case 0xb:
+        if (*(int *)**(undefined8 **)((longlong)ppuVar22 + 0x2c8) == 0xf) goto LAB_142349b40;
+        plVar5 = *(longlong **)((longlong)ppuVar22 + 0x2d0);
+        *(undefined4 *)plVar5[2] = *(undefined4 *)((longlong)plVar5 + 0x1c);
+        lVar26 = *plVar5;
+        lVar29 = *(longlong *)(lVar26 + 0x30);
+        uVar20 = *(undefined8 *)(lVar26 + 0x40);
+        uVar23 = 8;
+        uVar7 = 8;
+        if (lVar29 == *(longlong *)(lVar26 + 0x20)) goto code_r0x000142349b11;
+        break;
+      case 0xc:
+        if (*(int *)**(undefined8 **)((longlong)ppuVar22 + 0x2c8) == 0x11) goto LAB_142349b40;
+        plVar5 = *(longlong **)((longlong)ppuVar22 + 0x2d0);
+        *(undefined4 *)plVar5[2] = *(undefined4 *)((longlong)plVar5 + 0x1c);
+        lVar26 = *plVar5;
+        lVar29 = *(longlong *)(lVar26 + 0x30);
+        uVar20 = *(undefined8 *)(lVar26 + 0x40);
+        uVar23 = 9;
+        uVar7 = 9;
+        if (lVar29 == *(longlong *)(lVar26 + 0x20)) goto code_r0x000142349b11;
+        break;
+      default:
+        goto LAB_142349b40;
+      }
+      lVar16 = *(longlong *)(lVar26 + 0x28);
+      *(undefined8 *)(lVar16 + lVar29 * 0x10) = uVar20;
+      *(undefined1 *)(lVar16 + 8 + lVar29 * 0x10) = uVar23;
+      *(longlong *)(lVar26 + 0x30) = lVar29 + 1;
+      *(longlong *)(lVar26 + 0x40) = *(longlong *)(lVar26 + 0x40) + 1;
+LAB_142349b40:
+      uVar20 = (*(undefined8 **)((longlong)ppuVar22 + 0x100))[1];
+      puVar27 = *(undefined8 **)((longlong)ppuVar22 + 0x298);
+      *puVar27 = **(undefined8 **)((longlong)ppuVar22 + 0x100);
+      puVar27[1] = uVar20;
+code_r0x000142349b9c:
+      return;
+    }
+  }
+  uVar11 = 0;
+LAB_142349d8b:
+  *(ulonglong *)((longlong)ppuVar22 + 0x70) = (longlong)pcVar15 << 0x20 | uVar11;
+  *(ulonglong *)((longlong)ppuVar22 + 0x78) =
+       *(longlong *)((longlong)ppuVar22 + 0xf0) << 0x20 | (ulonglong)puVar12;
+  puVar12 = (uint *)&DAT_14304ecf0;
+LAB_142349db2:
+  *(uint **)((longlong)ppuVar22 + 0x20) = puVar12;
+                    // WARNING: Subroutine does not return
+  *(undefined **)((longlong)ppuVar22 + -8) = &UNK_142349dd4;
+  core::result::unwrap_failed();
+}
+
+

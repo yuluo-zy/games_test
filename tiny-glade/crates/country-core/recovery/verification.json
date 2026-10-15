@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-14",
+  "status": "historical_before_gui_owned_state_and_uuid_dependency",
+  "superseded_scope_note": "2026-10-15 GUI/LUT/session 源码与 country-core 依赖发生变化；以下测试与哈希仅属历史。当前增量见 gui work REPORT.md，仅 all-targets 编译。",
+  "baseline": "B",
+  "scope": "core foundation contracts and wall_highlight single-system consumer chain",
+  "full_core_complete": false,
+  "independent_review_complete": false,
+  "target": "aarch64-apple-darwin",
+  "rustc": "1.98.1 (48a229cea 2026-09-01)",
+  "git_base": "6fab8ea05442675b6cd1fb7aba2dd057f22791a3",
+  "cargo_lock_sha256": "5168487eed7ed7bed42122cafbc803687572a0697ac74cb0a6a21d7dd7a4926b",
+  "source_and_fixture_hashes": "Historical inventory snapshot at execution time; current inventory.json is live and must not validate these old test results.",
+  "native_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "executed_candidate_test_artifacts": {
+    "target/debug/deps/core_foundation-6da52197c4e35f56": "190ef93333df01e935dbfb061f9c1023f5359e2dfccb5df1cc326b0b689f7511",
+    "target/debug/deps/wall_highlight-f6d77c7cf9fef5dc": "d048655360a6c1ab6b4808e78753195688e7a0ff8ab9b91a19aaffe30eaa4045",
+    "target/release/deps/core_foundation-e55ff343ef0c37a1": "d0933aa4cb3fe687327eee6cf5a333b7ee8bcafb02e5d1d4f97bde606b80e05c",
+    "target/release/deps/wall_highlight-ccefd1ced2eb022e": "e2b94c45e2f1e4c3a08e1804bd9554f706d801f394d84a4696ffc397be7ca646"
+  },
+  "checks": [
+    {"command": "cargo test -p country-core --locked --offline --lib --tests --quiet", "passed": 1369, "failed": 0, "ignored": 0},
+    {"command": "cargo test -p country-core --release --test core_foundation --test wall_highlight --locked --offline --quiet", "passed": 13, "failed": 0, "ignored": 0},
+    {"command": "cargo fmt -p country-core -- --check", "exit_code": 0},
+    {"command": "cargo clippy -p country-core --all-targets --locked --offline --no-deps -- -D warnings -A clippy::chunks_exact_to_as_chunks", "exit_code": 0, "scope": "existing chunks_exact style exception only; not a full dependency clippy acceptance"}
+  ],
+  "native_scope": {
+    "ui_field_presence_cases": 128,
+    "window_cases": 10,
+    "menu_prefix_cases": 72,
+    "highlight_clear_cases": 3,
+    "brightness_tags": 3,
+    "dirty_tile_cells": 881,
+    "wall_highlight_event_resource_cases": 96,
+    "bridges": ["UI deserialize: public CRT memcmp", "DirtyTiles: public UCRT fmaf -> host C fmaf", "wall_highlight: public hash computation -> controlled hash0 table"],
+    "limitations": ["counts are not completion denominators", "full UI ownership/serde errors/RON not executed", "Bevy fork and original schedule not established", "original process and GPU not exercised"]
+  },
+  "retained_failures": [
+    {"scope": "window aspect_ratio 0/0", "candidate_bits_before": "0x7fc00000", "native_bits": "0xffc00000", "resolution": "preserve native x86 NaN; exact assertion retained and passed"},
+    {"scope": "UI deserialize initial native harness", "pc": "0x31953bc", "reason": "unresolved VCRUNTIME140 memcmp import", "resolution": "explicit public dependency bridge; all 128 cases rerun"}
+  ]
+}

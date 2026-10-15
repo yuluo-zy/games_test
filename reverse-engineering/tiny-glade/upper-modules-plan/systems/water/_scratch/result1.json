@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x141ba9130,0x141ba9700,0x141baefe0,0x1406501d0",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x141ba9130,0x141ba9700,0x141baefe0,0x1406501d0",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x141ba9130\":{\"name\":\"draw_water\",\"size\":1044,\"address\":\"141ba9130\",\"signature\":\"void __cdecl draw_water(void)\",\"decompiled_code\":\"\\nvoid __cdecl system_water::draw_water::draw_water(void)\\n\\n{\\n  uint uVar1;\\n  undefined4 uVar2;\\n  undefined4 *puVar3;\\n  longlong lVar4;\\n  longlong lVar5;\\n  undefined8 uVar6;\\n  bool bVar7;\\n  char extraout_AL;\\n  undefined1 extraout_AL_00;\\n  char extraout_AL_01;\\n  undefined8 *extraout_RAX;\\n  undefined8 *in_RCX;\\n  char *pcVar8;\\n  longlong in_R9;\\n  longlong lVar9;\\n  char cVar10;\\n  float extraout_XMM0_Da;\\n  float fVar11;\\n  longlong *in_stack_00000040;\\n  longlong in_stack_00000058;\\n  undefined1 *in_stack_00000060;\\n  longlong in_stack_00000078;\\n  undefined4 local_110;\\n  float fStack_10c;\\n  undefined4 *local_108;\\n  ulonglong *local_f8;\\n  undefined8 uStack_f0;\\n  undefined8 **local_e8;\\n  undefined8 uStack_e0;\\n  undefined8 local_d8;\\n  char *local_c8;\\n  longlong local_b8;\\n  undefined8 *local_b0;\\n  undefined4 local_a8;\\n  undefined4 local_a4;\\n  undefined8 local_a0;\\n  undefined8 uStack_98;\\n  undefined8 **local_90;\\n  undefined8 uStack_88;\\n  undefined8 local_80;\\n  undefined4 *local_68;\\n  undefined8 local_60;\\n  \\n  local_60 = 0xfffffffffffffffe;\\n  if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\\\\0') {\\n    uVar1 = *(uint *)*in_RCX;\\n    lVar9 = 0;\\n    if (uVar1 - 6 < 0xf) {\\n      lVar9 = (ulonglong)uVar1 - 5;\\n    }\\n    local_b8 = in_R9;\\n    if (lVar9 == 4) {\\n      if ((((uint *)*in_RCX)[1] & 3) != 0) {\\n        return;\\n      }\\n      ::utils::inverse_lerp();\\n      fVar11 = extraout_XMM0_Da * 4.0 + (1.0 - extraout_XMM0_Da);\\n      if (0x7f7fffff < (uint)ABS(fVar11)) {\\n                    // WARNING: Subroutine does not return\\n        core::panicking::panic();\\n      }\\n      pcVar8 = \\\"eraser\\\";\\n      country_core::systems::ui::resources::ui_state::UiState::clearing_canvas();\\n      local_c8 = pcVar8;\\n      country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\n      country_core::resources::mouse_terrain_raycast::CameraCursorRay::intersect_with_xz_plane();\\n      uStack_f0 = glam::f32::vec3::impl$92::fmt;\\n      local_a0 = (ulonglong *)&DAT_142eebc40;\\n      uStack_98 = 1;\\n      local_90 = &local_f8;\\n      uStack_88 = 1;\\n      local_80 = 0;\\n      local_f8 = (ulonglong *)&local_b0;\\n      alloc::fmt::format::format_inner();\\n      uStack_98 = CONCAT44(uStack_98._4_4_,local_a8);\\n      local_a0 = local_b0;\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      local_68 = local_108;\\n      if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n        alloc::alloc::handle_alloc_error();\\n      }\\n      *extraout_RAX = 1;\\n      extraout_RAX[1] = 1;\\n      extraout_RAX[2] = local_a0;\\n      *(undefined4 *)(extraout_RAX + 3) = (undefined4)uStack_98;\\n      *(float *)((longlong)extraout_RAX + 0x1c) = fVar11 * 0.5;\\n      country_core::systems::ui::signifiers::SignifierFactory::new();\\n      local_d8 = local_80;\\n      local_e8 = local_90;\\n      uStack_e0 = uStack_88;\\n      local_f8 = local_a0;\\n      uStack_f0 = (code *)uStack_98;\\n      country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write();\\n      if (CONCAT44(fStack_10c,local_110) != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      bVar7 = true;\\n      cVar10 = '\\\\0';\\n    }\\n    else {\\n      if (lVar9 != 10) {\\n        return;\\n      }\\n      fVar11 = *(float *)(*(longlong *)(in_stack_00000078 + 0x20) + 4);\\n      if (0x7f7fffff < (uint)ABS(fVar11)) {\\n                    // WARNING: Subroutine does not return\\n        core::panicking::panic();\\n      }\\n      lVar9 = *(longlong *)(in_stack_00000058 + 0x20);\\n      puVar3 = *(undefined4 **)(in_stack_00000058 + 0x30);\\n      uVar2 = *(undefined4 *)(in_stack_00000058 + 0x3c);\\n      lVar4 = *(longlong *)(in_stack_00000058 + 0x40);\\n      local_68 = *(undefined4 **)(in_stack_00000058 + 0x50);\\n      local_a4 = *(undefined4 *)(in_stack_00000058 + 0x5c);\\n      pcVar8 = \\\"watereraser_water_\\\";\\n      country_core::systems::ui::resources::ui_state::UiState::clearing_canvas();\\n      local_c8 = pcVar8;\\n      country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\n      country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\n      ::utils::geometry::circle::Circle2d::new();\\n      local_a0 = (ulonglong *)((ulonglong)local_a0._4_4_ << 0x20);\\n      country_core::resources::glade_border::GladeBorder::is_shape_inside();\\n      cVar10 = '\\\\x01';\\n      if (extraout_AL == '\\\\0') {\\n        *puVar3 = uVar2;\\n        lVar5 = *(longlong *)(lVar9 + 0x30);\\n        uVar6 = *(undefined8 *)(lVar9 + 0x40);\\n        if (lVar5 == *(longlong *)(lVar9 + 0x20)) {\\n          alloc::raw_vec::RawVec::\\n          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                    ();\\n        }\\n        *(undefined8 *)(*(longlong *)(lVar9 + 0x28) + lVar5 * 8) = uVar6;\\n        *(longlong *)(lVar9 + 0x30) = lVar5 + 1;\\n        *(longlong *)(lVar9 + 0x40) = *(longlong *)(lVar9 + 0x40) + 1;\\n        country_core::systems::ui::resources::slider3d::impl$1::into_drag_state();\\n        local_a0 = (ulonglong *)CONCAT71(local_a0._1_7_,extraout_AL_00);\\n        country_core::systems::ui::resources::ui_state::DragState::is_some();\\n        if (extraout_AL_01 != '\\\\0') {\\n          *local_68 = local_a4;\\n          lVar9 = *(longlong *)(lVar4 + 0x30);\\n          uVar6 = *(undefined8 *)(lVar4 + 0x40);\\n          if (lVar9 == *(longlong *)(lVar4 + 0x20)) {\\n            alloc::raw_vec::RawVec::\\n            grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                      ();\\n          }\\n          *(undefined8 *)(*(longlong *)(lVar4 + 0x28) + lVar9 * 8) = uVar6;\\n          *(longlong *)(lVar4 + 0x30) = lVar9 + 1;\\n          *(longlong *)(lVar4 + 0x40) = *(longlong *)(lVar4 + 0x40) + 1;\\n        }\\n        bVar7 = false;\\n      }\\n      else {\\n        bVar7 = true;\\n      }\\n    }\\n    country_core::systems::ui::resources::slider3d::impl$1::into_drag_state();\\n    country_core::systems::paths::draw_path::DrawState::update();\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n    switch(*in_stack_00000060) {\\n    case 0:\\n      goto LAB_141ba9640;\\n    case 1:\\n      local_f8 = (ulonglong *)((ulonglong)local_f8 & 0xffffffff00000000);\\n      uStack_f0._0_5_ = CONCAT14(cVar10,fVar11);\\n      break;\\n    case 2:\\n      if (!bVar7) {\\n        return;\\n      }\\n      if (cVar10 == '\\\\0') {\\n        local_f8 = (ulonglong *)CONCAT44(local_f8._4_4_,2);\\n      }\\n      else {\\n        country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\n        ::utils::geometry::circle::Circle2d::new();\\n        country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\n        local_80 = 0;\\n        local_90 = (undefined8 **)((ulonglong)local_90 & 0xffffffff);\\n        uStack_88 = CONCAT44(uStack_88._4_4_,fStack_10c + 1.5);\\n        local_a0 = (ulonglong *)CONCAT62(local_a0._2_6_,0x100);\\n        bevy_ecs::event::writer::EventWriter::\\n        write<enum2_<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>_>\\n                  ();\\n        local_f8 = (ulonglong *)CONCAT44(local_f8._4_4_,2);\\n      }\\n      break;\\n    case 3:\\n      local_f8 = (ulonglong *)CONCAT44(local_f8._4_4_,3);\\n    }\\n    *(undefined4 *)in_stack_00000040[2] = *(undefined4 *)((longlong)in_stack_00000040 + 0x1c);\\n    lVar9 = *in_stack_00000040;\\n    lVar4 = *(longlong *)(lVar9 + 0x30);\\n    uVar6 = *(undefined8 *)(lVar9 + 0x40);\\n    if (lVar4 == *(longlong *)(lVar9 + 0x20)) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                ();\\n    }\\n    *(undefined8 *)(*(longlong *)(lVar9 + 0x28) + lVar4 * 8) = uVar6;\\n    *(longlong *)(lVar9 + 0x30) = lVar4 + 1;\\n    *(longlong *)(lVar9 + 0x40) = *(longlong *)(lVar9 + 0x40) + 1;\\n    country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback::\\n    on_terrain_modified();\\n    uStack_98 = CONCAT44(uStack_98._4_4_,local_a8);\\n    local_a0 = local_b0;\\n    **(undefined4 **)(local_b8 + 0x10) = *(undefined4 *)(local_b8 + 0x1c);\\n    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    country_core::systems::world_raster::\\n    draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env_1,system_water::draw_water::draw_water::closure_env_2,system_water::draw_water::draw_water::closure_env_3>\\n              ();\\n  }\\nLAB_141ba9640:\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x141ba9700\":{\"name\":\"closure$0\",\"size\":393,\"address\":\"141ba9700\",\"signature\":\"void __cdecl closure$0(void)\",\"decompiled_code\":\"\\nvoid __cdecl system_water::draw_water::draw_water::closure_0(void)\\n\\n{\\n  undefined8 *extraout_RAX;\\n  char *extraout_RAX_00;\\n  undefined8 *in_RCX;\\n  undefined8 local_b8;\\n  \\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_00 != (char *)0x0) {\\n    builtin_strncpy(extraout_RAX_00,\\\"brush_circle_scribble\\\",0x15);\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::new();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::animation_duration();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::position();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::scale();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass();\\n    country_core::systems::ui::signifiers::SignifierEntityBuilder::build();\\n    *extraout_RAX = local_b8;\\n    *in_RCX = 1;\\n    in_RCX[1] = extraout_RAX;\\n    in_RCX[2] = 1;\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  alloc::raw_vec::handle_error();\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x141baefe0\":{\"name\":\"update_water_audio_grid\",\"size\":1586,\"address\":\"141baefe0\",\"signature\":\"void __cdecl update_water_audio_grid(void)\",\"decompiled_code\":\"\\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\\n\\nvoid __cdecl system_water::water_audio_grid::update_water_audio_grid(void)\\n\\n{\\n  byte *pbVar1;\\n  longlong lVar2;\\n  byte bVar3;\\n  byte bVar4;\\n  byte bVar5;\\n  longlong lVar6;\\n  longlong lVar7;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  uint uVar8;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong *extraout_RAX_01;\\n  longlong *extraout_RAX_02;\\n  longlong *extraout_RAX_03;\\n  longlong *extraout_RAX_04;\\n  longlong *extraout_RAX_05;\\n  longlong *extraout_RAX_06;\\n  longlong *in_RCX;\\n  longlong *plVar9;\\n  ulonglong uVar10;\\n  ulonglong in_RDX;\\n  undefined *puVar11;\\n  ulonglong uVar12;\\n  longlong lVar13;\\n  float extraout_XMM0_Da;\\n  short sVar14;\\n  short sVar16;\\n  undefined1 auVar15 [16];\\n  float fVar17;\\n  float fVar18;\\n  longlong *in_stack_00000028;\\n  undefined8 local_140;\\n  float local_138;\\n  undefined8 local_120;\\n  float local_118;\\n  longlong *local_100;\\n  \\n  puffin::are_scopes_on();\\n  if (extraout_AL == '\\\\0') {\\n    if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE != '\\\\0') {\\n      return;\\n    }\\n  }\\n  else {\\n    core::str::impl$0::rfind<ref_<str_>_>();\\n    if (extraout_RAX == 1) {\\n      if (in_RDX != 0) {\\n        if (in_RDX < 0x37) {\\n          if ((char)(&DAT_142eed9b8)[in_RDX] < -0x40) {\\nLAB_141baf09e:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (in_RDX != 0x37) goto LAB_141baf09e;\\n      }\\n      core::str::impl$0::rfind<ref_<str_>_>();\\n      if ((extraout_RAX_00 == 1) && (in_RDX != 0xfffffffffffffffe)) {\\n        if (in_RDX + 2 < 0x37) {\\n          if (\\\"stem_water::water_audio_grid::update_water_audio_grid::f\\\"[in_RDX] < -0x40) {\\nLAB_141baf108:\\n                    // WARNING: Subroutine does not return\\n            core::str::slice_error_fail();\\n          }\\n        }\\n        else if (in_RDX + 2 != 0x37) goto LAB_141baf108;\\n      }\\n    }\\n    puVar11 = &DAT_142eedaec;\\n    do {\\n      bVar3 = puVar11[-1];\\n      uVar8 = (uint)(char)bVar3;\\n      if ((char)bVar3 < '\\\\0') {\\n        bVar4 = puVar11[-2];\\n        if ((char)bVar4 < -0x40) {\\n          bVar5 = puVar11[-3];\\n          if ((char)bVar5 < -0x40) {\\n            pbVar1 = puVar11 + -4;\\n            puVar11 = puVar11 + -4;\\n            uVar8 = bVar5 & 0x3f | (*pbVar1 & 7) << 6;\\n          }\\n          else {\\n            puVar11 = puVar11 + -3;\\n            uVar8 = bVar5 & 0xf;\\n          }\\n          uVar8 = bVar4 & 0x3f | uVar8 << 6;\\n        }\\n        else {\\n          puVar11 = puVar11 + -2;\\n          uVar8 = bVar4 & 0x1f;\\n        }\\n        uVar8 = (uint)(bVar3 & 0x3f) | uVar8 << 6;\\n        if (uVar8 != 0x5c) goto LAB_141baf1c4;\\nLAB_141baf1d5:\\n        if (puVar11 == &UNK_142eedabf) break;\\n        if (puVar11 + -0x142eedabf < (undefined *)0x2c) {\\n          if (-0x41 < (char)puVar11[1]) break;\\n        }\\n        else if (puVar11 + -0x142eedabf == (undefined *)0x2c) break;\\n                    // WARNING: Subroutine does not return\\n        core::str::slice_error_fail();\\n      }\\n      puVar11 = puVar11 + -1;\\n      if (uVar8 == 0x5c) goto LAB_141baf1d5;\\nLAB_141baf1c4:\\n      if (uVar8 == 0x2f) goto LAB_141baf1d5;\\n    } while (puVar11 != &DAT_142eedac0);\\n    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n    if (*extraout_RAX_01 == 1) {\\n      plVar9 = extraout_RAX_01 + 1;\\n    }\\n    else if ((*extraout_RAX_01 != 0) ||\\n            (std::sys::thread_local::native::lazy::Storage::\\n             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                       (), plVar9 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0))\\n    goto LAB_141baf608;\\n    if (*plVar9 != 0) goto LAB_141baf614;\\n    *plVar9 = -1;\\n    puffin::ThreadProfiler::begin_scope();\\n    *plVar9 = *plVar9 + 1;\\n    if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\\\\x01') {\\n      puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n      if (*extraout_RAX_02 == 1) {\\n        local_100 = extraout_RAX_02 + 1;\\n      }\\n      else if ((*extraout_RAX_02 != 0) ||\\n              (std::sys::thread_local::native::lazy::Storage::\\n               initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                         (), local_100 = extraout_RAX_06, extraout_RAX_06 == (longlong *)0x0))\\n      goto LAB_141baf608;\\n      if (*local_100 != 0) goto LAB_141baf614;\\n      *local_100 = -1;\\n      puffin::ThreadProfiler::end_scope();\\n      goto LAB_141baf552;\\n    }\\n  }\\n  toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n  lVar6 = *in_RCX;\\n  lVar2 = lVar6 + 1;\\n  *in_RCX = lVar2;\\n  country_core::systems::camera_rig::MainCamera::eye_position();\\n  uVar10 = lVar6 + lVar2 * 10 + 1;\\n  auVar15._8_8_ = 0;\\n  auVar15._0_8_ =\\n       (ulonglong)(uint)((int)uVar10 * 2) & 0xffffffff0000ffff | ((uVar10 & 0xffff) >> 2) << 0x10;\\n  sVar14 = SUB162(auVar15 & ___xmm_000000000000000000000000000e000e,0) + -7;\\n  sVar16 = SUB162(auVar15 & ___xmm_000000000000000000000000000e000e,2) + -7;\\n  *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\n  lVar6 = *(longlong *)(*in_stack_00000028 + 8);\\n  lVar7 = *(longlong *)(*in_stack_00000028 + 0x10);\\n  uVar12 = 1L << ((byte)uVar10 & 0x3f);\\n  bVar3 = (byte)uVar10 & 0x3f;\\n  lVar2 = lVar6;\\nLAB_141baf3f0:\\n  lVar13 = lVar2;\\n  if (lVar13 != lVar6 + lVar7 * 0x18) {\\n    ::utils::swizzlers::impl$0::x0y();\\n    lVar2 = lVar13 + 0x18;\\n    fVar17 = (float)local_140 - (float)local_120;\\n    fVar18 = (float)((ulonglong)local_140 >> 0x20) - (float)((ulonglong)local_120 >> 0x20);\\n    if ((6400.0 <= (local_138 - local_118) * (local_138 - local_118) +\\n                   fVar18 * fVar18 + fVar17 * fVar17) ||\\n       (::utils::float_grid::impl$0::\\n        bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>(),\\n       extraout_XMM0_Da <= 0.5)) {\\n      uVar10 = *(ulonglong *)(lVar13 + 8);\\n    }\\n    else {\\n      country_core::systems::collision::world::Raycasting::intersects_any();\\n      uVar10 = *(ulonglong *)(lVar13 + 8);\\n      if (extraout_AL_00 == '\\\\0') {\\n        *(ulonglong *)(lVar13 + 8) = uVar10 | uVar12;\\n        if ((uVar10 & uVar12) == 0) {\\n          *(uint *)(lVar13 + 0x10) =\\n               CONCAT22((short)((ulonglong)*(undefined8 *)(lVar13 + 0x10) >> 0x10) + sVar16,\\n                        (short)*(undefined8 *)(lVar13 + 0x10) + sVar14);\\n        }\\n        goto LAB_141baf3f0;\\n      }\\n    }\\n    *(ulonglong *)(lVar13 + 8) = uVar10 & (-2L << bVar3 | 0xfffffffffffffffeU >> 0x40 - bVar3);\\n    if ((uVar10 & uVar12) != 0) {\\n      *(uint *)(lVar13 + 0x10) =\\n           CONCAT22((short)((ulonglong)*(undefined8 *)(lVar13 + 0x10) >> 0x10) - sVar16,\\n                    (short)*(undefined8 *)(lVar13 + 0x10) - sVar14);\\n    }\\n    goto LAB_141baf3f0;\\n  }\\n  if (extraout_AL == '\\\\0') {\\n    return;\\n  }\\n  puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();\\n  if (*extraout_RAX_03 == 1) {\\n    local_100 = extraout_RAX_03 + 1;\\n  }\\n  else if ((*extraout_RAX_03 != 0) ||\\n          (std::sys::thread_local::native::lazy::Storage::\\n           initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>\\n                     (), local_100 = extraout_RAX_05, extraout_RAX_05 == (longlong *)0x0)) {\\nLAB_141baf608:\\n                    // WARNING: Subroutine does not return\\n    std::thread::local::panic_access_error();\\n  }\\n  if (*local_100 == 0) {\\n    *local_100 = -1;\\n    puffin::ThreadProfiler::end_scope();\\nLAB_141baf552:\\n    *local_100 = *local_100 + 1;\\n                    // WARNING: Read-only address (ram,0x000142eed8c0) is written\\n    return;\\n  }\\nLAB_141baf614:\\n                    // WARNING: Subroutine does not return\\n  core::cell::panic_already_borrowed();\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1406501d0\":{\"name\":\"build\",\"size\":740,\"address\":\"1406501d0\",\"signature\":\"void __cdecl build(void)\",\"decompiled_code\":\"\\nvoid __cdecl system_water::impl$0::build(void)\\n\\n{\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  ulonglong uVar1;\\n  \\n  _ZN8bevy_ecs8schedule6config19IntoScheduleConfigs6in_set17h31980271add316ceE();\\n  bevy_ecs::schedule::config::IntoScheduleConfigs::\\n  in_set<void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>)>_>,country_core::systems::GameSystemSet>\\n            ();\\n  bevy_app::sub_app::SubApp::\\n  add_systems<tuple_<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple_<>,tuple_<>_>,bevy_app::main_schedule::Update,tuple_<enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>\\n            ();\\n  bevy_ecs::schedule::config::IntoScheduleConfigs::\\n  run_if<void_(*)(bevy_ecs::system::system_param::Local<system_water::water_audio_grid::WaterAudioGridUpdateState>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::collision::world::Raycasting,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::system::system_param::Local<system_water::water_audio_grid::WaterAudioGridUpdateState>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::collision::world::Raycasting,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>)>_>,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(enum2_<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>_>_>)>,bool_(*)(enum2_<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>_>_>)>\\n            ();\\n  bevy_ecs::intern::Interner::intern<dyn_<bevy_ecs::schedule::set::SystemSet>_>();\\n  bevy_ecs::schedule::config::ScheduleConfigs::\\n  in_set_inner<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>\\n            ();\\n  bevy_app::sub_app::SubApp::\\n  add_systems<tuple_<>,bevy_app::main_schedule::Update,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>\\n            ();\\n  country_core::resources::world_raster::DirtyTilePublisher::unique();\\n  country_core::resources::world_raster_defs::PathRaster::new();\\n  bevy_app::app::App::insert_resource<country_core::resources::world_raster_defs::WaterRaster>();\\n  uVar1 = 0xcc3c0165e2715d9d;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX_00 == 0) || (*(ulonglong *)(extraout_RAX + 0x218) <= uVar1)) ||\\n      (uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 == 0)) ||\\n     (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {\\n    bevy_ecs::event::registry::EventRegistry::\\n    register_event<system_water::record_water_history::RecordWaterEditToHistoryCmd>();\\n  }\\n  uVar1 = 0xb050d5756cb9fc8f;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_01 == 0) || (*(ulonglong *)(extraout_RAX + 0x218) <= uVar1)) ||\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 == 0 ||\\n      (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {\\n    bevy_ecs::event::registry::EventRegistry::\\n    register_event<country_core::resources::water::WaterDrawEvent>();\\n  }\\n  uVar1 = 0x494426e4a24afc26;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_02 != 0) && (uVar1 < *(ulonglong *)(extraout_RAX + 0x218))) &&\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 != 0 &&\\n      (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)))) {\\n    return;\\n  }\\n  bevy_ecs::event::registry::EventRegistry::\\n  register_event<country_core::resources::water::WaterEraseEvent>();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":4,\"requested\":4}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -191,13 +191,16 @@ fn bricks_without_the_proxy_panics() {
 #[test]
 fn erase_highlight_reads_the_four_resources() {
     let mut w = World::new();
-    w.insert_resource(EditingHighlightView { enabled: true });
+    w.insert_resource(EditingHighlightView {
+        enabled: true,
+        ..Default::default()
+    });
     w.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::new(1.0, 2.0, 3.0),
     });
     w.insert_resource(EraserSizeMultiplier(2.5));
-    w.insert_resource(DebugGuiView { suppress: false });
+    w.insert_resource(DebugGuiView::default());
     let i = read_erase_highlight(&w);
     assert_eq!(
         i,
@@ -589,7 +592,10 @@ fn env57_applies_the_alt_topology_before_reading_the_world() {
 #[test]
 fn env0_reads_resources_and_sets_cull_mode_4() {
     let mut w = World::new();
-    w.insert_resource(EditingHighlightView { enabled: true });
+    w.insert_resource(EditingHighlightView {
+        enabled: true,
+        ..Default::default()
+    });
     w.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::new(1.0, 2.0, 3.0),

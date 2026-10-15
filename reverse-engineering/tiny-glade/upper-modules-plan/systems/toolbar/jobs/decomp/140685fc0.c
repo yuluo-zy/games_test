@@ -1,0 +1,74 @@
+// 0x140685fc0 on_key_event
+// signature: void __cdecl on_key_event(void)
+
+void __cdecl toolbar::mei::core::MeiContext::on_key_event(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  undefined8 uVar15;
+  undefined8 uVar16;
+  longlong in_RCX;
+  longlong lVar17;
+  undefined8 *in_RDX;
+  undefined1 in_R8B;
+  undefined8 *in_R9;
+  undefined7 uStack_3f;
+  
+  uVar5 = in_RDX[8];
+  uVar6 = in_RDX[9];
+  uVar7 = *in_RDX;
+  uVar8 = in_RDX[1];
+  uVar9 = in_RDX[2];
+  uVar10 = in_RDX[3];
+  uVar11 = in_RDX[4];
+  uVar12 = in_RDX[5];
+  uVar13 = in_RDX[6];
+  uVar14 = in_RDX[7];
+  uVar2 = in_R9[2];
+  uVar15 = *in_R9;
+  uVar16 = in_R9[1];
+  lVar3 = *(longlong *)(in_RCX + 0x28);
+  if (lVar3 == *(longlong *)(in_RCX + 0x18)) {
+    alloc::raw_vec::RawVec::
+    grow_one<tuple_<rhapsody::raw::command_buffer::CommandBuffer,alloc::vec::Vec<rhapsody::rg::executor::PassPgoDuration,alloc::alloc::Global>_>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = *(longlong *)(in_RCX + 0x20);
+  lVar17 = lVar3 * 0x70;
+  puVar1 = (undefined8 *)(lVar4 + 0x60 + lVar17);
+  *puVar1 = uVar6;
+  puVar1[1] = CONCAT71(uStack_3f,in_R8B);
+  puVar1 = (undefined8 *)(lVar4 + 0x50 + lVar17);
+  *puVar1 = uVar14;
+  puVar1[1] = uVar5;
+  puVar1 = (undefined8 *)(lVar4 + 0x40 + lVar17);
+  *puVar1 = uVar12;
+  puVar1[1] = uVar13;
+  puVar1 = (undefined8 *)(lVar4 + 0x30 + lVar17);
+  *puVar1 = uVar10;
+  puVar1[1] = uVar11;
+  puVar1 = (undefined8 *)(lVar4 + 0x20 + lVar17);
+  *puVar1 = uVar8;
+  puVar1[1] = uVar9;
+  puVar1 = (undefined8 *)(lVar4 + 0x10 + lVar17);
+  *puVar1 = uVar2;
+  puVar1[1] = uVar7;
+  *(undefined8 *)(lVar4 + lVar17) = uVar15;
+  ((undefined8 *)(lVar4 + lVar17))[1] = uVar16;
+  *(longlong *)(in_RCX + 0x28) = lVar3 + 1;
+  return;
+}
+

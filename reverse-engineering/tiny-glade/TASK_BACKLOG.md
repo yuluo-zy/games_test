@@ -1,5 +1,11 @@
 # 游戏自有源码逆向任务与收益排序
 
+2026-10-15 当前 GUI：菜单拥有载荷、Next/Prev 移动、状态推进和缩略图算法已落 core；LUT 资源身份纠错并接入共享类型。按用户最新要求实施优先，仅必要编译，不再扩大测试矩阵。继续 gui.rs 的 PhotomodeScreen、完整 DebugGui/日志和 PendingEguiContextResource，再推进 PublicWalls。SessionId 仅作为当前菜单依赖恢复，未跳转展开整个会话模块。
+
+2026-10-14 最新执行方式：按 B 原源码目录/文件推进，入口为 [core/recovery](../../tiny-glade/crates/country-core/recovery/README.md)。先核依赖与真实导出，逐文件关联旧章节/FIX、当前代码和消费者，冲突直接查 RNE。基础合同与 wall_highlight 单系统已落 core；原完整 PublicWalls、GUI 载荷、实体生命周期和原注册仍缺。后续以逐目录台账为准，下面 NR 分域仅保留为历史粗排，不能替代文件验收。
+
+2026-10-14 最新 NR0/NR1 增量：core 内墙权威集合和 CPU 发布闭环已落码，字段/ID 规则按 RNE 原指令复核纠错，7 新测试及 1349 core 库内测试通过。仅此限定链完成候选接入，NR1 全域仍未完成。下一消费者为完整 PublicWalls 与空间/屋顶联动，再接历史；不在 tg-building-runtime 实现。范围和剩余见 [首批报告](skeleton/task-index/work/TG-9f411268a571c6bce1/core-walls-20261014/REPORT.md)。后文“整 crate 从未编译”等旧状态不适用于当前正式工程。
+
 ## 2026-10-14 country-core 非渲染部分任务包（NR 系列）
 
 范围：country-core 除渲染外的游戏逻辑层。分母取自 `evidence/country-core-deep/SOURCE_MAP.json`（systems/resources 业务函数，非渲染约 1,520）与 `evidence/country-core-audit/AUDIT_REPORT.md`；工作量折算为估计（以渲染 R1–R6 + 21 WP ≈ 17.9k 行为 1 个量级），不是统计值。每包交付须区分“真实代码接线 / candidate 链测试 / 原侧机器码验证”，不以章节文档或 case 数代替；glue/derive/依赖转发不计业务，O 结论使用前必须对照机器码复核（审计中 O 标签仅约 56% 全对）。

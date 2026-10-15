@@ -1,0 +1,41 @@
+SIG: void __cdecl try_remove_file(void)
+SIZE: 399
+ADDR: 141e1e5f0
+
+DECOMP:
+
+void __cdecl toolbar::menu::report_bug::try_remove_file(void)
+
+{
+  undefined8 *puVar1;
+  code *pcVar2;
+  char extraout_AL;
+  longlong extraout_RAX;
+  
+  std::sys::os_str::wtf8::Buf::as_mut_slice();
+  std::path::Path::is_file();
+  if (extraout_AL != '\0') {
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::sys::pal::windows::fs::unlink();
+    if (extraout_RAX != 0) {
+      if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {
+        mei::widgets::tweaker::TweakerView::as_inner_mut();
+        ::log::__private_api::impl$2::log();
+      }
+      if (((uint)extraout_RAX & 3) == 1) {
+        puVar1 = *(undefined8 **)(extraout_RAX + 7);
+        pcVar2 = (code *)*puVar1;
+        if (pcVar2 != (code *)0x0) {
+          (*pcVar2)(*(undefined8 *)(extraout_RAX + -1));
+        }
+        if (puVar1[1] != 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+    }
+  }
+  return;
+}
+
+

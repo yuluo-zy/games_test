@@ -1,4 +1,19 @@
 //! Observed session theme predicates. Full session/save state is not reconstructed here.
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+/// B session identity, shared by saved sessions and the load menu's modal state.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SessionId(pub Uuid);
+
+impl SessionId {
+    /// B 0x140916420 delegates generation to uuid::Uuid::new_v4.
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GladeType {
     Olden,

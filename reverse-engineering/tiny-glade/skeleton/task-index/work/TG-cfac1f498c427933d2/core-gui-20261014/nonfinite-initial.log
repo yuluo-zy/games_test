@@ -1,0 +1,51 @@
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.47s
+     Running tests/gui_contracts.rs (target/debug/deps/gui_contracts-4a8d6b37043ab9b8)
+
+running 4 tests
+test thumbnail_default_matches_native_without_comparing_uninitialized_option_payload ... ok
+test settings_payload_and_time_policy_match_original_time_update ... ok
+test debug_labels_match_both_native_return_contracts ... ok
+test thumbnail_positions_match_original_allocating_iterator ... FAILED
+
+failures:
+
+---- thumbnail_positions_match_original_allocating_iterator stdout ----
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:104:22:
+attempt to calculate the remainder with a divisor of zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:104:22:
+attempt to calculate the remainder with a divisor of zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:104:22:
+attempt to calculate the remainder with a divisor of zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:104:22:
+attempt to calculate the remainder with a divisor of zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:102:22:
+attempt to divide by zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:102:22:
+attempt to divide by zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:102:22:
+attempt to divide by zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/src/resources/gui.rs:102:22:
+attempt to divide by zero
+
+thread 'thumbnail_positions_match_original_allocating_iterator' (17963135) panicked at crates/country-core/tests/gui_contracts.rs:100:13:
+assertion `left == right` failed: {"column_major":false,"count":16,"origin_bits":[4286578688,2139095040],"panic":null,"positions_bits":[[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992],[4290772992,4290772992]],"step_bits":[2139095040,4286578688],"stride":1}
+  left: [2143289344, 2143289344]
+ right: [4290772992, 4290772992]
+
+
+failures:
+    thumbnail_positions_match_original_allocating_iterator
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p country-core --test gui_contracts`

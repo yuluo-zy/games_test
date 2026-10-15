@@ -11,7 +11,31 @@ pub mod components {
     pub mod transform;
 }
 
+use bevy_ecs::{
+    event::{Event, Events},
+    prelude::{Mut, Resource},
+    world::World,
+};
 use glam::{Mat4, Vec2, Vec3};
+
+/// Resource lookup delegates to the original Bevy API, preserving borrow ticks.
+pub fn get_res<T: Resource>(world: &World) -> &T {
+    world.resource::<T>()
+}
+
+pub fn get_res_mut<T: Resource>(world: &mut World) -> Mut<'_, T> {
+    world.resource_mut::<T>()
+}
+
+/// B 0x1402b47f0 drains both Events buffers. Event IDs/counters stay with Bevy.
+pub fn drain_events<E: Event>(world: &mut World) -> Vec<E> {
+    world.resource_mut::<Events<E>>().drain().collect()
+}
+
+/// B 0x1402b4910 consumes the complete stream, including older unselected events.
+pub fn get_last_event<E: Event>(world: &mut World) -> Option<E> {
+    world.resource_mut::<Events<E>>().drain().last()
+}
 
 /// O：0x140ac8780 `utils::world_space_to_screen_space`。
 ///

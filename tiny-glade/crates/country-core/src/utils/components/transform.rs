@@ -96,6 +96,26 @@ impl Transform {
     pub fn forward(&self) -> Vec3 {
         self.rotation * -Vec3::Z
     }
+
+    fn shared(&self) -> ::utils::components::transform::Transform {
+        ::utils::components::transform::Transform {
+            t: self.translation,
+            r: self.rotation,
+            s: self.scale,
+        }
+    }
+
+    /// B 0x140c9ce00; reuse the already recovered dependency composition.
+    pub fn look_at(&mut self, target: Vec3, up: Vec3) {
+        let mut transform = self.shared();
+        transform.look_at(target, up);
+        self.rotation = transform.r;
+    }
+
+    /// B 0x140c9d0d0: ordered comparisons reject NaNs and negative tolerances.
+    pub fn abs_diff_eq(&self, other: &Self, max_abs_diff: f32) -> bool {
+        self.shared().abs_diff_eq(&other.shared(), max_abs_diff)
+    }
 }
 
 #[cfg(test)]

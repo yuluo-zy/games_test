@@ -1,0 +1,20 @@
+// ADDR 0x140811900
+// SIG void __cdecl should_snap_to_corner(void)
+// ORIG system::should_snap_to_corner
+
+
+void __cdecl system_decorator::cull_oob_decorators::should_snap_to_corner(void)
+
+{
+  char extraout_AL;
+  
+  country_core::resources::walls::decorator::DecoratorType::should_offer_snap_to_corner();
+  if (extraout_AL != '\0') {
+    country_core::resources::walls::inner_wall_state::WallStyle::is_halftimbered();
+    country_core::resources::walls::public_wall_state::PublicWallState::wall_space();
+    ::utils::wall_space::impl$1::subtract();
+  }
+  return;
+}
+
+

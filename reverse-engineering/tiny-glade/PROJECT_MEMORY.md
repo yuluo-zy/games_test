@@ -1,5 +1,23 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-15 core GUI 拥有状态与实现优先
+
+用户纠正：先推进原版业务与算法实现，不再花大量时间扩展测试；只保留必要编译检查，疑义定点查二进制，后续由用户重新验收。仍只做 B，全部代码落 country-core。gui.rs 已补 EscMenuState/LoadMenuState/Backup/Settings/Video、Next/Prev 默认与移动、原菜单推进顺序、缩略图 positions 和调试标签；LUT 消费同一菜单/metrics，SessionId 复用原锁 uuid 1.15.1。资源原 TypeId 证明 LUT 读的是 EscMenuState，不是旧代码的 AppMode。+0x30 原为共享 Arc metrics，非字符串；time_update 内联证明 allow_time_passage 与限帧策略不同。
+
+当前新增拥有状态仅 all-targets 编译通过，未扩展测试。先前 GUI 前缀/缩略图原对照保留限定有效，旧 foundation verification 标为历史，不用实时 inventory 证明旧哈希。当前 28 直接依赖，锁仅增加 core -> 既有 uuid 边。下一文件仍 gui.rs 的 PhotomodeScreen、完整 DebugGui/log、PendingEguiContextResource；状态 tag10/报告 flag/警告 ID 的精确命名、全局调度和持久化 sink 尚未闭合。具体见 `skeleton/task-index/work/TG-cfac1f498c427933d2/core-gui-20261014/REPORT.md`，当前逐文件入口仍 core/recovery。
+
+## 2026-10-14 country-core 改按原源码目录推进
+
+用户最新要求先核 core 依赖，再按原目录/文件查源码、章节、纠错与原二进制，持续恢复完整 core；游戏实现仍全部放 country-core，目标仍 B。当前唯一进度入口 tiny-glade/crates/country-core/recovery/{README.md,DIRECTORIES.md,inventory.json,contracts.json}。B PDB 文件表 539 个；旧重建 595 路径与 SOURCE_MAP 420 条合并后的 74 个非 B 路径单列，不能混算原文件。原章节实际匹配 B 文件 529 章，SOURCE_MAP 420 是另一库存范围。rustdoc 核实际模块/接口；27 直接依赖中 4 个 workspace 恢复包，23 个公开依赖身份均匹配原锁（不等于 Bevy fork 已证）。
+
+本轮落码：UiSettings 7 字段/四对齐变体/serde(default)（原 JSON 入口 0x14142eba0 的 128 字段存在组合），WindowSize u32、菜单 7 读取谓词、亮度表、EditingHighlight clear、统一 A/B draw Resource 身份、Bevy 双缓冲事件 drain/last、共享 Transform look_at/abs_diff_eq；DirtyTiles cell_from_world_space 原入口 881 组（公开 fmaf 桥，返回 tag+两坐标），真实调用者 system-clutter add_birdnests 0x1422ca1c9。进一步接通 core WallEntities -> EventReader<HighlightWallCmd> -> wall_highlight -> 高亮资源 -> draw；原单系统 96 组匹配（仅公共哈希桥），保留事件游标而非 drain。
+
+纠错：UiSettings 默认字为0x01010000（auto_hide=false/Bottom）；0x140a46dd0 是 ToolbarAlignment 非 UiSettings；EscMenuState 标志在+8，is_open 在0x14093fbc0，0x14093fc00为cast_ui_shadows；0x14093fc20 word-2 掩码；不编造 allow_time_passage。wall_highlight 每次先清 ty，只取最后未读命令，目标缺失不回退，写 RGB 不动 enabled。Window 0/0 ARM NaN 符号不同，现显式保留 B 0xffc00000；首失败留在本轮报告。完整 GUI/Next/Prev/DebugGui、PublicWalls、实体创建删除同步、启动/调度及大部分非渲染业务未闭合，不宣布整目录/整 core 完成。
+
+## 2026-10-14 country-core 墙权威状态首批落码
+
+用户要求非渲染恢复全部放在 country-core 内。新增 resources/walls/{inner_wall_state,inner_walls} 和 systems/wall/wall_state 的 CPU 发布消费者，接 core 现有采样/规则墙高度算法；未改 tg-building-runtime、依赖锁或旧恢复源码。原 RNE 指令纠正旧表：+0xc0 是新墙 ID counter（new=0、参数化建墙先 inc、显式 ID 不推进、reset 只清 counter）；freehand_ty 实在 +0x66，+0x60 是石膏剥离量 f32。显式 ID 冲突先替换旧行再 panic，不发 created notice。80 setter tails + 6 构造 + 8 默认拱高 + 3 reset 原指令生成 fixture，被编译 Rust 精确字段测试消费；lookup/通知属于明确排除的库桥。7 新测试、1349 既有 core 库测试、整体 check/fmt 通过；rustc1.98.1 严格 Clippy 受既有样式告警阻塞，core --no-deps 且仅豁免旧 chunks 建议后通过。完整 PublicWalls/空间/屋顶/历史、地形脏路由、原调度和 GPU 尚未闭合，NR1 不完成。报告 skeleton/task-index/work/TG-9f411268a571c6bce1/core-walls-20261014/REPORT.md；当前 SHA 台账 tiny-glade/provenance/core-wall-authority-2026-10-14.json。
+
 ## 2026-10-14 country-core systems/resources 第三轮（章节化源码地图）收齐
 
 用户指正挖掘方式后改为**结构化章节流**：先由 B 源码骨架建完整**源码地图**（`evidence/country-core-deep/SOURCE_MAP.json`：420 文件/4,027 函数 = 1,690 业务 + 1,658 派生胶水(drop/debug/clone/serde visitor) + 667 内联无独立符号 + 12 依赖转发；分类规则：仅硬胶水模式剔除，new/add/get/set 等自定义实现一律保留为业务），再逐文件生成章节骨架并填充。第三轮 8 域全部完成：**chapters/ 下 420 章全部就地填充、占位符清零**；每章 = 文件作用（名称+证据推断）→ 业务函数表（地址/源码行/作用猜测→证实/逆向结论 O-I-U/证据链接）→ 内联函数名称推断 → 派生胶水分组。各域结论分布（业务行）：wall 430（O296/I83/U51，U 中 48 为 serde 胶水）、collision-eco 213、terrain-water 123、history 127、ui-input（42 章）+ 15 手解、session-save 17 章（O100/U5）、camera-time 21 章、audio-misc 59 章（补建 6 零函数章）。本轮新反编译累计 ~60 个、字节手解 ~30 个。剩余真实业务空白仅 10 行（wall：is_default_arch_height 卡点 + 4 闭包实例 + UiWallHeight 等，均已在章内列明）。章节结构成为后续实现阶段与继续深挖的权威入口（`chapters/` + `SOURCE_MAP.json` + 各域 DIGEST/REVIEW/CLOSURE 三层证据）。

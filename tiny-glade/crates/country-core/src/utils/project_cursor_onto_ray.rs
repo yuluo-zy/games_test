@@ -32,7 +32,7 @@ impl ProportionalScreenSpace {
         let height = size[1] as f32;
         Self {
             size: Vec2::new(width, height),
-            aspect: width / height,
+            aspect: crate::resources::window::aspect_ratio_observed(size[0], size[1]),
             unit: 1.0,
         }
     }

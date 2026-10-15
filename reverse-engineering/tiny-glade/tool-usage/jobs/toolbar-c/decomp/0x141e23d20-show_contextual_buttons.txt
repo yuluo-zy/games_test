@@ -1,0 +1,77 @@
+SIG: void __cdecl show_contextual_buttons(void)
+SIZE: 451
+ADDR: 141e23d20
+
+DECOMP:
+
+void __cdecl toolbar::menu::load::show_contextual_buttons(void)
+
+{
+  float *pfVar1;
+  longlong *plVar2;
+  longlong lVar3;
+  longlong lVar4;
+  ulonglong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong *in_RCX;
+  longlong lVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  float in_XMM1_Da;
+  float in_XMM2_Da;
+  longlong in_stack_00000038;
+  undefined1 local_ca;
+  undefined1 local_c9;
+  undefined1 local_c8 [8];
+  longlong *local_c0;
+  undefined1 *local_b8;
+  undefined1 *local_b0;
+  longlong local_98;
+  longlong local_90;
+  longlong local_88;
+  undefined *local_80;
+  undefined8 local_78;
+  
+  *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);
+  plVar2 = (longlong *)*in_RCX;
+  local_80 = &DAT_142f883f4;
+  local_78 = 6;
+  ::utils::calculate_hash<tuple_<ref_<str_>,ref_<tuple_<>_>_>_>();
+  uVar7 = extraout_RAX ^ 0xb1695320004fb443;
+  uVar6 = uVar7;
+  mei::core::MeiContext::reuse_or_create_node();
+  *(undefined1 *)(extraout_RAX_00 + 0x5d) = 0;
+  if ((uVar6 & 1) == 0) {
+    lVar3 = plVar2[2];
+    if (lVar3 == *plVar2) {
+      alloc::raw_vec::RawVec::grow_one<enum2_<iced_core::event::Event>,alloc::alloc::Global>();
+    }
+    lVar4 = plVar2[1];
+    lVar5 = lVar3 * 0x38;
+    *(undefined4 *)(lVar4 + lVar5) = 4;
+    pfVar1 = (float *)(lVar4 + 4 + lVar5);
+    *pfVar1 = in_XMM1_Da + 0.0;
+    pfVar1[1] = in_XMM2_Da + 250.0;
+    pfVar1[2] = 0.0;
+    pfVar1[3] = -1.0;
+    *(undefined4 *)(lVar4 + 0x14 + lVar5) = 1;
+    *(undefined8 *)(lVar4 + 0x18 + lVar5) = 0x41f0000043480000;
+    *(ulonglong *)(lVar4 + 0x30 + lVar5) = uVar7;
+    plVar2[2] = lVar3 + 1;
+  }
+  local_b0 = (undefined1 *)0x0;
+  local_c0 = plVar2;
+  local_b8 = (undefined1 *)uVar7;
+  mei::config::impl$18::template_with_id<u64>();
+  local_98 = in_stack_00000038 + 0x38;
+  local_90 = in_stack_00000038 + 0x49;
+  local_88 = in_stack_00000038 + 0x10;
+  local_c0 = (longlong *)&local_ca;
+  local_b8 = &local_c9;
+  local_b0 = local_c8;
+  mei::config::TemplateView::
+  with_slot<toolbar::menu::load::show_contextual_buttons::closure_env_0,ref_<str_>_>();
+  return;
+}
+
+

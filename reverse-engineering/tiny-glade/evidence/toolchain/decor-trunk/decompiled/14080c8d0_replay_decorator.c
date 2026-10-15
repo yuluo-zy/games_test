@@ -1,0 +1,292 @@
+// ADDR 0x14080c8d0
+// SIG void __cdecl replay_decorator(void)
+// ORIG system::replay_decorator
+
+
+// WARNING: Removing unreachable block (ram,0x00014080cd7f)
+
+void __cdecl system_decorator::replay_decorator::replay_decorator(void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined1 auVar3 [16];
+  longlong *plVar4;
+  undefined8 uVar5;
+  longlong *plVar6;
+  longlong extraout_RAX;
+  char *pcVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  longlong *in_RCX;
+  ulonglong uVar10;
+  longlong lVar11;
+  longlong *in_RDX;
+  undefined1 (*pauVar12) [16];
+  undefined8 *puVar13;
+  longlong lVar14;
+  longlong in_R8;
+  ulonglong uVar15;
+  ulonglong uVar16;
+  char *pcVar17;
+  char *pcVar18;
+  ulonglong uVar19;
+  undefined1 auVar20 [16];
+  undefined1 auVar21 [16];
+  float fVar22;
+  undefined1 auVar23 [16];
+  undefined1 auVar24 [16];
+  ulonglong *local_90;
+  ulonglong local_78;
+  
+  lVar11 = *in_RDX;
+  country_core::input::input_stream::InputStream::sync_point_count();
+  fVar1 = *(float *)(lVar11 + 0x28);
+  *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+  country_core::resources::history::replay_cmd_buffer::ReplayBuffer::front_mut_bucket();
+  if (extraout_RAX == 0) {
+    return;
+  }
+  plVar4 = *(longlong **)(extraout_RAX + 0x18);
+  uVar19 = *(ulonglong *)(extraout_RAX + 0x20);
+  *(undefined8 *)(extraout_RAX + 0x18) = 0;
+  if (plVar4 != (longlong *)0x0) {
+    **(undefined4 **)(in_R8 + 0x10) = *(undefined4 *)(in_R8 + 0x1c);
+    if (uVar19 != 0) {
+      uVar16 = 0;
+      do {
+        hashbrown::map::HashMap::
+        insert<country_core::resources::walls::decorator::DecoratorId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                  ();
+        uVar16 = uVar16 + 1;
+      } while ((uVar19 & 0x3fffffffffffffff) != uVar16);
+    }
+    LOCK();
+    *plVar4 = *plVar4 + -1;
+    UNLOCK();
+    if (*plVar4 == 0) {
+      alloc::sync::Arc::
+      drop_slow<slice2_<country_core::resources::walls::decorator::DecoratorId>,alloc::alloc::Global>
+                ();
+    }
+  }
+  local_78 = 0;
+  pcVar18 = *(char **)(extraout_RAX + 8);
+  pcVar7 = pcVar18 + *(longlong *)(extraout_RAX + 0x10) * 0x30;
+  lVar11 = *in_RCX;
+  uVar19 = 0;
+  lVar14 = 0;
+  do {
+    lVar8 = 0;
+    do {
+      pcVar17 = pcVar18;
+      if (pcVar17 == pcVar7) {
+        uVar16 = uVar19;
+        if (uVar19 < 2) goto joined_r0x00014080cad6;
+        uVar9 = uVar19 >> 1;
+        uVar16 = local_78;
+        if (7 < uVar19) {
+          uVar10 = uVar9 & 0xfffffffffffffffc;
+          pauVar12 = (undefined1 (*) [16])(uVar19 * 8 + -8);
+          uVar15 = 0;
+          do {
+            auVar21 = *(undefined1 (*) [16])(uVar15 * 8 + 8);
+            auVar3 = *(undefined1 (*) [16])(uVar15 * 8 + 0x18);
+            auVar20 = pauVar12[-1];
+            auVar23 = *pauVar12;
+            auVar24._0_8_ = auVar23._8_8_;
+            auVar24._8_4_ = auVar23._0_4_;
+            auVar24._12_4_ = auVar23._4_4_;
+            auVar23._0_8_ = auVar20._8_8_;
+            auVar23._8_4_ = auVar20._0_4_;
+            auVar23._12_4_ = auVar20._4_4_;
+            *(undefined1 (*) [16])(uVar15 * 8 + 8) = auVar24;
+            *(undefined1 (*) [16])(uVar15 * 8 + 0x18) = auVar23;
+            auVar20._0_8_ = auVar21._8_8_;
+            auVar20._8_4_ = auVar21._0_4_;
+            auVar20._12_4_ = auVar21._4_4_;
+            *pauVar12 = auVar20;
+            auVar21._0_8_ = auVar3._8_8_;
+            auVar21._8_4_ = auVar3._0_4_;
+            auVar21._12_4_ = auVar3._4_4_;
+            pauVar12[-1] = auVar21;
+            uVar15 = uVar15 + 4;
+            pauVar12 = pauVar12 + -2;
+          } while (uVar10 != uVar15);
+          if (uVar9 != uVar10) {
+LAB_14080cb62:
+            puVar13 = (undefined8 *)(uVar10 * 8);
+            lVar11 = -uVar10;
+            do {
+              puVar13 = puVar13 + 1;
+              uVar5 = *puVar13;
+              *puVar13 = *(undefined8 *)(uVar19 * 8 + lVar11 * 8);
+              *(undefined8 *)(uVar19 * 8 + lVar11 * 8) = uVar5;
+              lVar11 = lVar11 + -1;
+            } while (-lVar11 != uVar9);
+          }
+joined_r0x00014080cad6:
+          if (uVar16 == 0) {
+            return;
+          }
+          local_90 = (ulonglong *)&DAT_00000008;
+          do {
+            uVar19 = *local_90;
+            uVar9 = *(ulonglong *)(extraout_RAX + 0x10);
+            if (uVar9 <= uVar19) {
+                    // WARNING: Subroutine does not return
+              alloc::vec::impl$1::remove::assert_failed();
+            }
+            lVar11 = *(longlong *)(extraout_RAX + 8);
+            lVar14 = uVar19 * 0x30;
+            uVar10 = *(ulonglong *)(lVar11 + lVar14);
+            plVar4 = (longlong *)((ulonglong *)(lVar11 + lVar14))[1];
+            plVar6 = *(longlong **)(lVar11 + 0x10 + lVar14);
+            memmove((void *)(lVar11 + lVar14),(void *)(lVar11 + lVar14 + 0x30),
+                    (~uVar19 + uVar9) * 0x30);
+            *(ulonglong *)(extraout_RAX + 0x10) = uVar9 - 1;
+            switch(uVar10 & 0xff) {
+            case 0:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<country_core::resources::history::path_edit::RasterEdit,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 1:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<country_core::resources::history::path_edit::RasterEdit,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 2:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<country_core::resources::history::path_edit::RasterEdit,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 3:
+              LOCK();
+              *plVar4 = *plVar4 + -1;
+              UNLOCK();
+              if (*plVar4 == 0) {
+                alloc::sync::Arc::
+                drop_slow<enum2_<country_core::resources::history::terrain_edit::TerrainEdit>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 4:
+              core::ptr::drop_in_place<country_core::systems::history::replay_wall::WallReplayCmd>()
+              ;
+              break;
+            case 5:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<enum2_<country_core::resources::history::roof_edit::RoofEdit>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 6:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<enum2_<country_core::resources::history::decorator_edit::DecoratorHistoryEdit>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 7:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<enum2_<country_core::resources::history::decorator_edit::DecoratorHistoryEdit>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 8:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<enum2_<country_core::resources::history::tree_edit::TreeEdit>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            case 9:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<lock_api::mutex::Mutex<parking_lot::raw_mutex::RawMutex,tiny_glade::crash_pickup::crash_payload::CrashMiscInfo>,alloc::alloc::Global>
+                          ();
+              }
+              break;
+            default:
+              LOCK();
+              *plVar6 = *plVar6 + -1;
+              UNLOCK();
+              if (*plVar6 == 0) {
+                alloc::sync::Arc::
+                drop_slow<std::sync::poison::mutex::Mutex<winit::dpi::PhysicalSize<u32>_>,alloc::alloc::Global>
+                          ();
+              }
+            }
+            local_90 = local_90 + 1;
+          } while (local_90 != (ulonglong *)(uVar16 * 8 + 8));
+          return;
+        }
+        uVar10 = 0;
+        goto LAB_14080cb62;
+      }
+      pcVar18 = pcVar17 + 0x30;
+      lVar8 = lVar8 + -1;
+    } while (*pcVar17 != '\a');
+    lVar14 = lVar14 - lVar8;
+    if ((pcVar17[8] & 1U) == 0) {
+      if (uVar19 == 0) {
+        alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>();
+      }
+      *(longlong *)(uVar19 * 8 + 8) = lVar14 + -1;
+      uVar19 = uVar19 + 1;
+      local_78 = uVar19;
+    }
+    else {
+      fVar22 = *(float *)(pcVar17 + 0xc) / fVar1;
+      fVar2 = *(float *)(pcVar17 + 0x18);
+      if (fVar22 <= 0.05) {
+        fVar22 = 0.05;
+      }
+      if (fVar22 < fVar2) {
+        if (uVar19 == 0) {
+          alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>();
+        }
+        *(longlong *)(uVar19 * 8 + 8) = lVar14 + -1;
+        uVar19 = uVar19 + 1;
+        fVar2 = *(float *)(pcVar17 + 0x18);
+        local_78 = uVar19;
+      }
+      *(float *)(pcVar17 + 0x18) = fVar2 + *(float *)(lVar11 + 0x28);
+    }
+  } while( true );
+}
+
+

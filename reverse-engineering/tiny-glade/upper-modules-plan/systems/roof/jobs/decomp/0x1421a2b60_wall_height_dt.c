@@ -1,0 +1,128 @@
+// name=wall_height_dt
+// sig=void __cdecl wall_height_dt(void)
+// size=574
+
+void __cdecl system_roof::wall_height_dt::wall_height_dt(void)
+
+{
+  uint *puVar1;
+  float fVar2;
+  float fVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  longlong lVar6;
+  longlong lVar7;
+  longlong *in_RCX;
+  longlong lVar8;
+  ulonglong uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong unaff_RDI;
+  uint *puVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  longlong in_R11;
+  longlong lVar15;
+  ulonglong uVar16;
+  longlong lVar17;
+  
+  lVar6 = *in_RCX;
+  lVar7 = in_RCX[1];
+  uVar5 = *(undefined4 *)((longlong)in_RCX + 0x14);
+  puVar12 = *(uint **)(lVar6 + 0xf8);
+  puVar1 = puVar12 + *(longlong *)(lVar6 + 0x100);
+  if (*(char *)(lVar6 + 0x108) == '\0') {
+    lVar10 = 8;
+    lVar15 = 0;
+    lVar8 = 0;
+    lVar14 = 0;
+    lVar17 = 0;
+    do {
+      if (lVar17 == lVar14) {
+        if (puVar12 == puVar1) {
+          return;
+        }
+        while( true ) {
+          lVar14 = *(longlong *)(*(longlong *)(lVar7 + 0x100) + 0x58 + (ulonglong)*puVar12 * 0xa0);
+          if (lVar14 != 0) break;
+          puVar12 = puVar12 + 1;
+          if (puVar12 == puVar1) {
+            return;
+          }
+        }
+        lVar11 = *(longlong *)(lVar7 + 0x100) + (ulonglong)*puVar12 * 0xa0;
+        uVar13 = (ulonglong)*(uint *)(lVar11 + 0x94);
+        lVar8 = *(longlong *)(lVar7 + 0x1a8);
+        lVar10 = *(longlong *)(lVar8 + 0x18 + uVar13 * 0x48);
+        lVar17 = *(longlong *)(lVar8 + 0x38 + uVar13 * 0x48);
+        if ((*(ulonglong *)(lVar6 + 0x118) < *(ulonglong *)(lVar8 + 0x40 + uVar13 * 0x48)) &&
+           (uVar13 = *(ulonglong *)(lVar17 + *(ulonglong *)(lVar6 + 0x118) * 8), uVar13 != 0)) {
+          lVar15 = *(longlong *)(lVar10 + 0x10 + ~uVar13 * 0x30);
+        }
+        else {
+          lVar15 = 0;
+        }
+        lVar17 = ~*(ulonglong *)(lVar17 + *(longlong *)(lVar6 + 0x110) * 8) * 0x30;
+        lVar8 = *(longlong *)(lVar10 + 0x10 + lVar17);
+        unaff_RDI = *(longlong *)(lVar10 + 0x28 + lVar17);
+        puVar12 = puVar12 + 1;
+        lVar10 = *(longlong *)(lVar11 + 0x50);
+        lVar17 = 0;
+      }
+      uVar13 = (ulonglong)*(uint *)(lVar10 + 8 + lVar17 * 0x10);
+      lVar17 = lVar17 + 1;
+      fVar2 = *(float *)(lVar15 + 0x4c + uVar13 * 0x58);
+      fVar3 = *(float *)(lVar8 + 4 + uVar13 * 0x18);
+      *(undefined4 *)(unaff_RDI + uVar13 * 4) = uVar5;
+      *(float *)(lVar8 + uVar13 * 0x18) = fVar2 - fVar3;
+      uVar4 = *(undefined4 *)(lVar15 + 0x4c + uVar13 * 0x58);
+      *(undefined4 *)(unaff_RDI + uVar13 * 4) = uVar5;
+      *(undefined4 *)(lVar8 + 4 + uVar13 * 0x18) = uVar4;
+    } while( true );
+  }
+  lVar10 = 0;
+  lVar8 = 0;
+  uVar13 = 0;
+  uVar9 = 0;
+  do {
+    if (uVar9 == uVar13) {
+      if (puVar12 == puVar1) {
+        return;
+      }
+      while( true ) {
+        uVar13 = *(ulonglong *)(*(longlong *)(lVar7 + 0x1a8) + 0x10 + (ulonglong)*puVar12 * 0x48);
+        if (uVar13 != 0) break;
+        puVar12 = puVar12 + 1;
+        if (puVar12 == puVar1) {
+          return;
+        }
+      }
+      lVar10 = *(longlong *)(lVar7 + 0x1a8) + (ulonglong)*puVar12 * 0x48;
+      lVar14 = *(longlong *)(lVar10 + 0x18);
+      lVar15 = ~*(ulonglong *)(*(longlong *)(lVar10 + 0x38) + *(longlong *)(lVar6 + 0x110) * 8) *
+               0x30;
+      lVar8 = *(longlong *)(lVar14 + 0x10 + lVar15);
+      in_R11 = *(longlong *)(lVar14 + 0x28 + lVar15);
+      puVar12 = puVar12 + 1;
+      if ((*(ulonglong *)(lVar6 + 0x118) < *(ulonglong *)(lVar10 + 0x40)) &&
+         (uVar9 = *(ulonglong *)(*(longlong *)(lVar10 + 0x38) + *(ulonglong *)(lVar6 + 0x118) * 8),
+         uVar9 != 0)) {
+        lVar10 = *(longlong *)(lVar14 + 0x10 + ~uVar9 * 0x30);
+      }
+      else {
+        lVar10 = 0;
+      }
+      uVar9 = 0;
+    }
+    uVar16 = uVar9 & 0xffffffff;
+    uVar9 = uVar9 + 1;
+    fVar2 = *(float *)(lVar10 + 0x4c + uVar16 * 0x58);
+    fVar3 = *(float *)(lVar8 + 4 + uVar16 * 0x18);
+    *(undefined4 *)(in_R11 + uVar16 * 4) = uVar5;
+    *(float *)(lVar8 + uVar16 * 0x18) = fVar2 - fVar3;
+    uVar4 = *(undefined4 *)(lVar10 + 0x4c + uVar16 * 0x58);
+    *(undefined4 *)(in_R11 + uVar16 * 4) = uVar5;
+    *(undefined4 *)(lVar8 + 4 + uVar16 * 0x18) = uVar4;
+  } while( true );
+}
+

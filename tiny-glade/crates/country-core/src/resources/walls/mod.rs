@@ -1,4 +1,14 @@
 pub mod height_rules;
+pub mod inner_wall_state;
+pub mod inner_walls;
+pub mod public_walls;
+
+pub use inner_wall_state::WallState;
+pub use inner_walls::{InnerWalls, WallChanges};
+
+/// B eraser multiplier read as one f32. Startup policy remains with its owner.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct EraserSizeMultiplier(pub f32);
 
 /// Wall identity (B 0x140b34f20): zero is invalid.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]

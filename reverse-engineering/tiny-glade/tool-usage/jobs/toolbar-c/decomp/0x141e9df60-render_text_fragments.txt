@@ -1,0 +1,102 @@
+SIG: void __cdecl render_text_fragments(void)
+SIZE: 647
+ADDR: 141e9df60
+
+DECOMP:
+
+void __cdecl toolbar::text::render_text_fragments(void)
+
+{
+  uint *puVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  longlong lVar5;
+  undefined4 *puVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  longlong in_RCX;
+  ulonglong uVar9;
+  longlong *in_RDX;
+  longlong unaff_RBX;
+  longlong unaff_RBP;
+  ulonglong uVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong lVar13;
+  uint *puVar14;
+  
+  lVar4 = *in_RDX;
+  lVar5 = in_RDX[1];
+  uVar2 = *(undefined4 *)((longlong)in_RDX + 0x14);
+  puVar14 = *(uint **)(lVar4 + 0xf8);
+  puVar1 = puVar14 + *(longlong *)(lVar4 + 0x100);
+  uVar3 = *(undefined4 *)(in_RCX + 0x1c);
+  puVar6 = *(undefined4 **)(in_RCX + 0x10);
+  if (*(char *)(lVar4 + 0x108) == '\0') {
+    lVar13 = 8;
+    lVar12 = 0;
+    lVar11 = 0;
+    do {
+      if (lVar11 == lVar12) {
+        if (puVar14 == puVar1) {
+          return;
+        }
+        while( true ) {
+          lVar12 = *(longlong *)(*(longlong *)(lVar5 + 0x100) + 0x58 + (ulonglong)*puVar14 * 0xa0);
+          if (lVar12 != 0) break;
+          puVar14 = puVar14 + 1;
+          if (puVar14 == puVar1) {
+            return;
+          }
+        }
+        lVar13 = *(longlong *)(lVar5 + 0x100) + (ulonglong)*puVar14 * 0xa0;
+        uVar9 = (ulonglong)*(uint *)(lVar13 + 0x94);
+        unaff_RBP = *(longlong *)
+                     (*(longlong *)(*(longlong *)(lVar5 + 0x1a8) + 0x18 + uVar9 * 0x48) + 0x28 +
+                     ~*(ulonglong *)
+                       (*(longlong *)(*(longlong *)(lVar5 + 0x1a8) + 0x38 + uVar9 * 0x48) +
+                       *(longlong *)(lVar4 + 0x110) * 8) * 0x30);
+        puVar14 = puVar14 + 1;
+        lVar13 = *(longlong *)(lVar13 + 0x50);
+        lVar11 = 0;
+      }
+      lVar8 = lVar11 * 0x10;
+      lVar11 = lVar11 + 1;
+      *(undefined4 *)(unaff_RBP + (ulonglong)*(uint *)(lVar13 + 8 + lVar8) * 4) = uVar2;
+      *puVar6 = uVar3;
+      tg_text::TextFragment::render();
+    } while( true );
+  }
+  uVar9 = 0;
+  uVar10 = 0;
+  do {
+    if (uVar10 == uVar9) {
+      if (puVar14 == puVar1) {
+        return;
+      }
+      while( true ) {
+        uVar9 = *(ulonglong *)(*(longlong *)(lVar5 + 0x1a8) + 0x10 + (ulonglong)*puVar14 * 0x48);
+        if (uVar9 != 0) break;
+        puVar14 = puVar14 + 1;
+        if (puVar14 == puVar1) {
+          return;
+        }
+      }
+      lVar13 = *(longlong *)(lVar5 + 0x1a8) + (ulonglong)*puVar14 * 0x48;
+      unaff_RBX = *(longlong *)
+                   (*(longlong *)(lVar13 + 0x18) + 0x28 +
+                   ~*(ulonglong *)(*(longlong *)(lVar13 + 0x38) + *(longlong *)(lVar4 + 0x110) * 8)
+                   * 0x30);
+      puVar14 = puVar14 + 1;
+      uVar10 = 0;
+    }
+    uVar7 = uVar10 & 0xffffffff;
+    uVar10 = uVar10 + 1;
+    *(undefined4 *)(unaff_RBX + uVar7 * 4) = uVar2;
+    *puVar6 = uVar3;
+    tg_text::TextFragment::render();
+  } while( true );
+}
+
+

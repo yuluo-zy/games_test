@@ -1,5 +1,11 @@
 # Tiny Glade 原作还原：里程碑与进度
 
+2026-10-15 按用户要求改为实现优先：core gui.rs 已补菜单拥有状态、Next/Prev、状态推进、共享缩略图布局和调试标签；LUT 改读正确的 EscMenuState 并直接消费位置算法，菜单 ID 复用原 uuid。当前增量仅 all-targets 编译检查，不扩展验证矩阵。GUI 仍缺 PhotomodeScreen、完整 DebugGui/日志、Egui 资源及全局调度；全 core 未完成。逐文件状态以 [core 目录推进](../../tiny-glade/crates/country-core/recovery/README.md) 为准。
+
+2026-10-14 用户改为按原源码目录逐文件恢复 core。当前入口 [core 目录推进](../../tiny-glade/crates/country-core/recovery/README.md)。B PDB 539 文件与历史重建/辅助路径分开；真实导出由 rustdoc 核对，27 直接依赖分类。基础资源/default/serde/事件/坐标已补，wall_highlight 真实 ECS 单系统接到统一 draw 资源；原 JSON 128 组合、窗口/菜单等叶、DirtyTiles 881 组和 highlighter 96 组只支持各自限定范围。全 core 仍未完成，下一文件为 GUI 载荷及 PublicWalls/实体生命周期。旧“章节已收齐”不等于当前正式代码已完成。
+
+2026-10-14 country-core 非渲染首批：墙权威集合/编辑通知/删除与 core CPU 发布资源已接通；7 新测试、1349 core 库内测试和 check/fmt 通过，原指令只验证状态 stores/参数化构造/默认拱高/reset，排除库 lookup/通知与原完整 publisher。原表 +0xc0 ID counter、freehand_ty +0x66 已纠正。完整 PublicWalls/空间/屋顶/历史及原调度仍缺，不升级整模块/游戏验收。具体范围见 [报告](skeleton/task-index/work/TG-9f411268a571c6bce1/core-walls-20261014/REPORT.md)。
+
 2026-10-14 utils B 深挖增量：原 2D 楼梯分段采样已恢复，143 组原指令样例；共享标量运算顺序修复，原20组3D构造/120查询逐位通过；Curve有所有权XZ/12→8投影获正面证据并接线。Debug/Release各93测试、严格Clippy及country-core1142 CPU回归通过。墙三方法/2D全局查询仍未定位；原借用as_vec2类型/投影未知，旧pointer/length说法已纠正。全4894模块/85322 C13行号段扫描不作死代码定论。用户后续仅B。当前报告：[B深挖](evidence/utils-deep-followup-2026-10-14/REPORT.md)，[台账](tracking/utils-deep-followup.json)；下段90项为历史源码快照。
 
 2026-10-14 utils 当前工程续轮：共享 insert/remove 返回合同与 country-core 索引/512网格消费者合并，230 新原指令样例通过；Windows utils Debug/Release各90测试、country-core 1142测试及两库严格Clippy通过。墙三方法/2D全局查询编译体、投影轴/stride和完整游戏运行仍未恢复/验收，维持 partial。最新范围见 [utils 交付报告](evidence/utils-gap-recovery-2026-10-14/REPORT.md) 与 [台账](tracking/utils-gap-recovery.json)。后文旧“87/3”“B中未编译”或“主线齐全”表述为历史快照，不能覆盖本轮的未定位/未实现边界。

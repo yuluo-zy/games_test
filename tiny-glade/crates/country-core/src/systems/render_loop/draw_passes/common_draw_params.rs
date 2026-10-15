@@ -50,6 +50,24 @@ pub struct BrickEraseInputs {
 }
 
 impl BrickEraseInputs {
+    /// Read authoritative core resources instead of requiring caller-built views.
+    pub fn from_world(world: &bevy_ecs::world::World) -> Self {
+        use crate::resources::walls::EraserSizeMultiplier;
+        use crate::resources::{
+            cursor_terrain_raycast::CursorTerrainRaycast, editing_highlight::EditingHighlight,
+            gui::DebugGui,
+        };
+        let highlight = crate::utils::get_res::<EditingHighlight>(world);
+        let cursor = crate::utils::get_res::<CursorTerrainRaycast>(world);
+        Self {
+            eraser_active: highlight.enabled,
+            cursor_hit: cursor.tag & 1 != 0,
+            cursor_pos: cursor.position(),
+            value: crate::utils::get_res::<EraserSizeMultiplier>(world).0,
+            blocked: crate::utils::get_res::<DebugGui>(world).suppress,
+        }
+    }
+
     /// 转成 A4 `DrawBuilder::bind_brick_erase_highlight` 的入参。
     pub fn to_a4(&self) -> BrickEraseHighlightInputs {
         BrickEraseHighlightInputs {
@@ -68,6 +86,13 @@ impl BrickEraseInputs {
 /// `bind_brick_erase_highlight(builder, world)` 的 Rust 形态：资源值已读出。
 pub fn bind_brick_erase_highlight<'p>(b: DrawBuilder<'p>, i: &BrickEraseInputs) -> DrawBuilder<'p> {
     b.bind_brick_erase_highlight(&i.to_a4())
+}
+
+pub fn bind_brick_erase_highlight_from_world<'p>(
+    b: DrawBuilder<'p>,
+    world: &bevy_ecs::world::World,
+) -> DrawBuilder<'p> {
+    b.bind_brick_erase_highlight(&BrickEraseInputs::from_world(world).to_a4())
 }
 
 /// 墙色绑定（A4 `bind_wall_color_customization<W>`）。

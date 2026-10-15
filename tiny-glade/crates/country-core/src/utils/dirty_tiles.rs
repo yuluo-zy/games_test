@@ -19,13 +19,13 @@
 //! `rasterize_world_space_stroke`（0x140ade620）：`iter_world_space_stroke_cells` 的 `DirtyTiles` 实例，见
 //! [`DirtyTiles::rasterize_world_space_stroke`] 与 `utils::conservative_line_raster`。
 //!
-//! 未恢复：`cell_from_world_space`（0x140960b20）。它有三次 `fmaf` 与一个四通道输出，
-//! 参数/返回布局没有对上，不凭猜测落码（U）。
+//! `cell_from_world_space`（0x140960b20）返回 tag + 两个坐标；最后仅存低 64 位，
+//! 旧“四通道输出”解释错误。第三次 fmaf 的结果不写入返回值。
 
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::manual_clamp)]
 
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use tabloid::{State, StateDelta};
 
 use crate::utils::conservative_line_raster::conservative_plot_line;
@@ -86,6 +86,16 @@ impl Default for DirtyTiles {
 }
 
 impl DirtyTiles {
+    /// B 0x140960b20: fused scaling, saturating truncation, then unsigned bounds.
+    /// NaN converts to cell 0; slightly negative scaled coordinates also truncate
+    /// to 0. This differs from rectangle floor/clamp policy.
+    pub fn cell_from_world_space(world: Vec2) -> Option<[u32; 2]> {
+        let scale = f32::from_bits(0x3efc_0fc1);
+        let x = world.x.mul_add(scale, 32.0) as i32 as u32;
+        let y = world.y.mul_add(scale, 32.0) as i32 as u32;
+        ((x | y) < GRID_SIZE as u32).then_some([x, y])
+    }
+
     /// B new_clear140960ac0 explicitly zeros all512 bytes.
     pub fn new_clear() -> Self {
         Self {

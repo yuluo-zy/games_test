@@ -1,5 +1,9 @@
 # country-core
 
+当前恢复入口：[按源码目录的依赖与推进顺序](recovery/README.md)、[逐目录进度](recovery/DIRECTORIES.md)、[逐文件源码/证据/消费者台账](recovery/inventory.json)。以 B PDB 的 539 个文件身份为主键；旧重建目录、章节和辅助适配文件分别登记，不混算完成度。下文早期快照不能替代该台账的限定核验状态。
+
+2026-10-14 基础合同续轮已在 core 内补齐窗口尺寸、UI 设置 serde/default、菜单读取谓词、亮度表、事件消费、共享 Transform 转发和 DirtyTiles 世界坐标转换；统一 A/B draw 高亮资源，并恢复真实 ECS `wall_highlight` 写入者。完整 core 仍未复现完毕，GUI 载荷、完整 PublicWalls、启动/调度与其它业务链仍按目录推进。
+
 游戏侧渲染声明、资产注册和已经恢复的 CPU 领域规则。目录按 B 版原功能树组织，正常构建直接编译这些实现；完整 GPU 桥、游戏 ECS 场景和未知业务不靠占位算法补齐。
 
 此前正式工程这里只保留了墙高、屋顶等 8 个局部文件，确实漏掉了 Git 中后续提交的渲染恢复。此次按 Git 记录重新整理了已实现函数及其必要输入/后端接口，没有直接搬入旧的整树骨架。
@@ -8,6 +12,7 @@
 
 | 正式模块 | 概述及已恢复功能 | 仍需完成 |
 |---|---|---|
+| `src/resources/walls/{inner_wall_state,inner_walls}.rs`、`src/systems/wall/wall_state/` | B 权威墙集合、ID 分配/显式恢复、字段编辑、新建/修改/删除通知，以及 core 内真实资源驱动的采样几何与规则墙高度缓存；原指令确认 freehand_ty 在 +0x66，+0x60 为石膏剥离量 | 当前发布输出是限定 CPU 资源 `WallPublicationState`；完整 PublicWalls、地形脏区路由、空间/屋顶/历史消费者和 serde 仍未接通；见 [本轮审计](../../provenance/core-wall-authority-2026-10-14.json) |
 | `src/render/pass_builder/` | Shader URI、反射绑定查找、资源读写访问声明、uniform、compute dispatch、光栅附件、绘制包及 draw builder 状态/快照规则 | 与真实 rhapsody graph/recording/descriptor 的统一适配；全部原入口 ABI 和整链行为验收 |
 | `src/render/` | Typed/Mapped/Instance/Shadowed/Sparse buffer 的容量、上传区间、脏范围及稀疏分配；Mesh/VAO、纹理包解析、shader 程序缓存、view/frame/灯光常量 | GPU 对象生命周期接线、实际上传/管线创建；部分描述字段语义仍只有调用点合同 |
 | `src/render/nani/` | 27 个真实子集、实例 ID/稠密索引与数据更新、mesh atlas、meshlet 切块/属性打包、包围球、间接绘制及 cull shader 描述；`instance_updates.rs`：各 `nani_update_*` 系统的实例载荷构建函数 `build_*`（plant/solid_vertex_color/albedo_map/window_glass/bricks/wren/gothic/flower/curved_halftimber/stone_floor/lantern/plaster/cloth/smoke/balcony_door/uber/velocity_only/stairs_floor）及打包辅助、50 项测试 | `nani/systems.rs` 已落码（maintain、20 个 update、flush，行视图 + 纯函数，见 [R8](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/R8_nani_systems.md)）；仍缺 19 个 gap 组件的真实字段布局、`startup_nani`/`load_mesh_atlases`/`reload_mesh_src`；证据见 [R2_nani_instance_updates.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/R2_nani_instance_updates.md)；原整帧验证 |
@@ -55,6 +60,8 @@
 公开依赖直接使用原 B 版本，包括 Bevy ECS 0.16.0、glam 0.29.3、half 2.4.1、bytemuck 1.16.0、slotmap 1.0.6、nohash-hasher 0.2.0、relative-path 1.9.0 和原 hotwatch Git commit。没有迁入旧手写 NoHashHasher / RelativePathBuf 代替实现；生产 watcher 直接收到原 notify 事件，测试注入器只在 `cfg(test)` 中使用。Bevy 分叉仓库/commit 仍未知，使用这些 API 不等于已恢复引擎分叉。
 
 ## 验证与开发
+
+2026-10-14 core 墙首批：新增 7 项原指令 fixture/World 链测试通过，现有库内 1349 项通过，整体 check/fmt 通过。原指令验收仅含字段写入、参数化构造、默认拱高比较和计数器 reset。Rust 1.98.1 严格 Clippy 遇到既有 tg-history `map_or` 与 11 处 `chunks_exact` 样式建议；core 使用 `--no-deps` 并仅禁用旧 `chunks_exact_to_as_chunks` 建议后检查通过，无生产源码 lint 放宽。上层 runtime 未改。
 
 在 workspace 根执行：
 
