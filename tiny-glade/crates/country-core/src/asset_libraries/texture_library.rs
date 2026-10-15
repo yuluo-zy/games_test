@@ -569,7 +569,7 @@ mod tests {
                 id,
                 width: desc.extent[0],
                 height: desc.extent[1],
-                format: u32::from(desc.arg3),
+                format: desc.format,
             })
         }
     }
@@ -606,7 +606,7 @@ mod tests {
         AssetTextureLibrary::new(&MockDevice::default())
     }
     fn desc_of(_p: TexturePreset) -> TextureDesc {
-        TextureDesc::new([8, 4, 1], 0x25, 0)
+        TextureDesc::new([8, 4, 1], 2, 0x25)
     }
 
     #[test]
@@ -889,7 +889,7 @@ mod tests {
     fn clear_preset_texture_writes_zeros_sized_by_format() {
         let dev = MockDevice::default();
         let mut l = AssetTextureLibrary::new(&dev);
-        l.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 0x61, 0)); // 8 B/texel
+        l.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 2, 0x61)); // 8 B/texel
         l.clear_preset_texture(&dev, TexturePreset(5));
         let ups = dev.updates.borrow();
         assert_eq!(ups.len(), 1);

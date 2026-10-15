@@ -53,8 +53,7 @@ const fn row(extent: [u32; 2], format: u32, hash: u64) -> (TextureDesc, u64) {
     (
         TextureDesc {
             extent: [extent[0], extent[1], 1],
-            arg3: 0,
-            arg4: 0,
+            kind: 0,
             sampled: true,
             mip_levels: 0,
             array_elements: 0,

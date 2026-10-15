@@ -496,6 +496,7 @@ impl<'p> DrawBuilder<'p> {
             let slot = self.push_pass_binding(RenderPassBinding {
                 resource_index: buffer_resource,
                 access_type: access,
+                view: None,
             });
             self.push_packet_access(binding, slot);
         }
@@ -569,6 +570,7 @@ impl<'p> DrawBuilder<'p> {
                 let s = self.push_pass_binding(RenderPassBinding {
                     resource_index: resource,
                     access_type: ACCESS_STORAGE_BUFFER_READ,
+                    view: None,
                 });
                 self.pass.buffer_slots.insert(slot_name, s);
                 s
@@ -652,6 +654,7 @@ impl<'p> DrawBuilder<'p> {
                         let s = self.push_pass_binding(RenderPassBinding {
                             resource_index: t.id,
                             access_type: access,
+                            view: view.copied(),
                         });
                         self.pass.texture_slots.insert(key, s);
                         s
@@ -695,12 +698,21 @@ impl<'p> DrawBuilder<'p> {
     /// 取走 packet 压入 `RasterPass.draws`（`self` 随后 drop，`Drop` 检查看到已取走）。
     fn finish(mut self, kind: DrawKind) {
         self.packet.get_mut().kind = kind;
+        self.flush_constants();
         let packet = self.packet.take();
         self.pass.draws.push(packet);
     }
 
+    /// 把动态常量字节交回宿主（见 [`PassHost::flush_dynamic_constants`]：原版是映射切片，写入即生效）。
+    fn flush_constants(&mut self) {
+        if let Some(constants) = self.constants.as_ref() {
+            self.pass.host.flush_dynamic_constants(constants);
+        }
+    }
+
     /// `draw`（0x140906f40）：不改 draw 种类，直接提交。
     pub fn draw(mut self) {
+        self.flush_constants();
         let packet = self.packet.take();
         self.pass.draws.push(packet);
     }
@@ -1337,6 +1349,51 @@ mod tests {
         assert_eq!(&data[16..20], &1u32.to_le_bytes());
         assert!(data[20..].iter().all(|&x| x == 0));
         b.discard();
+        finish_pass(pass);
+    }
+
+    /// 接线缺口回归：`constants.data` 是原版“可写映射切片”的拥有型替身，`draw*` 消费 builder 时必须把字节交回宿主，
+    /// 否则 uniform 值随 builder 一起丢弃、永远到不了 GPU（宿主端到端的像素测试发现）。
+    #[test]
+    fn finishing_a_draw_flushes_the_uniform_bytes_to_the_host() {
+        let (mut pass, log) = make_pass();
+        builder(&mut pass)
+            .optional_uniform(0x20, 1.5f32)
+            .optional_uniform(0x21, [7u32, 9u32])
+            .draw_no_vao(3);
+        {
+            let log = log.borrow();
+            assert_eq!(log.flushed_constants.len(), 1, "一次 draw 恰好交回一次");
+            let (keepalive, data) = &log.flushed_constants[0];
+            assert_eq!(*keepalive, 7, "按分配时的 keepalive 句柄交回");
+            assert_eq!(data.len(), BLOCK as usize);
+            assert_eq!(&data[0..4], &1.5f32.to_le_bytes());
+            assert_eq!(&data[8..12], &7u32.to_le_bytes());
+        }
+        // `discard` 不画，不交回。
+        builder(&mut pass).optional_uniform(0x20, 2.0f32).discard();
+        assert_eq!(log.borrow().flushed_constants.len(), 1);
+        finish_pass(pass);
+    }
+
+    /// 光栅 pass 的 RG 纹理绑定必须带着视图描述到宿主（原 `RenderPassBinding` 的 0x3c B 视图块）。
+    #[test]
+    fn rg_texture_binding_keeps_the_requested_view_desc() {
+        let (mut pass, _l) = make_pass();
+        let tex = AttachmentTexture { id: 9, extent: (4, 4), format: 37, sample_count: 1 };
+        let view = TextureViewDesc::new().base_mip_level(2).level_count(Some(1));
+        builder(&mut pass)
+            .bind_texture_to_draw_builder(BindTexture::RgHandle(&tex), 0x10, ACCESS_SAMPLED_IMAGE, Some(&view))
+            .draw_no_vao(3);
+        assert_eq!(pass.bindings.len(), 1);
+        assert_eq!(pass.bindings[0].resource_index, 9);
+        assert_eq!(pass.bindings[0].view, Some(view));
+        // 不带视图：None（默认视图）。
+        let tex2 = AttachmentTexture { id: 10, ..tex };
+        builder(&mut pass)
+            .bind_texture_to_draw_builder(BindTexture::RgHandle(&tex2), 0x10, ACCESS_SAMPLED_IMAGE, None)
+            .draw_no_vao(3);
+        assert_eq!(pass.bindings[1].view, None);
         finish_pass(pass);
     }
 

@@ -13,8 +13,8 @@
 //!  * 尾部 0x1c 字节的描述（相对文件末尾）：
 //!      −0x1c i32 数据相对偏移（相对**该字段自身地址**）  −0x18 u32 数据长度
 //!      −0x14 u32×3 extent(w,h,d)   −0x08 u16 mip 数   −0x06 u16 数组层数
-//!      −0x04 u8（`TextureDesc::new` 第 4 参）   −0x03 u8（第 3 参）   末 2 字节未读取
-//!    `TextureDesc::new(extent, b(−3), a(−4)).sampled().mip_levels(u8::try_from(mips).unwrap()).array_elements(layers)`。
+//!      −0x04 u8（`TextureDesc::new` 第 4 参 = format）   −0x03 u8（第 3 参 = kind）   末 2 字节未读取
+//!    `TextureDesc::new(extent, kind(−3), format(−4)).sampled().mip_levels(u8::try_from(mips).unwrap()).array_elements(layers)`。
 //!  * `create_texture(device, Ustr::from(name), desc, data)`；Err → `Result::unwrap` panic。返回 0x38 B 的 `Texture`。
 //!  * puffin 作用域 "load_compiled_texture_image"（库行为，省略）。
 //!
@@ -113,9 +113,9 @@ pub fn parse_compiled_image<'a>(bytes: &'a [u8], shown: &Path) -> CompiledImage<
     let extent = [u32_at(8), u32_at(12), u32_at(16)];
     let mips = u16_at(20);
     let layers = u16_at(22);
-    let (arg4, arg3) = (foot[24], foot[25]);
+    let (format, kind) = (foot[24], foot[25]);
 
-    let desc = TextureDesc::new(extent, arg3, arg4)
+    let desc = TextureDesc::new(extent, kind, format)
         .sampled()
         .mip_levels(u8::try_from(mips).unwrap())
         .array_elements(layers);
@@ -237,8 +237,8 @@ mod tests {
             img.desc,
             TextureDesc {
                 extent: [64, 32, 1],
-                arg3: 22,
-                arg4: 11,
+                kind: 22,
+                format: 11,
                 sampled: true,
                 mip_levels: 7,
                 array_elements: 2,

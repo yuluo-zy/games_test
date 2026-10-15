@@ -243,8 +243,7 @@ impl TextureRenderGraph for PresetRg<'_> {
 /// 预设纹理缺省 desc（`create_preset_textures` 的闭包返回值；`preset_desc` 读回）。
 pub const DEFAULT_PRESET_DESC: TextureDesc = TextureDesc {
     extent: [8, 4, 1],
-    arg3: 0x25,
-    arg4: 0,
+    kind: 2,
     sampled: false,
     mip_levels: 4,
     array_elements: 0,

@@ -41,7 +41,8 @@ pub mod rg_boundary {
         pub dst_offset: u64,
     }
 
-    pub type RenderFn = Box<dyn FnOnce(&mut dyn RenderPassApi)>;
+    /// `Send`：rhapsody 的回调可能在并行录制线程上执行；这些闭包只捕获资源号/数值。
+    pub type RenderFn = Box<dyn FnOnce(&mut dyn RenderPassApi) + Send>;
 
     /// 渲染图上下文（`RenderContext`，pass 登记表在 +0x90 的 Vec 里，每项 0x40 B）。
     pub trait RenderGraph {

@@ -165,11 +165,11 @@ pub enum DispatchMode {
     /// 2：间接 dispatch，参数缓冲资源号 + 偏移（`dispatch_indirect_raw`）。
     IndirectRaw { buffer: u32, offset: u64 },
     /// 3：用户闭包拿到 `ComputeDispatchApi`（`dispatch_with`）。
-    With(Box<dyn FnOnce(&mut dyn ComputeDispatchApi)>),
+    With(Box<dyn FnOnce(&mut dyn ComputeDispatchApi) + Send>),
     /// 4：先登记间接缓冲读访问，再调用户闭包（`dispatch_indirect_with`）。
     IndirectWith {
         buffer: u32,
-        f: Box<dyn FnOnce(&mut dyn ComputeDispatchApi)>,
+        f: Box<dyn FnOnce(&mut dyn ComputeDispatchApi) + Send>,
     },
 }
 
@@ -288,7 +288,14 @@ impl ComputeDispatchApi for ImmediateDispatch<'_> {
     fn track_gpu_lifetime(&mut self) {}
 }
 
-impl RecordedComputePass {
+/// 渲染回调里真正执行的部分（push constants + dispatch 模式）。不含构图用的 `RecordingPassBuilder`，
+/// 因此是 `Send` 的，可以交给 rhapsody 的并行录制线程。
+pub struct ComputeExecution {
+    pub push_constants: Vec<u8>,
+    pub dispatch: DispatchMode,
+}
+
+impl ComputeExecution {
     /// 渲染回调体（0x14169af70，按 `closure_env+0x60` 的判别跳转）：
     /// 非空 push constants 先推送；然后按模式 dispatch。
     ///
@@ -324,6 +331,17 @@ impl RecordedComputePass {
                 f(&mut ImmediateDispatch { exec });
             }
         }
+    }
+}
+
+impl RecordedComputePass {
+    /// 见 [`ComputeExecution::execute`]。
+    pub fn execute(self, exec: &mut dyn ComputeExec) {
+        ComputeExecution {
+            push_constants: self.push_constants,
+            dispatch: self.dispatch,
+        }
+        .execute(exec)
     }
 }
 
@@ -730,7 +748,7 @@ impl ComputePass {
     /// `dispatch_with<F>`（0x14160a2e0）：模式 3，闭包装箱（原版 `Box` 0x30 B）。
     pub fn dispatch_with(
         self,
-        f: impl FnOnce(&mut dyn ComputeDispatchApi) + 'static,
+        f: impl FnOnce(&mut dyn ComputeDispatchApi) + Send + 'static,
     ) -> RecordedComputePass {
         self.finish(DispatchMode::With(Box::new(f)))
     }
@@ -739,7 +757,7 @@ impl ComputePass {
     pub fn dispatch_indirect_with(
         mut self,
         buffer: &RgBuffer,
-        f: impl FnOnce(&mut dyn ComputeDispatchApi) + 'static,
+        f: impl FnOnce(&mut dyn ComputeDispatchApi) + Send + 'static,
     ) -> RecordedComputePass {
         self.builder
             .add_resource_access(buffer.resource, ACCESS_INDIRECT_READ, SYNC_GROUP_READ);
@@ -1093,7 +1111,7 @@ mod tests {
         ssbos.add_new::<RtTriangleMetaSsbo>(&dev);
         ssbos.add_new::<RtBvhSsbo>(&dev);
         ssbos.add_new::<WallColorIdSsbo>(&dev);
-        textures.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 0x25, 0));
+        textures.create_preset_textures_with(&dev, |_| TextureDesc::new([8, 4, 1], 2, 0x25));
         textures.import_texture_presets_to_rg(&mut crate::rhapsody_types::RenderGraph::default());
         let mut map: HashMap<TypeId128, *const ()> = HashMap::new();
         let dummy: &'static u8 = Box::leak(Box::new(0u8));

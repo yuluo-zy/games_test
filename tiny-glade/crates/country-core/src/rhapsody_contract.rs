@@ -162,6 +162,9 @@ pub enum PassResourceSlot {
 pub struct RenderPassBinding {
     pub resource_index: u32,
     pub access_type: u8,
+    /// 视图描述。原 `RenderPassBinding`（0x44 B）把整块 0x3c B `TextureViewDesc` 放在最前（`Ref::bind_view`），
+    /// 此前占位类型丢了它，宿主无法知道光栅 pass 的 RG 纹理该绑哪个视图。`None` = 缓冲或默认视图。
+    pub view: Option<crate::rhapsody_types::TextureViewDesc>,
 }
 
 /// `rhapsody::rg::pass_api::bind` — record one resource access binding.
@@ -169,6 +172,7 @@ pub fn bind(resource_index: u32, access_type: u8) -> RenderPassBinding {
     RenderPassBinding {
         resource_index,
         access_type,
+        view: None,
     }
 }
 

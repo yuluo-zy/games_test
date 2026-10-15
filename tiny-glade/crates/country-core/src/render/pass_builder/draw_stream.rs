@@ -385,6 +385,13 @@ pub struct RasterPassSubmission {
     pub render_pass: ManagedHandle,
     pub accesses: Vec<PassAccess>,
     pub color_count: u32,
+    /// 宿主接缝（非原字段）：颜色附件（RG 资源号/格式/tag）。原版 `render` 的闭包环境同样带着 `RasterPass +0x200`
+    /// 的附件数组（I：未逐字节核对闭包环境布局），回调里据此取附件纹理建帧缓冲。
+    pub colors: Vec<RasterPassColorAttachment>,
+    /// 深度附件（`RasterPass +0xe0..`，I，同上）。
+    pub depth: Option<RasterPassDepth>,
+    /// `RasterPass +0x1f8` 的视口尺寸（I，同上）。
+    pub viewport: [u32; 2],
 }
 
 /// `PassBuilder::add_resource_access(resource, access, group)` 的记录。
@@ -457,6 +464,14 @@ pub trait PassHost {
     fn rg_resources(&mut self) -> Option<&mut dyn RgResources> {
         None
     }
+
+    /// 接线补口（非原版函数，**宿主接缝**）：`DrawBuilder` 终结（`draw*`）时把 `constants.data` 交回宿主。
+    ///
+    /// 原版里 `DynamicConstantsBinding.data` 是动态常量页的**可写映射切片**（`write_uniform` 直接写 GPU 可见内存），
+    /// 重建版为了不碰裸指针把它建模成拥有的 `Vec<u8>`——于是 `DrawBuilder` 被 `finish` 消费时这份字节随
+    /// builder 一起丢弃，uniform 值永远到不了 GPU。此回调就是“映射切片”的等价物：宿主在这里把字节写进
+    /// `keepalive` 对应的常量页。缺省空实现（离线测试宿主不需要）。
+    fn flush_dynamic_constants(&mut self, _constants: &DynamicConstantsBinding) {}
 }
 
 /// `PassHost::rg_resources` 的必选版本：调用点原版没有“可选”概念，宿主缺失 = 装配错误。
@@ -654,6 +669,9 @@ impl RasterPass {
             render_pass,
             accesses: core::mem::take(&mut self.accesses),
             color_count: desc.color_count,
+            colors: core::mem::take(&mut self.colors),
+            depth: self.depth.take(),
+            viewport: self.viewport,
         };
         self.host.submit_raster_pass(submission);
     }
@@ -680,6 +698,8 @@ pub(crate) mod test_host {
         pub created_passes: Vec<RasterRenderPassDesc>,
         pub submissions: Vec<RasterPassSubmission>,
         pub constants_requests: u32,
+        /// `flush_dynamic_constants` 收到的（`keepalive`, 字节）。
+        pub flushed_constants: Vec<(u64, Vec<u8>)>,
     }
 
     pub struct MockHost {
@@ -785,6 +805,12 @@ pub(crate) mod test_host {
         }
         fn submit_raster_pass(&mut self, s: RasterPassSubmission) {
             self.log.borrow_mut().submissions.push(s);
+        }
+        fn flush_dynamic_constants(&mut self, c: &DynamicConstantsBinding) {
+            self.log
+                .borrow_mut()
+                .flushed_constants
+                .push((c.keepalive.0, c.data.clone()));
         }
         fn ssbo_buffer_word(&self, h: u64) -> Option<u32> {
             self.buffer_words.get(&h).copied()

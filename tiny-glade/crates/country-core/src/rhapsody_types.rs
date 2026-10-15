@@ -13,12 +13,13 @@ pub type Error = anyhow::Error;
 
 // ---------------------------------------------------------------- texture
 
-/// `rhapsody::raw::texture::TextureDesc`。`arg3/arg4` 取自纹理文件尾 −3/−4 字节（含义 U，O 值）。
+/// `rhapsody::raw::texture::TextureDesc`。`TextureDesc::new(extent, kind, format)`（0x140bd5270：`r8b → +0x1e`、
+/// `r9d → +8`）；纹理文件尾 −3 字节是 `kind`（0 1D … 2 2D、3 2D 数组、4 3D、5 立方体、6 立方体数组），−4 字节是 `format`（原始 VkFormat，零扩展）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct TextureDesc {
     pub extent: [u32; 3],
-    pub arg3: u8,
-    pub arg4: u8,
+    /// `TextureDesc+0x1e`：图像种类枚举（O）。
+    pub kind: u8,
     pub sampled: bool,
     pub mip_levels: u8,
     pub array_elements: u16,
@@ -34,11 +35,11 @@ pub struct TextureDesc {
 }
 
 impl TextureDesc {
-    pub fn new(extent: [u32; 3], arg3: u8, arg4: u8) -> Self {
+    pub fn new(extent: [u32; 3], kind: u8, format: u8) -> Self {
         Self {
             extent,
-            arg3,
-            arg4,
+            kind,
+            format: u32::from(format),
             ..Self::default()
         }
     }
@@ -74,6 +75,7 @@ impl TextureDesc {
     pub fn new_2d_array(extent: [u32; 2], layers: u32, format: u32) -> Self {
         Self {
             extent: [extent[0], extent[1], 1],
+            kind: 3,
             array_elements: layers as u16,
             format,
             ..Self::default()
@@ -83,6 +85,7 @@ impl TextureDesc {
     pub fn new_2d(extent: [u32; 2], format: u32) -> Self {
         Self {
             extent: [extent[0], extent[1], 1],
+            kind: 2,
             format,
             ..Self::default()
         }
@@ -93,6 +96,7 @@ impl TextureDesc {
     pub fn new_3d(extent: [u32; 3], format: u32) -> Self {
         Self {
             extent,
+            kind: 4,
             format,
             ..Self::default()
         }
@@ -315,5 +319,22 @@ impl RenderGraph {
         self.exports.push((imported, access));
         #[cfg(not(test))]
         panic!("A resource graph backend is required")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `TextureDesc::new_2d/new_2d_array/new_3d` 在原版里写 `+0x1e` 维度码（2D=2、2D 数组=3、3D=4，O：见各构造器文档）。
+    /// 此前重建版没建模该字节（恒 0 = 1D），宿主据 `kind` 建 VkImage 时图内创建的 2D 纹理会变成 1D——
+    /// 由宿主端到端的图内纹理创建发现。
+    #[test]
+    fn dimension_constructors_set_the_kind_byte() {
+        assert_eq!(TextureDesc::new_2d([8, 4], 37).kind, 2);
+        assert_eq!(TextureDesc::new_2d_array([8, 4], 3, 37).kind, 3);
+        assert_eq!(TextureDesc::new_3d([8, 4, 2], 37).kind, 4);
+        // 链式 builder 不改 kind。
+        assert_eq!(TextureDesc::new_2d([8, 4], 37).sampled().storage().kind, 2);
     }
 }
