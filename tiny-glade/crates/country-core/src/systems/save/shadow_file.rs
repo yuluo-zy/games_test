@@ -71,6 +71,10 @@ impl ShadowFile {
     pub fn path(&self) -> &Path {
         &self.path
     }
+    /// 所在目录（快照子目录等由目录消费者派生）。
+    pub fn directory(&self) -> &Path {
+        &self.directory
+    }
     pub fn last_error(&self) -> Option<&anyhow::Error> {
         self.last_error.as_ref()
     }

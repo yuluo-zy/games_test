@@ -23,16 +23,16 @@ pub fn delete_auto_clutter<S: Send + Sync + 'static>(
     mut failures: EventWriter<HistoryRecordingFailed>,
 ) {
     for event in events.read() {
-        if !history.is_recording() {
+        // 删除本身无条件（O：原 rmb_autoclutter 0x140976ca0 直接 push 删除事件+历史）；
+        // 录音门只影响是否写历史。
+        deleted.0.insert(event.0);
+        if history.is_recording() {
+            records.write(RecordAutoClutterHistory(event.0));
+        } else {
             failures.write(HistoryRecordingFailed {
                 edit: EditType::AutoClutter(Arc::new(AutoClutterEdit::Delete { id: event.0 })),
                 error: HistoryTransactionError::RecordingNotStarted,
             });
-            continue;
         }
-        // The original insertion and history append are unconditional; an
-        // already-present ID still has a record, rather than a guessed toggle.
-        deleted.0.insert(event.0);
-        records.write(RecordAutoClutterHistory(event.0));
     }
 }

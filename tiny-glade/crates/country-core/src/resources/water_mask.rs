@@ -10,17 +10,35 @@
 
 #![allow(dead_code, unused_imports)]
 
-use crate::render::pass_builder::pass_resource_access::SsboType;
+use crate::render::pass_builder::pass_resource_access::SsboType as PassSsboType;
 use crate::typed_gap::Gap;
 
 /// 水 mask 回读缓冲（O 名，布局 U）。
+#[derive(Clone, Copy, Debug, Default)]
 pub struct WaterMaskSsbo(pub Gap);
 
-impl SsboType for WaterMaskSsbo {
+impl PassSsboType for WaterMaskSsbo {
     /// typed gap：原值 = `utils::name_hash("…WaterMaskSsbo")`。
     fn rg_buffer_hash() -> u64 {
         0
     }
+}
+
+/// `ReadbackSsbos`（卡7）要求的库内 `SsboType` 实现：`write_storage_buffer` 用
+/// `MappedStorageBuffer`（0x2000 线程回读）。
+impl crate::asset_libraries::ssbo_library::SsboType for WaterMaskSsbo {
+    type Storage = crate::render::ssbo::MappedStorageBuffer<'static, Self>;
+    fn new_storage_buffer(
+        device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
+        initial: Option<&[u8]>,
+    ) -> Self::Storage {
+        crate::render::ssbo::MappedStorageBuffer::new_storage_buffer(device, initial)
+    }
+}
+impl crate::render::ssbo::StorageElement for WaterMaskSsbo {
+    const NAME: &'static str = "WaterMaskSsbo";
+    const BUFFER_LEN: usize = 0x8000;
+    const MAPPED_MEMORY: u8 = crate::render::ssbo::MAPPED_MEMORY_READBACK;
 }
 
 /// 水 mask 栅格尺寸（O：512×512）。

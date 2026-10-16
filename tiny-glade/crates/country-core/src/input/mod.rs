@@ -13,6 +13,8 @@
 use core::fmt;
 use core::time::Duration;
 
+use bevy_ecs::resource::Resource;
+
 pub mod action_set;
 pub mod input_stream;
 pub mod panic_repro_state;
@@ -36,8 +38,8 @@ impl ActiveInputMode {
     }
 }
 
-/// 输入方式跟踪器。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// 输入方式跟踪器（原版为 ECS 资源：`translate_input` 0x1417cd0a0 以 `ResMut` 更新）。
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActiveInputModeTracker {
     pub controller_deadline: Duration,
     pub mouse_keyboard_deadline: Duration,

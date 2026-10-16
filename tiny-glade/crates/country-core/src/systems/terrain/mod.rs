@@ -1,8 +1,13 @@
-//! Recovered CPU terrain event consumers and delayed mapped-height readback.
-//! GPU execution, UI producers and original global schedule remain separate.
+//! Recovered CPU terrain event consumers, tool UI producers and delayed
+//! mapped-height readback. GPU execution and original global schedule remain separate.
+pub mod deferred_terrain_history;
 pub mod delayed_terrain_changed_msg;
 pub mod draw_terrain_stroke;
 pub mod edit_terrain_stroke;
+pub mod terrain_hover_idx;
+pub mod ui_draw_terrain;
+pub mod ui_edit_terrain;
+pub mod ui_terrain_focus_mode;
 #[cfg(test)]
 mod tests;
 
@@ -64,6 +69,17 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<Events<delayed_terrain_changed_msg::OnTerrainChange>>();
     world.init_resource::<Events<RecalculateHeightMapCmd>>();
     world.init_resource::<Events<PlayTerrainSound>>();
+    world.init_resource::<Events<deferred_terrain_history::DebugHistoryMsg>>();
+
+    world.init_resource::<deferred_terrain_history::PendingTerrainHistory>();
+    world.init_resource::<terrain_hover_idx::HoveredTerrainStrokeId>();
+    world.init_resource::<terrain_hover_idx::MouseTerrainHoverReadback>();
+    world.init_resource::<terrain_hover_idx::TerrainWaterSample>();
+    world.init_resource::<ui_edit_terrain::MouseActivityTimer>();
+    world.init_resource::<ui_edit_terrain::TerrainStrokeParamsCache>();
+    world.init_resource::<ui_draw_terrain::TerrainHoverInput>();
+    world.init_resource::<ui_terrain_focus_mode::TerrainFocusModeState>();
+    world.init_resource::<ui_terrain_focus_mode::TerrainFocusRaycast>();
 }
 
 /// Local CPU order; requires the actual editing state, game clock, readback
@@ -83,4 +99,17 @@ pub fn add_terrain_cpu_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         delayed_terrain_changed_msg::delayed_terrain_changed_msg.in_set(TerrainCpuStage::Readback),
     );
+}
+
+/// 工具 UI 与历史生产（原 add_terrain_systems 0x1409455f0 挂载面；宿主提供
+/// AppMode/mode/hover/SSBO 回读/History）。独立于 [`add_terrain_cpu_systems`]，测试 World
+/// 无需注入宿主资源。
+pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedule) {
+    schedule.add_systems((
+        terrain_hover_idx::terrain_hover_idx,
+        ui_draw_terrain::ui_draw_terrain,
+        ui_edit_terrain::ui_edit_terrain,
+        ui_terrain_focus_mode::ui_terrain_focus_mode,
+        deferred_terrain_history::history_record_terrain::<S>,
+    ));
 }

@@ -27,3 +27,5 @@
 ## 实现方式（算法级）
 
 - `Sheep::being_petted`（0x14089d4c0）= `f32@+0x58 > 0.01`（ucomiss 常量 0x142960674 = 0.01；review-audit 纠错 0.0→0.01）。
+- **SheepMoveState 枚举（2026-10-15 O）**：serialize<serde_json::value>（0x140080440）+ serialize 串池（0x14293078e 区）证实：判别字节@+0，**0=`Idle`、非0=`Walking`**；`Idle { timeout_s: f32 }` / `Walking { goal_change_timeout: f32, <f32>, force_reach_goal: bool }`（serde 名串 Idle@0x14293079c / Walking@0x1429307a9 / timeout_s@0x1429307a0 / goal_change_timeout@0x1429307b0 / force_reach_goal@0x1429307c3）。SheepSnapshot 持 `position/goal/move_state` 三字段（见 sheep/control.rs 章）。
+- **Sheep 组件 serde 名串池（O，0x142930780 区）**：含 `...titude_degrees`、`SheepMoveState`、`Idle`、`Walking` 等——Sheep 组件/SheepMoveState 序列化共用此区。

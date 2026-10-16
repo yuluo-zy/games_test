@@ -1,5 +1,22 @@
 //! B 0x140b17a80. Real EventReader order, per-event clamping and separate
-//! input-space/window-space deltas. The old chapter reversed reader/writer.
+//! input-space/window-space deltas.
+//!
+//! PDB 签名（O，`translate_input_to_cursor_moved.rs.structures.json.gz`）：
+//! `(Res<CursorPositionSS>, Res<WindowSize>, Res<CursorCapturedPosition>,
+//! ResMut<ActionSetValues>, EventReader<InputCursorMoved>, EventWriter<InputCursorDelta>)`
+//! —— 方向为：消费 `InputCursorMoved`（stride 0x18，tag@+8：0=相对/1=绝对/2=跳过），
+//! 产出**一个** `InputCursorDelta{pub Vec2}`（stride 0x10 {id, Vec2}）。
+//!
+//! 折叠语义（O，fresh 0x140b17a80，reviewer 二轮复核）：
+//! - 非捕获（`CursorCapturedPosition` 为 None，`iVar2==0`）：tag 0 相对事件按
+//!   `acc = clamp(acc + delta, 0, WindowSize)` 累加；tag 1 绝对事件 `sum += value - acc`
+//!   并替换 acc；tag 2 跳过；
+//! - 捕获（Some，`iVar2!=0`）：tag 0 与 tag 2（RelativeWhileCaptured）都累加原始 delta，
+//!   仅 tag 1（Absolute）跳过（O：`cmp dword [r15+8],1; jne add`）；
+//! - 尾部：发一个 `InputCursorDelta{sum}`；`ActionSetValues.current.analog[0] += sum`、
+//!   `analog[1] += (末 acc - 起始光标)`。
+//! 相对/绝对事件的 u32→f32 用 `_UNK_1429e95b0`（`0x4330000000000000`×2 = 2^52 魔数）精确
+//! 转换，数值上与 `as f32` 一致。
 use crate::{
     input::action_set::ActionSetValues,
     resources::{
@@ -36,6 +53,9 @@ pub fn fold_cursor_events(
     let mut delta = Vec2::ZERO;
     for event in events {
         if captured {
+            // 捕获路径：tag 0（Relative）与 tag 2（RelativeWhileCaptured）都累加，
+            // 仅 tag 1（Absolute）跳过（O：0x140b17a80 `cmp dword [r15+8],1; jne add`，
+            // reviewer 二轮复核）。
             match event {
                 InputCursorMoved::Relative(value)
                 | InputCursorMoved::RelativeWhileCaptured(value) => delta += value,
@@ -109,7 +129,9 @@ mod tests {
         assert_eq!(hardware, Vec2::new(-5., -1.));
     }
     #[test]
-    fn capture_accumulates_relative_events_and_holds_hardware_position() {
+    fn capture_accumulates_relative_and_while_captured_events() {
+        // O：捕获路径 tag 0（Relative）与 tag 2（RelativeWhileCaptured）都累加，
+        // 仅 tag 1（Absolute）跳过（reviewer 二轮复核）。
         let result = fold_cursor_events(
             Vec2::splat(5.),
             Vec2::splat(10.),

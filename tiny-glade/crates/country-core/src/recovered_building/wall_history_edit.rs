@@ -71,6 +71,79 @@ pub struct WallCompoundHistoryEdit {
     /// Original ordered ConcurrentEdits groups; do not flatten the groups.
     pub groups: Vec<Vec<WallHistoryEdit>>,
 }
+
+/// `CompoundEditBuilder`（0x140a82b20 new_edit_sequence / 0x140a82b40 next /
+/// 0x140a82d50 build）：增量构建 `WallCompoundHistoryEdit` 的组序列
+/// （card R3；章节 wall_compound_edit.rs.md O）。
+#[derive(Clone, Debug, Default)]
+pub struct CompoundEditBuilder {
+    groups: Vec<Vec<WallHistoryEdit>>,
+    current: Vec<WallHistoryEdit>,
+    started: bool,
+}
+impl CompoundEditBuilder {
+    /// `new_edit_sequence` 0x140a82b20：开始新编辑序列。
+    pub fn new_edit_sequence(&mut self) {
+        self.started = true;
+        self.current.clear();
+    }
+    /// `next_empty`（内联，行 48）：当前组判空。
+    pub fn next_empty(&self) -> bool {
+        self.current.is_empty()
+    }
+    /// `with_concurrent`（内联，行 53）：加入并发组。
+    pub fn with_concurrent(&mut self, edit: WallHistoryEdit) {
+        self.current.push(edit);
+    }
+    /// `next` 0x140a82b40：推进到下一组。
+    pub fn next(&mut self) {
+        if !self.current.is_empty() {
+            self.groups.push(std::mem::take(&mut self.current));
+        }
+    }
+    /// `build` 0x140a82d50：组装 `Option<WallHistoryCompoundEdit>`。
+    pub fn build(mut self) -> Option<WallCompoundHistoryEdit> {
+        self.next();
+        if !self.started || self.groups.is_empty() {
+            None
+        } else {
+            Some(WallCompoundHistoryEdit { groups: self.groups })
+        }
+    }
+}
+
+/// `panic_deprecated_operation` 0x140a82e20：已弃用操作 panic
+/// （章节 wall_compound_edit.rs.md；原文案待取证）。
+pub fn panic_deprecated_operation() -> ! {
+    panic!("attempted to use a deprecated wall history operation")
+}
+
+/// WallHistoryEdit 操作变体 tag→名（E1 RE-EDITTYPE.md §2，visit_str 0x1414022c0 O）。
+/// 判别 = 首字段 niche，与顶层 EditType 判别不共用。**待并入 `WallHistoryEdit` 结构**
+/// （当前 Create/Delete/EnclosureChange/StateChange 为结构变体，17 操作变体并入会破坏
+/// wall replay 的非穷尽匹配，故先登记名称，E 补挖载荷后合并）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum WallHistoryOperationTag {
+    WallChanged = 0,
+    CreateWall = 1,
+    DeleteWall = 2,
+    AdjustHeight = 3,
+    ChangeIsEnclosedState = 4,
+    MorphPremadeShape = 5,
+    ChangeElevation = 6,
+    ChangeArchHeight = 7,
+    ChangeSupports = 8,
+    ChangeStairsType = 9,
+    ChangePlasterPeelAmount = 10,
+    ChangeFreehandHeightType = 11,
+    ChangeArchType = 12,
+    MorphFreehandWall = 13,
+    DeprecatedMorphOriginal = 14,
+    /// tag 15 名未解（anon_95，13 字符）。
+    Unresolved15 = 15,
+    ChangeSkirt = 16,
+}
 #[derive(Clone, Debug, PartialEq)]
 pub enum WallSnapshotError {
     InvalidSlice,

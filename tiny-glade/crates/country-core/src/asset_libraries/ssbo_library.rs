@@ -7,6 +7,13 @@
 //!    不是完整类型名。`tools/country-core-audit/verify_ssbo_id.py` 用原 EXE 的 xxh3 secret 复算了
 //!    `Cobblestone3RasterStagingSsbo → 0x802ff23dee42ab47`、`NaniNextVisibilityBitmaskSsbo → 0x69cdc275a605bad6`，
 //!    与两处指令立即数一致。
+//!    **2026-10-15 对账（restorer-eco）**：0x140c9cd80 反编译确认 `NameHash::compute` = `xxhash_rust::xxh3::xxh3_64`
+//!    （默认 secret）；原 EXE 0x142b2ebb0 的 192B "secret" 与默认 xxh3 secret 字节一致（用默认 `xxh3_64` 复算上述两例
+//!    亦命中）——原版即默认 secret，`NameHash::compute` 现状正确，无需 custom-secret 改造。
+//!    例外（待取证）：ivy 三个 SSBO 键（rne-read qword 0x142c2e248/0x142c2e280/0x142c2e330 =
+//!    0x9e3cfa7f2993f406 / 0x1d6de5e69ac50d2a / 0x2002d2fbdff3d80f）经 ~2000 个候选名（短名 "IvyLeafSsbo"、
+//!    全路径 "country_core::systems::ivy::ivy_send_to_gpu_leaf::IvyLeafSsbo"、模块前缀/大小写/后缀组合）均不满足
+//!    `xxh3_64(name)`，产生这些 SsboId 的 NAME 串未定位——登记待取证，不伪造。
 //!  * `BufferState`（0x40 B，`BufferState::new` 0x14091eb30）：`data: Box<dyn Ssbo>` @0x00（胖指针）、
 //!    `name: &'static str` @0x10（**完整** `type_name::<T>()`）、`rg: RwLock<Option<ImportedBuffer>>` @0x20
 //!    （锁字 @0x20，20 B 句柄 @0x28，`+0x36` 的字节 = 5 表示 None）。旧版把 5 当成 “已导出”，实际是 “未导入”。

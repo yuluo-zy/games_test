@@ -215,6 +215,20 @@ pub fn read_garden_mask<S: ReadbackSsbos>(env: &mut PassEnv<'_>) -> RecordedComp
         .dispatch_1d(MASK_READBACK_THREADS)
 }
 
+/// 生产回读 SSBO 关联类型（卡7 闭合：mask 四类资源 GAP 已建
+/// `terrain_rock_mask`/`water_exclude_clutter_mask`/`garden_mask`/`water_mask` 的
+/// `SsboType` 实现）。`read_terrain_data::<TerrainReadbackSsbos>` 供宿主调用。
+pub struct TerrainReadbackSsbos;
+
+impl ReadbackSsbos for TerrainReadbackSsbos {
+    type Height = crate::resources::terrain_height::TerrainHeightSsbo;
+    type VisualHeight = crate::resources::terrain_height::VisualTerrainHeightSsbo;
+    type RockMask = crate::resources::terrain_rock_mask::TerrainRockMaskSsbo;
+    type WaterMask = crate::resources::water_mask::WaterMaskSsbo;
+    type WaterClutter = crate::resources::water_exclude_clutter_mask::WaterExcludeClutterMaskSsbo;
+    type Garden = crate::resources::garden_mask::GardenMaskSsbo;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

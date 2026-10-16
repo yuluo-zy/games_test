@@ -8,7 +8,7 @@
 
 | 函数 | 地址 | 源码行 | 作用（有依据推断） | 逆向结论 | 证据 |
 |---|---|---|---|---|---|
-| `country_core::systems::history::replay_garden::replay_garden::closure$1::closure$0` | 0x141447500 | 34 | replay_raster<Garden> 薄包装 | I | history\decomp\decomp-0x141447500.txt |
+| `country_core::systems::history::replay_garden::replay_garden::closure$1::closure$0` | 0x141447500 | 34 | replay_raster<Garden> 命令生成闭包 | O（2026-10-15）：**48B 命令元素 push 到 cap-first Vec**（FUN_1405629f0 扩容；`{param_2[0..5] 6×qword}` → Vec 元素 {+0x00..+0x28}），generate_replay_cmds_from_edit<Garden> 的命令构造闭包 | history\decomp\decomp-0x141447500.txt |
 
 ## 内联/无独立符号函数（名称揭示意图；逻辑并入调用点）
 

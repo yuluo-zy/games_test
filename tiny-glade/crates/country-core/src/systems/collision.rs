@@ -5,6 +5,9 @@
 //! 在 `iter_shape_overlaps` 族内联使用。`SubworldColliderHandle` 的空值判别是 `0x11`（= 槽数）。
 //! 其余 16 个槽的名字与槽号对应关系未锚定（U），这里只提供不依赖名字的 [`SubworldIndex`]。
 
+/// rapier 碰撞世界（B `systems::collision/world.rs`，核心查询族）。
+pub mod world;
+
 /// 槽数（O）。
 pub const SUBWORLD_SLOT_COUNT: u8 = 17;
 /// `SubworldColliderHandle` 的"空"判别（O：0x11）。

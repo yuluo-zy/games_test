@@ -96,3 +96,19 @@ pub fn add_garden_cpu_systems<C: Send + Sync + 'static, S: Send + Sync + 'static
             .in_set(HistoryCpuStage::Record),
     );
 }
+
+/// B `systems/garden.rs::impl$0::build` (0x140b6d290): the garden plugin's build
+/// step. The original registers the draw/history/replay system family and the
+/// GardenRaster resource through Bevy App machinery (the decomp is framework
+/// type-registration loops). This crate's equivalent registers the same events
+/// and the same CPU draw → record order on a `Schedule`. The GardenRaster
+/// resource is owned by the world-raster registration (it needs a
+/// DirtyTilePublisher); the generic raster replay feeds
+/// `route_garden_replay_feedback`.
+pub fn build<C: Send + Sync + 'static, S: Send + Sync + 'static>(
+    world: &mut World,
+    schedule: &mut Schedule,
+) {
+    register_garden_events(world);
+    add_garden_cpu_systems::<C, S>(schedule);
+}

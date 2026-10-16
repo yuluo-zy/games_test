@@ -22,7 +22,7 @@
 use crate::resources::{
     ivy::{Ivy, IvyDirectionProposer, IvyGrowthSegment, IvyPointId, IvyStorage},
     time::GameTime,
-    walls::public_walls::PublicWalls,
+    walls::{public_walls::PublicWalls, WallId},
 };
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
@@ -43,11 +43,13 @@ pub const SETTLED_THRESHOLD: f32 = 0.001;
 /// Advances one ivy's pending segment by `delta` seconds and emits the
 /// segment-completion event when it finishes. Point IDs come from the deque
 /// tail order (`Ivy::last_segment_point_ids`); a missing pending segment is a
-/// no-op exactly like the native empty-option path.
+/// no-op exactly like the native empty-option path. `emit` is the completion
+/// callback; the system forwards to its `EventWriter`, tests capture into a
+/// local buffer.
 pub fn advance_growth(
     ivy: &mut Ivy,
     delta: f32,
-    completed: &mut EventWriter<IvySegmentDoneGrowingMsg>,
+    emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
 ) {
     let Some(segment) = ivy.pending_growth else {
         return;
@@ -60,7 +62,7 @@ pub fn advance_growth(
         ivy.pending_growth = None;
         ivy.growth_progress = 0.0;
         let (point_a, point_b) = ivy.last_segment_point_ids();
-        completed.write(IvySegmentDoneGrowingMsg {
+        emit(IvySegmentDoneGrowingMsg {
             point_a,
             point_b,
             ivy: ivy.id,
@@ -174,20 +176,162 @@ pub fn nearest_wall_normal(
     best.map(|(id, _, normal)| (id, normal))
 }
 
+/// `get_ivy_x_direction_relative_to_wall_direction` (line 491, inline): the
+/// ivy's sideways (x) growth axis is the wall-direction tangent rotated 90°,
+/// i.e. the wall-face normal. This is the axis `ivy_leaf_spawner` uses as
+/// `branch_direction × normal` when scattering leaves across the wall face.
+pub fn get_ivy_x_direction_relative_to_wall_direction(wall_direction: Vec2) -> Vec2 {
+    Vec2::new(-wall_direction.y, wall_direction.x)
+}
+
+/// `get_growth_point_proposal` (line 227, inline): combines the direction
+/// proposer's output (B `IvyDirectionProposer::get_direction`, call 0x14094b4cc)
+/// with the wall double-sided normal to propose the next world-space growth
+/// point. `tail` is the current last point; `side` selects which face of the
+/// wall the ivy grows along. The step length uses the verified segment
+/// duration so one growth step advances the pending segment by one tick.
+pub fn get_growth_point_proposal(
+    tail: Vec3,
+    proposed_direction: Vec2,
+    wall_normal: Vec2,
+    side: f32,
+) -> (Vec3, Vec3) {
+    let world = Vec3::new(proposed_direction.x, 0.0, proposed_direction.y);
+    let normal = Vec3::new(wall_normal.x, 0.0, wall_normal.y);
+    let along_wall = world * side;
+    // Anchor the proposed point to the wall face (0.63 * 0.5 half-width,
+    // same offset WallCoord::into_world_space applies).
+    let next = tail + along_wall * SEGMENT_DURATION + normal * (0.63 * 0.5);
+    (next, normal)
+}
+
+/// `check_for_wall_jump` (line 308, inline): growth re-anchors onto whichever
+/// wall owns the segment nearest to the growth tip. When a wall other than the
+/// ivy's current wall is strictly closer, the closure set (line 320..345)
+/// resolves the new wall through the wall spatial hash and the grower's next
+/// proposed point is placed on it. Returns the wall to jump to, if any.
+pub fn check_for_wall_jump(
+    walls: &PublicWalls,
+    tip: Vec3,
+    current_wall: Option<WallId>,
+) -> Option<WallId> {
+    let point = Vec2::new(tip.x, tip.z);
+    let mut nearest: Option<(WallId, f32)> = None;
+    for (id, state) in walls.all() {
+        let segments = wall_segments_from_state(state);
+        let Ok(Some(hit)) = super::closest_segment_index(point, &segments, f32::MAX) else {
+            continue;
+        };
+        match nearest {
+            Some((_, d)) if d <= hit.distance => {}
+            _ => nearest = Some((id, hit.distance)),
+        }
+    }
+    let (id, _) = nearest?;
+    match current_wall {
+        Some(current) if current == id => None,
+        _ => Some(id),
+    }
+}
+
 /// Runs the growth producer for every stored ivy. Existing pending segments
 /// always advance (verified path). When an ivy has room to grow and no pending
 /// segment, the candidate chain proposes a direction off the nearest wall and
 /// extends the root point. GPU/upload consumption is out of scope here.
+///
+/// The original grower is a 10-phase state machine (jump table 0x142ab3be0,
+/// indexed by `world+0x118`; state `{+0x10 phase write-back, +0x1c phase,
+/// +0x48 guard bit0, +0x11c timer}`; chapter ivy_grower.rs.md §10 相). The
+/// dispatch below reproduces that structure with a `Local` state:
+/// phases 0/1/3/4 run the growth main (or the guard body when the guard bit is
+/// set), phase 2 gates on the timer, phase 5 routes a secondary table, and
+/// phases 6–9 are the original panic entries. The guard body re-validates the
+/// growth tip (wall-jump re-anchor); the exact guard predicate beyond the
+/// toggling is 待取证.
+/// `Local` continuation state mirroring the original world+0x118 phase slot.
+/// Public so the system can be registered on a schedule from sibling modules.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GrowerState {
+    /// +0x1c: the current phase value.
+    phase: u8,
+    /// +0x48 bit0: guard flag toggled by the guard phase.
+    guard: bool,
+    /// +0x11c: timing gate.
+    timer: f32,
+}
+
 pub fn ivy_grower(
     mut storage: ResMut<IvyStorage>,
     time: Res<GameTime>,
     proposer: Res<IvyDirectionProposer>,
     walls: Res<PublicWalls>,
     mut completed: EventWriter<IvySegmentDoneGrowingMsg>,
+    mut state: Local<GrowerState>,
+) {
+    // Dispatch on the persisted phase (original: `*(u32*)(world+0x118)`).
+    //
+    // The guard bit alternates: the guard phase (0) toggles it and then runs
+    // the selected body; the main entries (1/3/4) run the guard body when it is
+    // set and the growth main otherwise, then cycle back to 0. The bit is NOT
+    // cleared by the guard body — the next phase-0 toggle flips it — so a
+    // validation pass and a growth pass alternate across frames and the main
+    // growth body (advance_growth with `delta`) runs on the growth frames.
+    match state.phase {
+        0 => {
+            state.guard = !state.guard;
+            state.phase = 1;
+            if state.guard {
+                run_guard_body(&mut storage, &walls, &proposer, &mut completed);
+            } else {
+                run_main_body(&mut storage, time.delta, &walls, &proposer, &mut completed);
+            }
+        }
+        1 | 3 | 4 => {
+            state.phase = 0; // cycle back to the guard phase
+            if state.guard {
+                run_guard_body(&mut storage, &walls, &proposer, &mut completed);
+            } else {
+                run_main_body(&mut storage, time.delta, &walls, &proposer, &mut completed);
+            }
+        }
+        2 => {
+            // Timing entry: timer >= 0 runs the main body, otherwise the
+            // guard check.
+            state.phase = 0;
+            state.timer += time.delta;
+            if state.timer >= 0.0 {
+                run_main_body(&mut storage, time.delta, &walls, &proposer, &mut completed);
+            } else {
+                run_guard_body(&mut storage, &walls, &proposer, &mut completed);
+            }
+        }
+        5 => {
+            // Secondary dispatch table (0x142ab3bf4); targets 待取证.
+            state.phase = 0;
+        }
+        6..=9 => {
+            // Original panic entries (strings + length → panic helper).
+            panic!("ivy_grower: invalid phase {}", state.phase);
+        }
+        _ => {}
+    }
+}
+
+/// Growth main body: advance every ivy's pending segment by `delta`, and when
+/// an ivy has room and no pending segment, propose a direction off the nearest
+/// wall and extend the root point. GPU/upload consumption is out of scope.
+fn run_main_body(
+    storage: &mut IvyStorage,
+    delta: f32,
+    walls: &PublicWalls,
+    proposer: &IvyDirectionProposer,
+    completed: &mut EventWriter<IvySegmentDoneGrowingMsg>,
 ) {
     for (_, ivy) in storage.iter_mut() {
         if ivy.pending_growth.is_some() {
-            advance_growth(ivy, time.delta, &mut completed);
+            advance_growth(ivy, delta, &mut |message| {
+                completed.write(message);
+            });
             continue;
         }
         if ivy.point_count() == 0 || ivy.point_count() >= ivy.maximum_point_count {
@@ -196,21 +340,81 @@ pub fn ivy_grower(
         if ivy.growth_progress > SETTLED_THRESHOLD {
             continue;
         }
-        // Candidate chain: nearest-wall normal + direction proposal. The exact
-        // original acceptance gates are not reconstructed (see module docs).
         let tail = ivy.last_point().position;
-        let Some((_, normal)) = nearest_wall_normal(&walls, tail) else {
+        let Some((wall_id, normal)) = nearest_wall_normal(walls, tail) else {
             continue;
         };
+        let anchored = check_for_wall_jump(walls, tail, Some(wall_id));
+        if let Some(jump_wall) = anchored {
+            if let Some(state_wall) = walls.get(jump_wall) {
+                let normal2 = get_wall_double_sided_normal(
+                    state_wall.simplified_curve_2d(),
+                    Vec2::new(tail.x, tail.z),
+                );
+                let direction = proposer.get_direction(tail, ivy.source_60);
+                let side = if Vec3::new(direction.x, 0.0, direction.y)
+                    .dot(Vec3::new(normal2.x, 0.0, normal2.y))
+                    >= 0.0
+                {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let (next, facing) = get_growth_point_proposal(tail, direction, normal2, side);
+                start_growth_segment(ivy, tail, facing, next);
+                continue;
+            }
+        }
         let direction = proposer.get_direction(tail, ivy.source_60);
-        let world = Vec3::new(direction.x, 0.0, direction.y);
-        let side = if world.dot(Vec3::new(normal.x, 0.0, normal.y)) >= 0.0 {
+        let side = if Vec3::new(direction.x, 0.0, direction.y)
+            .dot(Vec3::new(normal.x, 0.0, normal.y))
+            >= 0.0
+        {
             1.0
         } else {
             -1.0
         };
-        let next = tail + world * side * SEGMENT_DURATION;
-        start_growth_segment(ivy, tail, Vec3::new(normal.x, 0.0, normal.y), next);
+        let (next, facing) = get_growth_point_proposal(tail, direction, normal, side);
+        start_growth_segment(ivy, tail, facing, next);
+    }
+}
+
+/// Guard body: re-validate each ivy's growth tip against the wall it is on and
+/// re-anchor on a wall jump. In the original this is the phase-0/guard path
+/// (0x94ac51); the exact predicate beyond wall-jump re-anchoring is 待取证.
+/// The maximum_point_count gate is applied here too so the guard pass cannot
+/// over-grow an ivy past its budget.
+fn run_guard_body(
+    storage: &mut IvyStorage,
+    walls: &PublicWalls,
+    proposer: &IvyDirectionProposer,
+    completed: &mut EventWriter<IvySegmentDoneGrowingMsg>,
+) {
+    for (_, ivy) in storage.iter_mut() {
+        if ivy.pending_growth.is_some() {
+            advance_growth(ivy, 0.0, &mut |message| {
+                completed.write(message);
+            });
+            continue;
+        }
+        if ivy.point_count() == 0 || ivy.point_count() >= ivy.maximum_point_count {
+            continue;
+        }
+        let tail = ivy.last_point().position;
+        let Some((_, normal)) = nearest_wall_normal(walls, tail) else {
+            continue;
+        };
+        let direction = proposer.get_direction(tail, ivy.source_60);
+        let side = if Vec3::new(direction.x, 0.0, direction.y)
+            .dot(Vec3::new(normal.x, 0.0, normal.y))
+            >= 0.0
+        {
+            1.0
+        } else {
+            -1.0
+        };
+        let (next, facing) = get_growth_point_proposal(tail, direction, normal, side);
+        start_growth_segment(ivy, tail, facing, next);
     }
 }
 
@@ -218,13 +422,10 @@ pub fn ivy_grower(
 mod tests {
     use super::*;
     use crate::resources::ivy::IvyStorage;
-    use bevy_ecs::world::World;
     use glam::Vec3;
 
     #[test]
     fn growth_completes_and_emits_one_event_per_segment() {
-        let mut world = World::new();
-        world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
         let mut storage = IvyStorage::new();
         let id = storage.spawn_ivy(Vec3::ZERO, Vec3::X, 1.0..2.0, 3..4, 7);
         {
@@ -235,19 +436,22 @@ mod tests {
                 to: Vec3::X * 2.0,
             });
         }
-        let mut events = world.resource_mut::<Events<IvySegmentDoneGrowingMsg>>();
+        let mut emitted = Vec::new();
         {
-            let mut writer = EventWriter::new(&mut *events);
             let mut ivy = storage.get_mut(id).unwrap();
-            advance_growth(&mut ivy, 0.075, &mut writer);
+            advance_growth(&mut ivy, 0.075, &mut |message| emitted.push(message));
             assert_eq!(ivy.pending_growth, None);
             assert_eq!(ivy.growth_progress, 0.0);
             assert!(ivy.last_point().position.abs_diff_eq(Vec3::X * 2.0, 1e-6));
             // A second tick must not emit again.
-            advance_growth(&mut ivy, 0.075, &mut writer);
+            advance_growth(&mut ivy, 0.075, &mut |message| emitted.push(message));
         }
-        assert_eq!(events.len(), 1);
-        let (point_a, point_b) = events.drain().next().map(|e| (e.point_a, e.point_b)).unwrap();
+        assert_eq!(emitted.len(), 1);
+        let (point_a, point_b) = emitted
+            .into_iter()
+            .next()
+            .map(|e| (e.point_a, e.point_b))
+            .unwrap();
         assert_eq!((point_a, point_b), (0, 2));
     }
 
@@ -261,15 +465,12 @@ mod tests {
             from: Vec3::X,
             to: Vec3::X * 2.0,
         });
-        let mut world = World::new();
-        world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
-        let mut events = world.resource_mut::<Events<IvySegmentDoneGrowingMsg>>();
-        let mut writer = EventWriter::new(&mut *events);
+        let mut emitted = Vec::new();
         // 0.0375 s is half of 0.075: tail sits midway at (1.5, 0, 0).
-        advance_growth(&mut ivy, 0.0375, &mut writer);
+        advance_growth(&mut ivy, 0.0375, &mut |message| emitted.push(message));
         assert!(ivy.last_point().position.abs_diff_eq(Vec3::new(1.5, 0.0, 0.0), 1e-6));
         assert!(ivy.pending_growth.is_some());
-        assert!(events.is_empty());
+        assert!(emitted.is_empty());
     }
 
     #[test]
@@ -283,5 +484,45 @@ mod tests {
         assert!(ivy.last_point().position.abs_diff_eq(Vec3::X, 1e-6));
         assert_eq!(ivy.pending_growth.map(|s| (s.from, s.to)), Some((Vec3::X, Vec3::X + Vec3::Y)));
         assert_eq!(ivy.growth_progress, 0.0);
+    }
+
+    #[test]
+    fn phase_cycle_keeps_advancing_growth_and_fires_completion_events() {
+        // Runs the full `ivy_grower` system across many frames so the
+        // guard-toggle phase cycle is exercised. A pending segment must advance
+        // on the main-body passes and complete, emitting one event per segment.
+        let mut world = World::new();
+        world.init_resource::<IvyStorage>();
+        world.init_resource::<IvyDirectionProposer>();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
+        world.insert_resource(GameTime {
+            delta: 0.075,
+            ..Default::default()
+        });
+        let id;
+        {
+            let mut storage = world.resource_mut::<IvyStorage>();
+            id = storage.spawn_ivy(Vec3::ZERO, Vec3::X, 1.0..2.0, 3..4, 7);
+            let ivy = storage.get_mut(id).unwrap();
+            ivy.add_point(Vec3::X, Vec3::X);
+            ivy.pending_growth = Some(IvyGrowthSegment {
+                from: Vec3::X,
+                to: Vec3::X * 2.0,
+            });
+        }
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ivy_grower);
+        // ~60 frames: the guard/main alternation gives ~15 main passes of
+        // 0.075 s each (> 0.99), so the segment completes.
+        for _ in 0..60 {
+            schedule.run(&mut world);
+        }
+        let storage = world.resource::<IvyStorage>();
+        let ivy = storage.get(id).unwrap();
+        assert_eq!(ivy.pending_growth, None, "pending segment must complete");
+        assert!(ivy.last_point().position.abs_diff_eq(Vec3::X * 2.0, 1e-6));
+        // The completion event fired at least once (drained by the schedule).
+        assert!(!world.resource::<Events<IvySegmentDoneGrowingMsg>>().is_empty());
     }
 }

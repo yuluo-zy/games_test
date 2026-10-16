@@ -1,11 +1,15 @@
 //! Local CPU animation registration; global growth/spawn scheduling is separate.
 use super::{
     ivy_branch_thickness_animation::ivy_branch_thickness_animation,
+    ivy_grower::ivy_grower,
     ivy_leaf_animation::{IvyLeafIsGrowing, ivy_leaf_animation},
     ivy_leaf_spawner::{IvySegmentDoneGrowingMsg, ivy_leaf_spawner},
-    ivy_pruner::{RemoveIvyCmd, ivy_pruner_cmd},
+    ivy_pruner::{RemoveIvyCmd, ivy_pruner, ivy_pruner_cmd},
+    ivy_spawner::ivy_spawner,
 };
-use crate::resources::ivy::{IvyLeafRng, IvyLeafStorage, IvySpawnNoise, IvyStorage};
+use crate::resources::ivy::{
+    IvyDirectionProposer, IvyLeafRng, IvyLeafStorage, IvySpawnNoise, IvyStorage,
+};
 use bevy_ecs::prelude::*;
 
 pub fn register_ivy_storage(world: &mut World) {
@@ -13,6 +17,24 @@ pub fn register_ivy_storage(world: &mut World) {
     world.init_resource::<IvyLeafStorage>();
     world.init_resource::<IvyLeafRng>();
     world.init_resource::<IvySpawnNoise>();
+    world.init_resource::<IvyDirectionProposer>();
+    world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
+    world.init_resource::<Events<IvyLeafIsGrowing>>();
+    world.init_resource::<Events<RemoveIvyCmd>>();
+}
+
+/// B `systems/ivy/mod.rs::impl$0::insert_ivy_resources` (0x1409440c0): inserts
+/// IvyStorage/IvyLeafStorage/IvySpawnNoise/IvyDirectionProposer into the app
+/// world. The original is Bevy framework resource-insert machinery; this crate
+/// exposes the same insertion through `World::init_resource`.
+pub fn insert_ivy_resources(world: &mut World) {
+    register_ivy_storage(world);
+}
+
+/// B `systems/ivy/mod.rs::impl$0::add_ivy_events` (0x140944280): registers the
+/// ivy event types. The original registers the system-set event buffers; this
+/// crate initializes them as resources.
+pub fn add_ivy_events(world: &mut World) {
     world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
     world.init_resource::<Events<IvyLeafIsGrowing>>();
     world.init_resource::<Events<RemoveIvyCmd>>();
@@ -28,6 +50,30 @@ pub fn add_ivy_animation_systems(schedule: &mut Schedule) {
 pub fn add_ivy_cpu_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         (
+            ivy_pruner_cmd,
+            ivy_leaf_spawner,
+            ivy_branch_thickness_animation,
+            ivy_leaf_animation,
+        )
+            .chain(),
+    );
+}
+
+/// B `systems/ivy/mod.rs::impl$0::add_ivy_systems` (0x140944070): registers the
+/// grower/spawner/pruner/leaf-spawner/animation system family. The original
+/// registers 22 systems (0x140944070: `FUN_141664d80(.., 0x16)`); the CPU
+/// schedule below reproduces the grower/spawner/pruner → leaf_spawner →
+/// animation chain. The GPU upload passes
+/// (`ivy_send_to_gpu_leaf`/`ivy_send_to_gpu_segments`, whose bodies live in
+/// the modules of the same names) and `systems/audio/ivy_audio::ivy_audio_init_system`
+/// are render/audio-domain wiring that this crate's render world must attach
+/// (待接线) — their business logic is implemented and tested.
+pub fn add_ivy_systems(schedule: &mut Schedule) {
+    schedule.add_systems(
+        (
+            ivy_grower,
+            ivy_spawner,
+            ivy_pruner,
             ivy_pruner_cmd,
             ivy_leaf_spawner,
             ivy_branch_thickness_animation,

@@ -61,7 +61,9 @@ impl ToolbarCategory {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// 工具栏单类别模式组（B 原版为 ECS 资源：`input_record_replay`/`control_input_replay`
+/// 0x1409423d0/0x140941a30 以 `Res` 克隆它做同步点快照）。
+#[derive(Resource, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolbarCategoryModes {
     pub modes: Vec<AppMode>,
     pub current: usize,

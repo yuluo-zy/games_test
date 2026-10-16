@@ -1,0 +1,16 @@
+0x140a86b40 is_tool_selected machine code (radare2, read_memory 80B):
+
+mov ecx, dword [rcx]      ; tag
+lea eax, [rcx - 6]
+cmp eax, 0xf
+setb dl                   ; dl = (tag-6) < 15 -> tag in [6,20]
+add cl, 0xfb              ; cl = tag - 5
+mov eax, 0x3cfe
+shr eax, cl               ; eax = 0x3cfe >> (tag-5)
+and al, dl                ; result = bit(tag-5) of 0x3cfe
+ret
+
+0x3cfe = 0b0011110011111110 bits: [0]=0 [1..7]=1 [8..9]=0 [10..13]=1 [14..15]=0
+True set for tag in [6,20] = {6..12, 15..18} = crate AppMode::is_tool_selected.
+
+source bytes: 8b098d41fa83f80f0f92c280c1fbb8fe3c0000d3e820d0c3

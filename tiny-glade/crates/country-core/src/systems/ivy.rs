@@ -15,9 +15,13 @@
 //! 其后 24 B 未恢复。未找到时原函数不写有效的 index/extra，这里返回 `None`。
 use glam::Vec2;
 pub mod ivy_branch_thickness_animation;
+pub mod ivy_grower;
 pub mod ivy_leaf_animation;
 pub mod ivy_leaf_spawner;
 pub mod ivy_pruner;
+pub mod ivy_send_to_gpu_leaf;
+pub mod ivy_send_to_gpu_segments;
+pub mod ivy_spawner;
 pub mod registration;
 
 /// 初始最佳距离（O：0x14292c76c = 100.0）。

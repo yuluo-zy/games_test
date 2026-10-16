@@ -15,6 +15,7 @@
 //! 跳表（0x142aabd04 / 0x142aabd30，各模式分支的反编译有损坏）、`immediately_finish_interpolating`、
 //! `paused_main_camera_update`。所以 [`MainCamera`] 只是 0x4e0 字节原始缓冲加上已核对偏移的读写器。
 
+use bevy_ecs::resource::Resource;
 use glam::Vec3;
 
 pub const MAIN_CAMERA_SIZE: usize = 0x4e0;
@@ -109,8 +110,9 @@ fn finite_or(value: f32, fallback: f32, what: &str) -> f32 {
     }
 }
 
-/// `MainCamera` 的原始 0x4e0 字节。
-#[derive(Clone)]
+/// `MainCamera` 的原始 0x4e0 字节。原版为 ECS 资源（`input_record_replay`/`control_input_replay`
+/// 0x1409423d0/0x140941a30 以 `Res<MainCamera>` 调 `store_parameters`）。
+#[derive(Resource, Clone)]
 pub struct MainCamera {
     raw: Box<[u8; MAIN_CAMERA_SIZE]>,
 }
@@ -199,6 +201,71 @@ impl MainCamera {
             pitch_offset: 0.0,
             yaw_offset: 0.0,
         }
+    }
+
+    /// O 0x140911520：从会话相机记录（`CameraRigParametersCache` 6 字段，无 fov）恢复。
+    /// 章节目：mode=0（Normal）、轨道四元数（π/180）、+0x118=0、
+    /// push 28 B ActiveRotation 入 rotations Vec@+0x100、flag 时 +0x194 = 记录分量。
+    /// crate 内 MainCamera 为不透明字节缓冲：恢复 Normal body 的位置/yaw/pitch + 模式字节=
+    /// Normal；fov 用默认 45（fov 不在 6 字段存档内，`serde_default_vertical_fov_degrees`）；
+    /// yaw/pitch 直写（与 `store_parameters` 捕获同单位，保证存档往返）；π/180 轨道四元数
+    /// 与 ActiveRotation 队列（rotations Vec@+0x100）依赖 body 子结构，待取证。
+    pub fn load_parameters(&mut self, params: &crate::systems::camera_rig::CameraRigParametersCache) {
+        self.set_mode_byte(CameraMode::NORMAL);
+        self.write_f32(NORMAL_YAW_OFFSET, params.yaw);
+        self.write_f32(NORMAL_PITCH_OFFSET, params.pitch);
+        self.write_f32(NORMAL_POSITION_OFFSET, params.position.x);
+        self.write_f32(NORMAL_POSITION_OFFSET + 4, params.position.y);
+        self.write_f32(NORMAL_POSITION_OFFSET + 8, params.position.z);
+        self.write_f32(NORMAL_FOV_OFFSET, 45.0);
+    }
+
+    /// O 0x140911dd0（12 B 转发器）：`eye_position` → `utils::camera` 位置提取。
+    /// crate 内 MainCamera 为不透明缓冲，从 Normal body 位置构造 [`CameraMatrices`]
+    /// （非 Normal body 的位置读取待取证）。
+    pub fn eye_position(&self) -> Vec3 {
+        let position = Vec3::new(
+            self.read_f32(NORMAL_POSITION_OFFSET),
+            self.read_f32(NORMAL_POSITION_OFFSET + 4),
+            self.read_f32(NORMAL_POSITION_OFFSET + 8),
+        );
+        position
+    }
+
+    /// O 0x140911df0（12 B 转发器）：`eye_forward`（`eye_direction` 同址）→
+    /// `utils::camera` 前向提取。由 Normal body 的 yaw/pitch 组方向。
+    pub fn eye_forward(&self) -> Vec3 {
+        self.normal_matrices().eye_direction()
+    }
+
+    /// O 0x140911e10（12 B 转发器）：`xz_projective_rotation` → `utils::camera`
+    /// XZ 投影旋转。
+    pub fn xz_projective_rotation(&self) -> glam::Quat {
+        self.normal_matrices().xz_projective_rotation()
+    }
+
+    /// 从 Normal body 的位置/yaw/pitch 构造共享 [`utils::camera::CameraMatrices`]
+    /// （转发器辅助，I）。`xz_projective_rotation` 只依赖 `inverse_view`，projection 用
+    /// 单位矩阵占位（不参与该旋转）。
+    fn normal_matrices(&self) -> utils::camera::CameraMatrices {
+        let position = self.eye_position();
+        let yaw = self.read_f32(NORMAL_YAW_OFFSET);
+        let pitch = self.read_f32(NORMAL_PITCH_OFFSET);
+        let rotation = glam::Quat::from_rotation_y(yaw) * glam::Quat::from_rotation_x(pitch);
+        let body = utils::camera::CameraBodyMatrices::from_position_rotation(position, rotation);
+        utils::camera::CameraMatrices {
+            projection: glam::Mat4::IDENTITY,
+            inverse_view: body.inverse_view,
+        }
+    }
+
+    /// `MainCamera::reset`（行 428，内联，I：重建默认装配；系统层 reset_camera 调用）。
+    /// crate 内重建 = 清缓冲 + 模式=Normal + fov=默认 45。
+    pub fn reset(&mut self) {
+        self.raw = Box::new([0; MAIN_CAMERA_SIZE]);
+        self.set_mode_byte(CameraMode::NORMAL);
+        self.write_f32(NORMAL_FOV_OFFSET, 45.0);
+        self.write_f32(NORMAL_POSITION_OFFSET + 4, 5.0);
     }
 }
 
@@ -290,5 +357,50 @@ mod tests {
             [word(0), word(1), word(2), word(3), word(4), word(6)],
             [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
         );
+    }
+
+    #[test]
+    fn load_parameters_restores_normal_body_and_round_trips() {
+        // O：0x140911520 恢复 Normal body + 模式字节；yaw/pitch 直写（与 store_parameters
+        // 捕获同单位）；fov 用默认 45（不在 6 字段存档）。
+        let params = crate::systems::camera_rig::CameraRigParametersCache {
+            yaw: 90.0,
+            pitch: -20.0,
+            position: Vec3::new(1.0, 2.0, 3.0),
+            camera_rig_arm_length: 0.0,
+            pitch_offset: 0.0,
+            yaw_offset: 0.0,
+        };
+        let mut camera = MainCamera::default();
+        camera.load_parameters(&params);
+        assert_eq!(camera.mode_byte(), CameraMode::NORMAL.0);
+        assert_eq!(camera.read_f32(NORMAL_YAW_OFFSET), 90.0);
+        assert_eq!(camera.read_f32(NORMAL_PITCH_OFFSET), -20.0);
+        assert_eq!(camera.read_f32(NORMAL_POSITION_OFFSET), 1.0);
+        assert_eq!(camera.read_f32(NORMAL_POSITION_OFFSET + 4), 2.0);
+        assert_eq!(camera.read_f32(NORMAL_POSITION_OFFSET + 8), 3.0);
+        assert_eq!(camera.read_f32(NORMAL_FOV_OFFSET), 45.0);
+        // store → load 往返保持（fov 不存 6 字段存档，回 45）。
+        let stored = camera.store_parameters();
+        assert_eq!(stored.yaw, 90.0);
+        assert_eq!(stored.pitch, -20.0);
+        assert_eq!(stored.position, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn forwarders_read_normal_body_position_and_direction() {
+        let mut camera = MainCamera::default();
+        camera.write_f32(NORMAL_POSITION_OFFSET, 3.0);
+        camera.write_f32(NORMAL_POSITION_OFFSET + 4, 4.0);
+        camera.write_f32(NORMAL_POSITION_OFFSET + 8, 5.0);
+        camera.write_f32(NORMAL_YAW_OFFSET, 0.0);
+        camera.write_f32(NORMAL_PITCH_OFFSET, 0.0);
+        assert_eq!(camera.eye_position(), Vec3::new(3.0, 4.0, 5.0));
+        // yaw=0 pitch=0 → 朝 -Z。
+        assert!((camera.eye_forward() - Vec3::new(0.0, 0.0, -1.0)).length() < 1e-5);
+        let _ = camera.xz_projective_rotation();
+        let _ = camera.reset();
+        assert_eq!(camera.mode_byte(), CameraMode::NORMAL.0);
+        assert_eq!(camera.eye_position(), Vec3::new(0.0, 5.0, 0.0));
     }
 }

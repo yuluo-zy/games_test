@@ -63,8 +63,9 @@ Normal body 内（0x110/0x128/0x11c/0x134…）= 拍照/工具模式复用 Norma
   中心深度(滤波/不滤波) / 光标地形 / 中心地形 / 显式 pivot）。
 - 会话存档相机记录（0x1403b4ca0 反序列化器，串自 resources/session.rs）：
   `{ yaw: f32, pitch: f32, position: Vec3, camera_rig_arm_length: f32, pitch_offset: f32,
-  yaw_offset: f32, position_cache: … }` = `CameraRigParametersCache` 元素（0x24B，
-  reset_camera 0x140912a40 以 0x24 步长 free，元素大小一致）。
+  yaw_offset: f32 }` = `CameraRigParametersCache` 元素（**0x24B，reanalyst 2026-10-15：
+  save 序列化 0x1416f8470 只写这 6 字段；"position_cache"串在 blob 0x1429cca3b 但 save 不含——
+  旧 7 字段表含 position_cache 修正**，reset_camera 0x140912a40 以 0x24 步长 free，元素大小一致）。
 - `CacheFreeCamRig`：仅具名（U 布局）。
 
 ### 2.3 CameraMode 枚举（O 行为，变体名 I）

@@ -1,0 +1,85 @@
+// name: serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>
+// sig: void __cdecl serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>(void)
+// size: 335
+
+// WARNING: Type propagation algorithm not settling
+
+void __cdecl
+country_core::resources::walls::decorator::_::impl$0::
+serialize<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>
+          (void)
+
+{
+  longlong *plVar1;
+  uint uVar2;
+  uint *in_RCX;
+  ulonglong uVar3;
+  longlong *in_RDX;
+  longlong lVar4;
+  uint uVar5;
+  ulonglong uVar6;
+  longlong lVar7;
+  undefined2 uStack_4c;
+  byte abStack_49 [41];
+  
+  uVar5 = *in_RCX;
+  lVar7 = 10;
+  if (uVar5 < 10000) {
+    uVar6 = (ulonglong)uVar5;
+  }
+  else {
+    lVar4 = 10;
+    do {
+      uVar2 = uVar5;
+      uVar6 = (ulonglong)uVar2 / 10000;
+      lVar7 = lVar4 + -4;
+      *(undefined2 *)((longlong)&uStack_4c + lVar4) =
+           *(undefined2 *)
+            (
+            "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\src\\slice.rs"
+            + (ulonglong)((uVar2 % 10000) / 100) * 2);
+      *(undefined2 *)(&stack0xffffffffffffffb6 + lVar4) =
+           *(undefined2 *)
+            (
+            "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\src\\slice.rs"
+            + (ulonglong)((uVar2 % 10000) % 100) * 2);
+      lVar4 = lVar7;
+      uVar5 = uVar2 / 10000;
+    } while (99999999 < uVar2);
+    uVar5 = uVar2 / 10000;
+  }
+  uVar3 = uVar6;
+  if (99 < uVar5) {
+    uVar5 = (uint)((uVar6 & 0xffff) >> 2) / 0x19;
+    uVar3 = (ulonglong)uVar5;
+    *(undefined2 *)(&stack0xffffffffffffffb6 + lVar7) =
+         *(undefined2 *)
+          (
+          "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\src\\slice.rs"
+          + (ulonglong)((int)uVar6 + uVar5 * -100 & 0xffff) * 2);
+    lVar7 = lVar7 + -2;
+  }
+  plVar1 = (longlong *)*in_RDX;
+  if ((uint)uVar3 < 10) {
+    abStack_49[lVar7] = (byte)uVar3 | 0x30;
+    lVar7 = lVar7 + -1;
+  }
+  else {
+    *(undefined2 *)(&stack0xffffffffffffffb6 + lVar7) =
+         *(undefined2 *)
+          (
+          "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\src\\slice.rs"
+          + uVar3 * 2);
+    lVar7 = lVar7 + -2;
+  }
+  uVar6 = 10 - lVar7;
+  lVar4 = plVar1[2];
+  if ((ulonglong)(*plVar1 - lVar4) < uVar6) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar4 = plVar1[2];
+  }
+  memcpy((void *)(plVar1[1] + lVar4),abStack_49 + lVar7 + 1,uVar6);
+  plVar1[2] = lVar4 + uVar6;
+  return;
+}
+

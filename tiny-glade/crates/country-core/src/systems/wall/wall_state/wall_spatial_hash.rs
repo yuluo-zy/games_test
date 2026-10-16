@@ -107,6 +107,45 @@ impl WallSpatialHash {
         result
     }
 
+    /// B 0x140aa5a10 (snapping_to_segments): AABB query returning every
+    /// segment endpoint whose cell lies within the clamped world bounds, as
+    /// `(candidate point, wall)` pairs. Endpoints outside the strict (-65,65)
+    /// grid are clamped to the border cells, matching the world->grid clamp.
+    pub fn query_with_aabb_clamped(&self, min: [f32; 2], max: [f32; 2]) -> Vec<([f32; 2], WallId)> {
+        use crate::recovered_building::wall_spatial_index::{
+            GRID_SIDE, grid_coord_to_cell_index, world_space_to_grid_coord_unclamped,
+        };
+        let clamp_to_cell = |p: [f32; 2]| {
+            let g = world_space_to_grid_coord_unclamped(p);
+            let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
+            grid_coord_to_cell_index(g) as usize
+        };
+        let lo = clamp_to_cell(min);
+        let hi = clamp_to_cell(max);
+        let (min_x, max_x) = (lo % GRID_SIDE, hi % GRID_SIDE);
+        let (min_z, max_z) = (lo / GRID_SIDE, hi / GRID_SIDE);
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        for z in min_z..=max_z {
+            for x in min_x..=max_x {
+                let cell = z * GRID_SIDE + x;
+                for segment in self.segments_in_cell(cell) {
+                    for endpoint in segment.endpoints {
+                        // [f32;2] is not Eq/Hash; dedup on bit patterns.
+                        let key = (
+                            [endpoint[0].to_bits(), endpoint[1].to_bits()],
+                            segment.wall,
+                        );
+                        if seen.insert(key) {
+                            out.push((endpoint, segment.wall));
+                        }
+                    }
+                }
+            }
+        }
+        out
+    }
+
     /// 0x140a8fd90 uses simplified Curve2 endpoints/U, then projects each
     /// endpoint onto the *first* terrain-mapped Curve3, before path preparation.
     pub fn replace_wall(&mut self, id: WallId, state: &PublicWallState) {

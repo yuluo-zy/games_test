@@ -32,14 +32,20 @@ impl PlaybackState {
     }
 }
 
-/// 循环播放器用到的实例接口。
+/// 循环播放器用到的实例接口（wall_audio_utils `AudioLoopPlayer` 的注入面）。
 pub trait LoopInstance {
     type Error;
     /// 实例是否为 `Active`（判别 == 1）；`Disabled`/`Err` 时跳过 `set_volume`。
     fn is_active(&self) -> bool;
-    fn set_position(&mut self);
+    /// `set_position`（0x140a57da0）：3D 属性，forward=(0,0,-1)/up=(0,1,0)。
+    fn set_position(&mut self, position: [f32; 3]);
+    /// `set_parameter`（0x140a57670）：实例参数面。
     fn set_parameter(&mut self, name: &str, value: f32);
     fn set_volume(&mut self, volume: f32) -> Result<(), Self::Error>;
+    /// 帧尾 `start_if_not_playing`（0x140a596b0 的实例面）：当前实例启动。
+    fn start(&mut self) -> Result<(), Self::Error>;
+    /// 帧尾 `stop`（0x140a59430 的实例面）：当前实例立即停止。
+    fn stop(&mut self) -> Result<(), Self::Error>;
 }
 
 /// 参数名（O：0x142aaf450，长 0xd）。
@@ -62,14 +68,38 @@ impl<I: LoopInstance> AudioLoopPlayer<I> {
         }
     }
 
+    /// 当前实例（`AudioLoopPlayer::resolve`，0x140a592xx 语义；越界 panic 同原版）。
+    pub fn current(&self) -> &I {
+        &self.instances[self.current]
+    }
+
     /// `request_play`（0x1409285a0）。`current` 越界与 `set_volume` 失败对应原版 panic：越界 panic，音量失败以 `Err` 返回。
-    pub fn request_play(&mut self, volume: f32, editing_speed: f32) -> Result<(), I::Error> {
+    pub fn request_play(
+        &mut self,
+        position: [f32; 3],
+        volume: f32,
+        editing_speed: f32,
+    ) -> Result<(), I::Error> {
         self.should_play = true;
         let instance = &mut self.instances[self.current];
-        instance.set_position();
+        instance.set_position(position);
         instance.set_parameter(EDITING_SPEED_PARAMETER, editing_speed);
         if instance.is_active() {
             instance.set_volume(volume)?;
+        }
+        Ok(())
+    }
+
+    /// 帧尾：按 `should_play` 标志对当前实例 `start`/`stop` 并清标志
+    /// （wall_audio_fmod/building/stair 帧尾，0x140a596b0/0x140a59430 的驱动侧）。
+    pub fn frame_end(&mut self) -> Result<(), I::Error> {
+        let play = self.should_play;
+        self.should_play = false;
+        let instance = &mut self.instances[self.current];
+        if play {
+            instance.start()?;
+        } else {
+            instance.stop()?;
         }
         Ok(())
     }
@@ -91,7 +121,7 @@ mod tests {
         fn is_active(&self) -> bool {
             self.active
         }
-        fn set_position(&mut self) {
+        fn set_position(&mut self, _position: [f32; 3]) {
             self.calls.push("position".into());
         }
         fn set_parameter(&mut self, name: &str, value: f32) {
@@ -104,6 +134,14 @@ mod tests {
             } else {
                 Ok(())
             }
+        }
+        fn start(&mut self) -> Result<(), Self::Error> {
+            self.calls.push("start".into());
+            Ok(())
+        }
+        fn stop(&mut self) -> Result<(), Self::Error> {
+            self.calls.push("stop".into());
+            Ok(())
         }
     }
 
@@ -129,7 +167,7 @@ mod tests {
             active: true,
             ..Default::default()
         }]);
-        player.request_play(0.5, 2.0).unwrap();
+        player.request_play([1.0, 2.0, 3.0], 0.5, 2.0).unwrap();
         assert!(player.should_play);
         assert_eq!(
             player.instances[0].calls,
@@ -140,7 +178,7 @@ mod tests {
     #[test]
     fn inactive_instance_skips_the_volume_call() {
         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
-        player.request_play(0.5, 1.0).unwrap();
+        player.request_play([1.0, 2.0, 3.0], 0.5, 1.0).unwrap();
         assert_eq!(player.instances[0].calls, ["position", "editing_speed=1"]);
     }
 
@@ -151,8 +189,25 @@ mod tests {
             fail_volume: true,
             ..Default::default()
         }]);
-        assert_eq!(player.request_play(1.0, 1.0), Err("volume"));
+        assert_eq!(
+            player.request_play([1.0, 2.0, 3.0], 1.0, 1.0),
+            Err("volume")
+        );
         assert!(player.should_play);
+    }
+
+    #[test]
+    fn frame_end_starts_when_should_play_and_stops_otherwise() {
+        let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
+        player.frame_end().unwrap();
+        assert_eq!(player.instances[0].calls, ["stop"]);
+        player.request_play([0.0, 0.0, 0.0], 1.0, 1.0).unwrap();
+        player.frame_end().unwrap();
+        assert_eq!(
+            player.instances[0].calls,
+            ["stop", "position", "editing_speed=1", "start"]
+        );
+        assert!(!player.should_play);
     }
 
     #[test]
@@ -160,7 +215,7 @@ mod tests {
     fn current_out_of_bounds_panics_like_the_original() {
         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
         player.current = 1;
-        let _ = player.request_play(1.0, 1.0);
+        let _ = player.request_play([0.0, 0.0, 0.0], 1.0, 1.0);
     }
 
     #[test]

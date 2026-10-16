@@ -11,8 +11,8 @@
 | country_core::systems::audio::music::music_player::MusicPlayer::update | 0x1408b5500 | 51 | 状态机（state@+0x118∈0..4，双跳表 0x142a9fa24/A 0x142a9fa34/B 各 4 有效条目）：每 case time_acc@+0x11c+=dt；A1 超阈值停主事件；A2 Duration@+0x120(round-to-even)超时→推进；A3 节拍同步(0x143634c68==1 且 0x143634c90&3==0→state=4+start)；A4 超阈值 fadeout 停/超阈值3→state=0；B 表=回卷路径；state==0→switch_track；公共尾 get_paused→恢复/切；每帧清零 0x143634c90 | O | audio-misc\decomp\decomp-0x1408b5500.txt |
 | country_core::systems::audio::music::music_player::MusicPlayer::stop_photomode_snapshots | 0x1408b6250 | 172 | 停 PhotoMode 快照（snapshot:/PhotoMode O） | I（内联，名推断） | audio-misc\decomp\decomp-0x1408b6250.txt |
 | country_core::systems::audio::music::music_player::MusicPlayer::init | 0x1408b63c0 | 177 | 3×instantiate_audio(mus_GladePreview×2+Amb/GladePreview)→start | O | audio-misc\decomp\decomp-0x1408b63c0.txt |
-| country_core::systems::audio::music::music_player::MusicPlayer::load_tracks | 0x1408b6b10 | 200 | 曲库装载（Halloween/Tiny,Single,Forgotten,Enchanted 串 O） | I | audio-misc\decomp\decomp-0x1408b6b10.txt |
-| country_core::systems::audio::music::music_player::MusicPlayer::switch_track | 0x1408b70d0 | 223 | 切曲（track 下标推进+start/stop） | I | audio-misc\decomp\decomp-0x1408b70d0.txt |
+| country_core::systems::audio::music::music_player::MusicPlayer::load_tracks | 0x1408b6b10 | 200 | 曲库装载：drop 旧曲目(+0xf0/+0xf8 0x30B 元素)与事件注册(+0xd8/+0xe0 0x18B)；逐名 FUN_14157c850(name, 回调=0x1408b7620, 0x1000)=instantiate_audio → 追加曲目 Vec(+0xf0)+事件注册(+0xd8)；结束 state=0（**0x1408b7620 实为曲目 FMOD 节拍回调**，旧"曲库装载 I"→O） | O | audio-misc\decomp\decomp-0x1408b6b10.txt, RE-ANALYSIS(state/music §3) |
+| country_core::systems::audio::music::music_player::MusicPlayer::switch_track | 0x1408b70d0 | 223 | **洗牌弹出器（generate_track_playlist 内联）**——播放列表{+0x100 count,+0x108 ptr,+0x110 remaining}；剩余==0→重建：身份 0..N-1（movdqa paddq 向量化/标量）→FUN_14132b1a0 洗牌（RNG≈0x142a9f4xx）→不重复守卫（洗牌首元素==+0x08 当前曲目→与 element[count&~1] 交换）→弹尾：remaining=N-1、+0x00=1、+0x08=弹出的曲目索引；N==0→+0x00=0。**FMOD start/stop 由调用方 update 完成**（旧结论"顺序推进+start/stop"→新证据 RNE 原字节 0x1408b70d0 洗牌弹尾） | O | audio-misc\decomp\decomp-0x1408b70d0.txt, RE-ANALYSIS(state/music §1) |
 | country_core::systems::audio::music::music_player::MusicPlayer::stop_immediately | 0x1408b72e0 | 237 | 0x1408b72e0（PDB 名 current_track 错位）：遍历全部曲目[+0]==1→stop(1=ALLOWFADEOUT)+主事件[+0x10]==1→stop(1)；[+0]=0 | O | audio-misc\decomp\decomp-0x1408b72e0.txt |
 | country_core::systems::audio::music::music_player::MusicPlayer::pause | 0x1408b7490 | 245 | set_paused(true)（曲目+主事件） | I | audio-misc\decomp\decomp-0x1408b7490.txt |
 | country_core::systems::audio::music::music_player::get_timeline_beat_properties | 0x1408b7620 | 269 | 0x1408b7620：非 getter——把输入结构{i32,i32,f32,i32,i32}写入 6 个进程全局 0x143634c68/c70(f32)/c78/c80/c88/c90（c88/c90 running max；c90=update 每帧清零的节拍计数） | O | audio-misc\decomp\decomp-0x1408b7620.txt |
@@ -50,6 +50,13 @@ stop(1=ALLOWFADEOUT)`；主事件 [+0x10]==1 → stop(1)；`[+0]=0`（主事件�
 **get_timeline_beat_properties @0x1408b7620（O 手解，非 getter）**：输入结构 {i32,i32,f32,i32,i32}
 → 写 6 个进程全局 0x143634c68/c70(f32)/c78/c80/c88/c90（c88/c90 = 带一次修正的 running max；
 c90 = update 每帧清零的节拍计数）——**发布器**，现有代码 `->(i32,f32)` 签名错。
+**switch_track @0x1408b70d0（O，reanalyst 2026-10-15）**：详见本表——洗牌弹尾（generate_track_playlist
+内联），非顺序推进；FMOD start/stop 在 update §3。
+**MusicPlayer 扩展布局（O）**：+0x00 有曲目标志 / +0x08 当前曲目索引 / +0x10(update §3 判定) /
++0xf0 曲目 Vec ptr / +0xf8 曲目数 / +0x100 播放列表长度 / +0x108 播放列表 ptr / +0x110 播放列表剩余 /
++0x118 state / +0x11c time_acc / +0x120 Duration(i64) / +0x128 last_position；曲目元素 0x30B。
+**PDB 错位登记**：sysres-v3 `probabilistic_switch_track` @0x1408b7620 为错位——0x1408b7620 机器码 =
+节拍发布器（章节结论成立）；实际 probabilistic_switch_track 内联于 update（概率来自洗牌播放列表）。
 **init @0x1408b63c0（O）**：3×instantiate_audio（`event:/Music/mus_GladePreview`×2 +
 `event:/Amb/GladePreview`，串 0x142ad6318/0x142ad6350）+ start。
 **pause @0x1408b7490**：set_paused(true)（曲目+主事件）。**load_tracks @0x1408b6b10**（I）：

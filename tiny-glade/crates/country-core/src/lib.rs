@@ -10,8 +10,10 @@ pub mod utils_contract;
 
 pub mod asset_libraries;
 pub mod frozen_map;
+pub mod game_profile;
 pub mod geometry;
 pub mod input;
+pub mod meta_commander;
 pub mod name_hash;
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
@@ -33,6 +35,7 @@ pub mod utils;
 pub mod systems {
     pub mod audio;
     pub mod backend;
+    pub mod brush_preview;
     pub mod camera_rig;
     pub mod collision;
     pub mod ivy;
@@ -47,6 +50,7 @@ pub mod systems {
     pub mod ui;
     pub mod ui_clutter;
     pub mod terrain;
+    pub mod time_of_day;
     pub mod save;
     pub mod wall;
 }
