@@ -39,6 +39,25 @@ pub fn raster_variants(base: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
         result
     })
 }
+/// 同一工作目录可连续构建（如 depth-only 0/1 两个变体）：只删除本构建自己的
+/// `stage-{index}.spv` 旧产物，`compile_prepared` 的拒绝覆盖仍防止旧产物冒充本次成功。
+/// 槽位不是普通文件（目录等）时报错而不递归删除；工作目录须由调用者独占。
+fn fresh_stage_output(work_directory: &Path, index: usize) -> Result<PathBuf, String> {
+    let output = work_directory.join(format!("stage-{index}.spv"));
+    match std::fs::symlink_metadata(&output) {
+        Ok(meta) if meta.is_file() || meta.is_symlink() => std::fs::remove_file(&output)
+            .map_err(|e| format!("removing stale {}: {e}", output.display()))?,
+        Ok(_) => {
+            return Err(format!(
+                "stage output slot {} is not a file",
+                output.display()
+            ));
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("inspecting {}: {e}", output.display())),
+    }
+    Ok(output)
+}
 pub fn build_pipeline(
     dxc: &Path,
     spec: &BuildSpec,
@@ -71,12 +90,15 @@ pub fn build_pipeline_with_recipe(
     std::fs::create_dir_all(work_directory).map_err(|e| e.to_string())?;
     let input = work_directory.join("prepared.hlsl");
     std::fs::write(&input, &prepared.source).map_err(|e| e.to_string())?;
+    // 先清掉本构建全部 stage 槽位，避免前一 stage 失败时留下上次构建的后续产物。
+    let outputs = (0..spec.stages.len())
+        .map(|index| fresh_stage_output(work_directory, index))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut stages = Vec::new();
-    for (index, (stage, entry)) in spec.stages.iter().enumerate() {
-        let output = work_directory.join(format!("stage-{index}.spv"));
+    for ((stage, entry), output) in spec.stages.iter().zip(&outputs) {
         let request = DxcRequest::new(*stage, entry.clone()).map_err(|e| e.to_string())?;
         let bytes = request
-            .compile_prepared(dxc, &input, &output)
+            .compile_prepared(dxc, &input, output)
             .map_err(|e| e.to_string())?;
         let spirv = super::pack::prepare_spirv_for_package(&bytes)?;
         stages.push(CompiledShaderStage {

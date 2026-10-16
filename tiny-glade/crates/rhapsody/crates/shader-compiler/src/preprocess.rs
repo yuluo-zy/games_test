@@ -43,6 +43,13 @@ impl IncludeProvider for FileProvider {
         } else {
             root_relative
         };
+        // 归一后仍以 `..` 开头即逃出源码根；相对候选逃出时根回退必然也逃出，统一拒绝。
+        if matches!(
+            chosen.components().next(),
+            Some(relative_path::Component::ParentDir)
+        ) {
+            return Err(format!("include {path:?} escapes the shader source root").into());
+        }
         let label = format!("{}/{}", self.logical_root, chosen);
         Ok(ResolvedInclude {
             resolved_path: ResolvedIncludePath(label.clone()),
@@ -60,12 +67,18 @@ impl IncludeProvider for FileProvider {
     }
 }
 /// 每个chunk发出#line，保留原发行嵌入的逻辑文件名；不把-I当include展开。
+/// 重复宏名（含 artifact 与 recipe 合并后）和逃出 `root` 的 include 均为本工程适配的显式错误。
 pub fn prepare_file(
     root: &Path,
     logical_root: &str,
     source: &str,
     defines: &ShaderDefines,
 ) -> Result<PreparedSource, String> {
+    if let Some(name) = defines.duplicate_name() {
+        return Err(format!(
+            "duplicate define `{name}`: repeated pairs cancel in the artifact key"
+        ));
+    }
     let mut provider = FileProvider {
         root: root.into(),
         logical_root: logical_root.trim_end_matches('/').into(),

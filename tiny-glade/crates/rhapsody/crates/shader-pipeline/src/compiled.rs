@@ -74,11 +74,92 @@ impl CompiledShaderPipeline {
         Ok(bytes)
     }
 }
+impl CompiledShaderPipeline {
+    /// 本工程的可选新鲜度检查（原 runtime 只读不判旧）：发行 `source_dependencies` 只存
+    /// 逻辑路径（如 `shaders/inc/common.hlsl`），无内容 hash，因此按 mtime 比较。
+    /// 依赖相对 `source_base`（含 `shaders/` 的目录）解析；任一依赖晚于 `compiled_path`
+    /// 或已不存在即视为过期。绝对路径或逃出 `source_base` 的依赖报 InvalidData。
+    /// 不改动文件命名/键：调用者在缓存命中后自行决定是否重编。
+    pub fn is_stale(
+        &self,
+        compiled_path: impl AsRef<std::path::Path>,
+        source_base: impl AsRef<std::path::Path>,
+    ) -> std::io::Result<bool> {
+        let built = std::fs::metadata(compiled_path)?.modified()?;
+        for dependency in &self.source_dependencies {
+            let path = dependency_path(source_base.as_ref(), dependency)?;
+            match std::fs::metadata(&path) {
+                Ok(meta) if meta.modified()? <= built => {}
+                Ok(_) => return Ok(true),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(false)
+    }
+}
+/// 依赖标签按 `/` 词法归一；原发行含 `eval/../x` 这类根内 `..`，只拒绝逃出根的。
+fn dependency_path(base: &std::path::Path, label: &str) -> std::io::Result<std::path::PathBuf> {
+    let invalid = || {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("source dependency {label:?} escapes the source base"),
+        )
+    };
+    let mut parts: Vec<&str> = Vec::new();
+    for part in label.split(['/', '\\']) {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop().ok_or_else(invalid)?;
+            }
+            _ if part.contains(':') => return Err(invalid()),
+            _ => parts.push(part),
+        }
+    }
+    if label.starts_with(['/', '\\']) || parts.is_empty() {
+        return Err(invalid());
+    }
+    Ok(parts
+        .iter()
+        .fold(base.to_path_buf(), |path, part| path.join(part)))
+}
 impl CompiledShaderStage {
     pub fn spirv_bytes(&self) -> Vec<u8> {
         self.spirv
             .iter()
             .flat_map(|word| word.to_le_bytes())
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dependency_path;
+    use std::path::Path;
+
+    #[test]
+    fn dependency_labels_resolve_inside_the_base_only() {
+        let base = Path::new("base");
+        // 原发行依赖保留未归一的根内 `..`（如 canopy 材质）。
+        assert_eq!(
+            dependency_path(
+                base,
+                "shaders/inc/material/eval/../canopy_material.inc.hlsl"
+            )
+            .unwrap(),
+            base.join("shaders/inc/material/canopy_material.inc.hlsl")
+        );
+        for bad in [
+            "../x.hlsl",
+            "shaders/../../x.hlsl",
+            "/etc/passwd",
+            "C:/x.hlsl",
+            "",
+            "..",
+        ] {
+            let error = dependency_path(base, bad).unwrap_err();
+            assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{bad}");
+        }
     }
 }

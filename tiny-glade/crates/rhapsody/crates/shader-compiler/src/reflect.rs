@@ -88,6 +88,13 @@ fn size(x: &s::Type) -> Result<u32, String> {
         .and_then(|n| n.try_into().ok())
         .ok_or_else(|| "missing/oversized reflected byte size".into())
 }
+fn stage_label(stage: ShaderStage) -> &'static str {
+    match stage {
+        ShaderStage::Compute => "compute",
+        ShaderStage::Vertex => "vertex",
+        ShaderStage::Fragment => "fragment",
+    }
+}
 /// descriptor/name/type集合按原发行schema生成；确定排序仅用于可复现新打包，原HashMap顺序不作为语义。
 pub fn generate_reflection(stages: &[CompiledShaderStage]) -> Result<ShaderReflection, String> {
     let mut descriptors: BTreeMap<(u32, u32), Binding> = BTreeMap::new();
@@ -155,9 +162,22 @@ pub fn generate_reflection(stages: &[CompiledShaderStage]) -> Result<ShaderRefle
                         descriptors.insert((location.set, location.binding), binding.clone())
                         && old != binding
                     {
+                        // 同槽跨stage必须完全一致（含名字）；名字是绑定键来源，不能择一。
+                        let differs: Vec<_> = [
+                            ("kind", old.kind != binding.kind),
+                            ("array", old.array != binding.array),
+                            ("name", old.name != binding.name),
+                        ]
+                        .into_iter()
+                        .filter_map(|(field, differ)| differ.then_some(field))
+                        .collect();
                         return Err(format!(
-                            "conflicting cross-stage descriptor at set={} binding={}: old={old:?}; new={binding:?}",
-                            location.set, location.binding
+                            "conflicting cross-stage descriptor at set={} binding={} ({} stage `{}` differs in {}): earlier={old:?}; this={binding:?}",
+                            location.set,
+                            location.binding,
+                            stage_label(stage.stage),
+                            stage.entry_point,
+                            differs.join("/")
                         ));
                     }
                     if name == "$Globals" {
@@ -207,6 +227,8 @@ pub fn generate_reflection(stages: &[CompiledShaderStage]) -> Result<ShaderRefle
                         return Err("conflicting vertex input".into());
                     }
                 }
+                // 原消费者只建一个 VkPushConstantRange{offset 0, size, 全部可见stage}，
+                // 故跨stage取最大字节尺寸即可覆盖各stage块（SPIR-Q 尺寸已含成员偏移）。
                 Variable::PushConstant { ty, .. } => {
                     push_constant_size = push_constant_size.max(size(&ty)?)
                 }

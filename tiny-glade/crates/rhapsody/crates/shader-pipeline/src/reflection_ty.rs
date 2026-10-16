@@ -166,9 +166,9 @@ mod nbyte_tests {
                     .unwrap_or(scalar_mc(&m.vec_ty.scalar_ty) * m.vec_ty.nscalar as usize);
                 Some(stride * m.nvec as usize)
             }
-            Type::Array(a) => Some(
-                a.stride.unwrap_or(0) as usize * a.nrepeat.unwrap_or(0) as usize,
-            ),
+            Type::Array(a) => {
+                Some(a.stride.unwrap_or(0) as usize * a.nrepeat.unwrap_or(0) as usize)
+            }
             Type::Struct(s) => Some(match s.members.last() {
                 None => 0,
                 Some(m) => m.offset as usize + mc(&m.ty).unwrap_or(0),
@@ -191,13 +191,21 @@ mod nbyte_tests {
 
     #[test]
     fn literal_vectors() {
-        let v = |s, n| Type::Vector(VectorType { scalar_ty: s, nscalar: n });
+        let v = |s, n| {
+            Type::Vector(VectorType {
+                scalar_ty: s,
+                nscalar: n,
+            })
+        };
         assert_eq!(v(ScalarType::Float(4), 3).nbyte(), Some(12));
         assert_eq!(v(ScalarType::Boolean, 4).nbyte(), Some(4));
         assert_eq!(v(ScalarType::Void, 4).nbyte(), Some(0));
         let m = |stride| {
             Type::Matrix(MatrixType {
-                vec_ty: VectorType { scalar_ty: ScalarType::Float(4), nscalar: 4 },
+                vec_ty: VectorType {
+                    scalar_ty: ScalarType::Float(4),
+                    nscalar: 4,
+                },
                 nvec: 4,
                 major: Some(MatrixAxisOrder::ColumnMajor),
                 stride,
@@ -224,7 +232,10 @@ mod nbyte_tests {
     fn vector_matrix_array_grid_matches_machine_code_model() {
         for s in scalars() {
             for n in [1u32, 2, 3, 4] {
-                let vec_ty = VectorType { scalar_ty: s.clone(), nscalar: n };
+                let vec_ty = VectorType {
+                    scalar_ty: s.clone(),
+                    nscalar: n,
+                };
                 let t = Type::Vector(vec_ty.clone());
                 assert_eq!(t.nbyte(), mc(&t), "vector {s:?}x{n}");
                 for nvec in [1u32, 2, 4] {
@@ -254,12 +265,27 @@ mod nbyte_tests {
 
     #[test]
     fn struct_last_member_offset_plus_size() {
-        let member = |offset, ty| StructMember { name: None, offset, ty };
-        let st = |members| Type::Struct(StructType { name: None, members });
+        let member = |offset, ty| StructMember {
+            name: None,
+            offset,
+            ty,
+        };
+        let st = |members| {
+            Type::Struct(StructType {
+                name: None,
+                members,
+            })
+        };
         assert_eq!(st(vec![]).nbyte(), Some(0));
         let t = st(vec![
             member(0, Type::Scalar(ScalarType::Float(4))),
-            member(16, Type::Vector(VectorType { scalar_ty: ScalarType::Float(4), nscalar: 3 })),
+            member(
+                16,
+                Type::Vector(VectorType {
+                    scalar_ty: ScalarType::Float(4),
+                    nscalar: 3,
+                }),
+            ),
         ]);
         assert_eq!(t.nbyte(), Some(28));
         assert_eq!(t.nbyte(), mc(&t));
@@ -270,7 +296,11 @@ mod nbyte_tests {
     fn struct_with_unsized_last_member_is_offset_only() {
         let t = Type::Struct(StructType {
             name: None,
-            members: vec![StructMember { name: None, offset: 24, ty: Type::Sampler }],
+            members: vec![StructMember {
+                name: None,
+                offset: 24,
+                ty: Type::Sampler,
+            }],
         });
         assert_eq!(t.nbyte(), Some(24));
     }

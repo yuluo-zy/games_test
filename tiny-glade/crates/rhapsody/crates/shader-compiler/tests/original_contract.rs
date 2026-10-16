@@ -1,16 +1,45 @@
 use shader_compiler::{CompileError, DxcRequest, DxcStage, EmbeddedDxcRequest};
 use std::path::{Path, PathBuf};
 
+/// 仓库外层工作区（含 reverse-engineering/ 与默认的 ljxsj_92385/ 发行目录）。
+fn workspace() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../..")
+}
+/// B 发行 compiled-shaders：`TG_B_GAME_ROOT` 显式覆盖游戏根目录（沿用本仓库 `TG_B_*` 约定）；
+/// 未设置时依次找原布局 `ljxsj_92385/Tiny Glade` 与证据目录里的发行副本 oracle-bin
+/// （该副本已通过下方 638 模块偏移/命令逐项核对）。都不存在时打印原因并返回 None。
+fn shipped_compiled_shaders() -> Option<PathBuf> {
+    let candidates = match std::env::var_os("TG_B_GAME_ROOT") {
+        Some(root) => vec![PathBuf::from(root).join("compiled-shaders")],
+        None => vec![
+            workspace().join("ljxsj_92385/Tiny Glade/compiled-shaders"),
+            workspace()
+                .join("reverse-engineering/tiny-glade/evidence/render-passes/shaders/oracle-bin"),
+        ],
+    };
+    let found = candidates.iter().find(|dir| dir.is_dir()).cloned();
+    if found.is_none() {
+        eprintln!(
+            "跳过：未找到 B 发行 compiled-shaders（已查 {candidates:?}）；设置 TG_B_GAME_ROOT 指向游戏根目录以启用"
+        );
+    }
+    found
+}
+
 #[test]
 fn shipped_b_638_module_requests_match_debug_strings_and_interfaces() {
-    let project = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../../reverse-engineering/tiny-glade");
-    let catalogue: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(project.join("evidence/render-passes/validation/compile-commands.json"))
-            .unwrap(),
-    )
-    .unwrap();
-    let binaries = project.join("../../ljxsj_92385/Tiny Glade/compiled-shaders");
+    let evidence = workspace().join(
+        "reverse-engineering/tiny-glade/evidence/render-passes/validation/compile-commands.json",
+    );
+    if !evidence.is_file() {
+        eprintln!("跳过：未找到命令证据 {}", evidence.display());
+        return;
+    }
+    let Some(binaries) = shipped_compiled_shaders() else {
+        return;
+    };
+    let catalogue: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(evidence).unwrap()).unwrap();
     let mut counts = [0; 3];
     let mut seen = 0;
     for bin in catalogue["compile_commands"].as_array().unwrap() {
@@ -49,7 +78,7 @@ fn shipped_b_638_module_requests_match_debug_strings_and_interfaces() {
 }
 
 #[test]
-fn unknown_flags_profiles_malformed_commands_and_stage_swap_are_rejected() {
+fn unknown_flags_profiles_and_malformed_commands_are_rejected() {
     let valid = "dxc-cl-option: /tmp/input -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/output -Qembed_debug";
     for bad in [
         valid.replace("cs_6_4", "cs_6_6"),
@@ -68,11 +97,15 @@ fn unknown_flags_profiles_malformed_commands_and_stage_swap_are_rejected() {
         EmbeddedDxcRequest::from_module(&[0; 20]),
         Err(CompileError::InvalidSpirv(_))
     ));
-    let project = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../..");
-    let bytes = std::fs::read(
-        project.join("ljxsj_92385/Tiny Glade/compiled-shaders/_blur.cs.hlsl_cs_main_0.bin"),
-    )
-    .unwrap();
+}
+
+#[test]
+fn shipped_module_stage_swap_and_embedded_request_count_are_rejected() {
+    let valid = "dxc-cl-option: /tmp/input -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/output -Qembed_debug";
+    let Some(binaries) = shipped_compiled_shaders() else {
+        return;
+    };
+    let bytes = std::fs::read(binaries.join("_blur.cs.hlsl_cs_main_0.bin")).unwrap();
     let n = u32::from_le_bytes(bytes[19..23].try_into().unwrap()) as usize;
     let payload = &bytes[23..23 + n * 4];
     assert!(matches!(

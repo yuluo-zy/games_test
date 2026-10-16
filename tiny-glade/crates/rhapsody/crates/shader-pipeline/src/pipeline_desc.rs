@@ -80,17 +80,20 @@ mod tests {
     #[test]
     fn raster_file_names_match_the_shipped_bins() {
         let mut desc = RasterPipelineDesc::new_vertex_fragment("/billboard_forest.raster.hlsl");
-        desc.defines.0.push(("SHADER_VARIANT_DEPTH_ONLY".into(), "0".into()));
+        desc.defines
+            .0
+            .push(("SHADER_VARIANT_DEPTH_ONLY".into(), "0".into()));
         assert_eq!(
             desc.compiled_file_path().to_str().unwrap(),
             "compiled-shaders/_billboard_forest.raster.hlsl_b903e43ffb3da915.bin"
         );
         desc.defines.0[0].1 = "1".into();
-        assert!(desc
-            .compiled_file_path()
-            .to_str()
-            .unwrap()
-            .ends_with("_f0adff76827e73ff.bin"));
+        assert!(
+            desc.compiled_file_path()
+                .to_str()
+                .unwrap()
+                .ends_with("_f0adff76827e73ff.bin")
+        );
     }
 
     #[test]
