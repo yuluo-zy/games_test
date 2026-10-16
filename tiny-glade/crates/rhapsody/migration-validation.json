@@ -14,15 +14,19 @@
     {"command": "cargo test -p rhapsody --locked --offline --lib (after descriptor-binding-r8 import)", "passed": true, "tests": 13},
     {"command": "cargo clippy -p rhapsody --locked --offline --all-targets --all-features -- -D warnings (after descriptor-binding-r8 import)", "passed": true},
     {"command": "cargo clippy -p rhapsody -p shader-pipeline -p shader-compiler --locked --offline --all-targets --all-features -- -D warnings (declared MSRV 1.88)", "passed": true},
-    {"command": "cargo test -p rhapsody -p shader-pipeline -p shader-compiler --locked --offline --all-features (after final let-chain lint cleanup)", "passed": true, "tests": 66}
+    {"command": "cargo test -p rhapsody -p shader-pipeline -p shader-compiler --locked --offline --all-features (after final let-chain lint cleanup)", "passed": true, "tests": 66},
+    {"command": "cargo test -p rhapsody -p shader-pipeline -p shader-compiler --locked --all-features --no-fail-fast (2026-10-16 defect-fix round, rustc 1.96.0, lavapipe)", "passed": true, "tests": 342},
+    {"command": "cargo test -p rhapsody -p shader-pipeline -p shader-compiler --locked --no-fail-fast (default features, 2026-10-16)", "passed": true, "tests": 339},
+    {"command": "cargo clippy -p rhapsody -p shader-pipeline -p shader-compiler --no-deps --all-targets [--all-features] -- -D warnings (2026-10-16, rustc 1.96.0)", "passed": true}
   ],
   "original_shipped_shader_request_internal_cases": 638,
   "hlsl_files": 415,
   "shader_limit_exceptions": ["original dead depth variant final_post", "ice_refl_resolve bounded EDGE reassociation/FMA"],
-  "default_disabled_candidate_features": ["candidate-suballocation", "candidate-optimizations"],
-  "removed_unknown_placeholder_apis": ["set_fullscreen_exclusive", "require_vendor_crash_dump", "get_setup_cb_submit_info"],
+  "default_disabled_candidate_features": ["candidate-optimizations"],
+  "removed_unknown_placeholder_apis": ["set_fullscreen_exclusive", "require_vendor_crash_dump"],
   "full_original_renderer_accepted": false,
   "full_shader_semantics_or_whole_frame_accepted": false,
   "final_lint_cleanup": "13 nested conditionals mechanically collapsed to let-chains; descriptor/input insert, uniform replacement, lock acquisition and failure order preserved",
-  "note": "Checks ran on rustc 1.97.1. Rust 1.88 is the declared source-language lower bound, not an actually tested compiler in this audit. Earlier check rows remain migration snapshots. Historical original/GPU reports remain limited to their recorded input hashes and hardware; local GPU availability tests may explicitly skip without a device."
+  "note": "Checks ran on rustc 1.97.1. Rust 1.88 is the declared source-language lower bound, not an actually tested compiler in this audit. Earlier check rows remain migration snapshots. Historical original/GPU reports remain limited to their recorded input hashes and hardware; local GPU availability tests may explicitly skip without a device. The row labelled '(declared MSRV 1.88)' records the lint configuration, not a run on a 1.88 compiler.",
+  "default_enabled_features": ["suballocation"]
 }

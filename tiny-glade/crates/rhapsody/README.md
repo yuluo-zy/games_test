@@ -15,7 +15,7 @@
 | `raw/format::observed`、`resource_usage`、`crash` | 原格式入口、访问掩码换算、GPU assertion/debug packet 解析 |
 | `rg/vulkan`、`raw/setup`、`texture_upload`、`swapchain` | 已恢复规则的可调用 Vulkan 适配；具体候选边界如下 |
 
-既有 `rg/compiled_graph`、`rg/resource_usage` 叶 API 保留，以免丢失上轮已导入的恢复实现。`raw/format` 的公共 Khronos 注册表与 `observed` 原私有入口分开；公共表不是新的游戏算法。原格式观察表已合入 `format_table` 的 `OBSERVED_*`，删除了上轮未接入模块树的重复 `format_data` 文件。
+既有 `rg/compiled_graph` 叶 API 保留，以免丢失上轮已导入的恢复实现；`rg/resource_usage` 改为 re-export `raw/resource_usage`，不再维护两份同体拷贝。`raw/format` 的公共 Khronos 注册表与 `observed` 原私有入口分开；公共表不是新的游戏算法。原格式观察表已合入 `format_table` 的 `OBSERVED_*`，删除了上轮未接入模块树的重复 `format_data` 文件。
 
 ## 来源与逆向记录
 
@@ -27,14 +27,14 @@
 
 ## 候选集成与剩余功能
 
-有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、epoch graveyard、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；固定状态里 `[device+0xad9]` 对应的 LINE_WIDTH 动态状态、子通道号恒 0 仍是候选。
+有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、epoch graveyard、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；`[device+0xad9]` 已更正为 wideLines 门控并接入设备创建；子通道号恒 0 仍是候选。
 
-候选扩展默认关闭：`candidate-suballocation` 才启用公共 `gpu-allocator 0.27`；原本地 `0.26` 分叉尚未找到，不把此版本记为原依赖匹配。`candidate-optimizations` 才启用 Balanced 分块与 ADAPTIVE 轻帧门槛；默认 session 使用原 PGO 分块策略，序列号回收和原并行命令池来源仍需进一步原码对照。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
+`suballocation` 默认开启，启用公共 `gpu-allocator 0.27`：原版是子分配，B 版 Cargo.lock 记 0.26.0 本地分叉，但 PDB 中 `AllocatorReport` 只在 0.27 出现，故按 0.27 复用（见 Cargo.toml 注释）；该分叉源码仍未找到，`tools/verify_inventory.py` 对此依赖身份仍报差异。`candidate-optimizations` 默认关闭，才启用 Balanced 分块与 ADAPTIVE 轻帧门槛；默认 session 使用原 PGO 分块策略，序列号回收和原并行命令池来源仍需进一步原码对照。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
 
-尚缺原完整设备排序/驱动编码、原 managed 槽位与销毁桶布局、首个真实 shader callback 自动绑定、原多队列 ownership transfer/调度、原 temporal 淘汰/reset 触发、ray tracing 完整路径、原窗口焦点/全屏策略、厂商故障转储、完整游戏 producer/consumer。未恢复的 `set_fullscreen_exclusive`、`require_vendor_crash_dump` 和异步 `get_setup_cb_submit_info` 占位方法没有迁入。
+尚缺原完整设备排序/驱动编码、原 managed 槽位与销毁桶布局、首个真实 shader callback 自动绑定、原多队列 ownership transfer/调度、原 temporal 淘汰与 ABI、原窗口焦点/全屏策略、厂商故障转储、完整游戏 producer/consumer。原版没有硬件光追路径（`rt()` 恒为 None）；`should_reset_temporal` 属 country-core consumer。temporal 已可经 `VulkanGraphSession::execute_temporal_frame` 走导出与 `validate_compiled_exports`，但 `tiny-glade/src/raster_host.rs` 的三个 temporal 入口仍未接（core 键 `ustr_contract::intern` 未恢复）。`get_setup_cb_submit_info` 已按 0x140bf84e0 实现为 `SetupCommandSlot::take_for_submit`；未恢复的 `set_fullscreen_exclusive`、`require_vendor_crash_dump` 占位方法没有迁入。
 
 ## 验证范围
 
 迁入 `tests/` 覆盖图 callback、退役、managed key、绑定、附件、命令、PGO 和分配私有包装合同。少量管线测试需要 Vulkan，缺设备时会明确提示跳过，不能当真实 GPU 验收。原工程的格式 816 案例、GPU 读回、temporal/swapchain 等报告仅证明报告明确覆盖的子链和硬件；不证明整个游戏渲染/所有设备/三版本一致。正式工程的本次编译与测试记录见 [migration-validation.json](migration-validation.json) 及根工程审计报告。`tools/` 是来源库存刷新/复核辅助工具，不作为新的游戏逆向功能计数。
 
-本次实际工具链为 rustc 1.97.1；workspace 声明 Rust 1.88 下界以容纳原恢复代码已有的 let-chains，但没有在 Rust 1.88 编译器上实测。最终三个渲染包全部 feature 的 66 项测试和严格 Clippy 通过；迁移过程中较早测试计数保留为历史断点。
+workspace 声明 Rust 1.88 下界以容纳原恢复代码已有的 let-chains，但没有在 Rust 1.88 编译器上实测。2026-10-16 缺陷修复轮在 rustc 1.96.0 + lavapipe 上：三个渲染包 `--all-features` 342 项、默认 feature 339 项测试通过，两种 feature 组合下 `clippy --all-targets -D warnings` 均通过；shader-compiler 原合同测试缺游戏资产时显式跳过（`TG_B_GAME_ROOT` 可指定）。早期测试计数保留为历史断点。
