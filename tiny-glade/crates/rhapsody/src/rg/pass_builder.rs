@@ -15,6 +15,8 @@ impl PassBuilder<'_> {
         access_code: u8,
         synchronization_group: u32,
     ) -> Result<&mut Self, BuildError> {
+        // 本 pass 尚未入图：图里已满 MAX_PASSES 个时它不可能被编译。
+        self.graph.check_pass_capacity()?;
         self.graph.check_handle(resource)?;
         super::access_ledger::collect_resource_access(
             &mut self.declaration.accesses,

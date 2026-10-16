@@ -133,7 +133,13 @@ pub enum BuildError {
     MissingTemporal(String),
     DuplicateResourceName(String),
     ResourceCreationFailed(String),
+    /// pass 数超过生命周期事件的打包域（pass 下标左移 17 位存入 u32，见 `MAX_PASSES`）。
+    PassLimit,
 }
+
+/// 生命周期事件把 pass 下标左移 17 位打包进 u32（`resource_rules::calculate_lifetime_events`），
+/// 故单图最多 `1 << 15` 个 pass；`compile_graph` 对超出保留断言，构图入口提前返回 [`BuildError::PassLimit`]。
+pub const MAX_PASSES: usize = 1 << 15;
 impl std::fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(formatter, "构图失败: {self:?}")
@@ -199,6 +205,8 @@ impl RenderGraph {
         }
     }
 
+    /// 不检查 pass 上限，保持既有调用面；超限会在 `PassBuilder::add_resource_access` 返回
+    /// [`BuildError::PassLimit`]，需要在拿到 builder 前就得到错误时用 [`Self::try_add_pass`]。
     pub fn add_pass(&mut self, name: impl Into<String>) -> super::pass_builder::PassBuilder<'_> {
         super::pass_builder::PassBuilder {
             graph: self,
@@ -206,6 +214,23 @@ impl RenderGraph {
                 name: name.into(),
                 accesses: vec![],
             },
+        }
+    }
+
+    /// 带 pass 上限检查的 `add_pass`：已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
+    pub fn try_add_pass(
+        &mut self,
+        name: impl Into<String>,
+    ) -> Result<super::pass_builder::PassBuilder<'_>, BuildError> {
+        self.check_pass_capacity()?;
+        Ok(self.add_pass(name))
+    }
+
+    pub(crate) fn check_pass_capacity(&self) -> Result<(), BuildError> {
+        if self.declaration.passes.len() >= MAX_PASSES {
+            Err(BuildError::PassLimit)
+        } else {
+            Ok(())
         }
     }
 
@@ -257,6 +282,9 @@ pub trait ResourceBackend {
         name: &str,
     ) -> Result<u64, BackendFailure>;
     fn set_debug_name(&mut self, token: u64, descriptor: Descriptor, name: &str);
+    /// 失败路径归还：`create_without_initial_data` 创建、但本次图因失败不会再使用的 token。
+    /// 候选接口（原 population 失败不回滚）；默认不做任何事。
+    fn release_created_resource(&mut self, _token: u64) {}
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BackendEvent {
@@ -558,6 +586,9 @@ pub fn export_transitions(
     graph
         .exports
         .iter()
+        // 只导出、从未被 pass 访问的 Create 资源没有生命周期事件，也就没有物理映射；
+        // 这里不发屏障，由执行器的资源映射校验以 `ResourceUnavailable` 拒绝，而不是越界 panic。
+        .filter(|export| registry.is_populated(export.resource_index))
         .map(|export| {
             let payload = registry.resource(export.resource_index).0;
             let buffer = matches!(
@@ -626,7 +657,7 @@ pub fn compile_graph(
         "resource count exceeds lifetime packing domain"
     );
     assert!(
-        graph.passes.len() <= 32768,
+        graph.passes.len() <= MAX_PASSES,
         "pass count exceeds lifetime packing domain"
     );
     let origins = graph
@@ -643,7 +674,20 @@ pub fn compile_graph(
     info.calculate(&origins, &graph.exports, &pass_slices, |code| {
         dependency.access_mask(code)
     });
-    let population = populate_resources(&info, &graph.resources, pool, backend)?;
+    let population = match populate_resources(&info, &graph.resources, pool, backend) {
+        Ok(population) => population,
+        Err(mut failure) => {
+            // 候选编译入口的失败归还；原 populate_resources 本身不回滚，`partial` 的其余状态原样保留。
+            reclaim_failed_resources(
+                &mut failure.partial.registry,
+                &graph.resources,
+                &failure.partial.pool_hits,
+                pool,
+                backend,
+            );
+            return Err(failure);
+        }
+    };
     let registry = population.registry;
     let pending_initial = info
         .lifetimes
@@ -738,6 +782,41 @@ pub fn compile_graph(
         snapshot,
         pending_initial,
     })
+}
+/// 失败路径归还（候选，原链未见回滚）：本图 Create 资源中取自资源池的放回资源池，
+/// 本次新建的经 [`ResourceBackend::release_created_resource`] 交还后端；导入资源不动。
+/// 已归还的物理槽置为 `Empty`，避免同一资源被再次取出。只能在 GPU 不会再使用这些资源时调用。
+pub fn reclaim_failed_resources(
+    registry: &mut Registry,
+    declarations: &[ResourceDeclaration],
+    pool_hits: &[u32],
+    pool: &mut Pool,
+    backend: &mut impl ResourceBackend,
+) {
+    for (logical, declaration) in declarations.iter().enumerate() {
+        if !matches!(declaration.source, OriginSource::Create) {
+            continue;
+        }
+        let Some(reuse) = registry.resources.get(logical) else {
+            continue;
+        };
+        let Some(slot) = registry
+            .backing_resources
+            .get_mut(usize::from(reuse.backing_index))
+        else {
+            continue;
+        };
+        let pooled = pool_hits.contains(&(logical as u32));
+        match std::mem::replace(slot, RegistryResource::Empty) {
+            RegistryResource::OwnedTexture(texture) if pooled => pool.insert_texture(texture),
+            RegistryResource::OwnedBuffer(buffer) if pooled => pool.insert_buffer(buffer),
+            RegistryResource::OwnedTexture(Texture { handle, .. })
+            | RegistryResource::OwnedBuffer(Buffer { handle, .. }) => {
+                backend.release_created_resource(handle)
+            }
+            other => *slot = other,
+        }
+    }
 }
 pub fn payload_projection(resource: &RegistryResource<u64, u64, ()>) -> (u8, Option<u64>) {
     match resource {

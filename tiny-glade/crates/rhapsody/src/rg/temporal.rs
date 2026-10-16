@@ -98,6 +98,7 @@ impl TemporalRecordState {
 ///     `+0xd0/+0xd8` 哈希种子 k0/k1（`hash_one` 0x1412e8120 的 `rcx = recorder+0xd0`）；
 ///   - 表 2（奇偶翻转 `Ustr → u32`，`get_and_flip_parity(recorder+0xb0, key)`，体内读 `state+0x48` items、`state+0x50` 种子）：
 ///     `+0xe0` 控制字节、`+0xe8` mask、`+0xf0` growth_left、`+0xf8` items、`+0x100/+0x108` 种子。
+///
 ///   即旧文档"+0xd8..+0x108 含义未读出"已读出：就是第二张表（奇偶表）。现 Rust `TemporalRenderGraphState` 的
 ///   `resources` / `parity` 两张表与之对应，`retired_tokens`（候选）原版没有。
 /// * Record（相对元素起点；元素末尾地址 `P = 起点+0x68`，代码里的 `[P-0x60]` 即 `+0x08`）：`+0x00` 键 `Ustr`、
@@ -167,6 +168,10 @@ pub trait TemporalResourceOwner {
 struct Record {
     resource: TemporalResource,
     state: TemporalRecordState,
+    /// 候选字段（原 Record 没有）：GPU 上真正执行过的访问。原 `export_temporal` 在导出时就把
+    /// `resource.access` 写成 0x37，若该帧没有执行，下一帧会带着与实际布局不符的初始访问导入；
+    /// [`TemporalRenderGraphState::abandon_frame`] 据此回退。新建资源为 0（undefined）。
+    confirmed_access: u8,
 }
 #[derive(Default)]
 pub struct TemporalRenderGraphState {
@@ -225,6 +230,38 @@ impl TemporalRenderGraphState {
     }
     pub fn parity(&self, name: &str) -> Option<u32> {
         self.parity.get(&Ustr::from(name)).copied()
+    }
+    /// 候选帧边界（原状态没有）：上一帧请求（Raw）却没有导出就放弃构图的记录恢复为已导出，
+    /// 物理资源与访问不变（图从未执行，GPU 状态未变）。否则同名请求会永远 `AlreadyRequested`。
+    pub fn begin_frame(&mut self) {
+        for record in self.resources.values_mut() {
+            if !matches!(record.state, TemporalRecordState::Exported) {
+                record.state = TemporalRecordState::Exported;
+            }
+        }
+    }
+    /// 本帧导出已随提交进入 GPU：把导出访问记为已确认。
+    pub fn confirm_exports(&mut self) {
+        for record in self.resources.values_mut() {
+            if matches!(record.state, TemporalRecordState::Exported) {
+                record.confirmed_access = record.resource.access;
+            }
+        }
+    }
+    /// 本帧未执行（构图放弃、编译/校验/录制失败或空图）：Raw 记录恢复为已导出，所有访问回退到上次确认值。
+    pub fn abandon_frame(&mut self) {
+        for record in self.resources.values_mut() {
+            record.state = TemporalRecordState::Exported;
+            record.resource.access = record.confirmed_access;
+        }
+    }
+    /// 本帧已请求、尚未导出的记录（键与物理资源），供宿主把物理资源导入后端。
+    pub fn requested(&self) -> Vec<(String, TemporalResource)> {
+        self.resources
+            .iter()
+            .filter(|(_, record)| !matches!(record.state, TemporalRecordState::Exported))
+            .map(|(key, record)| (key.as_str().to_owned(), record.resource))
+            .collect()
     }
     pub fn get_and_flip_parity(&mut self, name: impl AsRef<str>) -> u32 {
         let key = Ustr::from(name.as_ref());
@@ -299,6 +336,7 @@ impl TemporalRenderGraphState {
             Record {
                 resource,
                 state: raw_state(descriptor, handle),
+                confirmed_access: 0,
             },
         ) {
             self.retired_tokens.push(old.resource.token);
@@ -470,7 +508,7 @@ mod recorder_tests {
     fn original_layout_constants_agree_with_the_implementation() {
         assert_eq!(original_layout::EXPORT_ACCESS_CODE, TEMPORAL_EXPORT_ACCESS);
         assert_eq!(TemporalRecordState::Exported.original_tag(), 2);
-        assert!(original_layout::RECORD_PAYLOAD < original_layout::RECORD_SIZE);
+        const { assert!(original_layout::RECORD_PAYLOAD < original_layout::RECORD_SIZE) };
         use original_layout as l;
         // 表 1 在 +0xb0..0xe0，表 2 在 +0xe0..0x110，各 RawTable(0x20)+RandomState(0x10)=0x30。
         assert_eq!(l::RECORDER_STATE, l::RECORDER_DEVICE + 8);
@@ -480,7 +518,12 @@ mod recorder_tests {
         assert_eq!(l::RECORDER_PARITY_LEN, l::RECORDER_PARITY_TABLE + 0x18);
         assert_eq!(l::RECORDER_TABLE_SEEDS, l::RECORDER_TABLE_CTRL + 0x20);
         assert_eq!(l::RECORDER_PARITY_SEEDS, l::RECORDER_PARITY_TABLE + 0x20);
-        assert!(l::RECORD_KIND_TAG < l::RECORD_SIZE && l::RECORD_EXPORT_CARRIER < l::RECORD_KIND_TAG);
+        const {
+            assert!(
+                l::RECORD_KIND_TAG < l::RECORD_SIZE
+                    && l::RECORD_EXPORT_CARRIER < l::RECORD_KIND_TAG
+            )
+        };
     }
     use crate::rg::graph::TextureDesc;
 

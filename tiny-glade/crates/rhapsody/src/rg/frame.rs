@@ -77,7 +77,7 @@ pub fn last_known_frame_duration_ns(timestamps: Option<&[u64]>, period_ns_per_ti
     let delta = slice[1].wrapping_sub(slice[0]);
     let nanoseconds = f64::from(period_ns_per_tick) * delta as f64;
     // ucomisd(1e9, v)：v ≥ 1e9 或 NaN 都走 `jbe` → None。
-    if !(nanoseconds < FRAME_DURATION_VALID_BELOW_NS) {
+    if nanoseconds.partial_cmp(&FRAME_DURATION_VALID_BELOW_NS) != Some(std::cmp::Ordering::Less) {
         return None;
     }
     // 饱和转换：负数 → 0，超大 → u64::MAX（cvttsd2si + 符号掩码序列，对应 Rust `as`）。

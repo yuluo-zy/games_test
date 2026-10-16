@@ -198,7 +198,11 @@ pub struct VulkanGraphBackend {
     barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
     top_level_pool: Option<vk::QueryPool>,
     top_level_started: bool,
+    /// 失败路径经 `release_created_resource` 移出的托管句柄（基础引用），由会话在生命周期里释放。
+    released_managed: Vec<lifecycle::ResourceHandle>,
 }
+/// `submissions` 捕获的上限：只保留最近的提交，避免不经 `begin_frame` 的长时间运行无界增长。
+pub const SUBMISSION_CAPTURE_LIMIT: usize = 64;
 pub struct GpuSubmissionCapture {
     pub queue: vk::Queue,
     pub batches: Vec<submit::PreparedSubmit>,
@@ -356,6 +360,7 @@ impl VulkanGraphBackend {
             barriers: BTreeMap::new(),
             top_level_pool: None,
             top_level_started: false,
+            released_managed: vec![],
         })
     }
     /// 取第 `slot` 个命令池的命令：优先复用该池已完成的命令，否则新分配。
@@ -620,6 +625,10 @@ impl VulkanGraphBackend {
         token
     }
     fn validate_graph(&self, declaration: &graph::GraphDeclaration) -> Result<(), String> {
+        // compile_graph 对超出生命周期打包域的 pass 数保留断言；宿主在执行前以错误拒绝。
+        if declaration.passes.len() > graph::MAX_PASSES {
+            return Err(format!("{:?}", graph::BuildError::PassLimit));
+        }
         let total = if declaration.batch_per_pass {
             declaration.passes.len()
         } else {
@@ -784,6 +793,14 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         Ok(self.bind_import_owned_by(resource, self.family))
     }
     fn set_debug_name(&mut self, _token: u64, _descriptor: graph::Descriptor, _name: &str) {}
+    fn release_created_resource(&mut self, token: u64) {
+        // 只在 GPU 不会再用到该资源时调用（见 graph::reclaim_failed_resources）；命令拥有者仍持有的 Arc 不受影响。
+        self.resources.remove(&token);
+        self.import_families.remove(&token);
+        if let Some(handle) = self.managed.remove(&token) {
+            self.released_managed.push(handle);
+        }
+    }
 }
 impl ExecutionBackend for VulkanGraphBackend {
     fn prepare_compiled_resources(&mut self, compiled: &graph::CompiledGraph) -> bool {
@@ -892,6 +909,18 @@ impl ExecutionBackend for VulkanGraphBackend {
     fn chunk_command_handle(&mut self, chunk: usize) -> Result<u64, lifecycle::Failure> {
         self.command_for_slot(chunk)
     }
+    fn abandon_command(&mut self, handle: u64) {
+        self.barriers.remove(&handle);
+        let Some(command) = self.commands.get_mut(&handle) else {
+            return;
+        };
+        // SAFETY: 被放弃的命令从未提交，GPU 不可能引用其拥有者。
+        unsafe { command.release_completed_owners() };
+        // 仍在录制的命令可能停在未结束的 render pass 里，不能安全 end/reset：留给命令池销毁，不复用。
+        if !command.is_recording() && !self.recycled_commands.contains(&handle) {
+            self.recycled_commands.push(handle);
+        }
+    }
     fn chunk_recorder(&self) -> Option<Box<dyn super::executor::ChunkRecorder + '_>> {
         Some(Box::new(VulkanChunkView {
             device: &self.device.device,
@@ -989,6 +1018,10 @@ impl ExecutionBackend for VulkanGraphBackend {
                 (e.as_raw(), false)
             }
         };
+        if self.submissions.len() >= SUBMISSION_CAPTURE_LIMIT {
+            let excess = self.submissions.len() + 1 - SUBMISSION_CAPTURE_LIMIT;
+            self.submissions.drain(..excess);
+        }
         self.submissions.push(GpuSubmissionCapture {
             queue,
             batches: prepared.to_vec(),
@@ -1213,6 +1246,55 @@ impl VulkanGraphSession {
         &mut self,
         built: graph::BuiltGraph,
     ) -> Result<SessionFrameReceipt, String> {
+        self.execute_built(built, |_| Ok(()))
+    }
+    /// temporal 帧的开始：同 [`Self::begin_frame`]，并把上一帧请求后被放弃（未导出）的 temporal 记录恢复为可请求。
+    pub fn begin_temporal_frame(
+        &mut self,
+        temporal: &mut super::temporal::TemporalRenderGraphState,
+    ) -> Result<graph::RenderGraph, String> {
+        let graph = self.begin_frame()?;
+        temporal.begin_frame();
+        Ok(graph)
+    }
+    /// temporal 帧的执行：把本帧请求的 temporal 物理资源导入后端，`export_temporal` 导出全部请求，
+    /// 编译后先以 `validate_compiled_exports` 校验导出映射（失败时不开始任何命令），再录制提交。
+    /// 有提交时确认导出访问；失败或空图则回退到上次确认的访问，GPU 未执行的导出不会让下一帧带着错误的初始布局。
+    pub fn execute_temporal_frame(
+        &mut self,
+        mut graph: graph::RenderGraph,
+        temporal: &mut super::temporal::TemporalRenderGraphState,
+        resources: &TemporalGpuResources,
+    ) -> Result<SessionFrameReceipt, String> {
+        for (name, resource) in temporal.requested() {
+            if let Err(error) = resources.import_into(&mut self.backend, &name, resource.token) {
+                temporal.abandon_frame();
+                return Err(format!("{error:?}"));
+            }
+        }
+        if let Err(error) = temporal.export_temporal(&mut graph) {
+            temporal.abandon_frame();
+            return Err(format!("{error:?}"));
+        }
+        let validator = &*temporal;
+        let result = self.execute_built(graph.build(), |compiled| {
+            validator
+                .validate_compiled_exports(compiled)
+                .map_err(|error| format!("{error:?}"))
+        });
+        match &result {
+            Ok(receipt) if !receipt.receipts.is_empty() => temporal.confirm_exports(),
+            _ => temporal.abandon_frame(),
+        }
+        result
+    }
+    fn execute_built(
+        &mut self,
+        built: graph::BuiltGraph,
+        validate: impl FnOnce(&graph::CompiledGraph) -> Result<(), String>,
+    ) -> Result<SessionFrameReceipt, String> {
+        // 提交捕获只描述最近一帧；不依赖调用方先 begin_frame。
+        self.backend.submissions.clear();
         if self.pending.in_flight() > 1 {
             return Err("须先调用 begin_frame 执行帧节流".into());
         }
@@ -1233,12 +1315,13 @@ impl VulkanGraphSession {
             poisoned: &mut self.poisoned,
             armed: true,
         };
-        let executed = self.chain.execute_graph_with_context(
+        let executed = self.chain.execute_graph_validated(
             declaration,
             &mut self.pool,
             &mut access,
             &mut self.backend,
             &mut callbacks,
+            validate,
         );
         guard.armed = false;
         drop(guard);
@@ -1276,11 +1359,40 @@ impl VulkanGraphSession {
             }
             Err(error) => {
                 let error = format!("{error:?}");
-                self.poisoned = Some(error.clone());
-                self.failed_retire.extend(retire);
+                // 开始过命令就在生命周期里留下了未提交的序号：会话进入停态，等 idle 清理。
+                let begun = self.chain.lifecycle.events[start..]
+                    .iter()
+                    .any(|event| event.starts_with("begin:"));
+                if begun {
+                    self.poisoned = Some(error.clone());
+                    self.failed_retire.extend(retire);
+                    self.release_managed_after_failure(false);
+                } else {
+                    // 命令开始前失败（编译、校验、资源映射）：执行器已归还资源，GPU 未见任何东西，
+                    // 本帧借用的托管句柄可立即释放，退役回调立即执行，会话保持可用。
+                    self.backend.pass_resources.take();
+                    self.release_managed_after_failure(true);
+                    for callback in retire {
+                        callback();
+                    }
+                }
                 Err(error)
             }
         }
+    }
+    /// 释放失败帧经 `release_created_resource` 移出的托管基础引用；`frame_borrows` 时连同本帧借用一起释放。
+    fn release_managed_after_failure(&mut self, frame_borrows: bool) {
+        let mut handles = std::mem::take(&mut self.backend.released_managed);
+        if frame_borrows {
+            handles.append(&mut self.backend.frame_handles);
+        }
+        for handle in handles {
+            self.chain.lifecycle.cpu_retire(handle);
+            if let Err(error) = self.chain.lifecycle.drop_handle(handle) {
+                log::warn!("失败帧托管句柄释放失败: {error:?}");
+            }
+        }
+        self.chain.lifecycle.collect_waste();
     }
     fn end_frame(&mut self, pending: PendingSessionFrame) {
         // 原 end_frame 在 ensure_active_cb + submit_pending_cbs 之后检查"本帧是否有提交"，没有就 panic；
@@ -1343,6 +1455,7 @@ impl VulkanGraphSession {
         if pending.frame != frame {
             return Err("帧回执不属于当前待完成帧".into());
         }
+        // 等待失败（含超时）时帧仍在队头，调用方可重试。
         for receipt in &pending.execution.receipts {
             self.backend
                 .timeline
@@ -1350,18 +1463,26 @@ impl VulkanGraphSession {
                 .map_err(|e| format!("{e:?}"))?;
         }
         let pending = self.pending.pop_front().unwrap();
+        // 帧已出队：后续每一步出错都只记下首个错误并继续，退役回调、资源池归还与命令回收不能被跳过。
+        let mut first_error = None;
         for handle in pending.execution.resources {
             self.chain.lifecycle.cpu_retire(handle);
-            self.chain
-                .lifecycle
-                .drop_handle(handle)
-                .map_err(|e| format!("{e:?}"))?;
+            keep_first_error(
+                &mut first_error,
+                self.chain
+                    .lifecycle
+                    .drop_handle(handle)
+                    .map_err(|e| format!("{e:?}")),
+            );
         }
         self.chain.lifecycle.collect_waste();
         for receipt in &pending.execution.receipts {
-            self.chain
-                .complete(receipt.queue, receipt.last_timeline)
-                .map_err(|e| format!("{e:?}"))?;
+            keep_first_error(
+                &mut first_error,
+                self.chain
+                    .complete(receipt.queue, receipt.last_timeline)
+                    .map_err(|e| format!("{e:?}")),
+            );
         }
         // 真正完成后才把 Command 交回后端；下次 reset/重录时仍使用递增的 per-queue counter。
         while let Some(command) = self.chain.lifecycle.recycle(self.backend.family) {
@@ -1370,8 +1491,11 @@ impl VulkanGraphSession {
             }
             self.backend.recycled_commands.push(command.handle());
         }
-        self.backend
-            .collect_completed_managed(self.chain.lifecycle.prefix(self.backend.queue))?;
+        keep_first_error(
+            &mut first_error,
+            self.backend
+                .collect_completed_managed(self.chain.lifecycle.prefix(self.backend.queue)),
+        );
         let compiled = pending.execution.compiled;
         let created = compiled
             .declarations
@@ -1403,7 +1527,7 @@ impl VulkanGraphSession {
         self.last_frame_duration_ns = pending.started_at.elapsed().as_nanos() as u64;
         self.mirror_submission_state();
         self.recycle_submission_engine();
-        Ok(())
+        first_error.map_or(Ok(()), Err)
     }
     /// 显式淘汰缓存，必须在当前帧完成后调用；保持 counter/timeline，避免 resize 残留无限增长。
     pub fn collect_after_completion(&mut self, retained_tokens: &[u64]) -> Result<usize, String> {
@@ -1428,6 +1552,7 @@ impl VulkanGraphSession {
                 .drop_handle(handle)
                 .map_err(|e| format!("{e:?}"))?;
         }
+        self.release_managed_after_failure(false);
         let removed = self
             .backend
             .resources
@@ -1510,6 +1635,12 @@ impl VulkanGraphSession {
     }
     pub fn command_count(&self) -> usize {
         self.backend.commands.len()
+    }
+}
+fn keep_first_error(first: &mut Option<String>, result: Result<(), String>) {
+    if let Err(error) = result {
+        log::warn!("帧完成清理步骤失败: {error}");
+        first.get_or_insert(error);
     }
 }
 impl Drop for VulkanGraphSession {

@@ -73,6 +73,8 @@ pub enum Error {
         expected: usize,
         actual: usize,
     },
+    /// 调用方对编译结果的校验失败（如 temporal 导出映射）；发生在任何命令开始之前。
+    Validation(String),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -216,6 +218,8 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     fn chunk_recorder(&self) -> Option<Box<dyn ChunkRecorder + '_>> {
         None
     }
+    /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
+    fn abandon_command(&mut self, _handle: u64) {}
 }
 
 pub struct GraphExecution {
@@ -282,7 +286,22 @@ impl ExecutionChain {
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
     ) -> Result<GraphExecution, Error> {
-        let result = self.execute_graph_inner(graph, pool, dependency, backend, callbacks);
+        self.execute_graph_validated(graph, pool, dependency, backend, callbacks, |_| Ok(()))
+    }
+
+    /// 同 [`Self::execute_graph_with_context`]，但在编译之后、任何命令开始之前先交给 `validate` 校验编译结果；
+    /// 校验失败返回 [`Error::Validation`]，并按失败路径归还本次取出/新建的资源。
+    pub fn execute_graph_validated(
+        &mut self,
+        graph: crate::rg::graph::GraphDeclaration,
+        pool: &mut crate::rg::graph::Pool,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
+    ) -> Result<GraphExecution, Error> {
+        let result =
+            self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
         // 原 end_frame：本帧耗时成为下一帧的分块依据。
         self.pgo.end_frame();
         result
@@ -295,6 +314,7 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
     ) -> Result<GraphExecution, Error> {
         let mut stats = ExecutionStats::default();
         if callbacks.len() != graph.passes.len() {
@@ -317,16 +337,102 @@ impl ExecutionChain {
         }
         self.graph_queue_domain = Some(queue);
         let compile_start = std::time::Instant::now();
-        let compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)
+        // population 失败时 compile_graph 已归还本次取出/新建的资源。
+        let mut compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)
             .map_err(Error::Compile)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
+        let existing = self
+            .command_snapshots
+            .keys()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let mut receipts = Vec::new();
+        let result = validate(&compiled)
+            .map_err(Error::Validation)
+            .and_then(|()| {
+                self.record_compiled(
+                    &compiled,
+                    dependency,
+                    backend,
+                    callbacks,
+                    (queue, family),
+                    &mut stats,
+                    &mut receipts,
+                )
+            });
+        match result {
+            Ok((resources, recorder_events)) => Ok(GraphExecution {
+                compiled,
+                receipts,
+                resources,
+                recorder_events,
+                stats,
+            }),
+            Err(error) => {
+                // 队列提交失败时设备侧已登记命令，状态不确定：不放弃命令、不归还资源，交给停态与 idle 清理。
+                if !matches!(error, Error::Queue(_)) {
+                    self.abandon_unsubmitted(&error, &existing, backend);
+                    // 已有批次提交时 GPU 可能仍在使用这些资源，不能立刻放回资源池。
+                    if receipts.is_empty() {
+                        crate::rg::graph::reclaim_failed_resources(
+                            &mut compiled.registry,
+                            &compiled.declarations.resources,
+                            &compiled.snapshot.pool_hits,
+                            pool,
+                            backend,
+                        );
+                    }
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// 失败路径：本次执行开始但未提交的命令移出快照表，并交还后端；`Begin` 失败的命令同样交还。
+    fn abandon_unsubmitted(
+        &mut self,
+        error: &Error,
+        existing: &BTreeSet<u64>,
+        backend: &mut impl ExecutionBackend,
+    ) {
+        let mut handles = self
+            .command_snapshots
+            .keys()
+            .copied()
+            .filter(|handle| !existing.contains(handle))
+            .collect::<Vec<_>>();
+        for handle in &handles {
+            self.command_snapshots.remove(handle);
+        }
+        if let Error::Begin(failure) = error
+            && !handles.contains(&failure.command.handle())
+        {
+            handles.push(failure.command.handle());
+        }
+        for handle in handles {
+            backend.abandon_command(handle);
+        }
+    }
+
+    /// 编译之后的资源映射、录制与提交；`receipts` 由调用方持有，失败时据此判断是否已有批次进入 GPU。
+    #[allow(clippy::too_many_arguments)]
+    fn record_compiled(
+        &mut self,
+        compiled: &crate::rg::graph::CompiledGraph,
+        dependency: &mut impl crate::rg::graph::AccessDependency,
+        backend: &mut impl ExecutionBackend,
+        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        (queue, family): (sequence::Queue, u32),
+        stats: &mut ExecutionStats,
+        receipts: &mut Vec<sequence::SubmissionReceipt>,
+    ) -> Result<(Vec<sequence::ResourceHandle>, Vec<String>), Error> {
         let pass_names = compiled
             .declarations
             .passes
             .iter()
             .map(|pass| PassPgoNameId::from_name(&pass.name))
             .collect::<Vec<_>>();
-        if !backend.prepare_compiled_resources(&compiled) {
+        if !backend.prepare_compiled_resources(compiled) {
             return Err(Error::ResourceUnavailable(usize::MAX));
         }
         let managed = backend.managed_pass_resources();
@@ -414,13 +520,7 @@ impl ExecutionChain {
             })
             .collect::<Vec<_>>();
         if compiled.snapshot.batches.is_empty() {
-            return Ok(GraphExecution {
-                compiled,
-                receipts: vec![],
-                resources,
-                recorder_events: vec![],
-                stats,
-            });
+            return Ok((resources, vec![]));
         }
         let first_handle = backend.command_handle().map_err(Error::Lifecycle)?;
         let first = self.begin(
@@ -439,7 +539,6 @@ impl ExecutionChain {
                 .collect(),
             commands: vec![first.record_command()],
         };
-        let mut receipts = Vec::new();
         let mut events = Vec::new();
         for (batch_index, batch) in compiled.snapshot.batches.iter().enumerate() {
             let synchronization = synchronization[batch_index].clone();
@@ -485,7 +584,7 @@ impl ExecutionChain {
                         first_pass: batch.pass_range.start,
                         chunks: &chunks,
                         final_batch: batch.export_barriers,
-                        compiled: &compiled,
+                        compiled,
                         logical_handles: &logical_handles,
                         managed: managed.as_ref(),
                         pass_names: &pass_names,
@@ -525,7 +624,7 @@ impl ExecutionChain {
                             let ok = callbacks[pass_index](PassContext {
                                 pass_index,
                                 command: &new,
-                                compiled: &compiled,
+                                compiled,
                                 logical_resources: &logical_handles,
                                 managed: managed.as_deref(),
                                 owners: &owners,
@@ -603,13 +702,7 @@ impl ExecutionChain {
                 recorder.commands.push(active.record_command());
             }
         }
-        Ok(GraphExecution {
-            compiled,
-            receipts,
-            resources,
-            recorder_events: events,
-            stats,
-        })
+        Ok((resources, events))
     }
     pub fn new(auxiliary_count: u32, family_count: u32, device: submit::DeviceState) -> Self {
         Self {

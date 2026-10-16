@@ -105,6 +105,14 @@ pub struct ResourceExports<TextureHandle, BufferHandle, Other> {
 }
 
 impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferHandle, Other> {
+    /// 逻辑资源是否已由 population 分配物理槽；未出现在生命周期事件里的资源（如只导出、
+    /// 从未被访问的 Create 资源）保持 `backing_index = u16::MAX`，此时 `resource()` 等访问器会越界。
+    pub fn is_populated(&self, logical: u32) -> bool {
+        self.resources
+            .get(logical as usize)
+            .is_some_and(|reuse| usize::from(reuse.backing_index) < self.backing_resources.len())
+    }
+
     fn backing(&self, logical: u32) -> &RegistryResource<TextureHandle, BufferHandle, Other> {
         let reuse = self.resources[logical as usize];
         &self.backing_resources[usize::from(reuse.backing_index)]
@@ -161,13 +169,11 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
         let exported = self
             .exported_logical_handles
             .into_iter()
-            .map(|logical| {
-                let physical = self.resources[usize::from(logical)].backing_index;
-                let resource = std::mem::replace(
-                    &mut self.backing_resources[usize::from(physical)],
-                    RegistryResource::Empty,
-                );
-                (logical, resource)
+            .filter_map(|logical| {
+                // 未填充的导出资源没有物理槽可取（执行器已以 ResourceUnavailable 拒绝该图）。
+                let physical = self.resources.get(usize::from(logical))?.backing_index;
+                let slot = self.backing_resources.get_mut(usize::from(physical))?;
+                Some((logical, std::mem::replace(slot, RegistryResource::Empty)))
             })
             .collect();
         self.backing_resources

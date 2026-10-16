@@ -15,6 +15,8 @@ pub struct RenderGraphState {
 impl RenderGraphState {
     pub fn begin_frame(&mut self) -> RenderGraph {
         self.frame = self.frame.wrapping_add(1);
+        // 上一帧请求后放弃构图的 temporal 记录恢复为可请求（候选帧边界，见 TemporalRenderGraphState::begin_frame）。
+        self.temporal.begin_frame();
         RenderGraph::new()
     }
     pub fn clear(&mut self) {
