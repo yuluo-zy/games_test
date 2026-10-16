@@ -4,6 +4,7 @@ pub mod deferred_terrain_history;
 pub mod delayed_terrain_changed_msg;
 pub mod draw_terrain_stroke;
 pub mod edit_terrain_stroke;
+pub mod replay_terrain;
 pub mod terrain_hover_idx;
 pub mod ui_draw_terrain;
 pub mod ui_edit_terrain;
@@ -79,6 +80,8 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<terrain_hover_idx::TerrainWaterSample>();
     world.init_resource::<ui_edit_terrain::MouseActivityTimer>();
     world.init_resource::<ui_edit_terrain::TerrainStrokeParamsCache>();
+    // 台阶放置消费面（terrain→stairs/decorator 链；stairs 域消费后清空）。
+    world.init_resource::<ui_edit_terrain::StairsPlacementBucket>();
     world.init_resource::<ui_draw_terrain::TerrainHoverInput>();
     world.init_resource::<ui_draw_terrain::TerrainDrawState>();
     world.init_resource::<ui_terrain_focus_mode::TerrainFocusModeState>();
@@ -114,5 +117,6 @@ pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedul
         ui_edit_terrain::ui_edit_terrain,
         ui_terrain_focus_mode::ui_terrain_focus_mode,
         deferred_terrain_history::history_record_terrain::<S>,
+        replay_terrain::replay_terrain,
     ));
 }

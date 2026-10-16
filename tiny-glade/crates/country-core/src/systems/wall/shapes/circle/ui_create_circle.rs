@@ -31,12 +31,13 @@ pub struct CircleCanvasInput {
 
 /// B 0x14165cd40: `cursor_circle_` preview signifier record.
 pub fn circle_signifier(center: Vec2, radius: f32) -> UiAppendSignifier {
-    let mut extra = [0u8; 12];
-    extra[..4].copy_from_slice(&radius.to_le_bytes());
+    // 40B 布局（中央裁决）：半径入 scale 槽。
     UiAppendSignifier {
         tag: 1,
+        kind: 0,
         position: glam::Vec3::new(center.x, 0.0, center.y),
-        extra,
+        scale: radius,
+        name: 0,
     }
 }
 

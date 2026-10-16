@@ -3,7 +3,7 @@
 //! 前三个函数 PDB 归属 `roof_shape::Roof`，本文件按原文件布局放置：
 //! - `Roof::get_height_01_unclamped_from_ws`（0x1408e4790，O 公式级，roofs-rt/ALGORITHMS §5.3）；
 //! - `Roof::get_roof_shape_from_pos_ws_clamped`（0x1408e4750，O）；
-//! - `Roof::get_roof_shape`（0x1408e4920，O = `system_roof::surface::get_roof_shape`，3,004 案例 0 差异）；
+//! - `Roof::get_roof_shape`（0x1408e4920，O = `crate::resources::roofs::geometry::surface::get_roof_shape`，3,004 案例 0 差异）；
 //! - `get_roof_expanded_top_and_bottom`（0x140a880c0，O 反编译 `roof-tiles/0x140a880c0.c`）；
 //! - `RoofBoundsDims::as_circle`（0x140a88200）/`as_rectangle`（0x140a88240，O 手解）。
 //!
@@ -55,7 +55,7 @@ impl RoofBoundsDims {
 impl Roof {
     /// `get_roof_shape_from_pos_ws_clamped`（0x1408e4750，O）：
     /// `h01 = get_height_01_unclamped_from_ws(pos)`，clamp[0,1] 后调 `get_roof_shape(h01)`。
-    pub fn get_roof_shape_from_pos_ws_clamped(&self, pos: Vec3) -> system_roof::surface::RoofSection {
+    pub fn get_roof_shape_from_pos_ws_clamped(&self, pos: Vec3) -> crate::resources::roofs::geometry::surface::RoofSection {
         let h01 = self.get_height_01_unclamped_from_ws(pos).clamp(0.0, 1.0);
         self.get_roof_shape(h01)
     }
@@ -71,8 +71,11 @@ impl Roof {
         let floor = at(b, 0x4c);
         let mut cap = 0.0;
         if f32::from_bits(0x3dcccccd) < height_01 {
+            // reviewer-C 机器码裁决：circle 高度基 = **8.0**
+            // （0x142934604 = 0x41000000；16.0 系旧读错值，roofs-rt
+            // ALGORITHMS §8 已纠）。
             let (dim_n, base) = if b[8] & 1 == 0 {
-                ((at(b, 0x14) + -0.9) / 7.1, 16.0)
+                ((at(b, 0x14) + -0.9) / 7.1, 8.0)
             } else {
                 let x = at(b, 0x1c);
                 let z = at(b, 0x20);
@@ -89,10 +92,10 @@ impl Roof {
         (y - floor) / ((cap + floor) - floor)
     }
 
-    /// `get_roof_shape`（0x1408e4920，O）= `system_roof::surface::get_roof_shape`
+    /// `get_roof_shape`（0x1408e4920，O）= `crate::resources::roofs::geometry::surface::get_roof_shape`
     /// （q=1.5p+(1−p)0.5，t^(1/q) 混合屋檐/屋脊；矩→28B，圆→20B+保尾；3,004 案例 0 差异）。
-    pub fn get_roof_shape(&self, t: f32) -> system_roof::surface::RoofSection {
-        system_roof::surface::section(self.observed(), t)
+    pub fn get_roof_shape(&self, t: f32) -> crate::resources::roofs::geometry::surface::RoofSection {
+        crate::resources::roofs::geometry::surface::section(self.observed(), t)
     }
 }
 
@@ -176,7 +179,7 @@ mod tests {
         // clamped entry point.
         let section = roof.get_roof_shape_from_pos_ws_clamped(Vec3::new(0.0, 0.0, 0.0));
         match section {
-            system_roof::surface::RoofSection::Rectangle { .. } => {}
+            crate::resources::roofs::geometry::surface::RoofSection::Rectangle { .. } => {}
             _ => panic!("rect roof should produce a rectangle section"),
         }
     }

@@ -198,6 +198,7 @@ fn erase_highlight_reads_the_four_resources() {
     w.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::new(1.0, 2.0, 3.0),
+        ..Default::default()
     });
     w.insert_resource(EraserSizeMultiplier(2.5));
     w.insert_resource(DebugGuiView::default());
@@ -214,6 +215,7 @@ fn erase_highlight_reads_the_four_resources() {
     w.insert_resource(CursorTerrainRaycast {
         tag: 0,
         pos: Vec3::ONE,
+        ..Default::default()
     });
     assert_eq!(
         read_erase_highlight(&w).cursor_position,
@@ -599,6 +601,7 @@ fn env0_reads_resources_and_sets_cull_mode_4() {
     w.insert_resource(CursorTerrainRaycast {
         tag: 1,
         pos: Vec3::new(1.0, 2.0, 3.0),
+        ..Default::default()
     });
     w.insert_resource(EraserSizeMultiplier(0.5));
     let i = read_env0(&w);

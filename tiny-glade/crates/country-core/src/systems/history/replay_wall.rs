@@ -221,7 +221,7 @@ mod tests {
             sampling_fix: true,
         }));
         let curve =
-            system_roof::surface::Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
+            crate::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
         let mut state = WallState::new(curve, 2.0, 3, 0, false);
         state.snapshot.metadata.source_66 = Some(1);
         state.snapshot.metadata.source_60_bits = 0x3f123456;

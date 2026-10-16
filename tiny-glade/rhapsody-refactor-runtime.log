@@ -1,0 +1,49 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.36s
+     Running tests\p0_stability.rs (target\debug\deps\p0_stability-a922f124989e26a4.exe)
+
+running 2 tests
+test lifecycle_metadata_stays_bounded_over_many_frames ... ok
+warm=Bookkeeping { lifecycle_resources: 7, pending_frames: 2, resources: 7, commands: 2, lifecycle_pending: 2, lifecycle_pool: 0, lifecycle_buckets: 2, store_pending_disposals: 0, store_pending_destroy: 0, buffer_retained_submissions: 0, texture_retained_submissions: 0, submission_captures: 1, imports_waiting_release: 3 }
+end =Bookkeeping { lifecycle_resources: 7, pending_frames: 2, resources: 7, commands: 2, lifecycle_pending: 2, lifecycle_pool: 0, lifecycle_buckets: 2, store_pending_disposals: 0, store_pending_destroy: 0, buffer_retained_submissions: 0, texture_retained_submissions: 0, submission_captures: 1, imports_waiting_release: 3 }
+warm=Bookkeeping { lifecycle_resources: 0, pending_frames: 0, resources: 0, commands: 2, lifecycle_pending: 0, lifecycle_pool: 0, lifecycle_buckets: 0, store_pending_disposals: 0, store_pending_destroy: 0, buffer_retained_submissions: 0, texture_retained_submissions: 0, submission_captures: 1, imports_waiting_release: 0 }
+end =Bookkeeping { lifecycle_resources: 0, pending_frames: 0, resources: 0, commands: 2, lifecycle_pending: 0, lifecycle_pool: 0, lifecycle_buckets: 0, store_pending_disposals: 0, store_pending_destroy: 0, buffer_retained_submissions: 0, texture_retained_submissions: 0, submission_captures: 1, imports_waiting_release: 0 }
+test session_bookkeeping_stays_bounded_over_many_frames ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+     Running tests\rg_fixes_vulkan.rs (target\debug\deps\rg_fixes_vulkan-650944181d4e34b8.exe)
+
+running 7 tests
+test submission_captures_stay_bounded_without_begin_frame ... ok
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (37032) panicked at crates\rhapsody\tests\rg_fixes_vulkan.rs:53:17:
+injected callback panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (37032) panicked at crates\rhapsody\tests\rg_fixes_vulkan.rs:53:17:
+injected callback panic
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (37032) panicked at crates\rhapsody\tests\rg_fixes_vulkan.rs:53:17:
+injected callback panic
+
+thread 'recording_failures_and_panics_roll_back_and_allow_the_next_frame' (37032) panicked at crates\rhapsody\tests\rg_fixes_vulkan.rs:53:17:
+injected callback panic
+test a_temporal_pair_ping_pongs_through_the_session_frame_path ... ok
+test partial_submission_failure_recycles_all_commands_and_runs_retire_once ... ok
+test a_rejected_export_only_resource_keeps_the_session_usable_and_returns_resources ... ok
+test recording_failures_and_panics_roll_back_and_allow_the_next_frame ... ok
+test two_sessions_share_the_device_submission_timeline ... ok
+test wait_frame_finishes_cleanup_even_when_a_step_fails ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running tests\wave3_queues.rs (target\debug\deps\wave3_queues-490142824cc1c042.exe)
+
+running 3 tests
+test an_import_owned_by_another_queue_family_is_rejected_without_a_release_acquire_plan ... ok
+跳过：设备没有辅助队列（无独立 compute 族），不伪造辅助队列
+test a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one ... ok
+test configured_queue_plan_matches_created_handles_and_timeline_slots ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+

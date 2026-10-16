@@ -22,6 +22,7 @@ pub mod pass_builder {
 }
 pub mod atmosphere;
 pub mod directional_light;
+pub mod execution_host;
 pub mod load_texture;
 pub mod mesh_atlas;
 pub mod nani;

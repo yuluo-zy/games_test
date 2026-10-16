@@ -136,17 +136,49 @@ pub mod rhapsody_boundary {
     pub struct ResourceHandle(pub u64, pub u64);
 }
 
+/// 游戏侧 `BufferDesc`（`{size:usize, usage:u32, memory:u8, alignment:usize, gpu_only:bool}`）→
+/// 真实 `rhapsody::raw::buffer::BufferDesc`（WIRING §2.3 映射表）。memory 1/2/3/4 →
+/// `MemoryLocation::{GpuOnly, CpuToGpu, CpuToGpuLowPrio, GpuToCpu}`。
+pub fn convert_buffer_desc(
+    desc: &rhapsody_boundary::BufferDesc,
+) -> rhapsody::raw::buffer::BufferDesc {
+    use rhapsody::raw::buffer::MemoryLocation;
+    let memory = match desc.memory {
+        2 => MemoryLocation::CpuToGpu,
+        3 => MemoryLocation::CpuToGpuLowPrio,
+        4 => MemoryLocation::GpuToCpu,
+        _ => MemoryLocation::GpuOnly,
+    };
+    let mut out = rhapsody::raw::buffer::BufferDesc::new(
+        desc.size as u64,
+        ash::vk::BufferUsageFlags::from_raw(desc.usage),
+        memory,
+    );
+    if desc.alignment > 1 {
+        out = out.with_alignment(desc.alignment as u16);
+    }
+    out
+}
+
 /// 全 crate 唯一的设备类型 `rhapsody_contract::GraphicsDevice` 实现本层的设备 trait
 /// （step 0：原先 ssbo 的 trait 占位与 lib.rs 的结构体占位互不相通）。
-/// 占位实现：不触 GPU，仅按 desc 回填 `Buffer` 的字节容量（O：`+0x18 = desc.size`）。
+/// D 组接入（WIRING §2.3/§3.3）：游戏侧 40B `Buffer` 记录装不下 `ManagedBuffer`（**登记缺口 §4.8**），
+/// 真实设备调用已接到 `rhapsody_contract::GraphicsDevice::*`（`create_buffer`/`update_buffer_bytes`/
+/// `buffer_mapped_slice_mut`/`buffer_device_address`，均为 device_api.rs 同名方法）。此实现记录日志并
+/// 返回未接错误，不补造、不假成功。`convert_buffer_desc` 是真实 desc 换算（WIRING §2.3 映射表）。
 #[cfg(not(test))]
 impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
     fn create_buffer(
         &self,
-        _desc: &BufferDesc,
-        _name: &str,
+        desc: &BufferDesc,
+        name: &str,
         _data: Option<&[u8]>,
     ) -> Result<Buffer, rhapsody_boundary::BackendError> {
+        log::warn!(
+            target: "country_core::render::ssbo",
+            "create_buffer({name}): registered gap (WIRING §4.8), game-side 40B Buffer cannot hold ManagedBuffer; real desc = {:?}",
+            convert_buffer_desc(desc)
+        );
         Err(rhapsody_boundary::BackendError)
     }
 
@@ -157,7 +189,30 @@ impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
         _ranges: &[Range<usize>],
         _offset: usize,
     ) -> Result<(), rhapsody_boundary::BackendError> {
+        log::warn!(
+            target: "country_core::render::ssbo",
+            "update_buffer_bytes: registered gap (WIRING §4.8), needs ManagedBuffer; real path = device_api::update_buffer_bytes"
+        );
         Err(rhapsody_boundary::BackendError)
+    }
+
+    /// 登记缺口 §4.8：真实 `buffer_mapped_slice_mut(&ManagedBuffer)`（device_api.rs:137）。
+    /// 保持占位默认 `None`（调用方 `Option::unwrap` 即 panic，诚实未接）。
+    fn mapped_slice_mut(&self, _buffer: &Buffer) -> Option<&mut [u8]> {
+        log::warn!(
+            target: "country_core::render::ssbo",
+            "mapped_slice_mut: registered gap (WIRING §4.8), needs ManagedBuffer"
+        );
+        None
+    }
+
+    /// 登记缺口 §4.8：真实 `buffer_device_address(&ManagedBuffer)`（device_api.rs:144）。
+    fn device_address(&self, _buffer: &Buffer) -> u64 {
+        log::warn!(
+            target: "country_core::render::ssbo",
+            "device_address: registered gap (WIRING §4.8), needs ManagedBuffer; real path = device_api::buffer_device_address"
+        );
+        panic!("registered gap (WIRING §4.8): buffer_device_address needs ManagedBuffer")
     }
 }
 

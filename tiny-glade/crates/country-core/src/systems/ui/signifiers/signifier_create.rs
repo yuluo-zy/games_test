@@ -8,15 +8,37 @@
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
-/// 0x28 B 指示符记录（O：环形流槽载荷；字段语义 I）。
+/// 0x28 B 指示符记录（O：**中央裁决 2026-10-16**——机器码 write 拷贝 5×qword
+/// = 40B：tag@0、kind@+8、Vec3@+0x10、f32@+0x1c、qword@+0x20）。
+///
+/// 字段语义（O 面：water/glade-border 的 0x20B 记录族 = {1, 1, Vec3, f32}；
+/// name 槽 = 附加载荷/名字句柄，语义 U）。
+#[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct UiAppendSignifier {
-    /// 指示符类型判别（I）。
-    pub tag: u8,
+    /// 指示符类型判别（O：water 橡皮记录 = 1）。
+    pub tag: u64,
+    /// 子类型（O：water/glade-border = 1）。
+    pub kind: u64,
     /// 世界位置。
     pub position: Vec3,
-    /// 剩余载荷（I：朝向/参数待取证）。
-    pub extra: [u8; 12],
+    /// 缩放/首附加浮点（O：water = 0.5×半径、glade-border = perimeter）。
+    pub scale: f32,
+    /// 附加载荷 qword（I：名字/朝向打包，语义 U）。
+    pub name: u64,
+}
+
+impl UiAppendSignifier {
+    /// 便捷构造（O 面：tag/kind/position/scale；name 留 0）。
+    pub fn new(tag: u64, kind: u64, position: glam::Vec3, scale: f32) -> Self {
+        Self {
+            tag,
+            kind,
+            position,
+            scale,
+            name: 0,
+        }
+    }
 }
 
 /// 无锁环形流（O：0x170 B，read cursor@+0x160、write counter@+0x168、0x28 B 槽）。

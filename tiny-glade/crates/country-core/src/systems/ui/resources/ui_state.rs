@@ -11,6 +11,8 @@ use std::{
     sync::Arc,
 };
 
+use super::widget_params::WidgetParams;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub u64);
 impl WidgetId {
@@ -52,12 +54,16 @@ pub struct ClearingCanvasWidget {
 pub struct UiState {
     interaction: UiInteraction,
     clearing_canvases: RwLock<HashMap<WidgetId, Arc<ClearingCanvasWidget>>>,
+    /// +0x68：`HashMap<WidgetId, Arc<WidgetParams>>`（O：ui_state 章/DI-§2.4；
+    /// `add` 0x1409236d0 / `add_with_id` 0x14092e3e0 插表）。
+    widgets: RwLock<HashMap<WidgetId, Arc<WidgetParams>>>,
 }
 impl UiState {
     pub fn new(interaction: UiInteraction) -> Self {
         Self {
             interaction,
             clearing_canvases: RwLock::new(HashMap::new()),
+            widgets: RwLock::new(HashMap::new()),
         }
     }
     pub fn replace_interaction(&mut self, interaction: UiInteraction) {
@@ -65,6 +71,30 @@ impl UiState {
     }
     pub fn interaction(&self) -> UiInteraction {
         self.interaction
+    }
+
+    /// `UiState::add<&str>` @0x1409236d0（O）：名字 → WidgetId::from_name →
+    /// add_with_id（0xb0B WidgetParams 拷贝 + Arc 0xc0B 插表）。
+    pub fn add(&self, name: &str, params: WidgetParams) -> UiWidgetContext<'_> {
+        self.add_with_id(WidgetId::from_name(name), params)
+    }
+
+    /// `add_with_id` @0x14092e3e0（O）：写锁（1e9 ns 超时）→ 拷贝 0xb0B
+    /// WidgetParams → Arc 0xc0B → HashMap@+0x68 insert（旧 Arc 递减）。
+    pub fn add_with_id(&self, id: WidgetId, params: WidgetParams) -> UiWidgetContext<'_> {
+        self.widgets.write().insert(id, Arc::new(params));
+        UiWidgetContext { state: self, id }
+    }
+
+    /// `UiState::widget` @0x14067dd80（O：1177 callers ICF 折叠）：按 WidgetId
+    /// 查 Arc<WidgetParams>。
+    pub fn widget(&self, id: WidgetId) -> Option<Arc<WidgetParams>> {
+        self.widgets.read().get(&id).cloned()
+    }
+
+    /// 构造交互上下文（I：装饰 UI 系统族以活动 widget id 查询相位）。
+    pub fn widget_context(&self, id: WidgetId) -> UiWidgetContext<'_> {
+        UiWidgetContext { state: self, id }
     }
 
     /// Specialization with UiSounds::empty, as supplied at both Garden call
@@ -105,5 +135,37 @@ impl UiWidgetContext<'_> {
         } else {
             2
         }
+    }
+
+    /// `clicked` @0x14092e5f0（O，ui_state 章）：`hover>1 && click<2 && click&1`
+    /// （尾含 id 匹配 sete）。hover = interaction.native_tag、click = native_phase
+    /// （近似映射；native 偏移 hover@+0x18/click@+0x19/id@+0x38）。
+    pub fn clicked(&self) -> bool {
+        let active = self.state.interaction;
+        active.native_tag > 1
+            && active.native_phase < 2
+            && active.native_phase & 1 != 0
+            && active.widget == self.id
+    }
+
+    /// `hovered` @0x14092e620（O，review-audit 纠错版）：`hover==1 && id 匹配`，
+    /// 返回值 = click 字节（native_phase）。
+    pub fn hovered(&self) -> u8 {
+        let active = self.state.interaction;
+        if active.native_tag == 1 && active.widget == self.id {
+            active.native_phase
+        } else {
+            0
+        }
+    }
+
+    /// `is_active` @0x14092e680（O，review-audit 纠错：含 [+0x28]!=2 门控）：
+    /// `hover!=0 && id 匹配 && 交点载荷判别 != 2`（交点判别 = native_tag 面近似；
+    /// 原交点载荷 @+0x28..0x58 7 qword 由宿主写入，U）。
+    pub fn is_active(&self) -> bool {
+        let active = self.state.interaction;
+        active.native_tag != 0
+            && active.widget == self.id
+            && active.native_tag != 2
     }
 }

@@ -23,15 +23,24 @@
 //! `{ position: float3, size: float, forward_floattor: float3, seed: int,
 //!   branch_dir: float3, arch_height: float }`. The CPU (104 B `IvyLeaf`) →
 //! GPU mapping is verified for position/size/vector_2c→forward/
-//! branch_direction→branch_dir; `seed` and `arch_height` are 待取证 (the leaf
-//! spawner's `frame` is the seed candidate). The actual GPU commit needs a
-//! `GraphicsDevice`, which the render world supplies; `upload_ivy_leaves` is
-//! the library-side business mirroring `rasterize_buildings::upload_buildings`.
+//! branch_direction→branch_dir; `seed` = `frame` (candidate, 待取证) and
+//! `arch_height` = the owning wall's arch (`leaf.source_18` = wall id). The
+//! actual GPU commit needs a `GraphicsDevice`, which the render world supplies;
+//! `upload_ivy_leaves` is the library-side business mirroring
+//! `rasterize_buildings::upload_buildings`.
+//!
+//! **D 组 render handoff**: the render world (D 组, `systems/render_loop/*`)
+//! calls `upload_ivy_leaves` with its `GraphicsDevice` after the CPU ivy
+//! systems; GPU 真机后置. This crate owns the CPU producer and the 48 B
+//! layout only.
 
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::render::ssbo::{InstanceBuffer, StorageElement};
 use crate::resources::ivy::{IvyLeaf, IvyLeafStorage};
+use crate::resources::walls::public_walls::PublicWalls;
+use crate::resources::walls::WallId;
+use crate::systems::ivy::ivy_grower::wall_arch_height;
 use glam::Vec3;
 
 /// Verified IvyLeafSsbo key (rne-read qword).
@@ -100,16 +109,19 @@ impl SsboType for IvyFlowerGpu {
 }
 
 /// Pack one CPU leaf into a 48 B GPU row. `forward` = `vector_2c`,
-/// `branch_dir` = `branch_direction`, `seed` = `frame` (candidate);
-/// `arch_height` is 待取证 (0.0 stands in).
-pub fn pack_leaf(leaf: &IvyLeaf) -> IvyLeafGpu {
+/// `branch_dir` = `branch_direction`, `seed` = `frame` (candidate, 待取证);
+/// `arch_height` = the owning wall's arch (`leaf.source_18` = wall id),
+/// falling back to 0.0 when the wall is gone.
+pub fn pack_leaf(leaf: &IvyLeaf, walls: &PublicWalls) -> IvyLeafGpu {
     IvyLeafGpu {
         position: leaf.position,
         size: leaf.size,
         forward: leaf.vector_2c,
         seed: leaf.frame as i32,
         branch_dir: leaf.branch_direction,
-        arch_height: 0.0,
+        arch_height: walls
+            .get(WallId(leaf.source_18))
+            .map_or(0.0, wall_arch_height),
     }
 }
 
@@ -118,10 +130,11 @@ pub fn pack_leaf(leaf: &IvyLeaf) -> IvyLeafGpu {
 /// count. An unregistered buffer skips the upload silently (O pattern).
 pub fn upload_ivy_leaves(
     leaves: &IvyLeafStorage,
+    walls: &PublicWalls,
     ssbos: &mut AssetSsboLibrary,
     device: &dyn GraphicsDevice,
 ) -> usize {
-    let elements: Vec<IvyLeafGpu> = leaves.all_leaves().map(pack_leaf).collect();
+    let elements: Vec<IvyLeafGpu> = leaves.all_leaves().map(|leaf| pack_leaf(leaf, walls)).collect();
     let count = elements.len();
     let Some(buffer) = ssbos.get_mut::<IvyLeafGpu>() else {
         return count;
@@ -160,13 +173,15 @@ mod tests {
             frame: 5,
             vector_58: Vec3::Z,
         };
-        let gpu = pack_leaf(&leaf);
+        let gpu = pack_leaf(&leaf, &PublicWalls::default());
         assert_eq!(gpu.position, leaf.position);
         assert_eq!(gpu.size, leaf.size);
         // Verified GPU mapping (shader `instanced_ivy_leaf.raster.hlsl`).
         assert_eq!(gpu.forward, leaf.vector_2c);
         assert_eq!(gpu.branch_dir, leaf.branch_direction);
         assert_eq!(gpu.seed, 5);
+        // A missing owning wall leaves arch_height at zero.
+        assert_eq!(gpu.arch_height, 0.0);
     }
 
     #[test]

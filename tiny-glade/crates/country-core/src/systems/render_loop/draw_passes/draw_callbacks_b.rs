@@ -1184,6 +1184,7 @@ mod tests {
         w.insert_resource(CursorTerrainRaycast {
             tag: 1,
             pos: Vec3::new(1.0, 2.0, 3.0),
+            ..Default::default()
         });
         w.insert_resource(EraserSizeMultiplier(2.5));
         w.insert_resource(DebugGuiView { suppress: true, ..Default::default() });
@@ -1194,6 +1195,7 @@ mod tests {
         w.insert_resource(CursorTerrainRaycast {
             tag: 0,
             pos: Vec3::ONE,
+            ..Default::default()
         });
         assert_eq!(
             brick_erase_inputs(&w).cursor_position,

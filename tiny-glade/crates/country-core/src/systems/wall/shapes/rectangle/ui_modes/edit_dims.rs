@@ -35,10 +35,13 @@ pub fn ui_rectangle_dims_edit_signifier(
     let (a, _b) = rect.get_edge_pts(best_edge);
     let mut extra = [0u8; 12];
     extra[..4].copy_from_slice(&best.to_le_bytes());
+    // 40B 布局（中央裁决）：best 值入 scale 槽。
     stream.write(UiAppendSignifier {
         tag: 6,
+        kind: 0,
         position: glam::Vec3::new(a.x, 0.0, a.y),
-        extra,
+        scale: best,
+        name: 0,
     });
 }
 

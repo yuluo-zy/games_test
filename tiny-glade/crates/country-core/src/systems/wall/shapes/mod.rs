@@ -144,16 +144,16 @@ pub struct RotateCircleCmd {
 }
 
 /// Convert the geometry-domain Curve2 into the wall-authority curve
-/// (system_roof::surface::Curve2). The original had one Curve2; the
+/// (crate::resources::roofs::geometry::surface::Curve2). The original had one Curve2; the
 /// reconstruction keeps the two recovered representations bridged here.
 /// (`::utils::` crate path: the local `shapes::utils` submodule shadows it.)
-pub fn to_authority_curve(curve: &::utils::curve::Curve2) -> system_roof::surface::Curve2 {
+pub fn to_authority_curve(curve: &::utils::curve::Curve2) -> crate::resources::roofs::geometry::surface::Curve2 {
     let points = curve
         .points
         .iter()
         .map(|p| [p.x, p.y])
         .collect::<Vec<_>>();
-    system_roof::surface::Curve2::try_new(points, false)
+    crate::resources::roofs::geometry::surface::Curve2::try_new(points, false)
         .expect("shape curve produced a valid authority Curve2")
 }
 

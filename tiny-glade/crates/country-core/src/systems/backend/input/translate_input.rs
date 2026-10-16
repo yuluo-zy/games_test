@@ -99,8 +99,9 @@ pub struct BindingsTable {
 
 impl Default for BindingsTable {
     fn default() -> Self {
-        // O（utils-input-config DIGEST §2.3，default @0x14089b110 原字节）：36 u32 键码 +
-        // `[0x1b0]=0xc3` + u16 鼠标 `{1,2,1}`。键码为 bevy 风格 KeyCode u16。
+        // O（default @0x14089b110 为内联代码，逐槽 `mov dword [rcx+off], imm32` 写键码，
+        // 2026-10-16 rne-read 逐字节核对）：槽 0..35 键码 + [0x1b0]=0xc3 + u16 鼠标
+        // `{1,2,1}` @0x1bc..0x1c4。键码为 bevy 风格 KeyCode u16。
         const KEYS: [u16; 36] = [
             0x2a, 0x26, 0x14, 0x17, 0x18, 0x24, 0xc3, 0xc3, 0xc3, 0xc3, // 0..9 模拟
             0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x23, // 10..19
@@ -263,7 +264,7 @@ pub fn translate_input(
     mut mouse_moved: Local<MouseMoved>,
     mut wheel: EventReader<MouseWheel>,
     mut cursor_delta: EventReader<InputCursorDelta>,
-    mut _history_buttons: EventReader<UiHistoryButtonPressed>,
+    mut history_buttons: EventReader<UiHistoryButtonPressed>,
 ) {
     // Steam 门（O：`*param_4 != 0` 时走 Steam；本实现只登记 inactive 分支）。
     if steam.0 {
@@ -345,6 +346,17 @@ pub fn translate_input(
         }
         if key_pressed(&keyboard, 0xa7) {
             values.current.digital[38] = true; // camera_snapshot_restore（恒启）
+        }
+
+        // UiHistoryButtonPressed 消费（O：0x1417cd0a0 行 780..833）：事件载荷字节
+        // `0` = undo → digital[16]（+0x98），非零 = redo → digital[17]（+0x99）。
+        // 与 0xa7 恒启键同段；生产者（UI 历史按钮）组外待仲裁。
+        for history in history_buttons.read() {
+            if history.is_redo() {
+                values.current.digital[17] = true;
+            } else {
+                values.current.digital[16] = true;
+            }
         }
 
         // 键鼠使用 → 输入方式切到 MouseKeyboard（O：ActiveInputModeTracker 更新）。

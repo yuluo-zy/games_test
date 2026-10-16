@@ -12,15 +12,17 @@
 //! 走变体 2（unblock +0x10 + Arc drop）。MetaCommand 应用（commander_update case 0）与
 //! `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
 use crate::{
-    meta_commander::MetaCommand,
+    meta_commander::{MetaCommand, MetaCommander},
     recovered_building::wall_history_edit::{WallCompoundHistoryEdit, WallHistoryEdit},
     resources::save_file::{
         LoadUpgradeFlags, LoadVersionGates, arrow_slit_record_applies, upgrade_arrow_slit_color_id,
         upgrade_window_record_color,
     },
     resources::session::{NextSession, OnLoadEntry, SessionId, ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK},
+    systems::mode_manager::AppMode,
 };
-use bevy_ecs::prelude::Resource;
+use bevy_ecs::system::Commands;
+use bevy_ecs::prelude::{EventWriter, Res, ResMut, Resource};
 use serde_json::Value;
 use std::path::Path;
 
@@ -389,4 +391,75 @@ pub fn load_game_session(
     // 4. max wall id 恢复（O：extract_max_wall_id_from_history）。
     let max_wall_id = extract_max_wall_id_from_history(edits.iter().cloned());
     Ok((parsed, commands, gates, max_wall_id))
+}
+
+/// 写 `save_folder/loading.tmp`（O：load_game 0x14146d030 后置写标记；@0x142c6416e）。
+/// 文件内容为读档进度标记；失败仅告警（宿主可据此判定正在读档）。
+pub fn write_loading_tmp(session: &SessionId) {
+    let path = session.save_folder_path().join("loading.tmp");
+    if let Err(error) = std::fs::write(&path, b"loading") {
+        log::warn!("Failed writing loading.tmp for {}: {error}", session.0);
+    }
+}
+
+/// `load_game` 0x14146d030 的 ECS 系统（消费 `NextSession`，门 AppMode::LoadGame）。
+///
+/// - 门：`*app_mode == 0xe`（AppMode::LoadGame）才运行；
+/// - 状态字节 +9 推进（`advance_load_game`：0→进度记录+置 2；2→主流程）；
+/// - kind 解码：sel==1 → parse_saved_game_data（含 upgrade 备份）；sel==2 → on_load
+///   两遍回放（MetaCommand → PostGameLoadCommand，fence 终止）；
+/// - 回放的 MetaCommand 经 `MetaCommander::extend_script` 入队（commander_update case 0
+///   会话加载链消费）；
+/// - 事件：LoadingGameComplete / StartupRevealStarted（StartupRevealFinished 由宿主
+///   应用完加载后发）。
+///
+/// PostGameLoadCommand::Apply 的应用（FUN_1412e0b90）与
+/// `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
+pub fn load_game_system(
+    mut manager: ResMut<LoadGameManager>,
+    next: Res<NextSession>,
+    mode: Res<AppMode>,
+    mut commander: ResMut<MetaCommander>,
+    mut reveal_started: EventWriter<StartupRevealStarted>,
+    mut complete: EventWriter<LoadingGameComplete>,
+    mut commands: Commands,
+) {
+    // 门：AppMode::LoadGame（0xe）。非读档态早退。
+    if mode.native_tag() != 0xe {
+        return;
+    }
+    // 无请求（kind 解码 0）时推进状态机但跳过主流程。
+    if next.kind.decoded().min(2) == 0 {
+        return;
+    }
+    let save_path = Some(next.id.save_folder_path().join("history.json"));
+    match advance_load_game(&mut manager, &next, save_path.as_deref()) {
+        Ok((_parsed, replayed)) => {
+            if !manager.wrote_loading_marker {
+                write_loading_tmp(&next.id);
+                manager.wrote_loading_marker = true;
+            }
+            reveal_started.write(StartupRevealStarted);
+            // 回放命令分发：MetaCommand 入 MetaCommander（commander_update case 0 消费）；
+            // Apply = PostGameLoadCommand::Apply（FUN_1412e0b90）→ Commands::insert_resource
+            // <NextSession>（① T3 t3-save-domain-collectors §2：0xa8B 命令条目 + FUN_1412db840
+            // call_once 插入；0xa0B 载荷 → NextSession 重构字段待取证，以当前资源克隆作桥，
+            // ① 定点载荷布局后按真值重构）。
+            let mut meta: Vec<MetaCommand> = Vec::new();
+            for command in replayed {
+                match command {
+                    ReplayedOnLoadCommand::MetaCommand(command) => meta.push(command),
+                    ReplayedOnLoadCommand::Apply { .. } => {
+                        commands.insert_resource(next.clone());
+                    }
+                    _ => {}
+                }
+            }
+            commander.extend_script(meta);
+            complete.write(LoadingGameComplete);
+        }
+        Err(error) => {
+            log::error!("load_game failed: {error:?}");
+        }
+    }
 }

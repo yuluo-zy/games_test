@@ -1,6 +1,6 @@
 //! B RoofReplayCmd::process VisualEdit branch, with event writers already resolved.
 //! Does not implement history cursor selection, ECS lookup or event scheduling.
-use crate::roof_edit_rules::{RoofEditEvent, ScalarEdit, TipEdit};
+use crate::edit_rules::{RoofEditEvent, ScalarEdit, TipEdit};
 use glam::Vec2;
 use tg_history::{RidgeDirection, RoofDirectionEdit, RoofVisualEdit};
 
@@ -84,9 +84,9 @@ pub fn step_visual_replay_resolved(
     delta_time: f32,
     changed_tick: &mut u32,
     current_tick: u32,
-) -> crate::roof_edit_rules::EditOutcome {
+) -> crate::edit_rules::EditOutcome {
     let event = state.advance(edit, delta_time);
-    crate::roof_edit_rules::apply_edit(roof, &event, changed_tick, current_tick)
+    crate::edit_rules::apply_edit(roof, &event, changed_tick, current_tick)
 }
 
 #[derive(Clone, Debug)]

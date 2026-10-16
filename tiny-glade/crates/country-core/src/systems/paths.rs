@@ -94,3 +94,28 @@ mod tests {
         assert_eq!(run(0, 5, 7), 0);
     }
 }
+
+// ---------------------------------------------------------------- 组 A 接线
+
+/// 路径栅格资源束（O：`systems::paths::PathRastersResources`；森林/树的
+/// 候选评估以 `as_float_grid`（0x140ae4c20）采样四路径栅格。字段 @+0x00/+0x20/
+/// +0x40/+0x60（render/nani/instance_updates.rs 注）——语义 = 四栅格引用）。
+#[derive(bevy_ecs::system::SystemParam)]
+pub struct PathRastersResources<'w> {
+    path: bevy_ecs::prelude::ResMut<'w, crate::resources::world_raster_defs::PathRaster>,
+    cobblestone1: bevy_ecs::prelude::ResMut<'w, crate::resources::world_raster_defs::Cobblestone1Raster>,
+    cobblestone2: bevy_ecs::prelude::ResMut<'w, crate::resources::world_raster_defs::Cobblestone2Raster>,
+    cobblestone3: bevy_ecs::prelude::ResMut<'w, crate::resources::world_raster_defs::Cobblestone3Raster>,
+}
+
+impl PathRastersResources<'_> {
+    /// `as_float_grid`（0x140ae4c20，O）：按索引取四路径栅格之一的浮点栅格引用。
+    pub fn as_float_grid(&self, index: u8) -> crate::resources::world_raster::RasterBufferRef<'_, 512> {
+        match index {
+            0 => (**self.path).as_ref(),
+            1 => (**self.cobblestone1).as_ref(),
+            2 => (**self.cobblestone2).as_ref(),
+            _ => (**self.cobblestone3).as_ref(),
+        }
+    }
+}

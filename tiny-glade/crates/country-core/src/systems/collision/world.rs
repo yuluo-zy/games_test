@@ -16,6 +16,7 @@
 #[cfg(feature = "native-physics")]
 use rapier3d::prelude::*;
 
+use bevy_ecs::prelude::Resource;
 use crate::systems::collision::{EMPTY_COLLIDER_HANDLE_TAG, SubworldIndex, SUBWORLD_SLOT_COUNT};
 
 /// `SubworldColliderHandle`（O：0x1408cc620 写 {u32@+0 index, u32@+4 gen, u8@+8 slot}，
@@ -90,6 +91,11 @@ impl RaycastMeshData {
 }
 
 /// `RaycastWorld`：17 子世界槽的查询管线（O 布局）。
+///
+/// Resource（组 A restorer 接线）：原版 `Res<RaycastWorld>` 参数面
+/// （system_tree::ui_place_tree 与 system_water::update_water_audio_grid 的
+/// BASELINE 候选接口）；core 侧此前为普通结构。
+#[derive(Resource)]
 pub struct RaycastWorld {
     /// 每槽 ColliderSet + QueryPipeline（O：slot+0x00 / slot+0x30）。
     #[cfg(feature = "native-physics")]
@@ -165,6 +171,19 @@ impl RaycastWorld {
         None
     }
 
+    /// `RaycastWorld::raycast`（非 native-physics 壳：查询不落地；组 A 接线——
+    /// system_color 拾取面在默认构建下可编译）。
+    #[cfg(not(feature = "native-physics"))]
+    pub fn raycast(&self, _origin: glam::Vec3, _dir: glam::Vec3, _mask: u64) -> Option<(f32, u32)> {
+        None
+    }
+
+    /// `RaycastWorld::legacy_raycast`（非 native-physics 壳）。
+    #[cfg(not(feature = "native-physics"))]
+    pub fn legacy_raycast(&self, _origin: glam::Vec3, _dir: glam::Vec3) -> Option<f32> {
+        None
+    }
+
     /// `mesh_intersect_collider_diff_publisher`（0x1408cc670）：返回 &RaycastWorld+0x3cb0
     /// tabloid Publisher 字段（O 布局；发布接线待续）。
     pub fn mesh_intersect_collider_diff_publisher(&self) -> u64 {
@@ -173,6 +192,10 @@ impl RaycastWorld {
 }
 
 /// `Raycasting`（O：旧包装，转发 `RaycastWorld`）。
+///
+/// Resource（组 A restorer 接线）：`system_water::update_water_audio_grid` 的
+/// BASELINE 参数面为裸 `Raycasting`（PDB 候选接口），以 `Res<Raycasting>` 访问。
+#[derive(Resource)]
 pub struct Raycasting {
     world: RaycastWorld,
 }

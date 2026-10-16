@@ -94,7 +94,8 @@ pub struct EditOutcome {
     pub rebuild_gable: bool,
     pub feedback: Vec<EditFeedback>,
     pub height_crossing: Option<HeightCrossing>,
-    /// Every successfully resolved event requests this notification, even Keep.
+    /// M1：16B 变更通知条件（gable 进出/变化，或 profile/height/eave 变化
+    /// 且 gable-after）；仅 ridge/tip 变化（无 gable 转变）不推。非恒 true。
     pub resolved_update: bool,
 }
 fn get(b: &[u8; 88], o: usize) -> f32 {
@@ -303,7 +304,7 @@ pub fn apply_edit(
         rebuild_gable,
         feedback,
         height_crossing,
-        resolved_update: true,
+        resolved_update: rebuild_gable,
     }
 }
 

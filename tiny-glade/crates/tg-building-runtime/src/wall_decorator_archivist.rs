@@ -61,6 +61,10 @@ fn clone_archive(a: &ObservedDecoratorArchive) -> ObservedDecoratorArchive {
         special2: a.special2.clone(),
         collision_a: a.collision_a.clone(),
         collision_b: a.collision_b.clone(),
+        culling: country_core::resources::walls::decorator_archivist::DecoratorCullPolicy {
+            allowed_ids: Default::default(),
+            allow_any: true,
+        },
     }
 }
 pub(crate) fn consume_observed(

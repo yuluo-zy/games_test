@@ -1,8 +1,16 @@
 //! B WindowSize stores two u32 values (set 0x140949c00). as_vec2
 //! (0x140949c10) zero-extends and converts each to f32; it is not a bitcast.
 
+use bevy_ecs::event::Event;
 use bevy_ecs::resource::Resource;
 use glam::Vec2;
+
+/// `CursorMovedScreenSpace`（B `country_core::resources::window::CursorMovedScreenSpace`，
+/// O：PDB `update_cursor_position` into_configs @0x1413ee760 的 EventWriter 类型）。
+/// `update_cursor_position` 每帧产出窗口空间游标位置（f32 屏幕空间）。
+/// 载荷形状 I（待取证：可能为裸 Vec2；事件按 bevy 每元素 0x10 B 槽承载）。
+#[derive(Event, Clone, Copy, Debug, PartialEq)]
+pub struct CursorMovedScreenSpace(pub Vec2);
 
 #[repr(C)]
 #[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]

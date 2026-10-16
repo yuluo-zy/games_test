@@ -1,14 +1,19 @@
 use super::{
-    DeletedAutoClutter,
+    AutoClutterEntityIndex, DeletedAutoClutter,
     debug_spawn_clutter::{
         DebugClutterEntityCounter, DebugSpawnAllClutterCmd, DebugSpawnClutterCmd, DebugTerrainHeight,
         SpawnAutoClutter, debug_spawn_all_clutter,
     },
-    decoclutter_show_pins::{PinVisibilityToggle, PinnedDecoClutter, ShowPinnedDecoClutter, decoclutter_show_pins},
+    decoclutter_show_pins::{
+        PinVisibilityToggle, PinnedDecoClutter, ShowPinnedDecoClutter, decoclutter_show_pins,
+    },
     defered_autoclutter_history::{RecordAutoClutterHistory, defered_autoclutter_history},
     edit_autoclutter::{DeleteAutoClutterCmd, delete_auto_clutter},
     rmb_autoclutter::{EvRightClickedAutoClutter, RmbAutoClutterHit, handle_rmb_autoclutter},
-    ui_autoclutter::{AutoClutterParentMap, ui_convert_autoclutter_to_decoclutter},
+    ui_autoclutter::{
+        AutoClutterParentMap, InstaCreateDeco, InstaCreateStairPoint,
+        ui_convert_autoclutter_to_decoclutter,
+    },
     ui_focus_decoclutter::{DecoClutterFocused, DecoClutterFocusState, ui_focus_decoclutter},
 };
 use crate::resources::walls::decorator_storage::DecoratorStorage;
@@ -35,6 +40,11 @@ pub fn register_ui_clutter_resources(world: &mut World) {
     world.init_resource::<PinnedDecoClutter>();
     world.init_resource::<ShowPinnedDecoClutter>();
     world.init_resource::<DecoClutterFocusState>();
+    // 右键 probe 目标表（rmb handler 消费）。
+    world.init_resource::<AutoClutterEntityIndex>();
+    // 转换生产事件（wp20 合同 InstaCreateDeco/InstaCreateStairPoint；消费宿主接线）。
+    world.init_resource::<Events<InstaCreateDeco>>();
+    world.init_resource::<Events<InstaCreateStairPoint>>();
     // 装饰权威存储（ui_focus_decoclutter 主读路径消费）。
     world.init_resource::<DecoratorStorage>();
 }
@@ -50,7 +60,7 @@ pub fn add_ui_clutter_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Sched
     // 原 add_ui 挂载的 6 个 clutter 系统（debug_spawn/decoclutter_show_pins/defered/
     // rmb/ui_autoclutter/ui_focus_decoclutter；宿主提供实体机制）。
     schedule.add_systems((
-        handle_rmb_autoclutter,
+        handle_rmb_autoclutter::<S>,
         ui_convert_autoclutter_to_decoclutter,
         debug_spawn_all_clutter,
         decoclutter_show_pins,

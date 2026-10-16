@@ -111,9 +111,9 @@ pub struct LoadingScreenProgressView {
     pub f4: f32,
 }
 
-/// `glade_border::ShowDemoBorderOverlay`（事件，TypeId 0x5eaaca67868e0174/0x67675b60a5763276 同属 `Events<T>`；crate 里不存在）。
-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
-pub struct ShowDemoBorderOverlay;
+/// `glade_border::ShowDemoBorderOverlay`（事件，TypeId 0x5eaaca67868e0174/0x67675b60a5763276 同属 `Events<T>`；
+/// 权威定义在 `resources::glade_border`（组 A restorer 接线，原位置）。
+pub use crate::resources::glade_border::ShowDemoBorderOverlay;
 
 /// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c）：`byte @+0x58`（变体）与字节序列（`ptr @+8`、`len @+0x10`）。
 #[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]

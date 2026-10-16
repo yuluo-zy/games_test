@@ -1,0 +1,24 @@
+[package]
+name = "rhapsody-window-lab"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Isolated resolver: unrelated workspace crates must not block this acceptance tool.
+[workspace]
+
+[[bin]]
+name = "rhapsody-window-lab"
+path = "../../crates/rhapsody/examples/window_lab.rs"
+
+[dependencies]
+rhapsody = { path = "../../crates/rhapsody" }
+ash = "=0.38.0"
+serde = { version = "=1.0.200", features = ["derive"] }
+serde_json = "=1.0.85"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

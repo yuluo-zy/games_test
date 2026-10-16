@@ -106,6 +106,22 @@ impl PublicWallBuildingState {
         self.0[0x299] >= 2
     }
     /// B snapping/telegraph preview offset field @+0x284 (semantic 待取证).
+    /// Raw64 的 Pub288（lintels third 写回源）。
+    pub fn float_0x288(&self) -> f32 {
+        self.float_at(0x288)
+    }
+    /// Raw64 的 Pub29a 字节（gates wooden 判别源）。
+    pub fn observed_29a(&self) -> u8 {
+        self.0[0x29a]
+    }
+    /// Raw64 的 Pub296 字节（fences 样式判别：==1 栅栏）。
+    pub fn observed_296(&self) -> u8 {
+        self.0[0x296]
+    }
+    /// Raw64 的 Pub294 字节（arches 跨段最高选择源）。
+    pub fn observed_294(&self) -> u8 {
+        self.0[0x294]
+    }
     pub fn float_0x284(&self) -> f32 {
         self.float_at(0x284)
     }

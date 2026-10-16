@@ -192,3 +192,15 @@ mod tests {
         assert_eq!(state.tag, 1);
     }
 }
+
+// ---------------------------------------------------------------- 组 A 接线
+
+/// 木框架构造参数缓存（O：`calc_shape_height::TimberframeConstructionParamsCache`；
+/// `timberframe` crate 两构造系统（0x1421b67a0/0x141a41ba0）以
+/// `Res<TimberframeConstructionParamsCache>` 读取墙形状→屋顶参数。字段明细 U
+/// （re-analyst-A 契约 §2：ShapeParameters 域 + 屋顶参数族，typed gap）。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+pub struct TimberframeConstructionParamsCache {
+    /// typed gap。
+    pub _gap: u64,
+}

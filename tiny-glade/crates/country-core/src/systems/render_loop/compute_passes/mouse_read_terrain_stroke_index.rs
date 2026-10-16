@@ -105,6 +105,7 @@ mod tests {
         let hit = CursorTerrainRaycast {
             tag: 1,
             pos: Vec3::new(1.5, 9.0, -2.25),
+            ..Default::default()
         };
         let b = push_constants_for(&hit);
         assert_eq!(f32::from_le_bytes(b[..4].try_into().unwrap()), 1.5);
@@ -113,6 +114,7 @@ mod tests {
         let miss = CursorTerrainRaycast {
             tag: 2,
             pos: Vec3::new(5.0, 5.0, 5.0),
+            ..Default::default()
         };
         assert_eq!(push_constants_for(&miss), [0u8; 8]);
         assert_eq!(push_constants_for(&CursorTerrainRaycast::new()), [0u8; 8]);
@@ -126,6 +128,7 @@ mod tests {
         let ray = CursorTerrainRaycast {
             tag: 1,
             pos: Vec3::new(3.0, 0.0, 4.0),
+            ..Default::default()
         };
         let pass = e.run(|env| mouse_read_terrain_stroke_index(env, &ray));
         assert_eq!(pass.name, NAME);

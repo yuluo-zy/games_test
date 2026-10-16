@@ -8,8 +8,11 @@
 //!   spawner runs only in wall-editing mode (`AppMode::Editing(Wall)`, native
 //!   tag 1). The exact +0x1c byte offset is 待取证; `native_tag == 1` is the
 //!   resolved semantic.
-//! - **ivy-count budget**: `total_ivy_count > 39999 + 0x12` → return, i.e.
-//!   ~40,000 stored ivies.
+//! - **ActionSet pressed gate**: `DigitalActionState::pressed` on the
+//!   `ivy_spawn` action (SPEC G2.4; slot 37, binding 待取证).
+//! - **point budget**: `total_point_count + 0x13 < 0x9c40` → return, i.e. the
+//!   stored point total stays under 40,000; plus a per-frame `min(0x46,
+//!   0x9c41 - total)` point cap.
 //! - **pass dispatch**: `count = *(u32*)(IvyStorage + 0x120)` — below 3 the
 //!   cursor pass (`try_ivy_root_next_to_cursor`) runs, at 3+ the random pass
 //!   (`try_random_ivy_root`) runs.
@@ -19,7 +22,9 @@
 //! (`closest_segment_index`, max height 0.5 = 0x3f000000) → root offset ±0.34
 //! (0.68 × 0.5) along the wall normal → reject when within 0.5 (0.25²) of an
 //! existing root → vertical height `(rand*1.5 − 0.75)/wall_height +
-//! segment_height` clamped to [0.000928482, 1.0]. Up to 3 attempts.
+//! segment_height` clamped to [0.0, 1.0] (VERTICAL_MIN = 0x142960690 = 0.0,
+//! ① T3 定案；旧 0.000928482 为编造值，其字节 0x3a73655f 在整 EXE 0 次出现).
+//! Up to 3 attempts.
 //!
 //! Random pass (path B, count >= 3): pick a random wall
 //! (`usize_less_than(wall_count)`, @0x14094d2e7), sample `u ∈ [0,1)`
@@ -37,10 +42,12 @@
 //! crate's `WallSpatialHash` / `wall_segments_from_state` helpers (待取证 for
 //! exact cell equivalence).
 
+use crate::input::action_set::MainActionSet;
 use crate::resources::{
     cursor_terrain_raycast::CursorTerrainRaycast,
     ivy::{IvyId, IvySpawnNoise, IvyStorage},
     walls::public_walls::PublicWalls,
+    walls::WallId,
 };
 use crate::systems::mode_manager::AppMode;
 use bevy_ecs::prelude::*;
@@ -51,13 +58,33 @@ use super::{WallSegment, closest_segment_index, ivy_grower::wall_segments_from_s
 /// Verified max-height filter (0x3f000000 = 0.5) passed to
 /// closest_segment_index in both the cursor pass and the pruner.
 const MAX_IVY_GROW_HEIGHT: f32 = 0.5;
-/// ~40,000 ivy ceiling (0x14094cf90: `39999 < total + 0x12` → return).
-const MAX_IVY_COUNT: u64 = 40_000;
+/// Total-point budget ceiling: native `total_point_count + 0x13 < 0x9c40`
+/// (0x14094d09b..a7) — the spawner returns when the stored point count would
+/// reach 40,000.
+const TOTAL_POINT_CEILING: usize = 40_000;
+/// Per-frame point cap: `eax = 0x9c41 - total; rsi = min(0x46, eax); rbp += rsi`
+/// (0x14094db6e..b9e) — at most 0x46 (70) points are scheduled each frame,
+/// bounded by the 40001 total ceiling.
+const FRAME_POINT_CAP: usize = 0x46;
+/// Spawned ivy point-count range start: native stack param 0x14 (20) at
+/// [rsp+0x28] (SPEC G2.3). The upper bound is 待取证 (the second stack word
+/// is a storage pointer, not a count); 40 stands in so maximum_point_count is
+/// sampled from [20, 40).
+const SPAWN_COUNT_RANGE: std::ops::Range<usize> = 20..40;
+/// Initial growth cooldown scalar range per path: cursor → [0, 3.0], random →
+/// [0, 1.0] (table 0x142ab3218 = 3.0, 1.0; SPEC G2.3).
+const SCALAR_RANGE_CURSOR: std::ops::Range<f32> = 0.0..3.0;
+const SCALAR_RANGE_RANDOM: std::ops::Range<f32> = 0.0..1.0;
+/// Digital action slot for `ivy_spawn` (DIGITAL_NAMES[36]): the spawner's
+/// ActionSet pressed gate (SPEC G2.4). The exact button binding is 待取证.
+const IVY_SPAWN_ACTION_SLOT: usize = 36;
 /// Cursor-pass root-offset half-width: 0.68 × 0.5 = 0.34 (constants
 /// 0x142ab31e0 / 0x142ab3200 multiplied by 0.5 at 0x142925870/8e0/e4).
 const ROOT_OFFSET: f32 = 0.34;
 /// Random-pass root-offset magnitude: 0.68, selected directly by `get_bool`
 /// (RE-ANALYSIS2: true → −0.68, false → +0.68; call 0x14094d6b0).
+/// ① T3 定案：0x142ab31f0 = `7b142e3f` = 0.68f（capstone 直接引用）；0x142ab3210 =
+/// `7b142ebf` = −0.68f。0x1429258d4 = 0.63f 是**不同常量**（非根偏移，用途待定）。
 const RANDOM_ROOT_OFFSET: f32 = 0.68;
 /// Cursor-pass minimum separation from existing roots: 0.25 (distance 0.5,
 /// constant 0x142925950).
@@ -65,8 +92,9 @@ const MIN_ROOT_DISTANCE_SQ: f32 = 0.25;
 /// Random-pass minimum separation from existing roots: 2.56 (distance 1.6,
 /// constant 0x142ab3214).
 const RANDOM_ROOT_DISTANCE_SQ: f32 = 2.56;
-/// Vertical-height sample clamp lower bound (0x142960690).
-const VERTICAL_MIN: f32 = 0.000928482;
+/// Vertical-height sample clamp lower bound (0x142960690 = f32 0.0, ① T3 定案；
+/// 旧 0.000928482 为编造值，字节 0x3a73655f 整 EXE 0 次出现)。
+const VERTICAL_MIN: f32 = 0.0;
 /// Vertical-height sample clamp upper bound (1.0 at 0x142925904).
 const VERTICAL_MAX: f32 = 1.0;
 /// Cursor-pass spawn attempt ceiling (0x142ab3218 = 3).
@@ -100,11 +128,14 @@ fn root_too_close(storage: &IvyStorage, position: Vec3, threshold_sq: f32) -> bo
 }
 
 /// Wall double-sided normal at the nearest segment under `point`, together
-/// with the segment and the hit's interpolated value (lerp of the segment
-/// height pair at the clamped hit `t`).
-fn nearest_wall_normal(walls: &PublicWalls, point: Vec2) -> Option<(Vec2, WallSegment, f32)> {
-    let mut best: Option<(f32, Vec2, WallSegment, f32)> = None;
-    for (_, state) in walls.all() {
+/// with the owning wall id, the segment and the hit's interpolated value
+/// (lerp of the segment height pair at the clamped hit `t`).
+fn nearest_wall_normal(
+    walls: &PublicWalls,
+    point: Vec2,
+) -> Option<(WallId, Vec2, WallSegment, f32)> {
+    let mut best: Option<(f32, WallId, Vec2, WallSegment, f32)> = None;
+    for (id, state) in walls.all() {
         let segments = wall_segments_from_state(state);
         let Ok(Some(hit)) = closest_segment_index(point, &segments, MAX_IVY_GROW_HEIGHT) else {
             continue;
@@ -114,17 +145,17 @@ fn nearest_wall_normal(walls: &PublicWalls, point: Vec2) -> Option<(Vec2, WallSe
         let len = dir.length().max(1e-20);
         let normal = Vec2::new(-dir.y, dir.x) / len;
         match best {
-            Some((d, _, _, _)) if d <= hit.distance => {}
-            _ => best = Some((hit.distance, normal, *seg, hit.interpolated)),
+            Some((d, _, _, _, _)) if d <= hit.distance => {}
+            _ => best = Some((hit.distance, id, normal, *seg, hit.interpolated)),
         }
     }
-    best.map(|(_, normal, seg, interpolated)| (normal, seg, interpolated))
+    best.map(|(_, id, normal, seg, interpolated)| (id, normal, seg, interpolated))
 }
 
 /// `Curve::get_approx_u_from_pos` (FUN_141469a20, S_PUB32): the exact `u`
 /// parameter of the closest point on the curve. Shared-utils cross-domain;
 /// the projection below walks the polyline and interpolates `points_u`.
-fn approx_u_from_pos(curve: &system_roof::surface::Curve2, pos: Vec2) -> f32 {
+fn approx_u_from_pos(curve: &crate::resources::roofs::geometry::surface::Curve2, pos: Vec2) -> f32 {
     let mut best = (f32::MAX, 0usize, 0.0f32);
     for i in 0..curve.points.len().saturating_sub(1) {
         let a = Vec2::from(curve.points[i]);
@@ -148,10 +179,11 @@ fn approx_u_from_pos(curve: &system_roof::surface::Curve2, pos: Vec2) -> f32 {
 }
 
 /// Vertical spawn `u`: `(rand*1.5 − 0.75)/divisor + addend`, clamped to
-/// [0.000928482, 1.0]. For the cursor pass the divisor is the wall's max ivy
-/// grow height (待取证 for the getter; 1.0 stands in) and the addend is the
-/// hit segment's interpolated height. For the random pass the divisor is the
-/// wall curve length and the addend is `u_on_curve` (exact projection).
+/// [0.0, 1.0] (VERTICAL_MIN = 0.0, ① T3). For the cursor pass the divisor is the
+/// wall's max ivy grow height (待取证 for the getter; 1.0 stands in) and the
+/// addend is the hit segment's interpolated height. For the random pass the
+/// divisor is the wall curve length and the addend is `u_on_curve` (exact
+/// projection).
 fn vertical_u(storage: &mut IvyStorage, divisor: f32, addend: f32) -> f32 {
     let rand = storage.rng_mut().uniform_f32();
     let value = (rand * 1.5 - 0.75) / divisor.max(1e-20) + addend;
@@ -161,16 +193,17 @@ fn vertical_u(storage: &mut IvyStorage, divisor: f32, addend: f32) -> f32 {
 /// `try_ivy_root_next_to_cursor` (line 245, inline, path A): place a root next
 /// to the cursor. Nearest wall segment under the cursor → root offset ±0.34 →
 /// separation check → vertical height → `spawn_ivy`. Up to `SPAWN_ATTEMPTS`
-/// tries.
+/// tries. `budget` is the frame point cap, decremented by each spawn.
 pub fn try_ivy_root_next_to_cursor(
     storage: &mut IvyStorage,
     cursor: &CursorTerrainRaycast,
     walls: &PublicWalls,
+    budget: &mut usize,
 ) -> Option<IvyId> {
     let position = cursor.position();
     let point = Vec2::new(position.x, position.z);
     for _ in 0..SPAWN_ATTEMPTS {
-        let Some((normal, _, interpolated)) = nearest_wall_normal(walls, point) else {
+        let Some((wall_id, normal, _, interpolated)) = nearest_wall_normal(walls, point) else {
             continue;
         };
         let root = Vec3::new(point.x, 0.0, point.y) + Vec3::new(normal.x, 0.0, normal.y) * ROOT_OFFSET;
@@ -179,7 +212,14 @@ pub fn try_ivy_root_next_to_cursor(
         }
         let direction = Vec3::new(normal.x, 0.0, normal.y);
         let height = vertical_u(storage, 1.0, interpolated);
-        return Some(spawn_validated_root(storage, Vec3::new(root.x, height, root.z), direction));
+        return spawn_validated_root(
+            storage,
+            Vec3::new(root.x, height, root.z),
+            direction,
+            wall_id,
+            SCALAR_RANGE_CURSOR,
+            budget,
+        );
     }
     None
 }
@@ -188,11 +228,13 @@ pub fn try_ivy_root_next_to_cursor(
 /// a random `u ∈ [0,1)`, gate on the spawn FastNoise density, place a root at
 /// the wall curve point offset laterally by the `get_bool` side (±0.34),
 /// reject roots within 1.6 of an existing root (2.56²), set the vertical `u`,
-/// and spawn. Attempts = 2..4 (re-analyst RE-ANALYSIS2).
+/// and spawn. Attempts = 2..4 (re-analyst RE-ANALYSIS2). `budget` is the frame
+/// point cap, decremented by each spawn.
 pub fn try_random_ivy_root(
     storage: &mut IvyStorage,
     walls: &PublicWalls,
     noise: &IvySpawnNoise,
+    budget: &mut usize,
 ) -> Option<IvyId> {
     let wall_rows: Vec<_> = walls.all().collect();
     if wall_rows.is_empty() {
@@ -201,7 +243,7 @@ pub fn try_random_ivy_root(
     let attempts = 2 + storage.rng_mut().usize_less_than(3);
     let mut last = None;
     for _ in 0..attempts {
-        let wall = wall_rows[storage.rng_mut().usize_less_than(wall_rows.len())].1;
+        let (wall_id, wall) = wall_rows[storage.rng_mut().usize_less_than(wall_rows.len())];
         let curve = wall.simplified_curve_2d();
         if curve.points.len() < 2 || curve.length <= 0.0 {
             continue;
@@ -234,36 +276,76 @@ pub fn try_random_ivy_root(
         let u_on_curve = approx_u_from_pos(curve, Vec2::new(x, z));
         let height = vertical_u(storage, curve.length, u_on_curve);
         let direction = Vec3::new(-dz * reciprocal, 0.0, dx * reciprocal);
-        last = Some(spawn_validated_root(storage, Vec3::new(root.x, height, root.z), direction));
+        let Some(id) = spawn_validated_root(
+            storage,
+            Vec3::new(root.x, height, root.z),
+            direction,
+            wall_id,
+            SCALAR_RANGE_RANDOM,
+            budget,
+        ) else {
+            break; // frame point budget exhausted (0x14094db6e..b9e)
+        };
+        last = Some(id);
     }
     last
 }
 
 /// Shared spawn commit: root position/direction with the point budget sampled
-/// from 4..16 so a new root has room to grow (待取证 for the original range).
-fn spawn_validated_root(storage: &mut IvyStorage, position: Vec3, direction: Vec3) -> IvyId {
-    storage.spawn_ivy(position, direction, 1.0..2.0, 4..16, 0)
+/// from 20..40 (native stack param 0x14; upper bound 待取证) and the owning
+/// wall id forwarded to the leaf storage (`source_60` = wall id, [rsp+0xf8]).
+/// Returns `None` once the per-frame point budget is spent.
+fn spawn_validated_root(
+    storage: &mut IvyStorage,
+    position: Vec3,
+    direction: Vec3,
+    wall_id: WallId,
+    scalar_range: std::ops::Range<f32>,
+    budget: &mut usize,
+) -> Option<IvyId> {
+    if *budget == 0 {
+        return None;
+    }
+    let id = storage.spawn_ivy(position, direction, scalar_range, SPAWN_COUNT_RANGE, wall_id.0);
+    // The ivy's sampled point ceiling counts against this frame's cap.
+    *budget = budget.saturating_sub(
+        storage
+            .get(id)
+            .map_or(0, |ivy| ivy.maximum_point_count),
+    );
+    Some(id)
 }
 
-/// `ivy_spawner` (0x14094cf90). Mode gate + count gate + pass dispatch per the
-/// O analysis. `storage.next_id()` stands in for the native +0x120 count.
+/// `ivy_spawner` (0x14094cf90). Mode gate + ActionSet pressed gate + point
+/// budget + pass dispatch per the O analysis.
 pub fn ivy_spawner(
     mut storage: ResMut<IvyStorage>,
     mode: Res<AppMode>,
     cursor: Res<CursorTerrainRaycast>,
     walls: Res<PublicWalls>,
     noise: Res<IvySpawnNoise>,
+    actions: Res<MainActionSet>,
 ) {
     if mode.native_tag() != 1 {
         return;
     }
-    if storage.next_id() >= MAX_IVY_COUNT {
+    // ActionSet pressed gate (SPEC G2.4): roots are only attempted while the
+    // `ivy_spawn` digital action (slot 37) is pressed. The exact button
+    // binding is 待取证.
+    if !actions.digital[IVY_SPAWN_ACTION_SLOT].pressed() {
         return;
     }
+    // Total-point budget (0x14094d09b..a7): `total_point_count + 0x13 <
+    // 0x9c40`, i.e. the stored point total stays under 40,000.
+    if storage.total_point_count() + 0x13 >= TOTAL_POINT_CEILING {
+        return;
+    }
+    // Per-frame point cap (0x14094db6e..b9e): min(0x46, 0x9c41 - total).
+    let mut budget = FRAME_POINT_CAP.min((TOTAL_POINT_CEILING + 1).saturating_sub(storage.total_point_count()));
     if storage.next_id() < 3 {
-        try_ivy_root_next_to_cursor(&mut storage, &cursor, &walls);
+        try_ivy_root_next_to_cursor(&mut storage, &cursor, &walls, &mut budget);
     } else {
-        try_random_ivy_root(&mut storage, &walls, &noise);
+        try_random_ivy_root(&mut storage, &walls, &noise, &mut budget);
     }
 }
 
@@ -301,7 +383,7 @@ mod tests {
     fn approx_u_from_pos_projects_to_the_curve_parameter() {
         let points = vec![[0.0, 0.0], [10.0, 0.0], [20.0, 0.0]];
         let points_u = vec![0.0, 0.5, 1.0];
-        let curve = system_roof::surface::Curve2 {
+        let curve = crate::resources::roofs::geometry::surface::Curve2 {
             points,
             points_u,
             length: 20.0,

@@ -36,18 +36,10 @@ pub fn telegraph_walls_are_merged(
         let end = *shifted.last().unwrap();
         stream.write(UiAppendSignifier {
             tag: 5,
+            kind: 5,
             position: glam::Vec3::new(start[0], 0.0, start[1]),
-            extra: {
-                let mut extra = [0u8; 12];
-                for (i, bytes) in [end[0], 0.0f32, end[1]]
-                    .map(f32::to_le_bytes)
-                    .iter()
-                    .enumerate()
-                {
-                    extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
-                }
-                extra
-            },
+            scale: end[0],
+            name: end[1].to_bits() as u64,
         });
     }
 }

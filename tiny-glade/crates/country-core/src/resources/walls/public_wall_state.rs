@@ -62,7 +62,7 @@ impl PublicWallState {
 
     /// The source Curve2 is the field tested by PublicWalls::get, not the
     /// terrain-mapped Curve3 nor the later path-intersection curve.
-    pub fn simplified_curve_2d(&self) -> &system_roof::surface::Curve2 {
+    pub fn simplified_curve_2d(&self) -> &crate::resources::roofs::geometry::surface::Curve2 {
         &self.authority.source().curve
     }
 

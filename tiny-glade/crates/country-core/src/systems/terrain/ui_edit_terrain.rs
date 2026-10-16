@@ -51,10 +51,42 @@ pub struct TerrainStrokeParamsCache {
     pub points_stamp: u64,
 }
 
-/// 16 位脏掩码位图（I：re-analyst“每 hovered 笔画按 16 位脏掩码遍历”）。
+/// 16 位脏掩码位图（I：re-analyst”每 hovered 笔画按 16 位参数位掩码遍历”；
+/// decomp-0x140aef1f0 行 270-285）。位 0/1/2 语义已映射（高度/falloff/点），
+/// 其余 13 位对应参数位语义 **U/待取证**（不编造）。
 pub const DIRTY_MASK_HEIGHT: u16 = 1 << 0;
 pub const DIRTY_MASK_FALLOFF: u16 = 1 << 1;
 pub const DIRTY_MASK_POINTS: u16 = 1 << 2;
+/// 当前已映射位集（高度|falloff|点）；其余位待取证。
+pub const DIRTY_MASK_KNOWN: u16 = DIRTY_MASK_HEIGHT | DIRTY_MASK_FALLOFF | DIRTY_MASK_POINTS;
+
+/// 台阶放置数据（O：decomp-0x140aef1f0 case 2 `indexmap::Bucket<(DecoratorId,
+/// DecoratorId), AlignKind>`，0x28B 元素：tag@0、float@+4、对齐字节@+8、双
+/// DecoratorId@+0xc..、+0x1c 颜色/角、+0x20 计数）——**terrain→stairs/decorator 消费链**
+/// 的 CPU 侧接口。indexmap 非本 crate 依赖，以等结构条目承载（字段语义 I）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StairsPlacementEntry {
+    /// tag@0（变体判别）。
+    pub tag: u32,
+    /// float@+4（对齐/偏移量）。
+    pub amount: f32,
+    /// 对齐字节@+8。
+    pub align: u8,
+    /// 双 DecoratorId@+0xc..。
+    pub decorator_a: u32,
+    pub decorator_b: u32,
+    /// +0x1c 颜色/角。
+    pub color_or_angle: u32,
+    /// +0x20 计数。
+    pub count: u32,
+}
+
+/// 台阶放置 Bucket（I：terrain→stairs/decorator 消费链的收集面；宿主/stairs 域
+/// 消费后清空）。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct StairsPlacementBucket {
+    pub entries: Vec<StairsPlacementEntry>,
+}
 
 /// `ui_edit_terrain` @0x140aef1f0（O 门；按脏掩码生成地形编辑命令）。
 pub fn ui_edit_terrain(
@@ -67,6 +99,7 @@ pub fn ui_edit_terrain(
     mut terrain: ResMut<TerrainEditingData>,
     mut edits: EventWriter<EditTerrainStrokeCmd>,
     mut point_sets: EventWriter<SetTerrainStrokePtsCmd>,
+    mut stairs: ResMut<StairsPlacementBucket>,
 ) {
     if mode.native_tag() != 10 {
         return;
@@ -146,5 +179,7 @@ pub fn ui_edit_terrain(
         cache.points_stamp = points_stamp;
     }
     // 常量 130.0×2（采样窗）与 panic@0x142ae3acf（组件表越界）在上游采样/UI 接线，待取证。
-    let _ = (&mut timer, &mut terrain);
+    // 台阶放置数据（decomp case 2）由 UI 输入（台阶/装饰放置）填充
+    // `StairsPlacementBucket`；stairs 域消费后清空。此处登记消费面接口。
+    let _ = (&mut timer, &mut terrain, &mut stairs);
 }

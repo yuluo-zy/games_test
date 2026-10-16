@@ -42,6 +42,13 @@ impl StairsPillarProposals {
             .push(StairsPillarProposal(proposal));
     }
 
+    /// 全量取出（pillars_process_proposals/pillars_visual 消费）。
+    pub fn drain_all(&mut self, out: &mut Vec<[u8; 44]>) {
+        for v in self.proposals.values_mut() {
+            out.extend(v.iter().map(|p| p.0));
+        }
+        self.proposals.clear();
+    }
     pub fn get(&self, key: u64) -> Option<&[StairsPillarProposal]> {
         self.proposals.get(&key).map(|bucket| bucket.as_slice())
     }
@@ -51,4 +58,20 @@ impl StairsPillarProposals {
     pub fn clear(&mut self) {
         self.proposals.clear();
     }
+}
+
+/// 拱支撑请求（O：`StairsArchSupportRequests`；construct_arches/
+/// arch_walker 族消费；按墙 id 的支柱/支撑请求桶）。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+pub struct StairsArchSupportRequests {
+    /// 墙 id → 支撑请求记录（观测 8B 键 + 16B 值；布局 I）。
+    pub requests: hashbrown::HashMap<u64, [u8; 16]>,
+}
+
+/// 楼梯支架请求（O：`StairsBracketsRequests`；construct_playermade_stairs
+/// brackets 消费）。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+pub struct StairsBracketsRequests {
+    /// 墙 id → 支架请求记录（布局 I）。
+    pub requests: hashbrown::HashMap<u64, [u8; 16]>,
 }

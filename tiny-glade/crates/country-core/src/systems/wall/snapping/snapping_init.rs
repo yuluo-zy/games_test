@@ -90,7 +90,7 @@ mod tests {
         in_progress_curve::InProgressCurve,
         walls::{WallId, WallState},
     };
-    use system_roof::surface::Curve2;
+    use crate::resources::roofs::geometry::surface::Curve2;
 
     fn run_init(points: Vec<[f32; 2]>) -> SnappingMode {
         let curve = Curve2::try_new(points, false).unwrap();

@@ -206,6 +206,12 @@ pub fn add_audio_events(world: &mut World) {
 /// systems behind `run_if` gates (generic over the FMOD [`Studio`] binding).
 /// `S` is the injected FMOD `Studio`; `M` the music backend — the host supplies
 /// the real libfmod adapters at registration time.
+///
+/// ⑤轮 ③ 复审修复（round5/REVIEW.md §3）：**F3 闭合**——`garden_audio_init_system` +
+/// `garden_audio_system`（T1 已复审通过）补进生产 Schedule；**G6 对齐**——① a 契约 §1
+/// G6（0x140b6bd50）= timberframe / elevation_supports / clutter / forest / tree /
+/// firstperson_steps 6 域 + crate 其余音频域系统一并补入（native 音频组 tag 0x26=38 系统；
+/// water×2 属 water 子组）。各系统依赖的状态资源由对应 init 系统插入或宿主提供。
 #[allow(clippy::type_complexity)]
 pub fn add_audio_systems<S, M>(schedule: &mut Schedule)
 where
@@ -217,6 +223,65 @@ where
     schedule.add_systems((
         water_audio::water_audio_system::<S>,
         water_ambience_audio::water_ambience_audio_system::<S>,
+    ));
+    // ① a 契约 §1 G6（0x140b6bd50）+ F3 garden_audio（bevy tuple ≤20 系统，分三批）。
+    schedule.add_systems((
+        // G6 六域（① a 契约 §1）：timberframe / elevation_supports / clutter /
+        // forest / tree / firstperson_steps。
+        timberframe_audio::timberframe_audio_init_system::<S>,
+        timberframe_audio::timberframe_audio::<S>,
+        elevation_supports_audio::elevation_supports_audio::<S>,
+        clutter_audio::clutter_audio_system::<S>,
+        forest_audio::forest_audio_init_system::<S>,
+        forest_audio::forest_audio_system::<S>,
+        tree_audio::tree_audio_init_system::<S>,
+        tree_audio::tree_audio_system::<S>,
+        firstperson_steps::firstperson_steps_init_system::<S>,
+        firstperson_steps::firstperson_steps::<S>,
+        // F3：garden_audio（T1）。
+        garden_audio::garden_audio_init_system::<S>,
+        garden_audio::garden_audio_system::<S>,
+        // crate 其余音频域（init + main），批 1。
+        audio_update::audio_update_system::<S>,
+        audio_update::boot_audio_update_system::<S>,
+        building_audio::building_audio_init_system::<S>,
+        building_audio::building_audio::<S>,
+        decorator_audio::decorator_audio_init_system::<S>,
+        decorator_audio::decorator_audio_system::<S>,
+        game_loading_audio::init_game_loading_audio::<S>,
+        game_loading_audio::loading_audio::<S>,
+    ));
+    schedule.add_systems((
+        menu_audio::menu_audio_init_system::<S>,
+        menu_audio::menu_audio::<S>,
+        path_audio::path_audio_init_system::<S>,
+        path_audio::path_audio_system::<S>,
+        playermade_stairs_audio::stairs_audio_init_system::<S>,
+        playermade_stairs_audio::stairs_audio_system::<S>,
+        replay_audio::replay_audio_init_system::<S>,
+        replay_audio::replay_audio_system::<S>,
+        sheep_audio::sheep_audio_init_system::<S>,
+        sheep_audio::sheep_audio_system::<S>,
+        signifier_audio::signifier_audio_init_system::<S>,
+        signifier_audio::signifier_audio_system::<S>,
+        terrain_audio::terrain_audio_init_system::<S>,
+        terrain_audio::terrain_audio_system::<S>,
+        terrain_stairs_audio::terrain_stairs_audio_init_system::<S>,
+        terrain_stairs_audio::terrain_stairs_audio_system::<S>,
+        trigger_audio::trigger_audio_init_system::<S>,
+        trigger_audio::trigger_audio_system::<S>,
+        wall_audio_fmod::wall_audio_init_system::<S>,
+        wall_audio_fmod::wall_audio_fmod::<S>,
+    ));
+    schedule.add_systems(weather_audio::weather_audio_system::<S>);
+    // G6 补全（① audio-G6-alignment 契约 §3 其余未注册音频系统）。
+    schedule.add_systems((
+        roof_audio::roof_audio_init_system::<S>,
+        roof_audio::roof_audio_system::<S>,
+        wall_audio_ui::wall_audio_ui::<S>,
+        wall_audio_orchestrator::wall_audio_orchestrator::<S>,
+        wall_audio_path::wall_audio_path::<S>,
+        ivy_audio::ivy_audio_init_system,
     ));
 }
 

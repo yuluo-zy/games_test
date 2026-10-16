@@ -362,8 +362,8 @@ impl Env {
         let color_program = raster.register_program(color_arc);
 
         let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
-        let mut session = VulkanGraphSession::new(backend);
-        session.attach_graphics_device(gd.clone());
+        let session = VulkanGraphSession::new(backend);
+
         Some(Self {
             gd,
             device,

@@ -62,12 +62,10 @@ pub fn snapping_signifiers(
         let position = Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z);
         stream.write(UiAppendSignifier {
             tag: 1,
+            kind: 1,
             position,
-            extra: {
-                let mut extra = [0u8; 12];
-                extra[..12].copy_from_slice(&[1.5f32, 1.5f32, 1.5f32].map(f32::to_le_bytes).concat());
-                extra
-            },
+            scale: 1.5,
+            name: 0,
         });
         return;
     }
@@ -85,15 +83,10 @@ pub fn snapping_signifiers(
     let end = Vec3::new(mode.snap.y, mode.snap.z, mode.snap.x);
     stream.write(UiAppendSignifier {
         tag: 2,
+        kind: 2,
         position: start,
-        extra: {
-            let mut extra = [0u8; 12];
-            let floats = [end.x, end.y, end.z].map(f32::to_le_bytes);
-            for (i, bytes) in floats.iter().enumerate() {
-                extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
-            }
-            extra
-        },
+        scale: end.x,
+        name: end.z.to_bits() as u64,
     });
 }
 

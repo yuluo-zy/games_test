@@ -1,0 +1,145 @@
+   Compiling rhapsody v0.1.0 (D:\game\tiny-glade\crates\rhapsody)
+   Compiling country-core v0.1.0 (D:\game\tiny-glade\crates\country-core)
+   Compiling tg-text v0.1.0 (D:\game\tiny-glade\crates\tg-text)
+warning: unused import: `ON_LOAD_FENCE`
+  --> crates\country-core\src\meta_commander.rs:20:46
+   |
+20 | use crate::resources::session::{OnLoadEntry, ON_LOAD_FENCE, ON_LOAD_VARIANT_MASK};
+   |                                              ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `SUBWORLD_SLOT_COUNT` and `SubworldIndex`
+  --> crates\country-core\src\systems\collision\world.rs:20:60
+   |
+20 | use crate::systems::collision::{EMPTY_COLLIDER_HANDLE_TAG, SubworldIndex, SUBWORLD_SLOT_COUNT};
+   |                                                            ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `LoadUpgradeFlags`
+  --> crates\country-core\src\systems\save\load_game.rs:18:9
+   |
+18 |         LoadUpgradeFlags, LoadVersionGates, arrow_slit_record_applies, upgrade_arrow_slit_color_id,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unused import: `save_backup_list::BackupSaveFileKind`
+  --> crates\country-core\src\systems\save\save_thread.rs:15:5
+   |
+15 |     save_backup_list::BackupSaveFileKind,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bevy_ecs::schedule::IntoScheduleConfigs`
+  --> crates\country-core\src\systems\save\mod.rs:53:5
+   |
+53 | use bevy_ecs::schedule::IntoScheduleConfigs;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `emit`
+   --> crates\country-core\src\systems\ivy\ivy_grower.rs:465:5
+    |
+465 |     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
+    |     ^^^^ help: if this is intentional, prefix it with an underscore: `_emit`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `dirty` is never read
+   --> crates\country-core\src\systems\collision\world.rs:104:5
+    |
+ 99 | pub struct RaycastWorld {
+    |            ------------ field in this struct
+...
+104 |     dirty: u64,
+    |     ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `world` is never read
+   --> crates\country-core\src\systems\collision\world.rs:200:5
+    |
+199 | pub struct Raycasting {
+    |            ---------- field in this struct
+200 |     world: RaycastWorld,
+    |     ^^^^^
+
+warning: constant `HOUR_TO_MS` is never used
+  --> crates\country-core\src\systems\time_of_day.rs:34:7
+   |
+34 | const HOUR_TO_MS: f32 = 3_600_000.0;
+   |       ^^^^^^^^^^
+
+warning: constant `K` is never used
+   --> crates\country-core\src\systems\time_of_day.rs:192:15
+    |
+192 |     pub const K: f32 = 0.0;
+    |               ^
+
+warning: constant `O` is never used
+   --> crates\country-core\src\systems\time_of_day.rs:200:15
+    |
+200 |     pub const O: f32 = 0.0;
+    |               ^
+
+   Compiling system-roof v0.1.0 (D:\game\tiny-glade\crates\systems\roof)
+warning: unused import: `public_walls::PublicWalls`
+  --> crates\systems\roof\src\delete_roof.rs:15:21
+   |
+15 |     walls::{WallId, public_walls::PublicWalls},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `walls::public_walls::PublicWalls`
+  --> crates\systems\roof\src\roof_trigger_volume.rs:23:5
+   |
+23 |     walls::public_walls::PublicWalls,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ScalarEdit`
+  --> crates\systems\roof\src\ui_edit_roof_ridge_length.rs:77:79
+   |
+77 |     use country_core::resources::roofs::geometry::edit_rules::{RoofEditEvent, ScalarEdit};
+   |                                                                               ^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates\systems\roof\src\update_roof_spatial.rs:15:13
+   |
+15 |     walls::{WallId, public_walls::{OnWallChanged, PublicWalls}},
+   |             ^^^^^^
+
+warning: unused variable: `roof`
+   --> crates\systems\roof\src\roof_trigger_volume.rs:118:23
+    |
+118 | fn noisy(mut p: Vec3, roof: &Roof, floor: f32) -> Vec3 {
+    |                       ^^^^ help: if this is intentional, prefix it with an underscore: `_roof`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\roof\src\ui_edit_roof_ridge_length.rs:73:5
+   |
+73 |     mut history: ResMut<History>,
+   |     ----^^^^^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\roof\src\ui_focused\ui_edit_roof_height_focused.rs:41:5
+   |
+41 |     mut history: ResMut<History>,
+   |     ----^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\roof\src\ui_focused\ui_edit_roof_height_focused.rs:42:5
+   |
+42 |     mut cache: ResMut<crate::ui_edit_roof::RoofParamsCacheResource>,
+   |     ----^^^^^
+   |     |
+   |     help: remove this `mut`
+
+   Compiling tiny-glade v0.1.0 (D:\game\tiny-glade\crates\tiny-glade)
+warning: `system-roof` (lib) generated 8 warnings (run `cargo fix --lib -p system-roof` to apply 8 suggestions)
+warning: `country-core` (lib) generated 11 warnings (run `cargo fix --lib -p country-core` to apply 6 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 23.75s

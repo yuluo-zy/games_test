@@ -1,5 +1,9 @@
 # Tiny Glade 项目记忆
 
+## 2026-10-16 toolbar 开源来源核查
+
+仅 B 原发行：本轮重新导出原 PDB 文件表，31 个有记录的 Taffy 源文件 SHA-256 全部匹配 crates.io 0.3.13 发布包，包哈希匹配原 Cargo.lock。toolbar 直接使用 Taffy；8 个定点函数的完整 PDB 代码范围在原 RNE/patched EXE 一致，MCP 证实 TaffyLayout→Taffy compute_layout/layout、文本→tg_text::TextFragment::render。mei 还含自己的布局/节点/模板/输入，不把其 compute_min_size_with_children 说成 Taffy 算法。整体应描述为游戏自有 toolbar/mei 加开源依赖；未找到整个 mei 来自哪一个公开 GUI fork 的证据，不证明从零原创。cosmic-text 的 PounceLight fork 经 tg-text 接入；iced fork 用于辅助 GUI，不能据依赖出现就判定 toolbar 是 iced/egui 改版。报告：`evidence/toolbar-origin-2026-10-16/REPORT.md`。无业务代码修改，不增加还原进度。
+
 ## 2026-10-15 core GUI 拥有状态与实现优先
 
 用户纠正：先推进原版业务与算法实现，不再花大量时间扩展测试；只保留必要编译检查，疑义定点查二进制，后续由用户重新验收。仍只做 B，全部代码落 country-core。gui.rs 已补 EscMenuState/LoadMenuState/Backup/Settings/Video、Next/Prev 默认与移动、原菜单推进顺序、缩略图 positions 和调试标签；LUT 消费同一菜单/metrics，SessionId 复用原锁 uuid 1.15.1。资源原 TypeId 证明 LUT 读的是 EscMenuState，不是旧代码的 AppMode。+0x30 原为共享 Arc metrics，非字符串；time_update 内联证明 allow_time_passage 与限帧策略不同。

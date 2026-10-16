@@ -72,14 +72,14 @@ pub fn signifier_audio_system<S: Studio + Send + Sync + 'static>(
         // O: each signifier record updates the parameter surface. The records'
         // tag → parameter mapping is 待取证; the per-instance parameter update
         // is the verified pattern.
-        let _ = state.boop.set_parameter("Tool", f32::from(record.tag));
-        let _ = state.cursor_grab.set_parameter("Tool", f32::from(record.tag));
+        let _ = state.boop.set_parameter("Tool", record.tag as f32);
+        let _ = state.cursor_grab.set_parameter("Tool", record.tag as f32);
         let _ = state
             .cursor_release
-            .set_parameter("Tool", f32::from(record.tag));
+            .set_parameter("Tool", record.tag as f32);
         let _ = state
             .rotate_moving_back
-            .set_parameter("Tool", f32::from(record.tag));
+            .set_parameter("Tool", record.tag as f32);
     }
     // O: frame-end hold-time loop toggle.
     let _ = state.hold_time.stop(std::time::Duration::ZERO);

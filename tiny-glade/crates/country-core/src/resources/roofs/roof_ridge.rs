@@ -5,7 +5,7 @@
 //! 数值实现在共享 `system-roof` 的 `ridge` 模块（同一套机器码还原）。
 //! 证据：`chapters/resources/roofs/roof_ridge.rs.md`。
 use crate::resources::roofs::roof_shape::Roof;
-use system_roof::ridge::{RidgeDims, RidgeError, RidgeGeometry};
+use crate::resources::roofs::geometry::ridge::{RidgeDims, RidgeError, RidgeGeometry};
 
 /// 脊线最小轴尺寸（O：`RIDGE_MIN` = 0.1，`f32::from_bits(0x3dcccccd)`）。
 pub const RIDGE_MIN: f32 = f32::from_bits(0x3dcccccd);
@@ -26,19 +26,19 @@ impl RoofRidgeDims {
     /// `RoofRidgeDims::from`（0x1408e2690，O）：从 Roof 构造脊线尺寸：
     /// tag≠1 → `{0.1,0.1}`；否则 `(1−ridge)·0.1 + ridge·shape_dims[轴]`，ridge_dir bit(+0x3c) 选轴。
     pub fn from(roof: &Roof) -> Self {
-        Self(RidgeDims(system_roof::ridge::ridge_dims_from_observed(roof.observed()).0))
+        Self(RidgeDims(crate::resources::roofs::geometry::ridge::ridge_dims_from_observed(roof.observed()).0))
     }
     /// `RoofRidgeDims::calc`（0x1408e2700，O）：脊线尺寸计算（ridge_length_01 线性混合，
     /// 最小轴 0.1）。
     pub fn calc(ridge_length_01: f32, ridge_dir: u8, shape_dims: [f32; 2]) -> Self {
         Self(RidgeDims(
-            system_roof::ridge::ridge_dims_calc(ridge_length_01, ridge_dir, shape_dims).0,
+            crate::resources::roofs::geometry::ridge::ridge_dims_calc(ridge_length_01, ridge_dir, shape_dims).0,
         ))
     }
     /// `RoofRidgeDims::to_world_space`（0x1408e2750，O）：世界脊线——max_dim≤0.1 → 单点
     /// （保留尖顶偏移）；否则要求矩形并按 ridge_dir 旋转出线段端点（`0.0·height` 保留符号零）。
     pub fn to_world_space(self, roof: &Roof) -> Result<RidgeGeometry, RidgeError> {
-        system_roof::ridge::ridge_to_world_space_observed(self.0, roof.observed())
+        crate::resources::roofs::geometry::ridge::ridge_to_world_space_observed(self.0, roof.observed())
     }
     /// `RoofRidgeDims::get_inner`（0x1400885d0，O）：内侧脊线尺寸（原 `return *param_1`
     /// 即首字段拷贝）。
@@ -61,7 +61,7 @@ impl RoofRidgeDims {
 /// `calc_roof_tip_center_ls`（0x1408e30b0，O）：局部尖顶中心——circle→(2r, 2r)，
 /// rect→(dim_x, dim_z)，乘 tip_offset_01 与 scale。
 pub fn calc_roof_tip_center_ls(roof: &Roof, scale: [f32; 2]) -> [f32; 2] {
-    system_roof::ridge::calc_roof_tip_center_ls_observed(roof.observed(), scale)
+    crate::resources::roofs::geometry::ridge::calc_roof_tip_center_ls_observed(roof.observed(), scale)
 }
 
 /// `inverse_ridge_01_param`（0x1408e30f0，O）：`(ridge_len−0.1)/(dim−0.1)`，NaN→panic，
@@ -71,7 +71,7 @@ pub fn inverse_ridge_01_param(
     ridge_dir: u8,
     shape_dims: [f32; 2],
 ) -> Result<f32, RidgeError> {
-    system_roof::ridge::inverse_ridge_01_param(ridge_length, ridge_dir, shape_dims)
+    crate::resources::roofs::geometry::ridge::inverse_ridge_01_param(ridge_length, ridge_dir, shape_dims)
 }
 
 #[cfg(test)]

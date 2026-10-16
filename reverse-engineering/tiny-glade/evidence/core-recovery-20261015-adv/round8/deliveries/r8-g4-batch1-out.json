@@ -1,0 +1,164 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "r8_g4_re",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"r8_g4_re\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "r8_g4_re",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "r8_g4_re"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"r8_g4_re\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "r8_g4_re",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "r8_g4_re",
+        "address": "0x14146cb40"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14146cb40\",\"address\":\"0x14146CB40\",\"decompiled_code\":\"\\r\\n/* WARNING: Removing unreachable block (ram,0x000140d65824) */\\r\\n\\r\\nvoid FUN_14146cb40(undefined8 param_1)\\r\\n\\r\\n{\\r\\n  undefined8 uVar1;\\r\\n  \\r\\n  FUN_14088eb40();\\r\\n  uVar1 = GetProcessHeap(param_1,0xf0);\\r\\n                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */\\r\\n                    /* WARNING: Treating indirect jump as call */\\r\\n  HeapFree(uVar1,0,param_1);\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"r8_g4_re\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14146cb40",
+          "address": "0x14146CB40",
+          "decompiled_code": "\r\n/* WARNING: Removing unreachable block (ram,0x000140d65824) */\r\n\r\nvoid FUN_14146cb40(undefined8 param_1)\r\n\r\n{\r\n  undefined8 uVar1;\r\n  \r\n  FUN_14088eb40();\r\n  uVar1 = GetProcessHeap(param_1,0xf0);\r\n                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  HeapFree(uVar1,0,param_1);\r\n  return;\r\n}\r\n\r\n",
+          "database": "r8_g4_re"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "r8_g4_re",
+        "address": "0x141449a70"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_141449a70\",\"address\":\"0x141449A70\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nundefined8 * FUN_141449a70(undefined8 *param_1,undefined4 *param_2)\\r\\n\\r\\n{\\r\\n  byte *pbVar1;\\r\\n  undefined4 *puVar2;\\r\\n  undefined4 uStack_88;\\r\\n  undefined4 uStack_84;\\r\\n  undefined4 uStack_80;\\r\\n  undefined4 uStack_7c;\\r\\n  undefined4 uStack_78;\\r\\n  undefined4 uStack_74;\\r\\n  undefined4 uStack_70;\\r\\n  undefined4 uStack_6c;\\r\\n  undefined4 uStack_68;\\r\\n  undefined4 uStack_64;\\r\\n  undefined4 uStack_60;\\r\\n  undefined4 uStack_5c;\\r\\n  undefined8 uStack_58;\\r\\n  undefined8 uStack_50;\\r\\n  longlong lStack_48;\\r\\n  undefined4 *puStack_40;\\r\\n  undefined4 *puStack_38;\\r\\n  undefined1 uStack_2a;\\r\\n  undefined1 uStack_29;\\r\\n  undefined8 uStack_28;\\r\\n  \\r\\n  uStack_28 = 0xfffffffffffffffe;\\r\\n  puVar2 = param_2;\\r\\n  pbVar1 = (byte *)FUN_140d4d740();\\r\\n  puStack_38 = param_2;\\r\\n  if ((*pbVar1 & 1) == 0) {\\r\\n    uStack_29 = 1;\\r\\n    lStack_48 = FUN_140d64e00();\\r\\n    pbVar1[0] = 1;\\r\\n    pbVar1[1] = 0;\\r\\n    pbVar1[2] = 0;\\r\\n    pbVar1[3] = 0;\\r\\n    pbVar1[4] = 0;\\r\\n    pbVar1[5] = 0;\\r\\n    pbVar1[6] = 0;\\r\\n    pbVar1[7] = 0;\\r\\n    *(longlong *)(pbVar1 + 8) = lStack_48;\\r\\n    *(undefined4 **)(pbVar1 + 0x10) = puVar2;\\r\\n  }\\r\\n  else {\\r\\n    lStack_48 = *(longlong *)(pbVar1 + 8);\\r\\n    puVar2 = *(undefined4 **)(pbVar1 + 0x10);\\r\\n  }\\r\\n  *(longlong *)(pbVar1 + 8) = lStack_48 + 1;\\r\\n  uStack_58 = _UNK_142c5f840;\\r\\n  uStack_50 = _UNK_142c5f848;\\r\\n  uStack_68 = _UNK_142c5f830;\\r\\n  uStack_64 = _UNK_142c5f834;\\r\\n  uStack_60 = _UNK_142c5f838;\\r\\n  uStack_5c = _UNK_142c5f83c;\\r\\n  puStack_40 = puVar2;\\r\\n  if (*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2) != 0) {\\r\\n    uStack_2a = 1;\\r\\n    FUN_1428afae0(&uStack_68,\\r\\n                  ((ulonglong)(*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2)) >> 3)\\r\\n                  * -0x1111111111111111,&lStack_48,1);\\r\\n  }\\r\\n  uStack_88 = *puStack_38;\\r\\n  uStack_84 = puStack_38[1];\\r\\n  uStack_80 = puStack_38[2];\\r\\n  uStack_7c = puStack_38[3];\\r\\n  uStack_78 = puStack_38[4];\\r\\n  uStack_74 = puStack_38[5];\\r\\n  uStack_70 = puStack_38[6];\\r\\n  uStack_6c = puStack_38[7];\\r\\n  uStack_2a = 0;\\r\\n  FUN_14157e130(&uStack_88,&uStack_68);\\r\\n  param_1[4] = lStack_48;\\r\\n  param_1[5] = puStack_40;\\r\\n  param_1[2] = uStack_58;\\r\\n  param_1[3] = uStack_50;\\r\\n  *param_1 = CONCAT44(uStack_64,uStack_68);\\r\\n  param_1[1] = CONCAT44(uStack_5c,uStack_60);\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\",\"database\":\"r8_g4_re\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_141449a70",
+          "address": "0x141449A70",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined8 * FUN_141449a70(undefined8 *param_1,undefined4 *param_2)\r\n\r\n{\r\n  byte *pbVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 uStack_88;\r\n  undefined4 uStack_84;\r\n  undefined4 uStack_80;\r\n  undefined4 uStack_7c;\r\n  undefined4 uStack_78;\r\n  undefined4 uStack_74;\r\n  undefined4 uStack_70;\r\n  undefined4 uStack_6c;\r\n  undefined4 uStack_68;\r\n  undefined4 uStack_64;\r\n  undefined4 uStack_60;\r\n  undefined4 uStack_5c;\r\n  undefined8 uStack_58;\r\n  undefined8 uStack_50;\r\n  longlong lStack_48;\r\n  undefined4 *puStack_40;\r\n  undefined4 *puStack_38;\r\n  undefined1 uStack_2a;\r\n  undefined1 uStack_29;\r\n  undefined8 uStack_28;\r\n  \r\n  uStack_28 = 0xfffffffffffffffe;\r\n  puVar2 = param_2;\r\n  pbVar1 = (byte *)FUN_140d4d740();\r\n  puStack_38 = param_2;\r\n  if ((*pbVar1 & 1) == 0) {\r\n    uStack_29 = 1;\r\n    lStack_48 = FUN_140d64e00();\r\n    pbVar1[0] = 1;\r\n    pbVar1[1] = 0;\r\n    pbVar1[2] = 0;\r\n    pbVar1[3] = 0;\r\n    pbVar1[4] = 0;\r\n    pbVar1[5] = 0;\r\n    pbVar1[6] = 0;\r\n    pbVar1[7] = 0;\r\n    *(longlong *)(pbVar1 + 8) = lStack_48;\r\n    *(undefined4 **)(pbVar1 + 0x10) = puVar2;\r\n  }\r\n  else {\r\n    lStack_48 = *(longlong *)(pbVar1 + 8);\r\n    puVar2 = *(undefined4 **)(pbVar1 + 0x10);\r\n  }\r\n  *(longlong *)(pbVar1 + 8) = lStack_48 + 1;\r\n  uStack_58 = _UNK_142c5f840;\r\n  uStack_50 = _UNK_142c5f848;\r\n  uStack_68 = _UNK_142c5f830;\r\n  uStack_64 = _UNK_142c5f834;\r\n  uStack_60 = _UNK_142c5f838;\r\n  uStack_5c = _UNK_142c5f83c;\r\n  puStack_40 = puVar2;\r\n  if (*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2) != 0) {\r\n    uStack_2a = 1;\r\n    FUN_1428afae0(&uStack_68,\r\n                  ((ulonglong)(*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2)) >> 3)\r\n                  * -0x1111111111111111,&lStack_48,1);\r\n  }\r\n  uStack_88 = *puStack_38;\r\n  uStack_84 = puStack_38[1];\r\n  uStack_80 = puStack_38[2];\r\n  uStack_7c = puStack_38[3];\r\n  uStack_78 = puStack_38[4];\r\n  uStack_74 = puStack_38[5];\r\n  uStack_70 = puStack_38[6];\r\n  uStack_6c = puStack_38[7];\r\n  uStack_2a = 0;\r\n  FUN_14157e130(&uStack_88,&uStack_68);\r\n  param_1[4] = lStack_48;\r\n  param_1[5] = puStack_40;\r\n  param_1[2] = uStack_58;\r\n  param_1[3] = uStack_50;\r\n  *param_1 = CONCAT44(uStack_64,uStack_68);\r\n  param_1[1] = CONCAT44(uStack_5c,uStack_60);\r\n  return param_1;\r\n}\r\n\r\n",
+          "database": "r8_g4_re"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "r8_g4_re",
+        "address": "0x140051870"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140051870\",\"address\":\"0x140051870\",\"decompiled_code\":\"\\r\\n/* WARNING: Possible PIC construction at 0x000140051926: Changing call to branch */\\r\\n\\r\\nvoid FUN_140051870(longlong *param_1,undefined8 param_2,longlong param_3,ulonglong param_4)\\r\\n\\r\\n{\\r\\n  undefined1 auVar1 [16];\\r\\n  uint uVar2;\\r\\n  uint uVar3;\\r\\n  longlong lVar4;\\r\\n  ulonglong uVar5;\\r\\n  undefined8 uVar6;\\r\\n  longlong lVar7;\\r\\n  longlong lVar8;\\r\\n  uint uVar9;\\r\\n  ulonglong unaff_RBP;\\r\\n  ulonglong unaff_RSI;\\r\\n  undefined1 (*pauVar10) [16];\\r\\n  undefined1 (*pauVar11) [16];\\r\\n  longlong lVar12;\\r\\n  undefined *apuStack_70 [5];\\r\\n  longlong lStack_48;\\r\\n  \\r\\n  lVar7 = param_1[1];\\r\\n  if (lVar7 != 0) {\\r\\n    lVar12 = param_1[3];\\r\\n    lStack_48 = param_3;\\r\\n    if (lVar12 != 0) {\\r\\n      pauVar10 = (undefined1 (*) [16])*param_1;\\r\\n      auVar1 = *pauVar10;\\r\\n      uVar9 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |\\r\\n                              (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |\\r\\n                              (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |\\r\\n                             (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);\\r\\n      pauVar11 = pauVar10 + 1;\\r\\n      do {\\r\\n        if ((short)uVar9 == 0) {\\r\\n          do {\\r\\n            auVar1 = *pauVar11;\\r\\n            pauVar10 = pauVar10 + -0x78;\\r\\n            pauVar11 = pauVar11 + 1;\\r\\n            uVar9 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |\\r\\n                                   (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |\\r\\n                                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);\\r\\n          } while (uVar9 == 0xffff);\\r\\n          uVar9 = ~uVar9;\\r\\n        }\\r\\n        uVar2 = 0;\\r\\n        for (uVar3 = uVar9; (uVar3 & 1) == 0; uVar3 = uVar3 >> 1 | 0x80000000) {\\r\\n          uVar2 = uVar2 + 1;\\r\\n        }\\r\\n        lVar4 = (ulonglong)uVar2 * -0x78;\\r\\n        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x70);\\r\\n        if (lVar8 != 0) {\\r\\n          lVar7 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x68);\\r\\n          lVar8 = lVar8 << 3;\\r\\n          register0x00000020 = (BADSPACEBASE *)apuStack_70;\\r\\n          apuStack_70[0] = &UNK_14005192b;\\r\\n          unaff_RBP = (ulonglong)uVar9;\\r\\n          unaff_RSI = param_4;\\r\\n          param_4 = 4;\\r\\n          goto code_r0x000140613c20;\\r\\n        }\\r\\n        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x58);\\r\\n        if (lVar8 != 0) {\\r\\n          apuStack_70[0] = &UNK_140051947;\\r\\n          func_0x000140613c20(*(undefined8 *)((longlong)pauVar10 + lVar4 + -0x50),lVar8 << 2,4);\\r\\n        }\\r\\n        lVar12 = lVar12 + -1;\\r\\n        uVar9 = uVar9 - 1 & uVar9;\\r\\n      } while (lVar12 != 0);\\r\\n    }\\r\\n    uVar5 = -param_4 & (param_4 + lStack_48 * (lVar7 + 1)) - 1;\\r\\n    lVar8 = lVar7 + uVar5 + 0x11;\\r\\n    if (lVar8 != 0) {\\r\\n      lVar7 = *param_1 - uVar5;\\r\\ncode_r0x000140613c20:\\r\\n      *(ulonglong *)((longlong)register0x00000020 + -8) = unaff_RBP;\\r\\n      *(ulonglong *)((longlong)register0x00000020 + -0x10) = unaff_RSI;\\r\\n      lVar12 = lVar7;\\r\\n      if (0x10 < param_4) {\\r\\n        lVar12 = *(longlong *)(lVar7 + -8);\\r\\n      }\\r\\n      *(undefined **)((longlong)register0x00000020 + -0x40) = &UNK_140d6582e;\\r\\n      uVar6 = GetProcessHeap(lVar7,lVar8);\\r\\n                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */\\r\\n                    /* WARNING: Treating indirect jump as call */\\r\\n      HeapFree(uVar6,0,lVar12);\\r\\n      return;\\r\\n    }\\r\\n  }\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"r8_g4_re\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140051870",
+          "address": "0x140051870",
+          "decompiled_code": "\r\n/* WARNING: Possible PIC construction at 0x000140051926: Changing call to branch */\r\n\r\nvoid FUN_140051870(longlong *param_1,undefined8 param_2,longlong param_3,ulonglong param_4)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  uint uVar2;\r\n  uint uVar3;\r\n  longlong lVar4;\r\n  ulonglong uVar5;\r\n  undefined8 uVar6;\r\n  longlong lVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ulonglong unaff_RBP;\r\n  ulonglong unaff_RSI;\r\n  undefined1 (*pauVar10) [16];\r\n  undefined1 (*pauVar11) [16];\r\n  longlong lVar12;\r\n  undefined *apuStack_70 [5];\r\n  longlong lStack_48;\r\n  \r\n  lVar7 = param_1[1];\r\n  if (lVar7 != 0) {\r\n    lVar12 = param_1[3];\r\n    lStack_48 = param_3;\r\n    if (lVar12 != 0) {\r\n      pauVar10 = (undefined1 (*) [16])*param_1;\r\n      auVar1 = *pauVar10;\r\n      uVar9 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |\r\n                              (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |\r\n                              (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |\r\n                              (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |\r\n                              (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |\r\n                              (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |\r\n                              (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |\r\n                              (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |\r\n                              (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |\r\n                              (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |\r\n                              (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |\r\n                              (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |\r\n                              (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |\r\n                              (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |\r\n                              (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |\r\n                             (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);\r\n      pauVar11 = pauVar10 + 1;\r\n      do {\r\n        if ((short)uVar9 == 0) {\r\n          do {\r\n            auVar1 = *pauVar11;\r\n            pauVar10 = pauVar10 + -0x78;\r\n            pauVar11 = pauVar11 + 1;\r\n            uVar9 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |\r\n                                   (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |\r\n                                   (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |\r\n                                   (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |\r\n                                   (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |\r\n                                   (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |\r\n                                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);\r\n          } while (uVar9 == 0xffff);\r\n          uVar9 = ~uVar9;\r\n        }\r\n        uVar2 = 0;\r\n        for (uVar3 = uVar9; (uVar3 & 1) == 0; uVar3 = uVar3 >> 1 | 0x80000000) {\r\n          uVar2 = uVar2 + 1;\r\n        }\r\n        lVar4 = (ulonglong)uVar2 * -0x78;\r\n        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x70);\r\n        if (lVar8 != 0) {\r\n          lVar7 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x68);\r\n          lVar8 = lVar8 << 3;\r\n          register0x00000020 = (BADSPACEBASE *)apuStack_70;\r\n          apuStack_70[0] = &UNK_14005192b;\r\n          unaff_RBP = (ulonglong)uVar9;\r\n          unaff_RSI = param_4;\r\n          param_4 = 4;\r\n          goto code_r0x000140613c20;\r\n        }\r\n        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x58);\r\n        if (lVar8 != 0) {\r\n          apuStack_70[0] = &UNK_140051947;\r\n          func_0x000140613c20(*(undefined8 *)((longlong)pauVar10 + lVar4 + -0x50),lVar8 << 2,4);\r\n        }\r\n        lVar12 = lVar12 + -1;\r\n        uVar9 = uVar9 - 1 & uVar9;\r\n      } while (lVar12 != 0);\r\n    }\r\n    uVar5 = -param_4 & (param_4 + lStack_48 * (lVar7 + 1)) - 1;\r\n    lVar8 = lVar7 + uVar5 + 0x11;\r\n    if (lVar8 != 0) {\r\n      lVar7 = *param_1 - uVar5;\r\ncode_r0x000140613c20:\r\n      *(ulonglong *)((longlong)register0x00000020 + -8) = unaff_RBP;\r\n      *(ulonglong *)((longlong)register0x00000020 + -0x10) = unaff_RSI;\r\n      lVar12 = lVar7;\r\n      if (0x10 < param_4) {\r\n        lVar12 = *(longlong *)(lVar7 + -8);\r\n      }\r\n      *(undefined **)((longlong)register0x00000020 + -0x40) = &UNK_140d6582e;\r\n      uVar6 = GetProcessHeap(lVar7,lVar8);\r\n                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n      HeapFree(uVar6,0,lVar12);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+          "database": "r8_g4_re"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "args": {
+        "database": "r8_g4_re",
+        "address": "0x14094cf90",
+        "max_instructions": 900
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "1 validation error for call[disassemble_function]\nmax_instructions\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value=900, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "r8_g4_re",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"r8_g4_re\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "r8_g4_re"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

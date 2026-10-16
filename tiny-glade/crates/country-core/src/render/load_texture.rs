@@ -45,17 +45,25 @@ pub mod boundary {
     }
 }
 
-/// 全 crate 唯一的设备 `rhapsody_contract::GraphicsDevice` 实现纹理创建（占位：不触 GPU，
-/// 用文件里的 extent 回填 `Texture`）。
+/// 全 crate 唯一的设备 `rhapsody_contract::GraphicsDevice` 实现纹理创建。
+/// D 组接入（WIRING §2.1/§3.3）：真实路径 = `GraphicsDevice::create_texture::<&[u8]>(&real_desc, name,
+/// data) -> Result<ManagedTexture>`（device_api.rs:151）。游戏侧 0x38B `Texture { id, width, height,
+/// format }` 装不下 `ManagedTexture`（**登记缺口 §4.8**，同 ssbo 的 40B Buffer 缝）。此实现记录日志并
+/// 返回未接错误，不补造、不假成功。`crate::rhapsody_types::convert_texture_desc` 是真实 desc 换算。
 #[cfg(not(test))]
 impl boundary::TextureDevice for crate::rhapsody_contract::GraphicsDevice {
     fn create_texture(
         &self,
-        _name: &str,
-        _desc: &TextureDesc,
+        name: &str,
+        desc: &TextureDesc,
         _data: &[u8],
     ) -> Result<Texture, BackendError> {
-        Err(BackendError("Texture backend is not connected".to_owned()))
+        log::warn!(
+            target: "country_core::render::load_texture",
+            "create_texture({name}): registered gap (WIRING §4.8), game-side Texture cannot hold ManagedTexture; real desc = {:?}",
+            crate::rhapsody_types::convert_texture_desc(desc)
+        );
+        Err(BackendError("Texture backend is not connected (registered gap WIRING §4.8)".to_owned()))
     }
 }
 

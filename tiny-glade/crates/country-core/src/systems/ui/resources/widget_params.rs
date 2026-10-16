@@ -9,7 +9,22 @@
 //!   非 bit0）；
 //! - `UiFocus` u32 {None=0, Toolbar=1, Mei=2, World=3}；
 //! - `clearing_canvas` volume = {tag 4, layer, 130×130}（`0x43020000_43020000` 双 130.0）。
+//!
+//! 组 A restorer 接线：`PlayUiSound`（`add_ui` 0x140945c60 注册的 2 事件之一；
+//! system_color/system_glade_border/system_tree 消费）与 `UiNavState`（同上插入的
+//! 资源）落位本模块。
+use bevy_ecs::prelude::*;
 use glam::Vec2;
+
+/// UI 声音播放事件（O：`add_ui` 0x140945c60 `register_event<PlayUiSound>`；
+/// PDB 判别 = `enum2$`（载荷语义 U，audio 域 `UiSounds` 槽位族消费）。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct PlayUiSound;
+
+/// UI 导航状态（O：`add_ui` 0x140945c60 `insert_resource<UiNavState>`；布局 U——
+/// 章节记为 1e9ns 节拍字段，字段名 I）。
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct UiNavState(pub u64);
 
 /// 默认 u32 组（O：0x1409a8e10 默认值序列）。
 pub const DEFAULT_U32S: [u32; 8] = [0, 8, 0, 1, 0, 2, 3, 3];
@@ -137,6 +152,13 @@ impl WidgetParams {
     /// 0x1409a8ee0：`occlude_by_world` = 字节 @0xa8 整字节（非 bit0）。
     pub fn occlude_by_world(mut self, value: bool) -> Self {
         self.occlude_by_world = value;
+        self
+    }
+
+    /// 音量形状写入（O 面：create_decorator_widget 0x141282300 族 volume
+    /// `{tag=5, layer=param_4}`；字节@0x78..0xa8）。
+    pub fn volume(mut self, volume: WidgetVolumeShape) -> Self {
+        self.volume = volume;
         self
     }
 

@@ -1,5 +1,7 @@
 # systems/toolbar 模块内部逻辑分析（B 版）
 
+> 2026-10-16 来源校正：原 PDB 记录的 31 个 Taffy 源文件全部匹配 crates.io 0.3.13；`mei::layout::LayoutStyle::compute_min_size_with_children`（0x140fe0e10）是游戏自有布局计算，不能将下文“最小尺寸(taffy)”当成库归属结论。TaffyLayout 的另一路确实调用 Taffy compute_layout/layout。完整新证据见 [toolbar 来源核查](../../../evidence/toolbar-origin-2026-10-16/REPORT.md)。
+
 > 由批次 3 三个子范围 agent 产出合并。本文件 = A（mei 框架）+ B（布局/系统/交互）+ C（menu/photomode/text/许可/插件）。
 
 ## 目录

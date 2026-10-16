@@ -48,7 +48,13 @@ pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
     world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
 }
 
-/// 注册 save 系统（save_game 节拍器/快照触发；X4 本体组装可接部分）。
+/// 注册 save 系统（save_game 节拍器/快照触发；load_game 消费 NextSession；save_thread
+/// 生产 spawner）。由中央仲裁接入 `startup/run_game.rs::register_core_startup`。
+use bevy_ecs::schedule::IntoScheduleConfigs;
 pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
-    schedule.add_systems(save_game::save_game_system::<()>);
+    schedule.add_systems((
+        save_game::save_game_system::<()>,
+        load_game::load_game_system,
+        save_thread::init_save_thread,
+    ));
 }

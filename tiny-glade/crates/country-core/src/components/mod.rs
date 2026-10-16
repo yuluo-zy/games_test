@@ -3,6 +3,12 @@
 //! 子模块：[`registry`]（57 个组件的名字/注册地址/克隆策略，全部无 required 组件）、[`drawable`]。
 pub mod drawable;
 pub mod registry;
+pub mod trees;
+
+pub use trees::{
+    ConvertedPreplacedTree, PrefabInstanceData, TreeAnimation, TreeCanopyMaxCullDistance,
+    TreeComponent, TreeMarkedForDeletion, TreeMoveBend, Ui2dExtent, Ui2dImage, UiDrawOrder,
+};
 
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct SemiTransparent;

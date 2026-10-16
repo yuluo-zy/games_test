@@ -10,15 +10,93 @@
 //! startup_session（`load_game_profile` 0x140916480 / `save_game_profile` 0x140917230）。
 //! **load_completion_checker 不含 GameProfile**（re-analyst 澄清：skeleton 引用是 load_game
 //! tuple 注释串）。
+use bevy_ecs::resource::Resource;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// 键位映射（原 game_key_bindings；键/动作 ID 语义待取证，默认空）。
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+/// 12B 键位槽（① r6-gamekeybindings-modkey 契约 §1，O：`{key u32@0, value u64@4}`，
+/// 槽 stride 0xc = **packed 压缩布局**，③ 复审要求 `#[repr(C, packed)]` 使结构真为 12B，
+/// 否则 Rust 默认布局 16B 注释冒充）。`value` 动作 id 语义待①（默认 0 = 未绑定）。
+/// serde/Debug 手工实现（packed 字段不可被引用）。
+#[repr(C, packed)]
+#[derive(Clone, Copy, Default, PartialEq)]
+pub struct KeyBinding {
+    /// 键码（u32 @0；bevy 风格 KeyCode）。
+    pub key: u32,
+    /// 动作 id（u64 @4；语义待①，默认 0 = 未绑定）。
+    pub value: u64,
+}
+
+impl core::fmt::Debug for KeyBinding {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let key = self.key;
+        let value = self.value;
+        f.debug_struct("KeyBinding")
+            .field("key", &key)
+            .field("value", &value)
+            .finish()
+    }
+}
+
+impl serde::Serialize for KeyBinding {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // packed 字段按值读取（Copy），不产生未对齐引用。
+        let key = self.key;
+        let value = self.value;
+        serde::Serialize::serialize(&(key, value), serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for KeyBinding {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (key, value): (u32, u64) = serde::Deserialize::deserialize(deserializer)?;
+        Ok(Self { key, value })
+    }
+}
+
+/// 键位映射（原 game_key_bindings；**40 槽 × 12B 固定数组**）。
+/// ① r6-gamekeybindings-modkey 契约 §1（O：capstone default 构建器 0x14089b110）：
+/// 槽 0..35 键码 + 槽 36 `[0x1b0]=0xc3`（未绑哨兵）+ 槽 37/38/39 鼠标绑定；`value`
+/// 动作 id 语义待①。
+/// serde 经 Vec 中转（`[KeyBinding; 40]` 无标准 serde/Default impl，N>32 限制）。
+#[derive(Clone, Debug, PartialEq)]
 pub struct GameKeyBindings {
-    /// 键→动作映射；键/动作 ID 语义待取证。
-    #[serde(default)]
-    pub bindings: Vec<(u32, u32)>,
+    /// 40 槽 × 12B（键/动作）。
+    pub bindings: [KeyBinding; 40],
+}
+
+impl Default for GameKeyBindings {
+    fn default() -> Self {
+        // ① r6 契约 §2 default 键码（capstone 0x14089b110 逐槽；与 BindingsTable
+        // translate_input.rs KEYS 一致）：槽 0..35 键码 + 槽 36=0xc3（未绑）；
+        // 槽 37/38/39 鼠标绑定 value 待①。
+        const KEYS: [u32; 40] = [
+            0x2a, 0x26, 0x14, 0x17, 0x18, 0x24, 0xc3, 0xc3, 0xc3, 0xc3, // 0..9
+            0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x23, // 10..19
+            0x27, 0x2d, 0x2b, 0xc3, 0x38, 0xab, 0xa5, 0x1b, 0x49, 0x3a, // 20..29
+            0x51, 0x52, 0x50, 0x53, 0x4f, 0x4e, 0xc3, 0, 0, 0, // 30..39
+        ];
+        Self {
+            bindings: KEYS.map(|key| KeyBinding { key, value: 0 }),
+        }
+    }
+}
+
+impl serde::Serialize for GameKeyBindings {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serde::Serialize::serialize(&self.bindings.as_slice(), serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for GameKeyBindings {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let bindings: Vec<KeyBinding> = serde::Deserialize::deserialize(deserializer)?;
+        let mut array = [KeyBinding::default(); 40];
+        for (i, binding) in bindings.into_iter().enumerate().take(40) {
+            array[i] = binding;
+        }
+        Ok(Self { bindings: array })
+    }
 }
 
 /// 教学冷却状态（20B @+0x1e0..+0x1f4；字段序待取证）。
@@ -29,7 +107,11 @@ pub struct TutorialCooldowns {}
 /// 字段声明序按原文 ron serialize 序：tutorial → tutorial_cooldowns →
 /// game_installation_id → key_bindings → new_glade_count（RE-DOMAIN-TYPES §4②，
 /// REVIEW4 复核）。
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+///
+/// `Resource`（O：native `Res<GameProfile>`，load_game 0x14146d030 第 3 参 /
+/// startup_session load_game_session 第 3 参，① T2 契约 §1；crate 以 bevy Resource
+/// 承载，宿主经 `load_game_profile` 0x140916480 装配）。
+#[derive(Resource, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GameProfile {
     /// @+0x1f4（bool）
     pub tutorial: bool,

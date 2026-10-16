@@ -146,8 +146,40 @@ impl WallSpatialHash {
         out
     }
 
-    /// 0x140a8fd90 uses simplified Curve2 endpoints/U, then projects each
-    /// endpoint onto the *first* terrain-mapped Curve3, before path preparation.
+    /// `query_with_circle`（O：0x1425defd0/0x1425df320/0x1422785d0 单态族——
+    /// 树域与墙共享的圆查询：圆 AABB 单元内端点，按圆心距离 ≤ 半径筛后回调。
+    /// 森林候选评估与树放置共用（间距 7.0 规则）。
+    pub fn query_with_circle<F: FnMut(&WallSpatialSegment, f32)>(
+        &self,
+        center: glam::Vec2,
+        radius: f32,
+        mut on_hit: F,
+    ) {
+        let min = [center.x - radius, center.y - radius];
+        let max = [center.x + radius, center.y + radius];
+        use crate::recovered_building::wall_spatial_index::{
+            GRID_SIDE, grid_coord_to_cell_index, world_space_to_grid_coord_unclamped,
+        };
+        let clamp_to_cell = |p: [f32; 2]| {
+            let g = world_space_to_grid_coord_unclamped(p);
+            let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
+            grid_coord_to_cell_index(g) as usize
+        };
+        let lo = clamp_to_cell(min);
+        let hi = clamp_to_cell(max);
+        for z in lo / GRID_SIDE..=hi / GRID_SIDE {
+            for x in lo % GRID_SIDE..=hi % GRID_SIDE {
+                let cell = z * GRID_SIDE + x;
+                for segment in self.segments_in_cell(cell) {
+                    let d = segment_distance_to_point(segment, center);
+                    if d <= radius {
+                        on_hit(segment, d);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn replace_wall(&mut self, id: WallId, state: &PublicWallState) {
         state.assert_valid();
         self.remove_wall_id(id);
@@ -196,4 +228,13 @@ pub fn spatial_hash_update(
     for &OnWallDeleted(id) in deleted.read() {
         spatial.remove_wall_id(id);
     }
+}
+
+/// 点到线段距离（圆查询筛选用；语义 I——机器码为 segment 最近点距离判定）。
+fn segment_distance_to_point(segment: &WallSpatialSegment, point: glam::Vec2) -> f32 {
+    let a = glam::Vec2::new(segment.endpoints[0][0], segment.endpoints[0][1]);
+    let b = glam::Vec2::new(segment.endpoints[1][0], segment.endpoints[1][1]);
+    let ab = b - a;
+    let t = ((point - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
+    (a + ab * t - point).length()
 }

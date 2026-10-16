@@ -12,15 +12,24 @@
 //! `{ start_pos: float3, start_thickness: float, end_pos: float3,
 //!   end_thickness: float, wall_normal: float3, arch_height: float }`. The CPU
 //! mapping is verified for start/end position and the point thicknesses;
-//! `wall_normal` and `arch_height` are 待取证 (the point's animated thickness
-//! fills `start_thickness`/`end_thickness`). The GPU commit needs a
+//! `wall_normal` (tangent perpendicular) is 待取证 and `arch_height` is the
+//! owning wall's arch (`ivy.source_60` = wall id). The GPU commit needs a
 //! `GraphicsDevice`, supplied by the render world; `upload_ivy_segments` is
 //! the library-side business mirroring `rasterize_buildings::upload_buildings`.
+//!
+//! **D 组 render handoff**: the native ivy chain registers the segment/leaf
+//! upload passes as part of the render loop (GPU 真机后置). The render world
+//! (D 组, `systems/render_loop/*`) must call `upload_ivy_segments` /
+//! `upload_ivy_leaves` with its `GraphicsDevice` after the grower/spawner CPU
+//! systems; this crate only owns the CPU producer and the 48 B layout.
 
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::render::ssbo::{InstanceBuffer, StorageElement};
 use crate::resources::ivy::{Ivy, IvyStorage};
+use crate::resources::walls::public_walls::PublicWalls;
+use crate::resources::walls::WallId;
+use crate::systems::ivy::ivy_grower::wall_arch_height;
 use glam::Vec3;
 
 /// Verified IvySegmentSsbo key (rne-read qword).
@@ -60,9 +69,14 @@ impl SsboType for IvySegmentGpu {
 /// Pack one ivy's consecutive points into 48 B GPU segment rows. The segment
 /// start/end are the deque-ordered point positions; the animated point
 /// thickness fills the start/end thickness (the branch shader lerps the
-/// thickness across the segment). `wall_normal`/`arch_height` are 待取证
-/// (0.0 / tangent-perpendicular stand in).
-pub fn pack_ivy_segments(ivy: &Ivy) -> Vec<IvySegmentGpu> {
+/// thickness across the segment). `wall_normal` is the segment's unit tangent
+/// perpendicular (待取证 for the exact native value) and `arch_height` is the
+/// owning wall's arch height (`ivy.source_60` = wall id), falling back to 0.0
+/// when the wall is gone.
+pub fn pack_ivy_segments(ivy: &Ivy, walls: &PublicWalls) -> Vec<IvySegmentGpu> {
+    let arch_height = walls
+        .get(WallId(ivy.source_60))
+        .map_or(0.0, wall_arch_height);
     ivy.points
         .iter()
         .zip(ivy.points.iter().skip(1))
@@ -76,7 +90,7 @@ pub fn pack_ivy_segments(ivy: &Ivy) -> Vec<IvySegmentGpu> {
                 end_pos: b.position,
                 end_thickness: b.thickness,
                 wall_normal: normal,
-                arch_height: 0.0,
+                arch_height,
             }
         })
         .collect()
@@ -87,12 +101,13 @@ pub fn pack_ivy_segments(ivy: &Ivy) -> Vec<IvySegmentGpu> {
 /// the packed count. An unregistered buffer skips the upload silently (O).
 pub fn upload_ivy_segments(
     storage: &IvyStorage,
+    walls: &PublicWalls,
     ssbos: &mut AssetSsboLibrary,
     device: &dyn GraphicsDevice,
 ) -> usize {
     let elements: Vec<IvySegmentGpu> = storage
         .iter()
-        .flat_map(|(_, ivy)| pack_ivy_segments(ivy))
+        .flat_map(|(_, ivy)| pack_ivy_segments(ivy, walls))
         .collect();
     let count = elements.len();
     let Some(buffer) = ssbos.get_mut::<IvySegmentGpu>() else {
@@ -121,11 +136,13 @@ mod tests {
         let id = storage.spawn_ivy(Vec3::ZERO, Vec3::X, 1.0..2.0, 3..4, 0);
         let ivy = storage.get_mut(id).unwrap();
         ivy.add_point(Vec3::X, Vec3::X);
-        let rows = pack_ivy_segments(ivy);
+        let rows = pack_ivy_segments(ivy, &PublicWalls::default());
         assert_eq!(rows.len(), 1);
         // Verified start/end mapping (shader `instanced_ivy_branch.raster.hlsl`).
         assert_eq!(rows[0].start_pos, Vec3::ZERO);
         assert_eq!(rows[0].end_pos, Vec3::X);
+        // A missing owning wall leaves arch_height at zero.
+        assert_eq!(rows[0].arch_height, 0.0);
     }
 
     #[test]

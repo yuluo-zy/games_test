@@ -110,6 +110,11 @@ fn finite_or(value: f32, fallback: f32, what: &str) -> f32 {
     }
 }
 
+/// B `country_core::systems::main_camera::MainCameraMoved`（roof ui_edit_roof
+/// 0x141a18dd0 消费的事件；观测载荷为相机位置）。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug)]
+pub struct MainCameraMoved(pub glam::Vec3);
+
 /// `MainCamera` 的原始 0x4e0 字节。原版为 ECS 资源（`input_record_replay`/`control_input_replay`
 /// 0x1409423d0/0x140941a30 以 `Res<MainCamera>` 调 `store_parameters`）。
 #[derive(Resource, Clone)]

@@ -7,9 +7,11 @@ use super::{
     ivy_pruner::{RemoveIvyCmd, ivy_pruner, ivy_pruner_cmd},
     ivy_spawner::ivy_spawner,
 };
+use crate::input::action_set::MainActionSet;
 use crate::resources::ivy::{
     IvyDirectionProposer, IvyLeafRng, IvyLeafStorage, IvySpawnNoise, IvyStorage,
 };
+use crate::resources::walls::wall_holes::PrevWallHoles;
 use bevy_ecs::prelude::*;
 
 pub fn register_ivy_storage(world: &mut World) {
@@ -18,6 +20,11 @@ pub fn register_ivy_storage(world: &mut World) {
     world.init_resource::<IvyLeafRng>();
     world.init_resource::<IvySpawnNoise>();
     world.init_resource::<IvyDirectionProposer>();
+    // Ivy systems consume the previous-frame wall holes (grower hole gate) and
+    // the shared input action set (spawner pressed gate); init_resource is
+    // idempotent and does not replace a resource the input plugin installed.
+    world.init_resource::<PrevWallHoles>();
+    world.init_resource::<MainActionSet>();
     world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
     world.init_resource::<Events<IvyLeafIsGrowing>>();
     world.init_resource::<Events<RemoveIvyCmd>>();

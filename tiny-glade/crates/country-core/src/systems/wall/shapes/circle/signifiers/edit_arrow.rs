@@ -21,16 +21,12 @@ pub fn signifier_edit_circle_arrow(
         let circle = state.is_circle().unwrap();
         stream.write(UiAppendSignifier {
             tag: 5,
+            kind: 0,
             position: glam::Vec3::new(circle.center.x, 0.0, circle.center.y),
-            extra: {
-                let mut extra = [0u8; 12];
-                let dir = circle.get_tangent_at_u(0.0);
-                let floats = [dir.x, dir.y, circle.rotation].map(f32::to_le_bytes);
-                for (i, bytes) in floats.iter().enumerate() {
-                    extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
-                }
-                extra
-            },
+            // I：切线方向 {x, y} 打包入 name 槽、rotation 入 scale（40B 布局裁决后
+            // 的映射；原 12B extra 三浮点语义保留）。
+            scale: circle.rotation,
+            name: pack2(circle.get_tangent_at_u(0.0)),
         });
     }
 }
@@ -43,4 +39,9 @@ pub fn register_required_components() -> ([u64; 0], [u64; 0]) {
 /// B 0x140002370: clone behavior marker (returns 0).
 pub fn clone_behavior() -> u8 {
     0
+}
+
+/// 打包两个 f32 到 qword（I：40B 布局裁决后的切线方向承载）。
+fn pack2(v: glam::Vec2) -> u64 {
+    u64::from(v.x.to_bits()) | (u64::from(v.y.to_bits()) << 32)
 }

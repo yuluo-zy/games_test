@@ -30,10 +30,13 @@ pub fn rectangle_signifier(center: Vec2, dimensions: Vec2) -> UiAppendSignifier 
     for (i, bytes) in floats.iter().enumerate() {
         extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
     }
+    // 40B 布局（中央裁决）：尺寸打包入 name 槽。
     UiAppendSignifier {
         tag: 1,
+        kind: 0,
         position: glam::Vec3::new(center.x, 0.0, center.y),
-        extra,
+        scale: 0.0,
+        name: u64::from(dimensions.x.to_bits()) | (u64::from(dimensions.y.to_bits()) << 32),
     }
 }
 

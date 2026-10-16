@@ -1,13 +1,19 @@
 //! `terrain_hover_idx.rs` — 地形悬停笔画索引（B 0x140aff720，O）。
 //!
-//! 证据：`terrain-water/ALGORITHMS.md`、re-analyst-interaction 深度逆向（interaction-group）：
+//! 证据：`terrain-water/decomp/decomp-0x140aff720.txt`（全文 96 行）、
+//! `terrain-water/ALGORITHMS.md`、re-analyst-interaction 深度逆向（interaction-group）：
 //! - AppMode 位掩码 **0x421**（位 0/5/10 = Editing(None)/Editing(Terrain)/Terrain）门；
-//! - 读 `MouseTerrainRaycastSsbo` 的 `id = *(i32*)(buf + 0x10)`（-1 哨兵）；
-//! - 水位采样 ≤ 0 / 光标无效 / 距离 ≤ 0.5 不更新；
-//! - 写 `HoveredTerrainStrokeId { tag=1, id }`。
+//! - 读地形资源（FUN_140969720 + 串名 `UNK_142a9df5b`（0x6c 长度）校验）→
+//!   hovered stroke id = `*(i32*)(*plVar9 + 0x10)`（vtable 高度读 `(**(code**)(puVar8[1]+0x18))`）；
+//! - 光标有效性两分支（**decomp 行 75-90**）：
+//!   - `fVar12 <= 0.0`（高度 ≤ 0）：**仅当 id == -1 才 return**（id 有效即写）；
+//!   - 否则（高度 > 0）：必须悬停位 `(*pbVar4 & 1)`、id 有效、`距离 > 0.5`（
+//!     `_UNK_142925870`），任一不满足 → return；
+//! - 命中 → `*param_3 = 1; param_3[1] = iVar11`（写 `HoveredTerrainStrokeId { tag=1, id }`）。
 //!
 //! `MouseTerrainRaycastSsbo` 布局未恢复（`render_ssbo` 为 `Gap`），这里用
-//! [`MouseTerrainHoverReadback`] 适配资源承载宿主从 SSBO 拷贝的 id（待取证：SSBO 字段）。
+//! [`MouseTerrainHoverReadback`] 适配资源承载宿主从 SSBO 拷贝的 id/悬停位/距离
+//! （待取证：SSBO 字段）；高度采样用 [`TerrainWaterSample`] 适配（I：WaterMaskSsbo Gap）。
 use bevy_ecs::prelude::*;
 
 use crate::{resources::mouse_terrain_raycast::CursorPositionSS, systems::mode_manager::AppMode};
@@ -21,22 +27,27 @@ pub struct HoveredTerrainStrokeId {
     pub id: i32,
 }
 
-/// 鼠标地形射线回读适配（I：`MouseTerrainRaycastSsbo` 布局 Gap，宿主从 SSBO 拷贝 id）。
+/// 鼠标地形射线回读适配（I：`MouseTerrainRaycastSsbo` 布局 Gap，宿主从 SSBO 拷贝）。
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct MouseTerrainHoverReadback {
     /// 命中笔画 id（-1 哨兵 = 未命中）。
     pub id: i32,
-    /// 命中距离（≤ 0.5 不更新）。
+    /// 悬停位（O：decomp `(*pbVar4 & 1)`，仅在高度>0 分支检查）。
+    pub hovered: bool,
+    /// 射线距离（O：decomp `*(float*)(pbVar4 + 8)`；仅高度>0 分支的 0.5 界外阈值）。
     pub distance: f32,
 }
 
-/// 水位采样适配（I：WaterMaskSsbo 布局 Gap；≤ 0 不更新）。
+/// 光标高度采样适配（I：`WaterMaskSsbo` 布局 Gap；对应 decomp `FUN_140a14df0` 输出）。
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct TerrainWaterSample {
     pub level: f32,
 }
 
-/// `terrain_hover_idx` @0x140aff720（O 结构）。
+/// 界外距离阈值（O：`_UNK_142925870` = 0.5）。
+pub const HOVER_DISTANCE_GATE: f32 = 0.5;
+
+/// `terrain_hover_idx` @0x140aff720（O 两分支门控）。
 pub fn terrain_hover_idx(
     mode: Res<AppMode>,
     hover: Res<MouseTerrainHoverReadback>,
@@ -54,12 +65,23 @@ pub fn terrain_hover_idx(
     if hover.id == -1 {
         return;
     }
-    // 水位 ≤ 0 不更新（O：章节；re-analyst 纠正为“高度≤0 且 id 有效会写”，以机器码为准）。
+    // 光标高度采样两分支（O：decomp 行 75-90）：
+    //   `fVar12 <= 0.0` → 仅当 id == -1 才 return（**高度≤0 且 id 有效要写**）；
+    //   否则 → 悬停位门 + dist ≤ 0.5 → return（dist 门**仅**在高度>0 分支）。
     if water.level <= 0.0 {
-        return;
-    }
-    if hover.distance <= 0.5 {
-        return;
+        if hover.id == -1 {
+            return;
+        }
+    } else {
+        if !hover.hovered {
+            return;
+        }
+        if hover.id == -1 {
+            return;
+        }
+        if hover.distance <= HOVER_DISTANCE_GATE {
+            return;
+        }
     }
     hovered.tag = 1;
     hovered.id = hover.id;

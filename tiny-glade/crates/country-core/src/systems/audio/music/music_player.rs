@@ -102,6 +102,9 @@ pub struct MusicPlayer<E> {
     pub playlist: Vec<usize>,
     pub state: PlayerState,
     pub last_timeline_position: i32,
+    /// theme 旗标（native `+0x1c0/+0x1c4`，`load_glade_audio` 0x1408be360 写
+    /// `0.25`（f32 @0x142925950）当 theme==4（Winter）否则 `0`；字段语义待取证）。
+    pub glade_theme_flag: f32,
 }
 impl<E: MusicEvent> MusicPlayer<E> {
     pub fn init<B: MusicBackend<Event = E>>(backend: &B) -> Self {
@@ -120,6 +123,7 @@ impl<E: MusicEvent> MusicPlayer<E> {
             playlist: Vec::new(),
             state: PlayerState::SwitchTrack,
             last_timeline_position: 0,
+            glade_theme_flag: 0.0,
         }
     }
     /// 0x1408b6b10: creation errors panic; disabled instances and callback failures

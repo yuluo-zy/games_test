@@ -158,13 +158,20 @@ pub trait TextureLibraryDevice: TextureDevice {
 
 impl TextureLibraryDevice for GraphicsDevice {
     fn create_persistent_descriptor_set(&self, name: &str) -> DescriptorSet {
-        GraphicsDevice::create_persistent_descriptor_set(self, name)
+        // D 组接入（WIRING §3.1 #1 / §4.1）：真实 `create_persistent_descriptor_set` 的签名是
+        // `(state: &DescriptorSetState, writes: &[DescriptorWrite])`（device.rs:941），已接到
+        // `GraphicsDevice::create_persistent_descriptor_set`；游戏侧 bindless `DescriptorSetState`
+        // 构造未恢复，先登记缺口（bridge 记录日志并返回占位，不 panic、不假成功）。
+        GraphicsDevice::bindless_create_persistent_descriptor_set(self, name)
     }
     fn update_persistent_descriptor_set(
         &self,
         _dset: &DescriptorSet,
         _updates: &[DescriptorImageUpdate],
     ) {
+        // 登记缺口 §4.2：rhapsody 无 `update_persistent_descriptor_set` 方法身份
+        // （只有 bind 语义的 `bind_persistent_descriptor_set`）；真实更新路径未接，记录日志。
+        GraphicsDevice::update_persistent_descriptor_set(self);
     }
     fn get_vk_image_view(&self, texture: &Texture, _mip: u32) -> Result<ImageView, BackendError> {
         Ok(ImageView(texture.id))

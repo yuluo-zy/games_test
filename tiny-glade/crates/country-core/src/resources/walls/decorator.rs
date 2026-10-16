@@ -991,3 +991,21 @@ mod tests {
         assert!(diff < 1e-5, "rotation roundtrip diff {}", diff);
     }
 }
+
+// ---------------------------------------------------------------- 组 A 接线
+
+/// 旗连接设置命令（O：`walls::decorator::SetFlagConnectionCmd`；
+/// color_menu 0x142291230 的 EventWriter 面、set_flag_connection_and_chimney_smoke
+/// 0x142298970 消费。载荷语义 U）。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+pub struct SetFlagConnectionCmd {
+    /// typed gap。
+    pub _gap: u64,
+}
+
+/// 烟囱烟开关命令（O：`walls::decorator::SetChimneySmokeCmd`；同族消费）。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+pub struct SetChimneySmokeCmd {
+    /// typed gap。
+    pub _gap: u64,
+}

@@ -12,10 +12,12 @@ use super::{
     save_game::{
         AsyncSaveCmd, GameSaveSections, SaveFileSection, SaveFileStructure, SerializedJson,
     },
+    save_backup_list::BackupSaveFileKind,
     shadow_file::ShadowFile,
     snapshot::SnapshotSaveData,
 };
 use crate::resources::session::SessionId;
+use bevy_ecs::prelude::{Commands, ResMut};
 use crossbeam_channel::Receiver;
 use hashbrown::HashSet;
 use std::{
@@ -24,6 +26,11 @@ use std::{
     thread::JoinHandle,
     time::Duration,
 };
+
+/// 手动备份身份字节偏移（O：0x141721aa0 default 区 `param_2 + 0x53`）。
+pub const MANUAL_BACKUP_IDENTITY_OFFSET: usize = 0x53;
+/// "snapshot" 常量（O：u64 小端 0x746f687370616e73）。
+pub const MANUAL_BACKUP_SNAPSHOT_TAG: u64 = 0x746f_6873_7061_6e73;
 
 /// 每节延迟变更（PDB：`save_thread::DeferredSection`；原版 `[Option<..>; 10]` 槽位）。
 #[derive(Clone, Debug)]
@@ -237,7 +244,11 @@ impl CurrentSaveFile {
     /// "Copying inactive save file to backup" / "Writing backup from shadow copy" /
     /// "Error flushing history file for backup"。先把内存影像 flush 到影子文件，再把
     /// 数据复制到目标备份路径。
-    pub fn backup_save(&mut self, target: &Path, _kind: super::save_backup_list::BackupSaveFileKind) -> bool {
+    pub fn backup_save(
+        &mut self,
+        target: &Path,
+        _kind: super::save_backup_list::BackupSaveFileKind,
+    ) -> bool {
         if !self.shadow_file.flush() {
             log::error!("Error flushing history file for backup");
             return false;
@@ -258,12 +269,48 @@ impl CurrentSaveFile {
     }
 
     /// 手动备份（execute_save_cmd 无专属 case，落 default）。
+    ///
+    /// **身份比对（O：0x141721aa0 default 区）**：载荷比对文件身份字节
+    /// `+0x53`/`+0x299..0x2a7` 与 "snapshot" 常量 `0x746f687370616e73`（="snapshot"
+    /// u64 小端）。身份命中 snapshot 标记 → 拒绝备份。`+0x299` 起 16 字节旧态身份比对
+    /// 载荷结构 U（待取证，不编造）；此处实现可观测的 +0x53 身份字节校验。
     pub fn perform_manual_backup(
         &mut self,
         target: &Path,
         kind: super::save_backup_list::BackupSaveFileKind,
     ) -> bool {
+        let data = self.shadow_file.data();
+        if data.len() > MANUAL_BACKUP_IDENTITY_OFFSET + 8 {
+            let identity = u64::from_le_bytes(
+                data[MANUAL_BACKUP_IDENTITY_OFFSET..MANUAL_BACKUP_IDENTITY_OFFSET + 8]
+                    .try_into()
+                    .expect("manual backup identity read"),
+            );
+            if identity == MANUAL_BACKUP_SNAPSHOT_TAG {
+                log::warn!(
+                    "Manual backup rejected: save file identity matches the snapshot marker"
+                );
+                return false;
+            }
+        }
         self.backup_save(target, kind)
+    }
+
+    /// B execute_save_cmd case 7 的 retention 删除：`remove_counter` 命中 →
+    /// 删除旧 `history-auto-{counter}.json` 备份（日志 "Backup limit reached; removing "
+    /// / "Error deleting stale backup "）。返回是否成功删除。
+    pub fn remove_stale_backup(&mut self, folder: &Path, counter: u32) -> bool {
+        let path = folder.join(format!("history-auto-{counter}.json"));
+        match std::fs::remove_file(&path) {
+            Ok(()) => {
+                log::info!("Backup limit reached; removing {}", path.display());
+                true
+            }
+            Err(error) => {
+                log::error!("Error deleting stale backup {}: {error}", path.display());
+                false
+            }
+        }
     }
 
     /// B execute_save_cmd case 9 CaptureSnapshot：创建 `snapshots` 目录 → 快照 JSON
@@ -366,9 +413,19 @@ pub fn execute_save_cmd(current: &mut Option<CurrentSaveFile>, cmd: AsyncSaveCmd
                 );
             }
         }
-        AsyncSaveCmd::BackupSave { path, kind } => {
+        AsyncSaveCmd::BackupSave {
+            path,
+            kind,
+            remove_counter,
+        } => {
             if let Some(file) = current.as_mut() {
                 file.backup_save(&path, kind);
+                // retention 删除（O：BackupDecision.remove_counter → 删除旧备份）。
+                if let Some(counter) = remove_counter {
+                    if let Some(folder) = path.parent() {
+                        file.remove_stale_backup(folder, counter);
+                    }
+                }
             } else {
                 log::warn!("No active save file, but AsyncSaveCmd::BackupSave has been issued");
             }
@@ -524,10 +581,61 @@ pub fn save_thread(
                 break;
             }
             if current.is_some() {
+                // 待取证：原版无 flush 且有活动档时走 0x141721104 未恢复 jumptable
+                // （DELTA §1 差异项）；当前直接 break 退出，语义标 O 实为待取证。
                 break;
             }
             // 无活动档且不需 flush：睡 10ms 后继续（原版行为，O）。
             std::thread::sleep(Duration::from_millis(10));
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// 生产 spawner（O：run_game_thread 装配 save_thread；经 add_save_load_systems_impl
+// 注册 `init_save_thread`，由中央仲裁接入 startup/run_game.rs）
+// ---------------------------------------------------------------------------
+
+/// 存档线程生产句柄（游戏线程侧资源）。`join` 供收尾等待；`command_sender` 经
+/// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表；
+/// `shutdown_ack` 供关闭时等待存档线程确认。
+#[derive(bevy_ecs::resource::Resource)]
+pub struct SaveThreadHandle {
+    pub join: JoinHandle<()>,
+    pub command_sender: crossbeam_channel::Sender<AsyncSaveCmd>,
+    pub error_state: AutosaveErrorState,
+    pub shutdown_ack: crossbeam_channel::Receiver<()>,
+}
+
+impl SaveThreadHandle {
+    /// 生产存档线程（O：主循环 `save_thread` + 通道对 + unsaved 共享列表）。
+    pub fn spawn() -> Self {
+        let (command_sender, command_receiver) = crossbeam_channel::unbounded();
+        let (error_sender, error_state) = AutosaveErrorState::channel();
+        let (shutdown_ack, shutdown_ack_receiver) = crossbeam_channel::unbounded();
+        let unsaved = Arc::new(UnsavedFileList::default());
+        let join = std::thread::spawn(move || {
+            save_thread(command_receiver, error_sender, unsaved, shutdown_ack)
+        });
+        Self {
+            join,
+            command_sender,
+            error_state,
+            shutdown_ack: shutdown_ack_receiver,
+        }
+    }
+}
+
+/// `init_save_thread`（O：run_game_thread 装配点）：生产存档线程并把命令发送端
+/// 绑定到 `AutoSaveState`。已在装配（command_sender 已附）则跳过（幂等）。
+pub fn init_save_thread(
+    mut auto: ResMut<super::save_game::AutoSaveState>,
+    mut commands: Commands,
+) {
+    if auto.is_command_attached() {
+        return;
+    }
+    let handle = SaveThreadHandle::spawn();
+    auto.attach_command_sender(handle.command_sender.clone());
+    commands.insert_resource(handle);
 }

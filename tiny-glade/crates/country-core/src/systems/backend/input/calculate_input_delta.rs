@@ -5,10 +5,22 @@ use crate::input::action_set::{ActionSetStates, ActionSetValues, DigitalActionSt
 use bevy_ecs::prelude::{Event, Res, ResMut};
 
 /// `UiHistoryButtonPressed`（B `calculate_input_delta::UiHistoryButtonPressed`，O：PDB
-/// `translate_input` 签名 `EventReader<UiHistoryButtonPressed>`）。UI 历史按钮（撤销/重做
-/// 等）按下事件，由 `translate_input` 消费。载荷语义待取证。
-#[derive(Event, Clone, Copy, Debug, Default)]
-pub struct UiHistoryButtonPressed;
+/// `translate_input` 签名 `EventReader<UiHistoryButtonPressed>`）。UI 历史按钮（撤销/重做）
+/// 按下事件，由 `translate_input` 消费。
+///
+/// 载荷（O，translate_input decomp 0x1417cd0a0 事件槽 @+8）：`0` = undo 按钮，
+/// 非零 = redo 按钮 —— `if (*(char *)(event + 8) == 0) { +0x98 = 1 } else { +0x99 = 1 }`
+/// （+0x98/+0x99 = `current.digital[16]/[17]` = undo/redo）。生产者（UI 域历史按钮，
+/// 组外）待仲裁接线。
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UiHistoryButtonPressed(pub u8);
+
+impl UiHistoryButtonPressed {
+    /// 载荷判别（O）：0 = undo，非零 = redo。
+    pub fn is_redo(&self) -> bool {
+        self.0 != 0
+    }
+}
 
 /// The payload for tags 0 and 4 is inactive in the original enum. Native code
 /// leaves a scratch register there; this typed projection normalizes it to 0.

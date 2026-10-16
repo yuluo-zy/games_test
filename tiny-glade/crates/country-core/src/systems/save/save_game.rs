@@ -18,6 +18,7 @@ use crate::{
     },
     systems::{
         camera_rig::CameraRigParametersCache,
+        debug::sheep_controls::SheepControl,
         save::{
             save_backup_list::BackupSaveFileKind,
             save_backup_metronome::SaveBackupMetronome,
@@ -32,7 +33,7 @@ use std::{
     io::Write,
     ops::Range,
     path::{Path, PathBuf},
-    sync::{mpsc, Arc},
+    sync::Arc,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -48,6 +49,11 @@ pub struct SerializedJson(String);
 impl SerializedJson {
     pub fn new<T: Serialize + ?Sized>(value: &T) -> serde_json::Result<Self> {
         serde_json::to_string(value).map(Self)
+    }
+    /// 由**已经是 JSON 文本**的字符串直接构造（域序列化器输出；如
+    /// `sheep_section_json`）。不二次转义。
+    pub fn from_raw_string(value: String) -> Self {
+        Self(value)
     }
     pub fn as_str(&self) -> &str {
         &self.0
@@ -121,48 +127,65 @@ pub fn save_game_to_writer(
 // 存档线程命令通道（PDB：`save_game::AsyncSaveCmd`，经 mpsc 传输）
 // ---------------------------------------------------------------------------
 
-/// 游戏线程 → 存档线程的命令。原版变体标签 3..=11（execute_save_cmd 0x141721aa0
-/// 的 switch 面）；0/1/2 未在 switch 出现（I：死/历史变体）。
+/// 游戏线程 → 存档线程的命令。原版变体标签 **3..=11**（① r6-async-savecmd 契约 §1，
+/// ALGORITHMS §2.1 save_thread 0x141720680 / 分发 0x141721aa0 权威；0/1/2 未在 switch
+/// 出现 = 死/历史变体）。判别值显式对齐：3 OpenFile / 4 CloseFile / 9 CaptureSnapshot /
+/// 10 Flush / 0xb(11) Shutdown；5/6/7/8 = ChangeSection/ReplaceEdits/BackupSave/ManualBackup。
+///
+/// **字段名约定**：各变体的载荷字段名是**语义字段**（由分发行为/存档 codec 合同推导），
+/// **非**原字节布局字段名。原版载荷仅 tag@+0（qword 判别）与分段偏移已被观测
+/// （见 save-SPEC §1.1/§1.4），各分段载荷字段名 **U/待取证**，不编造字节布局名。
 #[derive(Clone, Debug)]
+#[repr(u64)]
 pub enum AsyncSaveCmd {
-    /// 3 OpenFile：全量重写 + 建 ShadowFile("history.json")。载荷带完整节/编辑。
+    /// 3 OpenFile：全量重写 + 建 ShadowFile("history.json")。
+    /// 载荷分段（O）：path（经 save_folder_path join）+ 全量存档数据（save_game_to_file
+    /// <Cursor> 重写）。`session`/`sections`/`edits` 为语义字段，字节布局名待取证。
     OpenFile {
         session: SessionId,
         sections: GameSaveSections,
         edits: Vec<SerializedJson>,
-    },
-    /// 4 CloseFile。
+    } = 3,
+    /// 4 CloseFile。载荷含 session id（语义；分段字段 U）。
     CloseFile {
         session: SessionId,
-    },
+    } = 4,
     /// 5 ChangeSection：改节 + mark_dirty。
+    /// 载荷分段（O）：param_1[1..2]（+8/+0x10）、[3..4]（+0x18/+0x20）。
+    /// `section`/`value` 为语义字段（change_section 行为合同），字节布局名待取证。
     ChangeSection {
         section: SaveFileSection,
         value: SerializedJson,
-    },
+    } = 5,
     /// 6 ReplaceEdits：截断 + 追加编辑。
+    /// 载荷分段（O）：{byte 标志@+3, edit 列表 ptr/len}。`truncate`/`edits` 为语义字段。
     ReplaceEdits {
         truncate: usize,
         edits: Vec<SerializedJson>,
-    },
+    } = 6,
     /// 7 BackupSave：`history-auto` 前缀备份。
+    /// `path`/`kind` 为语义字段；`remove_counter` = 节拍器返回的 retention 删除候选
+    /// （O：BackupDecision.remove_counter → "Backup limit reached; removing " 删除旧备份）。
     BackupSave {
         path: PathBuf,
         kind: BackupSaveFileKind,
-    },
+        remove_counter: Option<u32>,
+    } = 7,
     /// 8 ManualBackup（execute_save_cmd 无专属 case，落 default）。
+    /// 语义字段；原版 default 区含文件身份字节（+0x53/+0x299）比对与 "snapshot"
+    /// 常量（0x746f687370616e73）校验（见 save_thread::perform_manual_backup）。
     ManualBackup {
         path: PathBuf,
         kind: BackupSaveFileKind,
-    },
+    } = 8,
     /// 9 CaptureSnapshot：快照 JSON 落盘。
     CaptureSnapshot {
         snapshot: Arc<SnapshotSaveData>,
-    },
+    } = 9,
     /// 10 Flush。
-    Flush,
+    Flush = 10,
     /// 11 Shutdown：需要时 flush_deferred_and_sync + 确认 + 退出线程。
-    Shutdown { flush: bool },
+    Shutdown { flush: bool } = 11,
 }
 
 impl AsyncSaveCmd {
@@ -181,20 +204,34 @@ pub struct CaptureSnapshotRequested;
 ///
 /// ① 备份节拍器推进（`AutoSaveState.metronome`，+0x140/0x144/0x148 阈值门）；
 /// ② 触发备份 → log "Capturing a game snapshot" + 发 `CaptureSnapshotRequested` 事件
-///    （宿主构建快照 Arc 后经 `AsyncSaveCmd::CaptureSnapshot` 发送）；
+///    （宿主构建快照 Arc 后经 `AsyncSaveCmd::CaptureSnapshot` 发送）+ **备份生产**
+///    （`BackupDecision.counter → history-auto-{counter}.json`；`remove_counter` →
+///    retention 删除候选，save_thread 执行 "Backup limit reached; removing " 删除）；
 /// ③ 同步保存（assemble_game_save_sections → `AsyncSaveCmd::OpenFile`）由宿主在事件响应中
 ///    完成（域资源 InnerWalls/Roof/TimeOfDay/Terrain… 由宿主收集，不伪造节载荷）。
 pub fn save_game_system<S: Send + Sync + 'static>(
     mut auto: ResMut<AutoSaveState>,
     time: Res<GameTime>,
+    active: Res<crate::resources::session::ActiveSession>,
     mut capture: EventWriter<CaptureSnapshotRequested>,
 ) {
     // ① 节拍器：阈值门（+0x148 < 60.0）在 metronome 累计块内。
     auto.metronome.add_active_game_time(time.delta);
     // ② 触发备份。
-    if auto.metronome.consider_backing_up().is_some() {
+    if let Some(decision) = auto.metronome.consider_backing_up() {
         log::info!("Capturing a game snapshot");
         capture.write(CaptureSnapshotRequested);
+        // 备份生产（O：SPEC §3.1）：counter → `history-auto-{counter}.json`；
+        // remove_counter → retention 删除候选（save_thread 执行删除）。
+        let backup_path = active
+            .id
+            .backup_folder_path()
+            .join(format!("history-auto-{}.json", decision.counter));
+        auto.send_command(AsyncSaveCmd::BackupSave {
+            path: backup_path,
+            kind: BackupSaveFileKind::Auto,
+            remove_counter: decision.remove_counter,
+        });
     }
     // ③ 同步保存的 AsyncSaveCmd 发送由宿主在事件响应中经 `auto.send_command` 完成。
 }
@@ -226,8 +263,9 @@ pub struct DeleteSessionCmd {
 pub struct SavingGameComplete;
 
 /// 同步存档路径的组装数据（PDB：`save_game::GameSaveData`）。原版由
-/// save_game 0x140a3f470 从 ~9 资源拷贝组装；本 crate 的域资源尚未齐全，
-/// 组装系统留待对应域恢复后接入。
+/// save_game 0x140a3f470 从 ~9 资源拷贝组装（+0x28..+0x100 密集字段，**240B 完整字段名
+/// U/待取证**——不编造）。`sections`/`edits` 为**自定语义名**（存档 codec 合同），
+/// 非字节布局字段名；域资源未齐时组装系统留待对应域恢复后接入。
 #[derive(Clone, Debug)]
 pub struct GameSaveData {
     pub sections: GameSaveSections,
@@ -266,7 +304,7 @@ pub struct AutoSaveState {
     pub metronome: SaveBackupMetronome,
     pub sections: [AutoSaveSectionState; 10],
     last_error: Option<anyhow::Error>,
-    command_sender: Option<mpsc::Sender<AsyncSaveCmd>>,
+    command_sender: Option<crossbeam_channel::Sender<AsyncSaveCmd>>,
 }
 
 impl Default for AutoSaveState {
@@ -305,8 +343,13 @@ impl AutoSaveState {
     }
 
     /// 绑定存档线程命令发送端（由存档初始化者装配）。
-    pub fn attach_command_sender(&mut self, sender: mpsc::Sender<AsyncSaveCmd>) {
+    pub fn attach_command_sender(&mut self, sender: crossbeam_channel::Sender<AsyncSaveCmd>) {
         self.command_sender = Some(sender);
+    }
+
+    /// 是否已装配命令发送端（init_save_thread 幂等门）。
+    pub fn is_command_attached(&self) -> bool {
+        self.command_sender.is_some()
     }
 
     /// 发送一个异步存档命令；发送失败（线程已退出）记录错误并返回 false。
@@ -348,6 +391,41 @@ pub fn save_session_meta_to_file(path: &Path, meta: &SessionMeta) -> anyhow::Res
 /// Identity 节载荷 = 裸 u64 十进制（O：`to_json_string<HistoryIdentity>` 0x140b385e0）。
 pub fn identity_to_json_string(identity: u64) -> SerializedJson {
     SerializedJson::new(&identity).expect("u64 is always serializable")
+}
+
+/// Sheep 节载荷（O `to_json_string<Option<SheepControlSnapshot>>` @0x140a51d40；
+/// B 组接口 `sheep::control::sheep_section_json`，None → null）。真实 producer 接线：
+/// save_game 同步保存路径的域采集器（X4 Query）经 `capture_sheep_snapshot` 取行后
+/// 调本入口；`None` = 无羊 → 节载荷 `null`。
+pub fn sheep_section_serialized(
+    snapshot: Option<&crate::resources::critters::sheep::control::SheepControlSnapshot>,
+) -> SerializedJson {
+    SerializedJson::from_raw_string(
+        crate::resources::critters::sheep::control::sheep_section_json(snapshot),
+    )
+}
+
+/// Sheep 节生产资源（⑤轮 B 块，① b-sheep-write-path 契约 §1/§4）：`sheep_controls`
+/// 捕获活羊 → 本资源承载序列化的 Sheep 节载荷（`SaveFileSection::Sheep` = 5）。
+/// 宿主 `assemble_game_save_sections` 从本资源取 Sheep 节真实值；默认 `None` → `null`。
+/// X4 活羊 Query 精确面待①取证（b 契约 §3），现以 debug 域 `sheep_controls` 捕获为
+/// crate 内真实生产调用点。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug)]
+pub struct SheepSaveSectionValue(pub SerializedJson);
+impl Default for SheepSaveSectionValue {
+    fn default() -> Self {
+        Self(sheep_section_serialized(None))
+    }
+}
+
+/// Sheep 节生产系统：`SheepControl`（`sheep_controls` 捕获）→ `sheep_section_serialized`
+/// → [`SheepSaveSectionValue`]。真实生产调用点（⑤ B 块；与 `sheep_controls` 同批进
+/// 生产 Schedule）。
+pub fn sheep_save_section_system(
+    control: Res<SheepControl>,
+    mut value: ResMut<SheepSaveSectionValue>,
+) {
+    value.0 = sheep_section_serialized(control.snapshot.as_ref());
 }
 
 /// `save_game` 0x140a3f470 的 GameSaveData 组装（O：Identity/Camera/Colors 三节由

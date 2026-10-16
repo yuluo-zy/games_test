@@ -190,38 +190,80 @@ impl RasterShaderProgram {
 }
 
 /// 全 crate 唯一的设备 `rhapsody_contract::GraphicsDevice` 实现 `ShaderBackend`。
-/// 占位：编译器库（`shader_pipeline` / `shader_variants`）与设备在原版是两个库，这里压在同一个 trait 上，
-/// 不触 GPU——加载返回以 desc 路径为内容的空壳产物，变体为 desc 的两份拷贝。
+/// D 组接入（WIRING §2.2/§3.3）：`load_compiled_compute`/`load_compiled_raster` 经
+/// `shader_pipeline::compiled::CompiledShaderPipeline::load_compiled` 真实加载发行 .bin，再 `encode()`
+/// 回游戏侧字节容器。管线创建（`create_compute_pipeline`/`create_raster_pipeline`）与
+/// `raster_shader_variants` 仍是登记缺口（游戏侧 `ComputePipeline`/`RasterPipeline` 占位装不下
+/// `Arc<VulkanPipeline>`，WIRING §4.9；不补造、不假成功）。
 #[cfg(not(test))]
 impl ShaderBackend for crate::rhapsody_contract::GraphicsDevice {
     fn load_compiled_compute(
         &self,
-        _desc: &ComputePipelineDesc,
+        desc: &ComputePipelineDesc,
     ) -> Result<CompiledShaderPipeline, Error> {
-        Err(anyhow::anyhow!("Shader artifact backend is not connected"))
+        use crate::rhapsody_types::{
+            RhapsodyCompiledShaderPipeline, RhapsodyComputePipelineDesc, ShaderDefines,
+        };
+        // 游戏侧 desc（shader_uri，`{path, entry, defines}`）→ 真实 `pipeline_desc::ComputePipelineDesc`，
+        // `compiled_file_path()` 由真实库按 `{path}_{entry}_{defines.artifact_hash()}.bin` 计算（O：0x1409e3ab0）。
+        let real = RhapsodyComputePipelineDesc {
+            source_path: desc.path.clone(),
+            entry_point: desc.entry.clone(),
+            defines: ShaderDefines(desc.defines.clone()),
+        };
+        let compiled = RhapsodyCompiledShaderPipeline::load_compiled(real.compiled_file_path())
+            .map_err(anyhow::Error::msg)?;
+        let bytes = compiled
+            .encode()
+            .map_err(|error| anyhow::anyhow!("compiled shader encode failed: {error:?}"))?;
+        Ok(CompiledShaderPipeline(bytes))
     }
     fn load_compiled_raster(
         &self,
-        _desc: &RasterPipelineDesc,
+        desc: &RasterPipelineDesc,
     ) -> Result<CompiledShaderPipeline, Error> {
-        Err(anyhow::anyhow!("Shader artifact backend is not connected"))
+        use crate::rhapsody_types::{
+            RhapsodyCompiledShaderPipeline, RhapsodyRasterPipelineDesc, ShaderDefines,
+        };
+        // 真实 raster 文件键只用 source_path + defines（无入口名，pipeline_desc.rs 注释）。
+        // 游戏侧 `entry` 对应编译容器各 stage 的入口字符串（0x141477105），不参与文件键。
+        let mut real = RhapsodyRasterPipelineDesc::new_vertex_fragment(desc.path.clone());
+        real.defines = ShaderDefines(desc.defines.clone());
+        let compiled = RhapsodyCompiledShaderPipeline::load_compiled(real.compiled_file_path())
+            .map_err(anyhow::Error::msg)?;
+        let bytes = compiled
+            .encode()
+            .map_err(|error| anyhow::anyhow!("compiled shader encode failed: {error:?}"))?;
+        Ok(CompiledShaderPipeline(bytes))
     }
     fn raster_shader_variants(&self, _desc: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
-        panic!("Shader variant backend is not connected")
+        // 登记缺口 §4.9：shader-pipeline 无 `shader_variants` 模块；原 O 0x1417388a0
+        // `get_raster_shader_variants`（两份 desc）待取证。不补造、不假成功。
+        panic!("registered gap (WIRING §4.9): shader_variants::get_raster_shader_variants (O 0x1417388a0) is not recovered")
     }
     fn create_compute_pipeline(
         &self,
         _name: &str,
         _compiled: Arc<CompiledShaderPipeline>,
     ) -> ComputePipeline {
-        panic!("Compute pipeline backend is not connected")
+        // 登记缺口 §2.2：真实路径 = `ShaderLibrary::register_compiled_compute(key, bytes)` →
+        // `create_compute_pipeline(key, samplers) -> Arc<VulkanPipeline>`（raw/shader.rs:1220）；
+        // 游戏侧 `ComputePipeline { id: u64 }` 装不下 `Arc<VulkanPipeline>`（§4.8 类型缝）。
+        // ShaderLibrary 需持有实例 + sampler 表，未恢复。不补造、不假成功。
+        panic!("registered gap (WIRING §2.2): create_compute_pipeline needs ShaderLibrary instance; game-side ComputePipeline cannot hold Arc<VulkanPipeline> (O 0x1416a4b20)")
     }
     fn create_raster_pipeline(
         &self,
         _compiled: Arc<CompiledShaderPipeline>,
         _key: &RasterPipelineKey,
     ) -> Result<RasterPipeline, Error> {
-        Err(anyhow::anyhow!("Raster pipeline backend is not connected"))
+        // 登记缺口 §2.2：真实路径 = `ShaderLibrary::prepare_raster_program` →
+        // `RasterProgram::pipeline_desc` → `RasterPipelineOpts::apply_to` → `create_raster_pipeline`
+        // （raw/shader.rs:1299/1182/392/460）；游戏侧 `RasterPipeline { id, compiled }` 装不下
+        // `Arc<VulkanPipeline>`（§4.8 类型缝）。不补造、不假成功。
+        Err(anyhow::anyhow!(
+            "registered gap (WIRING §2.2): create_raster_pipeline needs ShaderLibrary instance; game-side RasterPipeline cannot hold Arc<VulkanPipeline> (O 0x1416a3720)"
+        ))
     }
 }
 

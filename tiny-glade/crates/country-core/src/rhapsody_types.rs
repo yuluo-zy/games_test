@@ -243,8 +243,12 @@ pub struct ComputePipeline {
 // ---------------------------------------------------------------- render graph
 
 /// `rhapsody::rg::import_export` 导入缓冲后的句柄（O：`import_unowned` 返回 20 B，存进 `BufferState`
-/// 的 `+0x28`；其中 `+0xe` 处有一个值为 5 的字节在 `BufferState::new` 里作“未导入”判别，见 ssbo_library）。
-/// 字段含义 U，仅保留可比较的标识。
+/// 的 `+0x28`）。
+/// **WIRING §4.13 证伪**：旧注释的「`+0xe=5` 未导入判别」不成立——`5` 是 `rg::graph` 后备资源
+/// `RegistryResource::Empty` 的 tag（`payload_projection`，graph.rs:749），与 ImportedBuffer 无关。
+/// 真实重构（WIRING §3.4）：`rg::graph::RenderGraph::import_unowned(name, descriptor, token, access)
+/// -> Result<ResourceHandle>`（rg/import_export.rs:7），token = 物理托管句柄；游戏侧 40B `Buffer`
+/// 槽表未恢复（登记缺口 §4.8），此处保留占位作编译桥。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ImportedBuffer {
     pub resource: u64,
@@ -320,6 +324,165 @@ impl RenderGraph {
         #[cfg(not(test))]
         panic!("A resource graph backend is required")
     }
+}
+
+// ---------------------------------------------------------------- rhapsody 真实面（D 组接入，WIRING §3.2）
+
+// 本地占位类型 → rhapsody 真实类型的转发层。游戏侧占位类型保留在上一节（作为编译桥，
+// 逐项映射见 `D-rhapsody/rhapsody-WIRING.md` §1）；这里按原名转发 rhapsody 真实公开类型，
+// 供真实接线点（`rhapsody_contract::GraphicsDevice` 方法、`render/shader.rs`、`render_frame.rs`
+// ExecutionChain 等）使用。**绝不修改 `crates/rhapsody`**；rhapsody 缺接口 → 登记缺口。
+
+/// `raw::texture::TextureDesc`（设备/纹理创建，32B；`new_2d/new_2d_array/new_3d/new` + builder）。
+pub use rhapsody::raw::texture::TextureDesc as RhapsodyTextureDesc;
+/// `raw::texture::TextureViewDescRaw`（0x3cB 原始布局；`resolve(&TextureDesc) -> TextureViewDesc`）。
+pub use rhapsody::raw::texture::TextureViewDescRaw as RhapsodyTextureViewDescRaw;
+/// `raw::texture::TextureViewDesc`（resolve 后的实际视图描述，`vk::ImageViewType/Format/AspectFlags`）。
+pub use rhapsody::raw::texture::TextureViewDesc as RhapsodyTextureViewDesc;
+/// `raw::texture::{Texture, TextureKind}`。
+pub use rhapsody::raw::texture::{
+    Texture as RhapsodyTexture, TextureKind as RhapsodyTextureKind,
+};
+/// `raw::managed::texture::{ManagedTexture, ManagedTextureView}`。
+pub use rhapsody::raw::managed::texture::{ManagedTexture, ManagedTextureView};
+/// `raw::managed::buffer::ManagedBuffer`。
+pub use rhapsody::raw::managed::buffer::ManagedBuffer;
+/// `raw::managed::handle::Managed`（物理托管句柄；`key()`/`resource()`/`shared()`，Deref→T）。
+pub use rhapsody::raw::managed::handle::Managed as RhapsodyManaged;
+/// `raw::device::GraphicsDevice`（真实设备本体；`create`/`from_device` 返回 `Arc<Self>`）。
+pub use rhapsody::raw::device::GraphicsDevice as RhapsodyGraphicsDevice;
+/// `raw::device::VulkanDevice`（`GraphicsDevice.inner`）。
+pub use rhapsody::raw::device::VulkanDevice as RhapsodyVulkanDevice;
+/// `raw::error::{Error, Result}`。
+pub use rhapsody::raw::error::{Error as RhapsodyError, Result as RhapsodyResult};
+/// `raw::buffer::{BufferDesc, MemoryLocation}`。
+pub use rhapsody::raw::buffer::{
+    BufferDesc as RhapsodyBufferDesc, MemoryLocation as RhapsodyMemoryLocation,
+};
+/// `raw::shader::{RasterPipelineOpts, ShaderLibrary, VulkanPipeline}`。
+pub use rhapsody::raw::shader::{
+    RasterPipelineOpts, ShaderLibrary as RhapsodyShaderLibrary, VulkanPipeline as RhapsodyVulkanPipeline,
+};
+/// `raw::descriptor_set::{DescriptorSetState, DescriptorWrite, VulkanDescriptorSet}`。
+pub use rhapsody::raw::descriptor_set::{
+    DescriptorSetState, DescriptorWrite, VulkanDescriptorSet as RhapsodyVulkanDescriptorSet,
+};
+/// `raw::render_pass::{RenderPassDesc, RenderPassAttachmentDesc}`。
+pub use rhapsody::raw::render_pass::{
+    RenderPassAttachmentDesc as RhapsodyRenderPassAttachmentDesc,
+    RenderPassDesc as RhapsodyRenderPassDesc,
+};
+/// `raw::barrier::SynchronizationScope`。
+pub use rhapsody::raw::barrier::SynchronizationScope as RhapsodySynchronizationScope;
+
+/// `shader_pipeline::compiled::CompiledShaderPipeline`（`load_compiled(path)`/`decode(bytes)`/`encode()`）。
+pub use rhapsody::shader_pipeline::compiled::CompiledShaderPipeline as RhapsodyCompiledShaderPipeline;
+/// `shader_pipeline::pipeline_desc::{ComputePipelineDesc, RasterPipelineDesc}`。
+pub use rhapsody::shader_pipeline::pipeline_desc::{
+    ComputePipelineDesc as RhapsodyComputePipelineDesc, RasterPipelineDesc as RhapsodyRasterPipelineDesc,
+};
+/// `shader_pipeline::shader_defines::ShaderDefines`（`artifact_hash()`）。
+pub use rhapsody::shader_pipeline::shader_defines::ShaderDefines;
+
+/// `rg::graph::{RenderGraph, Descriptor}` + `rg::resource::ResourceHandle`。
+pub use rhapsody::rg::graph::{Descriptor as RgDescriptor, RenderGraph as RhapsodyRenderGraph};
+pub use rhapsody::rg::resource::ResourceHandle as RgResourceHandle;
+/// `rg::graph::{OriginSource, ResourceDeclaration, GraphDeclaration}`。
+pub use rhapsody::rg::graph::{
+    GraphDeclaration, OriginSource as RgOriginSource, ResourceDeclaration as RgResourceDeclaration,
+};
+/// `rg::graph::Pool`（资源池；`execute_graph_with_context` 的 pool 参数）。
+pub use rhapsody::rg::graph::Pool as RgPool;
+/// `rg::graph::PassDeclaration`（`RenderPassApi::find_resource_access_type` 用）。
+pub use rhapsody::rg::graph::PassDeclaration as RgPassDeclaration;
+/// `raw::submit::{DeviceState, QueueState}`（`ExecutionChain::new` 的提交状态）。
+pub use rhapsody::raw::submit::{DeviceState as RhapsodyDeviceState, QueueState as RhapsodyQueueState};
+/// `rg::resource::ResourceOrigin`。
+pub use rhapsody::rg::resource::ResourceOrigin;
+/// `rg::executor::{ExecutionChain, ExecutionBackend, PassContext, GraphExecution, ExecutionStats}`。
+pub use rhapsody::rg::executor::{
+    ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution, PassContext,
+};
+/// `rg::pass_builder::PassBuilder`（`add_resource_access`/`render_with_context`/`rg_mut`）。
+pub use rhapsody::rg::pass_builder::PassBuilder as RhapsodyPassBuilder;
+/// `rg::pass_api::RenderPassApi`（`dispatch_groups_3d`/`fill_buffer`/`clear_color_image`/`copy_buffer`）。
+pub use rhapsody::rg::pass_api::RenderPassApi;
+/// `rg::pass_api::AshCommandBackend`（`RenderPassApi::new` 的 Vulkan 后端）。
+pub use rhapsody::rg::pass_api::AshCommandBackend;
+/// `rg::vulkan::{VulkanGraphBackend, AccessTable, GpuResource, ResourceSpec}`。
+pub use rhapsody::rg::vulkan::{
+    AccessTable, GpuResource, ResourceSpec as RgResourceSpec, VulkanGraphBackend as RhapsodyVulkanGraphBackend,
+};
+/// `rg::pass_bindings::ManagedPassResources`。
+pub use rhapsody::rg::pass_bindings::ManagedPassResources;
+
+// ---- 适配函数（WIRING §3.2 的转换路径，纯本文件类型 ↔ rhapsody 真实类型）----
+
+/// 游戏侧 `TextureDesc`（builder，`extent:[u32;3]`/`kind:u8`/`format:u32`）→ 真实 `raw::texture::TextureDesc`。
+/// WIRING §3.2：`new([w,h,d], kind_u8, format_u8)` →
+/// `new(vk::Extent3D, TextureKind::from_raw(kind).unwrap(), vk::Format::from_raw(format))`。
+pub fn convert_texture_desc(desc: &TextureDesc) -> RhapsodyTextureDesc {
+    let kind = RhapsodyTextureKind::from_raw(desc.kind).unwrap_or(RhapsodyTextureKind::D2);
+    let mut out = RhapsodyTextureDesc::new(
+        ash::vk::Extent3D {
+            width: desc.extent[0],
+            height: desc.extent[1],
+            depth: desc.extent[2],
+        },
+        kind,
+        ash::vk::Format::from_raw(desc.format as i32),
+    );
+    if desc.sampled {
+        out = out.sampled();
+    }
+    if desc.storage {
+        out = out.storage();
+    }
+    if desc.color_attachment {
+        out = out.color_attachment();
+    }
+    if desc.depth_stencil_attachment {
+        out = out.depth_stencil_attachment();
+    }
+    if desc.mip_levels != 0 {
+        out = out.mip_levels(desc.mip_levels);
+    }
+    if desc.array_elements != 0 {
+        out = out.array_elements(u32::from(desc.array_elements));
+    }
+    out
+}
+
+/// 真实 `raw::texture::TextureDesc` → `rg::graph::Descriptor::Image`（`rg::vulkan::ResourceSpec` 的
+/// 字节布局编码；WIRING §2.6 的 `descriptor_from_texture` 路径）。
+pub fn texture_desc_to_rg_descriptor(desc: &RhapsodyTextureDesc) -> RgDescriptor {
+    RgResourceSpec::Image(*desc).descriptor()
+}
+
+/// 游戏侧 `TextureViewDesc`（`Option<u32>` 字段）→ 真实 `raw::texture::TextureViewDescRaw`
+/// （`OptionU32` 字段，0x3cB 同形）。
+pub fn convert_texture_view_desc(desc: &TextureViewDesc) -> RhapsodyTextureViewDescRaw {
+    let opt = |o: Option<u32>| match o {
+        Some(v) => rhapsody::raw::texture::OptionU32::some(v),
+        None => rhapsody::raw::texture::OptionU32 { tag: 0, value: 0 },
+    };
+    RhapsodyTextureViewDescRaw {
+        view_type: opt(desc.view_type),
+        usage: opt(desc.usage),
+        format: opt(desc.format),
+        aspect_mask: opt(desc.aspect_mask),
+        level_count: opt(desc.level_count),
+        layer_count: opt(desc.layer_count),
+        base_mip_level: desc.base_mip_level,
+        base_layer: desc.base_layer,
+        bind_individual_mips: u8::from(desc.bind_individual_mips),
+    }
+}
+
+/// 游戏侧 `CompiledShaderPipeline`（字节容器）→ 真实 `CompiledShaderPipeline`（`decode`，speedy 校验）。
+pub fn decode_compiled_pipeline(bytes: &[u8]) -> Result<RhapsodyCompiledShaderPipeline, Error> {
+    RhapsodyCompiledShaderPipeline::decode(bytes)
+        .map_err(|error| anyhow::anyhow!("compiled shader decode failed: {error:?}"))
 }
 
 #[cfg(test)]

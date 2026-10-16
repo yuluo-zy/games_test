@@ -10,7 +10,6 @@ pub mod recording;
 pub mod replay_auto_clutter;
 pub mod replay_mode;
 pub mod replay_raster;
-pub mod replay_roof;
 pub mod replay_stairs;
 pub mod replay_wall;
 #[cfg(test)]
@@ -125,7 +124,7 @@ pub fn register_history_events(world: &mut World) {
     world.init_resource::<Events<history_process::DebugHistoryMsg>>();
     recording::register_recording_events(world);
     replay_wall::register_wall_replay_events(world);
-    crate::systems::roof::register_roof_events(world);
+    crate::resources::roofs::register_roof_events(world);
     crate::systems::ui_clutter::registration::register_ui_clutter_resources(world);
     world.init_resource::<crate::resources::stairs::stairs_removed_supports::StairsRemovedSupports>();
 }
@@ -155,7 +154,6 @@ pub fn add_history_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Schedule
             .chain()
             .in_set(HistoryCpuStage::Cursor),
     );
-    schedule.add_systems(replay_roof::replay_roof.in_set(HistoryCpuStage::Replay));
     schedule.add_systems(replay_stairs::replay_stairs.in_set(HistoryCpuStage::Replay));
     schedule.add_systems(replay_auto_clutter::replay_auto_clutter.in_set(HistoryCpuStage::Replay));
     schedule.add_systems(replay_wall::replay_wall.in_set(HistoryCpuStage::Replay));

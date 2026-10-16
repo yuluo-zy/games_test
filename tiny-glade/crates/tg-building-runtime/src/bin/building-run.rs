@@ -442,6 +442,10 @@ fn run() -> Result<(), Box<dyn Error>> {
                 emit(&mut app, wall_decorator_archivist::ObserveDecoratorArchive(Arc::new(wall_decorator_archivist::ObservedDecoratorArchive {
                     walls: containers.walls, special1: containers.special1, special2: containers.special2,
                     collision_a: std::collections::HashMap::new(), collision_b: std::collections::HashMap::new(),
+                    culling: country_core::resources::walls::decorator_archivist::DecoratorCullPolicy {
+                        allowed_ids: Default::default(),
+                        allow_any: true,
+                    },
                 })));
             }
             "observe_decorator_opening_binding" => emit(&mut app, wall_decorator_archivist::ObserveDecoratorOpeningBinding {

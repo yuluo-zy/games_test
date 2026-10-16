@@ -1,5 +1,7 @@
 # Tiny Glade 原作还原：里程碑与进度
 
+2026-10-16 toolbar 来源核查：B 原 PDB 记录的 31 个 Taffy 源文件与 crates.io 0.3.13 完全一致；8 个原码定点函数确认游戏 Taffy 适配、mei 自有布局和 tg-text 渲染边界。不能把整套 toolbar 归为 iced/egui 或 Taffy 的修改版，完整公开 GUI 上游未确证。此次仅来源研究，无业务完成度增长，见 [报告](evidence/toolbar-origin-2026-10-16/REPORT.md)。
+
 2026-10-15 按用户要求改为实现优先：core gui.rs 已补菜单拥有状态、Next/Prev、状态推进、共享缩略图布局和调试标签；LUT 改读正确的 EscMenuState 并直接消费位置算法，菜单 ID 复用原 uuid。当前增量仅 all-targets 编译检查，不扩展验证矩阵。GUI 仍缺 PhotomodeScreen、完整 DebugGui/日志、Egui 资源及全局调度；全 core 未完成。逐文件状态以 [core 目录推进](../../tiny-glade/crates/country-core/recovery/README.md) 为准。
 
 2026-10-14 用户改为按原源码目录逐文件恢复 core。当前入口 [core 目录推进](../../tiny-glade/crates/country-core/recovery/README.md)。B PDB 539 文件与历史重建/辅助路径分开；真实导出由 rustdoc 核对，27 直接依赖分类。基础资源/default/serde/事件/坐标已补，wall_highlight 真实 ECS 单系统接到统一 draw 资源；原 JSON 128 组合、窗口/菜单等叶、DirtyTiles 881 组和 highlighter 96 组只支持各自限定范围。全 core 仍未完成，下一文件为 GUI 载荷及 PublicWalls/实体生命周期。旧“章节已收齐”不等于当前正式代码已完成。

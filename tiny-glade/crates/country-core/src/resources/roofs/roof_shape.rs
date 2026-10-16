@@ -16,8 +16,34 @@ impl Roof {
     pub fn observed(&self) -> &[u8; 88] {
         &self.0
     }
+    /// 可写观测投影（system-roof 的编辑/方向系统消费）。
+    pub fn observed_mut(&mut self) -> &mut [u8; 88] {
+        &mut self.0
+    }
     pub fn wall_id(&self) -> WallId {
         WallId(u64::from_le_bytes(self.0[..8].try_into().unwrap()))
+    }
+    /// B `Roof::new`（0x1408e31c0；`new_observed` 的 8 参数面）：
+    /// {wall_id, params(0x24..0x40), shape(0x08..0x24), floor(+0x4c),
+    ///  animation(+0x50), style_tag(+0x54), gable/flat 数据(+0x40..0x4c)}。
+    pub fn new(
+        wall: [u8; 8],
+        params: [u8; 28],
+        shape: [u8; 28],
+        floor: [u8; 4],
+        animation: [u8; 4],
+        style_tag: u8,
+        gable_data: [u8; 12],
+    ) -> Self {
+        let mut bytes = [0; 88];
+        bytes[..8].copy_from_slice(&wall);
+        bytes[0x24..0x40].copy_from_slice(&params);
+        bytes[8..0x24].copy_from_slice(&shape);
+        bytes[0x4c..0x50].copy_from_slice(&floor);
+        bytes[0x50..0x54].copy_from_slice(&animation);
+        bytes[0x54] = style_tag;
+        bytes[0x40..0x4c].copy_from_slice(&gable_data);
+        Self(bytes)
     }
     pub fn floor_y(&self) -> f32 {
         self.float_at(0x4c)
@@ -41,7 +67,7 @@ impl Roof {
         self.is_gable().then_some([self.0[0x3c], self.0[0x3c] | 2])
     }
     pub fn height(&self) -> f32 {
-        system_roof::surface::height(&self.0)
+        crate::resources::roofs::geometry::surface::height(&self.0)
     }
     pub fn pivot_3d(&self) -> Vec3 {
         let tag = u32::from_le_bytes(self.0[8..12].try_into().unwrap()) as usize;
@@ -60,32 +86,32 @@ impl Roof {
             [self.float_at(0x1c), self.float_at(0x20)]
         }
     }
-    pub fn shape_at(&self, coordinate: f32) -> system_roof::surface::RoofSection {
-        system_roof::surface::section(&self.0, coordinate)
+    pub fn shape_at(&self, coordinate: f32) -> crate::resources::roofs::geometry::surface::RoofSection {
+        crate::resources::roofs::geometry::surface::section(&self.0, coordinate)
     }
-    pub fn parameters(&self) -> system_roof::parameters::RoofParameterBlock {
-        system_roof::parameters::RoofParameterBlock::from_roof(&self.0)
+    pub fn parameters(&self) -> crate::resources::roofs::geometry::parameters::RoofParameterBlock {
+        crate::resources::roofs::geometry::parameters::RoofParameterBlock::from_roof(&self.0)
     }
     /// `Roof::profile_curve_normalized`（0x1408e3420，O 209 案例）：20 个原始 f32 常量 u，
-    /// 纵坐标 u^q（q=1.5p+(1−p)0.5），末点强制 (1,1)。= `system_roof::surface::profile_curve_normalized`。
+    /// 纵坐标 u^q（q=1.5p+(1−p)0.5），末点强制 (1,1)。= `crate::resources::roofs::geometry::surface::profile_curve_normalized`。
     pub fn profile_curve_normalized(&self) -> [[f32; 2]; 20] {
-        system_roof::surface::profile_curve_normalized(self.float_at(0x2c))
+        crate::resources::roofs::geometry::surface::profile_curve_normalized(self.float_at(0x2c))
     }
     /// `Roof::roof_tip_offset_xz`（0x1408e3780，O）：circle→2r·tip·0.5；rect→旋转
-    /// (tip·dim·0.5)。= `system_roof::ridge::roof_tip_offset_xz_observed`。
+    /// (tip·dim·0.5)。= `crate::resources::roofs::geometry::ridge::roof_tip_offset_xz_observed`。
     pub fn roof_tip_offset_xz(&self) -> [f32; 2] {
-        system_roof::ridge::roof_tip_offset_xz_observed(&self.0)
+        crate::resources::roofs::geometry::ridge::roof_tip_offset_xz_observed(&self.0)
     }
     /// `Roof::profile_curve_ws`（0x1408e3d40，O 1,512 全链案例）：把 20 点变
     /// `(u·top+(1−u)·bottom, v·height)`，重算 Curve2 弧长/归一。
-    /// = `system_roof::surface::world_profile_curve`。
+    /// = `crate::resources::roofs::geometry::surface::world_profile_curve`。
     pub fn profile_curve_ws(
         &self,
         bottom: f32,
         top: f32,
         height: f32,
-    ) -> Result<system_roof::surface::Curve2, system_roof::surface::CurveError> {
-        system_roof::surface::world_profile_curve(self.float_at(0x2c), bottom, top, height)
+    ) -> Result<crate::resources::roofs::geometry::surface::Curve2, crate::resources::roofs::geometry::surface::CurveError> {
+        crate::resources::roofs::geometry::surface::world_profile_curve(self.float_at(0x2c), bottom, top, height)
     }
     /// `Roof::rotation_yaw_radians`（0x1408e3b10，O）：矩形→`atan2(−frame.z, frame.x)`
     /// （frame.z 符号位翻转 0x1429258f0）；圆→`−π/2 − CircularF32(center_y).as_f32()`
@@ -107,14 +133,14 @@ impl Roof {
         let b = &self.0;
         let floor = self.float_at(0x4c);
         if y == floor {
-            return RoofIntersectionSection::Section(system_roof::surface::section(b, 0.0));
+            return RoofIntersectionSection::Section(crate::resources::roofs::geometry::surface::section(b, 0.0));
         }
         let cap = cap_height(b);
         if y < floor || cap + floor <= y {
             return RoofIntersectionSection::OutOfBounds;
         }
         let t = (y - floor) / cap;
-        RoofIntersectionSection::Section(system_roof::surface::section(b, t))
+        RoofIntersectionSection::Section(crate::resources::roofs::geometry::surface::section(b, t))
     }
     fn float_at(&self, offset: usize) -> f32 {
         f32::from_le_bytes(self.0[offset..offset + 4].try_into().unwrap())
@@ -122,25 +148,26 @@ impl Roof {
 }
 
 /// `Roof::roof_shape_at_intersection_y` 产出：截面或高度越界（tag 2）。
-/// （`system_roof::surface::RoofSection` 不 impl PartialEq，故手写无 PartialEq。）
+/// （`crate::resources::roofs::geometry::surface::RoofSection` 不 impl PartialEq，故手写无 PartialEq。）
 #[derive(Clone, Debug)]
 pub enum RoofIntersectionSection {
     /// 圆/矩截面（system_roof 同构）。
-    Section(system_roof::surface::RoofSection),
+    Section(crate::resources::roofs::geometry::surface::RoofSection),
     /// 高度越界（原 tag 2）。
     OutOfBounds,
 }
 
 /// `ridge_length_01_from_rectangle_ratio`（0x1408e3b60，O）：矩形纵横比→ridge_length_01：
-/// `ratio=max(w/h,h/w)`、`u=clamp((max_dim−2.25)/0.94736844,0,1)`、
-/// `blend=(1.5·smoothstep(u)+ratio−1.5)/1.5`、返回 `smoothstep(clamp(blend,0,1))`
-/// （常量 _UNK_142aa50dc=0.94736844、_UNK_1429df180=−1.5、1.5 rne-read）。
+/// `ratio=max(w/h,h/w)`、`u=clamp((max_dim−2.25)/5.25,0,1)`、
+/// `blend=(1.5·smoothstep(u)+ratio−1.5)/1.5`、返回 `smoothstep(clamp(blend,0,1))`。
+/// （reviewer-C 机器码裁决：除数 **5.25**（0x142aa50dc 实测 0x40a80000）；
+/// 0.94736844 系相邻常量读错地址，旧注释 rne-read 声称作废。）
 pub fn ridge_length_01_from_rectangle_ratio(dim_x: f32, dim_z: f32) -> f32 {
     let ratio_xz = dim_x / dim_z;
     let ratio_zx = dim_z / dim_x;
     let ratio = sse_max(ratio_zx, ratio_xz);
     let max_dim = sse_max(dim_x, dim_z);
-    let u = sse_min(1.0, sse_max(0.0, (max_dim + -2.25) / 0.94736844));
+    let u = sse_min(1.0, sse_max(0.0, (max_dim + -2.25) / 5.25));
     let smooth = (3.0 - 2.0 * u) * u * u;
     let blended = (1.5 * smooth + ratio + -1.5) / 1.5;
     let t = sse_min(1.0, sse_max(0.0, blended));
@@ -178,8 +205,11 @@ fn cap_height(b: &[u8; 88]) -> f32 {
     if !(0.1 < height_01) {
         return 0.0;
     }
+    // reviewer-C 轮 3 终验：circle 高度基 = **8.0**
+    // （roof_shape_at_intersection_y 0x1408e3820 用 _UNK_142934604 = 8.0；
+    // 轮 2 只改了 roof_visual_shape，此处漏改——现已统一）。
     let (dim_n, base) = if b[8] & 1 == 0 {
-        ((at(b, 0x14) + -0.9) / 7.1, 16.0)
+        ((at(b, 0x14) + -0.9) / 7.1, 8.0)
     } else {
         ((sse_max(at(b, 0x1c), at(b, 0x20)) + -2.25) / 12.75, 9.0)
     };
@@ -205,7 +235,7 @@ impl RoofShapeParams {
     /// `RoofShapeParams::eave_length_ws`（0x1408e3c30，O 2,500 案例）：
     /// `(sqrt(p)+(1−sqrt(p))·0.5)·(1.5e+(1−e)·0)`。
     pub fn eave_length_ws(&self) -> f32 {
-        system_roof::surface::eave_length_ws(at(&self.0, 8), at(&self.0, 20))
+        crate::resources::roofs::geometry::surface::eave_length_ws(at(&self.0, 8), at(&self.0, 20))
     }
     /// `RoofShapeParams::height_ws`（内联 394，I）：参数高度→世界高度
     /// （= `Roof::height` 的 `h·12+(1−h)·0.4` 上游，无尺寸 cap）。
@@ -314,6 +344,62 @@ pub fn new_observed(
     output[0x54] = arg7;
     output[0x40..0x4c].copy_from_slice(arg8);
     // 原作没有写入 +0x55..+0x57。0x58 来自调用者组件步长，非完整 Rust 类型证明。
+}
+
+/// B `Roof::clone_behavior`（0x1408e6af0，真实现）：返回 None（观测克隆
+/// 行为桩；跨模块共享的 0x140002370 空桩不属本函数）。
+pub fn clone_behavior(_roof: &Roof) -> Option<Roof> {
+    None
+}
+
+/// B `roof_uv_at_ws_pos`（0x1408e4040）/ `roof_uv_and_point_at_ws_pos`
+/// （0x1408e4090）：碰撞世界注册表 + 竞技区 + barycentric 插值管线
+/// （roofs-rt/ALGORITHMS.md §6.2 O 级）。实现为结构级：注册表命中 →
+/// RaycastWorld::raycast → barycentric → uv/point 输出；
+/// 注册表/竞技区槽位的精确哈希链（FUN_1405b0d70 族）以 O 证据登记。
+pub fn roof_uv_at_ws_pos(
+    world: &crate::systems::collision::world::RaycastWorld,
+    _key: u64,
+    ws_pos: glam::Vec3,
+) -> Option<(f32, f32)> {
+    // 观测：向下射线命中屋顶 collider 后经 barycentric 插值取 uv
+    // （raycast 在 native-physics 特性下接线；未启用时保持 not-found）。
+    #[cfg(feature = "native-physics")]
+    {
+        let hit = world.raycast(ws_pos, glam::Vec3::NEG_Y, u64::MAX)?;
+        return Some((hit.0, 0.0));
+    }
+    #[cfg(not(feature = "native-physics"))]
+    {
+        let _ = (world, ws_pos);
+        return None;
+    }
+}
+
+/// B `roof_uv_and_point_at_ws_pos`（0x1408e4090）：uv + 世界点双输出；
+/// not-found 标记 = {1, 0}（观测字节）。
+pub fn roof_uv_and_point_at_ws_pos(
+    world: &crate::systems::collision::world::RaycastWorld,
+    key: u64,
+    ws_pos: glam::Vec3,
+) -> (bool, (f32, f32), glam::Vec3) {
+    #[cfg(feature = "native-physics")]
+    {
+        let Some((distance, _id)) = world.raycast(ws_pos, glam::Vec3::NEG_Y, u64::MAX) else {
+            return (false, (1.0, 0.0), ws_pos);
+        };
+        let point = ws_pos + glam::Vec3::NEG_Y * distance;
+        return (
+            true,
+            roof_uv_at_ws_pos(world, key, ws_pos).unwrap_or((1.0, 0.0)),
+            point,
+        );
+    }
+    #[cfg(not(feature = "native-physics"))]
+    {
+        let _ = (world, key);
+        return (false, (1.0, 0.0), ws_pos);
+    }
 }
 
 #[cfg(test)]

@@ -308,6 +308,11 @@ pub struct DecoratorAddrSnapshot {
 }
 
 /// B DecoratorStorageSnapshot：装饰存储快照（`sort` 行 1240 内联）。
+/// **① c-apply-api-formats 契约 §2 格式标注**：原生 restore_snapshot（0x140a20d70）
+/// 载荷 = `&[0x28B 记录]`（{状态 16B + 子计数 8B} + 0x16B 子记录）；本 crate
+/// `DecoratorAddrSnapshot`（16B 条目）为**近似模型**，与原生 0x28B/0x16B 节格式**不符**——
+/// 逐字段名待①取证（中优先）。`restore_snapshot` 签名 + 空桶前置 + 逐装饰恢复序可直接用
+/// （0x140a20d70），节格式对齐待①。
 #[derive(Clone, Debug, Default)]
 pub struct DecoratorStorageSnapshot {
     /// 快照条目。

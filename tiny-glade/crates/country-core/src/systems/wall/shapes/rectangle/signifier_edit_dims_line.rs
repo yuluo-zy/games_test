@@ -10,6 +10,11 @@ use bevy_ecs::prelude::*;
 use super::super::PreviewRectangle;
 use crate::systems::ui::signifiers::signifier_create::{UiAppendSignifier, UiSignifierStream};
 
+/// 打包两个 f32 到 qword（I）。
+fn pack2(v: glam::Vec2) -> u64 {
+    u64::from(v.x.to_bits()) | (u64::from(v.y.to_bits()) << 32)
+}
+
 /// B 0x1408dda10: emit the four dims-edit edge lines.
 pub fn signifier_edit_dims(
     preview: Res<PreviewRectangle>,
@@ -29,10 +34,13 @@ pub fn signifier_edit_dims(
         for (i, bytes) in floats.iter().enumerate() {
             extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
         }
+        // 40B 布局（中央裁决）：端点半打包入 name 槽。
         stream.write(UiAppendSignifier {
             tag: 6,
+            kind: 0,
             position: glam::Vec3::new(a.x, 0.0, a.y),
-            extra,
+            scale: 0.0,
+            name: pack2(b),
         });
     }
 }

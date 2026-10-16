@@ -58,7 +58,10 @@
 use crate::resources::{
     ivy::{Ivy, IvyDirectionProposer, IvyGrowthSegment, IvyPointId, IvyStorage, WallCoord},
     time::GameTime,
-    walls::{public_walls::PublicWalls, public_wall_state::PublicWallState, WallId},
+    walls::{
+        public_walls::PublicWalls, public_wall_state::PublicWallState,
+        wall_holes::PrevWallHoles, WallId,
+    },
 };
 use crate::systems::wall::wall_state::wall_spatial_hash::{WallSpatialHash, WallSpatialSegment};
 use bevy_ecs::prelude::*;
@@ -88,6 +91,13 @@ pub const DIRECTION_SCALE: f32 = 0.21;
 pub const HEIGHT_BAND_FLAG: f32 = 0.2;
 pub const HEIGHT_BAND_HIGH: f32 = -0.46;
 pub const HEIGHT_BAND_LOW_A: f32 = -0.79;
+/// Wall-hole AABB expansion (0x14094b840, constant 0x142ab31a0 =
+/// (−0.1, −1.0, 0.1, 1.0)) applied before the tip-containment test.
+pub const HOLE_BOX_EXPAND: [f32; 4] = [-0.1, -1.0, 0.1, 1.0];
+/// Maximum tip-to-landing distance (0x142ab31b0 = 0.42): a proposed landing
+/// farther than this from the growth tip is rejected
+/// (0x14094bd38/0x14094bf26).
+pub const LANDING_MAX_DISTANCE: f32 = 0.42;
 
 /// Advances one ivy's pending segment by `delta` seconds and emits the
 /// segment-completion event when it finishes. Point IDs come from the deque
@@ -141,7 +151,7 @@ pub fn start_growth_segment(
 /// Double-sided wall normal (B 0x14094caa0). Given a curve and a world point,
 /// returns the unit perpendicular to the nearest segment, oriented to face the
 /// point (`normal` when the point is on the +normal side, `-normal` otherwise).
-pub fn get_wall_double_sided_normal(curve: &system_roof::surface::Curve2, point: Vec2) -> Vec2 {
+pub fn get_wall_double_sided_normal(curve: &crate::resources::roofs::geometry::surface::Curve2, point: Vec2) -> Vec2 {
     let index = curve.coord_at_u((point.x / curve.length.max(1e-20)).clamp(0.0, 1.0)).0;
     let index = index.min(curve.points.len().saturating_sub(2));
     let a = Vec2::from(curve.points[index]);
@@ -254,6 +264,37 @@ pub fn get_growth_point_proposal(
     (world, normal)
 }
 
+/// Native hole containment (`PrevWallHoles::wall_holes` 0x140f86d00 + the box
+/// test 0x141240140, grower 0x14094b7be..b86e): when a previous-frame hole of
+/// kind 0 holds the growth tip inside its expanded AABB, the ivy pauses
+/// (`flag_8c = 1`) and the grower skips the point that frame
+/// (`mov byte [r14-4],1; jmp main-loop`). The probe is the tip's u distance
+/// along the wall and its world y, the coordinate space the hole producers
+/// write (`aabb = [u - w/2, y - h/2, u + w/2, y + h/2]`, RawWallHole
+/// center/dimensions in wall-platform-stairs). The exact native probe
+/// transform (`u * [wall-0x14]` then 0x14003bb80) is 待取证.
+fn hole_blocks_growth(prev_holes: &PrevWallHoles, wall_id: WallId, probe: Vec2) -> bool {
+    let Some(previous) = prev_holes.wall_holes(wall_id) else {
+        return false;
+    };
+    for hole in &previous.holes {
+        // The asm skips entries whose +0x10 byte is nonzero
+        // (`cmp byte ptr [rsi+0x10], 0; jne next`); holes of kind 0 block growth.
+        if hole.kind != 0 {
+            continue;
+        }
+        let [min_x, min_y, max_x, max_y] = hole.aabb;
+        let min_x = min_x + HOLE_BOX_EXPAND[0];
+        let min_y = min_y + HOLE_BOX_EXPAND[1];
+        let max_x = max_x + HOLE_BOX_EXPAND[2];
+        let max_y = max_y + HOLE_BOX_EXPAND[3];
+        if probe.x >= min_x && probe.x <= max_x && probe.y >= min_y && probe.y <= max_y {
+            return true;
+        }
+    }
+    false
+}
+
 /// Re-anchors growth onto whichever wall owns the segment nearest to the
 /// growth tip, resolved through the wall spatial hash (0x140aa5850
 /// `query_with_segment` + the `check_for_wall_jump` closures at
@@ -309,7 +350,7 @@ pub fn wall_segments_from_state(
 /// `Curve::get_approx_u_from_pos` (utils 0x141469a20): the exact `u`
 /// parameter of the closest point on the curve. Shared-utils cross-domain;
 /// the projection below walks the polyline and interpolates `points_u`.
-pub fn approx_u_from_pos(curve: &system_roof::surface::Curve2, pos: Vec2) -> f32 {
+pub fn approx_u_from_pos(curve: &crate::resources::roofs::geometry::surface::Curve2, pos: Vec2) -> f32 {
     let mut best = (f32::MAX, 0usize, 0.0f32);
     for i in 0..curve.points.len().saturating_sub(1) {
         let a = Vec2::from(curve.points[i]);
@@ -332,32 +373,46 @@ pub fn approx_u_from_pos(curve: &system_roof::surface::Curve2, pos: Vec2) -> f32
     u.clamp(0.0, 1.0)
 }
 
-/// `Local` continuation state mirroring the original `world+0x118` phase slot:
-/// `{+0x10 write-back ptr, +0x1c phase, +0x48 guard bit0, +0x11c timer}`.
+/// `Local` continuation state mirroring the original `world+0x118` phase slot.
+/// The guard byte bit0 lives in `IvyStorage::flag_48` (+0x48 of the state the
+/// original `[r14]` points at); only the phase and timing slot stay local.
 /// Public so the system can be registered on a schedule from sibling modules.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct GrowerState {
     /// +0x1c: the current phase value.
     phase: u8,
-    /// +0x48 bit0: guard flag toggled by the guard phase.
-    guard: bool,
     /// +0x11c: timing gate. The original never modifies it from this system;
     /// it is compared (`ucomiss 0, timer`) and externally written. The value
     /// is kept for phase-2 semantics and documented as externally owned.
     timer: f32,
+    /// ① T3 ivy §3: 墙洞命中产生的受影响叶/根 id 列表（native ptr@rbp+0x50/len@
+    /// rbp+0x58，洞约束 0x14094b7be..b86e 填充）。本库以 GrowerState 跨帧持留
+    /// （native 局部 drop 语义待取证）；+0x60 记录字段语义待取证，以 ivy id 建模标注。
+    affected_ids: Vec<u64>,
 }
 
 /// Runs the growth closure for every stored ivy (guard body 0x14094ac51).
 /// GPU/upload consumption is out of scope here.
+#[allow(clippy::too_many_arguments)]
 fn run_growth_pass(
     storage: &mut IvyStorage,
     delta: f32,
     walls: &PublicWalls,
     spatial: &WallSpatialHash,
     proposer: &IvyDirectionProposer,
+    prev_holes: &PrevWallHoles,
+    affected_ids: &mut Vec<u64>,
     completed: &mut EventWriter<IvySegmentDoneGrowingMsg>,
 ) {
+    // ① T3 ivy §3: 取上轮的受影响列表用于 flag 消费谓词（0x14094ae63..96），本轮
+    // 在洞命中时重建（propose_new_segment 填充）。+0x60 字段语义待取证，以 ivy id 建模。
+    let prev_affected = std::mem::take(affected_ids);
     for (_, ivy) in storage.iter_mut() {
+        // Consume the wall-hole flag (0x14094ae63..96): clear only when this
+        // ivy's id is in the affected-leaves list (flag 置位 且 id ∈ 列表 → 清零).
+        if ivy.flag_8c != 0 && prev_affected.contains(&ivy.id) {
+            ivy.flag_8c = 0;
+        }
         // 1. maximum-point-count gate (0x14094ae9b..).
         if ivy.point_count() >= ivy.maximum_point_count {
             continue;
@@ -383,19 +438,30 @@ fn run_growth_pass(
         if ivy.point_count() == 0 {
             continue;
         }
-        propose_new_segment(ivy, walls, spatial, proposer, &mut |message| {
-            completed.write(message);
-        });
+        propose_new_segment(
+            ivy,
+            walls,
+            spatial,
+            proposer,
+            prev_holes,
+            affected_ids,
+            &mut |message| {
+                completed.write(message);
+            },
+        );
     }
 }
 
 /// New-segment proposal (guard body 0x14094aef9..). See the module docs for
 /// the machine-code-verified cell sampling, acceptance and height gates.
+#[allow(clippy::too_many_arguments)]
 fn propose_new_segment(
     ivy: &mut Ivy,
     walls: &PublicWalls,
     spatial: &WallSpatialHash,
     proposer: &IvyDirectionProposer,
+    prev_holes: &PrevWallHoles,
+    affected_ids: &mut Vec<u64>,
     emit: &mut impl FnMut(IvySegmentDoneGrowingMsg),
 ) {
     let tail = ivy.last_point().position;
@@ -428,8 +494,9 @@ fn propose_new_segment(
     if curve.points.len() < 2 || wall_growth_height(state) <= 0.0 {
         return;
     }
-    // Direction from the proposer (0x14094b4cc).
-    let direction = proposer.get_direction(tail, ivy.source_60);
+    // Direction from the proposer (0x14094b4cc); the seed is the ivy id at
+    // record +0x20 (`mov r8, qword ptr [r14 - 0x70]`, 0x14094b4bd).
+    let direction = proposer.get_direction(tail, ivy.id);
     let normal = get_wall_double_sided_normal(curve, point);
     let side = if Vec3::new(direction.x, 0.0, direction.y).dot(Vec3::new(normal.x, 0.0, normal.y))
         >= 0.0
@@ -454,6 +521,17 @@ fn propose_new_segment(
     if next.y > band {
         return;
     }
+    // Wall-hole gate (0x14094b7be..b86e): a previous-frame hole whose
+    // expanded AABB holds the growth tip pauses the ivy and flags it; the
+    // next main-loop pass consumes the flag (0x14094ae63..96).
+    let hole_probe = Vec2::new(approx_u_from_pos(curve, point) * curve.length, tail.y);
+    if hole_blocks_growth(prev_holes, wall_id, hole_probe) {
+        ivy.flag_8c = 1;
+        // ① T3 ivy §3: 洞命中 → 受影响叶/根 id 列表 push（native 洞约束段填充；
+        // 记录 +0x60 字段语义待取证，以 ivy id 建模标注）。
+        affected_ids.push(ivy.id);
+        return;
+    }
     // Wall-jump re-anchor (0x14094b7c6..0x14094b873, spatial-hash based).
     if let Some(jump) = check_for_wall_jump(walls, tail, Some(wall_id)) {
         if jump != wall_id {
@@ -464,40 +542,53 @@ fn propose_new_segment(
                 );
                 let (next_jump, facing_jump) =
                     get_growth_point_proposal(state_jump, tail, direction, normal_jump, side);
+                // Landing gate (0x14094bd38..40): the re-anchored landing must
+                // stay within 0.42 of the tip.
+                if (next_jump - tail).length() > LANDING_MAX_DISTANCE {
+                    return;
+                }
                 start_growth_segment(ivy, tail, facing_jump, next_jump);
                 return;
             }
         }
     }
+    // Landing gate (0x14094bf26..2e): reject landings farther than 0.42.
+    if (next - tail).length() > LANDING_MAX_DISTANCE {
+        return;
+    }
     start_growth_segment(ivy, tail, facing, next);
 }
 
 /// `ivy_grower` (0x14094a910). Dispatch on the persisted phase; the guard bit
-/// gates whether the growth closure runs. Phases 5-9 are the original panic
-/// tails (secondary table 0x142ab3bf4 / panic strings).
+/// of `IvyStorage::flag_48` gates whether the growth closure runs. Phases 5-9
+/// are the original panic tails (secondary table 0x142ab3bf4 / panic strings).
 pub fn ivy_grower(
     mut storage: ResMut<IvyStorage>,
     time: Res<GameTime>,
     proposer: Res<IvyDirectionProposer>,
     walls: Res<PublicWalls>,
     spatial: Res<WallSpatialHash>,
+    prev_holes: Res<PrevWallHoles>,
     mut completed: EventWriter<IvySegmentDoneGrowingMsg>,
     mut state: Local<GrowerState>,
 ) {
     match state.phase {
-        // Guard phase (0x14094c09f): toggle the guard bit, then run the
-        // closure when set. The bit is not cleared here — the next toggle
-        // flips it — so a growth pass alternates with a no-op frame, matching
-        // the machine code where the epilogue (0x14094c0c0) returns.
+        // Guard phase (0x14094c09f): toggle bit0 of the state's +0x48 byte,
+        // then run the closure when the bit is set. The bit is not cleared
+        // here — the next toggle flips it — so a growth pass alternates with a
+        // no-op frame, matching the machine code where the epilogue
+        // (0x14094c0c0) returns.
         0 => {
-            state.guard = !state.guard;
-            if state.guard {
+            storage.flag_48 ^= 1;
+            if storage.flag_48 & 1 != 0 {
                 run_growth_pass(
                     &mut storage,
                     time.delta,
                     &walls,
                     &spatial,
                     &proposer,
+                    &prev_holes,
+                    &mut state.affected_ids,
                     &mut completed,
                 );
             }
@@ -505,13 +596,15 @@ pub fn ivy_grower(
         // Shared main entries (0x14094ac20): run the closure when the guard
         // bit is set, otherwise return.
         1 | 3 | 4 => {
-            if state.guard {
+            if storage.flag_48 & 1 != 0 {
                 run_growth_pass(
                     &mut storage,
                     time.delta,
                     &walls,
                     &spatial,
                     &proposer,
+                    &prev_holes,
+                    &mut state.affected_ids,
                     &mut completed,
                 );
             }
@@ -521,24 +614,28 @@ pub fn ivy_grower(
         // guard-set frames.
         2 => {
             if state.timer <= 0.0 {
-                state.guard = !state.guard;
-                if state.guard {
+                storage.flag_48 ^= 1;
+                if storage.flag_48 & 1 != 0 {
                     run_growth_pass(
                         &mut storage,
                         time.delta,
                         &walls,
                         &spatial,
                         &proposer,
+                        &prev_holes,
+                        &mut state.affected_ids,
                         &mut completed,
                     );
                 }
-            } else if state.guard {
+            } else if storage.flag_48 & 1 != 0 {
                 run_growth_pass(
                     &mut storage,
                     time.delta,
                     &walls,
                     &spatial,
                     &proposer,
+                    &prev_holes,
+                    &mut state.affected_ids,
                     &mut completed,
                 );
             }
@@ -634,6 +731,7 @@ mod tests {
         world.init_resource::<IvyDirectionProposer>();
         world.init_resource::<PublicWalls>();
         world.init_resource::<WallSpatialHash>();
+        world.init_resource::<PrevWallHoles>();
         world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
         world.insert_resource(GameTime {
             delta: 0.075,

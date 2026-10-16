@@ -64,8 +64,10 @@ pub fn shape_placement_signifiers(
     if let Some(anchor) = preview_snapping_line(wall) {
         stream.write(UiAppendSignifier {
             tag: 3,
+            kind: 0,
             position: anchor,
-            extra: [0; 12],
+            scale: 0.0,
+            name: 0,
         });
     }
 }

@@ -91,7 +91,7 @@ pub fn register_wall_cpu_resources(world: &mut World) {
     // 装饰权威存储资源（卡5 decorator_storage；OnWallDeleted 消费链）。
     world.init_resource::<DecoratorStorage>();
     register_wall_height_events(world);
-    crate::systems::roof::register_roof_events(world);
+    crate::resources::roofs::register_roof_events(world);
     // R4+R5: snapping / eraser / shapes (valid_enclosure is a pure type).
     world.init_resource::<InProgressCurve>();
     world.init_resource::<SnappingMode>();
@@ -227,7 +227,7 @@ mod tests {
         world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
         world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
         let curve =
-            system_roof::surface::Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
+            crate::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
         // Original freehand tag 2, source +65 clear, height type +66 follow terrain.
         let id = world
             .resource_mut::<InnerWalls>()

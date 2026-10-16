@@ -3,7 +3,7 @@
 
 use bevy_ecs::resource::Resource;
 use hashbrown::{HashMap, HashSet};
-use system_roof::surface::Curve2;
+use crate::resources::roofs::geometry::surface::Curve2;
 
 use super::{WallId, inner_wall_state::WallState};
 use crate::recovered_building::wall_state::WallShapeSnapshot;
@@ -20,6 +20,47 @@ pub struct InnerWalls {
     walls: HashMap<WallId, WallState>,
     changes: WallChanges,
     max_id: u64,
+}
+
+/// 0x78B（120B）墙状态记录 = `{WallId u64@0, WallState 0x70B@8}`（① r6-walls-0x78b
+/// 契约 §1，O：InnerWalls HashMap 条目 stride 0x78 权威）。
+/// **record[0] = WallId**（FUN_1402ca2f0 = `HashMap::insert<WallId,()>`）；qword[1..15] =
+/// WallState 0x70B。O 字段：WallState +0x54 height f32 / +0x60 freehand u8 / +0x64 arch u8 /
+/// +0x67 removed_supports u8；曲线区（+0x00..0x53 等）待①。
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct InnerWallStateRecord(pub [u8; 0x78]);
+
+impl InnerWallStateRecord {
+    /// `record[0]` = WallId（0x78B 首 qword，LE；O 解码）。
+    pub fn wall_id(&self) -> WallId {
+        WallId(u64::from_le_bytes(self.0[..8].try_into().unwrap()))
+    }
+
+    /// WallState 0x70B（record qword[1..15]，O）。
+    pub fn wall_state_bytes(&self) -> &[u8; 0x70] {
+        self.0[8..].try_into().unwrap()
+    }
+
+    /// WallState `+0x54` height f32（O：update_wall_state_height 0x14085ad60 写 +0x54）。
+    pub fn height(&self) -> f32 {
+        f32::from_le_bytes(self.wall_state_bytes()[0x54..0x58].try_into().unwrap())
+    }
+
+    /// WallState `+0x60` freehand_type u8（O：update_freehand_ty 0x140aa99e0）。
+    pub fn freehand_type(&self) -> u8 {
+        self.wall_state_bytes()[0x60]
+    }
+
+    /// WallState `+0x64` arch_type u8（O：update_arch_type 0x140aa9eb0）。
+    pub fn arch_type(&self) -> u8 {
+        self.wall_state_bytes()[0x64]
+    }
+
+    /// WallState `+0x67` removed_supports u8（O：update_supports 0x140aa9800）。
+    pub fn removed_supports(&self) -> u8 {
+        self.wall_state_bytes()[0x67]
+    }
 }
 
 impl InnerWalls {
@@ -78,6 +119,32 @@ impl InnerWalls {
         self.walls.insert(id, state);
         self.changes.created.insert(id);
         id
+    }
+
+    /// `load_state` 0x14085ad80（① r6-walls-0x78b 契约 §1/§2，O 签名）：从 0x78B
+    /// 墙状态记录数组恢复（`*param_2` = 记录数、`param_2[1]` = 记录数组 ptr、元素
+    /// 0x78B = `{WallId u64@0, WallState 0x70B@8}`）。
+    /// 逐记录：record[0]=WallId + WallState O 字段（+0x54 height / +0x60 freehand /
+    /// +0x64 arch / +0x67 removed_supports）解码；**曲线区（WallState +0x00..0x53）待①**，
+    /// WallState 完整构造待①——本实现解码 O 字段 + 登记曲线区待①，不伪造。
+    pub fn load_state(&mut self, records: &[InnerWallStateRecord]) {
+        // 前置（O）：各内层 Vec 空。crate InnerWalls 内层为 walls HashMap——
+        // 以 walls 空表达等价前置（原生 assert，本实现登记语义）。
+        if !self.walls.is_empty() {
+            log::warn!("InnerWalls::load_state precondition: walls not empty");
+        }
+        // 逐记录：record[0]=WallId + WallState O 字段解码（曲线区→WallState 构造待①）。
+        for record in records {
+            let id = record.wall_id();
+            let height = record.height();
+            let freehand = record.freehand_type();
+            let arch = record.arch_type();
+            let removed = record.removed_supports();
+            log::trace!(
+                "load_state: wall {:?} height={height} freehand={freehand} arch={arch} removed={removed} (曲线区→WallState 构造待①)",
+                id
+            );
+        }
     }
 
     pub fn new_wall_w_params(

@@ -28,18 +28,10 @@ pub const WATER_LOOP_EVENTS: [&str; 4] = [
     "event:/SFX/Water/IceDraw",
 ];
 
-/// Water draw/erase events (native `resources::water::WaterDrawEvent` /
-/// `WaterEraseEvent`; that module 待接线). Fields mirror the garden draw shape.
-#[derive(Event, Clone, Copy, Debug)]
-pub struct WaterDrawEvent {
-    pub position: Vec3,
-    pub radius: f32,
-}
-#[derive(Event, Clone, Copy, Debug)]
-pub struct WaterEraseEvent {
-    pub position: Vec3,
-    pub radius: f32,
-}
+// Water draw/erase events live in `resources::water` (native module; wired by
+// the water-domain restorer). Fields {position, radius} mirror the garden draw
+// shape; the ice-loop gating by water-raster sampling stays in the water domain.
+pub use crate::resources::water::{WaterDrawEvent, WaterEraseEvent};
 
 /// WaterAudioState: the four loops.
 #[derive(Resource)]

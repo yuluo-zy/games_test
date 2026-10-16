@@ -3,7 +3,7 @@
 //! GPU/ECS scheduling and unresolved geometry consumers are explicit input seams.
 pub use crate::resources::roofs::roof_shape as roof_state;
 pub use crate::resources::walls::height_rules as wall_height_rules;
-pub use system_roof::{
+pub use crate::resources::roofs::geometry::{
     edit_rules as roof_edit_rules, parameters as roof_parameters, pipeline as roof_pipeline,
     replay as roof_replay, ridge, surface, tiles,
 };

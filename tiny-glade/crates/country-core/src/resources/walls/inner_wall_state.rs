@@ -6,7 +6,7 @@ use crate::recovered_building::{
     wall_history_edit::{WallAuthoritySnapshot, WallHistoryMetadata},
     wall_state::WallShapeSnapshot,
 };
-use system_roof::surface::Curve2;
+use crate::resources::roofs::geometry::surface::Curve2;
 
 pub const DEFAULT_ARCH_HEIGHT: f32 = f32::from_bits(0x40333333);
 

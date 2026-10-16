@@ -226,6 +226,76 @@ impl ActiveSession {
 // NextSession / SessionOnLoadCmd / NextSessionKind（PDB：resources::session）
 // ---------------------------------------------------------------------------
 
+/// 会话载入尝试（PDB：`SessionLoadAttempt`；startup_session，内联行 79）。
+///
+/// 布局（`startup_session.rs.md`）：`*param_1+0x10` 空 → theme 默认 3；否则
+/// attempt → theme byte @+6。theme 从会话 meta 读取，失败回退默认 3（Autumn）。
+#[derive(Clone, Debug, PartialEq)]
+pub struct SessionLoadAttempt {
+    /// 目标会话 id（None = 无有效会话 → 新会话路径）。
+    pub id: Option<SessionId>,
+    /// 主题（`theme byte @+6`；O 默认 3 = Autumn）。
+    pub theme: GladeType,
+}
+impl SessionLoadAttempt {
+    /// `from_session_id`（内联行 79）：由会话 id 构造载入尝试；meta 读取失败回退
+    /// 默认 theme 3（O：`*param_1+0x10` 空 → 3）。
+    pub fn from_session_id(id: SessionId) -> Self {
+        let theme = SessionMeta::try_load_from_path(id.save_folder_path().join("meta.json"))
+            .map(|meta| meta.glade)
+            .unwrap_or(GladeType::Autumn);
+        Self {
+            id: Some(id),
+            theme,
+        }
+    }
+    /// 继续最近会话（O：'Latest game session ' 路径）；列表空 → 新会话。
+    pub fn continue_latest(list: &SavedSessionList) -> Self {
+        match list.sessions.first() {
+            Some(session) => Self::from_session_id(session.id),
+            None => Self {
+                id: None,
+                theme: GladeType::Autumn,
+            },
+        }
+    }
+}
+
+/// 会话 meta 来源（PDB：`SessionMetaSource`；枚举类型，sysres/public-session-names，
+/// 字段 U——只登记判别路径，不编造变体载荷）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SessionMetaSource {
+    /// 继续/已有会话（load_game_session case 1/2 'Latest/Continuing game session '）。
+    Existing,
+    /// 新会话（'Starting a new game session'）。
+    New,
+}
+
+/// `copy_dir_all<PathBuf,PathBuf>` 0x141740c00：递归目录复制；**"intro" 子目录跳过**
+/// （O：名 5 字符 == "intro" 0x72746e69+o）。load_game_session 新会话起始 build 使用。
+pub fn copy_dir_all(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let name = entry.file_name();
+        if file_type.is_dir() {
+            // "intro" 子目录跳过（O：0x141740c00 名比较）。
+            if name.as_encoded_bytes() == b"intro" {
+                continue;
+            }
+            copy_dir_all(&entry.path(), &to.join(name))?;
+        } else {
+            std::fs::copy(entry.path(), to.join(name))?;
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// NextSession / SessionOnLoadCmd / NextSessionKind（PDB：resources::session）
+// ---------------------------------------------------------------------------
+
 /// 会话请求的载入方式（PDB：`NextSessionKind`）。原 kind niche =
 /// `0x8000000000000000 | decoded`；`load_game` 0x14146d030 用
 /// `decoded = kind ^ 0x8000000000000000; sel = min(decoded, 2)` 解码。
@@ -289,6 +359,11 @@ impl NextSession {
         }
     }
     /// `NextSession::create` 0x140b46960：kind 由调用方模板决定。
+    ///
+    /// **载荷面（O 调用点 0x141ebb5ad）**：`create(out NextSession, meta_template96B,
+    /// option32B)`——96B 模板（rdx）+ 32B 尾部（r8）构造；kind@+0x18 = 模板首 qword；
+    /// Vec 清空；另有 24B 可选串/路径 + 字节旗标随模板传递。模板/选项的精确字段语义
+    /// U（待取证，不编造），本实现仅保留语义入口 `id + kind`。
     pub fn create(id: SessionId, kind: NextSessionKind) -> Self {
         Self {
             on_load: Vec::new(),
@@ -302,10 +377,15 @@ impl NextSession {
         self.ignore_snapshot = ignore;
         self
     }
-    /// `NextSession::load_latest`（内联，行 331）：默认载入最近会话。最近会话 id
-    /// 由 `SavedSessionList` 消费者提供；此处保留占位语义（I）。
-    pub fn load_latest() -> Self {
-        Self::load(SessionId::new())
+    /// `NextSession::load_latest`（内联，行 331，kind 解码 sel==1）：载入**最近会话**。
+    ///
+    /// 真实语义：从 [`SavedSessionList`]（最近在前排序）取第一个会话 id；列表空时
+    /// 回退新会话 id（并标记 I：UI/会话流生产者为空时的默认路径）。
+    pub fn load_latest(list: &SavedSessionList) -> Self {
+        match list.sessions.first() {
+            Some(session) => Self::load(session.id),
+            None => Self::load(SessionId::new()),
+        }
     }
     /// `append_on_load<MetaCommandFence>` 0x141328ac0：追加**变体 0 会话加载命令**
     /// 条目 `{tag=0x8000000000000000, payload=fence}`（RE-SESSION-SWITCH 定案：
@@ -442,8 +522,10 @@ impl SessionFlowPlugin {
     /// 原 build 0x140b47840：插入 ActiveSession/SavedSessionList/NextSession/
     /// AutoSaveState 资源并注册会话事件。ActiveSession 为占位默认，真实会话启动后替换。
     pub fn build(&self, world: &mut bevy_ecs::world::World) {
-        world.init_resource::<SavedSessionList>();
-        world.insert_resource(NextSession::load_latest());
+        let mut list = SavedSessionList::default();
+        refresh_session_list(&mut list);
+        world.insert_resource(list);
+        world.insert_resource(NextSession::load_latest(world.resource::<SavedSessionList>()));
         world.init_resource::<crate::systems::save::save_game::AutoSaveState>();
         world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
         world.init_resource::<bevy_ecs::event::Events<NewSessionStartedCmd>>();
