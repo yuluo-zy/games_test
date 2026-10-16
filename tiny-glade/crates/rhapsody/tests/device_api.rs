@@ -1,4 +1,6 @@
 //! 句柄适配层（`GraphicsDevice::create_buffer` 等）的冒烟验证。无 Vulkan 设备时跳过；本机可用 lavapipe。
+// 区间参数刻意传单元素切片，对应 update_buffer_bytes 的区间列表。
+#![allow(clippy::single_range_in_vec_init)]
 use ash::vk;
 use rhapsody::raw::{buffer::BufferDesc, device::GraphicsDevice, init::create_headless_device};
 

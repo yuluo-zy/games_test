@@ -5,6 +5,7 @@
 //! - 红色像素的质心沿预期圆周轨迹移动（帧间没有串帧、没有复用到旧内容）；
 //! - 每帧清除色都不同，且清除色在三角形外全部生效（上一帧内容不泄漏）；
 //! - 真的出现过 2 帧同时在飞；每帧新建的顶点缓冲在命令缓冲持有下安全退役（循环里不崩、不报错）。
+//!
 //! `cargo test -p rhapsody --test triangle_animation -- --nocapture` 会打印第 0/6/12/18 帧的 ASCII 预览。
 //! 没有 Vulkan 设备时跳过。
 mod draw_support;
@@ -73,7 +74,7 @@ fn verify(frame: usize, target: &Target, stats: &mut Stats) {
     let error = ((measured.0 - expected.0).powi(2) + (measured.1 - expected.1).powi(2)).sqrt();
     assert!(error < 0.8, "第 {frame} 帧质心 {measured:?} 偏离预期 {expected:?}（{error:.2} px）");
 
-    if frame % 6 == 0 {
+    if frame.is_multiple_of(6) {
         println!("--- 第 {frame} 帧（旋转 {:.0}°，清除色 {clear:?}）质心 ({:.1},{:.1}) ---", frame as f32 * STEP_DEG, measured.0, measured.1);
         for y in (0..SIZE).step_by(4) {
             let row: String = (0..SIZE).step_by(2).map(|x| if pixel(&pixels, x, y) == FILL { '#' } else { '.' }).collect();

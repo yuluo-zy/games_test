@@ -1,5 +1,7 @@
 //! raw-core 缓冲/纹理域测试：布局偏移、判据、边界；有原 EXE 时直接读机器码表作 oracle。
 //! 需要 Vulkan 的用例在无设备时跳过；本机可用 lavapipe。
+// 区间参数刻意传单元素切片与反向区间，用来覆盖原版的区间校验。
+#![allow(clippy::single_range_in_vec_init, clippy::reversed_empty_ranges)]
 use ash::vk;
 use rhapsody::raw::{
     buffer::{

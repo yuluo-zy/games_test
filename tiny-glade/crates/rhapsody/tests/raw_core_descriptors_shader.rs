@@ -98,11 +98,13 @@ fn from_desc_creates_the_original_render_pass_on_a_real_device() {
     // 槽 +0x18 = 颜色附件数（不含深度），+0x20 = 采样数。
     assert_eq!((pass.color_count, pass.samples), (2, 1));
     // 只有深度也可以创建（采样数取深度）。
-    let mut depth_only = RenderPassDesc::default();
-    depth_only.depth = Some((
-        color(vk::Format::D32_SFLOAT).sample_count(1),
-        DepthAccess::ReadWrite,
-    ));
+    let depth_only = RenderPassDesc {
+        depth: Some((
+            color(vk::Format::D32_SFLOAT).sample_count(1),
+            DepthAccess::ReadWrite,
+        )),
+        ..Default::default()
+    };
     let pass = RenderPass::from_desc(device, &depth_only).unwrap();
     assert_eq!((pass.color_count, pass.samples), (0, 1));
 }

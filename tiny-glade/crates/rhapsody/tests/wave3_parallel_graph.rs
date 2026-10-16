@@ -5,11 +5,13 @@
 //! - 串行（`ParallelRecording::SERIAL`）、`batch_per_pass`、原作分块（ComputePool / Inline）的缓冲内容逐字节一致且等于期望值；
 //! - 分块数与预算算法一致：预算 `clamp(max, total/16, total/2)`、贪心累加到预算关块（手算 + `plan_chunks` 双重核对）；
 //! - `ExecutionStats` 的 `parallel_batches/chunks`、命令缓冲数、屏障计数。
+//!
 //! `--all-features` 下再对比 `Balanced` 与 `ADAPTIVE`。
 mod draw_support;
 mod wave3_support;
+#[cfg(feature = "candidate-optimizations")]
+use rhapsody::rg::executor::PassPgoNameId;
 use rhapsody::rg::{
-    executor::PassPgoNameId,
     parallel::{ChunkStrategy, ParallelRecording, TaskRunner, original_budget, original_chunks, plan_chunks},
 };
 use wave3_support::*;

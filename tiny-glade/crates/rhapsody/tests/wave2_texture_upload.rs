@@ -447,7 +447,7 @@ fn gpu_block_compressed_formats_outside_original_block_bytes_table_are_rejected(
         if gd.create_texture(&desc, "probe", ()).is_err() {
             continue;
         }
-        let data = vec![0u8; 16];
+        let data = [0u8; 16];
         assert!(gd.create_texture(&desc, "bad", &data[..]).is_err(), "{format:?}");
     }
 }

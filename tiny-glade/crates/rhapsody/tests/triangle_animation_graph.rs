@@ -6,6 +6,7 @@
 //! - 帧间资源复用：图内创建的颜色目标走资源池（命中次数断言）；历史纹理走 `TemporalGpuResources`
 //!   （parity 翻转、物理纹理恒等、"上一帧的渲染结果"逐字节一致）；
 //! - 每帧新建的顶点缓冲在 `collect_after_completion` 后全部销毁；结束后 `wait_idle` 正常。
+//!
 //! 只走 rhapsody 自己的 rg 接口，不接宿主适配层。没有 Vulkan 设备时跳过。
 mod draw_support;
 use ash::vk::{self, Handle};
@@ -396,7 +397,7 @@ fn verify(harness: &Harness, frame: usize, stats: &mut Stats) {
         );
         stats.history_checked += 1;
     }
-    if frame % 6 == 0 {
+    if frame.is_multiple_of(6) {
         println!(
             "第 {frame} 帧（旋转 {:.0}°）三角形像素 {}，不一致 {}，质心误差 {:.2}px",
             frame as f32 * STEP_DEG,
