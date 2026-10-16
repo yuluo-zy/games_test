@@ -713,53 +713,43 @@ pub struct ReflectedPushConstant {
     #[serde(rename = "type")]
     pub reflected_type: serde_json::Value,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// 着色器接口（反射 → 管线布局/顶点输入）不合法。
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum InterfaceError {
+    #[error("未知的着色器阶段 {0}")]
     Stage(String),
+    #[error("未知的描述符类型 {0}")]
     Descriptor(String),
+    #[error("set {0} binding {1} 在各阶段间声明不一致")]
     IncompatibleBinding(u32, u32),
+    #[error("找不到内置采样器 {0}")]
     MissingSampler(String),
+    #[error("push constant 声明无效")]
     InvalidPushConstant,
+    #[error("set {0} 的运行时数组 binding {1} 不是最后一个")]
     RuntimeBindingNotLast(u32, u32),
+    #[error("管线布局无效")]
     InvalidLayout,
+    #[error("片元输入 location {0} component {1} 与顶点输出不匹配")]
     IncompatibleLocation(u32, u32),
-    /// 原 `create_raster_pipeline` shader.rs:840:47 `Option::expect("vertex input attrib byte count")`：
-    /// `Type::nbyte()` 为 None（opaque 资源类型当顶点输入）。
+    /// 顶点输入的反射类型没有字节大小（opaque 类型）。
+    #[error("顶点输入属性没有确定的字节大小")]
     VertexInputByteCount,
-    /// 原 shader.rs:838:26 `panic!("Unsupported vertex attribute type: {:?}", ty)`，载荷是类型的 Debug 文本。
+    #[error("不支持的顶点属性类型：{0}")]
     UnsupportedVertexAttributeType(String),
-    /// 原 compute 管线创建 shader.rs:397:9 `assert!(compiled.reflection.inputs.is_empty())`。
+    #[error("compute 着色器不能有顶点输入")]
     ComputeHasVertexInputs,
-    /// 原 compute 管线创建 shader.rs:460:60 `.expect("a valid group size")`（`local_size` 为 None）。
+    #[error("compute 着色器缺少 local_size（group size）")]
     MissingGroupSize,
 }
-/// 原 `rhapsody/src/raw/shader.rs` 管线创建路径的 panic 文案（`.rne` 0x1416a3720 / 0x1416a4f1a 冷尾段读出）。
-pub mod original_panics {
-    /// 0x1416a4f21（shader.rs:397:9，字串 0x142c88c30，55 字节）。
-    pub const COMPUTE_INPUTS_NOT_EMPTY: &str = "assertion failed: compiled.reflection.inputs.is_empty()";
-    /// 0x1416a50ed（shader.rs:460:60，字串 0x142c88cf8，18 字节）。
-    pub const VALID_GROUP_SIZE: &str = "a valid group size";
-    /// 0x1416a50d1（shader.rs:453:39，片段 0x142c88d50）：`"Failed creating shader pipeline {name}: {err}"`。
-    pub const FAILED_CREATING_SHADER_PIPELINE_PREFIX: &str = "Failed creating shader pipeline ";
-    pub const FAILED_CREATING_SHADER_PIPELINE_SEP: &str = ": ";
-    /// 0x1416a46c4（shader.rs:972:18，字串 0x142c88b3c，34 字节）：raster 管线 `.expect(..)`，Err 为 ash 的
-    /// `(Vec<Pipeline>, vk::Result)`。
-    pub const UNABLE_TO_CREATE_GRAPHICS_PIPELINE: &str = "Unable to create graphics pipeline";
-    /// 0x1416a451d（shader.rs:840:47，字串 0x142c88b78，30 字节）。
-    pub const VERTEX_INPUT_ATTRIB_BYTE_COUNT: &str = "vertex input attrib byte count";
-    /// 0x1416a458c（shader.rs:838:26，片段 0x142c88be0，35 字节）。
-    pub const UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX: &str = "Unsupported vertex attribute type: ";
-    /// `Result::unwrap()` 失败的固定前缀（0x142c88708，43 字节），用于 shader.rs:796:18（vkCreatePipelineLayout，
-    /// 调用 `[device+0x210]`）、426:18 / 437:18 / 428:78（compute 路径的 vkCreate*）。
-    pub const UNWRAP_ON_ERR: &str = "called `Result::unwrap()` on an `Err` value";
 
-    /// compute 管线创建失败（453:39）的完整 panic 文本。
-    pub fn failed_creating_shader_pipeline(name: &str, err: &dyn std::fmt::Debug) -> String {
-        format!("{FAILED_CREATING_SHADER_PIPELINE_PREFIX}{name}{FAILED_CREATING_SHADER_PIPELINE_SEP}{err:?}")
+impl From<InterfaceError> for crate::Error {
+    fn from(error: InterfaceError) -> Self {
+        crate::Error::invalid_usage_with("着色器接口无效", error)
     }
 }
-/// 原 compute 管线创建在使用反射前的两个检查（shader.rs:397 assert + 460 expect，顺序按机器码：
-/// 先 assert 再取 local_size）。
+
+/// compute 管线创建前的反射检查：不得有顶点输入，必须声明 group size。
 pub fn validate_compute_reflection(
     reflection: &crate::shader_pipeline::reflection::ShaderReflection,
 ) -> Result<[u32; 3], InterfaceError> {
@@ -768,23 +758,6 @@ pub fn validate_compute_reflection(
     }
     reflection.local_size.ok_or(InterfaceError::MissingGroupSize)
 }
-impl std::fmt::Display for InterfaceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::VertexInputByteCount => f.write_str(original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT),
-            Self::UnsupportedVertexAttributeType(ty) => {
-                write!(f, "{}{ty}", original_panics::UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX)
-            }
-            Self::ComputeHasVertexInputs => f.write_str(original_panics::COMPUTE_INPUTS_NOT_EMPTY),
-            Self::MissingGroupSize => f.write_str(original_panics::VALID_GROUP_SIZE),
-            // 原 `get_built_in_sampler`（0x140bfc5b0，源 sampler.rs:201）：`panic!("Sampler not found: {name}")`。
-            Self::MissingSampler(name) => write!(f, "Sampler not found: {name}"),
-            _ => write!(f, "着色器接口无效：{self:?}"),
-        }
-    }
-}
-impl std::error::Error for InterfaceError {}
-
 pub struct ShaderInterfacePlan {
     /// 保留原反射 set/binding 编号；缺失的 set 用空布局填充，绝不重新枚举 sparse binding。
     pub sets: Vec<LayoutPlan>,

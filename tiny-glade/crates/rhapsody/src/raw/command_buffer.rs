@@ -1,56 +1,4 @@
-// 候选实现迁移来源：reconstruction/render/work-packages/queue-callers-r7/src/lib.rs.
-// 这是行为重建，不是原作者源码。
-//! 原 ensure_active_cb 调用方入口为 0x140bebc90；保留 CPU 契约，真实命令池适配另见本模块。
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CommandSnapshot(pub [u8; 88]);
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RecordingQueue {
-    Primary,
-}
-
-pub trait CommandBackend {
-    fn create(&mut self, pool_family_index: u32) -> CommandSnapshot;
-    fn begin(&mut self, command: &mut CommandSnapshot, queue: RecordingQueue);
-}
-
-/// 设备 +0xad4 的池队列族与录制队列标签为独立输入；已有命令向量保持不变。
-pub fn ensure_active_cb(
-    commands: &mut Vec<CommandSnapshot>,
-    pool_family_index: u32,
-    backend: &mut impl CommandBackend,
-) {
-    if commands.is_empty() {
-        let mut command = backend.create(pool_family_index);
-        backend.begin(&mut command, RecordingQueue::Primary);
-        commands.push(command);
-    }
-}
-
-#[derive(Default)]
-pub struct FixtureBackend {
-    pub fill: u8,
-    pub sequence: u64,
-    pub events: Vec<String>,
-}
-
-impl CommandBackend for FixtureBackend {
-    fn create(&mut self, family: u32) -> CommandSnapshot {
-        self.events.push(format!("create:{family}"));
-        CommandSnapshot([self.fill; 88])
-    }
-
-    fn begin(&mut self, command: &mut CommandSnapshot, queue: RecordingQueue) {
-        assert_eq!(queue, RecordingQueue::Primary);
-        self.events.push("begin:0".into());
-        command.0[..8].copy_from_slice(&1u64.to_le_bytes());
-        command.0[8..16].copy_from_slice(&self.sequence.to_le_bytes());
-        command.0[16..24].fill(0);
-        command.0[86] = 0;
-    }
-}
-
+//! Vulkan 命令池、命令缓冲与设备级命令缓冲复用池。
 use super::device::VulkanDevice;
 use ash::vk;
 use parking_lot::Mutex;
@@ -369,27 +317,15 @@ pub struct PendingCommand {
     _semaphores: Vec<Arc<super::semaphore::TimelineSemaphore>>,
 }
 impl PendingCommand {
+    fn device(&self) -> &ash::Device {
+        // `command` 只在构造时置 Some，之后从不取走（Option 仅为 Drop 顺序服务）。
+        &self.command.as_ref().expect("PendingCommand 始终持有命令缓冲").pool.device.device
+    }
     pub fn wait(&self, timeout: u64) -> Result<(), vk::Result> {
-        unsafe {
-            self.command
-                .as_ref()
-                .unwrap()
-                .pool
-                .device
-                .device
-                .wait_for_fences(&[self.fence], true, timeout)
-        }
+        unsafe { self.device().wait_for_fences(&[self.fence], true, timeout) }
     }
     pub fn is_complete(&self) -> Result<bool, vk::Result> {
-        unsafe {
-            self.command
-                .as_ref()
-                .unwrap()
-                .pool
-                .device
-                .device
-                .get_fence_status(self.fence)
-        }
+        unsafe { self.device().get_fence_status(self.fence) }
     }
 }
 impl Drop for PendingCommand {
@@ -411,7 +347,7 @@ impl Drop for PendingCommand {
 /// - 数组元素 0x18B，即一个 `Vec<CommandBuffer>`（`{cap@0, ptr@8, len@0x10}`），按**队列族索引**寻址，
 ///   初值 `{0, 8, 0}` = 空 `Vec`（`8` 是 `align_of::<CommandBuffer>()` 的悬垂指针，U#10 闭合）；
 ///   数组长度 = 物理设备队列族数量（与 `*(dev+0x658)+0x38` 的 0x1c 步长族属性数组同长）。
-/// - 取：持 `+0x9b0` 自旋锁，越界索引 panic；`Vec` 非空则弹出末尾（LIFO，`len-1`，元素 0x58B），
+/// - 取：持 `+0x9b0` 自旋锁，越界索引返回 `InvalidUsage`；`Vec` 非空则弹出末尾（LIFO，`len-1`，元素 0x58B），
 ///   为空才新建（`CommandBuffer::new` = 每个命令缓冲一个独立 `vkCreateCommandPool`(flags=RESET) + 1 个主级
 ///   `vkAllocateCommandBuffers`）。
 /// - 还：回收（`reclaim_command_buffer_resources`）完成项后持同一把锁把 0x58B 压回 `pool[cb.family]`。
@@ -436,28 +372,30 @@ impl CommandBufferPool {
     pub fn free_count(&self, family: u32) -> usize {
         self.lists.lock().get(family as usize).map_or(0, Vec::len)
     }
-    /// 取：非空则 LIFO 弹出；越界与原版一样 panic（索引越界断言）。
-    pub fn take(&self, family: u32) -> Option<VulkanCommandBuffer> {
+    /// 取：非空则 LIFO 弹出；族索引越界返回 `InvalidUsage`。
+    pub fn take(&self, family: u32) -> crate::Result<Option<VulkanCommandBuffer>> {
         let mut lists = self.lists.lock();
         let len = lists.len();
-        let list = lists
-            .get_mut(family as usize)
-            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"));
-        list.pop()
+        let list = lists.get_mut(family as usize).ok_or_else(|| family_out_of_range(family, len))?;
+        Ok(list.pop())
     }
     /// 还：压回命令缓冲所属族的空闲链。
     ///
     /// # Safety
     /// 覆盖该命令缓冲全部提交的时间线必须已完成（与 `reset_after_completion` 同一契约）。
-    pub unsafe fn recycle_completed(&self, mut command: VulkanCommandBuffer) -> Result<(), vk::Result> {
+    pub unsafe fn recycle_completed(&self, mut command: VulkanCommandBuffer) -> crate::Result<()> {
         unsafe { command.reset_after_completion()? };
         let family = command.pool.family;
         let mut lists = self.lists.lock();
         let len = lists.len();
         lists
             .get_mut(family as usize)
-            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"))
+            .ok_or_else(|| family_out_of_range(family, len))?
             .push(command);
         Ok(())
     }
+}
+
+fn family_out_of_range(family: u32, len: usize) -> crate::Error {
+    crate::Error::invalid_usage(format!("队列族索引 {family} 越界（共 {len} 个族）"))
 }

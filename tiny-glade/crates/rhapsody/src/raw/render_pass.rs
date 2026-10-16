@@ -231,7 +231,7 @@ impl RenderPassDesc {
             .as_slice()
             .first()
             .map(|a| u32::from(a.sample_count))
-            .ok_or(super::error::Error::Invalid(
+            .ok_or(super::error::Error::invalid_usage(
                 "index out of bounds: the len is 0 but the index is 0",
             ))
     }

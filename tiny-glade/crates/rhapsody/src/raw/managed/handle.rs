@@ -2,7 +2,7 @@
 use super::resources::{ResourceKey, ResourceState, SharedResources, enqueue_retirement};
 use super::tracking::{
     CommandKey, CommandState, ControlBlock, Failure, TrackOutcome, clone_reference, drop_reference,
-    panic_invalid_command_state, track_handle, try_track_handle,
+    track_handle,
 };
 use std::{
     fmt,
@@ -30,18 +30,14 @@ impl<T: Send + Sync + 'static> Managed<T> {
         if domain != 0 {
             return Err(Failure::CrossDomainMappingUnknown);
         }
-        self.try_track(command)
+        self.track(command)
     }
-    /// 原 `RawManagedHandle::track`（0x140bd6a70）：校验和不等静默跳过；命令状态 != Recording(1) 时 panic。
-    pub fn track(&self, command: CommandState) {
-        track_handle(&self.0.control, self.0.key.resource_checksum, command);
-    }
-    /// `track` 的非 panic 兼容入口：状态非法返回 `Err(InvalidCommandState)`。
-    pub fn try_track(&self, command: CommandState) -> Result<(), Failure> {
-        try_track_handle(&self.0.control, self.0.key.resource_checksum, command).map(|_| ())
+    /// 把命令登记到句柄：校验和不等（句柄已过期）静默跳过；命令不在录制状态返回 `InvalidCommandState`。
+    pub fn track(&self, command: CommandState) -> Result<(), Failure> {
+        self.track_outcome(command).map(|_| ())
     }
     /// 同 `track`，并返回是否因校验和不等被跳过（供需要结果的调用方）。
-    pub fn track_outcome(&self, command: CommandState) -> TrackOutcome {
+    pub fn track_outcome(&self, command: CommandState) -> Result<TrackOutcome, Failure> {
         track_handle(&self.0.control, self.0.key.resource_checksum, command)
     }
     pub fn tracked_sequence(&self) -> u64 {
@@ -136,8 +132,8 @@ impl ManagedResourceChecksum {
 /// PersistentDescriptorSet, Framebuffer`。
 ///
 /// `take_out_dropped_waste`（0x1418c0a70）的跳表 0x142d060f0 把 tag 映射到 `dispose_cb_resource<Managed*>` 单态：
-/// 0→0x1418c65a0（Texture）、1→0x1418c6af0（Buffer）、2→0x1418c55b0（Swapchain）、**3→`todo!()`（TextureView：
-/// 类型存在但没有托管 store，也没有 dispose 实现，函数内嵌 "not yet implemented" 文件串）**、4→0x1418c6050
+/// 0→0x1418c65a0（Texture）、1→0x1418c6af0（Buffer）、2→0x1418c55b0（Swapchain）、3（TextureView，原版 `todo!()`；
+/// 这里与其他种类一样走通用延迟销毁）、4→0x1418c6050
 /// （RenderPass）、5→0x1418c5b00（Sampler）、6→0x1418c7040（PersistentDescriptorSet）、7→0x1418c7590（Framebuffer）。
 /// tag 8 是 `Option<DisposedRawResourceHandle>::None` 的 niche，用作迭代哨兵。
 #[repr(u8)]
@@ -146,7 +142,6 @@ pub enum ResourceTag {
     Texture = 0,
     Buffer = 1,
     Swapchain = 2,
-    /// 原枚举里有，但无 store、无 dispose：`take_out_dropped_waste` 遇到即 `todo!()`。
     TextureView = 3,
     RenderPass = 4,
     Sampler = 5,
@@ -154,8 +149,6 @@ pub enum ResourceTag {
     Framebuffer = 7,
 }
 impl ResourceTag {
-    /// 跳表中 `todo!()` 的槽位（= [`ResourceTag::TextureView`]）。
-    pub const UNIMPLEMENTED: u8 = 3;
     /// `Option<DisposedRawResourceHandle>::None` 的 niche（循环哨兵，`cmp tag, 8; je done`）。
     pub const NONE_NICHE: u8 = 8;
     pub fn from_u8(tag: u8) -> Option<Self> {
@@ -183,10 +176,6 @@ impl ResourceTag {
             Self::DescriptorSet => "PersistentDescriptorSet",
             Self::Framebuffer => "Framebuffer",
         }
-    }
-    /// 是否有 `dispose_cb_resource` 单态（tag 3 没有，原版 `todo!()`）。
-    pub const fn is_disposable(self) -> bool {
-        !matches!(self, Self::TextureView)
     }
 }
 
@@ -306,23 +295,17 @@ impl<T: Send + Sync + 'static> ManagedHandle<T> {
 
 /// 任何能把“被某条命令使用”记到 GPU 生命周期上的 tracker（原 trait `TrackGpuLifetime`）。
 pub trait TrackGpuLifetime {
-    /// 非 panic 兼容入口。
-    fn try_track(&self, command: CommandState) -> Result<(), Failure>;
-    /// 原行为：命令状态非法时 panic。
-    fn track(&self, command: CommandState) {
-        if self.try_track(command).is_err() {
-            panic_invalid_command_state(command);
-        }
-    }
+    /// 命令状态非法返回 `InvalidCommandState`。
+    fn track(&self, command: CommandState) -> Result<(), Failure>;
 }
 impl<T: Send + Sync + 'static> TrackGpuLifetime for Managed<T> {
-    fn try_track(&self, command: CommandState) -> Result<(), Failure> {
-        Managed::try_track(self, command)
+    fn track(&self, command: CommandState) -> Result<(), Failure> {
+        Managed::track(self, command)
     }
 }
 impl<T: Send + Sync + 'static> TrackGpuLifetime for ManagedHandle<T> {
-    fn try_track(&self, command: CommandState) -> Result<(), Failure> {
-        self.inner.try_track(command)
+    fn track(&self, command: CommandState) -> Result<(), Failure> {
+        self.inner.track(command)
     }
 }
 
@@ -395,16 +378,10 @@ impl<R, Tracker> GpuOwned<R, Tracker> {
     }
 }
 impl<R, Tracker: TrackGpuLifetime> GpuOwned<R, Tracker> {
-    /// 原 `track_unwrap`：先登记到命令（0x1415fb600 `RawManagedHandle::track`，状态非法 panic），
-    /// 再置“已跟踪”（0x1415fb605），然后交出资源并丢弃 tracker。
-    pub fn track_unwrap(self, command: CommandState) -> R {
-        self.tracker.track(command);
-        self.state.set(GpuOwnedState::Tracked);
-        self.resource
-    }
-    /// `track_unwrap` 的非 panic 兼容入口；失败时状态仍为 Owned。
-    pub fn try_track_unwrap(self, command: CommandState) -> Result<R, Failure> {
-        self.tracker.try_track(command)?;
+    /// 先登记到命令，再置“已跟踪”，然后交出资源并丢弃 tracker。命令状态非法返回
+    /// `InvalidCommandState`，状态仍为 Owned。
+    pub fn track_unwrap(self, command: CommandState) -> Result<R, Failure> {
+        self.tracker.track(command)?;
         self.state.set(GpuOwnedState::Tracked);
         Ok(self.resource)
     }
@@ -437,14 +414,9 @@ impl<'a, T: Send + Sync + 'static> ManagedRef<'a, T> {
     pub fn get_untracked(&self) -> &T {
         self.inner.resource()
     }
-    /// 原 `get_tracked` 是“获取并跟踪”：先把命令记到句柄上，再交出资源引用。
-    pub fn get_tracked(&self, command: CommandState) -> &T {
-        self.inner.track(command);
-        self.inner.resource()
-    }
-    /// `get_tracked` 的非 panic 兼容入口。
-    pub fn try_get_tracked(&self, command: CommandState) -> Result<&T, Failure> {
-        self.inner.try_track(command)?;
+    /// “获取并跟踪”：先把命令记到句柄上，再交出资源引用；命令状态非法返回 `InvalidCommandState`。
+    pub fn get_tracked(&self, command: CommandState) -> Result<&T, Failure> {
+        self.inner.track(command)?;
         Ok(self.inner.resource())
     }
 }
@@ -485,7 +457,7 @@ mod gpu_owned_tests {
     fn drop_unused_marks_unused_and_never_tracks() {
         struct Probe<'a>(&'a std::cell::Cell<u32>);
         impl TrackGpuLifetime for Probe<'_> {
-            fn try_track(&self, _: CommandState) -> Result<(), Failure> {
+            fn track(&self, _: CommandState) -> Result<(), Failure> {
                 self.0.set(self.0.get() + 100);
                 Ok(())
             }
@@ -519,8 +491,6 @@ mod gpu_owned_tests {
             ]
         );
         assert_eq!(ResourceTag::from_u8(ResourceTag::NONE_NICHE), None);
-        assert!(!ResourceTag::from_u8(ResourceTag::UNIMPLEMENTED).unwrap().is_disposable());
-        assert!((0..8).filter(|&t| t != 3).all(|t| ResourceTag::from_u8(t).unwrap().is_disposable()));
     }
 
     #[test]
@@ -547,7 +517,7 @@ mod gpu_owned_tests {
 
     struct Counter(std::cell::Cell<u32>);
     impl TrackGpuLifetime for &Counter {
-        fn try_track(&self, command: CommandState) -> Result<(), Failure> {
+        fn track(&self, command: CommandState) -> Result<(), Failure> {
             if command.tag != 1 {
                 return Err(Failure::InvalidCommandState);
             }
@@ -562,18 +532,11 @@ mod gpu_owned_tests {
         let owned = GpuOwned::new(7u32, &c);
         assert_eq!(owned.state(), GpuOwnedState::Owned);
         let ok = CommandState { tag: 1, sequence: 3 };
-        assert_eq!(owned.track_unwrap(ok), 7);
+        assert_eq!(owned.track_unwrap(ok), Ok(7));
         assert_eq!(c.0.get(), 1);
         let bad = CommandState { tag: 0, sequence: 3 };
-        assert_eq!(GpuOwned::new(1u8, &c).try_track_unwrap(bad), Err(Failure::InvalidCommandState));
+        assert_eq!(GpuOwned::new(1u8, &c).track_unwrap(bad), Err(Failure::InvalidCommandState));
         assert_eq!(c.0.get(), 1);
-    }
-
-    #[test]
-    #[should_panic(expected = "Can't use a resource for a command buffer in state Initial")]
-    fn track_unwrap_panics_on_bad_state_like_the_original() {
-        let c = Counter(Default::default());
-        GpuOwned::new(1u8, &c).track_unwrap(CommandState { tag: 0, sequence: 3 });
     }
 
     #[test]

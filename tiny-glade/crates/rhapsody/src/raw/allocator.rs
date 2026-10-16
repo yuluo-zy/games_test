@@ -86,7 +86,7 @@ impl MemoryBlock {
             required,
             preferred,
         )
-        .ok_or(Error::Unsupported("没有匹配的内存类型"))?;
+        .ok_or(Error::unsupported("没有匹配的内存类型"))?;
         let properties = device.memory.memory_types[index as usize].property_flags;
         let mut allocation_flags = vk::MemoryAllocateFlagsInfo::default().flags(flags);
         let mut info = vk::MemoryAllocateInfo::default()
@@ -100,7 +100,7 @@ impl MemoryBlock {
                 && flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
                 && !device.capabilities.buffer_device_address)
         {
-            return Err(Error::Invalid("内存大小或设备地址分配能力无效"));
+            return Err(Error::invalid_usage("内存大小或设备地址分配能力无效"));
         }
         let heap = device.memory.memory_types[index as usize].heap_index;
         let handle = unsafe { device.device.allocate_memory(&info, None) }?;
@@ -208,10 +208,8 @@ impl Drop for MemoryBlock {
         unsafe {
             self.device.device.free_memory(self.handle, None)
         };
-        self.device
-            .allocator_stats
-            .release(self.accounting_id)
-            .expect("内存登记与释放必须一一对应");
+        let released = self.device.allocator_stats.release(self.accounting_id);
+        debug_assert!(released.is_ok(), "内存登记与释放必须一一对应");
     }
 }
 
@@ -319,7 +317,7 @@ impl AllocatorStats {
         let mut state = self.state.lock();
         let used = state.heap_used.get(&heap).copied().unwrap_or(0);
         if used > bytes {
-            return Err(Error::Invalid("预算小于当前分配"));
+            return Err(Error::invalid_usage("预算小于当前分配"));
         }
         state.heap_budgets.insert(heap, bytes);
         Ok(())
@@ -333,21 +331,21 @@ impl AllocatorStats {
         name: String,
     ) -> Result<u64> {
         if size == 0 {
-            return Err(Error::Invalid("不能登记零大小分配"));
+            return Err(Error::invalid_usage("不能登记零大小分配"));
         }
         let mut state = self.state.lock();
         let total = state
             .totals
             .total_allocated_bytes
             .checked_add(size)
-            .ok_or(Error::Invalid("内存统计溢出"))?;
+            .ok_or(Error::invalid_usage("内存统计溢出"))?;
         let used = state
             .heap_used
             .get(&heap)
             .copied()
             .unwrap_or(0)
             .checked_add(size)
-            .ok_or(Error::Invalid("内存统计溢出"))?;
+            .ok_or(Error::invalid_usage("内存统计溢出"))?;
         if state
             .heap_budgets
             .get(&heap)
@@ -358,19 +356,19 @@ impl AllocatorStats {
         let id = state
             .next_id
             .checked_add(1)
-            .ok_or(Error::Invalid("内存ID耗尽"))?;
+            .ok_or(Error::invalid_usage("内存ID耗尽"))?;
         let mut totals = state.totals;
         totals.total_allocated_bytes = total;
         if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
             totals.device_local_bytes = totals
                 .device_local_bytes
                 .checked_add(size)
-                .ok_or(Error::Invalid("内存统计溢出"))?;
+                .ok_or(Error::invalid_usage("内存统计溢出"))?;
         } else {
             totals.system_bytes = totals
                 .system_bytes
                 .checked_add(size)
-                .ok_or(Error::Invalid("内存统计溢出"))?;
+                .ok_or(Error::invalid_usage("内存统计溢出"))?;
         }
         state.next_id = id;
         state.records.insert(
@@ -398,14 +396,14 @@ impl AllocatorStats {
     pub fn release(&self, id: u64) -> Result<()> {
         let mut state = self.state.lock();
         if !state.records.contains_key(&id) {
-            return Err(Error::Invalid("未知或已释放的内存ID"));
+            return Err(Error::invalid_usage("未知或已释放的内存ID"));
         }
         // 释放会改变状态：先把刚到达的峰值物化。
         state.materialize_peak();
         let record = state
             .records
             .remove(&id)
-            .ok_or(Error::Invalid("未知或已释放的内存ID"))?;
+            .ok_or(Error::invalid_usage("未知或已释放的内存ID"))?;
         if let Some(used) = state.heap_used.get_mut(&record.heap) {
             *used -= record.size;
         }
@@ -525,7 +523,7 @@ impl AllocationBackend for DirectMemoryBackend {
     }
     fn free(&mut self, allocation: MemoryBlock) -> Result<()> {
         if !Arc::ptr_eq(&self.device, &allocation.device) {
-            return Err(Error::Invalid("不能向其他设备释放内存"));
+            return Err(Error::invalid_usage("不能向其他设备释放内存"));
         }
         drop(allocation);
         Ok(())

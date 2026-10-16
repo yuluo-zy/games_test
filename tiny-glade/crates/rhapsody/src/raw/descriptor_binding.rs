@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 // 原 sparse descriptor 键、资源 tag/数组/动态 offset 和 compute tuple 绑定闭包。
 // 来源 render/work-packages/descriptor-binding-r8；图物理资源 producer 接线独立验收。
 use crate::raw::descriptor_set::{
-    Binding, Error, LayoutPlan, PersistentPoolPlan, descriptor_set_layout, persistent_pool_plan,
+    Binding, LayoutError, LayoutPlan, PersistentPoolPlan, descriptor_set_layout, persistent_pool_plan,
     with_compute_pipeline_layout,
 };
 
@@ -24,7 +24,7 @@ pub fn sparse_descriptor_set_layout(
     entries: &[SparseBinding],
     stage: vk::ShaderStageFlags,
     device_limit: u32,
-) -> Result<LayoutPlan, Error> {
+) -> Result<LayoutPlan, LayoutError> {
     let mut output = LayoutPlan {
         flags: 0,
         binding_flags: Vec::with_capacity(entries.len()),
@@ -87,12 +87,23 @@ pub struct WritePlan {
     pub buffers: Vec<BufferInfo>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+/// 描述符写入规划失败。
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, thiserror::Error)]
 pub enum WriteError {
+    #[error("不支持的资源绑定标签 {0}")]
     UnsupportedTag(u32),
+    #[error("图像绑定缺少图像视图")]
     MissingImage,
+    #[error("缓冲绑定缺少缓冲")]
     MissingBuffer,
+    #[error("资源槽 {slot} 越界（共 {length} 个资源）")]
     SlotOutOfBounds { slot: u8, length: usize },
+}
+
+impl From<WriteError> for crate::Error {
+    fn from(error: WriteError) -> Self {
+        crate::Error::invalid_usage_with("描述符写入无效", error)
+    }
 }
 
 /// Actual compute-pass tuple mapper observed at 0x1416a6245..0x1416a628e.
@@ -231,10 +242,19 @@ pub struct PreparedComputePass {
     pub bind_plan: BindPlan,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// compute pass 描述符准备失败。
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PrepareError {
-    Layout(Error),
-    Binding(WriteError),
+    #[error(transparent)]
+    Layout(#[from] LayoutError),
+    #[error(transparent)]
+    Binding(#[from] WriteError),
+}
+
+impl From<PrepareError> for crate::Error {
+    fn from(error: PrepareError) -> Self {
+        crate::Error::invalid_usage_with("compute pass 描述符准备失败", error)
+    }
 }
 
 /// Framework consumer entry: derive sparse declared keys and set count from the

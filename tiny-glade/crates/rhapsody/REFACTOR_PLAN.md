@@ -61,6 +61,56 @@ rhapsody
 | 单批 6 pass 图每帧录 3 个命令缓冲：session 强制原版 PGO 分块 | `src/rg/parallel.rs`、`vulkan.rs` | P7（P2 先改成可配置） |
 | `src/` 内仍有原版布局单测（约 66 处 `size_of`/`offset_of`）与 `original_*` 辅助 API | 多处 | P1 起随模块重写删除 |
 
+## 已就绪的新内核（P1 期间先行实现，尚未接线）
+
+| 模块 | 内容 | 验证 |
+| --- | --- | --- |
+| `src/error.rs` | 统一 `Error`/`ErrorKind`，`vk::Result` 分类映射 | 2 个单测 |
+| `src/sync/mod.rs` | `QueueId`（≤ `MAX_QUEUES`=8）、`SyncPoint`、`SyncSet`（逐队列最大值，`Copy`）、`CompletedValues` | 3 个单测 |
+| `src/sync/timeline.rs` | `Timelines<A: TimelineApi>`：每队列提交锁 + 时间线；值仅在提交成功后确认；`poll` 只查有未完成工作的队列并缓存；`wait` 拒绝等待未提交的值；设备丢失粘滞 | 8 个单测 + `tests/sync_timeline_vulkan.rs`（lavapipe 真队列：51 次提交含 1 次失败，设备计数器 = 51） |
+| `src/sync/retire.rs` | `Retirement<T>`：按 `SyncSet` 延迟回收；到期对象移交调用方在锁外销毁 | 3 个单测 |
+| `src/device/queue_config.rs` | `QueueConfig`/`plan_queues`：专用 compute/DMA 族、同族第二队列、粗粒度 DMA 跳过、呈现约束、`Prefer` 别名/`Require` 报 Unsupported | 7 个单测（单队列、独显、AMD 式、同族多队列、无呈现等布局） |
+
+## P2/P3 接线设计
+
+### 旧机制 → 新内核
+
+| 旧机制 | 位置 | 由谁替代 | 处置 |
+| --- | --- | --- | --- |
+| 全局 `VulkanDevice.queue_lock` | `raw/device.rs` 等 7 文件 | `Timelines` 每队列提交锁（`submit`/`with_queue`）；交换链自带锁；分配器自带锁 | 删除 |
+| `VulkanDevice.retire_timeline` + `Graveyard` epoch + 末尾空提交 | `raw/graveyard.rs`、`rg/vulkan.rs::submit` | 每队列时间线；`Retirement<Doomed>` | 删除，省掉每次提交的额外空 `SubmitInfo` |
+| `submit::DeviceState.next_timeline`（提交前分配、跨队列共享计数） | `raw/submit.rs` | `Timelines::submit` 内分配，成功才确认 | 删除 |
+| `SequenceRuntime`（序号、桶、`events: Vec<String>`） | `raw/managed/lifecycle.rs` | 命令记录 `SyncSet`；`Retirement<CommandAllocation>` | 删除（P0 稳定性用例转绿） |
+| `SubmissionEngine` + `mirror_submission_state` 双份状态 | `raw/submit.rs`、`rg/vulkan.rs` | 同上 | 删除 |
+| `CommandBufferSeqTracker` + `CommandBufferDisposalBuckets` | `raw/command_buffer.rs`、`raw/disposal.rs` | 资源 `last_use: SyncSet`，drop 时进 `Retirement` | 删除 |
+| `ManagedResources` dropped 记录 + `take_out_dropped_waste` | `raw/managed/resources.rs` | 同上 | 删除 |
+| `VulkanDevice` / `GraphicsDevice` 两层 | `raw/device.rs` | 单一 `Device { ash, caps, allocator, timelines: Timelines<ash::Device>, plan: QueuePlan, retirement: Mutex<Retirement<Doomed>>, caches }` | 合并；`attach_graphics_device` 消失 |
+
+### 资源使用登记（热路径）
+
+- 资源对象内含 `last_use: Mutex<SyncSet>`（或按队列的 `AtomicU64` 数组，P3 按基准选型）。
+- 图执行在一次提交成功后得到 `SyncPoint`，对本次提交引用的每个资源 `last_use.insert(point)`；`SyncSet` 是 `Copy` 的 64 字节，无堆分配。
+- 资源最后一个句柄 drop 时，把 Vulkan 对象连同 `last_use` 交给 `Device::retire`：已完成则当场销毁，否则进 `Retirement`。
+- 每帧 `begin_frame` 调 `Timelines::poll` 一次，`Retirement::collect` 到期对象，锁外销毁。
+- `DeviceLost` 时 `drain_all` 直接销毁（不再等待）；`Device` drop 时先 `vkDeviceWaitIdle`、再 `drain_all`、再释放分配器、最后销毁设备。
+
+### 帧提交（P5）
+
+一帧主图 + 展示图合并为一次 `Timelines::submit(graphics, ..)`：
+
+```
+wait:   acquire 二值信号量 @ COLOR_ATTACHMENT_OUTPUT（仅首个触碰交换链图像的批次）
+        跨队列依赖的时间线值（P6）
+signal: 本队列时间线 = SubmitSignal.value
+        present 二值信号量（按交换链图像槽持有，避免复用仍在等待的信号量）
+```
+
+随后在同一队列锁内 `with_queue(graphics, vkQueuePresentKHR)`。acquire 只持交换链锁，不持任何队列锁。`SUBOPTIMAL`/`OUT_OF_DATE` → `FrameOutcome::Recreated`，零尺寸 → `FrameOutcome::Skipped`。
+
+### 命令池（P3 起步、P7 优化）
+
+每 (帧环槽 × 录制线程 × 队列族) 一个 `VkCommandPool`；帧环槽的 `SyncSet` 完成后整池 `vkResetCommandPool`，取代逐个命令缓冲的回收与 `pool_sequences` 账本。
+
 不在本轮：country-core `RenderHost` 的宿主实现（依赖 `ustr_contract::intern` 恢复）。
 
 ## 验证口径

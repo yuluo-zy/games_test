@@ -36,19 +36,25 @@ pub fn has_any_gpu_assertion_failed(words: Option<&[u32]>) -> Result<bool> {
         None => Ok(false),
         Some(words) => Ok(*words
             .get(1)
-            .ok_or(Error::Invalid("GPU 调试头不足两个 word"))?
+            .ok_or(Error::invalid_usage("GPU 调试头不足两个 word"))?
             != 0),
     }
 }
+fn le_words(bytes: &[u8]) -> Vec<u32> {
+    bytes
+        .chunks_exact(4)
+        .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect()
+}
+
 pub fn parse_gpu_debug_info(
     words: &[u32],
     source_names: &BTreeMap<u32, String>,
 ) -> Result<GpuDebugLog> {
-    let header: [u32; 4] = words
-        .get(..4)
-        .ok_or(Error::Invalid("GPU 调试头不足四个 word"))?
-        .try_into()
-        .unwrap();
+    let &[h0, h1, h2, h3, ..] = words else {
+        return Err(Error::invalid_usage("GPU 调试头不足四个 word"));
+    };
+    let header = [h0, h1, h2, h3];
     let available = (words.len() - 4) / 4;
     let count = (header[1] as usize).min(available);
     let records = words[4..4 + count * 4]
@@ -168,10 +174,7 @@ impl GpuCrashDiagnostics {
         self.device.wait_idle()?;
         let mut bytes = vec![0; self.debug_words * 4];
         self.debug_buffer.read_bytes(0, &mut bytes)?;
-        let words: Vec<_> = bytes
-            .chunks_exact(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
-            .collect();
+        let words = le_words(&bytes);
         let debug = parse_gpu_debug_info(&words, source_names)?;
         log_debug_records(&debug);
         Ok(serde_json::to_value(debug).unwrap_or(serde_json::Value::Null))
@@ -191,7 +194,7 @@ impl GpuCrashDiagnostics {
         let debug_words = (record_capacity as usize)
             .checked_mul(4)
             .and_then(|n| n.checked_add(4))
-            .ok_or(Error::Invalid("GPU 调试容量溢出"))?;
+            .ok_or(Error::invalid_usage("GPU 调试容量溢出"))?;
         let marker_buffer = Arc::new(Buffer::new(
             device.clone(),
             &BufferDesc::new_gpu_to_cpu(4, vk::BufferUsageFlags::TRANSFER_DST),
@@ -225,10 +228,10 @@ impl GpuCrashDiagnostics {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
             || command.pool.family != self.device.queue_family
         {
-            return Err(Error::Invalid("诊断命令设备或队列族不匹配"));
+            return Err(Error::invalid_usage("诊断命令设备或队列族不匹配"));
         }
         if !command.is_recording() {
-            return Err(Error::Invalid("未处于录制状态的命令不能写入 marker"));
+            return Err(Error::invalid_usage("未处于录制状态的命令不能写入 marker"));
         }
         let mut history = self.history.lock();
         let id = history.next;
@@ -259,7 +262,7 @@ impl GpuCrashDiagnostics {
             || !command.is_recording()
             || command.pool.family != self.device.queue_family
         {
-            return Err(Error::Invalid("诊断屏障的命令设备或录制状态不匹配"));
+            return Err(Error::invalid_usage("诊断屏障的命令设备或录制状态不匹配"));
         }
         command.keep_alive(self.marker_buffer.clone());
         command.keep_alive(self.debug_buffer.clone());
@@ -307,10 +310,7 @@ impl GpuCrashDiagnostics {
             .cloned();
         let mut bytes = vec![0; self.debug_words * 4];
         self.debug_buffer.read_bytes(0, &mut bytes)?;
-        let words: Vec<_> = bytes
-            .chunks_exact(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
-            .collect();
+        let words = le_words(&bytes);
         Ok(GpuCrashSnapshot {
             observed_marker,
             marker_label,

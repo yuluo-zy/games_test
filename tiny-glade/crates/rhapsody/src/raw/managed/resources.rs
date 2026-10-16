@@ -17,7 +17,26 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 static NEXT_STORE: AtomicU64 = AtomicU64::new(1);
-static NEXT_GROUP: AtomicU32 = AtomicU32::new(1);
+static NEXT_GROUP: AtomicU32 = AtomicU32::new(0);
+
+/// 共享退役来源的 u16 代号（1..=0xffff 循环）。只有相隔 65535 次创建的两个来源才可能同号，
+/// 而句柄还需校验和与槽位匹配，误认需要两者同时碰撞。
+fn next_group_id() -> u16 {
+    (NEXT_GROUP.fetch_add(1, Ordering::Relaxed) % 0xffff + 1) as u16
+}
+
+/// 非严格排水的失败只来自内部不变量（退役记录的设备/类型/校验和由 drop 路径按句柄自身写入）；
+/// 失败记录之后的项已放回待处理队列，下次排水重试。
+fn drain_or_log(result: Result<usize, Failure>) -> usize {
+    match result {
+        Ok(count) => count,
+        Err(failure) => {
+            debug_assert!(false, "退役记录排水失败：{failure:?}");
+            log::error!("rhapsody 退役记录排水失败：{failure}");
+            0
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceKey {
@@ -117,8 +136,7 @@ impl SharedResources {
     }
     fn with_buckets(buckets: Arc<CommandBufferDisposalBuckets>) -> Arc<Self> {
         Arc::new(Self {
-            device_id: u16::try_from(NEXT_GROUP.fetch_add(1, Ordering::Relaxed))
-                .expect("store id 超过 u16"),
+            device_id: next_group_id(),
             dropped: Mutex::new(Vec::new()),
             buckets,
             sequential: Mutex::new(SequentialDisposal::new()),
@@ -162,11 +180,9 @@ impl SharedResources {
         let count = records.len();
         let mut records = records.into_iter();
         while let Some(mut record) = records.next() {
-            // 原跳表 0x142d060f0：tag 3（TextureView）是 `todo!()`；tag ≥ 8 不可达（8 为 None 哨兵）。
-            if record.abi.resource_type == ResourceTag::UNIMPLEMENTED {
-                todo!("ResourceType::TextureView 没有 dispose_cb_resource 单态");
-            }
-            if let Err(error) = record.task.take().unwrap()(self, buckets, strict) {
+            // task 只在这里被取走一次；入队时恒为 Some。
+            let Some(task) = record.task.take() else { continue };
+            if let Err(error) = task(self, buckets, strict) {
                 // 失败项的 task 已消费；其后尚未处理的记录放回队首（先于期间新入队的），不能随 Vec 丢失。
                 let mut dropped = self.dropped.lock();
                 let mut rest: Vec<Dropped> = records.collect();
@@ -190,20 +206,28 @@ impl SharedResources {
             return Err(Failure::MissingBucket);
         }
         drop(sequential);
-        Ok(self.retire_in_order(sequence))
+        self.retire_in_order(sequence)
     }
-    /// 原 `SequentialDisposal::dispose_in_order` 语义（0x1418c7ae0）：`seq <= last_retired` panic；
-    /// 允许乱序完成，连续后依次 `remove`（缺桶 panic）并执行桶。返回本次执行的动作总数。
-    fn retire_in_order(&self, sequence: u64) -> usize {
+    /// `SequentialDisposal::dispose_in_order` 语义：允许乱序完成，连续后依次取出并执行桶，返回本次执行的
+    /// 动作总数。`sequence` 已退役/重复完成返回 `DuplicateCompletion`（状态不变）；连续推进到的某个序号
+    /// 没有桶时仍推进完毕，最后返回 `MissingBucket`。
+    fn retire_in_order(&self, sequence: u64) -> Result<usize, Failure> {
         let mut sequential = self.sequential.lock();
         let mut count = 0;
+        let mut missing = false;
         sequential.dispose_in_order(sequence, |retired| {
             log_ring::record_event(LOG_KIND_RETIRED, retired);
-            count += self.buckets.remove(retired).dispose();
-        });
+            match self.buckets.remove(retired) {
+                Ok(bucket) => count += bucket.dispose(),
+                Err(_) => missing = true,
+            }
+        })?;
         self.drained_prefix
             .store(sequential.last_retired(), Ordering::SeqCst);
-        count
+        if missing {
+            return Err(Failure::MissingBucket);
+        }
+        Ok(count)
     }
     fn record_submission(
         &self,
@@ -332,7 +356,7 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
         }
         let sequence = control.last_sequence.load(Ordering::SeqCst);
         let already_drained = shared.already_drained(sequence);
-        let mut action: Option<DestroyAction> = Some(Box::new(move || drop(resource)));
+        let action: DestroyAction = Box::new(move || drop(resource));
         let mut immediate = None;
         dispose_control_kind(
             &control,
@@ -342,7 +366,6 @@ pub(crate) fn enqueue_retirement<T: Send + Sync + 'static>(inner: &Arc<ManagedIn
             key.resource_tag,
             state.tag,
             || {
-                let action = action.take().expect("一次退役只转移一次 raw 拥有权");
                 if already_drained {
                     immediate = Some(action);
                 } else if let Err(action) = buckets.append_existing(sequence, action) {
@@ -527,7 +550,7 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         self.shared().drain_completed_sequence(sequence)
     }
     /// 原 `SequentialDisposal::dispose_in_order`：panic 语义，允许乱序完成。
-    pub fn retire_in_order(&self, sequence: u64) -> usize {
+    pub fn retire_in_order(&self, sequence: u64) -> Result<usize, Failure> {
         self.shared().retire_in_order(sequence)
     }
     pub fn record_submission(
@@ -565,9 +588,7 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
     }
     /// 返回 CPU dispose 数，resource_checksum/槽位已回收；不代表 vkDestroy 数。
     pub fn take_out_dropped_waste(&self) -> usize {
-        self.shared()
-            .take_out_dropped_waste(false)
-            .expect("退役记录必须通过设备/类型校验")
+        drain_or_log(self.shared().take_out_dropped_waste(false))
     }
     pub fn dispose_after_wait<E>(
         &self,
@@ -576,9 +597,8 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
         wait_idle()?;
         let shared = self.shared();
         shared.drained_prefix.store(u64::MAX, Ordering::SeqCst);
-        let count = shared
-            .take_out_dropped_waste(true)
-            .expect("空闲关闭需要有效退役记录");
+        // 设备已空闲（drained_prefix = MAX），严格模式不会因缺桶失败。
+        let count = drain_or_log(shared.take_out_dropped_waste(true));
         let actions = shared.buckets.drain_after_idle();
         let pending = actions.len();
         for action in actions {
@@ -634,9 +654,7 @@ impl ManagedResources {
     /// 原 `take_out_dropped_waste(&ManagedResources, &GraphicsDevice)`（0x1418c0a70）：桶表取自设备。
     /// 原版缺桶 → 回退桶 + `immediate_empty_bucket`；此处同样不 strict。
     pub fn take_out_dropped_waste_on(&self, device: &crate::raw::device::GraphicsDevice) -> usize {
-        self.shared
-            .take_out_dropped_waste_with(device.disposal(), false)
-            .expect("退役记录必须通过设备/类型校验")
+        drain_or_log(self.shared.take_out_dropped_waste_with(device.disposal(), false))
     }
     /// 关联宿主设备；不强制要求在任一资源创建前设置。
     pub fn set_device(&mut self, device: Arc<crate::raw::device::VulkanDevice>) {
@@ -666,8 +684,8 @@ impl ManagedResources {
     pub fn drain_completed_sequence(&self, sequence: u64) -> Result<usize, Failure> {
         self.shared.drain_completed_sequence(sequence)
     }
-    /// 原 `SequentialDisposal::dispose_in_order`：panic 语义，允许乱序完成。
-    pub fn retire_in_order(&self, sequence: u64) -> usize {
+    /// 按完成序号退役（允许乱序完成），见 `SharedResources::retire_in_order`。
+    pub fn retire_in_order(&self, sequence: u64) -> Result<usize, Failure> {
         self.shared.retire_in_order(sequence)
     }
     pub fn record_submission(
@@ -685,9 +703,7 @@ impl ManagedResources {
         self.shared.take_out_dropped_waste(true)
     }
     pub fn take_out_dropped_waste(&self) -> usize {
-        self.shared
-            .take_out_dropped_waste(false)
-            .expect("共享退役记录必须通过设备/类型校验")
+        drain_or_log(self.shared.take_out_dropped_waste(false))
     }
     pub fn pending_disposals(&self) -> usize {
         self.shared.dropped.lock().len()
@@ -754,14 +770,22 @@ mod tests {
         textures.take_out_dropped_waste();
     }
 
-    /// 原跳表 0x142d060f0 的 tag 3（TextureView）= `todo!()`：没有对应的 dispose_cb_resource 单态。
+    /// TextureView（tag 3）与其他种类一样延迟销毁：排水后资源被 drop（视图的 Drop 负责销毁 VkImageView）。
     #[test]
-    #[should_panic(expected = "not yet implemented")]
-    fn tag_3_retirement_hits_todo_like_the_original_jump_table() {
+    fn texture_view_records_are_disposed_like_other_kinds() {
+        struct Count(Arc<AtomicU32>);
+        impl Drop for Count {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        let dropped = Arc::new(AtomicU32::new(0));
         let shared = SharedResources::new();
-        let views = ResourceManager::with_shared(shared, 3);
-        drop(views.allocate(0_u8));
-        views.take_out_dropped_waste();
+        let views = ResourceManager::with_shared(shared, ResourceTag::TextureView as u8);
+        drop(views.allocate(Count(dropped.clone())));
+        assert_eq!(dropped.load(Ordering::SeqCst), 0, "退役前不能销毁");
+        assert_eq!(views.take_out_dropped_waste_checked(), Ok(1));
+        assert_eq!(dropped.load(Ordering::SeqCst), 1);
     }
 
     /// 中途某条记录的 task 失败时，尚未处理的记录要放回 `dropped`，不能随 `mem::take` 的 Vec 一起丢失。

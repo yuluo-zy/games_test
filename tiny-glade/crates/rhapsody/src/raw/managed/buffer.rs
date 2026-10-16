@@ -27,10 +27,10 @@ impl Managed<Buffer> {
     /// 需要独占访问（无其他 clone 句柄）；共享句柄无法安全暴露 `&mut`。
     pub fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
         let inner = std::sync::Arc::get_mut(&mut self.0).ok_or(
-            crate::raw::error::Error::Invalid("句柄被共享，无法独占映射"),
+            crate::raw::error::Error::invalid_usage("句柄被共享，无法独占映射"),
         )?;
         let buffer = std::sync::Arc::get_mut(&mut inner.resource)
-            .ok_or(crate::raw::error::Error::Invalid("缓冲区被共享"))?;
+            .ok_or(crate::raw::error::Error::invalid_usage("缓冲区被共享"))?;
         buffer.mapped_slice_mut(offset, size)
     }
 }

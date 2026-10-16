@@ -56,7 +56,7 @@ impl GraphicsDevice {
         if Arc::ptr_eq(device, &self.inner) {
             Ok(())
         } else {
-            Err(Error::Invalid("句柄不属于本设备"))
+            Err(Error::invalid_usage("句柄不属于本设备"))
         }
     }
 
@@ -83,7 +83,7 @@ impl GraphicsDevice {
         self.set_debug_name(buffer.handle, name);
         if let Some(bytes) = bytes {
             if bytes.len() as u64 > desc.size {
-                return Err(Error::Invalid(
+                return Err(Error::invalid_usage(
                     "assertion failed: initial_data.byte_count() <= desc.size",
                 ));
             }
@@ -106,25 +106,23 @@ impl GraphicsDevice {
         Ok(self.resources.buffers.allocate(buffer))
     }
 
-    /// 原 `create_mapped_buffer`（0x140beea80）：`assert!(matches!(desc.memory_location,
-    /// CpuToGpu | GpuToCpu))`；缓冲创建后必须有映射指针（否则 `expect("mapped memory")`）。
+    /// 创建持久映射缓冲：内存位置必须是 CpuToGpu / GpuToCpu（否则 `InvalidUsage`）。
     /// 返回缓冲与整块映射 `(ptr, desc.size)`。
     pub fn create_mapped_buffer(
         &self,
         desc: &BufferDesc,
         name: &str,
     ) -> Result<(ManagedBuffer, MappedBufferParts)> {
-        assert!(
-            matches!(
-                desc.memory_location,
-                MemoryLocation::CpuToGpu | MemoryLocation::GpuToCpu
-            ),
-            "assertion failed: matches!(desc.memory_location, MemoryLocation::CpuToGpu | MemoryLocation::GpuToCpu)"
-        );
+        if !matches!(
+            desc.memory_location,
+            MemoryLocation::CpuToGpu | MemoryLocation::GpuToCpu
+        ) {
+            return Err(Error::invalid_usage("映射缓冲的内存位置必须是 CpuToGpu 或 GpuToCpu"));
+        }
         let managed = self.create_buffer(desc, name, ())?;
         let mapped = managed
             .mapped_full_slice_mut()
-            .expect("mapped memory");
+            .ok_or_else(|| Error::unsupported("缓冲内存不可映射"))?;
         let parts = MappedBufferParts {
             ptr: mapped.as_mut_ptr(),
             len: mapped.len(),
@@ -146,26 +144,20 @@ impl GraphicsDevice {
         buffer.device_address()
     }
 
-    /// 原 `create_texture`（0x140c07950）：先 `assert!(desc.usage != empty)`；有非空初始数据时
-    /// `usage |= TRANSFER_DST`；再 `assert!` create_info 的 extent 三维均 > 0；创建后同步上传。
+    /// 创建纹理：用途不能为空、尺寸三维均 > 0（否则 `InvalidUsage`）；有非空初始数据时
+    /// `usage |= TRANSFER_DST`，创建后同步上传。
     pub fn create_texture<D: TextureInitialBytes>(
         &self,
         desc: &TextureDesc,
         name: &str,
         data: D,
     ) -> Result<ManagedTexture> {
-        assert!(
-            desc.usage != vk::ImageUsageFlags::empty(),
-            "assertion failed: desc.usage != vk::ImageUsageFlags::empty()"
-        );
+        validate_texture_desc(desc)?;
         let bytes = data.initial_bytes().filter(|b| !b.is_empty());
         let mut desc = *desc;
         if bytes.is_some() {
             desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
         }
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
         let texture =
             super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, bytes.is_some())?;
         self.set_debug_name(texture.handle, name);
@@ -184,15 +176,9 @@ impl GraphicsDevice {
         name: &str,
         data: super::setup::TextureInitialData<'_>,
     ) -> Result<ManagedTexture> {
-        assert!(
-            desc.usage != vk::ImageUsageFlags::empty(),
-            "assertion failed: desc.usage != vk::ImageUsageFlags::empty()"
-        );
+        validate_texture_desc(desc)?;
         let mut desc = *desc;
         desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
         let texture = super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_data_with(&self.inner, &texture, data)?;
@@ -203,15 +189,9 @@ impl GraphicsDevice {
     /// [`super::setup::init_texture_zero_fill`]）。与带数据的 `create_texture` 一样加 `TRANSFER_DST`、
     /// `initialLayout = PREINITIALIZED`。
     pub fn create_texture_zeroed(&self, desc: &TextureDesc, name: &str) -> Result<ManagedTexture> {
-        assert!(
-            desc.usage != vk::ImageUsageFlags::empty(),
-            "assertion failed: desc.usage != vk::ImageUsageFlags::empty()"
-        );
+        validate_texture_desc(desc)?;
         let mut desc = *desc;
         desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
         let texture = super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_zero_fill(&self.inner, &texture)?;
@@ -356,7 +336,7 @@ impl GraphicsDevice {
         let record = buffer.record(0, 0, 0, 0);
         let slot = buffer.slot_view(0);
         let plan = plan_buffer_update(&record, 0, &slot, data.len(), ranges, offset as u64)
-            .map_err(|e| Error::Invalid(e.static_text()))?;
+            ?;
         let mut gathered = Vec::with_capacity(plan.total as usize);
         for r in ranges {
             gathered.extend_from_slice(&data[r.clone()]);
@@ -420,4 +400,18 @@ impl GraphicsDevice {
         })?;
         Ok(())
     }
+}
+
+/// 纹理描述的调用方约定：用途非空、尺寸三维均 > 0。
+fn validate_texture_desc(desc: &TextureDesc) -> Result<()> {
+    if desc.usage.is_empty() {
+        return Err(Error::invalid_usage("纹理用途不能为空"));
+    }
+    if desc.width == 0 || desc.height == 0 || desc.depth == 0 {
+        return Err(Error::invalid_usage(format!(
+            "纹理尺寸必须大于 0：{}x{}x{}",
+            desc.width, desc.height, desc.depth
+        )));
+    }
+    Ok(())
 }

@@ -10,7 +10,7 @@ use super::{
     command_buffer::VulkanCommandPool,
     device::VulkanDevice,
     error::{Error, Result},
-    format::{observed, vk_format_info},
+    format::vk_format_info,
     texture::Texture,
     texture_upload::{
         copy_format_params, linear_regions, per_mip_regions, plan_texture_copies, TextureUpdateRegion,
@@ -166,36 +166,37 @@ pub fn upload_regions(
     })
 }
 
-/// 线性数据（3 号目标）的区域生成，参数取自纹理描述与原格式表 `vk_format_info`（0x141739060）：
-/// `{bytes_per_block = word04, block = (byte08, byte09)}`。
+/// 线性初值数据的区域生成：块尺寸与块字节数取自格式表；层数为 Vulkan 层数（cube 为 6 × 元素数）。
 fn linear_regions_for<'a>(texture: &Texture, bytes: &'a [u8]) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
-    let info = observed::try_vk_format_info(desc.format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 info 查询"))?;
+    let info = vk_format_info(desc.format)
+        .ok_or_else(|| Error::unsupported(format!("格式 {:?} 没有格式表信息", desc.format)))?;
+    let block = [info.block_extent[0], info.block_extent[1]].map(|n| u8::try_from(n).unwrap_or(0));
+    if info.block_extent[2] != 1 || block.contains(&0) {
+        return Err(Error::unsupported(format!("格式 {:?} 的块尺寸不支持初值上传", desc.format)));
+    }
     linear_regions(
         bytes,
         [desc.width, desc.height, desc.depth],
         desc.mip_levels,
-        desc.array_elements,
-        info.word_at_04(),
-        [info.byte_at_08(), info.byte_at_09()],
+        desc.array_layers(),
+        info.block_bytes,
+        block,
     )
 }
 
-/// 2 号目标的区域生成：非压缩格式（`block_bytes == 1`）才允许。
+/// 逐 mip 初值数据的区域生成：只允许非块压缩格式。
 fn per_mip_regions_for<'a>(
     texture: &Texture,
     slices: &[&'a [u8]],
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
-    let block_bytes = observed::try_vk_format_block_bytes(desc.format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 block_bytes 查询"))?;
-    if block_bytes != 1 {
-        return Err(Error::Invalid("assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）"));
+    let info = vk_format_info(desc.format)
+        .ok_or_else(|| Error::unsupported(format!("格式 {:?} 没有格式表信息", desc.format)))?;
+    if info.block_extent != [1, 1, 1] {
+        return Err(Error::invalid_usage("逐 mip 初值数据不支持块压缩格式"));
     }
-    let texel = vk_format_info(desc.format)
-        .filter(|info| info.aspect == vk::ImageAspectFlags::COLOR)
-        .map(|info| u64::from(info.block_bytes));
+    let texel = (info.aspect == vk::ImageAspectFlags::COLOR).then_some(u64::from(info.block_bytes));
     per_mip_regions(
         slices,
         [desc.width, desc.height, desc.depth],
@@ -214,9 +215,7 @@ fn require_sampled(texture: &Texture) -> Result<()> {
     if texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED) {
         Ok(())
     } else {
-        Err(Error::Invalid(
-            "assertion failed: desc.usage.contains(vk::ImageUsageFlags::SAMPLED)",
-        ))
+        Err(Error::invalid_usage("初值上传要求纹理带 SAMPLED 用途"))
     }
 }
 
@@ -299,7 +298,7 @@ pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> 
 /// （原版 `update_texture_impl` 不查，Vulkan 要求）。
 pub fn update_texture(device: &Arc<VulkanDevice>, texture: &Texture, bytes: &[u8]) -> Result<()> {
     if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
-        return Err(Error::Invalid("纹理缺少 TRANSFER_DST 用途"));
+        return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     let regions = linear_regions_for(texture, bytes)?;
     upload_regions(
@@ -317,7 +316,7 @@ pub fn update_texture_regions(
     regions: &[TextureUpdateRegion<'_>],
 ) -> Result<()> {
     if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
-        return Err(Error::Invalid("纹理缺少 TRANSFER_DST 用途"));
+        return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     upload_regions(
         device,

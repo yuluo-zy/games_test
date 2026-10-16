@@ -106,62 +106,50 @@ pub struct ResourceExports<TextureHandle, BufferHandle, Other> {
 
 impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferHandle, Other> {
     /// 逻辑资源是否已由 population 分配物理槽；未出现在生命周期事件里的资源（如只导出、
-    /// 从未被访问的 Create 资源）保持 `backing_index = u16::MAX`，此时 `resource()` 等访问器会越界。
+    /// 从未被访问的 Create 资源）保持 `backing_index = u16::MAX`，访问器对它们返回 `None`。
     pub fn is_populated(&self, logical: u32) -> bool {
-        self.resources
-            .get(logical as usize)
-            .is_some_and(|reuse| usize::from(reuse.backing_index) < self.backing_resources.len())
+        self.backing(logical).is_some()
     }
 
-    fn backing(&self, logical: u32) -> &RegistryResource<TextureHandle, BufferHandle, Other> {
-        let reuse = self.resources[logical as usize];
-        &self.backing_resources[usize::from(reuse.backing_index)]
+    fn backing(&self, logical: u32) -> Option<&RegistryResource<TextureHandle, BufferHandle, Other>> {
+        let reuse = self.resources.get(logical as usize)?;
+        self.backing_resources.get(usize::from(reuse.backing_index))
     }
 
+    /// `(物理资源, 初始访问码, 是否复用)`；未分配物理槽时返回 `None`。
     pub fn resource(
         &self,
         logical: u32,
-    ) -> (
+    ) -> Option<(
         &RegistryResource<TextureHandle, BufferHandle, Other>,
         u8,
         bool,
-    ) {
-        let backing = self.backing(logical);
-        let initial_access = self.resource_initial_access[logical as usize];
-        (
+    )> {
+        let backing = self.backing(logical)?;
+        Some((
             backing,
-            initial_access,
+            self.resource_initial_access[logical as usize],
             self.resources[logical as usize].reused,
-        )
+        ))
     }
 
-    pub fn image_from_raw_handle(&self, logical: u32) -> &Texture<TextureHandle> {
-        match self.backing(logical) {
+    /// 纹理资源；未分配或不是纹理时返回 `None`。
+    pub fn image(&self, logical: u32) -> Option<&Texture<TextureHandle>> {
+        match self.backing(logical)? {
             RegistryResource::OwnedTexture(texture) | RegistryResource::UnownedTexture(texture) => {
-                texture
+                Some(texture)
             }
-            _ => panic!("resource is not a texture"),
+            _ => None,
         }
     }
 
-    /// 原入口名；与 `image_from_raw_handle` 同一实现，保留原名供消费者按 PDB 名字调用。
-    pub fn image(&self, logical: u32) -> &Texture<TextureHandle> {
-        self.image_from_raw_handle(logical)
-    }
-
-    /// 原入口按 managed 视图解析；本通用 registry 只持有 `Texture { handle, desc }`，
-    /// 不拥有独立的 image-view 载体。返回纹理 handle 作为可解析的物理对象，
-    /// 视图创建仍由 raw 层 `TextureViewDesc`/后端完成。
-    pub fn image_view(&self, logical: u32) -> &Texture<TextureHandle> {
-        self.image_from_raw_handle(logical)
-    }
-
-    pub fn buffer(&self, logical: u32) -> &Buffer<BufferHandle> {
-        match self.backing(logical) {
+    /// 缓冲资源；未分配或不是缓冲时返回 `None`。
+    pub fn buffer(&self, logical: u32) -> Option<&Buffer<BufferHandle>> {
+        match self.backing(logical)? {
             RegistryResource::OwnedBuffer(buffer) | RegistryResource::UnownedBuffer(buffer) => {
-                buffer
+                Some(buffer)
             }
-            _ => panic!("resource is not a buffer"),
+            _ => None,
         }
     }
 

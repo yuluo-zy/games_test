@@ -305,7 +305,7 @@ impl AttachmentCache {
             || extent.height == 0
             || layers == 0
         {
-            return Err(Error::Invalid("附件数应为 1..9，帧缓冲范围及层数必须非零"));
+            return Err(Error::invalid_usage("附件数应为 1..9，帧缓冲范围及层数必须非零"));
         }
         let colors = attachments.iter().filter(|a| !a.depth_stencil).count();
         if colors > 8
@@ -314,23 +314,23 @@ impl AttachmentCache {
             || extent.height > self.limits.max_framebuffer_height
             || layers > self.limits.max_framebuffer_layers
         {
-            return Err(Error::Invalid("附件数或帧缓冲范围超出设备能力"));
+            return Err(Error::invalid_usage("附件数或帧缓冲范围超出设备能力"));
         }
         let mut depth_seen = false;
         let samples = attachments[0].desc.samples;
         for a in attachments {
             if !Arc::ptr_eq(&self.device, &a.texture.device) {
-                return Err(Error::Invalid("附件属于其他设备"));
+                return Err(Error::invalid_usage("附件属于其他设备"));
             }
             if depth_seen {
-                return Err(Error::Invalid("只能有一个深度附件并且必须位于最后"));
+                return Err(Error::invalid_usage("只能有一个深度附件并且必须位于最后"));
             }
             depth_seen = a.depth_stencil;
             let desc = &a.texture.desc;
             if a.view.view_type != vk::ImageViewType::TYPE_2D
                 && a.view.view_type != vk::ImageViewType::TYPE_2D_ARRAY
             {
-                return Err(Error::Invalid("帧缓冲附件必须使用二维或二维数组视图"));
+                return Err(Error::invalid_usage("帧缓冲附件必须使用二维或二维数组视图"));
             }
             let valid_subpass = if a.depth_stencil {
                 [
@@ -349,13 +349,13 @@ impl AttachmentCache {
                 .contains(&a.subpass_layout)
             };
             if !valid_subpass {
-                return Err(Error::Invalid("附件子通道布局与类型不兼容"));
+                return Err(Error::invalid_usage("附件子通道布局与类型不兼容"));
             }
             if a.desc.format != a.view.format
                 || a.desc.samples != desc.samples()
                 || a.desc.samples != samples
             {
-                return Err(Error::Invalid("附件格式或采样数不兼容"));
+                return Err(Error::invalid_usage("附件格式或采样数不兼容"));
             }
             let expected_aspect = if a.depth_stencil {
                 vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL
@@ -371,7 +371,7 @@ impl AttachmentCache {
                 || !expected_aspect.contains(a.view.aspect)
                 || !desc.usage.contains(usage)
             {
-                return Err(Error::Invalid("附件 aspect 或 usage 不兼容"));
+                return Err(Error::invalid_usage("附件 aspect 或 usage 不兼容"));
             }
             let mip = a.view.base_mip_level;
             if a.view.level_count != 1
@@ -385,25 +385,25 @@ impl AttachmentCache {
                 || extent.width > (desc.extent().width >> mip).max(1)
                 || extent.height > (desc.extent().height >> mip).max(1)
             {
-                return Err(Error::Invalid("帧缓冲范围越过附件子资源"));
+                return Err(Error::invalid_usage("帧缓冲范围越过附件子资源"));
             }
             if (a.desc.load == vk::AttachmentLoadOp::CLEAR
                 || a.stencil_load == vk::AttachmentLoadOp::CLEAR)
                 && a.clear.is_none()
             {
-                return Err(Error::Invalid("CLEAR 附件未提供清除值"));
+                return Err(Error::invalid_usage("CLEAR 附件未提供清除值"));
             }
             if (a.desc.load == vk::AttachmentLoadOp::LOAD
                 || (a.view.aspect.contains(vk::ImageAspectFlags::STENCIL)
                     && a.stencil_load == vk::AttachmentLoadOp::LOAD))
                 && a.initial_layout == vk::ImageLayout::UNDEFINED
             {
-                return Err(Error::Invalid("LOAD 附件不能来自未定义布局"));
+                return Err(Error::invalid_usage("LOAD 附件不能来自未定义布局"));
             }
             if a.final_layout == vk::ImageLayout::UNDEFINED
                 || a.final_layout == vk::ImageLayout::PREINITIALIZED
             {
-                return Err(Error::Invalid("附件最终布局无效"));
+                return Err(Error::invalid_usage("附件最终布局无效"));
             }
         }
         Ok(())

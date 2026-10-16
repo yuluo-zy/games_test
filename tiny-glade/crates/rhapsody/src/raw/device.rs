@@ -627,23 +627,21 @@ impl GraphicsDevice {
             .iter()
             .any(|e| e == "VK_EXT_memory_budget")
     }
-    /// 0x140bfc750 `queue_family_index(kind)`：`kind` bit0 清 → `dev+0xad4` 主族；
-    /// bit0 置 → `dev+0x3c` 第二族，但要求 `dev+0x20` bit0（= `Option<QueueFamilyInfo>` 的 Some 标签，存在第二族），
-    /// 否则 panic（`unreachable`，0x142b16c60）。`dev+0x20..+0x3f` 的写入点已在 `create` 内证实（见结构表）：
-    /// 首个 `flags & 3 == 2` 的族（与 [`QueuePlan::select`] 一致）。本重建的“第二族” = 首个附加队列的族。
-    pub fn queue_family_index_for(&self, kind: u8) -> u32 {
+    /// `kind` bit0 清 → 主队列族；bit0 置 → 第二族（首个与主族不同的附加队列族，与
+    /// [`QueuePlan::select`] 一致）。设备没有第二族时返回 `Unsupported`。
+    pub fn queue_family_index_for(&self, kind: u8) -> crate::Result<u32> {
         if kind & 1 == 0 {
-            return self.inner.queue_family;
+            return Ok(self.inner.queue_family);
         }
         self.inner
             .additional_queues
             .iter()
             .map(|queue| queue.family)
             .find(|family| *family != self.inner.queue_family)
-            .expect("internal error: entered unreachable code")
+            .ok_or_else(|| crate::Error::unsupported("设备没有第二个队列族"))
     }
     pub fn queue_family_index(&self) -> u32 {
-        self.queue_family_index_for(0)
+        self.inner.queue_family
     }
     /// 0x140bf8960：`dev+0x870` 非空才有（`Option<&DebugUtils>`）；本重建以实例是否启用
     /// `VK_EXT_debug_utils` 为准。
@@ -716,13 +714,13 @@ impl GraphicsDevice {
     }
     /// 0x140bef4a0 `create_command_buffer(family, name)`：持池锁，从 `pool[family]` 空闲链 LIFO 取；
     /// 空则新建（trace 日志 `Allocating a new command buffer`，0x142b15c50）；
-    /// 取得后若启用了 debug_utils 则命名。越界族索引 panic（与原版一致）。
+    /// 取得后若启用了 debug_utils 则命名。越界族索引返回 `InvalidUsage`。
     pub fn create_command_buffer(
         &self,
         family: u32,
         name: &str,
-    ) -> Result<super::command_buffer::VulkanCommandBuffer, vk::Result> {
-        let command = match self.command_pool.take(family) {
+    ) -> crate::Result<super::command_buffer::VulkanCommandBuffer> {
+        let command = match self.command_pool.take(family)? {
             Some(command) => command,
             None => {
                 log::trace!(target: "rhapsody::raw::command_buffer", "Allocating a new command buffer");
@@ -742,7 +740,7 @@ impl GraphicsDevice {
     pub unsafe fn recycle_command_buffer(
         &self,
         command: super::command_buffer::VulkanCommandBuffer,
-    ) -> Result<(), vk::Result> {
+    ) -> crate::Result<()> {
         unsafe { self.command_pool.recycle_completed(command) }
     }
     /// 空闲链数量（诊断/测试）。
@@ -827,12 +825,13 @@ impl GraphicsDevice {
             .position(|s| s.name == name)?;
         self.get_built_in_sampler(index)
     }
-    /// 原 `get_built_in_sampler`（0x140bfc5b0）：缺失时 `panic!("Sampler not found: {name}")`。
-    pub fn get_built_in_sampler_by_name(&self, name: &str) -> Arc<super::sampler::Sampler> {
-        match self.try_get_built_in_sampler_by_name(name) {
-            Some(sampler) => sampler,
-            None => panic!("Sampler not found: {name}"),
-        }
+    /// 按名字取内置采样器；未知名字或尚未创建返回 `InvalidUsage`。
+    pub fn get_built_in_sampler_by_name(
+        &self,
+        name: &str,
+    ) -> crate::Result<Arc<super::sampler::Sampler>> {
+        self.try_get_built_in_sampler_by_name(name)
+            .ok_or_else(|| crate::Error::invalid_usage(format!("找不到内置采样器 {name}")))
     }
     /// 查询设备是否支持给定扩展名。
     pub fn query_device_extension_support(&self, names: &[&str]) -> Vec<bool> {

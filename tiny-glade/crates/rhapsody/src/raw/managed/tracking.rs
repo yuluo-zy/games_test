@@ -39,55 +39,43 @@ pub enum TrackOutcome {
     GenerationSkipped,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// 托管资源跟踪/退役失败。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Failure {
+    #[error("命令缓冲不处于录制状态，不能登记资源使用")]
     InvalidCommandState,
+    #[error("已移出的句柄被 drop")]
     MovedHandleDrop,
+    #[error("命令序号的销毁桶重复登记")]
     DuplicateBucket,
+    #[error("命令序号没有销毁桶（未 begin 或已排空）")]
     MissingBucket,
+    #[error("命令序号重复完成或已退役")]
     DuplicateCompletion,
+    #[error("未知或已过期的资源句柄")]
     UnknownHandle,
+    #[error("跨队列域的资源映射未知")]
     CrossDomainMappingUnknown,
+    #[error("时间线值回退")]
     TimelineRegression,
+    #[error("资源句柄属于其他设备")]
     DeviceMismatch,
+    #[error("资源句柄类型不符")]
     ResourceKindMismatch,
+    #[error("退役记录的校验和与资源不符")]
     DisposalGenerationMismatch,
+    #[error("资源仍有存活引用")]
     ReferencesRemain,
 }
 
-/// 原 panic 文本前缀（`RawManagedHandle::track` 0x140bd6a70 的 `fmt::Arguments` 单个静态片段 0x142b14bb0，51 B；
-/// 后接 1 个参数：`CommandState` 的 Debug，函数 0x140bed620）。
-pub const INVALID_COMMAND_STATE_MSG: &str = "Can't use a resource for a command buffer in state ";
-
-/// 原 `CommandState` 的 Debug 文本（0x140bed620：tag0 `Initial`，tag1 `Recording{queue,seq}`，tag2 `Recorded{..}`，
-/// tag3 `Submitted{..}`；tag 4..7 在原跳表里不可达）。本投影只携带 `seq`，没有恢复出的 `queue` 字段，
-/// 因此 `queue` 不输出（⚠️ 与原文案相比缺 `queue: ..`）。
-pub fn command_state_debug(command: CommandState) -> String {
-    match command.tag {
-        0 => "Initial".to_string(),
-        1 => format!("Recording {{ seq: {} }}", command.sequence),
-        2 => format!("Recorded {{ seq: {} }}", command.sequence),
-        3 => format!("Submitted {{ seq: {} }}", command.sequence),
-        other => format!("<invalid state tag {other}>"),
+impl From<Failure> for crate::Error {
+    fn from(failure: Failure) -> Self {
+        crate::Error::invalid_usage_with("托管资源操作失败", failure)
     }
 }
 
-/// 原版在命令缓冲状态 != Recording(1) 时的 panic（`track` 与 `CommandBufferSeqTracker::track` 共用文案）。
-#[cold]
-#[track_caller]
-pub fn panic_invalid_command_state(command: CommandState) -> ! {
-    panic!("{INVALID_COMMAND_STATE_MSG}{}", command_state_debug(command))
-}
-
-/// 原 `CommandBufferSeqTracker::track`/`RawManagedHandle::track` 的 `fetch_max`：tag != 1 → panic。
-pub fn track_sequence(tracker: &AtomicU64, command: CommandState) {
-    if try_track_sequence(tracker, command).is_err() {
-        panic_invalid_command_state(command);
-    }
-}
-
-/// `track_sequence` 的非 panic 兼容入口。
-pub fn try_track_sequence(tracker: &AtomicU64, command: CommandState) -> Result<(), Failure> {
+/// 把命令登记到序号跟踪器（`fetch_max`）。命令不处于录制状态（tag != 1）返回 `InvalidCommandState`。
+pub fn track_sequence(tracker: &AtomicU64, command: CommandState) -> Result<(), Failure> {
     if command.tag != 1 {
         return Err(Failure::InvalidCommandState);
     }
@@ -95,21 +83,8 @@ pub fn try_track_sequence(tracker: &AtomicU64, command: CommandState) -> Result<
     Ok(())
 }
 
-/// 原 `RawManagedHandle::track`（0x140bd6a70）：校验和不等 → 静默跳过；tag != 1 → panic；否则 `fetch_max`。
+/// 把命令登记到句柄控制块：校验和不等（句柄已过期）静默跳过；命令不在录制状态返回 `InvalidCommandState`。
 pub fn track_handle(
-    control: &ControlBlock,
-    handle_generation: u32,
-    command: CommandState,
-) -> TrackOutcome {
-    if control.checksum() != handle_generation {
-        return TrackOutcome::GenerationSkipped;
-    }
-    track_sequence(&control.last_sequence, command);
-    TrackOutcome::Updated
-}
-
-/// `track_handle` 的非 panic 兼容入口（tag != 1 → `Err(InvalidCommandState)`）。
-pub fn try_track_handle(
     control: &ControlBlock,
     handle_generation: u32,
     command: CommandState,
@@ -117,7 +92,7 @@ pub fn try_track_handle(
     if control.checksum() != handle_generation {
         return Ok(TrackOutcome::GenerationSkipped);
     }
-    try_track_sequence(&control.last_sequence, command)?;
+    track_sequence(&control.last_sequence, command)?;
     Ok(TrackOutcome::Updated)
 }
 
@@ -192,7 +167,7 @@ pub fn dispose_control_kind(
     device: u16,
     resource_kind: u8,
     expected_kind: u8,
-    mut enqueue_destroy: impl FnMut() -> Result<(), Failure>,
+    enqueue_destroy: impl FnOnce() -> Result<(), Failure>,
 ) -> Result<(), Failure> {
     if handle_device != device {
         return Err(Failure::DeviceMismatch);
@@ -247,42 +222,48 @@ mod tests {
     fn track_follows_original_decision_order() {
         let c = ControlBlock::new(5);
         let ok = |sequence| CommandState { tag: 1, sequence };
-        assert_eq!(track_handle(&c, 4, ok(9)), TrackOutcome::GenerationSkipped);
+        assert_eq!(track_handle(&c, 4, ok(9)), Ok(TrackOutcome::GenerationSkipped));
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 0);
         // 校验和不等时连 tag 也不看（先比校验和）。
         assert_eq!(
             track_handle(&c, 4, CommandState { tag: 0, sequence: 9 }),
-            TrackOutcome::GenerationSkipped
+            Ok(TrackOutcome::GenerationSkipped)
         );
-        assert_eq!(track_handle(&c, 5, ok(9)), TrackOutcome::Updated);
-        assert_eq!(track_handle(&c, 5, ok(3)), TrackOutcome::Updated);
+        assert_eq!(track_handle(&c, 5, ok(9)), Ok(TrackOutcome::Updated));
+        assert_eq!(track_handle(&c, 5, ok(3)), Ok(TrackOutcome::Updated));
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 9, "fetch_max");
         assert_eq!(
-            try_track_handle(&c, 5, CommandState { tag: 0, sequence: 99 }),
+            track_handle(&c, 5, CommandState { tag: 0, sequence: 99 }),
             Err(Failure::InvalidCommandState)
         );
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 9);
     }
 
     #[test]
-    #[should_panic(expected = "Can't use a resource for a command buffer in state Submitted")]
-    fn track_handle_panics_when_state_is_not_recording() {
+    fn tracking_rejects_non_recording_states() {
         let c = ControlBlock::new(5);
-        track_handle(&c, 5, CommandState { tag: 3, sequence: 1 });
+        for tag in [0, 2, 3] {
+            assert_eq!(
+                track_handle(&c, 5, CommandState { tag, sequence: 1 }),
+                Err(Failure::InvalidCommandState)
+            );
+        }
+        assert_eq!(
+            track_sequence(&AtomicU64::new(0), CommandState { tag: 0, sequence: 1 }),
+            Err(Failure::InvalidCommandState)
+        );
+        assert_eq!(
+            crate::Error::from(Failure::InvalidCommandState).kind(),
+            crate::ErrorKind::InvalidUsage
+        );
     }
 
     #[test]
-    #[should_panic(expected = "Can't use a resource for a command buffer in state Initial")]
-    fn track_sequence_panics_when_state_is_not_recording() {
-        track_sequence(&AtomicU64::new(0), CommandState { tag: 0, sequence: 1 });
-    }
-
-    #[test]
-    fn mismatched_generation_never_panics_even_for_bad_state() {
+    fn mismatched_generation_is_skipped_even_for_bad_state() {
         let c = ControlBlock::new(5);
         assert_eq!(
             track_handle(&c, 6, CommandState { tag: 2, sequence: 1 }),
-            TrackOutcome::GenerationSkipped
+            Ok(TrackOutcome::GenerationSkipped)
         );
     }
 }

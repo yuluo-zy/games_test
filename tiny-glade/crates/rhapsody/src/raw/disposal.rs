@@ -8,11 +8,11 @@
 //!   找到桶后再锁桶内 Mutex（字节 CAS 0→1）并推入动作。
 //! - 缺桶：`dispose_cb_resource` 不 panic，而是写一条日志环记录（kind 4）并把资源放进调用方给的回退桶
 //!   （`take_out_dropped_waste` 的栈桶），随后由 `immediate_empty_bucket` 立即销毁；命中时写 kind 3 记录。
-//! - `insert` 先替换后断言 `prev.is_none()`；`remove` 缺桶 panic。
+//! - `insert` 重复 seq、`remove` 缺桶都返回 [`Failure`]（原版 panic）。
 //! - `SequentialDisposal{ VecDeque<u64>@0, last_retired@0x20 }`：`dispose_in_order`（0x1418c7ae0）见该类型。
 //!
 //! 偏差（保留）：`DisposalBucket` 原为 0xf0B（多 Vec/容量字段，8B 动作载荷）；这里是 `Vec<DestroyAction>`，
-//! 因为 Rust 侧销毁动作是闭包。`Failure` 变体仅由 `try_*` 兼容入口返回；主入口与原版一样 panic。
+//! 因为 Rust 侧销毁动作是闭包。
 use crate::log_ring;
 use crate::raw::managed::tracking::Failure;
 use parking_lot::{Mutex, RwLock};
@@ -20,10 +20,6 @@ use std::collections::{HashMap, VecDeque};
 
 pub type DestroyAction = Box<dyn FnOnce() + Send>;
 pub type CommandBufferSeq = u64;
-
-/// 原 panic 文本（0x142d069c1 / 0x142d06a40）。
-pub const REMOVE_MISSING_MSG: &str = "bucket removed prematurely or command buffer begin() never called?";
-pub const INSERT_DUPLICATE_MSG: &str = "assertion failed: prev.is_none()";
 
 /// 日志环记录 kind（`dispose_cb_resource` 的 3/4，`dispose_in_order` 的 0x1e）。
 pub const LOG_KIND_BUCKET_HIT: u8 = 3;
@@ -74,19 +70,15 @@ pub struct CommandBufferDisposalBuckets {
     map: RwLock<HashMap<CommandBufferSeq, Mutex<DisposalBucket>>>,
 }
 impl CommandBufferDisposalBuckets {
-    /// 原 `insert`（0x1418c4260）：先替换，再断言 `prev.is_none()`。被覆盖的桶不执行 vkDestroy。
-    pub fn insert(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) {
-        assert!(self.replace(sequence, bucket).is_none(), "{INSERT_DUPLICATE_MSG}");
-    }
-    fn replace(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) -> Option<DisposalBucket> {
-        self.map
+    /// 登记 `sequence` 的桶。重复 seq 时新桶替换旧桶（旧桶的动作不执行，避免提前销毁）并返回
+    /// `DuplicateBucket`。
+    pub fn insert(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) -> Result<(), Failure> {
+        let previous = self
+            .map
             .write()
             .insert(sequence, Mutex::new(bucket))
-            .map(Mutex::into_inner)
-    }
-    /// `insert` 的非 panic 兼容入口：重复 seq 仍按原语义替换，但返回 `DuplicateBucket`。
-    pub fn try_insert(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) -> Result<(), Failure> {
-        match self.replace(sequence, bucket) {
+            .map(Mutex::into_inner);
+        match previous {
             None => Ok(()),
             Some(previous) => {
                 drop(previous); // Drop 内 forget 动作
@@ -94,25 +86,21 @@ impl CommandBufferDisposalBuckets {
             }
         }
     }
-    /// 原 `remove`（0x1418c4100）：缺桶 panic。
-    pub fn remove(&self, sequence: CommandBufferSeq) -> DisposalBucket {
-        self.try_remove(sequence)
-            .unwrap_or_else(|_| panic!("{REMOVE_MISSING_MSG}"))
-    }
-    pub fn try_remove(&self, sequence: CommandBufferSeq) -> Result<DisposalBucket, Failure> {
+    /// 取出 `sequence` 的桶；缺桶（未 begin 或已取出）返回 `MissingBucket`。
+    pub fn remove(&self, sequence: CommandBufferSeq) -> Result<DisposalBucket, Failure> {
         self.map
             .write()
             .remove(&sequence)
             .map(Mutex::into_inner)
             .ok_or(Failure::MissingBucket)
     }
-    /// 命令开始：登记空桶（原 insert 调用点，重复 seq panic）。
-    pub fn begin(&self, sequence: CommandBufferSeq) {
-        self.insert(sequence, DisposalBucket::new());
+    /// 命令开始：登记空桶；重复 seq 返回 `DuplicateBucket`。
+    pub fn begin(&self, sequence: CommandBufferSeq) -> Result<(), Failure> {
+        self.insert(sequence, DisposalBucket::new())
     }
-    /// 兼容入口：重复 seq 返回 `Failure::DuplicateBucket`。
+    /// 同 [`Self::begin`]。
     pub fn begin_command_bucket(&self, sequence: CommandBufferSeq) -> Result<(), Failure> {
-        self.try_insert(sequence, DisposalBucket::new())
+        self.begin(sequence)
     }
     pub fn contains(&self, sequence: CommandBufferSeq) -> bool {
         self.map.read().contains_key(&sequence)
@@ -149,12 +137,9 @@ impl CommandBufferDisposalBuckets {
             None => Err(action),
         }
     }
-    /// 取出并执行 `sequence` 桶（缺桶 panic，原 `remove` 语义）；返回动作数。
-    pub fn drain_completed_sequence_or_panic(&self, sequence: CommandBufferSeq) -> usize {
-        self.remove(sequence).dispose()
-    }
+    /// 取出并执行 `sequence` 桶，返回动作数；缺桶返回 `MissingBucket`。
     pub fn drain_completed_sequence(&self, sequence: CommandBufferSeq) -> Result<usize, Failure> {
-        Ok(self.try_remove(sequence)?.dispose())
+        Ok(self.remove(sequence)?.dispose())
     }
     /// 原 `GraphicsDevice::immediate_empty_bucket`（0xbf92f0）：立即排空给定序号的桶；缺桶 `Failure`（兼容入口）。
     pub fn immediate_empty_bucket(&self, sequence: CommandBufferSeq) -> Result<usize, Failure> {
@@ -213,11 +198,16 @@ impl SequentialDisposal {
     pub fn waiting(&self) -> usize {
         self.pending.iter().filter(|&&slot| slot != 0).count()
     }
-    /// 报告 `seq` 的命令已完成。`assert!(seq > last_retired)`；按序号连续推进，
-    /// 每个新退役的序号（含之前乱序到达、现在连续了的）依次调用 `retire(seq)`
-    /// （原版此处：写日志 kind 0x1e → `remove` 桶 → 执行桶 → 释放桶）。乱序重复 panic。
-    pub fn dispose_in_order(&mut self, seq: u64, mut retire: impl FnMut(u64)) {
-        assert!(seq > self.last_retired, "assertion failed: seq > self.last_retired");
+    /// 报告 `seq` 的命令已完成。按序号连续推进，每个新退役的序号（含之前乱序到达、现在连续了的）
+    /// 依次调用 `retire(seq)`。`seq` 已退役或在等待窗口内重复完成时返回 `DuplicateCompletion`，状态不变。
+    pub fn dispose_in_order(
+        &mut self,
+        seq: u64,
+        mut retire: impl FnMut(u64),
+    ) -> Result<(), Failure> {
+        if seq <= self.last_retired {
+            return Err(Failure::DuplicateCompletion);
+        }
         let idx = (seq - self.last_retired - 1) as usize;
         if idx == 0 {
             self.last_retired += 1;
@@ -229,16 +219,18 @@ impl SequentialDisposal {
                 }
                 self.pending.pop_front();
                 self.last_retired += 1;
-                assert_eq!(self.last_retired, front);
+                debug_assert_eq!(self.last_retired, front, "pending[i] 只能存 last_retired+1+i");
                 retire(front);
             }
         } else if idx >= self.pending.len() {
             self.pending.resize(idx, 0);
             self.pending.push_back(seq);
+        } else if self.pending[idx] != 0 {
+            return Err(Failure::DuplicateCompletion);
         } else {
-            assert_eq!(self.pending[idx], 0, "序号重复完成");
             self.pending[idx] = seq;
         }
+        Ok(())
     }
     /// 兼容入口：用 `retire` 之外的方式只查询“是否已退役”。
     pub fn is_retired(&self, seq: u64) -> bool {

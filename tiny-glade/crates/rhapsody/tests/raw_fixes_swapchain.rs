@@ -162,6 +162,6 @@ fn managed_acquire_rejects_null_semaphore_and_fence() {
     };
     let inner = rhapsody::raw::managed::swapchain::SwapchainInner::new(chain(&device, &surface));
     let result = inner.acquire_next_image(0, vk::Semaphore::null(), vk::Fence::null());
-    assert!(matches!(result, Err(rhapsody::raw::error::Error::Invalid(_))));
+    assert!(matches!(result, Err(rhapsody::raw::error::Error::InvalidUsage { .. })));
     device.wait_idle().unwrap();
 }

@@ -125,27 +125,66 @@ pub trait AccessDependency {
 pub type RenderCallback = Box<dyn for<'a> FnMut(super::executor::PassContext<'a>) -> bool + Send>;
 pub type RetireCallback = Box<dyn FnOnce()>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// 构图期错误：调用方声明的图违反约定（越界句柄、超限、冲突访问等），或资源创建失败。
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
+    #[error("资源 {} 的访问与本 pass 已声明的访问冲突", .0.resource_index)]
     IncompatibleAccess(super::access_ledger::IncompatibleAccess),
+    #[error("图内资源数超过上限 {}", u16::MAX)]
     ResourceLimit,
+    #[error("无效资源句柄 {0}")]
     InvalidHandle(u32),
-    MissingTemporal(String),
+    #[error("资源名重复：{0}")]
     DuplicateResourceName(String),
-    ResourceCreationFailed(String),
     /// pass 数超过生命周期事件的打包域（pass 下标左移 17 位存入 u32，见 `MAX_PASSES`）。
+    #[error("pass 数超过上限 {MAX_PASSES}")]
     PassLimit,
+    /// 访问记录总数达到 `NO_ACCESS`（u32::MAX）占位值。
+    #[error("访问记录数超过上限")]
+    AccessLimit,
+    /// 导出声明的资源种类与资源描述不符（只可能来自手工构造的 [`GraphDeclaration`]）。
+    #[error("导出声明的资源种类与资源 {0} 不符")]
+    ExportKindMismatch(u32),
+    /// 资源的创建、导入或登记失败；`source` 保留原因类别（显存不足、设备丢失、用法错误等）。
+    #[error("资源 {resource}：{source}")]
+    Resource {
+        resource: String,
+        #[source]
+        source: crate::Error,
+    },
+}
+impl BuildError {
+    /// 资源级错误；`source` 的类别在转换为 [`crate::Error`] 时保留。
+    pub fn resource(resource: impl Into<String>, source: crate::Error) -> Self {
+        Self::Resource {
+            resource: resource.into(),
+            source,
+        }
+    }
+    /// 资源级用法错误（无效 token、规格不一致等）。
+    pub fn resource_misuse(resource: impl Into<String>, what: &'static str) -> Self {
+        Self::resource(resource, crate::Error::invalid_usage(what))
+    }
+}
+impl From<BuildError> for crate::Error {
+    fn from(error: BuildError) -> Self {
+        match error {
+            // 资源错误保留下层类别；用法错误补上资源名。
+            BuildError::Resource { resource, source } => match source {
+                crate::Error::InvalidUsage { what, source } => crate::Error::InvalidUsage {
+                    what: format!("资源 {resource}：{what}").into(),
+                    source,
+                },
+                other => other,
+            },
+            other => crate::Error::invalid_usage_with("构图失败", other),
+        }
+    }
 }
 
 /// 生命周期事件把 pass 下标左移 17 位打包进 u32（`resource_rules::calculate_lifetime_events`），
-/// 故单图最多 `1 << 15` 个 pass；`compile_graph` 对超出保留断言，构图入口提前返回 [`BuildError::PassLimit`]。
+/// 故单图最多 `1 << 15` 个 pass；构图入口与 [`compile_graph`] 超出时返回 [`BuildError::PassLimit`]。
 pub const MAX_PASSES: usize = 1 << 15;
-impl std::fmt::Display for BuildError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "构图失败: {self:?}")
-    }
-}
-impl std::error::Error for BuildError {}
 
 /// 由原始函数名与编译调用链组织的候选接口；不宣称原作 ABI 已恢复。
 #[derive(Default)]
@@ -185,15 +224,6 @@ impl RenderGraph {
         Ok(handle)
     }
 
-    /// 原入口名；与 `create_raw_resource` 同一实现，保留原名供 PDB 名消费者调用。
-    pub fn create_resource_handle(
-        &mut self,
-        name: impl Into<String>,
-        origin: super::resource::ResourceOrigin,
-    ) -> Result<super::resource::ResourceHandle, BuildError> {
-        self.create_raw_resource(name, origin)
-    }
-
     pub(crate) fn check_handle(
         &self,
         handle: super::resource::ResourceHandle,
@@ -205,25 +235,20 @@ impl RenderGraph {
         }
     }
 
-    /// 不检查 pass 上限，保持既有调用面；超限会在 `PassBuilder::add_resource_access` 返回
-    /// [`BuildError::PassLimit`]，需要在拿到 builder 前就得到错误时用 [`Self::try_add_pass`]。
-    pub fn add_pass(&mut self, name: impl Into<String>) -> super::pass_builder::PassBuilder<'_> {
-        super::pass_builder::PassBuilder {
+    /// 开始声明一个 pass；图里已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
+    /// pass 只在 builder 调用 `render*` 时才入图，丢弃 builder 不留下半成品。
+    pub fn add_pass(
+        &mut self,
+        name: impl Into<String>,
+    ) -> Result<super::pass_builder::PassBuilder<'_>, BuildError> {
+        self.check_pass_capacity()?;
+        Ok(super::pass_builder::PassBuilder {
             graph: self,
             declaration: PassDeclaration {
                 name: name.into(),
                 accesses: vec![],
             },
-        }
-    }
-
-    /// 带 pass 上限检查的 `add_pass`：已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
-    pub fn try_add_pass(
-        &mut self,
-        name: impl Into<String>,
-    ) -> Result<super::pass_builder::PassBuilder<'_>, BuildError> {
-        self.check_pass_capacity()?;
-        Ok(self.add_pass(name))
+        })
     }
 
     pub(crate) fn check_pass_capacity(&self) -> Result<(), BuildError> {
@@ -270,10 +295,13 @@ impl BuiltGraph {
         (self.declaration, self.callbacks, self.retire_callbacks)
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// 后端创建资源失败；`error` 保留原因类别。
+#[derive(Debug, thiserror::Error)]
+#[error("创建资源 {resource} 失败：{error}")]
 pub struct BackendFailure {
-    pub discriminant: u8,
-    pub message: String,
+    pub resource: String,
+    #[source]
+    pub error: crate::Error,
 }
 pub trait ResourceBackend {
     fn create_without_initial_data(
@@ -301,7 +329,8 @@ pub enum BackendEvent {
 #[derive(Default)]
 pub struct EventBackend {
     pub events: Vec<BackendEvent>,
-    pub fail_at_creation: Option<(usize, u8)>,
+    /// 第 n 次创建失败（测试用），失败原因为显存不足。
+    pub fail_at_creation: Option<usize>,
     next_token: u64,
     creations: usize,
 }
@@ -313,12 +342,10 @@ impl ResourceBackend for EventBackend {
     ) -> Result<u64, BackendFailure> {
         let attempt = self.creations;
         self.creations += 1;
-        if let Some((failure_attempt, tag)) = self.fail_at_creation
-            && attempt == failure_attempt
-        {
+        if self.fail_at_creation == Some(attempt) {
             return Err(BackendFailure {
-                discriminant: tag,
-                message: format!("oracle backend creation {attempt}"),
+                resource: name.to_owned(),
+                error: crate::Error::OutOfDeviceMemory,
             });
         }
         let token = self.next_token;
@@ -342,7 +369,11 @@ pub struct Population {
     pub remaining_origins: Vec<Option<ResourceDeclaration>>,
     pub pool_hits: Vec<u32>,
 }
+/// population 中途失败：`partial` 是失败前已分配的部分（[`compile_graph`] 已归还其中的资源）。
+#[derive(thiserror::Error)]
+#[error("资源分配失败：{error}")]
 pub struct PopulationFailure {
+    #[source]
     pub error: BackendFailure,
     pub partial: Box<Population>,
 }
@@ -380,9 +411,11 @@ pub fn populate_resources(
             continue;
         }
         let logical = (event & 0xffff) as usize;
-        let declaration = population.remaining_origins[logical]
-            .take()
-            .expect("origin already consumed");
+        // 生命周期事件对每个资源恰好一次 acquire（`calculate_lifetime_events`）。
+        let Some(declaration) = population.remaining_origins[logical].take() else {
+            debug_assert!(false, "资源 {logical} 的 acquire 事件重复");
+            continue;
+        };
         let initial_access = match declaration.source {
             OriginSource::Create => 0,
             OriginSource::ImportOwned { initial_access, .. }
@@ -399,39 +432,31 @@ pub fn populate_resources(
                     RegistryResource::Empty
                 } else {
                     let pooled = match descriptor {
-                        Descriptor::Image(desc) => {
-                            pool.take_texture(&desc).map(RegistryResource::OwnedTexture)
-                        }
-                        Descriptor::Buffer(desc) => {
-                            pool.take_buffer(&desc).map(RegistryResource::OwnedBuffer)
-                        }
+                        Descriptor::Image(desc) => pool
+                            .take_texture(&desc)
+                            .map(|texture| (texture.handle, RegistryResource::OwnedTexture(texture)))
+                            .map(|(token, resource)| (resource, token)),
+                        Descriptor::Buffer(desc) => pool
+                            .take_buffer(&desc)
+                            .map(|buffer| (buffer.handle, RegistryResource::OwnedBuffer(buffer)))
+                            .map(|(token, resource)| (resource, token)),
                     };
-                    let resource = if let Some(resource) = pooled {
+                    let (resource, token) = if let Some(pooled) = pooled {
                         population.pool_hits.push(logical as u32);
-                        resource
+                        pooled
                     } else {
                         let token = match backend
                             .create_without_initial_data(descriptor, &declaration.name)
                         {
                             Ok(token) => token,
                             Err(error) => {
-                                assert!(
-                                    error.discriminant <= 10,
-                                    "unsupported BackendError discriminant"
-                                );
-                                if error.discriminant >= 9 {
-                                    panic!(
-                                        "original population fatal backend class: {}",
-                                        error.message
-                                    );
-                                }
                                 return Err(PopulationFailure {
                                     error,
                                     partial: Box::new(population),
                                 });
                             }
                         };
-                        match descriptor {
+                        let resource = match descriptor {
                             Descriptor::Image(desc) => RegistryResource::OwnedTexture(Texture {
                                 handle: token,
                                 desc,
@@ -440,12 +465,8 @@ pub fn populate_resources(
                                 handle: token,
                                 desc,
                             }),
-                        }
-                    };
-                    let token = match &resource {
-                        RegistryResource::OwnedTexture(texture) => texture.handle,
-                        RegistryResource::OwnedBuffer(buffer) => buffer.handle,
-                        _ => unreachable!(),
+                        };
+                        (resource, token)
                     };
                     backend.set_debug_name(token, descriptor, &declaration.name);
                     resource
@@ -472,10 +493,8 @@ pub fn populate_resources(
                 }),
             },
         };
-        assert!(
-            population.registry.backing_resources.len() < 65536,
-            "physical backing index exceeds u16"
-        );
+        // 物理槽数不超过逻辑资源数，而 `compile_graph` 已把资源数限制在 u16::MAX 以内。
+        debug_assert!(population.registry.backing_resources.len() < usize::from(u16::MAX));
         population.registry.resources[logical] = ResourceReuseInfo {
             backing_index: population.registry.backing_resources.len() as u16,
             reused: false,
@@ -494,24 +513,23 @@ pub struct Transition {
     pub from: u8,
     pub to: u8,
 }
-fn transition(registry: &Registry, logical: u32, from: u8, to: u8) -> Transition {
-    let (payload, _, _) = registry.resource(logical);
-    assert!(
-        matches!(
-            payload,
-            RegistryResource::OwnedTexture(_)
-                | RegistryResource::UnownedTexture(_)
-                | RegistryResource::OwnedBuffer(_)
-                | RegistryResource::UnownedBuffer(_)
-        ),
-        "barrier resource kind is unsupported"
-    );
-    Transition {
+/// 资源的访问转换；没有物理纹理/缓冲（如 usage 为 0 的 Create 资源被置为 `Empty`）时不发屏障，
+/// 执行器的资源映射校验会以 `ResourceUnavailable` 拒绝需要它的图。
+fn transition(registry: &Registry, logical: u32, from: u8, to: u8) -> Option<Transition> {
+    let (payload, _, _) = registry.resource(logical)?;
+    matches!(
+        payload,
+        RegistryResource::OwnedTexture(_)
+            | RegistryResource::UnownedTexture(_)
+            | RegistryResource::OwnedBuffer(_)
+            | RegistryResource::UnownedBuffer(_)
+    )
+    .then(|| Transition {
         resource: logical,
         physical: registry.resources[logical as usize].backing_index,
         from,
         to,
-    }
+    })
 }
 pub fn initial_transitions(
     info: &ResourceInfo,
@@ -525,9 +543,11 @@ pub fn initial_transitions(
         if first == NO_ACCESS {
             continue;
         }
-        let (_, initial_access, reused) = registry.resource(logical);
+        let Some((_, initial_access, reused)) = registry.resource(logical) else {
+            continue;
+        };
         if !reused {
-            transitions.push(transition(
+            transitions.extend(transition(
                 registry,
                 logical,
                 initial_access,
@@ -545,12 +565,15 @@ pub fn pre_pass_transitions(
 ) -> Vec<Transition> {
     let mut transitions = Vec::new();
     for current in &info.accesses[range] {
-        let (_, initial_access, reused) = registry.resource(current.resource_index);
+        let Some((_, initial_access, reused)) = registry.resource(current.resource_index) else {
+            continue;
+        };
         let from = if current.previous_access_index == NO_ACCESS {
             if !reused {
                 continue;
             }
-            assert_eq!(initial_access, 0, "reused first-access state must be zero");
+            // 复用的物理资源以"无访问"状态交接。
+            debug_assert_eq!(initial_access, 0, "复用资源的首访问状态必须为 0");
             0
         } else {
             let previous = &info.accesses[current.previous_access_index as usize];
@@ -569,7 +592,7 @@ pub fn pre_pass_transitions(
             }
             previous.access_code
         };
-        transitions.push(transition(
+        transitions.extend(transition(
             registry,
             current.resource_index,
             from,
@@ -586,19 +609,14 @@ pub fn export_transitions(
     graph
         .exports
         .iter()
-        // 只导出、从未被 pass 访问的 Create 资源没有生命周期事件，也就没有物理映射；
-        // 这里不发屏障，由执行器的资源映射校验以 `ResourceUnavailable` 拒绝，而不是越界 panic。
-        .filter(|export| registry.is_populated(export.resource_index))
-        .map(|export| {
-            let payload = registry.resource(export.resource_index).0;
-            let buffer = matches!(
-                payload,
-                RegistryResource::OwnedBuffer(_) | RegistryResource::UnownedBuffer(_)
-            );
-            assert_eq!(buffer, export.tag & 1 != 0, "export resource kind mismatch");
+        // 只导出、从未被 pass 访问的 Create 资源没有物理映射；这里不发屏障，
+        // 由执行器的资源映射校验以 `ResourceUnavailable` 拒绝。
+        .filter_map(|export| {
+            // 导出种类与资源描述一致由 `compile_graph` 的声明校验保证。
+            let (_, initial_access, _) = registry.resource(export.resource_index)?;
             let lifetime = info.lifetimes[export.resource_index as usize];
             let from = if lifetime.last_access_index == NO_ACCESS {
-                registry.resource(export.resource_index).1
+                initial_access
             } else {
                 info.accesses[lifetime.last_access_index as usize].access_code
             };
@@ -646,20 +664,64 @@ impl CompiledGraph {
         self.registry.into_exports()
     }
 }
+/// [`compile_graph`] 的失败：声明不合法（编译前拒绝，未分配任何资源），或资源分配失败（已归还）。
+#[derive(Debug, thiserror::Error)]
+pub enum CompileError {
+    #[error(transparent)]
+    Declaration(#[from] BuildError),
+    #[error(transparent)]
+    Population(#[from] PopulationFailure),
+}
+impl From<CompileError> for crate::Error {
+    fn from(error: CompileError) -> Self {
+        match error {
+            CompileError::Declaration(error) => error.into(),
+            CompileError::Population(failure) => {
+                let BackendFailure { resource, error } = failure.error;
+                BuildError::resource(resource, error).into()
+            }
+        }
+    }
+}
+
+/// 编译前校验手工构造或经 `RenderGraph` 构造的声明：打包域上限、句柄越界与导出种类。
+/// 通过后，编译与执行里对这些下标的直接索引都是内部不变量。
+pub fn validate_declaration(graph: &GraphDeclaration) -> Result<(), BuildError> {
+    let resources = graph.resources.len();
+    if resources > usize::from(u16::MAX) {
+        return Err(BuildError::ResourceLimit);
+    }
+    if graph.passes.len() > MAX_PASSES {
+        return Err(BuildError::PassLimit);
+    }
+    let mut accesses = 0usize;
+    for access in graph.passes.iter().flat_map(|pass| &pass.accesses) {
+        if access.resource_index as usize >= resources {
+            return Err(BuildError::InvalidHandle(access.resource_index));
+        }
+        accesses += 1;
+    }
+    if accesses >= NO_ACCESS as usize {
+        return Err(BuildError::AccessLimit);
+    }
+    for export in &graph.exports {
+        let Some(resource) = graph.resources.get(export.resource_index as usize) else {
+            return Err(BuildError::InvalidHandle(export.resource_index));
+        };
+        if export.tag != resource.descriptor.kind_code() {
+            return Err(BuildError::ExportKindMismatch(export.resource_index));
+        }
+    }
+    Ok(())
+}
+
 pub fn compile_graph(
     graph: GraphDeclaration,
     pool: &mut Pool,
     backend: &mut impl ResourceBackend,
     dependency: &mut impl AccessDependency,
-) -> Result<CompiledGraph, PopulationFailure> {
-    assert!(
-        graph.resources.len() <= 65536,
-        "resource count exceeds lifetime packing domain"
-    );
-    assert!(
-        graph.passes.len() <= MAX_PASSES,
-        "pass count exceeds lifetime packing domain"
-    );
+) -> Result<CompiledGraph, CompileError> {
+    validate_declaration(&graph)?;
     let origins = graph
         .resources
         .iter()
@@ -685,7 +747,7 @@ pub fn compile_graph(
                 pool,
                 backend,
             );
-            return Err(failure);
+            return Err(failure.into());
         }
     };
     let registry = population.registry;

@@ -305,11 +305,19 @@ pub struct LayoutPlan {
     pub bindings: Vec<LayoutBinding>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Error {
+/// 描述符集布局规划失败。
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+pub enum LayoutError {
+    #[error("描述符绑定的数量为 0")]
     ZeroDescriptorCount,
+    #[error("未知的反射描述符类型标签 {0}")]
     UnknownReflectionTag(u8),
-    Vulkan(i32),
+}
+
+impl From<LayoutError> for crate::Error {
+    fn from(error: LayoutError) -> Self {
+        crate::Error::invalid_usage_with("描述符集布局无效", error)
+    }
 }
 
 pub fn runtime_descriptor_count(max_descriptor_set_update_after_bind_sampled_images: u32) -> u32 {
@@ -323,7 +331,7 @@ pub fn descriptor_set_layout(
     first_binding: u64,
     stage_flags: vk::ShaderStageFlags,
     device_limit: u32,
-) -> Result<LayoutPlan, Error> {
+) -> Result<LayoutPlan, LayoutError> {
     let mut result = LayoutPlan {
         flags: 0,
         binding_flags: vec![0; bindings.len()],
@@ -336,7 +344,7 @@ pub fn descriptor_set_layout(
             binding.count
         };
         if count == 0 {
-            return Err(Error::ZeroDescriptorCount);
+            return Err(LayoutError::ZeroDescriptorCount);
         }
         if count != 1 {
             result.binding_flags[index] = vk::DescriptorBindingFlags::PARTIALLY_BOUND.as_raw();
@@ -367,7 +375,7 @@ pub fn descriptor_set_layout(
                 vk::DescriptorType::SAMPLED_IMAGE
             }
             5 => vk::DescriptorType::SAMPLER,
-            other => return Err(Error::UnknownReflectionTag(other)),
+            other => return Err(LayoutError::UnknownReflectionTag(other)),
         };
         result.bindings.push(LayoutBinding {
             binding: first_binding.wrapping_add(index as u64) as u32,
@@ -536,8 +544,8 @@ struct DescriptorPoolLease<P> {
 }
 impl<P> Drop for DescriptorPoolLease<P> {
     fn drop(&mut self) {
-        if let Some(source) = self.source.upgrade() {
-            source.returned.lock().push(self.pool.take().unwrap());
+        if let (Some(source), Some(pool)) = (self.source.upgrade(), self.pool.take()) {
+            source.returned.lock().push(pool);
         }
     }
 }
@@ -606,19 +614,29 @@ impl<P> DescriptorPoolQueue<P> {
                         source: Arc::downgrade(&self.source),
                     }));
                 }
-                if self.pools.is_empty() {
-                    self.pools.push(Arc::new(DescriptorPoolLease {
+            }
+            let lease = match self.pools.last() {
+                Some(lease) => Arc::clone(lease),
+                None => {
+                    let lease = Arc::new(DescriptorPoolLease {
                         pool: Some(create()?),
                         source: Arc::downgrade(&self.source),
-                    }));
+                    });
+                    self.pools.push(Arc::clone(&lease));
+                    lease
                 }
-            }
-            let lease = self.pools.last().unwrap();
-            match allocate(lease.pool.as_ref().unwrap()) {
-                Ok(set) => return Ok((set, lease.clone())),
+            };
+            // `pool` 只在 Drop 时取走；栈内的租约必然持有池。
+            let Some(pool) = lease.pool.as_ref() else {
+                self.pools.pop();
+                continue;
+            };
+            match allocate(pool) {
+                Ok(set) => return Ok((set, lease)),
                 Err(vk::Result::ERROR_OUT_OF_POOL_MEMORY | vk::Result::ERROR_FRAGMENTED_POOL) => {
                     // 先移出栈，再由调用方保留；不可当场 reset 仍被 GPU 使用的池。
-                    retired.push(self.pools.pop().unwrap());
+                    self.pools.pop();
+                    retired.push(lease);
                 }
                 Err(error) => return Err(error),
             }

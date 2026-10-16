@@ -23,9 +23,8 @@ impl RenderGraphState {
         self.pool.clear();
         self.temporal.clear();
     }
-    /// 原 `RenderGraphState::compile<Export, UD, F>`（0x140161cd0 / 0x1401647b0 / 0x140166510）的入口形态：
     /// 在新图上调用构图闭包（返回 `Export`，如 `ResourceExportHandle<Texture>` 或 `()`），
-    /// 再按原顺序 导出 temporal → build → population → 校验导出。失败时 `Export` 随闭包结果一并丢弃。
+    /// 再依次 导出 temporal → build → population → 校验导出。失败时 `Export` 随闭包结果一并丢弃。
     pub fn compile<Export>(
         &mut self,
         backend: &mut impl ResourceBackend,
@@ -36,34 +35,6 @@ impl RenderGraphState {
         let export = build(&mut graph);
         let frame = self.compile_frame(graph, backend, dependency)?;
         Ok((frame, export))
-    }
-    /// 0x1401647b0：加载图实例 `compile<ResourceExportHandle<Texture>, PassResources, compile_loading_screen_render_graph::closure>`。
-    /// 与 [`Self::compile`] 同一条链；单独命名只为对应原单态实例（`pass_entries::CompileInstance::LoadingScreen`）。
-    pub fn compile_loading_graph<Export>(
-        &mut self,
-        backend: &mut impl ResourceBackend,
-        dependency: &mut impl AccessDependency,
-        build: impl FnOnce(&mut RenderGraph) -> Export,
-    ) -> Result<(CompiledFrame, Export), FrameCompileError> {
-        self.compile(backend, dependency, build)
-    }
-    /// 0x140161cd0：世界图实例（闭包内是 `render_world` 的 59 个 pass 调用点，见 `pass_entries`）。
-    pub fn compile_world_graph<Export>(
-        &mut self,
-        backend: &mut impl ResourceBackend,
-        dependency: &mut impl AccessDependency,
-        build: impl FnOnce(&mut RenderGraph) -> Export,
-    ) -> Result<(CompiledFrame, Export), FrameCompileError> {
-        self.compile(backend, dependency, build)
-    }
-    /// 0x140166510：展示图实例，`Export = ()`，由 `GraphExecutionRecorder::execute` 内部调用。
-    pub fn compile_presentation_graph(
-        &mut self,
-        backend: &mut impl ResourceBackend,
-        dependency: &mut impl AccessDependency,
-        build: impl FnOnce(&mut RenderGraph),
-    ) -> Result<CompiledFrame, FrameCompileError> {
-        self.compile(backend, dependency, build).map(|(frame, ())| frame)
     }
     /// 导出发生在 population 之前；后续失败不会回滚成旧的 raw 历史。
     pub fn compile_frame(
@@ -78,7 +49,7 @@ impl RenderGraphState {
         let built = graph.build();
         let (declaration, callbacks, retire) = built.into_parts();
         let compiled = graph::compile_graph(declaration, &mut self.pool, backend, dependency)
-            .map_err(FrameCompileError::Population)?;
+            .map_err(FrameCompileError::Compile)?;
         self.temporal
             .validate_compiled_exports(&compiled)
             .map_err(FrameCompileError::Temporal)?;
@@ -96,13 +67,23 @@ pub struct CompiledFrame {
     pub retire: Vec<graph::RetireCallback>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum FrameCompileError {
-    Temporal(super::temporal::TemporalError),
-    Population(graph::PopulationFailure),
+    #[error(transparent)]
+    Temporal(#[from] super::temporal::TemporalError),
+    #[error(transparent)]
+    Compile(#[from] graph::CompileError),
+}
+impl From<FrameCompileError> for crate::Error {
+    fn from(error: FrameCompileError) -> Self {
+        match error {
+            FrameCompileError::Temporal(error) => error.into(),
+            FrameCompileError::Compile(error) => error.into(),
+        }
+    }
 }
 
-/// 原 compile 前段的 Option 所有权合同，不恢复标准容器或 panic ABI。
+/// compile 前段的 Option 所有权合同：graph 与 temporal 状态分别取出、编译后归还。
 pub struct PersistentCompileState {
     pub graph: Option<RenderGraph>,
     pub temporal: Option<TemporalRenderGraphState>,
@@ -116,7 +97,7 @@ pub enum TakeFailure {
     TemporalMissing { detached_graph: Box<RenderGraph> },
 }
 impl PersistentCompileState {
-    /// 原 0x140166510..0x140166617：先取 graph，再检查 temporal；失败不回滚。
+    /// 先取 graph，再检查 temporal；temporal 缺失时把已取出的 graph 交还给调用方。
     pub fn take_for_compile(&mut self) -> Result<DetachedCompileState, TakeFailure> {
         let graph = self.graph.take().ok_or(TakeFailure::GraphMissing)?;
         let Some(temporal) = self.temporal.take() else {
@@ -126,7 +107,7 @@ impl PersistentCompileState {
         };
         Ok(DetachedCompileState { graph, temporal })
     }
-    /// 原 0x140166d2a..0x140166e19：先安装导出状态，再 drop 旧状态。
+    /// 先安装导出状态，再 drop 旧状态。
     pub fn restore_temporal(&mut self, exported: TemporalRenderGraphState) {
         let previous = self.temporal.replace(exported);
         drop(previous);
@@ -137,8 +118,9 @@ impl PersistentCompileState {
         exported: TemporalRenderGraphState,
         resources: &mut impl super::temporal::TemporalResourceOwner,
     ) {
-        if let Some(mut previous) = self.temporal.replace(exported) {
-            previous.release_superseded(self.temporal.as_ref().unwrap(), resources);
+        let previous = self.temporal.replace(exported);
+        if let (Some(mut previous), Some(current)) = (previous, self.temporal.as_ref()) {
+            previous.release_superseded(current, resources);
         }
     }
 }

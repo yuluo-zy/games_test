@@ -407,7 +407,7 @@ impl PhysicalDevice {
     }
     pub fn with_presentation_support(&self, surface: vk::SurfaceKHR) -> Result<Vec<u32>> {
         if surface == vk::SurfaceKHR::null() {
-            return Err(super::error::Error::Invalid("呈现查询需要有效surface"));
+            return Err(super::error::Error::invalid_usage("呈现查询需要有效surface"));
         }
         let loader =
             ash::khr::surface::Instance::new(&self.instance.entry, &self.instance.instance);
@@ -531,11 +531,11 @@ pub fn enumerate_vk_data<T: Clone>(
 ) -> Result<Vec<T>> {
     let mut count = 0;
     if fill(&mut count, &mut vec![]) != vk::Result::SUCCESS {
-        return Err(super::error::Error::Invalid("枚举数量查询失败"));
+        return Err(super::error::Error::invalid_usage("枚举数量查询失败"));
     }
     let mut output = Vec::with_capacity(count as usize);
     if fill(&mut count, &mut output) != vk::Result::SUCCESS {
-        return Err(super::error::Error::Invalid("枚举数据查询失败"));
+        return Err(super::error::Error::invalid_usage("枚举数据查询失败"));
     }
     output.truncate(count as usize);
     Ok(output)

@@ -45,12 +45,16 @@ fn device_creates_all_thirteen_samplers_and_looks_up_by_name() {
         return;
     }
     for (i, name) in POOL_ORDER.iter().enumerate() {
-        let by_name = g.get_built_in_sampler_by_name(name);
+        let by_name = g.get_built_in_sampler_by_name(name).unwrap();
         let by_index = g.get_built_in_sampler(i).unwrap();
         assert!(Arc::ptr_eq(&by_name, &by_index));
     }
     assert!(g.get_built_in_sampler(13).is_none());
     assert!(g.try_get_built_in_sampler_by_name("nope").is_none());
+    assert_eq!(
+        g.get_built_in_sampler_by_name("nope").unwrap_err().kind(),
+        rhapsody::ErrorKind::InvalidUsage
+    );
 }
 
 #[test]

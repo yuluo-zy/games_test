@@ -80,7 +80,7 @@ fn setup_take_wrong_state_still_emits_barrier_then_errors() {
     let barrier = Cell::new(false);
     let err = slot.take_for_submit(|_| barrier.set(true), |_| 0).unwrap_err();
     assert!(barrier.get());
-    assert_eq!(err, SetupTakeError::Unreachable { state: 2 });
+    assert_eq!(err, SetupTakeError::InvalidState { state: 2 });
     assert_eq!(slot.raw_state(), SETUP_SLOT_NONE);
 }
 
@@ -95,29 +95,30 @@ fn setup_take_end_failure_is_reported() {
 #[test]
 fn in_order_retire_parks_and_drains_in_order() {
     let mut r = InOrderRetire::new();
-    assert_eq!(r.retire(1), vec![1]);
-    assert!(r.retire(4).is_empty(), "4 > next+1：暂存");
-    assert!(r.retire(3).is_empty());
+    assert_eq!(r.retire(1).unwrap(), vec![1]);
+    assert!(r.retire(4).unwrap().is_empty(), "4 > next+1：暂存");
+    assert!(r.retire(3).unwrap().is_empty());
     assert_eq!(r.parked(), 3.min(r.parked()));
-    assert_eq!(r.retire(2), vec![2, 3, 4], "补上缺口后按序一次性排出");
+    assert_eq!(r.retire(2).unwrap(), vec![2, 3, 4], "补上缺口后按序一次性排出");
     assert_eq!(r.next(), 4);
     assert_eq!(r.parked(), 0);
 }
 
 #[test]
-#[should_panic]
 fn in_order_retire_rejects_already_retired() {
     let mut r = InOrderRetire::new();
-    r.retire(1);
-    r.retire(1);
+    r.retire(1).unwrap();
+    assert_eq!(r.retire(1).unwrap_err().kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert_eq!(r.next(), 1, "失败不改变状态");
 }
 
 #[test]
-#[should_panic]
 fn in_order_retire_rejects_duplicate_parked_slot() {
     let mut r = InOrderRetire::new();
-    r.retire(3);
-    r.retire(3);
+    r.retire(3).unwrap();
+    r.retire(4).unwrap();
+    assert_eq!(r.retire(3).unwrap_err().kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert_eq!(r.parked(), 3);
 }
 
 #[test]
@@ -135,7 +136,8 @@ fn queue_submit_with_setup_orders_setup_first_and_assigns_monotonic_timeline() {
             }
             (0, true)
         },
-    );
+    )
+    .unwrap();
     assert!(out.panic.is_none());
     assert!(out.setup_submitted);
     // 先 setup（值 10），再 current（值 11、12）；每条命令各带一个队列时间线信号。
@@ -155,9 +157,9 @@ fn queue_submit_with_setup_orders_setup_first_and_assigns_monotonic_timeline() {
 fn engine_queue_submit_updates_before_allocating_and_reclaims_tail_in_order() {
     let mut e = engine();
     // 第一次提交：3 条命令，timeline 10..12。
-    e.queue_submit(PRIMARY, None, input(vec![cmd(2, 1), cmd(2, 2), cmd(2, 3)]), |_| 0, |_, _| (0, true));
+    e.queue_submit(PRIMARY, None, input(vec![cmd(2, 1), cmd(2, 2), cmd(2, 3)]), |_| 0, |_, _| (0, true)).unwrap();
     // 第二次提交前 GPU 已完成到 11：update 在分配前弹出 10、11，尾部回收出队命令 1、2。
-    let (out, rec) = e.queue_submit(PRIMARY, None, input(vec![cmd(2, 4)]), |_| 11, |_, _| (0, true));
+    let (out, rec) = e.queue_submit(PRIMARY, None, input(vec![cmd(2, 4)]), |_| 11, |_, _| (0, true)).unwrap();
     assert_eq!(out.receipt, Some((PRIMARY, 13)));
     assert_eq!(rec.handles.len(), 2);
     assert_eq!(rec.retired_sequences, vec![1, 2]);
@@ -166,14 +168,14 @@ fn engine_queue_submit_updates_before_allocating_and_reclaims_tail_in_order() {
     assert_eq!(out.in_flight, Some(2));
     // 之后完成到 13：回收 3、4，序号连续。
     e.update_pending_submissions(PRIMARY, 13);
-    let rec = e.reclaim_command_buffer_resources(PRIMARY);
+    let rec = e.reclaim_command_buffer_resources(PRIMARY).unwrap();
     assert_eq!(rec.retired_sequences, vec![3, 4]);
 }
 
 #[test]
 fn queue_submit_failure_does_not_reclaim_and_keeps_registered_state() {
     let mut e = engine();
-    let (out, rec) = e.queue_submit(PRIMARY, None, input(vec![cmd(2, 1)]), |_| 0, |_, _| (-4, false));
+    let (out, rec) = e.queue_submit(PRIMARY, None, input(vec![cmd(2, 1)]), |_| 0, |_, _| (-4, false)).unwrap();
     assert_eq!(out.panic, Some("backend-error"));
     assert!(rec.handles.is_empty());
     // 注册与状态 3 写入发生在后端调用前：失败不回滚。

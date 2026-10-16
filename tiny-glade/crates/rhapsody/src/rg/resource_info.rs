@@ -14,8 +14,10 @@ use crate::rg::resource_rules::{
 pub struct PassIndex(pub u32);
 
 impl From<usize> for PassIndex {
+    /// pass 数由 `graph::validate_declaration` 限制在 `MAX_PASSES` 内。
     fn from(value: usize) -> Self {
-        Self(u32::try_from(value).expect("pass index exceeds u32"))
+        debug_assert!(u32::try_from(value).is_ok(), "pass 下标超出 u32");
+        Self(value as u32)
     }
 }
 
@@ -23,8 +25,10 @@ impl From<usize> for PassIndex {
 pub struct ResourceAccessIndex(pub u32);
 
 impl From<usize> for ResourceAccessIndex {
+    /// 访问总数由 `graph::validate_declaration` 限制在 `NO_ACCESS` 以下。
     fn from(value: usize) -> Self {
-        Self(u32::try_from(value).expect("access index exceeds u32"))
+        debug_assert!(value < NO_ACCESS as usize, "访问下标超出 u32");
+        Self(value as u32)
     }
 }
 
@@ -88,9 +92,10 @@ impl OriginKind {
             Self::Tag0 {
                 descriptor_code: 7, ..
             } => 1,
+            // 描述符码 8 不对应纹理或缓冲：不并入任何 usage（与 `calculate` 的初值分支一致）。
             Self::Tag0 {
                 descriptor_code: 8, ..
-            } => panic!("unsupported descriptor type"),
+            } => 2,
             Self::Tag0 { .. } => 0,
             Self::Tag1 { type_code } | Self::Tag2 { type_code } => type_code,
         }
@@ -205,16 +210,22 @@ impl ResourceInfo {
     ) {
         for export in exports {
             let access_mask = dependency_access_mask(export.access_code);
-            let resource_index =
-                u16::try_from(export.resource_index).expect("export index exceeds u16");
+            // 越界导出由 `graph::validate_declaration` 在编译前拒绝；这里跳过而不是越界。
+            let Ok(resource_index) = u16::try_from(export.resource_index) else {
+                continue;
+            };
+            let index = usize::from(resource_index);
+            if index >= self.image_usage_flags.len() {
+                continue;
+            }
             self.exported_indices.insert(resource_index);
             if access_mask != 0 {
                 if export.tag & 1 == 0 {
-                    let usage = &mut self.image_usage_flags[usize::from(resource_index)];
-                    *usage |= image_access_mask_to_usage_flags(access_mask).as_raw();
+                    self.image_usage_flags[index] |=
+                        image_access_mask_to_usage_flags(access_mask).as_raw();
                 } else {
-                    let usage = &mut self.buffer_usage_flags[usize::from(resource_index)];
-                    *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
+                    self.buffer_usage_flags[index] |=
+                        buffer_access_mask_to_usage_flags(access_mask).as_raw();
                 }
             }
         }

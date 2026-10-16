@@ -73,7 +73,9 @@ pub fn link_up_next_access_chains(accesses: &mut [ResourceAccessRecord]) {
     for current in 0..accesses.len() {
         let previous = accesses[current].previous_access_index;
         if previous != NO_ACCESS {
-            let current = u32::try_from(current).expect("resource access index exceeds u32");
+            // 访问总数由 `graph::validate_declaration` 限制在 `NO_ACCESS` 以下。
+            debug_assert!(current < NO_ACCESS as usize, "访问下标超出 u32");
+            let current = current as u32;
             accesses[previous as usize].next_access_index = current;
         }
     }

@@ -27,14 +27,14 @@ fn graphics_device_owns_the_destruction_bucket_table() {
     // 设备内的 ManagedResources 与设备共享同一张表：经任一侧登记，另一侧可见。
     device.resources.begin_command_bucket(7).unwrap();
     assert!(device.disposal().contains(7));
-    device.disposal().insert(8, Default::default());
+    device.disposal().insert(8, Default::default()).unwrap();
     assert_eq!(device.resources.begin_command_bucket(8), Err(rhapsody::raw::managed::tracking::Failure::DuplicateBucket));
     // 真实签名 take_out_dropped_waste(&ManagedResources, &GraphicsDevice)：无待排水项时为 0。
     assert_eq!(device.resources.take_out_dropped_waste_on(&device), 0);
     assert_eq!(device.take_out_dropped_waste(), 0);
     // 清理，避免 Drop 里 forget 的动作被误认为泄漏（桶为空）。
-    assert!(device.disposal().remove(7).is_empty());
-    assert!(device.disposal().remove(8).is_empty());
+    assert!(device.disposal().remove(7).unwrap().is_empty());
+    assert!(device.disposal().remove(8).unwrap().is_empty());
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn dropped_resource_goes_to_the_device_bucket_and_retires_with_the_sequence() {
         .unwrap();
     assert_eq!(device.resources.pending_destroy(), 1);
     assert_eq!(freed.load(std::sync::atomic::Ordering::SeqCst), 0);
-    assert_eq!(device.resources.retire_in_order(1), 1);
+    assert_eq!(device.resources.retire_in_order(1), Ok(1));
     assert_eq!(freed.load(std::sync::atomic::Ordering::SeqCst), 1);
     assert!(!device.disposal().contains(1));
 }
@@ -101,18 +101,14 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
 }
 
 #[test]
-fn track_panics_on_non_recording_state_but_try_track_reports_err() {
+fn track_rejects_non_recording_state_without_side_effects() {
     let store = ResourceManager::new();
     let handle = store.allocate(1_u8);
     let bad = CommandState { tag: 3, sequence: 4 };
-    assert!(handle.try_track(bad).is_err());
-    let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle.track(bad)));
-    let message = *caught
-        .expect_err("原版 track 在状态非 Recording 时 panic")
-        .downcast::<String>()
-        .unwrap();
-    assert!(message.starts_with("Can't use a resource for a command buffer in state "), "{message}");
+    let err = handle.track(bad).unwrap_err();
+    assert_eq!(err, rhapsody::raw::managed::tracking::Failure::InvalidCommandState);
+    assert_eq!(rhapsody::Error::from(err).kind(), rhapsody::ErrorKind::InvalidUsage);
     assert_eq!(handle.tracked_sequence(), 0);
-    handle.track(CommandState { tag: 1, sequence: 4 });
+    handle.track(CommandState { tag: 1, sequence: 4 }).unwrap();
     assert_eq!(handle.tracked_sequence(), 4);
 }

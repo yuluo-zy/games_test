@@ -78,7 +78,7 @@ impl SubAllocator {
         })
         .map_err(|error| {
             log::error!("gpu-allocator 初始化失败: {error}");
-            Error::Unsupported("gpu-allocator 初始化失败")
+            Error::unsupported("gpu-allocator 初始化失败")
         })?;
         log::info!("启用显存子分配（gpu-allocator）");
         let properties = unsafe { instance.get_physical_device_properties(physical) };
@@ -91,7 +91,7 @@ impl SubAllocator {
         let mut guard = self.allocator.lock();
         let allocator = guard
             .as_mut()
-            .ok_or(Error::Invalid("子分配器已随设备销毁"))?;
+            .ok_or(Error::invalid_usage("子分配器已随设备销毁"))?;
         allocator.allocate(desc).map_err(|error| {
             log::warn!(
                 "子分配失败: size={} alignment={} location={:?}: {error}",
@@ -179,12 +179,12 @@ impl MemoryBlock {
         let sub = device
             .suballocator
             .as_ref()
-            .ok_or(Error::Invalid("设备未启用子分配"))?;
+            .ok_or(Error::invalid_usage("设备未启用子分配"))?;
         if requirements.size == 0
             || (flags.contains(vk::MemoryAllocateFlags::DEVICE_ADDRESS)
                 && !device.capabilities.buffer_device_address)
         {
-            return Err(Error::Invalid("内存大小或设备地址分配能力无效"));
+            return Err(Error::invalid_usage("内存大小或设备地址分配能力无效"));
         }
         let location = location_from_flags(required, preferred);
         let mut adjusted = requirements;
@@ -271,7 +271,7 @@ impl AllocationBackend for SubAllocationBackend {
     }
     fn free(&mut self, allocation: MemoryBlock) -> Result<()> {
         if !Arc::ptr_eq(&self.device, &allocation.device) {
-            return Err(Error::Invalid("不能向其他设备释放内存"));
+            return Err(Error::invalid_usage("不能向其他设备释放内存"));
         }
         drop(allocation);
         Ok(())

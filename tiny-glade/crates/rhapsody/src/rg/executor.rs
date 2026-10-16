@@ -49,32 +49,80 @@ struct ChunkResult {
     owners: Vec<crate::raw::binding::ResourceOwner>,
 }
 
-#[derive(Debug)]
+/// 图执行失败。转换为 [`crate::Error`] 时，携带真实 Vulkan 失败的变体（命令分配/开始/结束、
+/// 队列提交、资源创建）保留其类别（设备丢失、显存不足……），其余按用法错误归类。
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// 并行录制的分块或规划无效，或后端未提供并行视图。
+    #[error("并行录制分块无效")]
     ChunkPlan,
-    Begin(sequence::BeginFailure),
-    Lifecycle(sequence::Failure),
-    Record(record::Outcome),
-    MissingCommand(u64),
-    EmptyCommands,
-    InvalidLastState,
-    EndFailed,
-    Queue(submit::Outcome),
-    Compile(crate::rg::graph::PopulationFailure),
-    ResourceUnavailable(usize),
-    CallbackCount,
-    ManagedResourceUnresolved(usize),
-    CompletionAfterQueueFailure,
-    QueueUnavailable(sequence::Queue),
-    InvalidSynchronization,
-    UnsupportedQueueDomainSwitch,
-    ResourceCountMismatch {
-        expected: usize,
-        actual: usize,
+    /// 命令开始失败；`cause` 是后端（Vulkan）给出的原因，`None` 表示生命周期状态错误。
+    #[error("命令缓冲开始失败：{:?}", .failure.reason)]
+    Begin {
+        failure: sequence::BeginFailure,
+        #[source]
+        cause: Option<crate::Error>,
     },
+    #[error("命令生命周期状态错误：{0:?}")]
+    Lifecycle(sequence::Failure),
+    /// 后端命令缓冲操作（分配、复位、结束）失败。
+    #[error("命令缓冲操作失败：{0}")]
+    Backend(#[source] crate::Error),
+    /// pass 回调返回失败，或屏障引用了无效的资源/访问码。
+    #[error("pass 录制失败（已录制 {} 个 pass）", .0.consumed_passes)]
+    Record(record::Outcome),
+    #[error("命令 {0:#x} 不属于本次执行")]
+    MissingCommand(u64),
+    #[error("批次没有命令")]
+    EmptyCommands,
+    #[error("批次末条命令不在录制状态")]
+    InvalidLastState,
+    #[error("结束命令缓冲失败")]
+    EndFailed,
+    /// 队列提交失败；`result` 是 `vkQueueSubmit` 的返回值（提交前的契约检查失败时为 `None`）。
+    #[error("队列提交失败：{}", .outcome.panic.unwrap_or("无回执"))]
+    Queue {
+        outcome: Box<submit::Outcome>,
+        result: Option<vk::Result>,
+    },
+    #[error(transparent)]
+    Compile(#[from] crate::rg::graph::CompileError),
+    #[error("资源 {0} 没有可用的物理资源")]
+    ResourceUnavailable(usize),
+    #[error("回调数与 pass 数不一致")]
+    CallbackCount,
+    #[error("资源 {0} 无法解析为托管对象")]
+    ManagedResourceUnresolved(usize),
+    #[error("队列提交失败后不能再推进完成")]
+    CompletionAfterQueueFailure,
+    #[error("队列 {0:?} 不可用")]
+    QueueUnavailable(sequence::Queue),
+    #[error("批次同步计划无效")]
+    InvalidSynchronization,
+    #[error("同一执行链不能切换队列域")]
+    UnsupportedQueueDomainSwitch,
+    #[error("资源数不一致：期望 {expected}，实际 {actual}")]
+    ResourceCountMismatch { expected: usize, actual: usize },
     /// 调用方对编译结果的校验失败（如 temporal 导出映射）；发生在任何命令开始之前。
-    Validation(String),
+    #[error("编译结果校验失败：{0}")]
+    Validation(#[source] crate::Error),
+}
+impl From<Error> for crate::Error {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::Begin {
+                cause: Some(cause), ..
+            }
+            | Error::Backend(cause)
+            | Error::Validation(cause) => cause,
+            Error::Queue {
+                result: Some(result),
+                ..
+            } => result.into(),
+            Error::Compile(error) => error.into(),
+            other => crate::Error::invalid_usage_with("渲染图执行失败", other),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -199,13 +247,14 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         lifecycle: &mut sequence::SequenceRuntime,
     ) -> Option<sequence::ResourceHandle>;
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
-    fn command_handle(&mut self) -> Result<u64, sequence::Failure>;
+    fn command_handle(&mut self) -> crate::Result<u64>;
     /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块来自不同命令池。
-    fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, sequence::Failure> {
+    fn chunk_command_handle(&mut self, _chunk: usize) -> crate::Result<u64> {
         self.command_handle()
     }
-    fn begin_command(&mut self, handle: u64) -> Result<(), sequence::Failure>;
-    fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
+    fn begin_command(&mut self, handle: u64) -> crate::Result<()>;
+    /// 先刷出挂起的屏障，再结束命令缓冲。
+    fn end_command(&mut self, handle: vk::CommandBuffer) -> crate::Result<()>;
     /// CPU 后端可只记录投影；实际后端必须发出 Vulkan 屏障。
     fn transition(&mut self, _command: u64, _token: u64, _from: u8, _to: u8) -> bool {
         true
@@ -260,6 +309,29 @@ fn access(record: &crate::rg::graph::ResourceAccessRecord, write: bool) -> crate
     }
 }
 
+/// 逻辑资源当前映射的物理 token；没有物理资源（裁剪或 `Empty`）时为 `None`。
+fn physical_token(compiled: &crate::rg::graph::CompiledGraph, resource: usize) -> Option<u64> {
+    let backing = compiled.registry.resources.get(resource)?.backing_index;
+    crate::rg::graph::payload_projection(
+        compiled
+            .registry
+            .backing_resources
+            .get(usize::from(backing))?,
+    )
+    .1
+}
+
+/// 把后端 `end_command` 的结果折成录制器边界需要的 bool，并保留首个错误。
+fn end_ok(result: crate::Result<()>, first_error: &mut Option<crate::Error>) -> bool {
+    match result {
+        Ok(()) => true,
+        Err(error) => {
+            first_error.get_or_insert(error);
+            false
+        }
+    }
+}
+
 impl ExecutionChain {
     /// 候选公开入口只从图声明生成编译和录制状态；原游戏构图闭包及完整原链 oracle 尚未恢复。
     pub fn execute_graph(
@@ -298,7 +370,7 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let result =
             self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
@@ -314,7 +386,7 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let mut stats = ExecutionStats::default();
         if callbacks.len() != graph.passes.len() {
@@ -338,8 +410,7 @@ impl ExecutionChain {
         self.graph_queue_domain = Some(queue);
         let compile_start = std::time::Instant::now();
         // population 失败时 compile_graph 已归还本次取出/新建的资源。
-        let mut compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)
-            .map_err(Error::Compile)?;
+        let mut compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
         let existing = self
             .command_snapshots
@@ -370,7 +441,7 @@ impl ExecutionChain {
             }),
             Err(error) => {
                 // 队列提交失败时设备侧已登记命令，状态不确定：不放弃命令、不归还资源，交给停态与 idle 清理。
-                if !matches!(error, Error::Queue(_)) {
+                if !matches!(error, Error::Queue { .. }) {
                     self.abandon_unsubmitted(&error, &existing, backend);
                     // 已有批次提交时 GPU 可能仍在使用这些资源，不能立刻放回资源池。
                     if receipts.is_empty() {
@@ -404,7 +475,7 @@ impl ExecutionChain {
         for handle in &handles {
             self.command_snapshots.remove(handle);
         }
-        if let Error::Begin(failure) = error
+        if let Error::Begin { failure, .. } = error
             && !handles.contains(&failure.command.handle())
         {
             handles.push(failure.command.handle());
@@ -522,7 +593,7 @@ impl ExecutionChain {
         if compiled.snapshot.batches.is_empty() {
             return Ok((resources, vec![]));
         }
-        let first_handle = backend.command_handle().map_err(Error::Lifecycle)?;
+        let first_handle = backend.command_handle().map_err(Error::Backend)?;
         let first = self.begin(
             first_handle,
             family,
@@ -597,12 +668,13 @@ impl ExecutionChain {
                 events.extend(outcome.1.events);
                 outcome.0
             } else {
-                let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+                let handle = backend.command_handle().map_err(Error::Backend)?;
                 let new = self.begin(handle, family, queue, backend.begin_command(handle))?;
                 backend.command_started(&new).map_err(Error::Lifecycle)?;
                 let start = batch.pass_range.start;
                 let owners = std::cell::RefCell::new(Vec::new());
                 let mut durations = Vec::new();
+                let mut end_error = None;
                 if let Some(resources) = &managed {
                     owners
                         .borrow_mut()
@@ -636,28 +708,24 @@ impl ExecutionChain {
                             ok
                         }
                         record::RecordAction::End(command) => {
-                            backend.end_command(vk::CommandBuffer::from_raw(command))
+                            end_ok(backend.end_command(vk::CommandBuffer::from_raw(command)), &mut end_error)
                         }
                         record::RecordAction::Transition {
                             command,
                             resource,
                             from,
                             to,
-                        } => {
-                            let backing = compiled.registry.resources[resource].backing_index;
-                            let token = crate::rg::graph::payload_projection(
-                                &compiled.registry.backing_resources[backing as usize],
-                            )
-                            .1
-                            .unwrap();
-                            backend.transition(command, token, from, to)
-                        }
+                        } => physical_token(compiled, resource)
+                            .is_some_and(|token| backend.transition(command, token, from, to)),
                     },
                 );
                 if !backend.retain_command_owners(handle, owners.into_inner()) {
                     return Err(Error::MissingCommand(handle));
                 }
                 self.pgo.current.extend(durations);
+                if let Some(error) = end_error {
+                    return Err(Error::Backend(error));
+                }
                 let outcome = outcome?;
                 stats.count_barriers(&outcome.events);
                 events.extend(outcome.events);
@@ -683,11 +751,13 @@ impl ExecutionChain {
                 .map(|c| c.handle)
                 .ok_or(Error::EmptyCommands)?;
             let submit_start = std::time::Instant::now();
-            let end_ok = backend.end_command(vk::CommandBuffer::from_raw(ended));
+            backend
+                .end_command(vk::CommandBuffer::from_raw(ended))
+                .map_err(Error::Backend)?;
             let (receipt, _) = self.submit_recorded_with_sync(
                 &mut recorder,
                 synchronization,
-                |_| end_ok,
+                |_| true,
                 |queue, prepared| backend.submit(queue, prepared),
             )?;
             stats.submit_ns += submit_start.elapsed().as_nanos() as u64;
@@ -696,7 +766,7 @@ impl ExecutionChain {
                 return Err(Error::ManagedResourceUnresolved(usize::MAX));
             }
             if !batch.export_barriers {
-                let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+                let handle = backend.command_handle().map_err(Error::Backend)?;
                 let active = self.begin(handle, family, queue, backend.begin_command(handle))?;
                 backend.command_started(&active).map_err(Error::Lifecycle)?;
                 recorder.commands.push(active.record_command());
@@ -718,22 +788,27 @@ impl ExecutionChain {
         }
     }
 
+    /// 登记一条已由后端开始（`backend` 为后端 begin 的结果）的命令，分配本队列的序号。
     pub fn begin(
         &mut self,
         handle: u64,
         family: u32,
         queue: sequence::Queue,
-        backend: Result<(), sequence::Failure>,
+        backend: crate::Result<()>,
     ) -> Result<sequence::Command, Error> {
+        let (status, cause) = match backend {
+            Ok(()) => (Ok(()), None),
+            Err(error) => (Err(sequence::Failure::BackendBegin), Some(error)),
+        };
         let command = self
             .lifecycle
             .begin_after_backend(
                 &self.counters,
                 sequence::Command::new(handle, family),
                 queue,
-                backend,
+                status,
             )
-            .map_err(Error::Begin)?;
+            .map_err(|failure| Error::Begin { failure, cause })?;
         self.command_snapshots.insert(handle, command.clone());
         Ok(command)
     }
@@ -830,20 +905,13 @@ impl ExecutionChain {
         {
             return Err(Error::ChunkPlan);
         }
-        let token_of = |resource: usize| {
-            let backing = compiled.registry.resources[resource].backing_index;
-            crate::rg::graph::payload_projection(
-                &compiled.registry.backing_resources[backing as usize],
-            )
-            .1
-            .unwrap()
-        };
+        let token_of = |resource: usize| physical_token(compiled, resource);
         // 串行：每块一条命令缓冲（每块一个独立命令池，Vulkan 要求命令池外部同步）。
         let mut begun = Vec::with_capacity(chunks.len());
         for index in 0..chunks.len() {
             let handle = backend
                 .chunk_command_handle(index)
-                .map_err(Error::Lifecycle)?;
+                .map_err(Error::Backend)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
             backend
                 .command_started(&command)
@@ -866,7 +934,8 @@ impl ExecutionChain {
                         resource,
                         from,
                         to,
-                    } => backend.transition(command, token_of(resource), from, to),
+                    } => token_of(resource)
+                        .is_some_and(|token| backend.transition(command, token, from, to)),
                     _ => true,
                 }
             });
@@ -878,14 +947,22 @@ impl ExecutionChain {
             .iter()
             .map(|list| {
                 list.iter()
-                    .map(|t| ChunkTransition {
-                        token: token_of(t.resource),
-                        from: t.from,
-                        to: t.to,
+                    .map(|t| {
+                        Some(ChunkTransition {
+                            token: token_of(t.resource)?,
+                            from: t.from,
+                            to: t.to,
+                        })
                     })
-                    .collect::<Vec<_>>()
+                    .collect::<Option<Vec<_>>>()
             })
-            .collect::<Vec<_>>();
+            .collect::<Option<Vec<_>>>();
+        let Some(transitions) = transitions else {
+            // 屏障引用了没有物理资源的逻辑资源：资源映射校验本应先拒绝。
+            outcome.panic = true;
+            self.finish_record(recorder, outcome, logical_handles)?;
+            return Err(Error::ChunkPlan);
+        };
         // 并行：块间互不重叠，各自独占命令缓冲、回调切片与 owner 列表。
         let mut work = Vec::with_capacity(chunks.len());
         let mut rest = callbacks;
@@ -951,23 +1028,29 @@ impl ExecutionChain {
             }
             failed |= !result.ok;
         }
+        let mut end_error = None;
         if failed {
             outcome.panic = true;
         } else {
             recorder.finish_chunked_batch(&mut outcome, record_commands, final_batch, |action| {
                 match action {
-                    record::RecordAction::End(command) => {
-                        backend.end_command(vk::CommandBuffer::from_raw(command))
-                    }
+                    record::RecordAction::End(command) => end_ok(
+                        backend.end_command(vk::CommandBuffer::from_raw(command)),
+                        &mut end_error,
+                    ),
                     record::RecordAction::Transition {
                         command,
                         resource,
                         from,
                         to,
-                    } => backend.transition(command, token_of(resource), from, to),
+                    } => token_of(resource)
+                        .is_some_and(|token| backend.transition(command, token, from, to)),
                     record::RecordAction::Pass(_) => true,
                 }
             });
+        }
+        if let Some(error) = end_error {
+            return Err(Error::Backend(error));
         }
         let outcome = self.finish_record(recorder, outcome, logical_handles)?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
@@ -988,7 +1071,7 @@ impl ExecutionChain {
         recorder: &mut record::Recorder,
         synchronization: GraphBatchSync,
         mut end: impl FnMut(vk::CommandBuffer) -> bool,
-        backend: impl FnMut(vk::Queue, &[submit::PreparedSubmit]) -> (i32, bool),
+        mut backend: impl FnMut(vk::Queue, &[submit::PreparedSubmit]) -> (i32, bool),
     ) -> Result<(sequence::SubmissionReceipt, submit::Outcome), Error> {
         if !synchronization.valid() {
             return Err(Error::InvalidSynchronization);
@@ -1054,14 +1137,28 @@ impl ExecutionChain {
                 current: batch,
             }
         };
-        let out = self.device.queue_submit(queue_id, input, backend);
+        let mut submit_result = None;
+        let out = self.device.queue_submit(queue_id, input, |queue, prepared| {
+            let (code, converted) = backend(queue, prepared);
+            if code != 0 {
+                submit_result = Some(vk::Result::from_raw(code));
+            }
+            (code, converted)
+        });
         if out.panic.is_some() {
             // 注册与状态 3 写入发生在后端调用前；失败不伪造回执或回滚，也不继续复用。
             self.queue_failure = true;
-            return Err(Error::Queue(out));
+            return Err(Error::Queue {
+                outcome: Box::new(out),
+                result: submit_result,
+            });
         }
-        let (returned_queue, last_timeline) =
-            out.receipt.ok_or_else(|| Error::Queue(out.clone()))?;
+        let Some((returned_queue, last_timeline)) = out.receipt else {
+            return Err(Error::Queue {
+                outcome: Box::new(out),
+                result: submit_result,
+            });
+        };
         let queue = sequence::Queue::from_raw(returned_queue.tag, returned_queue.index)
             .map_err(Error::Lifecycle)?;
         let receipt = sequence::SubmissionReceipt {
@@ -1070,7 +1167,11 @@ impl ExecutionChain {
         };
         let selected = match queue {
             sequence::Queue::Primary => &mut self.device.primary,
-            sequence::Queue::Auxiliary(index) => &mut self.device.auxiliary[index as usize],
+            sequence::Queue::Auxiliary(index) => self
+                .device
+                .auxiliary
+                .get_mut(index as usize)
+                .ok_or(Error::QueueUnavailable(queue))?,
         };
         // 转移新注册的队列命令，不重新生成其时间线。
         let pending = selected
@@ -1102,7 +1203,11 @@ impl ExecutionChain {
         }
         let selected = match queue {
             sequence::Queue::Primary => &mut self.device.primary,
-            sequence::Queue::Auxiliary(index) => &mut self.device.auxiliary[index as usize],
+            sequence::Queue::Auxiliary(index) => self
+                .device
+                .auxiliary
+                .get_mut(index as usize)
+                .ok_or(Error::QueueUnavailable(queue))?,
         };
         while selected
             .pending_timelines

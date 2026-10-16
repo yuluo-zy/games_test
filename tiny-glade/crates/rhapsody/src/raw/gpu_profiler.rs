@@ -37,10 +37,9 @@ impl MarkerId {
     pub fn as_u64(self) -> u64 {
         u64::from(self.0)
     }
-    /// 0x140c10e20：`u64::MAX` 是非法哨兵 → panic；其余截断低 32 位。
-    pub fn from_u64(value: u64) -> Self {
-        assert!(value != u64::MAX, "MarkerId::from_u64: u64::MAX is not a valid marker");
-        Self(value as u32)
+    /// `u64::MAX` 是“无 marker”哨兵 → `None`；其余截断低 32 位。
+    pub fn from_u64(value: u64) -> Option<Self> {
+        (value != u64::MAX).then_some(Self(value as u32))
     }
 }
 
@@ -152,18 +151,30 @@ impl ActiveProfiler<'_> {
     pub fn create_marker(&mut self, name: &str) -> MarkerId {
         self.markers.create_marker(name)
     }
-    /// 0x140c11150。原子取下标 `idx`；`idx < 0x3ff` 才写索引缓冲 + 时间戳，否则 panic（index out of bounds）。
+    /// 原子取下标 `idx` 并写索引缓冲 + 时间戳；本帧已写满 [`MAX_MARKERS`] 个时返回 `InvalidUsage`（不占下标）。
     ///
     /// # Safety
     /// `cmd` 必须处于录制状态，且本帧已 `begin_frame`。
-    pub unsafe fn write_marker(&self, device: &ash::Device, cmd: vk::CommandBuffer, marker: MarkerId) {
-        let idx = self.profiler.used_count.fetch_add(1, Ordering::AcqRel) as usize;
-        assert!(idx < MAX_MARKERS, "index out of bounds: the len is {MAX_MARKERS} but the index is {idx}");
+    pub unsafe fn write_marker(
+        &self,
+        device: &ash::Device,
+        cmd: vk::CommandBuffer,
+        marker: MarkerId,
+    ) -> crate::Result<()> {
+        let idx = self
+            .profiler
+            .used_count
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+                ((n as usize) < MAX_MARKERS).then_some(n + 1)
+            })
+            .map_err(|_| crate::Error::invalid_usage(format!("本帧 GPU marker 超过 {MAX_MARKERS} 个")))?
+            as usize;
         self.profiler.index_buf[idx].store(marker.as_u64(), Ordering::Relaxed);
         // SAFETY: 由调用者保证。
         unsafe {
             device.cmd_write_timestamp(cmd, vk::PipelineStageFlags::BOTTOM_OF_PIPE, self.profiler.pool, idx as u32)
-        }
+        };
+        Ok(())
     }
     /// 0x1418c3910：`CopyQueryPoolResults(pool, 0, used_count, dst, 0, stride 8, 64_BIT|WAIT)`；把索引缓冲前
     /// `used_count` 项（`as u32`，I）与 marker 表打包成 [`ProfilerSubmittedFrame`]。
@@ -212,10 +223,18 @@ impl ProfilerSubmittedFrame {
     }
     /// 0x140294cf0：`timestamps` 是输出缓冲的映射内容（`ProfilerBuffer::mapped_slice`，u64 数组）。
     /// 把第 i 个查询下标（marker）与第 i 个时间戳配对，按 tick `sort_unstable_by_key` 排序。
-    /// 原版有两处 panic（对齐检查 0x5a 字节文案、`count > len` 越界）；这里 `count > timestamps.len()` 同样 panic。
-    pub fn retrieve_results(self, timestamps: &[u64]) -> (Vec<MarkerTimestamp>, FrameMarkers) {
+    /// 时间戳少于查询数返回 `InvalidUsage`。
+    pub fn retrieve_results(
+        self,
+        timestamps: &[u64],
+    ) -> crate::Result<(Vec<MarkerTimestamp>, FrameMarkers)> {
         let count = self.query_indices.len();
-        assert!(count <= timestamps.len(), "range end index {count} out of range for slice of length {}", timestamps.len());
+        if count > timestamps.len() {
+            return Err(crate::Error::invalid_usage(format!(
+                "时间戳 {} 个，少于查询数 {count}",
+                timestamps.len()
+            )));
+        }
         let mut entries: Vec<MarkerTimestamp> = self
             .query_indices
             .iter()
@@ -223,6 +242,6 @@ impl ProfilerSubmittedFrame {
             .map(|(&marker, &tick)| MarkerTimestamp { marker: MarkerId(marker), tick: GpuTick(tick) })
             .collect();
         entries.sort_unstable_by_key(|e| e.tick);
-        (entries, self.markers)
+        Ok((entries, self.markers))
     }
 }

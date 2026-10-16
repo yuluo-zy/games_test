@@ -342,23 +342,17 @@ impl SetupCommandSlot {
         self.command.as_ref().map_or(SETUP_SLOT_NONE, |c| c.state)
     }
     /// 0x140c03fa0/0x140c04840：槽空则用 `create`（族 = `dev+0xad4`，名 "setup cb"）造并开始录制的命令（状态 1）。
-    /// 返回槽内命令的可变引用，供调用方录制上传命令。
-    ///
-    /// # Panics
-    /// 槽内已有命令却不处于录制中（状态 ≠ 1）：本重建把 “覆盖旧值” 路径收紧为不覆盖（原版覆盖要求旧状态 0/3，
-    /// 但该分支只在 `state == 4` 时进入，实际不可达）。
+    /// 返回槽内命令的可变引用，供调用方录制上传命令；槽内已有命令时原样返回（不覆盖）。
     pub fn ensure_recording(&mut self, create_and_begin: impl FnOnce() -> Command) -> &mut Command {
-        if self.command.is_none() {
+        self.command.get_or_insert_with(|| {
             let mut command = create_and_begin();
             command.state = 1;
-            self.command = Some(command);
-        }
-        self.command.as_mut().expect("just filled")
+            command
+        })
     }
     /// 0x140bf84e0 `get_setup_cb_submit_info`：把槽置为 None（4）；原值为 None 返回 `Ok(None)`。
     /// 否则：记录 [`SETUP_BARRIER_STAGE`]/[`SETUP_BARRIER_ACCESS`] 全局屏障（`record_barrier`，**在状态检查之前**），
-    /// 状态必须为 1（否则 `unreachable!` / `Err(Unreachable)`），`end`（`vkEndCommandBuffer`，+0x2c8）返回非 0 → panic
-    /// （原版 `Err(VkResult)` 经 0x1428d9760 unwrap 失败，这里以 `Err(End(code))` 返回），成功则状态置 2 并返回该命令。
+    /// 状态必须为 1（否则 `Err(InvalidState)`），`end`（`vkEndCommandBuffer`）返回非 0 → `Err(End(code))`，成功则状态置 2 并返回该命令。
     pub fn take_for_submit(
         &mut self,
         record_barrier: impl FnOnce(vk::CommandBuffer),
@@ -369,7 +363,7 @@ impl SetupCommandSlot {
         };
         record_barrier(command.handle);
         if command.state != 1 {
-            return Err(SetupTakeError::Unreachable { state: command.state });
+            return Err(SetupTakeError::InvalidState { state: command.state });
         }
         let code = end(command.handle);
         if code != 0 {
@@ -380,12 +374,26 @@ impl SetupCommandSlot {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// setup 命令缓冲取出失败。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SetupTakeError {
-    /// 原 `FUN_1428d9390(…0x142b14d78 / FUN_140bed620)`：状态不是 1（panic 串由 0x140bf84e0 的 else 分支格式化 `{:?}` 状态）。
-    Unreachable { state: u64 },
-    /// `vkEndCommandBuffer` 失败（原 0x142b14d20 长 0x12 的 unwrap 失败串）。
+    /// 槽内命令不处于录制状态（状态值应为 1）。
+    #[error("setup 命令缓冲状态 {state} 不是录制中")]
+    InvalidState { state: u64 },
+    /// `vkEndCommandBuffer` 失败（原始 `VkResult` 码）。
+    #[error("vkEndCommandBuffer 失败：{:?}", ash::vk::Result::from_raw(*.0))]
     End(i32),
+}
+
+impl From<SetupTakeError> for crate::Error {
+    fn from(error: SetupTakeError) -> Self {
+        match error {
+            SetupTakeError::End(code) => vk::Result::from_raw(code).into(),
+            SetupTakeError::InvalidState { .. } => {
+                crate::Error::invalid_usage_with("setup 命令缓冲状态错误", error)
+            }
+        }
+    }
 }
 
 /// `dev+0x9f8` 之后 `dev+0xa50` 起的 `SequentialDisposal`（`dispose_in_order(dev+0xa50, seq)`，0x1418c4100）；
@@ -510,8 +518,7 @@ impl SubmissionEngine {
     /// 0x140bf0cc0 `Queue::reclaim_command_buffer_resources`（单队列）：从命令环队首起，
     /// 时间线 `<= 该队列 +0x80` 的项出队；返回其命令缓冲句柄。
     ///
-    /// # Panics
-    /// 出队项状态不是 3 → `unreachable!()`；命令队列标签/索引与本队列不符 → `assert_eq!`（原版同样 panic）。
+    /// 环内命令只由本引擎的提交路径写入（状态 3、队列身份与本队列一致），出队时仅 `debug_assert!` 核对。
     pub fn reclaim_queue(&mut self, id: QueueId) -> Vec<vk::CommandBuffer> {
         self.sync_completed_len();
         let done = self.completed[Self::slot(id)];
@@ -519,19 +526,14 @@ impl SubmissionEngine {
             return Vec::new();
         };
         let mut reclaimed = Vec::new();
-        while let Some(front) = queue.pending_commands.front() {
-            if done < front.timeline {
-                break;
-            }
-            let pending = queue.pending_commands.pop_front().expect("front checked");
-            if pending.command.state != 3 {
-                unreachable!("internal error: entered unreachable code");
-            }
-            // 队列自身的标签值（`+0x68`）未存于 `QueueState`，只能核对“主/辅”类别与辅助索引。
-            assert_eq!(pending.command.queue.tag == 0, id.tag == 0);
-            if id.tag != 0 {
-                assert_eq!(pending.command.queue.index, id.index);
-            }
+        while queue.pending_commands.front().is_some_and(|front| front.timeline <= done) {
+            let Some(pending) = queue.pending_commands.pop_front() else { break };
+            debug_assert_eq!(pending.command.state, 3, "待回收命令必须处于已提交状态");
+            debug_assert_eq!(pending.command.queue.tag == 0, id.tag == 0, "待回收命令的队列类别不符");
+            debug_assert!(
+                id.tag == 0 || pending.command.queue.index == id.index,
+                "待回收命令的辅助队列索引不符"
+            );
             reclaimed.push(pending.command.handle);
         }
         reclaimed
@@ -540,9 +542,8 @@ impl SubmissionEngine {
     /// 调用 `FUN_1418c7ae0(queue+0x40, seq, dev)` —— 严格按序号退役该命令登记的资源桶
     /// （见 [`super::graveyard::InOrderRetire`]）。出队顺序即命令环顺序（= 提交顺序）。
     ///
-    /// # Panics
-    /// 同 `reclaim_queue`；另外序号 `<= 已退役最大序号` 或重复暂存时 panic（原版同）。
-    pub fn reclaim_command_buffer_resources(&mut self, id: QueueId) -> ReclaimOutcome {
+    /// 命令序号已退役或重复登记时返回 `InvalidUsage`（命令缓冲句柄已出队）。
+    pub fn reclaim_command_buffer_resources(&mut self, id: QueueId) -> crate::Result<ReclaimOutcome> {
         self.sync_completed_len();
         let done = self.completed[Self::slot(id)];
         let sequences: Vec<u64> = match self.queue(id) {
@@ -558,9 +559,9 @@ impl SubmissionEngine {
         let slot = Self::slot(id);
         let mut retired_sequences = Vec::new();
         for seq in sequences {
-            retired_sequences.extend(self.retire[slot].retire(seq));
+            retired_sequences.extend(self.retire[slot].retire(seq)?);
         }
-        ReclaimOutcome { handles, retired_sequences }
+        Ok(ReclaimOutcome { handles, retired_sequences })
     }
     /// 整条 `queue_submit`（0x140c04e20）：先 `update_queue_pending_submissions`（0x1418c3300，推进所有队列完成值，
     /// 发生在时间线分配之前），再 CPU 部分提交，成功后做尾部回收（`FUN_140bf0cc0`，仅对本次提交的队列）。
@@ -572,14 +573,14 @@ impl SubmissionEngine {
         input: SubmissionInput,
         counter_of: impl FnMut(&QueueState) -> u64,
         backend: impl FnMut(vk::Queue, &[PreparedSubmit]) -> (i32, bool),
-    ) -> (Outcome, ReclaimOutcome) {
+    ) -> crate::Result<(Outcome, ReclaimOutcome)> {
         self.update_queue_pending_submissions_with(counter_of);
         let out = self.state.queue_submit_with_setup(id, setup, input, backend);
         if out.panic.is_some() {
-            return (out, ReclaimOutcome::default());
+            return Ok((out, ReclaimOutcome::default()));
         }
-        let reclaimed = self.reclaim_command_buffer_resources(id);
-        (out, reclaimed)
+        let reclaimed = self.reclaim_command_buffer_resources(id)?;
+        Ok((out, reclaimed))
     }
     /// 图形队列 + 全部辅助队列依次回收（`wait_idle_and_recycle_resources` 的第 4 步）。
     pub fn reclaim_command_buffer_resources_all_queues(

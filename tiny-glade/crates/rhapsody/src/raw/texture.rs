@@ -568,7 +568,7 @@ impl Texture {
             || desc.array_layers() == 0
             || desc.mip_levels == 0
         {
-            return Err(Error::Invalid("纹理范围和层数必须非零"));
+            return Err(Error::invalid_usage("纹理范围和层数必须非零"));
         }
         let info = get_image_create_info_with_data(desc, has_data);
         let handle = unsafe { device.device.create_image(&info, None) }?;
@@ -616,7 +616,7 @@ impl Texture {
             || desc.level_count == 0
             || desc.layer_count == 0
         {
-            return Err(Error::Invalid("图片视图子资源范围无效"));
+            return Err(Error::invalid_usage("图片视图子资源范围无效"));
         }
         let range = vk::ImageSubresourceRange::default()
             .aspect_mask(desc.aspect)

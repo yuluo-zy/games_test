@@ -387,14 +387,16 @@ fn dxgi_enumerate_skips_failed_getdesc_stops_at_first_enum_error_and_maps_factor
 #[test]
 fn gpu_profiler_retrieve_results_pairs_indices_with_ticks_and_sorts_by_tick() {
     let frame = ProfilerSubmittedFrameForTest::build(&["x", "y", "z"], &[2, 0, 1]);
-    let (entries, markers) = frame.retrieve_results(&[30, 10, 20, 99]);
+    let (entries, markers) = frame.retrieve_results(&[30, 10, 20, 99]).unwrap();
     assert_eq!(markers.len(), 3);
     // 配对：(2,30) (0,10) (1,20) → 按 tick 升序。
     let got: Vec<(u32, u64)> = entries.iter().map(|e| (e.marker.0, e.tick.0)).collect();
     assert_eq!(got, vec![(0, 10), (1, 20), (2, 30)]);
-    // count > len → panic。
+    // 时间戳少于查询数 → InvalidUsage。
     let frame = ProfilerSubmittedFrameForTest::build(&["x"], &[0, 0]);
-    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame.retrieve_results(&[1]))).is_err());
+    assert_eq!(frame.retrieve_results(&[1]).unwrap_err().kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert_eq!(MarkerId::from_u64(u64::MAX), None);
+    assert_eq!(MarkerId::from_u64(7), Some(MarkerId(7)));
 }
 
 /// `ProfilerSubmittedFrame` 的字段私有（只由 `end_frame` 构造）：这里走真实 Vulkan 的链路测试在下面；
@@ -448,9 +450,9 @@ fn gpu_profiler_chain_runs_on_a_real_device() {
         let mut active = profiler.begin_frame(device, cmd);
         let (a, b, c) = (active.create_marker("a"), active.create_marker("b"), active.create_marker("a"));
         assert_eq!((a, b, c), (MarkerId(0), MarkerId(1), MarkerId(2)));
-        active.write_marker(device, cmd, c);
-        active.write_marker(device, cmd, a);
-        active.write_marker(device, cmd, b);
+        active.write_marker(device, cmd, c).unwrap();
+        active.write_marker(device, cmd, a).unwrap();
+        active.write_marker(device, cmd, b).unwrap();
         assert_eq!(profiler.used_count(), 3);
         assert_eq!(profiler.index_slot(0), 2);
         assert_eq!(profiler.index_slot(2), 1);
@@ -466,7 +468,7 @@ fn gpu_profiler_chain_runs_on_a_real_device() {
         let mut bytes = vec![0u8; 0x2000];
         output.read_bytes(0, &mut bytes).unwrap();
         let ticks: Vec<u64> = bytes.chunks_exact(8).map(|c| u64::from_le_bytes(c.try_into().unwrap())).collect();
-        let (entries, markers) = frame.retrieve_results(&ticks);
+        let (entries, markers) = frame.retrieve_results(&ticks).unwrap();
         assert_eq!(entries.len(), 3);
         assert!(entries.windows(2).all(|w| w[0].tick <= w[1].tick), "按 tick 升序");
         assert_eq!(markers.marker_name(MarkerId(2)), "a");

@@ -39,8 +39,8 @@ fn real_counter_tracker_cpu_dispose_and_delayed_raw_destroy_use_same_sequence() 
     store.begin_command_bucket(two).unwrap();
     let handle = store.allocate(Allocation(freed.clone()));
     let key = handle.key();
-    handle.track(recording(two));
-    handle.track(recording(one));
+    handle.track(recording(two)).unwrap();
+    handle.track(recording(one)).unwrap();
     assert_eq!(handle.tracked_sequence(), two);
     let clone = handle.clone();
     assert_eq!(handle.reference_count(), 2);
@@ -82,7 +82,7 @@ fn missing_begin_retains_record_until_private_producer_is_connected() {
     let freed = counter();
     let handle = store.allocate(Allocation(freed.clone()));
     let key = handle.key();
-    handle.track(recording(1));
+    handle.track(recording(1)).unwrap();
     drop(handle);
     assert_eq!(
         store.take_out_dropped_waste_checked(),
@@ -107,23 +107,15 @@ fn cross_domain_is_explicit_gap_and_does_not_create_a_second_tracker() {
     );
     assert_eq!(handle.tracked_sequence(), 0);
     assert_eq!(
-        handle.try_track(CommandState {
+        handle.track(CommandState {
             tag: 2,
             sequence: 9
         }),
         Err(Failure::InvalidCommandState)
     );
-    // 原版 `RawManagedHandle::track`（0x140bd6a70）：命令状态非 Recording 时 panic。
-    let bad = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        handle.track(CommandState {
-            tag: 2,
-            sequence: 9,
-        })
-    }));
-    assert!(bad.is_err());
     assert_eq!(handle.tracked_sequence(), 0);
-    handle.track(recording(2));
-    handle.track(recording(1));
+    handle.track(recording(2)).unwrap();
+    handle.track(recording(1)).unwrap();
     assert_eq!(handle.tracked_sequence(), 2);
     let key = handle.key();
     assert!(ResourceManager::<u64>::new().get(key).is_none());
@@ -144,7 +136,7 @@ fn late_cpu_drop_after_actual_sequence_drain_is_immediately_destroyed() {
     let freed = counter();
     store.begin_command_bucket(1).unwrap();
     let handle = store.allocate(Allocation(freed.clone()));
-    handle.track(recording(1));
+    handle.track(recording(1)).unwrap();
     assert_eq!(store.drain_completed_sequence(1), Ok(0));
     drop(handle);
     assert_eq!(store.take_out_dropped_waste(), 1);
@@ -156,7 +148,7 @@ fn failed_recording_cleanup_requires_successful_actual_idle_wait() {
     let store = ResourceManager::new();
     let freed = counter();
     let handle = store.allocate(Allocation(freed.clone()));
-    handle.track(recording(9));
+    handle.track(recording(9)).unwrap();
     drop(handle);
     assert_eq!(
         store.dispose_after_wait(|| Err::<(), _>("等待失败")),
@@ -173,7 +165,7 @@ fn legacy_receipts_keep_timeline_separate_and_reject_domain_queue_switches() {
     let store = ResourceManager::new();
     let freed = counter();
     let handle = store.allocate(Allocation(freed.clone()));
-    handle.track(recording(3));
+    handle.track(recording(3)).unwrap();
     let command = CommandKey {
         domain: 0,
         sequence: 3,
@@ -229,7 +221,7 @@ fn concurrent_tracking_keeps_the_maximum_sequence_without_a_lock() {
             let handle = handle.clone();
             scope.spawn(move || {
                 for i in 0..10_000u64 {
-                    handle.track(recording(1 + (i * 8 + t) % 50_000));
+                    handle.track(recording(1 + (i * 8 + t) % 50_000)).unwrap();
                 }
             });
         }

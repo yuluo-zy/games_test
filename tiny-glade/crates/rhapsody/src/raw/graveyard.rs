@@ -102,10 +102,14 @@ impl InOrderRetire {
     }
     /// 登记 `seq` 完成；返回此刻可退役的序号（严格递增、连续）。
     ///
-    /// # Panics
-    /// `seq <= next`、`seq` 重复暂存，或出队序号与期望不连续（原版同样 panic）。
-    pub fn retire(&mut self, seq: u64) -> Vec<u64> {
-        assert!(seq > self.next, "命令序号已退役或重复（0x1418c7ae0）");
+    /// `seq <= next`（已退役）或 `seq` 重复暂存返回 `InvalidUsage`，状态不变。
+    pub fn retire(&mut self, seq: u64) -> crate::Result<Vec<u64>> {
+        if seq <= self.next {
+            return Err(crate::Error::invalid_usage(format!(
+                "命令序号 {seq} 已退役（已退役到 {}）",
+                self.next
+            )));
+        }
         let offset = seq - self.next - 1;
         if offset != 0 {
             let offset = offset as usize;
@@ -114,11 +118,12 @@ impl InOrderRetire {
             }
             if offset == self.slots.len() {
                 self.slots.push_back(seq);
+            } else if self.slots[offset] != 0 {
+                return Err(crate::Error::invalid_usage(format!("命令序号 {seq} 重复登记")));
             } else {
-                assert_eq!(self.slots[offset], 0, "暂存槽重复写入（0x1418c7ae0）");
                 self.slots[offset] = seq;
             }
-            return Vec::new();
+            return Ok(Vec::new());
         }
         self.next = seq;
         let mut out = vec![seq];
@@ -130,10 +135,10 @@ impl InOrderRetire {
             }
             self.slots.pop_front();
             self.next += 1;
-            assert_eq!(self.next, front, "出队序号不连续（0x1418c7ae0）");
+            debug_assert_eq!(self.next, front, "暂存环的第 i 槽只能存 next+1+i");
             out.push(front);
         }
-        out
+        Ok(out)
     }
 }
 
@@ -345,8 +350,7 @@ impl VulkanDevice {
                 accounting_id
             }
         };
-        self.allocator_stats
-            .release(accounting_id)
-            .expect("内存登记与释放必须一一对应");
+        let released = self.allocator_stats.release(accounting_id);
+        debug_assert!(released.is_ok(), "内存登记与释放必须一一对应");
     }
 }

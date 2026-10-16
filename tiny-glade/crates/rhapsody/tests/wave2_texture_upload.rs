@@ -1,6 +1,7 @@
 //! 第二批：纹理初值上传的剩余分支（`init_texture_data` 2/3 号目标 + `update_texture_impl`）。
 //! 纯函数部分不需要设备；GPU 部分上传已知数据后经 `vkCmdCopyImageToBuffer` 读回逐字节比对（lavapipe 可跑）。
 use ash::vk;
+use rhapsody::ErrorKind;
 use rhapsody::raw::{
     device::GraphicsDevice,
     init::create_headless_device,
@@ -73,24 +74,20 @@ fn linear_regions_are_layer_major_then_mip() {
 }
 
 #[test]
-fn linear_regions_data_size_checks_match_original_messages() {
+fn linear_regions_reject_wrong_data_sizes_as_invalid_usage() {
     let ok = vec![0u8; 40];
     assert!(linear_regions(&ok, [4, 2, 1], 2, 1, 4, [1, 1]).is_ok());
-    // 少一个字节：underflow。
-    let err = linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().to_string();
-    assert_eq!(err, "Texture initial data underflow");
-    // 多一个字节：断言文案。
-    let long = vec![0u8; 41];
-    let err = linear_regions(&long, [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().to_string();
-    assert_eq!(err, "Texture initial data has incorrect size; more bytes supplied than necessary");
-    // 空数据。
-    assert_eq!(
-        linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1]).unwrap_err().to_string(),
-        "assertion failed: !data.is_empty()"
-    );
-    // array_elements >= 0x10000、bytes_per_block >= 0x100 都是 unwrap 失败。
-    assert!(linear_regions(&ok, [4, 2, 1], 1, 0x10000, 4, [1, 1]).is_err());
-    assert!(linear_regions(&ok, [4, 2, 1], 1, 1, 0x100, [1, 1]).is_err());
+    let invalid = |r: rhapsody::Result<Vec<TextureUpdateRegion<'_>>>| {
+        assert_eq!(r.unwrap_err().kind(), ErrorKind::InvalidUsage);
+    };
+    // 少一个字节、多一个字节、空数据。
+    invalid(linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1]));
+    invalid(linear_regions(&vec![0u8; 41], [4, 2, 1], 2, 1, 4, [1, 1]));
+    invalid(linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1]));
+    // 层数 >= 0x10000、块字节数 >= 0x100、零尺寸。
+    invalid(linear_regions(&ok, [4, 2, 1], 1, 0x10000, 4, [1, 1]));
+    invalid(linear_regions(&ok, [4, 2, 1], 1, 1, 0x100, [1, 1]));
+    invalid(linear_regions(&ok, [0, 2, 1], 1, 1, 4, [1, 1]));
     // mip_levels 大于可用 mip：迭代器提前结束，数据照实消耗。
     let buf = vec![0u8; 32 + 8 + 4];
     let r = linear_regions(&buf, [4, 2, 1], 9, 1, 4, [1, 1]).unwrap();
@@ -114,7 +111,7 @@ fn per_mip_regions_require_matching_slice_count_and_zip_with_chain() {
 }
 
 #[test]
-fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
+fn copy_plan_packs_tightly_and_rejects_misalignment_and_empty_total() {
     let a = [0u8; 16];
     let b = [0u8; 8];
     let regions = [
@@ -135,12 +132,15 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     assert_eq!(plan.copies[1].image_extent.width, 2);
     // 偏移 16 对 block_bytes=16 OK，对 32 不是整数倍（第二块起点 16 % 32 != 0）。
     assert!(plan_texture_copies(&regions, 16, vk::ImageAspectFlags::COLOR).is_ok());
-    assert!(plan_texture_copies(&regions, 32, vk::ImageAspectFlags::COLOR).is_err());
-    // 总长 0：`assert!(size > 0)`。
+    assert_eq!(
+        plan_texture_copies(&regions, 32, vk::ImageAspectFlags::COLOR).unwrap_err().kind(),
+        ErrorKind::InvalidUsage
+    );
+    // 总长 0。
     let empty = [TextureUpdateRegion { data: &[], extent: [1, 1, 1], mip_level: 0, array_layer: 0 }];
     assert_eq!(
-        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR).unwrap_err().to_string(),
-        "assertion failed: size > 0"
+        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR).unwrap_err().kind(),
+        ErrorKind::InvalidUsage
     );
 }
 
@@ -310,10 +310,14 @@ fn gpu_per_mip_rejects_block_compressed_formats() {
 #[test]
 fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
     let Some(gd) = device() else { return };
-    // 原 block_bytes 表只放行 BC1_RGB(8B) / BC3(16B) / BC4_UNORM(8B) / BC5(16B) / BC7(16B)。
+    // 所有 BC 格式都按格式表的块字节数切片（含原版块字节表漏掉的 BC1_RGBA、BC2、BC4_SNORM、BC6H）。
     for (format, block_bytes) in [
         (vk::Format::BC1_RGB_UNORM_BLOCK, 8usize),
+        (vk::Format::BC1_RGBA_UNORM_BLOCK, 8),
+        (vk::Format::BC2_UNORM_BLOCK, 16),
         (vk::Format::BC3_UNORM_BLOCK, 16),
+        (vk::Format::BC4_SNORM_BLOCK, 8),
+        (vk::Format::BC6H_UFLOAT_BLOCK, 16),
         (vk::Format::BC7_UNORM_BLOCK, 16),
     ] {
         let desc = TextureDesc::new_2d(16, 8, format).mip_levels(3).usage(readable());
@@ -336,6 +340,27 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
             assert_eq!(got, *chunk, "{format:?} mip {mip}");
         }
     }
+}
+
+#[test]
+fn gpu_cube_linear_upload_writes_all_six_faces() {
+    let Some(gd) = device() else { return };
+    let desc = TextureDesc::new_cube(4, vk::Format::R8G8B8A8_UNORM).usage(readable());
+    let faces: Vec<Vec<u8>> = (0..6).map(|face| pattern(64, 10 + face as u8)).collect();
+    let data = faces.concat();
+    let t = gd
+        .create_texture_with_data(&desc, "cube", TextureInitialData::Linear(&data))
+        .unwrap();
+    for (face, chunk) in faces.iter().enumerate() {
+        assert_eq!(read_back(&gd, &t, 0, face as u32, [4, 4, 1], 64), *chunk, "face {face}");
+    }
+    // 只给一个面的数据是不足。
+    assert_eq!(
+        gd.create_texture_with_data(&desc, "cube-short", TextureInitialData::Linear(&faces[0]))
+            .unwrap_err()
+            .kind(),
+        ErrorKind::InvalidUsage
+    );
 }
 
 #[test]

@@ -63,7 +63,8 @@ fn setup_record_goes_after_prior_and_before_current() {
             handles = prepared.iter().map(|p| p.commands.clone()).collect();
             (0, true)
         },
-    );
+    )
+    .unwrap();
     assert!(out.panic.is_none());
     let seqs: Vec<u64> = handles
         .iter()

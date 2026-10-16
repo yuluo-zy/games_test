@@ -92,15 +92,6 @@ fn reclaim_only_pops_front_items_covered_by_the_stored_completed_value() {
 }
 
 #[test]
-#[should_panic(expected = "entered unreachable code")]
-fn reclaim_of_a_command_not_in_submitted_state_is_unreachable() {
-    let mut e = engine(queue(&[], &[(2, 1)]), vec![]);
-    let id = QueueId { tag: 0, index: 0 };
-    e.update_pending_submissions(id, 5);
-    e.reclaim_queue(id);
-}
-
-#[test]
 fn legacy_all_queue_reclaim_merges_the_explicit_completed_value() {
     let mut e = engine(queue(&[], &[(3, 1)]), vec![queue(&[], &[(3, 2)])]);
     // 辅助队列命令的队列标识必须是“辅助”类别。
@@ -112,9 +103,8 @@ fn legacy_all_queue_reclaim_merges_the_explicit_completed_value() {
 fn command_buffer_pool_starts_empty_per_family_and_bounds_checks() {
     let pool = CommandBufferPool::new(3);
     assert_eq!(pool.family_count(), 3);
-    assert!((0..3).all(|f| pool.free_count(f) == 0 && pool.take(f).is_none()));
-    let oob = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| pool.take(3)));
-    assert!(oob.is_err(), "越界族索引 panic（原版 FUN_1428d9518 越界断言）");
+    assert!((0..3).all(|f| pool.free_count(f) == 0 && pool.take(f).unwrap().is_none()));
+    assert_eq!(pool.take(3).unwrap_err().kind(), rhapsody::ErrorKind::InvalidUsage);
 }
 
 #[test]
@@ -151,7 +141,7 @@ fn device_micro_functions_and_creation_tail_state() {
     let gd = GraphicsDevice::from_device(device);
     // from_device 路径不跑创建尾段。
     assert!(gd.pipeline_cache().is_none() && gd.crash_tracking_buffer().is_none());
-    assert_eq!(gd.queue_family_index_for(0), gd.queue_family_index());
+    assert_eq!(gd.queue_family_index_for(0).unwrap(), gd.queue_family_index());
     // 没有 EXT_subgroup_size_control 时 Option 为 None，数值版保持旧行为 1。
     if gd.min_subgroup_size_option().is_none() {
         assert_eq!(gd.min_subgroup_size(), 1);

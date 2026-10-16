@@ -180,92 +180,47 @@ impl BufferSlotView {
     }
 }
 
-/// 句柄/槽校验失败（原版是 panic；这里返回错误，检查顺序与原版一致）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// 缓冲句柄/槽校验失败。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BufferAccessError {
-    /// `Buffer+0x14 != device.context+0xa50`。
+    #[error("缓冲句柄属于设备 {handle}，当前设备为 {device}")]
     DeviceMismatch { handle: u16, device: u16 },
-    /// `Buffer+0x16 != 1`。
+    #[error("缓冲句柄未就绪（flag={flag}）")]
     NotReady { flag: u8 },
-    /// `inner+0x0c != Buffer+0x10`（槽被复用）。
+    #[error("缓冲句柄已过期：句柄槽 {handle}，当前槽 {slot}")]
     StaleSlot { handle: u32, slot: u32 },
-    /// `inner+0x7c == 2`。
+    #[error("缓冲的内存分配已被取走")]
     AllocationTaken,
-    /// `Buffer+0x18 > 块大小`（`slice_end_index_len_fail`）。
+    #[error("缓冲大小 {size} 超过所在内存块 {block}")]
     SizeExceedsBlock { size: u64, block: u64 },
 }
-impl std::fmt::Display for BufferAccessError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DeviceMismatch { handle, device } => {
-                write!(f, "缓冲句柄设备代号 {handle} 与设备 {device} 不一致")
-            }
-            Self::NotReady { flag } => write!(f, "缓冲句柄 flag={flag}，应为 1"),
-            Self::StaleSlot { handle, slot } => {
-                write!(f, "缓冲槽偏移 {slot} 与句柄偏移 {handle} 不一致")
-            }
-            Self::AllocationTaken => f.write_str("缓冲槽的分配已被取走"),
-            Self::SizeExceedsBlock { size, block } => {
-                write!(f, "缓冲大小 {size} 超过内存块 {block}")
-            }
-        }
+
+impl From<BufferAccessError> for crate::Error {
+    fn from(error: BufferAccessError) -> Self {
+        crate::Error::invalid_usage_with("缓冲访问无效", error)
     }
 }
-impl std::error::Error for BufferAccessError {}
 
-/// `update_buffer_bytes`（0x140beefa0）的断言失败，文本取自原 .rdata。
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// 缓冲更新（`update_buffer_bytes`）的参数校验失败。
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BufferUpdateError {
-    Access(BufferAccessError),
-    /// 区间 `start > end`。
+    #[error(transparent)]
+    Access(#[from] BufferAccessError),
+    #[error("更新区间 {start}..{end} 起点大于终点")]
     RangeInverted { start: usize, end: usize },
-    /// 区间 `end > src_data.len()`。
+    #[error("更新区间终点 {end} 超过源数据长度 {len}")]
     RangeOutOfData { end: usize, len: usize },
-    /// `assert!(total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size)`（0x142b15b00）。
+    #[error("更新越界：{total} 字节写到偏移 {dst_offset}，缓冲容量 {capacity}")]
     ExceedsCapacity { total: u64, dst_offset: u64, capacity: u64 },
-    /// `"Buffer {} must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"`。
+    #[error("缓冲必须带 TRANSFER_DST 用途才能更新")]
     MissingTransferDst,
-    /// `assert!(size > 0)`：合计字节为 0（0x142b0f830）。
+    #[error("缓冲更新的总字节数为 0")]
     Empty,
 }
-impl std::fmt::Display for BufferUpdateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Access(e) => e.fmt(f),
-            Self::RangeInverted { start, end } => write!(f, "更新区间 {start}..{end} 起点大于终点"),
-            Self::RangeOutOfData { end, len } => write!(f, "更新区间终点 {end} 超过源数据长度 {len}"),
-            Self::ExceedsCapacity { total, dst_offset, capacity } => write!(
-                f,
-                "assertion failed: total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size（{total}+{dst_offset}>{capacity}）"
-            ),
-            Self::MissingTransferDst => f.write_str(
-                "Buffer must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates",
-            ),
-            Self::Empty => f.write_str("assertion failed: size > 0"),
-        }
-    }
-}
-impl std::error::Error for BufferUpdateError {}
-impl BufferUpdateError {
-    /// 供 `Error::Invalid(&'static str)` 使用的固定文本（`Error` 不带动态消息变体）。
-    pub fn static_text(&self) -> &'static str {
-        match self {
-            Self::Access(_) => "缓冲句柄/槽校验失败",
-            Self::RangeInverted { .. } => "更新区间起点大于终点",
-            Self::RangeOutOfData { .. } => "更新区间越过源数据",
-            Self::ExceedsCapacity { .. } => {
-                "assertion failed: total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size"
-            }
-            Self::MissingTransferDst => {
-                "Buffer must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"
-            }
-            Self::Empty => "assertion failed: size > 0",
-        }
-    }
-}
-impl From<BufferAccessError> for BufferUpdateError {
-    fn from(e: BufferAccessError) -> Self {
-        Self::Access(e)
+
+impl From<BufferUpdateError> for crate::Error {
+    fn from(error: BufferUpdateError) -> Self {
+        crate::Error::invalid_usage_with("缓冲更新无效", error)
     }
 }
 
@@ -433,14 +388,14 @@ impl Buffer {
     }
     pub fn new(device: Arc<VulkanDevice>, desc: &BufferDesc) -> Result<Self> {
         if desc.size == 0 {
-            return Err(Error::Invalid("缓冲区大小不能为零"));
+            return Err(Error::invalid_usage("缓冲区大小不能为零"));
         }
         if !device.capabilities.buffer_device_address
             && desc
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
-            return Err(Error::Unsupported("此路径未启用 bufferDeviceAddress"));
+            return Err(Error::unsupported("此路径未启用 bufferDeviceAddress"));
         }
         let info = vk::BufferCreateInfo::default()
             .size(desc.size)
@@ -560,16 +515,16 @@ impl Buffer {
     pub fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
         let end = offset
             .checked_add(size)
-            .ok_or(Error::Invalid("映射范围上溢"))?;
+            .ok_or(Error::invalid_usage("映射范围上溢"))?;
         if end > self.size {
-            return Err(Error::Invalid("映射访问越过缓冲区边界"));
+            return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
         }
         if !self
             .allocation
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            return Err(Error::Unsupported("内存不可映射"));
+            return Err(Error::unsupported("内存不可映射"));
         }
         let address = match self.mapped_ptr {
             Some(address) => address,
@@ -628,7 +583,7 @@ impl Buffer {
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
-            return Err(Error::Unsupported("缓冲区未启用设备地址用途"));
+            return Err(Error::unsupported("缓冲区未启用设备地址用途"));
         }
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
         Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
@@ -638,14 +593,14 @@ impl Buffer {
             .checked_add(bytes.len() as u64)
             .is_none_or(|end| end > self.size)
         {
-            return Err(Error::Invalid("映射访问越过缓冲区边界"));
+            return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
         }
         if !self
             .allocation
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            return Err(Error::Unsupported("内存不可映射"));
+            return Err(Error::unsupported("内存不可映射"));
         }
         let _queue = self.device.queue_lock.lock();
         if sync {

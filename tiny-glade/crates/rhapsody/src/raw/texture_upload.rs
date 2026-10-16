@@ -3,7 +3,7 @@ use super::{
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
     error::{Error, Result},
-    format::observed,
+    format::vk_format_info,
     texture::{Texture, TextureDesc},
 };
 use ash::vk;
@@ -21,7 +21,7 @@ pub fn validate_texture_regions(
         old_layout,
         vk::ImageLayout::UNDEFINED | vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
     ) {
-        return Err(Error::Invalid(
+        return Err(Error::invalid_usage(
             "上传旧布局必须为 UNDEFINED 或 SHADER_READ_ONLY_OPTIMAL",
         ));
     }
@@ -31,23 +31,23 @@ pub fn validate_texture_regions(
         || desc.array_layers() != 1
         || desc.samples() != vk::SampleCountFlags::TYPE_1
     {
-        return Err(Error::Unsupported("区域上传只支持二维单采样单 mip 单层"));
+        return Err(Error::unsupported("区域上传只支持二维单采样单 mip 单层"));
     }
     if !matches!(
         desc.format,
         vk::Format::R8G8B8A8_UNORM | vk::Format::R8G8B8A8_SRGB
     ) {
-        return Err(Error::Unsupported("区域上传只支持 RGBA8 UNORM/SRGB"));
+        return Err(Error::unsupported("区域上传只支持 RGBA8 UNORM/SRGB"));
     }
     if !desc
         .usage
         .contains(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
         || !staging_usage.contains(vk::BufferUsageFlags::TRANSFER_SRC)
     {
-        return Err(Error::Invalid("区域上传缺少 transfer 或 sampled 用途"));
+        return Err(Error::invalid_usage("区域上传缺少 transfer 或 sampled 用途"));
     }
     if regions.is_empty() || regions.len() > u32::MAX as usize {
-        return Err(Error::Invalid("上传区域数量无效"));
+        return Err(Error::invalid_usage("上传区域数量无效"));
     }
     for region in regions {
         let sub = region.image_subresource;
@@ -64,7 +64,7 @@ pub fn validate_texture_regions(
             || offset.x < 0
             || offset.y < 0
         {
-            return Err(Error::Invalid("上传区域子资源或尺寸无效"));
+            return Err(Error::invalid_usage("上传区域子资源或尺寸无效"));
         }
         if (offset.x as u32)
             .checked_add(extent.width)
@@ -73,10 +73,10 @@ pub fn validate_texture_regions(
                 .checked_add(extent.height)
                 .is_none_or(|end| end > desc.extent().height)
         {
-            return Err(Error::Invalid("上传区域越过纹理边界"));
+            return Err(Error::invalid_usage("上传区域越过纹理边界"));
         }
         if region.buffer_offset % 4 != 0 {
-            return Err(Error::Invalid("RGBA8 暂存偏移必须四字节对齐"));
+            return Err(Error::invalid_usage("RGBA8 暂存偏移必须四字节对齐"));
         }
         let row = if region.buffer_row_length == 0 {
             extent.width
@@ -89,7 +89,7 @@ pub fn validate_texture_regions(
             region.buffer_image_height
         };
         if row < extent.width || height < extent.height || u64::from(row) * 4 > i32::MAX as u64 {
-            return Err(Error::Invalid("暂存行长或图像高度无效"));
+            return Err(Error::invalid_usage("暂存行长或图像高度无效"));
         }
         // 单层且深度一：最后一行后面的 padding 不被 Vulkan 读取。
         let required = u64::from(extent.height - 1)
@@ -98,7 +98,7 @@ pub fn validate_texture_regions(
             .and_then(|n| n.checked_mul(4))
             .and_then(|n| n.checked_add(region.buffer_offset));
         if required.is_none_or(|end| end > staging_size) {
-            return Err(Error::Invalid("上传暂存范围越界或上溢"));
+            return Err(Error::invalid_usage("上传暂存范围越界或上溢"));
         }
     }
     Ok(())
@@ -119,12 +119,12 @@ pub unsafe fn record_texture_regions(
     old_layout: vk::ImageLayout,
 ) -> Result<()> {
     if !command.is_recording() {
-        return Err(Error::Invalid("区域上传要求命令缓冲正在录制"));
+        return Err(Error::invalid_usage("区域上传要求命令缓冲正在录制"));
     }
     if !Arc::ptr_eq(&texture.device, &command.pool.device)
         || !Arc::ptr_eq(&staging.device, &command.pool.device)
     {
-        return Err(Error::Invalid("上传资源和命令缓冲必须属于同一设备"));
+        return Err(Error::invalid_usage("上传资源和命令缓冲必须属于同一设备"));
     }
     validate_texture_regions(
         &texture.desc,
@@ -237,8 +237,6 @@ pub struct MipChainIter {
     bytes_per_block: u8,
 }
 
-const UNWRAP_ERR: &str = "called `Result::unwrap()` on an `Err` value";
-
 impl MipChainIter {
     /// `new(extent, mip_levels, bytes_per_block, block)`（0x140bd5a80）。断言顺序按机器码：
     /// `bytes_per_block > 0` → `block[0] > 0` → `block[1] > 0` → `extent[0..3] > 0` → 三个 `u16::try_from(extent[i]).unwrap()`
@@ -250,26 +248,26 @@ impl MipChainIter {
         block: [u8; 2],
     ) -> Result<Self> {
         if bytes_per_block == 0 {
-            return Err(Error::Invalid("assertion failed: bytes_per_block > 0"));
+            return Err(Error::invalid_usage("mip 链的块字节数为 0"));
         }
         if block[0] == 0 {
-            return Err(Error::Invalid("assertion failed: block[0] > 0"));
+            return Err(Error::invalid_usage("mip 链的块宽为 0"));
         }
         if block[1] == 0 {
-            return Err(Error::Invalid("assertion failed: block[1] > 0"));
+            return Err(Error::invalid_usage("mip 链的块高为 0"));
         }
         if extent[0] == 0 {
-            return Err(Error::Invalid("assertion failed: extent[0] > 0"));
+            return Err(Error::invalid_usage("纹理宽为 0"));
         }
         if extent[1] == 0 {
-            return Err(Error::Invalid("assertion failed: extent[1] > 0"));
+            return Err(Error::invalid_usage("纹理高为 0"));
         }
         if extent[2] == 0 {
-            return Err(Error::Invalid("assertion failed: extent[2] > 0"));
+            return Err(Error::invalid_usage("纹理深度为 0"));
         }
         let mut narrowed = [0u16; 3];
         for (dst, src) in narrowed.iter_mut().zip(extent) {
-            *dst = u16::try_from(src).map_err(|_| Error::Invalid(UNWRAP_ERR))?;
+            *dst = u16::try_from(src).map_err(|_| Error::invalid_usage("纹理尺寸超过 65535"))?;
         }
         Ok(Self {
             extent: narrowed,
@@ -312,25 +310,21 @@ impl Iterator for MipChainIter {
 /// `init_texture_data` 3 号目标（线性数据）的区域生成：层主序、mip 次序，数据按 `MipChainIter` 给出的
 /// 尺寸依次从前往后切（0x140bd5d30 + 0x1418b8170）。
 ///
-/// 失败条件（原版均为 panic）：`array_elements >= 0x10000`（texture.rs 0x293:52）、
-/// `bytes_per_block >= 0x100`（0x294:48）、数据为空（`assert!(!data.is_empty())`）、
-/// 数据不够（"Texture initial data underflow"，0x1ff:21 / 0x203:37）、
-/// 数据多余（`"Texture initial data has incorrect size; more bytes supplied than necessary"`，0x214:17）。
-///
-/// 原版的层数取 `desc.array_elements`（不是 Vulkan 层数）：Cube 的 `array_elements` 必为 1（0x140bd5f4d 校验），
-/// 所以 Cube 只会切出一层数据；这里照此保持。
+/// `array_layers` 是 Vulkan 层数（cube 为 6 × 元素数）。层数 ≥ 0x10000、块字节数 ≥ 0x100、数据为空、
+/// 数据不足或多余都返回 `InvalidUsage`。
 pub fn linear_regions(
     data: &[u8],
     extent: [u32; 3],
     mip_levels: u8,
-    array_elements: u32,
+    array_layers: u32,
     bytes_per_block: u32,
     block: [u8; 2],
 ) -> Result<Vec<TextureUpdateRegion<'_>>> {
-    let layers = u16::try_from(array_elements).map_err(|_| Error::Invalid(UNWRAP_ERR))?;
-    let bytes_per_block = u8::try_from(bytes_per_block).map_err(|_| Error::Invalid(UNWRAP_ERR))?;
+    let layers = u16::try_from(array_layers).map_err(|_| Error::invalid_usage("纹理层数超过 65535"))?;
+    let bytes_per_block =
+        u8::try_from(bytes_per_block).map_err(|_| Error::invalid_usage("块字节数超过 255"))?;
     if data.is_empty() {
-        return Err(Error::Invalid("assertion failed: !data.is_empty()"));
+        return Err(Error::invalid_usage("纹理初值数据为空"));
     }
     let template = MipChainIter::new(extent, mip_levels, bytes_per_block, block)?;
     let mut rest = data;
@@ -338,10 +332,10 @@ pub fn linear_regions(
     for layer in 0..layers.max(1) {
         for item in template {
             if rest.is_empty() {
-                return Err(Error::Invalid("Texture initial data underflow"));
+                return Err(Error::invalid_usage("纹理初值数据不足"));
             }
             let Some(len) = usize::try_from(item.size).ok().filter(|&n| n <= rest.len()) else {
-                return Err(Error::Invalid("Texture initial data underflow"));
+                return Err(Error::invalid_usage("纹理初值数据不足"));
             };
             let (head, tail) = rest.split_at(len);
             rest = tail;
@@ -354,9 +348,7 @@ pub fn linear_regions(
         }
     }
     if !rest.is_empty() {
-        return Err(Error::Invalid(
-            "Texture initial data has incorrect size; more bytes supplied than necessary",
-        ));
+        return Err(Error::invalid_usage("纹理初值数据多于所需字节数"));
     }
     Ok(regions)
 }
@@ -374,9 +366,7 @@ pub fn per_mip_regions<'a>(
     min_len: impl Fn(&MipLevelItem) -> Option<u64>,
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     if slices.len() != usize::from(mip_levels) {
-        return Err(Error::Invalid(
-            "assertion `left == right` failed: mip slice count != desc.mip_levels",
-        ));
+        return Err(Error::invalid_usage("逐 mip 初值切片数与 mip 级数不一致"));
     }
     let chain = MipChainIter::new(extent, mip_levels, 1, [1, 1])?;
     let mut regions = Vec::with_capacity(slices.len());
@@ -384,7 +374,7 @@ pub fn per_mip_regions<'a>(
         if let Some(need) = min_len(&item)
             && (slice.len() as u64) < need
         {
-            return Err(Error::Invalid("逐 mip 初始数据短于该级所需字节数"));
+            return Err(Error::invalid_usage("逐 mip 初始数据短于该级所需字节数"));
         }
         regions.push(TextureUpdateRegion {
             data: slice,
@@ -404,9 +394,9 @@ pub struct TextureCopyPlan {
 }
 
 /// 0x140bfeac0 + 逐区域闭包 0x1418b4080：
-/// * `total = Σ region.len`，`total == 0` → `assert!(size > 0)`（0x142b0f830）；
+/// * `total = Σ region.len`，`total == 0` 返回 `InvalidUsage`；
 /// * 区域依次紧排进暂存缓冲，`bufferOffset = 累计偏移`，每个偏移必须是 `block_bytes`
-///   （= `0x1417390e0(format)`，即 [`observed::try_vk_format_block_bytes`]）的整数倍，否则 `assert_eq!` 失败；
+///   的整数倍（Vulkan 对非深度格式的要求），否则返回 `InvalidUsage`；
 /// * 每区域一条 `VkBufferImageCopy {bufferOffset, rowLength 0, imageHeight 0,
 ///   subresource{aspect, mip, baseArrayLayer = layer, layerCount 1}, imageOffset 0, imageExtent}`。
 ///   `aspect` 是 `0x141738fe0(format)` 的整表值（深度+模板格式会同时带两个位，原版如此）。
@@ -418,17 +408,15 @@ pub fn plan_texture_copies(
     let total = regions
         .iter()
         .try_fold(0u64, |acc, r| acc.checked_add(r.data.len() as u64))
-        .ok_or(Error::Invalid("暂存总长上溢"))?;
+        .ok_or(Error::invalid_usage("暂存总长上溢"))?;
     if total == 0 {
-        return Err(Error::Invalid("assertion failed: size > 0"));
+        return Err(Error::invalid_usage("纹理上传总字节数为 0"));
     }
     let mut offset = 0u64;
     let mut copies = Vec::with_capacity(regions.len());
     for region in regions {
         if block_bytes == 0 || !offset.is_multiple_of(u64::from(block_bytes)) {
-            return Err(Error::Invalid(
-                "assertion `left == right` failed: 区域偏移不是 block_bytes 的整数倍",
-            ));
+            return Err(Error::invalid_usage("上传区域偏移不是块字节数的整数倍"));
         }
         copies.push(
             vk::BufferImageCopy::default()
@@ -450,11 +438,9 @@ pub fn plan_texture_copies(
     Ok(TextureCopyPlan { total, copies })
 }
 
-/// `block_bytes`（0x1417390e0）与 `aspect`（0x141738fe0）两张原表的 `Result` 化查询。
+/// 上传所需的格式参数：块字节数（区域偏移对齐单位）与拷贝 aspect。
 pub fn copy_format_params(format: vk::Format) -> Result<(u32, vk::ImageAspectFlags)> {
-    let block_bytes = observed::try_vk_format_block_bytes(format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 block_bytes 查询"))?;
-    let aspect = observed::try_vk_format_valid_aspect_flags(format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 aspect 查询"))?;
-    Ok((block_bytes, aspect))
+    let info = vk_format_info(format)
+        .ok_or_else(|| Error::unsupported(format!("格式 {format:?} 没有格式表信息")))?;
+    Ok((info.block_bytes, info.aspect))
 }
