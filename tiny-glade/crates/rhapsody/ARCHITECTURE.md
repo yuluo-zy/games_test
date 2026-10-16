@@ -273,7 +273,7 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
    - `Concurrent`：创建时用 `VK_SHARING_MODE_CONCURRENT` 与 `QueuePlan::families()`，不插 ownership 屏障。
    别名队列（同一 `QueueId`）退化为单队列，无额外同步。
 5. 编译结果缓存（见 §4.4）：拆成 `GraphDefinition → CompiledPlan → FrameInstance`。只缓存不持有具体 Vulkan 资源的不可变计划；导入对象、真实池命中、回调与提交回执属于帧实例。哈希只负责查找，完整规范化键比较确认命中。规划以声明、显式能力/队列配置为输入，不查询可变设备状态；实际内存需求查询与物理绑定另行执行。
-6. 光栅 pass 使用动态渲染（`VK_KHR_dynamic_rendering`，Vulkan 1.3 核心）：不创建 `VkRenderPass`/`VkFramebuffer`，`vkCmdBeginRendering` 直接给出附件；`raw::render_pass`、`raw::framebuffer` 及其缓存随之删除，管线以 `VkPipelineRenderingCreateInfo` 声明附件格式。
+6. 光栅 pass 使用动态渲染（`VK_KHR_dynamic_rendering`，Vulkan 1.3 核心）：不创建 `VkRenderPass`/`VkFramebuffer`，`vkCmdBeginRendering` 直接给出附件；`raw::render_pass`、`raw::framebuffer` 及其缓存随之删除，管线以 `VkPipelineRenderingCreateInfo` 声明附件格式。移动端（Tiler 画像）需要子 pass 合并，见 §8.2：届时用 `VK_KHR_dynamic_rendering_local_read`，否则由编译器生成 `VkRenderPass`。
 7. 并行录制分块：`RecordingPolicy { Serial, PerBatch, Chunked { min_pass_ns, max_chunks } }`，默认 `PerBatch`（一批一个命令缓冲）；PGO 分块保留为可选策略。P0 基线显示 6 pass 单批每帧 3 个命令缓冲，默认改为 `PerBatch` 后应为 1。
 
 **执行**
@@ -464,7 +464,7 @@ impl FrameLoop {
 
 - 编译器估计 GPU 关键路径（初期用上一帧每 pass 时间戳），把不在关键路径上、且与图形工作无资源冲突的 compute pass（SSAO、光照剔除、粒子等）移到异步队列，与阴影/GBuffer 等光栅受限 pass 重叠。
 - 每帧跨队列汇合点尽量控制在一两个。
-- 别名队列（lavapipe、多数集显）上收益为零，同步不当反而变慢；默认关闭，测量证明有效才开启。
+- 别名队列（lavapipe、多数集显）上收益为零，同步不当反而变慢；默认关闭，测量证明有效才开启。移动端固定默认关闭（§8.4）。
 
 ### 4.7 数据导向热路径
 
@@ -525,3 +525,107 @@ impl FrameLoop {
 | headless surface 与真实窗口系统差异 | 整帧测试覆盖协议；窗口相关在手动测试验证 |
 | 去 panic 后误用变成被吞掉的 Err | `invalid_usage` 统一记 error 日志 |
 | 仓库 AGENTS.md 的"还原原版"规则与 provenance 工具 | 用户已明确授权 rhapsody 脱离；P7 调整 `verify_inventory.py` 对 rhapsody 的规则 |
+
+---
+
+## 8. 移动端平台
+
+移动 GPU（ARM Mali、Qualcomm Adreno、Imagination PowerVR、经 MoltenVK 的 Apple GPU）是**分块延迟渲染（TBDR）**：屏幕切成小块，每块在片上内存里完成着色后才写回系统内存。同时它们与 CPU 共享一条有限的内存带宽，并且受功耗与发热约束。因此移动端的首要矛盾是**带宽与发热**，不是 draw call 数量。§3、§4 中若干桌面优先的决定在移动端需要调整，本节给出差异化设计；与前文冲突处以本节为准（由 `DeviceProfile` 选择）。
+
+### 8.1 设备画像 `DeviceProfile`
+
+```rust
+pub enum GpuArchitecture { Immediate, Tiler { vendor: TilerVendor } }
+pub enum TilerVendor { Arm, Qualcomm, Imagination, Apple, Other }
+pub struct DeviceProfile {
+    pub architecture: GpuArchitecture,     // vendorID: ARM 0x13B5、Qualcomm 0x5143、ImgTec 0x1010、Apple 0x106B（MoltenVK）
+    pub unified_memory: bool,              // 存在 DEVICE_LOCAL | HOST_VISIBLE 的大堆
+    pub lazily_allocated: bool,            // 存在 LAZILY_ALLOCATED 内存类型
+    pub tier: FeatureTier,                 // 见 8.6
+    pub thermal: Option<ThermalSource>,    // Android 热状态回调 / iOS thermalState
+}
+```
+
+- 在 `Device::new` 时探测一次，作为 `DeviceConfig` 的默认值来源；所有策略（渲染 pass 合并、队列、bindless、上传路径、分辨率）都从画像派生，调用方也可以显式覆盖。
+- 画像只决定**策略**，不分叉 API：同一套渲染图代码在桌面和移动端都能运行，编译器按画像生成不同的执行计划。
+
+### 8.2 渲染 pass 合并与片上数据（最大收益项）
+
+TBDR 上每结束一个渲染 pass，片上的附件就要写回主存，下一个 pass 再读回来，这是移动端最大的带宽浪费。
+
+- **图编译器合并光栅 pass**：相邻、尺寸相同、只做像素本地读写（当前像素读上一 pass 同一位置的输出）的光栅 pass 合并为一个渲染 pass 的多个子 pass；中间附件改为 input attachment，在片上传递，不落主存。典型可合并链：GBuffer → 延迟光照 → 半透明 → 色调映射。
+- **与 §3.6 第 6 点的关系**：桌面画像使用动态渲染；Tiler 画像需要子 pass 语义，二选一：
+  - 设备支持 `VK_KHR_dynamic_rendering_local_read` 时，仍用动态渲染 + 片上本地读；
+  - 否则生成 `VkRenderPass` + 多子 pass。因此 `raw::render_pass` 不随 P4 删除，而是收敛为"由编译器生成、按图结构缓存"的内部实现，P7 再按画像裁剪。
+- **load/store 操作由生命周期推导**：资源在本 pass 首次被写且无需旧内容 → `LOAD_OP_CLEAR` 或 `DONT_CARE`；本 pass 之后不再被读 → `STORE_OP_DONT_CARE`。深度、MSAA 颜色、GBuffer 中间层在合并后几乎都不需要写回。禁止在 pass 中途用 `vkCmdClearAttachments` 替代 load op。
+- **瞬态附件用 LAZILY_ALLOCATED 内存**：只在片上存在的附件（合并后的中间附件、MSAA 颜色、深度）用 `TRANSIENT_ATTACHMENT` usage + 惰性分配内存，实际不占物理显存。这比 §4.5 的内存别名收益更直接，两者在 Tiler 画像上叠加使用。
+- **MSAA 在片上解析**：用子 pass 的 resolve attachment 解析，多采样数据不写回主存。移动端上 4×MSAA 因此代价很低，可以替代 TAA 等全屏后处理抗锯齿。
+
+### 8.3 带宽
+
+- **附件格式**：HDR 颜色优先 `B10G11R11_UFLOAT_PACK32`，而不是 `R16G16B16A16_SFLOAT`；GBuffer 按需打包、尽量窄；深度在不需要采样时设为瞬态。
+- **帧缓冲压缩（ARM AFBC、Adreno UBWC）**：驱动只对 `OPTIMAL` tiling 的图像自动压缩，而 `STORAGE` usage 或部分格式会关闭压缩。资源的 usage 由图编译器从访问记录推导（现有 `image_usage_flags` 机制），只给真正需要的 usage，避免误开 `STORAGE`。
+- **后处理链合并**：色调映射、颜色分级、暗角、FXAA 等合并成一个全屏片元 pass（在合并后的子 pass 里读 input attachment）；泛光、景深这类必须降采样的效果用半分辨率或四分之一分辨率。
+- **优先片元而非 compute 做后处理**：在 Tiler 上，compute 写图像再由片元读取会打断"本帧片元与下一帧顶点重叠执行"的流水，而且无法利用片上内存与帧缓冲压缩。画像为 Tiler 时，可二选一实现的效果（模糊、色调映射）走片元路径。
+- **纹理压缩用 ASTC/ETC2**：移动 GPU 基本不支持 BC 格式。资产管线需额外产出 ASTC（首选）与 ETC2（回退）；上传路径按设备格式能力选择；`raw::format_table` 的块格式表需覆盖 ASTC 全部块尺寸。
+- **shader 精度**：在 HLSL 中用 `min16float` 等，经 dxc 生成 `RelaxedPrecision`，或启用 `shaderFloat16`，让 Mali/Adreno 用半精度单元运行，寄存器压力与功耗都下降。由 shader 编译器按画像选择变体。
+
+### 8.4 同步与流水
+
+- Tiler 会让第 N+1 帧的顶点/分块阶段与第 N 帧的片元阶段重叠执行。屏障的 stage 掩码必须精确：禁止 `ALL_COMMANDS`/`ALL_GRAPHICS` 这类宽泛掩码，跨帧依赖只阻塞真正需要的阶段（例如用 `FRAGMENT_SHADER → VERTEX_SHADER` 时，要确认确有顶点阶段读取）。屏障规划器需要按画像做静态检查，在 debug 构建下给出警告。
+- 渲染 pass 内部不插入外部屏障；需要的依赖用子 pass 依赖（`BY_REGION`）表达。
+- **异步 compute**：移动端通常只有一个队列族，或者独立 compute 队列与图形共享同一组着色器核心，重叠收益为零甚至为负。Tiler 画像下 `QueueConfig::async_compute` 的默认值固定为 `Off`（§3.3 规则不变，只是默认值不同）。
+- **独立传输队列**：仍可用于后台资源上传；在统一内存设备上，上传路径改为直接写入（见 8.5），不需要传输队列。
+
+### 8.5 内存
+
+- **统一内存**：画像检测到 `DEVICE_LOCAL | HOST_VISIBLE` 堆时，动态缓冲、uniform、实例数据直接持久映射写入，跳过暂存缓冲与拷贝命令；对非 `HOST_COHERENT` 的类型按需 `vkFlushMappedMemoryRanges`。
+- **显存预算小**：所有分配走统一的预算跟踪（`VK_EXT_memory_budget`）。超预算时按以下顺序降级：缩小资源池、降低 temporal 历史精度、降低渲染分辨率；不能等到分配失败才处理（移动端系统可能直接终止进程）。
+- 瞬态附件优先惰性分配（8.2），其余瞬态资源按 §4.5 做别名。
+
+### 8.6 特性分级
+
+移动端驱动的特性支持差异大，按分级决定启用哪些路径：
+
+| 分级 | 典型设备 | 启用 |
+| --- | --- | --- |
+| `Baseline` | Vulkan 1.1，较老的 Mali/Adreno | 绑定式描述符（每帧池 reset）、CPU 剔除 + 实例化、子 pass 合并、ASTC/ETC2 |
+| `Modern` | Vulkan 1.3，descriptor indexing、timeline semaphore、synchronization2 | 加：bindless（受 `maxPerStageDescriptorUpdateAfterBindSampledImages` 限制，资源数超限时分页）、间接绘制 |
+| `Desktop` | 独显/集显 | §3、§4 全部 |
+
+- timeline semaphore 在部分老 Android 驱动上不可用。`sync::Timelines` 需要一个回退实现：每次提交配一个 `VkFence` 和一个单调计数，`TimelineApi` 抽象正好容纳这种实现，上层的 `SyncPoint` 语义不变。
+- GPU 驱动渲染（§4.3）在移动端只保留"间接绘制 + CPU 剔除"；mesh shader 基本不可用，compute 剔除的带宽代价常常高于收益，默认不开启。
+
+### 8.7 功耗、发热与帧节奏
+
+- **帧率上限与精确节奏**：默认锁 30 或 60 FPS，使用 `VK_GOOGLE_display_timing`（Android）或 present wait（§4.8）按显示节拍提交，不让 CPU/GPU 空转追帧。
+- **动态分辨率**：根据上一帧 GPU 时间戳（§4.0）与热状态调整渲染分辨率，UI 保持原生分辨率并单独合成。热状态升高时依次降低：分辨率 → 阴影分辨率 → 后处理质量 → 帧率上限。
+- **线程**：大小核架构下，并行录制线程数默认不超过大核数（通常 2–4）；`RecordingPolicy` 在 Tiler 画像下默认 `PerBatch` 单线程录制，只有剖析证明录制是瓶颈时才开并行。有些移动驱动的 secondary command buffer 开销偏高，不使用。
+- **管线编译**：移动端驱动编译 shader 尤其慢，§4.1 的磁盘缓存与加载期预热是必需项，不是可选项。
+
+### 8.8 平台集成
+
+- **Android**：
+  - surface 由 `ANativeWindow` 创建（`VK_KHR_android_surface`），现有代码只有 `Surface::from_win32`，需要补齐。
+  - 应用切到后台或暂停时 surface 会被销毁：`SurfaceLost` 必须走"释放交换链 → 等待新窗口 → 重建"流程，而不是视为致命错误；后台期间释放可重建的资源（资源池、瞬态资源）以降低被系统回收的概率。
+  - **预旋转**：交换链的 `preTransform` 使用 surface 的 `currentTransform`，按设备方向在渲染时旋转投影（同时交换视口宽高），避免合成器再做一次全屏旋转（这会额外消耗带宽和延迟）。
+  - 交换链默认 3 张图像，`FIFO` 呈现模式。
+- **iOS/macOS**：经 MoltenVK 运行于 Metal 之上，需启用 `VK_KHR_portability_subset` 并遵守其限制（部分格式、事件、三角扇等不可用）；Apple GPU 同样是 TBDR，8.2 的合并与惰性分配直接适用（对应 Metal 的 memoryless 存储）。若对 Apple 平台的性能要求高，长期可评估原生 Metal 后端，本轮不做。
+
+### 8.9 测试与工具
+
+- lavapipe 不模拟分块渲染，只能验证 8.2 合并逻辑的**功能正确性**（合并前后像素一致），带宽和功耗收益必须在真机上测。
+- 编译器对合并与 load/store 推导输出可读的执行计划，并加单元测试：哪些 pass 被合并、每个附件的 load/store 操作、哪些附件是瞬态。
+- 真机工具：Arm Mobile Studio（Streamline、Mali Offline Compiler）、Snapdragon Profiler、Android GPU Inspector（AGI）、Xcode GPU 帧捕获；开启验证层的 best-practices 检查（含 ARM 专项）作为 CI 的静态检查。
+- 关键指标：每帧外部内存读写字节数、片上 tile 写回次数、GPU 活跃周期、温度上升曲线，而不只是帧时间。
+
+### 8.10 对现有阶段的影响
+
+| 阶段 | 移动端相关变更 |
+| --- | --- |
+| P2 | `DeviceProfile` 探测；统一内存检测；Tiler 下 `async_compute` 默认 `Off`；Android surface |
+| P3 | `TimelineApi` 增加 fence 回退实现（无 timeline semaphore 的设备） |
+| P4 | 渲染 pass 合并与 load/store 推导、惰性分配瞬态附件、usage 最小化保帧缓冲压缩；bindless 按特性分级启用；`raw::render_pass` 保留为编译器内部实现 |
+| P5 | `SurfaceLost` 重建流程、预旋转、帧率上限与动态分辨率钩子 |
+| P7 | ASTC/ETC2 上传与格式表；shader 半精度变体；后处理合并 |
+| 资产管线 | 产出 ASTC/ETC2 纹理；shader 编译加 `RelaxedPrecision` 变体 |
