@@ -222,6 +222,14 @@ pub struct Texture { raw: vk::Image, allocation: Allocation, desc: TextureDesc, 
 - 每个 Vulkan 对象创建后自动以 `ResourceName` 设置 `VK_EXT_debug_utils` 名称（无扩展时跳过）。
 - 视图按 `ViewDesc` 缓存在纹理内部，随纹理一起退役（取代原 TextureView 无销毁路径的问题）。
 
+**Bindless 槽位（P4 一并纳入，见 §4.2）**
+
+- 设备持有全局描述符堆：一个 update-after-bind + partially-bound 的大描述符集（采样图像、存储图像、存储缓冲、采样器各一个数组），或在支持时用 `VK_EXT_descriptor_buffer` 直接写入 GPU 缓冲。
+- 每个可被 shader 访问的资源（及其常用视图）在创建时分配一个 `BindlessIndex(u32)`，由 `slotmap` 式空闲表管理；`Handle<T>` 可直接取得该索引，shader 按索引访问。
+- 缓冲优先经 `buffer_device_address` 以 64 位地址访问，绝大多数缓冲不需要描述符。
+- 资源退役时槽位随 `Doomed` 一起进 `Retirement`，GPU 完成后才归还空闲表，避免在飞的命令读到被复用的槽位。
+- 回退：设备不支持 descriptor indexing 时整套 bindless 不可用，直接报 `Unsupported`（目标硬件与 lavapipe 均支持；descriptor buffer 为可选加速路径，需按设备探测）。
+
 **图层句柄**
 
 ```rust
@@ -256,7 +264,9 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
    - `Exclusive`：上游批次末尾 release 屏障（`srcQueueFamily`→`dstQueueFamily`），下游批次开头 acquire 屏障；
    - `Concurrent`：创建时用 `VK_SHARING_MODE_CONCURRENT` 与 `QueuePlan::families()`，不插 ownership 屏障。
    别名队列（同一 `QueueId`）退化为单队列，无额外同步。
-5. 并行录制分块：`RecordingPolicy { Serial, PerBatch, Chunked { min_pass_ns, max_chunks } }`，默认 `PerBatch`（一批一个命令缓冲）；PGO 分块保留为可选策略。P0 基线显示 6 pass 单批每帧 3 个命令缓冲，默认改为 `PerBatch` 后应为 1。
+5. 编译结果缓存（见 §4.4）：对图结构（pass 列表、队列类别、资源描述、访问关系、导入资源的描述与起始访问）计算 64 位哈希；命中时复用上次的 `CompiledGraph`（校验结果、生命周期、池分配、屏障计划、批次与队列划分），每帧只重新绑定导入资源与执行回调；分辨率变化或效果开关使哈希变化时重新编译。编译逻辑因此必须是不依赖设备状态的纯函数。
+6. 光栅 pass 使用动态渲染（`VK_KHR_dynamic_rendering`，Vulkan 1.3 核心）：不创建 `VkRenderPass`/`VkFramebuffer`，`vkCmdBeginRendering` 直接给出附件；`raw::render_pass`、`raw::framebuffer` 及其缓存随之删除，管线以 `VkPipelineRenderingCreateInfo` 声明附件格式。
+7. 并行录制分块：`RecordingPolicy { Serial, PerBatch, Chunked { min_pass_ns, max_chunks } }`，默认 `PerBatch`（一批一个命令缓冲）；PGO 分块保留为可选策略。P0 基线显示 6 pass 单批每帧 3 个命令缓冲，默认改为 `PerBatch` 后应为 1。
 
 **执行**
 
@@ -268,7 +278,7 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
 
 - `FrameRing { slots: [FrameSlot; frames_in_flight] }`，`FrameSlot { pools: per (thread × queue family) VkCommandPool, done: SyncSet }`。
 - `begin_frame` 选下一个槽：等待 `slot.done`（`Device::wait`）→ `vkResetCommandPool` 整池复位 → 复用其中已分配的命令缓冲。取代逐个命令缓冲回收、`pool_sequences`、销毁桶。
-- 描述符：每槽一个 `VkDescriptorPool`，帧开始整池 reset；持久描述符集（纹理数组等）单独长期池。取代每次 dispatch 分配瞬时集。
+- 描述符：bindless 落地后（§3.5），pass 只通过 push constant 传参数结构索引或设备地址，不再分配描述符集；过渡期每槽一个 `VkDescriptorPool`、帧开始整池 reset，取代每次 dispatch 分配瞬时集。
 - 动态常量/上传：每槽一块持久映射的线性分配环（bump allocator），帧完成后整块复用。
 
 ### 3.8 交换链与帧循环（`src/swapchain.rs`、`src/frame.rs`，P5）
@@ -317,28 +327,105 @@ impl FrameLoop {
 
 ---
 
-## 4. 测试策略
+## 4. 性能路线图
+
+§3 的重构主要解决正确性与结构问题，性能只拿到"去掉明显浪费"一层（命令缓冲 3→1、去掉 graveyard 空提交、稳态零堆分配），且**尚未测量**。下列方向按预期收益排序；除标注"并入 P4"的两项外，其余在剖析数据支持后单独立项。
+
+| # | 方向 | 预期收益 | 代价 | 决策 |
+| --- | --- | --- | --- | --- |
+| 4.0 | 剖析 | 决定后续全部方向 | 低 | 必须先做，且在真显卡上 |
+| 4.1 | 管线编译去卡顿 | 消除首次遇到材质/变体时的帧时间尖刺 | 中 | 最优先 |
+| 4.2 | Bindless 描述符 | 描述符分配与绑定的 CPU 开销接近 0 | 中 | 并入 P4（影响句柄设计） |
+| 4.3 | GPU 驱动渲染 | draw 提交 CPU 成本从 O(对象数) 降到 O(材质类别数) | 高 | 剖析确认 CPU 提交是瓶颈后 |
+| 4.4 | 渲染图编译缓存 | 每帧编译开销接近 0 | 低~中 | 并入 P4（编译须为纯函数） |
+| 4.5 | 瞬态资源内存别名 | 瞬态显存常见省 30–50%，带宽与缓存命中改善 | 中 | 真机测显存压力后 |
+| 4.6 | 异步 compute 按关键路径调度 | GPU 利用率 | 高 | 真机 GPU 时间戳证明有重叠空间后 |
+| 4.7 | 数据导向热路径 | 框架自身 CPU 常数开销 | 中 | 剖析显示框架开销占比可观时 |
+
+### 4.0 剖析
+
+- GPU：每个 pass 前后写时间戳查询（扩展现有 `begin_top_level_timestamp_query`），按帧环槽回读，不阻塞。
+- CPU：编译、录制、提交、回收各打 puffin（已在依赖中）或 `tracing` 区段。
+- lavapipe 只能衡量 CPU 侧；GPU 数据必须来自真显卡。P0 基线的 0.30 ms/帧是"框架 + 回调 + 驱动"总和，未拆分。
+
+### 4.1 管线编译去卡顿
+
+- **离线枚举 + 磁盘缓存**：shader 包已离线编译，管线变体组合同样离线枚举；启动时加载 `VkPipelineCache` 并在加载阶段后台预热。
+- **异步编译 + 回退**：编译只在后台线程进行；未就绪时本帧用简化变体或跳过该 draw，渲染线程绝不同步编译。
+- **Graphics Pipeline Library**（`VK_EXT_graphics_pipeline_library`）：顶点输入、shader、片元输出分段预编译，运行时快速链接，化解变体组合爆炸。
+- **`VK_EXT_shader_object`**：变体极多时可完全不用管线对象；需先确认目标驱动支持面。
+
+### 4.2 Bindless 描述符
+
+设计见 §3.5。要点：全局描述符堆 + `BindlessIndex`；缓冲走 `buffer_device_address`；pass 参数经 push constant 传索引；槽位随 `Retirement` 延迟归还。它同时是 4.3 的前提。
+
+### 4.3 GPU 驱动渲染
+
+- 场景数据常驻 GPU：实例变换、材质 ID、包围盒存于持久缓冲，编辑时只上传脏区。
+- compute 剔除：视锥 + 上一帧深度生成的 HZB 遮挡剔除，结果直接写间接绘制参数。
+- `vkCmdDrawIndexedIndirectCount`：一次调用绘制整类物体。
+- Meshlet / mesh shader：几何按簇剔除；程序化几何可在生成阶段直接产出 meshlet（lavapipe 不支持 mesh shader，需真机）。
+- 评估把建筑/地形网格的程序化生成移到 compute，省去 CPU 生成后的上传。
+- 这是渲染方式的根本改变（shader、资产管线都要改）；场景对象不多时不值得做。
+
+### 4.4 渲染图编译缓存
+
+设计见 §3.6 第 5 点。缓存键必须覆盖所有影响编译结果的输入；导入资源只把描述与起始访问纳入键，具体对象每帧重新绑定。缓存容量小（常见 2–4 种图形态：加载图、世界图、展示图、截图），用 LRU。
+
+### 4.5 瞬态资源内存别名
+
+- 编译器对瞬态资源的生命周期区间做区间着色，不重叠者共享同一大内存块的同一偏移（`vkBindImageMemory`/`vkBindBufferMemory` 到共享分配）。
+- 别名切换处插入以 `UNDEFINED` 为起点的屏障，内容视为丢弃；同一别名组内资源的内存类型与对齐须兼容。
+- 结果随编译缓存（4.4）一起复用。正确性可在 lavapipe 上验证，收益需真机测。
+
+### 4.6 异步 compute 按关键路径调度
+
+- 编译器估计 GPU 关键路径（初期用上一帧每 pass 时间戳），把不在关键路径上、且与图形工作无资源冲突的 compute pass（SSAO、光照剔除、粒子等）移到异步队列，与阴影/GBuffer 等光栅受限 pass 重叠。
+- 每帧跨队列汇合点尽量控制在一两个。
+- 别名队列（lavapipe、多数集显）上收益为零，同步不当反而变慢；默认关闭，测量证明有效才开启。
+
+### 4.7 数据导向热路径
+
+- 每帧线性分配器（arena）承载编译与录制的临时数据，帧末整体重置。
+- 图执行按索引访问资源表，`Arc`/`Mutex` 只出现在资源创建与销毁处。
+- pass 与访问记录用结构数组（SoA）存放，编译按列遍历。
+- 并行录制基于 `bevy_tasks` 任务窃取，按上一帧 pass 耗时分块。
+
+### 4.8 其他较小改进
+
+- **动态渲染**：已写入 §3.6 第 6 点，随 P4/P7 落地。
+- **上传路径**：专用 transfer 队列 + 持久映射暂存环；设备支持 ReBAR（可映射的 DEVICE_LOCAL 大堆）时直接写显存，跳过暂存拷贝。
+- **帧延迟控制**：`VK_KHR_present_id` + `VK_KHR_present_wait` 按显示节奏决定何时开始下一帧，降低输入延迟。
+
+### 4.9 硬件要求与顺序
+
+- 依赖较新特性：descriptor indexing、buffer device address、dynamic rendering、synchronization2、timeline semaphore（Vulkan 1.2/1.3 核心，lavapipe 支持）；descriptor buffer、graphics pipeline library、shader object、mesh shader 为可选，需按设备探测（lavapipe 不支持 mesh shader，其余需实测）。目标硬件的最低要求尚未确定，须在 4.2/4.3 动工前确认。
+- 建议顺序：4.0 剖析 → 4.1 管线去卡顿 → 4.4 编译缓存 + 动态渲染（并入 P4/P7）→ 4.2 bindless（并入 P4）→ 4.3 GPU 驱动渲染（剖析确认后）→ 4.5/4.6（真机测量后）。
+
+---
+
+## 5. 测试策略
 
 - **单元**：纯逻辑模块（sync、queue_config、图编译、屏障规划、调度）用 CPU 假后端，覆盖多队列布局与失败注入。
 - **lavapipe 集成**：`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`。像素读回、temporal 乒乓、提交失败注入、1000 帧稳定性。
 - **整帧**（P5）：`VK_EXT_headless_surface` 跑 acquire → 主图 → 展示图 → present 全链路。
 - **多队列**：lavapipe 只有 1 族 1 队列，用别名队列验证逻辑；真实多族路径的测试保留但无独立队列时跳过，需在有独立 compute 队列的显卡上补测。
-- **性能**：`cargo test --release -p rhapsody --test p0_perf_baseline -- --ignored --nocapture`，每阶段对比 3.9 表。
+- **性能**：`cargo test --release -p rhapsody --test p0_perf_baseline -- --ignored --nocapture`，每阶段对比 3.9 表；GPU 侧数据按 §4.0 在真显卡上采集。
 
-## 5. 迁移与删除清单
+## 6. 迁移与删除清单
 
 | 阶段 | 新增 | 删除 |
 | --- | --- | --- |
 | P2 | `device::{Device, DeviceConfig, init, memory}` | `raw::device::{VulkanDevice, GraphicsDevice}`、`queue_lock`、`raw::init` 中的原版排序/白名单 |
 | P3 | `command::FrameRing`、`Device::retire/collect_garbage`、`Doomed` | `raw::graveyard`、`raw::managed::lifecycle::SequenceRuntime`、`raw::submit::SubmissionEngine/DeviceState`、`raw::disposal`、`CommandBufferSeqTracker`、`ManagedResources` 退役记录、`events` |
-| P4 | `resource::*`、图层 `TextureId/BufferId/Persistent/Temporal` | `raw::managed::*` 句柄与 checksum、`rg::temporal` token 方案、`VulkanGraphBackend` 的 u64 resolver |
+| P4 | `resource::*`、图层 `TextureId/BufferId/Persistent/Temporal`、bindless 描述符堆与 `BindlessIndex`、图编译缓存、动态渲染 | `raw::managed::*` 句柄与 checksum、`rg::temporal` token 方案、`VulkanGraphBackend` 的 u64 resolver、`raw::render_pass`/`raw::framebuffer` 及其缓存、每次 dispatch 的瞬时描述符集 |
 | P5 | `swapchain`、`frame::FrameLoop` | `raw::swapchain` 租约表、`rg::frame` 原版阶段检查器、`rg::state` |
 | P6 | 图内 `QueueClass` 调度、`SharingPolicy` | 跨队列族"拒绝提交"分支 |
 | P7 | 性能三项 | `rg/compiled_graph.rs`、多余的屏障计算、`rg/resource_usage`、原版地址注释、`pass_entries.rs` |
 
 下游 `tiny-glade`（`render_host.rs`、`raster_host.rs`、测试）与 `tg-text`（`gpu.rs`）在 P2、P4、P5 同步迁移。
 
-## 6. 已知风险
+## 7. 已知风险
 
 | 风险 | 缓解 |
 | --- | --- |
