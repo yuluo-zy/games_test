@@ -17,7 +17,7 @@ pub struct DynamicConstantsChunk {
 impl DynamicConstantsChunk {
     pub fn write_bytes(&self, bytes: &[u8]) -> Result<()> {
         if bytes.len() as u64 > self.size {
-            return Err(Error::Invalid("数据超过常量区段范围"));
+            return Err(Error::invalid_usage("数据超过常量区段范围"));
         }
         self.buffer.write_bytes(self.offset, bytes)
     }
@@ -39,7 +39,7 @@ impl DynamicConstantsChunk {
         self.buffer
             .device_address()?
             .checked_add(self.offset)
-            .ok_or(Error::Invalid("设备地址溢出"))
+            .ok_or(Error::invalid_usage("设备地址溢出"))
     }
     pub fn into_gpu_lifetime_tracker(self) -> ResourceOwner {
         self.buffer
@@ -71,7 +71,7 @@ impl DynamicConstantsChunk {
         let mut bytes = vec![
             0;
             usize::try_from(self.size)
-                .map_err(|_| Error::Invalid("区段长度无法表示"))?
+                .map_err(|_| Error::invalid_usage("区段长度无法表示"))?
         ];
         self.buffer.read_bytes(self.offset, &mut bytes)?;
         Ok((self.binding(vk::DescriptorType::UNIFORM_BUFFER), bytes))
@@ -118,7 +118,7 @@ impl DynamicConstants {
             .max(1);
         // 原版把该值放进 `BufferDesc.alignment`（u16），>= 0x10000 时 panic。
         if device_alignment >= 0x10000 || !device_alignment.is_power_of_two() {
-            return Err(Error::Invalid("常量页对齐无效"));
+            return Err(Error::invalid_usage("常量页对齐无效"));
         }
         Ok(Self {
             device,
@@ -147,7 +147,7 @@ impl DynamicConstants {
         };
         let alignment = requested.max(self.device_alignment);
         if !alignment.is_power_of_two() {
-            return Err(Error::Invalid("常量区段对齐必须是 2 的幂"));
+            return Err(Error::invalid_usage("常量区段对齐必须是 2 的幂"));
         }
         let mut offset = align_up(self.cursor, alignment)?;
         if self.pages.is_empty() || offset + size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
@@ -187,5 +187,5 @@ fn align_up(value: u64, alignment: u64) -> Result<u64> {
     value
         .checked_add(alignment - 1)
         .map(|v| v & !(alignment - 1))
-        .ok_or(Error::Invalid("常量区段对齐溢出"))
+        .ok_or(Error::invalid_usage("常量区段对齐溢出"))
 }

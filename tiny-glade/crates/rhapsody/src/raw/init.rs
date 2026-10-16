@@ -406,7 +406,7 @@ impl GraphicsDevicesForSurface {
                 .devices
                 .get(candidate.index)
                 .filter(|p| p.handle.as_raw() == candidate.handle)
-                .ok_or(Error::Invalid("刷新预算时设备清单身份改变"))?;
+                .ok_or(Error::invalid_usage("刷新预算时设备清单身份改变"))?;
             candidate.memory = physical.performance_info()?;
         }
         self.order_and_filter_devices();
@@ -552,7 +552,7 @@ impl GraphicsDevicesForSurface {
             .devices
             .get(candidate.index)
             .filter(|p| p.handle.as_raw() == candidate.handle)
-            .ok_or(Error::Invalid("设备清单身份已变"))?
+            .ok_or(Error::invalid_usage("设备清单身份已变"))?
             .clone();
         log::info!(
             "Attempting to use device {} driver \"{}\" uuid \"{:02x?}\"",
@@ -572,14 +572,14 @@ impl GraphicsDevicesForSurface {
                         .as_ref()
                         .is_some_and(|p| p.contains(family))
             })
-            .ok_or(Error::Invalid("无可用 graphics 队列族"))?;
+            .ok_or(Error::invalid_usage("无可用 graphics 队列族"))?;
         let strings = self
             .policy
             .required_extensions
             .iter()
             .map(|s| std::ffi::CString::new(s.as_str()))
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|_| Error::Invalid("扩展名含 NUL"))?;
+            .map_err(|_| Error::invalid_usage("扩展名含 NUL"))?;
         Ok((physical, family, strings))
     }
     pub fn create_device(
@@ -655,7 +655,7 @@ impl GraphicsInstance {
                 .iter()
                 .any(|e| e == "VK_KHR_surface")
         {
-            return Err(Error::Invalid("实例未启用surface扩展"));
+            return Err(Error::invalid_usage("实例未启用surface扩展"));
         }
         policy.requires_surface = surface.is_some();
         if surface.is_some()
@@ -756,7 +756,7 @@ impl GraphicsInstance {
         let graphics = super::device::GraphicsDevice::finish_creation(device).map_err(Error::from)?;
         graphics
             .attach_physical_device_info(Arc::clone(physical))
-            .map_err(|_| Error::Invalid("物理设备包装已挂接"))?;
+            .map_err(|_| Error::invalid_usage("物理设备包装已挂接"))?;
         Ok(graphics)
     }
     /// 原 `GraphicsDevice::create`（0x140bf2560）的 Vulkan 设备创建段：
@@ -769,19 +769,19 @@ impl GraphicsInstance {
         extensions: &[*const std::ffi::c_char],
     ) -> Result<Arc<VulkanDevice>> {
         if physical.properties.api_version < vk::API_VERSION_1_2 {
-            return Err(Error::Unsupported("设备不支持 Vulkan 1.2"));
+            return Err(Error::unsupported("设备不支持 Vulkan 1.2"));
         }
         let available = physical.extension_names()?;
         if let Some(missing) = REQUIRED_DEVICE_EXTENSIONS
             .iter()
             .find(|name| !available.iter().any(|a| a == *name))
         {
-            return Err(Error::Missing(format!("缺少必需设备扩展 {missing}")));
+            return Err(Error::unsupported(format!("缺少必需设备扩展 {missing}")));
         }
         // 原版先取 properties（descriptor-indexing 上限），再取特性。
         let sampled = physical_sampled_image_update_after_bind_limit(self, physical);
         if sampled < MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES {
-            return Err(Error::Missing(format!(
+            return Err(Error::unsupported(format!(
                 "maxDescriptorSetUpdateAfterBindSampledImages is too low ({sampled}). Must be at least {MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES}"
             )));
         }
@@ -799,14 +799,14 @@ impl GraphicsInstance {
         if let Some((group, name)) =
             first_missing_required_feature(&core_supported, &supported12, &supported_demote)
         {
-            return Err(Error::Missing(format!("缺少必需特性 {group}.{name}")));
+            return Err(Error::unsupported(format!("缺少必需特性 {group}.{name}")));
         }
         if physical
             .queues
             .get(queue_family as usize)
             .is_none_or(|q| q.queue_count == 0)
         {
-            return Err(Error::Invalid("请求的队列族不存在"));
+            return Err(Error::invalid_usage("请求的队列族不存在"));
         }
         // 通用队列：单个，优先级 0.5（0x3f000000）。
         let universal_priorities = [0.5f32];
@@ -997,5 +997,5 @@ pub fn create_headless_device() -> Result<Arc<VulkanDevice>> {
     graphics
         .available_for_surface(None, DeviceSelectionPolicy::default())?
         .create_device(&graphics)
-        .map_err(|errors| Error::Loader(errors.join("\n")))
+        .map_err(|errors| Error::unsupported(errors.join("\n")))
 }

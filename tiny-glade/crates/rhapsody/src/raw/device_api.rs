@@ -56,7 +56,7 @@ impl GraphicsDevice {
         if Arc::ptr_eq(device, &self.inner) {
             Ok(())
         } else {
-            Err(Error::Invalid("句柄不属于本设备"))
+            Err(Error::invalid_usage("句柄不属于本设备"))
         }
     }
 
@@ -83,7 +83,7 @@ impl GraphicsDevice {
         self.set_debug_name(buffer.handle, name);
         if let Some(bytes) = bytes {
             if bytes.len() as u64 > desc.size {
-                return Err(Error::Invalid(
+                return Err(Error::invalid_usage(
                     "assertion failed: initial_data.byte_count() <= desc.size",
                 ));
             }
@@ -356,7 +356,7 @@ impl GraphicsDevice {
         let record = buffer.record(0, 0, 0, 0);
         let slot = buffer.slot_view(0);
         let plan = plan_buffer_update(&record, 0, &slot, data.len(), ranges, offset as u64)
-            .map_err(|e| Error::Invalid(e.static_text()))?;
+            .map_err(|e| Error::invalid_usage(e.static_text()))?;
         let mut gathered = Vec::with_capacity(plan.total as usize);
         for r in ranges {
             gathered.extend_from_slice(&data[r.clone()]);

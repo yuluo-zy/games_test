@@ -87,7 +87,7 @@ impl SwapchainInner {
         fence: vk::Fence,
     ) -> Result<SwapchainImageLease> {
         if semaphore == vk::Semaphore::null() && fence == vk::Fence::null() {
-            return Err(Error::Invalid("获取交换链图像需要信号量或栅栏"));
+            return Err(Error::invalid_usage("获取交换链图像需要信号量或栅栏"));
         }
         self.inner.acquire_next_image(timeout, semaphore, fence)
     }

@@ -65,7 +65,7 @@ impl GraphicsInstanceLoader {
                     entry
                 }
                 Err(error) => {
-                    return Err(Error::Loader(format!(
+                    return Err(Error::unsupported(format!(
                         "{attempts:?}; system loader: {error}"
                     )));
                 }
@@ -142,14 +142,14 @@ impl InstanceBuilder {
                 description: String::new(),
             };
             if !allowlist.permits(&layer) {
-                return Err(Error::Loader(format!("layer不在白名单: {}", layer.name)));
+                return Err(Error::unsupported(format!("layer不在白名单: {}", layer.name)));
             }
         }
         self.build()
     }
     pub fn build_with_loader(&self, loader: GraphicsInstanceLoader) -> Result<Arc<VulkanInstance>> {
         if loader.api_version < self.api_version {
-            return Err(Error::Unsupported("Vulkan 版本低于请求版本"));
+            return Err(Error::unsupported("Vulkan 版本低于请求版本"));
         }
         for layer in &self.layers {
             if !loader
@@ -157,7 +157,7 @@ impl InstanceBuilder {
                 .iter()
                 .any(|p| p.name == layer.to_string_lossy())
             {
-                return Err(Error::Loader(format!(
+                return Err(Error::unsupported(format!(
                     "请求layer不可用: {}",
                     layer.to_string_lossy()
                 )));
@@ -178,7 +178,7 @@ impl InstanceBuilder {
             if !available.iter().any(
                 |p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == extension.as_c_str(),
             ) {
-                return Err(Error::Loader(format!(
+                return Err(Error::unsupported(format!(
                     "请求instance扩展不可用: {}",
                     extension.to_string_lossy()
                 )));
@@ -359,7 +359,7 @@ pub fn vulkan_debug_messenger(
         .iter()
         .any(|name| name == "VK_EXT_debug_utils")
     {
-        return Err(Error::Unsupported("实例未启用 VK_EXT_debug_utils"));
+        return Err(Error::unsupported("实例未启用 VK_EXT_debug_utils"));
     }
     // ash 需要函数指针；使用 no-op 回调，实际诊断仍经 marker/读回路径。
     unsafe extern "system" fn callback(
@@ -423,7 +423,7 @@ impl ValidationMessenger {
     /// 收集 WARNING 与 ERROR（含 VERBOSE/INFO 以外的全部类型）。实例须已 `debug_markers()`。
     pub fn new(instance: &Arc<VulkanInstance>) -> Result<Self> {
         if !instance.enabled_extensions.iter().any(|name| name == "VK_EXT_debug_utils") {
-            return Err(Error::Unsupported("实例未启用 VK_EXT_debug_utils"));
+            return Err(Error::unsupported("实例未启用 VK_EXT_debug_utils"));
         }
         let loader = ash::ext::debug_utils::Instance::new(&instance.entry, &instance.instance);
         let collector = Arc::new(ValidationCollector::default());

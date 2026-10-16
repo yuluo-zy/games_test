@@ -171,7 +171,7 @@ pub fn upload_regions(
 fn linear_regions_for<'a>(texture: &Texture, bytes: &'a [u8]) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
     let info = observed::try_vk_format_info(desc.format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 info 查询"))?;
+        .map_err(|_| Error::unsupported("原构建不支持该格式的 info 查询"))?;
     linear_regions(
         bytes,
         [desc.width, desc.height, desc.depth],
@@ -189,9 +189,9 @@ fn per_mip_regions_for<'a>(
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
     let block_bytes = observed::try_vk_format_block_bytes(desc.format)
-        .map_err(|_| Error::Unsupported("原构建不支持该格式的 block_bytes 查询"))?;
+        .map_err(|_| Error::unsupported("原构建不支持该格式的 block_bytes 查询"))?;
     if block_bytes != 1 {
-        return Err(Error::Invalid("assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）"));
+        return Err(Error::invalid_usage("assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）"));
     }
     let texel = vk_format_info(desc.format)
         .filter(|info| info.aspect == vk::ImageAspectFlags::COLOR)
@@ -214,7 +214,7 @@ fn require_sampled(texture: &Texture) -> Result<()> {
     if texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED) {
         Ok(())
     } else {
-        Err(Error::Invalid(
+        Err(Error::invalid_usage(
             "assertion failed: desc.usage.contains(vk::ImageUsageFlags::SAMPLED)",
         ))
     }
@@ -299,7 +299,7 @@ pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> 
 /// （原版 `update_texture_impl` 不查，Vulkan 要求）。
 pub fn update_texture(device: &Arc<VulkanDevice>, texture: &Texture, bytes: &[u8]) -> Result<()> {
     if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
-        return Err(Error::Invalid("纹理缺少 TRANSFER_DST 用途"));
+        return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     let regions = linear_regions_for(texture, bytes)?;
     upload_regions(
@@ -317,7 +317,7 @@ pub fn update_texture_regions(
     regions: &[TextureUpdateRegion<'_>],
 ) -> Result<()> {
     if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
-        return Err(Error::Invalid("纹理缺少 TRANSFER_DST 用途"));
+        return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     upload_regions(
         device,

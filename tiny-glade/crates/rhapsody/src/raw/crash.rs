@@ -36,7 +36,7 @@ pub fn has_any_gpu_assertion_failed(words: Option<&[u32]>) -> Result<bool> {
         None => Ok(false),
         Some(words) => Ok(*words
             .get(1)
-            .ok_or(Error::Invalid("GPU 调试头不足两个 word"))?
+            .ok_or(Error::invalid_usage("GPU 调试头不足两个 word"))?
             != 0),
     }
 }
@@ -46,7 +46,7 @@ pub fn parse_gpu_debug_info(
 ) -> Result<GpuDebugLog> {
     let header: [u32; 4] = words
         .get(..4)
-        .ok_or(Error::Invalid("GPU 调试头不足四个 word"))?
+        .ok_or(Error::invalid_usage("GPU 调试头不足四个 word"))?
         .try_into()
         .unwrap();
     let available = (words.len() - 4) / 4;
@@ -191,7 +191,7 @@ impl GpuCrashDiagnostics {
         let debug_words = (record_capacity as usize)
             .checked_mul(4)
             .and_then(|n| n.checked_add(4))
-            .ok_or(Error::Invalid("GPU 调试容量溢出"))?;
+            .ok_or(Error::invalid_usage("GPU 调试容量溢出"))?;
         let marker_buffer = Arc::new(Buffer::new(
             device.clone(),
             &BufferDesc::new_gpu_to_cpu(4, vk::BufferUsageFlags::TRANSFER_DST),
@@ -225,10 +225,10 @@ impl GpuCrashDiagnostics {
         if !Arc::ptr_eq(&command.pool.device, &self.device)
             || command.pool.family != self.device.queue_family
         {
-            return Err(Error::Invalid("诊断命令设备或队列族不匹配"));
+            return Err(Error::invalid_usage("诊断命令设备或队列族不匹配"));
         }
         if !command.is_recording() {
-            return Err(Error::Invalid("未处于录制状态的命令不能写入 marker"));
+            return Err(Error::invalid_usage("未处于录制状态的命令不能写入 marker"));
         }
         let mut history = self.history.lock();
         let id = history.next;
@@ -259,7 +259,7 @@ impl GpuCrashDiagnostics {
             || !command.is_recording()
             || command.pool.family != self.device.queue_family
         {
-            return Err(Error::Invalid("诊断屏障的命令设备或录制状态不匹配"));
+            return Err(Error::invalid_usage("诊断屏障的命令设备或录制状态不匹配"));
         }
         command.keep_alive(self.marker_buffer.clone());
         command.keep_alive(self.debug_buffer.clone());

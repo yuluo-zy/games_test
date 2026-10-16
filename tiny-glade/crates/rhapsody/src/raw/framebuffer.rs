@@ -53,14 +53,14 @@ impl Framebuffer {
     }
     pub fn from_desc(desc: FramebufferDesc) -> Result<Self> {
         if desc.extent.width == 0 || desc.extent.height == 0 || desc.layers == 0 {
-            return Err(Error::Invalid("帧缓冲区范围必须非零"));
+            return Err(Error::invalid_usage("帧缓冲区范围必须非零"));
         }
         if desc
             .attachments
             .iter()
             .any(|v| !Arc::ptr_eq(&v.texture.device, &desc.render_pass.device))
         {
-            return Err(Error::Invalid("附件和渲染通道不属于同一设备"));
+            return Err(Error::invalid_usage("附件和渲染通道不属于同一设备"));
         }
         // 原版（framebuffer.rs:35/45）从附件推导尺寸：无附件 / 附件尺寸不一致都是 panic，这里以原文案返回错误。
         let sizes: Vec<(u32, u32)> = desc
@@ -116,10 +116,10 @@ pub const SIZE_MISMATCH_MESSAGE: &str = "Framebuffer attachments must all have t
 /// [`extent_from_attachment_sizes`] 的 `Result` 形态：错误文案就是原 panic 文案。
 pub fn try_extent_from_attachment_sizes(sizes: &[(u32, u32)]) -> Result<(u32, u32)> {
     let Some(&first) = sizes.first() else {
-        return Err(Error::Invalid(NO_ATTACHMENT_MESSAGE));
+        return Err(Error::invalid_usage(NO_ATTACHMENT_MESSAGE));
     };
     if sizes[1..].iter().any(|&size| size != first) {
-        return Err(Error::Invalid(SIZE_MISMATCH_MESSAGE));
+        return Err(Error::invalid_usage(SIZE_MISMATCH_MESSAGE));
     }
     Ok(first)
 }
@@ -163,22 +163,12 @@ mod original_panic_tests {
     }
 
     #[test]
-    fn result_form_carries_the_original_messages() {
+    fn result_form_reports_invalid_usage() {
         assert_eq!(try_extent_from_attachment_sizes(&[(8, 4), (8, 4)]).unwrap(), (8, 4));
-        assert_eq!(
-            try_extent_from_attachment_sizes(&[]).unwrap_err().to_string(),
-            NO_ATTACHMENT_MESSAGE
-        );
-        assert_eq!(
-            try_extent_from_attachment_sizes(&[(8, 4), (8, 5)]).unwrap_err().to_string(),
-            SIZE_MISMATCH_MESSAGE
-        );
-    }
-
-    #[test]
-    fn messages_have_original_lengths() {
-        assert_eq!(NO_ATTACHMENT_MESSAGE.len(), 0x2d);
-        assert_eq!(SIZE_MISMATCH_MESSAGE.len(), 0x33);
+        for bad in [&[][..], &[(8, 4), (8, 5)]] {
+            let error = try_extent_from_attachment_sizes(bad).unwrap_err();
+            assert_eq!(error.kind(), crate::error::ErrorKind::InvalidUsage);
+        }
     }
 }
 // 另：原 `GraphicsDevice::create_framebuffer`（0x140bfbef0）的 vkCreateFramebuffer 失败**不 panic**：

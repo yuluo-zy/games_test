@@ -57,7 +57,7 @@ const ZERO_WINDOW_EXTENT: &str = "窗口尺寸为零，延迟交换链重建";
 /// 表面当前尺寸为零（Windows 最小化时 `currentExtent = 0×0`）：同样跳帧。
 const ZERO_SURFACE_EXTENT: &str = "表面尺寸为零，等待窗口恢复";
 fn is_zero_extent(error: &Error) -> bool {
-    matches!(error, Error::Invalid(m) if *m == ZERO_WINDOW_EXTENT || *m == ZERO_SURFACE_EXTENT)
+    matches!(error, Error::InvalidUsage { what, .. } if what == ZERO_WINDOW_EXTENT || what == ZERO_SURFACE_EXTENT)
 }
 pub struct Surface {
     pub instance: Arc<VulkanInstance>,
@@ -204,7 +204,7 @@ impl Swapchain {
         old: vk::SwapchainKHR,
     ) -> Result<Self> {
         if !Arc::ptr_eq(&device.instance, &surface.instance) {
-            return Err(Error::Invalid("交换链表面属于其他实例"));
+            return Err(Error::invalid_usage("交换链表面属于其他实例"));
         }
         if !unsafe {
             surface.loader.get_physical_device_surface_support(
@@ -213,7 +213,7 @@ impl Swapchain {
                 surface.handle,
             )
         }? {
-            return Err(Error::Unsupported("队列不支持呈现"));
+            return Err(Error::unsupported("队列不支持呈现"));
         }
         let loader = ash::khr::swapchain::Device::new(&device.instance.instance, &device.device);
         let mut result = Self {
@@ -263,7 +263,7 @@ impl Swapchain {
     fn recreate(&mut self, requested: vk::Extent2D, old: vk::SwapchainKHR) -> Result<()> {
         if requested.width == 0 || requested.height == 0 {
             self.mark_stale();
-            return Err(Error::Invalid(ZERO_WINDOW_EXTENT));
+            return Err(Error::invalid_usage(ZERO_WINDOW_EXTENT));
         }
         let caps = unsafe {
             self.surface
@@ -271,7 +271,7 @@ impl Swapchain {
                 .get_physical_device_surface_capabilities(self.device.physical, self.surface.handle)
         }?;
         if !caps.supported_usage_flags.contains(self.usage) {
-            return Err(Error::Unsupported("表面不支持请求的图片用途"));
+            return Err(Error::unsupported("表面不支持请求的图片用途"));
         }
         let formats = self.enumerate_surface_formats()?;
         // 首选 B8G8R8A8_SRGB；回退时只取支持请求用途（OPTIMAL 2D 图像）的格式，不盲取第一个。
@@ -286,7 +286,7 @@ impl Swapchain {
                     f.format == vk::Format::UNDEFINED || self.format_supports_usage(f.format)
                 })
             })
-            .ok_or(Error::Unsupported("表面没有支持请求用途的格式"))?;
+            .ok_or(Error::unsupported("表面没有支持请求用途的格式"))?;
         if format.format == vk::Format::UNDEFINED {
             format.format = vk::Format::B8G8R8A8_SRGB;
         }
@@ -318,7 +318,7 @@ impl Swapchain {
             }
         };
         if extent.width == 0 || extent.height == 0 {
-            return Err(Error::Invalid(ZERO_SURFACE_EXTENT));
+            return Err(Error::invalid_usage(ZERO_SURFACE_EXTENT));
         }
         let count = caps.min_image_count.saturating_add(1);
         let count = if caps.max_image_count == 0 {
@@ -334,7 +334,7 @@ impl Swapchain {
         ]
         .into_iter()
         .find(|flag| caps.supported_composite_alpha.contains(*flag))
-        .ok_or(Error::Unsupported("没有合成透明度模式"))?;
+        .ok_or(Error::unsupported("没有合成透明度模式"))?;
         let info = vk::SwapchainCreateInfoKHR::default()
             .surface(self.surface.handle)
             .min_image_count(count)
@@ -507,7 +507,7 @@ impl Swapchain {
                 log::warn!(target: "rhapsody::raw::swapchain", "The newly-created swapchain was reported stale: {reason}");
                 Ok(None)
             }
-            Acquired::Retired => Err(Error::Invalid(
+            Acquired::Retired => Err(Error::invalid_usage(
                 "Newly created swapchain claims to have been retired",
             )),
             Acquired::Failed(error) => Err(error),
@@ -585,7 +585,7 @@ impl Swapchain {
         let sync = inner
             .leases
             .get(slot_index)
-            .ok_or(Error::Invalid("交换链没有图像槽"))?
+            .ok_or(Error::invalid_usage("交换链没有图像槽"))?
             .clone();
         sync.reserve()?;
         let lease = match self.acquire_image_locked(
@@ -610,7 +610,7 @@ impl Swapchain {
     }
     pub fn present(&self, index: u32, wait: &[vk::Semaphore]) -> Result<bool> {
         if index as usize >= self.images.len() {
-            return Err(Error::Invalid("交换链图片索引越界"));
+            return Err(Error::invalid_usage("交换链图片索引越界"));
         }
         let chains = [self.handle];
         let indices = [index];
@@ -811,14 +811,14 @@ impl AcquiredSwapchainFrame {
         wait_stage: vk::PipelineStageFlags,
     ) -> Result<PendingSwapchainFrame> {
         if !command.is_executable() || wait_stage.is_empty() {
-            return Err(Error::Invalid("呈现命令未结束或等待阶段为空"));
+            return Err(Error::invalid_usage("呈现命令未结束或等待阶段为空"));
         }
         let lease = self.lease.as_ref().unwrap();
         if !Arc::ptr_eq(&command.pool.device, &lease.swapchain.device) {
-            return Err(Error::Invalid("呈现命令来自其他设备"));
+            return Err(Error::invalid_usage("呈现命令来自其他设备"));
         }
         if command.pool.family != lease.swapchain.device.queue_family {
-            return Err(Error::Invalid("呈现命令的命令池不属于呈现队列族"));
+            return Err(Error::invalid_usage("呈现命令的命令池不属于呈现队列族"));
         }
         command.keep_alive(lease.swapchain.clone());
         command.keep_alive(self.sync.clone());
@@ -975,22 +975,24 @@ impl Drop for PendingSwapchainFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
 
     #[test]
     fn acquire_suboptimal_keeps_image_usable_and_only_out_of_date_rebuilds() {
         let mut stale = false;
         assert_eq!(acquire_result(&mut stale, Ok((2, true))).unwrap(), (2, true));
         assert!(!stale);
-        for error in [vk::Result::NOT_READY, vk::Result::TIMEOUT] {
-            assert!(
-                matches!(acquire_result(&mut stale, Err(error)), Err(Error::Vulkan(code)) if code == error)
-            );
+        for (error, kind) in [
+            (vk::Result::NOT_READY, ErrorKind::Vulkan),
+            (vk::Result::TIMEOUT, ErrorKind::Timeout),
+        ] {
+            assert_eq!(acquire_result(&mut stale, Err(error)).unwrap_err().kind(), kind);
             assert!(!stale);
         }
-        assert!(matches!(
-            acquire_result(&mut stale, Err(vk::Result::ERROR_OUT_OF_DATE_KHR)),
-            Err(Error::Vulkan(vk::Result::ERROR_OUT_OF_DATE_KHR))
-        ));
+        assert_eq!(
+            acquire_result(&mut stale, Err(vk::Result::ERROR_OUT_OF_DATE_KHR)).unwrap_err().kind(),
+            ErrorKind::SurfaceOutOfDate
+        );
         assert!(stale);
     }
 
@@ -1043,9 +1045,9 @@ mod tests {
             present_result(Err(vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)).unwrap(),
             (false, true)
         );
-        assert!(matches!(
-            present_result(Err(vk::Result::ERROR_SURFACE_LOST_KHR)),
-            Err(Error::Vulkan(vk::Result::ERROR_SURFACE_LOST_KHR))
-        ));
+        assert_eq!(
+            present_result(Err(vk::Result::ERROR_SURFACE_LOST_KHR)).unwrap_err().kind(),
+            ErrorKind::SurfaceLost
+        );
     }
 }

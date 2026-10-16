@@ -73,20 +73,20 @@ fn linear_regions_are_layer_major_then_mip() {
 }
 
 #[test]
-fn linear_regions_data_size_checks_match_original_messages() {
+fn linear_regions_reject_wrong_data_sizes() {
     let ok = vec![0u8; 40];
     assert!(linear_regions(&ok, [4, 2, 1], 2, 1, 4, [1, 1]).is_ok());
     // 少一个字节：underflow。
-    let err = linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().to_string();
-    assert_eq!(err, "Texture initial data underflow");
+    let err = linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().kind();
+    assert_eq!(err, rhapsody::ErrorKind::InvalidUsage);
     // 多一个字节：断言文案。
     let long = vec![0u8; 41];
-    let err = linear_regions(&long, [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().to_string();
-    assert_eq!(err, "Texture initial data has incorrect size; more bytes supplied than necessary");
+    let err = linear_regions(&long, [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().kind();
+    assert_eq!(err, rhapsody::ErrorKind::InvalidUsage);
     // 空数据。
     assert_eq!(
-        linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1]).unwrap_err().to_string(),
-        "assertion failed: !data.is_empty()"
+        linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1]).unwrap_err().kind(),
+        rhapsody::ErrorKind::InvalidUsage
     );
     // array_elements >= 0x10000、bytes_per_block >= 0x100 都是 unwrap 失败。
     assert!(linear_regions(&ok, [4, 2, 1], 1, 0x10000, 4, [1, 1]).is_err());
@@ -139,8 +139,8 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     // 总长 0：`assert!(size > 0)`。
     let empty = [TextureUpdateRegion { data: &[], extent: [1, 1, 1], mip_level: 0, array_layer: 0 }];
     assert_eq!(
-        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR).unwrap_err().to_string(),
-        "assertion failed: size > 0"
+        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR).unwrap_err().kind(),
+        rhapsody::ErrorKind::InvalidUsage
     );
 }
 

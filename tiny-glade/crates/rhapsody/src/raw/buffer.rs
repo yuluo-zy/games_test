@@ -247,7 +247,7 @@ impl std::fmt::Display for BufferUpdateError {
 }
 impl std::error::Error for BufferUpdateError {}
 impl BufferUpdateError {
-    /// 供 `Error::Invalid(&'static str)` 使用的固定文本（`Error` 不带动态消息变体）。
+    /// 供 `Error::invalid_usage(&'static str)` 使用的固定文本（`Error` 不带动态消息变体）。
     pub fn static_text(&self) -> &'static str {
         match self {
             Self::Access(_) => "缓冲句柄/槽校验失败",
@@ -433,14 +433,14 @@ impl Buffer {
     }
     pub fn new(device: Arc<VulkanDevice>, desc: &BufferDesc) -> Result<Self> {
         if desc.size == 0 {
-            return Err(Error::Invalid("缓冲区大小不能为零"));
+            return Err(Error::invalid_usage("缓冲区大小不能为零"));
         }
         if !device.capabilities.buffer_device_address
             && desc
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
-            return Err(Error::Unsupported("此路径未启用 bufferDeviceAddress"));
+            return Err(Error::unsupported("此路径未启用 bufferDeviceAddress"));
         }
         let info = vk::BufferCreateInfo::default()
             .size(desc.size)
@@ -560,16 +560,16 @@ impl Buffer {
     pub fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
         let end = offset
             .checked_add(size)
-            .ok_or(Error::Invalid("映射范围上溢"))?;
+            .ok_or(Error::invalid_usage("映射范围上溢"))?;
         if end > self.size {
-            return Err(Error::Invalid("映射访问越过缓冲区边界"));
+            return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
         }
         if !self
             .allocation
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            return Err(Error::Unsupported("内存不可映射"));
+            return Err(Error::unsupported("内存不可映射"));
         }
         let address = match self.mapped_ptr {
             Some(address) => address,
@@ -628,7 +628,7 @@ impl Buffer {
                 .usage
                 .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
         {
-            return Err(Error::Unsupported("缓冲区未启用设备地址用途"));
+            return Err(Error::unsupported("缓冲区未启用设备地址用途"));
         }
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
         Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
@@ -638,14 +638,14 @@ impl Buffer {
             .checked_add(bytes.len() as u64)
             .is_none_or(|end| end > self.size)
         {
-            return Err(Error::Invalid("映射访问越过缓冲区边界"));
+            return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
         }
         if !self
             .allocation
             .properties
             .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
         {
-            return Err(Error::Unsupported("内存不可映射"));
+            return Err(Error::unsupported("内存不可映射"));
         }
         let _queue = self.device.queue_lock.lock();
         if sync {
