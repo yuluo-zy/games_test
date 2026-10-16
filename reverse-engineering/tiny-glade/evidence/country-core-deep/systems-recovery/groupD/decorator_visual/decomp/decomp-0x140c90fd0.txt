@@ -1,0 +1,92 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140c90fd0(float *param_1,float param_2,float param_3)
+
+{
+  float fVar1;
+  undefined1 auVar2 [16];
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  float fVar7;
+  float fVar9;
+  float fVar10;
+  undefined1 auVar8 [16];
+  
+  fVar7 = _UNK_142925904 / SQRT(param_3 * param_3 + param_2 * param_2);
+  if ((int)fVar7 - 1U < 0x7fffff || (int)ABS(fVar7) - 0x800000U < 0x7f000000 && -1 < (int)fVar7) {
+    param_2 = param_2 * fVar7;
+    param_3 = param_3 * fVar7;
+  }
+  else {
+    param_3 = 0.0;
+    param_2 = _UNK_142925904;
+  }
+  fVar7 = param_2 * _UNK_1429cd0c0 - param_3 * 0.0;
+  fVar9 = _UNK_1429cd0c4 * 0.0 - _UNK_142925904 * param_2;
+  fVar10 = param_3 * _UNK_1429cd0c8 - 0.0;
+  auVar2._4_4_ = fVar7;
+  auVar2._0_4_ = fVar10;
+  auVar2._8_4_ = fVar9;
+  auVar2._12_4_ = param_3 * _UNK_1429cd0cc - 0.0;
+  auVar8._0_4_ = fVar9 * fVar9 + fVar10 * fVar10 + fVar7 * fVar7;
+  auVar8._4_4_ = auVar8._0_4_;
+  auVar8._8_4_ = auVar8._0_4_;
+  auVar8._12_4_ = auVar8._0_4_;
+  auVar8 = sqrtps(auVar8,auVar8);
+  auVar2 = divps(auVar2,auVar8);
+  fVar7 = auVar2._4_4_;
+  fVar9 = auVar2._8_4_;
+  if (param_3 <= 0.0) {
+    fVar10 = _UNK_142925904 - auVar2._0_4_;
+    if (0.0 < fVar10) {
+      fVar10 = (_UNK_142925904 - param_3) + fVar10;
+      fVar4 = _UNK_142925870 / SQRT(fVar10);
+      fVar5 = (fVar7 + 0.0) * fVar4;
+      fVar10 = fVar10 * fVar4;
+      fVar6 = fVar4 * 0.0;
+      fVar4 = (param_2 - fVar9) * fVar4;
+      goto code_r0x000140c911bc;
+    }
+    fVar5 = (_UNK_142925904 - param_3) - fVar10;
+    fVar1 = _UNK_142925870 / SQRT(fVar5);
+    fVar10 = fVar7 + 0.0;
+    fVar6 = fVar9 + param_2;
+    fVar4 = 0.0;
+    fVar9 = fVar1;
+    fVar3 = fVar1;
+    fVar7 = fVar1;
+  }
+  else {
+    fVar3 = auVar2._0_4_ + _UNK_142925904;
+    if (0.0 < fVar3) {
+      fVar3 = param_3 + _UNK_142925904 + fVar3;
+      fVar4 = _UNK_142925870 / SQRT(fVar3);
+      fVar5 = fVar4 * 0.0;
+      fVar10 = fVar4 * (param_2 - fVar9);
+      fVar6 = fVar4 * fVar7;
+      fVar4 = fVar4 * fVar3;
+      goto code_r0x000140c911bc;
+    }
+    fVar3 = (param_3 + _UNK_142925904) - fVar3;
+    fVar5 = _UNK_142925870 / SQRT(fVar3);
+    fVar1 = param_2 + fVar9;
+    fVar10 = fVar5;
+    fVar6 = fVar5;
+    fVar4 = fVar5;
+    fVar9 = 0.0;
+  }
+  fVar5 = fVar5 * fVar1;
+  fVar10 = fVar10 * fVar9;
+  fVar6 = fVar6 * fVar3;
+  fVar4 = fVar4 * fVar7;
+code_r0x000140c911bc:
+  *param_1 = fVar5;
+  param_1[1] = fVar10;
+  param_1[2] = fVar6;
+  param_1[3] = fVar4;
+  return;
+}
+

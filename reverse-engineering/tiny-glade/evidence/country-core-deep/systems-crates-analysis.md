@@ -95,8 +95,10 @@ critters / tree-tool / water / forest ──► 独立内容系统（可并行�
 
 ## 4. 风险点
 
-- **toolbar 的 taffy 归属已确认**（2026-10-14）：复用 taffy 0.3.13（registry），`taffy_update`
-  三函数是接线层；难度 ★★★☆ 不再升级。
+- **toolbar 开源来源已核查**（2026-10-16，evidence/toolbar-origin-2026-10-16/REPORT.md）：整个 toolbar
+  = 游戏自有框架 + **Taffy 0.3.13 布局依赖**（PDB 31 源文件与发布包逐字节一致，无改动直接复用）+
+  **cosmic-text 0.11.2**（PounceLight fork，文字链）+ tg-text 桥接；iced/egui 均无 toolbar 直接依赖边；
+  逆向只恢复自有框架（mei 节点模型/交互/模板/接线），布局/文字库按依赖复用。
 - **decorator 与 country-core 的边界**：decorator_storage/archivist 在 country-core
   （已章节化），system-decorator 消费它——接线证据需跨 crate 交叉。
 - **泛型单态化规模**：toolbar 每个 Content<T> 独立实例（类似 ssbo_library 12 族——可用

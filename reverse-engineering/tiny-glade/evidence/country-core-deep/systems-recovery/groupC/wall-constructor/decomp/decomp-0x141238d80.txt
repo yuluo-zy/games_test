@@ -1,0 +1,566 @@
+// name: system_wall_constructor::construct_fences::process_segment::process_segment<system_wall_constructor::construct_fences::construct_fences::closure_env$0>
+// crate: wall-constructor
+// PRIOR EVIDENCE copy from building-fences/B-core/141238d80.c
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void __cdecl
+system_wall_constructor::construct_fences::process_segment::
+process_segment<system_wall_constructor::construct_fences::construct_fences::closure_env_0>(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 *puVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  ulonglong uVar5;
+  undefined1 auVar6 [16];
+  undefined1 auVar7 [16];
+  float fVar8;
+  bool bVar9;
+  char extraout_AL;
+  char extraout_AL_00;
+  float *pfVar10;
+  float *extraout_RAX;
+  ulonglong uVar11;
+  undefined1 *extraout_RAX_00;
+  undefined1 *puVar12;
+  longlong lVar13;
+  ulonglong extraout_RAX_01;
+  undefined8 in_RCX;
+  float *pfVar14;
+  float *pfVar15;
+  float *pfVar16;
+  float *pfVar17;
+  undefined8 *puVar18;
+  undefined8 *puVar19;
+  int iVar20;
+  ulonglong uVar21;
+  longlong lVar22;
+  undefined8 *puVar23;
+  undefined8 *puVar24;
+  longlong in_R8;
+  ulonglong in_R9;
+  ulonglong uVar25;
+  float extraout_XMM0_Da;
+  float fVar26;
+  float extraout_XMM0_Da_00;
+  float extraout_XMM0_Da_01;
+  float extraout_XMM0_Da_02;
+  float extraout_XMM0_Da_03;
+  float fVar27;
+  float fVar28;
+  float extraout_XMM0_Da_04;
+  float extraout_XMM0_Da_05;
+  float extraout_XMM0_Da_06;
+  float extraout_XMM0_Da_07;
+  float extraout_XMM0_Da_08;
+  float in_XMM1_Da;
+  float fVar29;
+  float fVar30;
+  float fVar31;
+  float fVar32;
+  float fVar33;
+  float fVar34;
+  float fVar35;
+  float fVar36;
+  float fVar37;
+  float fVar38;
+  float fVar39;
+  float fVar40;
+  float fVar41;
+  float fVar42;
+  longlong in_stack_00000038;
+  ulonglong in_stack_00000040;
+  longlong in_stack_00000048;
+  longlong in_stack_00000050;
+  longlong local_2b0;
+  float *local_2a8;
+  longlong local_2a0;
+  float local_278;
+  float fStack_274;
+  float local_258;
+  float fStack_254;
+  float local_248;
+  float fStack_244;
+  float local_238;
+  float fStack_234;
+  float *local_218;
+  float local_1b8;
+  float fStack_1b4;
+  float fStack_1b0;
+  undefined4 uStack_1ac;
+  longlong local_1a8;
+  longlong lStack_1a0;
+  undefined8 local_198;
+  float local_188;
+  int iStack_184;
+  undefined4 local_17c;
+  ulonglong local_178;
+  undefined8 local_170;
+  undefined8 local_168;
+  undefined8 *puStack_160;
+  ulonglong local_158;
+  longlong lStack_150;
+  undefined8 local_148;
+  float local_138;
+  float local_130;
+  float fStack_12c;
+  float fStack_128;
+  longlong local_120;
+  ulonglong local_118;
+  float *local_110;
+  ulonglong local_108;
+  float local_100;
+  undefined8 uStack_fc;
+  undefined8 local_f0;
+  
+  local_f0 = 0xfffffffffffffffe;
+  if (1 < in_R9) {
+    split_curve_based_on_angle();
+    puVar23 = (undefined8 *)0x0;
+    pfVar14 = (float *)&DAT_00000048;
+    auVar6._8_8_ = 0;
+    auVar6._0_8_ = in_R9;
+    pfVar10 = SUB168(auVar6 * ZEXT816(0x48),0);
+    if ((SUB168(auVar6 * ZEXT816(0x48),8) != 0) || ((float *)0x7ffffffffffffffc < pfVar10)) {
+LAB_141238e8f:
+                    /* WARNING: Subroutine does not return */
+      alloc::raw_vec::handle_error();
+    }
+    if (pfVar10 == (float *)0x0) {
+      local_110 = (float *)&DAT_00000004;
+      local_118 = 0;
+    }
+    else {
+      puVar23 = (undefined8 *)&DAT_00000004;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      local_110 = extraout_RAX;
+      pfVar14 = pfVar10;
+      local_118 = in_R9;
+      if (extraout_RAX == (float *)0x0) goto LAB_141238e8f;
+    }
+    fVar28 = __real_3ecccccd;
+    local_178 = in_stack_00000048;
+    fVar34 = in_XMM1_Da + __real_3e99999a;
+    local_108 = 0;
+    pfVar10 = local_2a8 + local_2a0 * 2;
+    bVar9 = true;
+    local_170 = 0;
+    local_120 = 0;
+    pfVar16 = local_2a8;
+    while (pfVar16 != pfVar10) {
+      local_2a8 = pfVar16 + 2;
+      pfVar15 = pfVar14;
+      pfVar17 = local_2a8;
+      pfVar14 = pfVar16;
+      if (bVar9) {
+        if (local_2a8 == pfVar10) break;
+        pfVar17 = pfVar16 + 4;
+        pfVar15 = pfVar16;
+        pfVar14 = local_2a8;
+      }
+      uVar11 = *(ulonglong *)pfVar14;
+      if (uVar11 == 0xffffffffffffffff) {
+                    /* WARNING: Subroutine does not return */
+        core::slice::index::slice_end_index_overflow_fail();
+      }
+      uVar5 = *(ulonglong *)pfVar15;
+      uVar21 = (uVar11 + 1) - uVar5;
+      if (uVar11 + 1 < uVar5) {
+                    /* WARNING: Subroutine does not return */
+        core::slice::index::slice_index_order_fail();
+      }
+      if (in_R9 <= uVar11) {
+                    /* WARNING: Subroutine does not return */
+        core::slice::index::slice_end_index_len_fail();
+      }
+      auVar7._8_8_ = 0;
+      auVar7._0_8_ = uVar21;
+      uVar11 = SUB168(auVar7 * ZEXT816(0xc),0);
+      if ((SUB168(auVar7 * ZEXT816(0xc),8) != 0) || (0x7ffffffffffffffc < uVar11)) {
+LAB_14123a009:
+                    /* WARNING: Subroutine does not return */
+        alloc::raw_vec::handle_error();
+      }
+      if (uVar11 == 0) {
+        puVar12 = &DAT_00000004;
+        uVar25 = 0;
+      }
+      else {
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        puVar12 = extraout_RAX_00;
+        uVar25 = uVar21;
+        if (extraout_RAX_00 == (undefined1 *)0x0) {
+          local_170 = 4;
+          goto LAB_14123a009;
+        }
+      }
+      memcpy(puVar12,(void *)(in_R8 + uVar5 * 0xc),uVar11);
+      local_168 = uVar25;
+      puStack_160 = (undefined8 *)puVar12;
+      local_158 = uVar21;
+      ::utils::curve::Curve::
+      try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+      if (SBORROW8(0,CONCAT44(fStack_1b4,local_1b8))) {
+        puStack_160 = (undefined8 *)local_1a8;
+                    /* WARNING: Subroutine does not return */
+        core::result::unwrap_failed();
+      }
+      local_138 = local_188;
+      local_168 = CONCAT44(fStack_1b4,local_1b8);
+      local_148 = local_198;
+      local_158 = local_1a8;
+      lStack_150 = lStack_1a0;
+      ::utils::geometry::aabb::Aabb2::max_extent();
+      fVar26 = (extraout_XMM0_Da + __real_bf800000) / __real_40a00000;
+      fVar30 = 0.0;
+      if (0.0 <= fVar26) {
+        fVar30 = fVar26;
+      }
+      fVar26 = __real_3f800000;
+      if (fVar30 <= __real_3f800000) {
+        fVar26 = fVar30;
+      }
+      fVar30 = (__real_40400000 - (fVar26 + fVar26)) * fVar26 * fVar26;
+      ceilf(local_138 / (fVar30 * ___real_3fce147a + (__real_3f800000 - fVar30) * __real_3f333333));
+      ::utils::curve::Curve::
+      crashy_resample<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+      if (local_168 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      if (lStack_150 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      lVar13 = local_120 + 1;
+      local_168 = CONCAT44(fStack_1b4,local_1b8);
+      puStack_160 = (undefined8 *)CONCAT44(uStack_1ac,fStack_1b0);
+      local_158 = local_1a8;
+      lStack_150 = lStack_1a0;
+      puVar2 = (undefined8 *)((longlong)puStack_160 + local_1a8 * 0xc);
+      bVar9 = true;
+      lVar22 = 0;
+      puVar18 = puStack_160;
+      fVar30 = (float)local_1a8;
+      while (puVar18 != puVar2) {
+        puVar1 = (undefined8 *)((longlong)puVar18 + 0xc);
+        puVar19 = puVar1;
+        puVar24 = puVar23;
+        puVar23 = puVar18;
+        if (bVar9) {
+          puVar23 = puVar2;
+          if (puVar1 == puVar2) break;
+          puVar19 = puVar18 + 3;
+          puVar24 = puVar18;
+          puVar23 = puVar1;
+        }
+        uVar3 = *puVar24;
+        fVar27 = (float)uVar3;
+        fVar26 = *(float *)(puVar24 + 1);
+        uVar4 = *puVar23;
+        fVar35 = (float)uVar4;
+        fVar29 = *(float *)(puVar23 + 1);
+        if (lVar22 == 0 && local_120 == 0) {
+          perchance::PerchanceContext::uniform_disc_vec2();
+          perchance::PerchanceContext::uniform_f32();
+          fVar37 = extraout_XMM0_Da_01 * __real_3f19999a + fVar28;
+          local_100 = fVar35 - fVar27;
+          fVar30 = fVar29 - fVar26;
+          fVar32 = __real_3f800000 / SQRT(fVar30 * fVar30 + local_100 * local_100);
+          local_100 = local_100 * fVar32;
+          uStack_fc = CONCAT44(uStack_fc._4_4_,fVar32 * fVar30);
+          ::utils::swizzlers::impl$0::x0y();
+          uVar11 = local_108;
+          fVar33 = fStack_1b0;
+          fVar39 = fStack_1b4;
+          fVar32 = local_1b8;
+          if (local_108 == local_118) {
+            alloc::raw_vec::RawVec::
+            grow_one<system_wall_constructor::construct_fences::process_segment::process_segment::FencePost,alloc::alloc::Global>
+                      ();
+          }
+          fVar36 = extraout_XMM0_Da_00 * fVar37 * fVar37 * __real_3e99999a;
+          fVar37 = __real_3f800000 / SQRT(fVar36 * fVar36 + __real_3f800000);
+          *(undefined8 *)(local_110 + uVar11 * 0x12) = uVar3;
+          local_110[(uVar11 * 9 + 1) * 2] = fVar26;
+          *(ulonglong *)(local_110 + (uVar11 * 9 + 3) * 2) = CONCAT44(fStack_1b4,local_1b8);
+          local_110[(uVar11 * 9 + 4) * 2] = fStack_1b0;
+          local_110[(uVar11 * 9 + 5) * 2] = fVar37;
+          fVar31 = fVar37 * 0.0;
+          fVar36 = fVar36 * fVar37;
+          fVar30 = fVar36 * fVar34 + fVar27;
+          *(ulonglong *)(local_110 + uVar11 * 0x12 + 3) =
+               CONCAT44(fVar37 * fVar34 + (float)((ulonglong)uVar3 >> 0x20),fVar30);
+          local_110[uVar11 * 0x12 + 5] = fVar34 * fVar31 + fVar26;
+          local_110[uVar11 * 0x12 + 9] = fVar36;
+          local_110[uVar11 * 0x12 + 0xb] = fVar31;
+          *(ulonglong *)(local_110 + (uVar11 * 9 + 6) * 2) =
+               CONCAT44(fVar36 * fVar33 - fVar32 * fVar31,fVar31 * fVar39 - fVar33 * fVar37);
+          local_110[(uVar11 * 9 + 7) * 2] = fVar37 * fVar32 - fVar36 * fVar39;
+          local_110[uVar11 * 0x12 + 0xf] = 0.3;
+          local_110[(uVar11 * 9 + 8) * 2] = fVar34;
+          local_110[uVar11 * 0x12 + 0x11] = 0.3;
+          local_108 = uVar11 + 1;
+        }
+        uVar11 = local_158;
+        perchance::PerchanceContext::uniform_disc_vec2();
+        perchance::PerchanceContext::uniform_f32();
+        fVar39 = extraout_XMM0_Da_03 * __real_3f19999a + fVar28;
+        fVar27 = fVar35 - fVar27;
+        fVar26 = fVar29 - fVar26;
+        fVar32 = __real_3f800000 / SQRT(fVar26 * fVar26 + fVar27 * fVar27);
+        local_100 = fVar27 * fVar32;
+        uStack_fc = CONCAT44(uStack_fc._4_4_,fVar32 * fVar26);
+        ::utils::swizzlers::impl$0::x0y();
+        uVar5 = local_108;
+        fVar32 = fStack_1b0;
+        fVar27 = fStack_1b4;
+        fVar26 = local_1b8;
+        if (local_108 == local_118) {
+          alloc::raw_vec::RawVec::
+          grow_one<system_wall_constructor::construct_fences::process_segment::process_segment::FencePost,alloc::alloc::Global>
+                    ();
+        }
+        fVar39 = fVar39 * fVar39;
+        fVar33 = 0.0;
+        if (lVar22 + 2 != uVar11) {
+          fVar33 = fVar30 * fVar39 * __real_3e99999a;
+        }
+        lVar22 = lVar22 + 1;
+        fVar37 = extraout_XMM0_Da_02 * fVar39 * __real_3e99999a;
+        fVar39 = __real_3f800000 / SQRT(fVar33 * fVar33 + fVar37 * fVar37 + __real_3f800000);
+        *(undefined8 *)(local_110 + uVar5 * 0x12) = uVar4;
+        local_110[(uVar5 * 9 + 1) * 2] = fVar29;
+        *(ulonglong *)(local_110 + (uVar5 * 9 + 3) * 2) = CONCAT44(fStack_1b4,local_1b8);
+        local_110[(uVar5 * 9 + 4) * 2] = fStack_1b0;
+        local_110[(uVar5 * 9 + 5) * 2] = fVar39;
+        fVar33 = fVar39 * fVar33;
+        fVar37 = fVar39 * fVar37;
+        fVar30 = fVar37 * fVar34 + fVar35;
+        *(ulonglong *)(local_110 + uVar5 * 0x12 + 3) =
+             CONCAT44(fVar39 * fVar34 + (float)((ulonglong)uVar4 >> 0x20),fVar30);
+        local_110[uVar5 * 0x12 + 5] = fVar34 * fVar33 + fVar29;
+        local_110[uVar5 * 0x12 + 9] = fVar37;
+        local_110[uVar5 * 0x12 + 0xb] = fVar33;
+        local_110[(uVar5 * 9 + 6) * 2] = fVar33 * fVar27 - fVar32 * fVar39;
+        (local_110 + (uVar5 * 9 + 6) * 2)[1] = fVar37 * fVar32 - fVar26 * fVar33;
+        local_110[(uVar5 * 9 + 7) * 2] = fVar39 * fVar26 - fVar37 * fVar27;
+        local_110[uVar5 * 0x12 + 0xf] = 0.3;
+        local_110[(uVar5 * 9 + 8) * 2] = fVar34;
+        local_110[uVar5 * 0x12 + 0x11] = 0.3;
+        local_108 = uVar5 + 1;
+        bVar9 = false;
+        puVar18 = puVar19;
+      }
+      if (local_168 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      local_2a8 = (float *)0x0;
+      if (lStack_150 != 0) {
+        local_2a8 = (float *)(lStack_150 << 2);
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      bVar9 = false;
+      local_120 = lVar13;
+      pfVar16 = pfVar17;
+    }
+    pfVar14 = local_110 + local_108 * 0x12;
+    local_178 = local_178 - 1;
+    puVar12 = *(undefined1 **)(in_stack_00000050 + 8);
+    pfVar10 = local_110;
+    lVar13 = 0;
+    while (lVar22 = lVar13, pfVar16 = pfVar10, pfVar16 != pfVar14) {
+      pfVar10 = pfVar16 + 0x12;
+      lVar13 = lVar22 + 1;
+      local_2a8 = (float *)CONCAT71((int7)((ulonglong)local_2a8 >> 8),lVar22 == 0);
+      if ((in_stack_00000038 == 0 || lVar22 != 0) &&
+         ((local_178 <= in_stack_00000040 || (lVar22 != local_108 - 1)))) {
+        fVar30 = pfVar16[0x10] + __real_3dcccccd;
+        fVar28 = pfVar16[0x11] + 0.0;
+        local_130 = (float)in_RCX;
+        fStack_12c = (float)((ulonglong)in_RCX >> 0x20);
+        local_100 = fVar30 * (float)*(undefined8 *)(pfVar16 + 9);
+        uStack_fc = CONCAT44(pfVar16[0xb] * fVar30,
+                             fVar30 * (float)((ulonglong)*(undefined8 *)(pfVar16 + 9) >> 0x20));
+        local_168 = CONCAT44(fVar28 * (float)(*(ulonglong *)(pfVar16 + 0xc) >> 0x20),
+                             fVar28 * (float)*(ulonglong *)(pfVar16 + 0xc));
+        puStack_160 = (undefined8 *)CONCAT44(puStack_160._4_4_,pfVar16[0xe] * fVar28);
+        country_core::resources::render::Affine3Packed::from_cols();
+        minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();
+        iStack_184 = (int)lVar22;
+        local_17c = 0;
+        local_2a8 = &local_1b8;
+        country_core::render::sparse_instance_buffer::SparseInstanceBufferWriter::
+        push<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>();
+        if (extraout_AL != '\0') {
+          *puVar12 = 1;
+        }
+      }
+    }
+    pfVar14 = local_110 + local_108 * 0x12;
+    bVar9 = true;
+    iVar20 = 0;
+    pfVar10 = local_110;
+    while (pfVar10 != pfVar14) {
+      local_218 = pfVar10 + 0x12;
+      pfVar16 = pfVar10;
+      if (bVar9) {
+        if (local_218 == pfVar14) break;
+        pfVar16 = local_218;
+        local_2a8 = pfVar10;
+        local_218 = pfVar10 + 0x24;
+      }
+      fVar28 = local_2a8[2];
+      fVar30 = local_2a8[5];
+      fVar26 = pfVar16[2];
+      uVar11 = *(ulonglong *)local_2a8;
+      uVar3 = *(undefined8 *)(local_2a8 + 3);
+      uVar5 = *(ulonglong *)pfVar16;
+      uVar4 = *(undefined8 *)(pfVar16 + 3);
+      local_178 = CONCAT44(local_178._4_4_,pfVar16[5]);
+      perchance::PerchanceContext::uniform_f32();
+      fVar35 = (__real_3f800000 - extraout_XMM0_Da_04) * __real_3dcccccd;
+      fVar27 = extraout_XMM0_Da_04 * __real_3e99999a;
+      perchance::PerchanceContext::uniform_f32();
+      fVar29 = __real_3f800000;
+      iVar20 = iVar20 + 1;
+      fVar27 = fVar27 + fVar35;
+      fVar35 = extraout_XMM0_Da_05 * __real_3f4ccccd +
+               (__real_3f800000 - extraout_XMM0_Da_05) * __real_3f19999a;
+      local_170 = CONCAT44(local_170._4_4_,fVar27);
+      fVar27 = (fVar35 - fVar27) * fVar34;
+      fVar32 = floorf(fVar27 * __real_40800000);
+      uVar21 = (longlong)(fVar32 - __real_5f000000) & (longlong)fVar32 >> 0x3f | (longlong)fVar32;
+      if (fVar32 < __real_00000000) {
+        uVar21 = 0;
+      }
+      if (__real_5f7fffff < fVar32) {
+        uVar21 = 0xffffffffffffffff;
+      }
+      uVar25 = 4;
+      if (uVar21 < 4) {
+        uVar25 = uVar21;
+      }
+      if (uVar21 == 0) {
+        uVar25 = 1;
+      }
+      for (uVar21 = 0; uVar21 < uVar25; uVar21 = uVar21 + 1) {
+        fVar32 = __real_3f000000;
+        if (uVar25 != 1) {
+          fVar32 = (float)(longlong)uVar21 / (float)(longlong)(uVar25 - 1);
+        }
+        fVar32 = fVar32 * fVar35 + (fVar29 - fVar32) * (float)local_170;
+        fVar29 = fVar29 - fVar32;
+        fVar42 = fVar30 * fVar32 + fVar28 * fVar29;
+        local_258 = (float)uVar11;
+        fStack_254 = (float)(uVar11 >> 0x20);
+        local_248 = (float)uVar3;
+        fStack_244 = (float)((ulonglong)uVar3 >> 0x20);
+        fVar39 = local_248 * fVar32 + local_258 * fVar29;
+        fVar33 = fStack_244 * fVar32 + fStack_254 * fVar29;
+        local_278 = (float)uVar5;
+        fStack_274 = (float)(uVar5 >> 0x20);
+        local_238 = (float)uVar4;
+        fStack_234 = (float)((ulonglong)uVar4 >> 0x20);
+        fVar36 = fVar32 * local_238 + fVar29 * local_278;
+        fVar41 = fVar32 * fStack_234 + fVar29 * fStack_274;
+        fVar37 = (float)local_178 * fVar32 + fVar26 * fVar29;
+        fVar29 = fVar41 - fVar33;
+        fVar32 = fVar37 - fVar42;
+        fVar31 = fVar36 - fVar39;
+        local_130 = fVar31;
+        fStack_12c = fVar29;
+        fStack_128 = fVar32;
+        perchance::PerchanceContext::uniform_f32();
+        if (extraout_XMM0_Da_06 < __real_3e19999a) {
+          perchance::PerchanceContext::uniform_f32();
+          fVar38 = fVar32;
+          fVar40 = fVar31;
+          fVar8 = fVar42;
+          if (extraout_XMM0_Da_07 < __real_3f000000) {
+            fVar40 = (float)((uint)fVar31 ^ ___xmm_80000000800000008000000080000000);
+            fVar29 = (float)((uint)fVar29 ^ ___xmm_80000000800000008000000080000000);
+            fVar38 = (float)((uint)fVar32 ^ _UNK_1429258f4);
+            local_130 = fVar40;
+            fStack_12c = fVar29;
+            fStack_128 = fVar38;
+            fVar8 = fVar37;
+          }
+          local_120 = CONCAT44(local_120._4_4_,fVar8);
+          perchance::PerchanceContext::uniform_f32();
+          fVar29 = fVar29 - (extraout_XMM0_Da_08 * __real_3f000000 +
+                            (__real_3f800000 - extraout_XMM0_Da_08) * __real_3dcccccd) * fVar27;
+          local_168 = CONCAT44(fVar31,(uint)fVar32 ^ ___xmm_80000000800000008000000080000000);
+          fStack_12c = fVar29;
+          ::utils::swizzlers::impl$0::x0y();
+          perchance::PerchanceContext::usize_less_than();
+          if (1 < extraout_RAX_01) {
+                    /* WARNING: Subroutine does not return */
+            core::panicking::panic_bounds_check();
+          }
+          fVar32 = *(float *)(&DAT_142c1ed68 + extraout_RAX_01 * 4) * __real_3d4ccccd;
+          fVar31 = fVar40 + fVar32 * local_1b8;
+          fVar29 = fVar29 + fStack_1b4 * fVar32;
+          fVar32 = fVar38 + fStack_1b0 * fVar32;
+        }
+        fStack_128 = __real_3f800000 / SQRT(fVar32 * fVar32 + fVar31 * fVar31 + fVar29 * fVar29);
+        local_130 = fVar31 * fStack_128;
+        fStack_12c = fStack_128 * fVar29;
+        fStack_128 = fStack_128 * fVar32;
+        if ((local_130 == __real_00000000) && (!NAN(local_130) && !NAN(__real_00000000))) {
+          if ((fStack_12c == __real_3f800000) && (!NAN(fStack_12c) && !NAN(__real_3f800000))) {
+            if ((fStack_128 == __real_00000000) && (!NAN(fStack_128) && !NAN(__real_00000000))) {
+              local_1b8 = 96.96423;
+              fStack_1b4 = 1.4013e-45;
+              fStack_1b0 = 1.4013e-45;
+              uStack_1ac = 0;
+              local_1a8 = 8;
+              lStack_1a0 = 0;
+              local_198 = 0;
+                    /* WARNING: Subroutine does not return */
+              core::panicking::assert_failed<glam::f32::vec3::Vec3,glam::f32::vec3::Vec3>();
+            }
+          }
+        }
+        fVar39 = fVar39 - fVar36;
+        fVar33 = fVar33 - fVar41;
+        fVar29 = SQRT((fVar42 - fVar37) * (fVar42 - fVar37) + fVar33 * fVar33 + fVar39 * fVar39);
+        fVar37 = local_130 - fStack_12c * __xmm_00000000000000000000000000000000;
+        fVar39 = fStack_12c * __xmm_00000000000000000000000000000000 - fStack_128;
+        fVar33 = fStack_128 * DAT_1429259a4 - local_130 * __real_00000000;
+        fVar32 = __real_3f800000 / SQRT(fVar33 * fVar33 + fVar39 * fVar39 + fVar37 * fVar37);
+        local_100 = fVar29 * local_130;
+        uStack_fc = CONCAT44(fVar29 * fStack_128,fVar29 * fStack_12c);
+        local_168 = CONCAT44((fVar32 * fVar37 * local_130 - fVar32 * fVar39 * fStack_128) *
+                             __xmm_00000000000000003e4ccccd3e4ccccd._4_4_,
+                             (fVar32 * fVar33 * fStack_128 - fVar32 * fVar37 * fStack_12c) *
+                             (float)__xmm_00000000000000003e4ccccd3e4ccccd);
+        puStack_160 = (undefined8 *)
+                      CONCAT44(puStack_160._4_4_,
+                               (fStack_12c * fVar32 * fVar39 - fVar32 * fVar33 * local_130) *
+                               __real_3e4ccccd);
+        country_core::resources::render::Affine3Packed::from_cols();
+        minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();
+        iStack_184 = (int)uVar21 + iVar20 * 4;
+        local_17c = 0;
+        country_core::render::sparse_instance_buffer::SparseInstanceBufferWriter::
+        push<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>();
+        if (extraout_AL_00 != '\0') {
+          *puVar12 = 1;
+        }
+        fVar29 = __real_3f800000;
+      }
+      bVar9 = false;
+      pfVar10 = local_218;
+      local_2a8 = pfVar16;
+    }
+    if (local_118 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (local_2b0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+

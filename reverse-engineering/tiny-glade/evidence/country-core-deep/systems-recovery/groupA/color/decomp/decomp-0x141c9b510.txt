@@ -1,0 +1,83 @@
+// 
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8
+FUN_141c9b510(undefined4 param_1,undefined4 param_2,char param_3,undefined8 param_4,
+             undefined8 param_5,undefined8 param_6)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  code *pcVar3;
+  undefined8 uVar4;
+  longlong *plVar5;
+  undefined1 auStack_1a0 [8];
+  longlong *plStack_198;
+  longlong *plStack_190;
+  undefined8 uStack_180;
+  undefined4 uStack_178;
+  undefined4 uStack_174;
+  undefined8 uStack_170;
+  undefined8 uStack_168;
+  undefined8 *puStack_160;
+  undefined8 uStack_158;
+  undefined4 uStack_150;
+  undefined8 auStack_e8 [23];
+  
+  auStack_e8[0] = 0x8000000000000001;
+  FUN_14089d9b0(&uStack_178,auStack_e8);
+  FUN_14089dc90(auStack_e8,&uStack_178,0);
+  FUN_14089dd50(auStack_1a0,auStack_e8,param_4,param_5,param_6);
+  uVar4 = uStack_180;
+  if (param_3 == '\0') {
+    plVar5 = plStack_198;
+    if (plStack_198 == (longlong *)0x0) {
+      plVar5 = plStack_190;
+    }
+    lVar1 = plVar5[2];
+    if ((ulonglong)(*plVar5 - lVar1) < 0x20) {
+      FUN_1429107f0(plVar5,lVar1,0x20,1,1);
+    }
+    lVar2 = plVar5[1];
+    *(code **)(lVar2 + lVar1) = FUN_1422be9c0;
+    *(code **)(lVar2 + 8 + lVar1) = FUN_1422bf9d0;
+    *(undefined8 *)(lVar2 + 0x10 + lVar1) = uVar4;
+    *(undefined1 *)(lVar2 + 0x18 + lVar1) = 0;
+    plVar5[2] = lVar1 + 0x20;
+  }
+  puStack_160 = (undefined8 *)func_0x000140613c10(0x17,1);
+  uVar4 = _UNK_142f25088;
+  if (puStack_160 != (undefined8 *)0x0) {
+    *puStack_160 = _UNK_142f25080;
+    puStack_160[1] = uVar4;
+    *(undefined8 *)((longlong)puStack_160 + 0xf) = 0x726f737275635f72;
+    uStack_168 = 0x17;
+    uStack_158 = 0x17;
+    uStack_150 = 0;
+    uStack_170 = _UNK_142aba9d0;
+    uStack_178 = param_1;
+    uStack_174 = param_2;
+    FUN_1422beab0(auStack_1a0,&uStack_178,&UNK_142f25098);
+    uVar4 = uStack_180;
+    if (plStack_198 == (longlong *)0x0) {
+      plStack_198 = plStack_190;
+    }
+    lVar1 = plStack_198[2];
+    if ((ulonglong)(*plStack_198 - lVar1) < 0x20) {
+      FUN_1429107f0(plStack_198,lVar1,0x20,1,1);
+    }
+    lVar2 = plStack_198[1];
+    *(code **)(lVar2 + lVar1) = FUN_1422be160;
+    *(code **)(lVar2 + 8 + lVar1) = FUN_1422bf9d0;
+    *(undefined8 *)(lVar2 + 0x10 + lVar1) = uVar4;
+    *(undefined1 *)(lVar2 + 0x18 + lVar1) = 0;
+    plStack_198[2] = lVar1 + 0x20;
+    return uStack_180;
+  }
+  FUN_1428d8fe3(1,0x17,&UNK_14303ddc8);
+  pcVar3 = (code *)swi(3);
+  uVar4 = (*pcVar3)();
+  return uVar4;
+}
+

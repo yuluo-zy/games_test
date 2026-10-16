@@ -1,0 +1,94 @@
+
+/* WARNING: Instruction at (ram,0x000140822dbc) overlaps instruction at (ram,0x000140822dbb)
+    */
+
+ulonglong FUN_140822cf0(undefined1 *param_1,undefined8 param_2,undefined1 param_3,char param_4,
+                       undefined8 param_5,undefined4 param_6)
+
+{
+  code *pcVar1;
+  char cVar2;
+  byte bVar3;
+  uint uVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  undefined4 unaff_EBX;
+  undefined4 unaff_0000001c;
+  int *unaff_RDI;
+  ulonglong uVar7;
+  undefined1 auStack_48 [40];
+  undefined8 uStack_20;
+  undefined8 uStack_18;
+  
+  uVar4 = (int)param_2 - 0x38;
+  uVar5 = 6;
+  if ((byte)uVar4 < 8) {
+    uVar5 = (ulonglong)(uVar4 & 0xff);
+  }
+  cVar2 = (char)uVar5;
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+  switch(uVar5) {
+  case 0:
+  case 1:
+  case 2:
+    uVar5 = 1;
+    if (cVar2 != '\x01') {
+      uVar5 = (ulonglong)((uint)(cVar2 == '\x02') * 2);
+    }
+    param_1[2] = param_4 == '\x02';
+    *(ulonglong *)(param_1 + 8) = uVar5;
+    param_1[1] = param_3;
+    *param_1 = 1;
+    break;
+  case 3:
+    uStack_20 = func_0x000140b26a70(param_5);
+    uStack_18 = param_2;
+    cVar2 = func_0x000140b26970(&uStack_20,param_6);
+    if (2 < (byte)(cVar2 - 0x13U)) {
+      FUN_1428d9430(&UNK_142a90fae,0x28,&UNK_142a90fd8);
+      pcVar1 = (code *)swi(3);
+      uVar5 = (*pcVar1)();
+      return uVar5;
+    }
+    bVar3 = (cVar2 - 0x13U) * '\b';
+    uVar5 = (ulonglong)bVar3;
+    param_1[1] = (char)(0x100 >> (bVar3 & 0x1f));
+    *param_1 = 0x11;
+    break;
+  case 4:
+    param_1[1] = param_4 == '\x03';
+    *param_1 = 0xb;
+    break;
+  case 5:
+    uVar5 = (ulonglong)(byte)(param_4 - 2);
+    uVar6 = uVar5 + 1;
+    goto code_r0x000140822d96;
+  case 6:
+    param_1[1] = (char)param_2;
+    *param_1 = 0x23;
+                    /* WARNING: This code block may not be properly labeled as switch case */
+    break;
+  case 7:
+    break;
+  default:
+                    /* WARNING: This code block may not be properly labeled as switch case */
+    uVar6 = (ulonglong)((int)uVar5 + 1);
+code_r0x000140822d96:
+    uVar7 = 0;
+    if ((byte)uVar5 < 3) {
+      uVar7 = uVar6;
+    }
+                    /* WARNING: Could not recover jumptable at 0x000140822dad. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    uVar5 = (*(code *)(&UNK_142a910c0 + *(int *)(&UNK_142a910c0 + uVar7 * 4)))
+                      (param_1,&UNK_142a910c0 + *(int *)(&UNK_142a910c0 + uVar7 * 4));
+    return uVar5;
+  case 9:
+    uVar5 = (ulonglong)auStack_48 & 0xffffffff;
+    *(int *)CONCAT44(unaff_0000001c,unaff_EBX) =
+         *(int *)CONCAT44(unaff_0000001c,unaff_EBX) + (int)param_1 + *unaff_RDI;
+  }
+  return uVar5;
+}
+

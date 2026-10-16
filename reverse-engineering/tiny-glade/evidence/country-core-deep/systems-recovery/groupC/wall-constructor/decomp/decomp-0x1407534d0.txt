@@ -1,0 +1,192 @@
+// name: system_wall_constructor::place_pillars::PillarProposals::add_proposal
+// crate: wall-constructor
+
+
+void FUN_1407534d0(longlong *param_1,longlong param_2,undefined8 *param_3)
+
+
+
+{
+
+  longlong lVar1;
+
+  undefined4 *puVar2;
+
+  undefined8 *puVar3;
+
+  float fVar4;
+
+  float fVar5;
+
+  undefined4 uVar6;
+
+  longlong lVar7;
+
+  code *pcVar8;
+
+  undefined4 uVar9;
+
+  undefined4 uVar10;
+
+  undefined4 uVar11;
+
+  undefined8 uVar12;
+
+  undefined8 uVar13;
+
+  undefined8 uVar14;
+
+  longlong *plVar15;
+
+  float *pfVar16;
+
+  float fVar17;
+
+  
+
+  plVar15 = (longlong *)(param_1[8] * 8 + param_1[7] + -8);
+
+  if ((plVar15 != (longlong *)0x0 && param_1[8] != 0) && (*plVar15 == param_2)) {
+
+    if ((param_1[5] == 0) ||
+
+       (pfVar16 = (float *)(param_1[4] + param_1[5] * 4 + -4), pfVar16 == (float *)0x0)) {
+
+      FUN_1428d9310(&UNK_142a7c4c0);
+
+    }
+
+    else {
+
+      fVar4 = *pfVar16;
+
+      fVar5 = *(float *)((longlong)param_3 + 0x14);
+
+      fVar17 = fVar5;
+
+      if (fVar4 <= fVar5) {
+
+        fVar17 = fVar4;
+
+      }
+
+      *pfVar16 = (float)(~-(uint)NAN(fVar4) & (uint)fVar17 | -(uint)NAN(fVar4) & (uint)fVar5);
+
+      if (param_1[2] != 0) {
+
+        lVar7 = param_1[2] * 0x1c;
+
+        lVar1 = param_1[1] + lVar7;
+
+        if ((undefined8 *)(lVar1 + -0x1c) != (undefined8 *)0x0) {
+
+          pfVar16 = (float *)(param_1[1] + lVar7 + -8);
+
+          if (fVar5 < *pfVar16 || fVar5 == *pfVar16) {
+
+            return;
+
+          }
+
+          uVar12 = *param_3;
+
+          uVar13 = param_3[1];
+
+          uVar14 = *(undefined8 *)((longlong)param_3 + 0x14);
+
+          *(undefined8 *)(lVar1 + -0x10) = *(undefined8 *)((longlong)param_3 + 0xc);
+
+          *(undefined8 *)(lVar1 + -8) = uVar14;
+
+          *(undefined8 *)(lVar1 + -0x1c) = uVar12;
+
+          *(undefined8 *)(lVar1 + -0x14) = uVar13;
+
+          return;
+
+        }
+
+      }
+
+    }
+
+    FUN_1428d9310(&UNK_142a7c4d8);
+
+    pcVar8 = (code *)swi(3);
+
+    (*pcVar8)();
+
+    return;
+
+  }
+
+  uVar6 = *(undefined4 *)((longlong)param_3 + 0x14);
+
+  lVar1 = param_1[5];
+
+  if (lVar1 == param_1[3]) {
+
+    FUN_140650050(param_1 + 3,&UNK_142a7c478);
+
+  }
+
+  *(undefined4 *)(param_1[4] + lVar1 * 4) = uVar6;
+
+  param_1[5] = lVar1 + 1;
+
+  lVar1 = param_1[2];
+
+  if (lVar1 == *param_1) {
+
+    FUN_14078cb80(param_1,&UNK_142a7c490);
+
+  }
+
+  lVar7 = param_1[1];
+
+  uVar6 = *(undefined4 *)param_3;
+
+  uVar9 = *(undefined4 *)((longlong)param_3 + 4);
+
+  uVar10 = *(undefined4 *)(param_3 + 1);
+
+  uVar11 = *(undefined4 *)((longlong)param_3 + 0xc);
+
+  uVar12 = *(undefined8 *)((longlong)param_3 + 0x14);
+
+  puVar3 = (undefined8 *)(lVar7 + 0xc + lVar1 * 0x1c);
+
+  *puVar3 = *(undefined8 *)((longlong)param_3 + 0xc);
+
+  puVar3[1] = uVar12;
+
+  puVar2 = (undefined4 *)(lVar7 + lVar1 * 0x1c);
+
+  *puVar2 = uVar6;
+
+  puVar2[1] = uVar9;
+
+  puVar2[2] = uVar10;
+
+  puVar2[3] = uVar11;
+
+  param_1[2] = lVar1 + 1;
+
+  lVar1 = param_1[8];
+
+  if (lVar1 == param_1[6]) {
+
+    FUN_140b81df0(param_1 + 6,&UNK_142a7c4a8);
+
+  }
+
+  *(longlong *)(param_1[7] + lVar1 * 8) = param_2;
+
+  param_1[8] = lVar1 + 1;
+
+  return;
+
+}
+
+
+

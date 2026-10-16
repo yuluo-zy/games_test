@@ -1,0 +1,12 @@
+// show_color_options 0x14229a7f0 机器码取证（Ghidra 反编译超时，rne-disasm 替代）
+// 函数边界: 0x14229a7f0 .. 0x1422a0e18（首 ret）；632 call；165 alloc + 161 free + 146 alloc_err
+// 5×ColorRadialMenu::create 判别链：
+//   0x14229f2c9: 装饰 kind{2,6,9,0xa,0xb,0xc} 链 + Roof::is_flat(0x14229f4c0) -> 墙/装饰混合
+//   0x14229f644: kind 0xc -> try_as_stair -> StairsState::graph(0x14229f70b) -> 楼梯
+//   0x14229fb88: as_window_mut(0x14229fab1)+brightness(0x14229fabf) rsp+0x20=0x3ec51eb7 -> 窗户
+//   0x1422a000b: kind 0xb 标记(0x14229ff18 [rbp+0xb0]=0xb)+brightness(0x14229ff26) -> 楼梯变体2
+//   0x1422a0ae1: closure0(cmp bl,3)+kind 0xc(0x1422a09fb [rbp+0x158]=0xc)+brightness(0x1422a0a09) -> 半木/样式
+//   0x1422a0bea/0x1422a0bfd: new_separator + new_flat_roof_rim_ty(freehand_ty) 紧随
+// 装饰访问器: as_chimney_mut 0x1408392d0 x2 / as_flag 0x140839340 x2 / as_window_mut 0x1408393b0 x1
+//            / as_lantern_mut 0x140839420 x1 / as_stair 0x1408394b0 x1 / try_as_stair 0x140839490 x4
+// 完整 call 目标统计见 RE-ANALYSIS-2.md §2（表）

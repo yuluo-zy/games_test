@@ -1,0 +1,78 @@
+
+void FUN_1408255e0(longlong param_1,undefined8 param_2,uint *param_3,undefined8 *param_4)
+
+{
+  longlong *plVar1;
+  code *pcVar2;
+  undefined *puVar3;
+  undefined8 uVar4;
+  undefined1 auVar5 [16];
+  undefined4 uVar6;
+  int iVar7;
+  uint *puStack_b8;
+  code *pcStack_b0;
+  undefined8 *puStack_a8;
+  code *pcStack_a0;
+  undefined *puStack_98;
+  undefined8 uStack_90;
+  uint **ppuStack_88;
+  undefined8 uStack_80;
+  undefined8 uStack_78;
+  undefined8 uStack_60;
+  undefined8 uStack_58;
+  longlong lStack_50;
+  undefined1 uStack_41;
+  undefined8 uStack_40;
+  
+  uStack_40 = 0xfffffffffffffffe;
+  uStack_60 = param_2;
+  if ((((*param_3 & 0x7fffffff) < 0x7f800000) && ((param_3[1] & 0x7fffffff) < 0x7f800000)) &&
+     ((param_3[2] & 0x7fffffff) < 0x7f800000)) {
+    puVar3 = (undefined *)*param_4;
+    uVar4 = param_4[1];
+    uStack_41 = 1;
+    puStack_98 = puVar3;
+    uStack_90 = uVar4;
+    uVar6 = func_0x0001412b7f50(&puStack_b8,&puStack_98);
+    auVar5._8_8_ = pcStack_b0;
+    auVar5._0_8_ = puStack_b8;
+    iVar7 = movmskps(uVar6,auVar5);
+    if (iVar7 == 0xf) {
+      uStack_90 = CONCAT44(uStack_90._4_4_,param_3[2]);
+      puStack_98 = *(undefined **)param_3;
+      uStack_58 = param_2;
+      lStack_50 = param_1;
+      if (*(int *)(param_1 + 0x80) == 0) {
+        plVar1 = *(longlong **)(param_1 + 0x90);
+        LOCK();
+        *plVar1 = *plVar1 + -1;
+        UNLOCK();
+        if (*plVar1 == 0) {
+          FUN_140b5c620(param_1 + 0x90);
+        }
+      }
+      *(undefined4 *)(lStack_50 + 0x80) = 0;
+      *(undefined **)(lStack_50 + 0x84) = puStack_98;
+      *(undefined4 *)(lStack_50 + 0x8c) = (undefined4)uStack_90;
+      *(undefined8 *)(lStack_50 + 0x90) = uStack_58;
+      *(undefined **)(lStack_50 + 0xa0) = puVar3;
+      *(undefined8 *)(lStack_50 + 0xa8) = uVar4;
+      return;
+    }
+  }
+  pcStack_b0 = FUN_140d4ba00;
+  pcStack_a0 = FUN_140d4af90;
+  puStack_98 = &UNK_142a916c8;
+  uStack_90 = 2;
+  uStack_78 = 0;
+  ppuStack_88 = &puStack_b8;
+  uStack_80 = 2;
+  uStack_41 = 1;
+  puStack_b8 = param_3;
+  puStack_a8 = param_4;
+  FUN_1428d9390(&puStack_98,&UNK_142a916e8);
+                    /* WARNING: Does not return */
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+

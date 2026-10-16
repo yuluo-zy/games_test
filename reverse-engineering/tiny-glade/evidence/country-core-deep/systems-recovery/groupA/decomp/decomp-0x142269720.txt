@@ -1,0 +1,77 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 *
+FUN_142269720(undefined8 *param_1,undefined8 *param_2,undefined8 param_3,undefined8 param_4,
+             undefined8 param_5)
+
+{
+  float fVar1;
+  undefined8 uVar2;
+  code *pcVar3;
+  float fVar4;
+  undefined8 uVar5;
+  undefined1 auVar6 [16];
+  undefined1 auVar7 [16];
+  undefined8 auStack_1b8 [18];
+  float fStack_128;
+  float fStack_124;
+  uint uStack_120;
+  float fStack_11c;
+  undefined8 uStack_118;
+  undefined8 *puStack_110;
+  undefined8 uStack_108;
+  undefined4 uStack_100;
+  undefined1 auStack_90 [32];
+  undefined8 uStack_70;
+  undefined8 *puStack_68;
+  undefined8 uStack_60;
+  
+  uStack_60 = 0xfffffffffffffffe;
+  puStack_68 = (undefined8 *)func_0x000140613c10(8,8);
+  if (puStack_68 == (undefined8 *)0x0) {
+    FUN_1428d9000(8,8);
+  }
+  else {
+    uVar2 = *param_2;
+    fVar1 = *(float *)(param_2 + 1);
+    fVar4 = *(float *)((longlong)param_2 + 0xc);
+    auStack_1b8[0] = 0x8000000000000001;
+    FUN_14089d9b0(&fStack_128,auStack_1b8);
+    FUN_14089dc90(auStack_1b8,&fStack_128,0);
+    FUN_14089dd50(auStack_90,auStack_1b8,param_3,param_4,param_5);
+    puStack_110 = (undefined8 *)func_0x000140613c10(0x10,1);
+    uVar5 = _UNK_143035198;
+    if (puStack_110 != (undefined8 *)0x0) {
+      *puStack_110 = _UNK_143035190;
+      puStack_110[1] = uVar5;
+      uStack_118 = 0x10;
+      uStack_108 = 0x10;
+      auVar7._0_4_ = fVar4 * (fVar1 / _UNK_14295b630) * _UNK_143035070;
+      auVar7._4_4_ = fVar4 * (fVar1 / _UNK_14295b630) * _UNK_143035074;
+      auVar7._8_4_ = fVar4 * _UNK_143035078 * 0.0;
+      auVar7._12_4_ = fVar4 * _UNK_14303507c * 0.0;
+      auVar6._8_8_ = 0;
+      auVar6._0_8_ = _UNK_143035080;
+      auVar6 = maxps(auVar6,auVar7);
+      uStack_120 = ~-(uint)NAN(auVar7._0_4_) & auVar6._0_4_ |
+                   (uint)_UNK_143035080 & -(uint)NAN(auVar7._0_4_);
+      fStack_11c = (float)(~-(uint)NAN(auVar7._4_4_) & auVar6._4_4_ |
+                          (uint)(_UNK_143035080 >> 0x20) & -(uint)NAN(auVar7._4_4_));
+      uStack_100 = 0;
+      fStack_128 = (float)uVar2 + fStack_11c * 0.0 * _UNK_142a171f0;
+      fStack_124 = (float)((ulonglong)uVar2 >> 0x20) + fStack_11c * _UNK_142a171f4;
+      FUN_1425de980(auStack_90,&fStack_128,&UNK_1430351a0);
+      *puStack_68 = uStack_70;
+      *param_1 = 1;
+      param_1[1] = puStack_68;
+      param_1[2] = 1;
+      return param_1;
+    }
+  }
+  FUN_1428d8fe3(1,0x10,&UNK_1430357c0);
+                    /* WARNING: Does not return */
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

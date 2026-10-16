@@ -1,0 +1,73 @@
+// 
+
+void FUN_1407adea0(undefined8 *param_1,longlong *param_2,undefined8 param_3,undefined8 param_4,
+                  undefined8 *param_5,longlong *param_6)
+
+{
+  ulonglong *puVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  code *pcVar5;
+  ulonglong uVar6;
+  char cVar7;
+  byte bVar8;
+  ulonglong uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  undefined8 uStack_128;
+  ulonglong uStack_120;
+  undefined8 uStack_118;
+  ulonglong uStack_110;
+  undefined8 uStack_100;
+  undefined8 uStack_f8;
+  undefined8 uStack_f0;
+  
+  puVar1 = (ulonglong *)*param_2;
+  uVar9 = *puVar1 - 2;
+  lVar11 = (puVar1[1] - 1) + (ulonglong)(1 < *puVar1);
+  if (((lVar11 == 0 && (ulonglong)(4 < uVar9) <= (ulonglong)-lVar11) && (uVar9 == 2)) &&
+     (*(char *)((longlong)puVar1 + 0x5c) == '?')) {
+    uVar2 = *param_5;
+    uStack_f0 = param_5[2];
+    uVar3 = param_5[4];
+    uVar4 = param_5[8];
+    uVar6 = puVar1[0xb];
+    uVar9 = puVar1[2];
+    uStack_128 = func_0x00014067dd80(*param_1);
+    uStack_120 = uVar9;
+    cVar7 = func_0x00014092e680(&uStack_128);
+    if (cVar7 != '\0') {
+      uStack_100 = uVar4;
+      uStack_f8 = uVar3;
+      bVar8 = func_0x00014092df10(&uStack_128);
+      if (bVar8 < 2) {
+        *(undefined4 *)param_6[2] = *(undefined4 *)((longlong)param_6 + 0x1c);
+        *(undefined1 *)(*param_6 + 0x48) = 1;
+      }
+      uVar9 = (ulonglong)(uint)uVar6;
+      uStack_118 = FUN_140a1c3e0(uVar2);
+      uStack_110 = uVar9;
+      lVar11 = FUN_140a1c5f0(uVar2,uStack_118,uVar9,(uint)uVar6);
+      if (lVar11 != 0) {
+        lVar10 = 0;
+        if ((byte)(*(byte *)(lVar11 + 0x22) - 2) < 3) {
+          lVar10 = (ulonglong)*(byte *)(lVar11 + 0x22) - 1;
+        }
+                    /* WARNING: Could not emulate address calculation at 0x0001407adfd2 */
+                    /* WARNING: Treating indirect jump as call */
+        (*(code *)(&UNK_142a832b0 + *(int *)(&UNK_142a832b0 + lVar10 * 4)))
+                  (&UNK_142a832b0 + *(int *)(&UNK_142a832b0 + lVar10 * 4));
+        return;
+      }
+      FUN_1428d9310(&UNK_142a831f8);
+      FUN_1428d9430(&UNK_142a83270,0x28,&UNK_142a83298);
+      FUN_1428d9310(&UNK_142a83228);
+      pcVar5 = (code *)swi(3);
+      (*pcVar5)();
+      return;
+    }
+  }
+  return;
+}
+

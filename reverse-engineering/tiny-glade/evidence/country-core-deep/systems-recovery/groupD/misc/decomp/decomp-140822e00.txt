@@ -1,0 +1,608 @@
+
+/* WARNING: Control flow encountered bad instruction data */
+/* WARNING: Instruction at (ram,0x000142a91168) overlaps instruction at (ram,0x000142a91167)
+    */
+
+void FUN_140822e00(undefined8 *param_1,undefined8 *param_2,undefined8 *param_3,longlong *param_4,
+                  longlong *param_5,undefined8 *param_6)
+
+{
+  byte *pbVar1;
+  char *pcVar2;
+  undefined8 *puVar3;
+  undefined4 *puVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  ulonglong *puVar7;
+  ulonglong uVar8;
+  longlong lVar9;
+  undefined8 uVar10;
+  longlong lVar11;
+  bool bVar12;
+  int iVar13;
+  int iVar14;
+  undefined8 uVar15;
+  char cVar16;
+  byte bVar17;
+  uint uVar18;
+  longlong lVar19;
+  longlong lVar20;
+  uint *puVar21;
+  uint *puVar22;
+  int *piVar23;
+  ulonglong uVar24;
+  byte bVar25;
+  byte bVar26;
+  uint *puVar27;
+  ulonglong uVar28;
+  ulonglong uVar29;
+  longlong *plVar30;
+  undefined1 *puVar31;
+  longlong *plVar34;
+  ulonglong uVar35;
+  longlong *plVar36;
+  longlong *plVar37;
+  ulonglong uVar38;
+  undefined4 *puVar39;
+  undefined4 uVar40;
+  undefined *puVar41;
+  undefined7 uVar42;
+  ulonglong uVar43;
+  undefined4 *puVar44;
+  longlong *plVar45;
+  longlong *plVar46;
+  longlong *plVar47;
+  unkbyte10 in_ST0;
+  unkbyte10 Var48;
+  unkbyte10 in_ST1;
+  undefined1 auStack_f8 [44];
+  undefined4 uStack_cc;
+  undefined4 uStack_78;
+  undefined4 uStack_74;
+  longlong lStack_70;
+  undefined8 uStack_68;
+  longlong lStack_60;
+  longlong *plVar32;
+  longlong *plVar33;
+  
+  puVar31 = auStack_f8;
+  puVar7 = (ulonglong *)*param_2;
+  lVar20 = param_2[1];
+  uVar24 = *puVar7;
+  uVar29 = 0;
+  uVar35 = uVar24 - *(ulonglong *)(lVar20 + 0x18);
+  if (uVar24 < *(ulonglong *)(lVar20 + 0x18)) {
+    uVar35 = uVar29;
+  }
+  uVar43 = uVar24 - *(ulonglong *)(lVar20 + 0x38);
+  if (uVar24 < *(ulonglong *)(lVar20 + 0x38)) {
+    uVar43 = uVar29;
+  }
+  uVar24 = *(ulonglong *)(lVar20 + 0x30);
+  uVar38 = uVar24 - uVar43;
+  if (uVar43 > uVar24) {
+    uVar38 = uVar29;
+  }
+  uVar8 = *(ulonglong *)(lVar20 + 0x10);
+  uVar28 = uVar8 - uVar35;
+  if (uVar35 > uVar8) {
+    uVar28 = uVar29;
+  }
+  uVar29 = *(ulonglong *)(lVar20 + 0x40);
+  *puVar7 = uVar29 - (uVar28 + uVar38);
+  if (uVar35 <= uVar8 && uVar8 - uVar35 != 0 || uVar43 <= uVar24 && uVar24 - uVar43 != 0) {
+    *puVar7 = uVar29;
+    return;
+  }
+  puVar7 = (ulonglong *)*param_1;
+  lVar20 = param_1[1];
+  uVar24 = *puVar7;
+  uVar29 = 0;
+  uVar35 = uVar24 - *(ulonglong *)(lVar20 + 0x18);
+  if (uVar24 < *(ulonglong *)(lVar20 + 0x18)) {
+    uVar35 = uVar29;
+  }
+  uVar43 = uVar24 - *(ulonglong *)(lVar20 + 0x38);
+  if (uVar24 < *(ulonglong *)(lVar20 + 0x38)) {
+    uVar43 = uVar29;
+  }
+  plVar45 = (longlong *)(uVar35 * 0x90 + *(longlong *)(lVar20 + 8));
+  uVar24 = *(ulonglong *)(lVar20 + 0x10) - uVar35;
+  if (*(ulonglong *)(lVar20 + 0x10) < uVar35) {
+    plVar45 = (longlong *)0x8;
+    uVar24 = uVar29;
+  }
+  plVar34 = (longlong *)(uVar43 * 0x90 + *(longlong *)(lVar20 + 0x28));
+  uVar35 = *(ulonglong *)(lVar20 + 0x30) - uVar43;
+  if (*(ulonglong *)(lVar20 + 0x30) < uVar43) {
+    plVar34 = (longlong *)0x8;
+    uVar35 = uVar29;
+  }
+  *puVar7 = (*(longlong *)(lVar20 + 0x40) - uVar35) - uVar24;
+  plVar46 = plVar45 + uVar24 * 0x12;
+  plVar47 = plVar34 + uVar35 * 0x12;
+  lVar20 = *param_5;
+  piVar23 = (int *)*param_3;
+  puVar27 = (uint *)param_3[2];
+  puVar41 = (undefined *)(ulonglong)*(uint *)((longlong)param_3 + 0x1c);
+  uStack_68 = *param_6;
+  uStack_74 = *(undefined4 *)((longlong)param_4 + 0x1c);
+  puVar44 = (undefined4 *)param_4[2];
+  lStack_70 = *param_4;
+  lStack_60 = *param_4 + 0x20;
+  uStack_78 = (undefined4)lStack_60;
+  uStack_cc = uStack_78;
+code_r0x000140822f6f:
+  while( true ) {
+    do {
+      if ((plVar45 == (longlong *)0x0) || (plVar45 == plVar46)) {
+        if (plVar34 == (longlong *)0x0) {
+          return;
+        }
+        if (plVar34 == plVar47) {
+          return;
+        }
+        *puVar7 = *puVar7 + 1;
+        cVar16 = *(char *)((longlong)plVar34 + 0x7c);
+        plVar30 = (longlong *)0x0;
+        plVar36 = plVar34 + 0x12;
+        plVar32 = plVar34;
+      }
+      else {
+        *puVar7 = *puVar7 + 1;
+        cVar16 = *(char *)((longlong)plVar45 + 0x7c);
+        plVar30 = plVar45 + 0x12;
+        plVar36 = plVar34;
+        plVar32 = plVar45;
+      }
+      plVar34 = plVar36;
+      plVar45 = plVar30;
+    } while ((cVar16 == '\x02') || (*(char *)((longlong)plVar32 + 0x81) == '?'));
+    plVar30 = plVar32 + 0xe;
+    uVar5 = *(undefined4 *)(lVar20 + 0x20 + (ulonglong)*(byte *)(plVar32 + 0x10) * 4);
+    lVar19 = *plVar32 + -2;
+    if (1 < *plVar32 - 3U) {
+      lVar19 = 0;
+    }
+    uVar40 = SUB84(puVar41,0);
+    if (lVar19 != 0) break;
+    if ((char)plVar32[0xc] != '\0') goto code_r0x000140823106;
+    lVar19 = plVar32[2];
+    if (lVar19 != 3) {
+      *(longlong **)(puVar31 + 0x30) = param_4;
+      *(longlong *)(puVar31 + 0x58) = lVar20;
+      *(int **)(puVar31 + 0x40) = piVar23;
+      *(uint **)(puVar31 + 0x50) = puVar27;
+      *(undefined4 *)(puVar31 + 0x28) = uVar40;
+      *(undefined4 **)(puVar31 + 0x48) = puVar44;
+      if (lVar19 != 0) {
+        *(longlong **)(puVar31 + 0x38) = plVar32 + 2;
+code_r0x0001408233a5:
+        bVar25 = *(byte *)((longlong)plVar32 + 0x42);
+        plVar37 = plVar32;
+code_r0x0001408233a9:
+        bVar26 = *(char *)((longlong)plVar37 + 0x81) - 0x38;
+        if (7 < bVar26) {
+          bVar26 = 6;
+        }
+        bVar17 = 0x16;
+        puVar41 = &UNK_142a91198 + *(int *)(&UNK_142a91198 + (ulonglong)bVar26 * 4);
+        uVar42 = (undefined7)((ulonglong)puVar41 >> 8);
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+        switch(bVar26) {
+        default:
+          uVar40 = (undefined4)CONCAT71(uVar42,bVar25 == 2);
+          bVar17 = 7;
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          break;
+        case 3:
+          uVar40 = (undefined4)CONCAT71(uVar42,bVar25 == 2);
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          break;
+        case 4:
+          uVar40 = (undefined4)CONCAT71(uVar42,bVar25 == 3);
+          bVar17 = 0xc;
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          break;
+        case 5:
+          puVar22 = (uint *)(ulonglong)(byte)(bVar25 - 2);
+code_r0x000140823487:
+          bVar17 = 0x1c;
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          switch(puVar22) {
+          case (uint *)0x0:
+          case (uint *)0x2:
+            uVar40 = (undefined4)CONCAT71((int7)((ulonglong)puVar41 >> 8),1);
+            break;
+          case (uint *)0x1:
+            bVar17 = 0x1d;
+            uVar40 = *(undefined4 *)(puVar31 + 0x80);
+            break;
+          default:
+            uVar40 = 0;
+          }
+          break;
+        case 6:
+        case 0xbad1abe1bad1abe1:
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          if (*(char *)((longlong)plVar37 + 0x81) == '\t') {
+            uVar40 = (undefined4)CONCAT71(uVar42,bVar25 == 3);
+            bVar17 = 0xc;
+          }
+          else {
+            uVar40 = (undefined4)CONCAT71(uVar42,bVar25 != 3);
+            bVar17 = 0x24;
+          }
+          break;
+        case 7:
+          uVar40 = 0;
+          plVar36 = *(longlong **)(puVar31 + 0x38);
+          bVar17 = 0x16;
+        }
+        goto code_r0x0001408235d0;
+      }
+      *(longlong **)(puVar31 + 0x38) = plVar32 + 2;
+      if (*(char *)((longlong)plVar32 + 0x42) != '\x02') goto code_r0x0001408233a5;
+      lVar20 = plVar32[3];
+      *(undefined **)(puVar31 + -8) = &UNK_1408231df;
+      lVar20 = FUN_140a923a0(*(undefined8 *)(puVar31 + 0x90),lVar20,*(undefined8 *)(puVar31 + 0x130)
+                            );
+      if (lVar20 == 0) {
+code_r0x0001408233a0:
+        param_4 = *(longlong **)(puVar31 + 0x30);
+        goto code_r0x0001408233a5;
+      }
+      *(undefined **)(puVar31 + -8) = &UNK_1408231f3;
+      cVar16 = func_0x0001408e3380(lVar20);
+      if (cVar16 == '\0') goto code_r0x0001408233a0;
+      *(undefined **)(puVar31 + -8) = &UNK_14082320b;
+      cVar16 = func_0x0001408e31a0(lVar20 + 0x40,lVar20 + 0x54);
+      if (cVar16 == '\0') goto code_r0x0001408233a0;
+      *(int *)(puVar31 + 0x78) = (int)plVar32[0xf];
+      *(longlong *)(puVar31 + 0x70) = *plVar30;
+      puVar31[0x60] = 6;
+      *(undefined4 *)(puVar31 + 100) = uVar5;
+      puVar31[0x7c] = 0;
+      *(undefined **)(puVar31 + -8) = &UNK_14082324a;
+      FUN_14125e4f0(*(undefined8 *)(puVar31 + 0x30),puVar31 + 0x60,&UNK_142a91108);
+      plVar36 = *(longlong **)(puVar31 + 0x38);
+      goto code_r0x000140823611;
+    }
+  }
+  if (lVar19 == 2) {
+    if (*piVar23 != 7) {
+      *(int *)(puVar31 + 0x77) = (int)plVar32[0xf];
+      *(longlong *)(puVar31 + 0x6f) = *plVar30;
+      *(undefined4 **)(puVar31 + 0x48) = puVar44;
+      *puVar44 = *(undefined4 *)(puVar31 + 0x84);
+      lVar19 = *(longlong *)(puVar31 + 0x88);
+      lVar9 = *(longlong *)(lVar19 + 0x30);
+      uVar10 = *(undefined8 *)(lVar19 + 0x40);
+      if (lVar9 == *(longlong *)(lVar19 + 0x20)) {
+        *(longlong *)(puVar31 + 0x58) = lVar20;
+        *(longlong **)(puVar31 + 0x30) = param_4;
+        *(uint **)(puVar31 + 0x50) = puVar27;
+        *(int **)(puVar31 + 0x40) = piVar23;
+        *(undefined4 *)(puVar31 + 0x28) = uVar40;
+        *(undefined **)(puVar31 + -8) = &UNK_14082308a;
+        FUN_140562ab0(*(undefined8 *)(puVar31 + 0x98),&UNK_142c21f80);
+        puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+        piVar23 = *(int **)(puVar31 + 0x40);
+        lVar20 = *(longlong *)(puVar31 + 0x58);
+        puVar27 = *(uint **)(puVar31 + 0x50);
+        param_4 = *(longlong **)(puVar31 + 0x30);
+      }
+      lVar19 = *(longlong *)(puVar31 + 0x88);
+      lVar11 = *(longlong *)(lVar19 + 0x28);
+      *(undefined8 *)(lVar11 + lVar9 * 0x28) = uVar10;
+      *(undefined1 *)(lVar11 + 8 + lVar9 * 0x28) = 5;
+      uVar5 = *(undefined4 *)(puVar31 + 100);
+      uVar40 = *(undefined4 *)(puVar31 + 0x68);
+      uVar6 = *(undefined4 *)(puVar31 + 0x6c);
+      uVar10 = *(undefined8 *)(puVar31 + 0x6b);
+      uVar15 = *(undefined8 *)(puVar31 + 0x73);
+      puVar44 = (undefined4 *)(lVar11 + 9 + lVar9 * 0x28);
+      *puVar44 = *(undefined4 *)(puVar31 + 0x60);
+      puVar44[1] = uVar5;
+      puVar44[2] = uVar40;
+      puVar44[3] = uVar6;
+      puVar3 = (undefined8 *)(lVar11 + 0x14 + lVar9 * 0x28);
+      *puVar3 = uVar10;
+      puVar3[1] = uVar15;
+      *(undefined1 *)(lVar11 + 0x24 + lVar9 * 0x28) = 0;
+      *(longlong *)(lVar19 + 0x30) = lVar9 + 1;
+      *(longlong *)(lVar19 + 0x40) = *(longlong *)(lVar19 + 0x40) + 1;
+      puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    }
+    *puVar27 = (uint)puVar41;
+    piVar23[0] = 7;
+    piVar23[1] = 0;
+    goto code_r0x000140822f6f;
+  }
+  *(uint **)(puVar31 + 0x50) = puVar27;
+  *(longlong *)(puVar31 + 0x58) = lVar20;
+  if ((plVar32[1] == 0) && (*(char *)((longlong)plVar32 + 0x3a) == '\x02')) {
+    lVar20 = plVar32[2];
+    *(undefined4 *)(puVar31 + 0x28) = uVar40;
+    *(longlong **)(puVar31 + 0x30) = param_4;
+    *(int **)(puVar31 + 0x40) = piVar23;
+    *(undefined4 **)(puVar31 + 0x48) = puVar44;
+    *(undefined **)(puVar31 + -8) = &UNK_1408232a0;
+    puVar21 = (uint *)FUN_140a923a0(*(undefined8 *)(puVar31 + 0x90),lVar20,
+                                    *(undefined8 *)(puVar31 + 0x130));
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+    if (puVar21 == (uint *)0x0) goto code_r0x000140823356;
+    *(undefined **)(puVar31 + -8) = &UNK_1408232c8;
+    cVar16 = func_0x0001408e3380(puVar21);
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+    puVar27 = puVar21;
+    if (cVar16 == '\0') goto code_r0x000140823356;
+    puVar27 = puVar21 + 0x15;
+    *(undefined **)(puVar31 + -8) = &UNK_1408232f0;
+    cVar16 = func_0x0001408e31a0(puVar21 + 0x10,puVar27);
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+    if (cVar16 == '\0') goto code_r0x000140823356;
+    *(int *)(puVar31 + 0x78) = (int)plVar32[0xf];
+    *(longlong *)(puVar31 + 0x70) = *plVar30;
+    puVar31[0x60] = 6;
+    *(undefined4 *)(puVar31 + 100) = uVar5;
+    puVar31[0x7c] = 0;
+    *(undefined **)(puVar31 + -8) = &UNK_14082333d;
+    FUN_14125e4f0(param_4,puVar31 + 0x60,&UNK_142a91150);
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+    goto code_r0x0001408235a8;
+  }
+code_r0x000140823356:
+  uVar40 = SUB84(puVar41,0);
+  bVar17 = *(byte *)((longlong)plVar32 + 0x3a);
+  puVar22 = (uint *)(ulonglong)bVar17;
+  uVar18 = (uint)bVar17;
+  bVar25 = *(byte *)((longlong)plVar32 + 0x81);
+  puVar21 = (uint *)(ulonglong)bVar25;
+  bVar26 = bVar25 - 0x38;
+  if (7 < bVar26) {
+    bVar26 = 6;
+  }
+  puVar39 = (undefined4 *)CONCAT71((int7)((ulonglong)puVar27 >> 8),0x16);
+  plVar36 = (longlong *)&UNK_142a91168;
+  puVar27 = (uint *)(&UNK_142a91168 + *(int *)(&UNK_142a91168 + (ulonglong)bVar26 * 4));
+  plVar37 = plVar36;
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+  switch(bVar26) {
+  case 0:
+  case 1:
+  case 2:
+    *(uint *)(puVar31 + 0x2c) = (uint)(bVar17 == 2);
+    puVar39 = (undefined4 *)0x7;
+    break;
+  case 3:
+    *(uint *)(puVar31 + 0x2c) = (uint)(bVar17 == 2);
+    break;
+  case 4:
+    goto code_r0x00014082343f;
+  case 5:
+    puVar22 = (uint *)(ulonglong)(byte)(bVar17 - 2);
+    puVar21 = (uint *)((longlong)puVar22 + 1);
+    puVar27 = (uint *)0x0;
+  case 9:
+  case 0xb:
+    *(char *)((longlong)puVar22 + -0x73) = *(char *)((longlong)puVar22 + -0x73);
+    uVar18 = *puVar21;
+    *puVar21 = *puVar21 + 0x42a91168;
+    pcVar2 = (char *)((longlong)plVar30 + (longlong)puVar22);
+    bVar25 = (byte)puVar21 & 0x1f;
+    cVar16 = *pcVar2;
+    *pcVar2 = *pcVar2 >> bVar25;
+    bVar12 = ((ulonglong)puVar21 & 0x1f) == 0;
+    if (!(bool)(bVar12 * (0xbd56ee97 < uVar18) | !bVar12 * ((cVar16 >> bVar25 - 1 & 1U) != 0))) {
+      puVar21 = puVar27;
+    }
+                    /* WARNING: Could not recover jumptable at 0x00014082341c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (*(code *)(&UNK_142a91188 + *(int *)(&UNK_142a91188 + (longlong)puVar21 * 4)))();
+    return;
+  case 6:
+    if (bVar25 == 9) goto code_r0x00014082343f;
+    *(uint *)(puVar31 + 0x2c) = (uint)(bVar17 != 3);
+    puVar39 = (undefined4 *)0x24;
+    break;
+  case 7:
+    *(undefined4 *)(puVar31 + 0x2c) = 0;
+    break;
+  case 8:
+    return;
+  case 10:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 0xc:
+  case 0xd:
+  case 0xe:
+    goto code_r0x0001408233a9;
+  case 0xf:
+    *(byte *)puVar22 = (char)*puVar22 + bVar17;
+    *(char *)((longlong)puVar22 + -0x7af0f607) = *(char *)((longlong)puVar22 + -0x7af0f607) + bVar17
+    ;
+    uVar18 = *puVar22;
+    puVar22 = (uint *)(ulonglong)uVar18;
+    *(char *)puVar22 = (char)*puVar22 + (char)uVar18;
+    goto code_r0x00014082343f;
+  case 0x10:
+    *(uint *)(puVar31 + 0x2c) = (uint)bVar17;
+    break;
+  case 0x11:
+    uVar18 = (uint)bVar17 + *(int *)((longlong)puVar21 + 0xf);
+    piVar23 = (int *)((ulonglong)puVar31 & 0xffffffff);
+    *(char *)(piVar23 + 0x1d22d203) = (char)piVar23[0x1d22d203] << 4;
+    uVar6 = in((short)puVar27);
+    *puVar39 = uVar6;
+    *piVar23 = *piVar23 + (int)puVar31;
+    *(char *)((longlong)piVar23 + 0xf4102f9) =
+         *(char *)((longlong)piVar23 + 0xf4102f9) + (char)piVar23;
+    puVar31 = (undefined1 *)((ulonglong)puVar31 & 0xffffffff);
+    pbVar1 = (byte *)((ulonglong)uVar18 - 0x75);
+    *pbVar1 = *pbVar1 >> 4 | *pbVar1 << 4;
+    bVar17 = (byte)uVar18 & 0x38;
+    goto code_r0x0001408235d0;
+  case 0x12:
+    goto code_r0x000140823487;
+  case 0x13:
+    goto code_r0x000140823444;
+  case 0x14:
+    *(undefined1 **)(puVar31 + -8) = puVar31;
+    uVar24 = (ulonglong)puVar22 & 0xffffffffffffff38;
+    puVar31 = puVar31 + -8;
+    goto code_r0x000140823574;
+  case 0x15:
+  case 0x17:
+    plVar36 = (longlong *)(ulonglong)*(uint *)(puVar31 + 0x38);
+code_r0x0001408235d0:
+    *(int *)(puVar31 + 0x78) = (int)plVar32[0xf];
+    *(longlong *)(puVar31 + 0x70) = *plVar30;
+    puVar31[0x60] = bVar17;
+    *(undefined4 *)(puVar31 + 0x80) = uVar40;
+    puVar31[0x61] = (char)uVar40;
+    *(undefined4 *)(puVar31 + 100) = uVar5;
+    puVar31[0x7c] = 0;
+    *(undefined **)(puVar31 + -8) = &UNK_140823611;
+    FUN_14125e4f0(param_4,puVar31 + 0x60,&UNK_142a91120);
+code_r0x000140823611:
+    lVar20 = *plVar36;
+    iVar13 = *(int *)((longlong)plVar36 + 4);
+    lVar19 = plVar36[1];
+    iVar14 = *(int *)((longlong)plVar36 + 0xc);
+    puVar27 = *(uint **)(puVar31 + 0x50);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    *puVar27 = *(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    *piVar23 = (int)lVar20;
+    piVar23[1] = iVar13;
+    piVar23[2] = (int)lVar19;
+    piVar23[3] = iVar14;
+    param_4 = *(longlong **)(puVar31 + 0x30);
+    lVar20 = *(longlong *)(puVar31 + 0x58);
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    goto code_r0x000140822f6f;
+  case 0x16:
+    plVar32 = (longlong *)(puVar31 + -8);
+    plVar33 = (longlong *)(puVar31 + -8);
+    *(longlong **)(puVar31 + -8) = plVar34;
+    cVar16 = '\x13';
+    do {
+      plVar34 = plVar34 + -1;
+      plVar32 = plVar32 + -1;
+      *plVar32 = *plVar34;
+      cVar16 = cVar16 + -1;
+    } while ('\0' < cVar16);
+    *(undefined1 **)(puVar31 + -0xa8) = puVar31 + -8;
+    puVar31 = puVar31 + -0x8bb0;
+    uVar24 = (ulonglong)puVar22 & 0xffffffffffffff2c;
+    plVar34 = plVar33;
+    goto code_r0x00014082357c;
+  case 0x18:
+  case 0x19:
+    *(char *)puVar27 = '\0';
+    in_ST0 = fscale(in_ST0,in_ST1);
+    goto code_r0x000142a9116c;
+  default:
+    *(char *)puVar22 = (char)*puVar22;
+code_r0x000142a9116c:
+    *(char *)puVar27 = '\0';
+    Var48 = fscale(in_ST0,in_ST1);
+    *(char *)puVar27 = '\0';
+    Var48 = fscale(Var48,in_ST1);
+    fscale(Var48,in_ST1);
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  }
+code_r0x0001408234e9:
+  puVar31[0x38] = (char)puVar39;
+  *(int *)(puVar31 + 0x70) = (int)plVar32[0xf];
+  *(longlong *)(puVar31 + 0x68) = *plVar30;
+  *puVar44 = *(undefined4 *)(puVar31 + 0x84);
+  lVar20 = *(longlong *)(puVar31 + 0x88);
+  plVar30 = *(longlong **)(lVar20 + 0x30);
+  uVar10 = *(undefined8 *)(lVar20 + 0x40);
+  if (plVar30 == *(longlong **)(lVar20 + 0x20)) {
+    *(longlong **)(puVar31 + 0x30) = param_4;
+    *(int **)(puVar31 + 0x40) = piVar23;
+    *(undefined4 *)(puVar31 + 0x28) = uVar40;
+    *(undefined4 **)(puVar31 + 0x48) = puVar44;
+    *(undefined **)(puVar31 + -8) = &UNK_140823547;
+    FUN_140562ab0(*(undefined8 *)(puVar31 + 0x98),&UNK_142c21f80);
+    puVar44 = *(undefined4 **)(puVar31 + 0x48);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    piVar23 = *(int **)(puVar31 + 0x40);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+  }
+  puVar39 = *(undefined4 **)(puVar31 + 0x88);
+  uVar24 = *(ulonglong *)(puVar39 + 10);
+  puVar21 = (uint *)((longlong)plVar30 * 5);
+  *(undefined8 *)(uVar24 + (longlong)plVar30 * 0x28) = uVar10;
+  puVar27 = (uint *)(ulonglong)(byte)puVar31[0x38];
+code_r0x000140823574:
+  *(char *)(uVar24 + 8 + (longlong)puVar21 * 8) = (char)puVar27;
+  puVar27 = (uint *)(ulonglong)*(uint *)(puVar31 + 0x2c);
+code_r0x00014082357c:
+  *(char *)(uVar24 + 9 + (longlong)puVar21 * 8) = (char)puVar27;
+  *(undefined4 *)(uVar24 + 0xc + (longlong)puVar21 * 8) = uVar5;
+  uVar5 = *(undefined4 *)(puVar31 + 100);
+  uVar40 = *(undefined4 *)(puVar31 + 0x68);
+  uVar6 = *(undefined4 *)(puVar31 + 0x6c);
+  puVar4 = (undefined4 *)(uVar24 + 0x10 + (longlong)puVar21 * 8);
+  *puVar4 = *(undefined4 *)(puVar31 + 0x60);
+  puVar4[1] = uVar5;
+  puVar4[2] = uVar40;
+  puVar4[3] = uVar6;
+  *(undefined4 *)(uVar24 + 0x20 + (longlong)puVar21 * 8) = *(undefined4 *)(puVar31 + 0x70);
+  *(undefined1 *)(uVar24 + 0x24 + (longlong)puVar21 * 8) = 0;
+  *(undefined **)(puVar39 + 0xc) = (undefined *)((longlong)plVar30 + 1);
+  *(longlong *)(puVar39 + 0x10) = *(longlong *)(puVar39 + 0x10) + 1;
+code_r0x0001408235a8:
+  puVar27 = *(uint **)(puVar31 + 0x50);
+  *puVar27 = (uint)puVar41;
+  piVar23[0] = 5;
+  piVar23[1] = 0;
+  lVar20 = *(longlong *)(puVar31 + 0x58);
+  goto code_r0x000140822f6f;
+code_r0x000140823106:
+  if (*piVar23 != 6) {
+    *(int *)(puVar31 + 0x78) = (int)plVar32[0xf];
+    *(longlong *)(puVar31 + 0x70) = *plVar30;
+    puVar31[0x60] = 3;
+    puVar31[0x7c] = 0;
+    *(longlong *)(puVar31 + 0x58) = lVar20;
+    *(undefined4 *)(puVar31 + 0x28) = uVar40;
+    *(longlong **)(puVar31 + 0x30) = param_4;
+    *(uint **)(puVar31 + 0x50) = puVar27;
+    *(undefined **)(puVar31 + -8) = &UNK_140823155;
+    FUN_14125e4f0(param_4,puVar31 + 0x60,&UNK_142a91138);
+    puVar41 = (undefined *)(ulonglong)*(uint *)(puVar31 + 0x28);
+    lVar20 = *(longlong *)(puVar31 + 0x58);
+    puVar27 = *(uint **)(puVar31 + 0x50);
+    param_4 = *(longlong **)(puVar31 + 0x30);
+  }
+  *puVar27 = (uint)puVar41;
+  piVar23[0] = 6;
+  piVar23[1] = 0;
+  goto code_r0x000140822f6f;
+code_r0x00014082343f:
+  uVar18 = (uint)CONCAT71((int7)((ulonglong)puVar22 >> 8),(char)puVar22 == '\x03');
+code_r0x000140823444:
+  *(uint *)(puVar31 + 0x2c) = uVar18;
+  puVar39 = (undefined4 *)0xc;
+  goto code_r0x0001408234e9;
+}
+

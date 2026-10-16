@@ -1,0 +1,72 @@
+// 
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8
+FUN_1407adcb0(undefined4 param_1,undefined4 param_2,char param_3,undefined8 param_4,
+             undefined8 param_5,undefined8 param_6)
+
+{
+  int iVar1;
+  longlong lVar2;
+  code *pcVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  byte bVar6;
+  undefined1 auStack_1a0 [8];
+  longlong *plStack_198;
+  longlong *plStack_190;
+  undefined8 uStack_180;
+  undefined8 uStack_178;
+  longlong lStack_170;
+  undefined8 uStack_168;
+  undefined4 uStack_160;
+  undefined4 uStack_158;
+  undefined4 uStack_154;
+  undefined8 uStack_150;
+  undefined8 auStack_e8 [23];
+  
+  bVar6 = 6;
+  if ((byte)(param_3 - 0x38U) < 8) {
+    bVar6 = param_3 - 0x38U;
+  }
+  lVar4 = *(longlong *)(&UNK_142a830b0 + (ulonglong)bVar6 * 8);
+  auStack_e8[0] = 0x8000000000000001;
+  FUN_14089d9b0(&uStack_178,auStack_e8);
+  FUN_14089dc90(auStack_e8,&uStack_178,0);
+  FUN_14089dd50(auStack_1a0,auStack_e8,param_4,param_5,param_6);
+  iVar1 = *(int *)(&UNK_142a830f0 + lVar4 * 4);
+  uVar5 = *(undefined8 *)(&UNK_142a83108 + lVar4 * 8);
+  lVar4 = func_0x000140613c10(uVar5,1);
+  if (lVar4 != 0) {
+    func_0x000142923c00(lVar4,&UNK_142a830f0 + iVar1,uVar5);
+    uStack_160 = 0;
+    uStack_150 = _UNK_142a82c20;
+    uStack_178 = uVar5;
+    lStack_170 = lVar4;
+    uStack_168 = uVar5;
+    uStack_158 = param_1;
+    uStack_154 = param_2;
+    FUN_14126d9e0(auStack_1a0,&uStack_178,&UNK_142a83068);
+    uVar5 = uStack_180;
+    if (plStack_198 == (longlong *)0x0) {
+      plStack_198 = plStack_190;
+    }
+    lVar4 = plStack_198[2];
+    if ((ulonglong)(*plStack_198 - lVar4) < 0x20) {
+      FUN_1428a7f20(plStack_198,lVar4,0x20,1,1);
+    }
+    lVar2 = plStack_198[1];
+    *(code **)(lVar2 + lVar4) = FUN_14126c1f0;
+    *(code **)(lVar2 + 8 + lVar4) = FUN_141282070;
+    *(undefined8 *)(lVar2 + 0x10 + lVar4) = uVar5;
+    *(undefined1 *)(lVar2 + 0x18 + lVar4) = 0;
+    plStack_198[2] = lVar4 + 0x20;
+    return uStack_180;
+  }
+  FUN_1428d8fe3(1,uVar5,&UNK_142c22b78);
+  pcVar3 = (code *)swi(3);
+  uVar5 = (*pcVar3)();
+  return uVar5;
+}
+

@@ -874,11 +874,11 @@ dependencies = [
  "petgraph",
  "rapier3d",
  "relative-path",
+ "rhapsody",
  "ron",
  "serde",
  "serde_json",
  "slotmap",
- "system-roof",
  "tabloid",
  "tempfile",
  "tg-history",
@@ -1231,7 +1231,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1404,6 +1404,17 @@ name = "foreign-types-shared"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
+
+[[package]]
+name = "forest"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "utils",
+]
 
 [[package]]
 name = "form_urlencoded"
@@ -2269,7 +2280,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if 1.0.0",
- "windows-targets 0.48.0",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3162,6 +3173,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 
 [[package]]
+name = "priority-queue"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5676d703dda103cbb035b653a9f11448c0a7216c7926bd35fcb5865475d0c970"
+dependencies = [
+ "autocfg",
+ "equivalent",
+ "indexmap 2.7.1",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3199,6 +3221,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.107",
+]
+
+[[package]]
+name = "puffin"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d633fe876f6d56ff298ae16841fce0071ae998caf4b39b4321d55a161ad6a3c"
+dependencies = [
+ "byteorder",
+ "instant",
+ "once_cell",
 ]
 
 [[package]]
@@ -3439,6 +3472,7 @@ dependencies = [
  "serde_json",
  "shader-compiler",
  "shader-pipeline",
+ "slotmap",
  "spirq",
  "thiserror 1.0.60",
  "ustr",
@@ -3550,7 +3584,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3563,7 +3597,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.9.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4028,6 +4062,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "system-clutter"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "hashbrown 0.14.5",
+ "itertools",
+ "lerp",
+ "log",
+ "tabloid",
+ "utils",
+]
+
+[[package]]
+name = "system-color"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "glam 0.29.3",
+ "utils",
+]
+
+[[package]]
 name = "system-configuration"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4049,14 +4109,117 @@ dependencies = [
 ]
 
 [[package]]
-name = "system-roof"
+name = "system-critters"
 version = "0.1.0"
 dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "itertools",
+ "lerp",
+ "log",
+ "perchance",
+ "utils",
+]
+
+[[package]]
+name = "system-decorator"
+version = "0.1.0"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_time",
+ "country-core",
  "fastrand 1.8.0",
  "glam 0.29.3",
  "half",
+ "hashbrown 0.14.5",
+ "itertools",
+ "lerp",
+ "log",
+ "petgraph",
+ "priority-queue",
+ "puffin",
+ "smallvec",
+ "utils",
+]
+
+[[package]]
+name = "system-glade-border"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "glam 0.29.3",
+ "utils",
+]
+
+[[package]]
+name = "system-onboarding"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "glam 0.29.3",
+ "itertools",
+ "lang-lib",
+ "log",
+ "utils",
+]
+
+[[package]]
+name = "system-roof"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "half",
+ "hashbrown 0.14.5",
  "perchance",
  "tg-history",
+ "utils",
+]
+
+[[package]]
+name = "system-tree"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "half",
+ "log",
+ "utils",
+]
+
+[[package]]
+name = "system-wall-constructor"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "fastrand 1.8.0",
+ "glam 0.29.3",
+ "half",
+ "hashbrown 0.14.5",
+ "itertools",
+ "lerp",
+ "perchance",
+ "utils",
+]
+
+[[package]]
+name = "system-water"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "glam 0.29.3",
+ "utils",
 ]
 
 [[package]]
@@ -4088,7 +4251,7 @@ dependencies = [
  "getrandom 0.3.1",
  "once_cell",
  "rustix 1.0.7",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4246,6 +4409,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "timberframe"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "country-core",
+ "glam 0.29.3",
+ "utils",
 ]
 
 [[package]]

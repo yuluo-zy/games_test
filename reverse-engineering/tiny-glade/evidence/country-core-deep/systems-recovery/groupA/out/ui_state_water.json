@@ -1,0 +1,157 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_va1",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_va1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_va1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_va1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_va1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_va1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_va1",
+        "address": "0x14092e390"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14092e390\",\"address\":\"0x14092E390\",\"decompiled_code\":\"\\r\\nvoid FUN_14092e390(void)\\r\\n\\r\\n{\\r\\n  FUN_14092df50();\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_va1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14092e390",
+          "address": "0x14092E390",
+          "decompiled_code": "\r\nvoid FUN_14092e390(void)\r\n\r\n{\r\n  FUN_14092df50();\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_va1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_va1",
+        "address": "0x14092df50"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14092df50\",\"address\":\"0x14092DF50\",\"decompiled_code\":\"\\r\\nlonglong FUN_14092df50(longlong param_1,undefined8 param_2,undefined8 param_3,undefined1 param_4,\\r\\n                      undefined1 param_5,undefined8 *param_6)\\r\\n\\r\\n{\\r\\n  longlong *plVar1;\\r\\n  code *pcVar2;\\r\\n  undefined8 uVar3;\\r\\n  longlong lVar4;\\r\\n  bool bVar5;\\r\\n  longlong *plStack_1d8;\\r\\n  undefined8 uStack_1d0;\\r\\n  undefined8 **ppuStack_1c8;\\r\\n  undefined8 uStack_1c0;\\r\\n  undefined8 uStack_1b8;\\r\\n  longlong lStack_118;\\r\\n  longlong *plStack_110;\\r\\n  undefined8 uStack_108;\\r\\n  undefined8 uStack_100;\\r\\n  undefined4 uStack_f8;\\r\\n  undefined4 uStack_f4;\\r\\n  undefined4 uStack_f0;\\r\\n  undefined4 uStack_ec;\\r\\n  undefined4 uStack_e8;\\r\\n  undefined8 uStack_e4;\\r\\n  undefined8 uStack_dc;\\r\\n  undefined4 uStack_d4;\\r\\n  undefined4 uStack_d0;\\r\\n  undefined8 uStack_cc;\\r\\n  undefined8 uStack_c4;\\r\\n  undefined4 uStack_bc;\\r\\n  undefined4 uStack_b8;\\r\\n  undefined8 uStack_b4;\\r\\n  undefined8 uStack_ac;\\r\\n  undefined4 uStack_a4;\\r\\n  undefined1 uStack_a0;\\r\\n  undefined1 uStack_9f;\\r\\n  undefined1 uStack_90;\\r\\n  undefined1 uStack_8f;\\r\\n  undefined8 uStack_8c;\\r\\n  undefined2 uStack_70;\\r\\n  undefined8 *puStack_68;\\r\\n  undefined *puStack_60;\\r\\n  undefined8 uStack_58;\\r\\n  undefined8 uStack_50;\\r\\n  longlong *plStack_48;\\r\\n  undefined1 uStack_39;\\r\\n  undefined8 uStack_38;\\r\\n  \\r\\n  uStack_38 = 0xfffffffffffffffe;\\r\\n  puStack_68 = &uStack_58;\\r\\n  puStack_60 = &UNK_140109e90;\\r\\n  plStack_1d8 = (longlong *)&UNK_142aafe50;\\r\\n  uStack_1d0 = 2;\\r\\n  ppuStack_1c8 = &puStack_68;\\r\\n  uStack_1c0 = 1;\\r\\n  uStack_1b8 = 0;\\r\\n  uStack_58 = param_2;\\r\\n  uStack_50 = param_3;\\r\\n  FUN_140d79f90(&lStack_118,&plStack_1d8);\\r\\n  plStack_48 = plStack_110;\\r\\n  plStack_1d8 = plStack_110;\\r\\n  uStack_1d0 = uStack_108;\\r\\n  uVar3 = FUN_1405bdda0(&plStack_1d8);\\r\\n  if (lStack_118 != 0) {\\r\\n    func_0x000140613c20(plStack_48,lStack_118,1);\\r\\n  }\\r\\n  uStack_e8 = *(undefined4 *)(param_6 + 3);\\r\\n  uStack_d4 = *(undefined4 *)((longlong)param_6 + 0x2c);\\r\\n  uStack_e4 = *(undefined8 *)((longlong)param_6 + 0x1c);\\r\\n  uStack_dc = *(undefined8 *)((longlong)param_6 + 0x24);\\r\\n  uStack_d0 = *(undefined4 *)(param_6 + 6);\\r\\n  uStack_cc = *(undefined8 *)((longlong)param_6 + 0x34);\\r\\n  uStack_c4 = *(undefined8 *)((longlong)param_6 + 0x3c);\\r\\n  uStack_bc = *(undefined4 *)((longlong)param_6 + 0x44);\\r\\n  uStack_b8 = *(undefined4 *)(param_6 + 9);\\r\\n  uStack_b4 = *(undefined8 *)((longlong)param_6 + 0x4c);\\r\\n  uStack_ac = *(undefined8 *)((longlong)param_6 + 0x54);\\r\\n  uStack_a4 = *(undefined4 *)((longlong)param_6 + 0x5c);\\r\\n  lStack_118 = 0;\\r\\n  plStack_110 = (longlong *)0x8;\\r\\n  uStack_108 = 0;\\r\\n  uStack_100 = *param_6;\\r\\n  uStack_f8 = *(undefined4 *)(param_6 + 1);\\r\\n  uStack_f4 = *(undefined4 *)((longlong)param_6 + 0xc);\\r\\n  uStack_f0 = *(undefined4 *)(param_6 + 2);\\r\\n  uStack_ec = *(undefined4 *)((longlong)param_6 + 0x14);\\r\\n  uStack_a0 = 1;\\r\\n  uStack_90 = 4;\\r\\n  uStack_8f = param_5;\\r\\n  uStack_8c = 0x4302000043020000;\\r\\n  uStack_70 = 0x100;\\r\\n  plVar1 = (longlong *)(param_1 + 0x60);\\r\\n  LOCK();\\r\\n  bVar5 = *(longlong *)(param_1 + 0x60) == 0;\\r\\n  if (bVar5) {\\r\\n    *(longlong *)(param_1 + 0x60) = 8;\\r\\n  }\\r\\n  UNLOCK();\\r\\n  uStack_9f = param_4;\\r\\n  if (!bVar5) {\\r\\n    uStack_39 = 1;\\r\\n    FUN_1428cb5f0(plVar1,uStack_b8,1000000000);\\r\\n  }\\r\\n  uStack_39 = 1;\\r\\n  FUN_140c81c70(plVar1);\\r\\n  uStack_39 = 1;\\r\\n  FUN_140c81c70((ulonglong)plVar1 | 1);\\r\\n  plStack_48 = plVar1;\\r\\n  func_0x000142923c00(&ppuStack_1c8,&lStack_118,0xb0);\\r\\n  plStack_1d8 = (longlong *)0x1;\\r\\n  uStack_1d0 = 1;\\r\\n  lVar4 = func_0x000140613c10(0xc0,8);\\r\\n  if (lVar4 == 0) {\\r\\n    FUN_1428d9000(8,0xc0);\\r\\n                    /* WARNING: Does not return */\\r\\n    pcVar2 = (code *)invalidInstructionException();\\r\\n    (*pcVar2)();\\r\\n  }\\r\\n  func_0x000142923c00(lVar4,&plStack_1d8,0xc0);\\r\\n  plStack_1d8 = (longlong *)FUN_140fb17e0(param_1 + 0x68,uVar3,lVar4);\\r\\n  if (plStack_1d8 != (longlong *)0x0) {\\r\\n    LOCK();\\r\\n    *plStack_1d8 = *plStack_1d8 + -1;\\r\\n    UNLOCK();\\r\\n    if (*plStack_1d8 == 0) {\\r\\n      FUN_140b5c330(&plStack_1d8);\\r\\n    }\\r\\n  }\\r\\n  plVar1 = plStack_48;\\r\\n  uStack_39 = 0;\\r\\n  FUN_140c81e10(plStack_48);\\r\\n  uStack_39 = 0;\\r\\n  FUN_140c81e10();\\r\\n  LOCK();\\r\\n  lVar4 = *plVar1;\\r\\n  if (lVar4 == 8) {\\r\\n    *plVar1 = 0;\\r\\n  }\\r\\n  UNLOCK();\\r\\n  if (lVar4 != 8) {\\r\\n    uStack_39 = 0;\\r\\n    FUN_1428cbf60(plVar1,0);\\r\\n  }\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_va1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14092df50",
+          "address": "0x14092DF50",
+          "decompiled_code": "\r\nlonglong FUN_14092df50(longlong param_1,undefined8 param_2,undefined8 param_3,undefined1 param_4,\r\n                      undefined1 param_5,undefined8 *param_6)\r\n\r\n{\r\n  longlong *plVar1;\r\n  code *pcVar2;\r\n  undefined8 uVar3;\r\n  longlong lVar4;\r\n  bool bVar5;\r\n  longlong *plStack_1d8;\r\n  undefined8 uStack_1d0;\r\n  undefined8 **ppuStack_1c8;\r\n  undefined8 uStack_1c0;\r\n  undefined8 uStack_1b8;\r\n  longlong lStack_118;\r\n  longlong *plStack_110;\r\n  undefined8 uStack_108;\r\n  undefined8 uStack_100;\r\n  undefined4 uStack_f8;\r\n  undefined4 uStack_f4;\r\n  undefined4 uStack_f0;\r\n  undefined4 uStack_ec;\r\n  undefined4 uStack_e8;\r\n  undefined8 uStack_e4;\r\n  undefined8 uStack_dc;\r\n  undefined4 uStack_d4;\r\n  undefined4 uStack_d0;\r\n  undefined8 uStack_cc;\r\n  undefined8 uStack_c4;\r\n  undefined4 uStack_bc;\r\n  undefined4 uStack_b8;\r\n  undefined8 uStack_b4;\r\n  undefined8 uStack_ac;\r\n  undefined4 uStack_a4;\r\n  undefined1 uStack_a0;\r\n  undefined1 uStack_9f;\r\n  undefined1 uStack_90;\r\n  undefined1 uStack_8f;\r\n  undefined8 uStack_8c;\r\n  undefined2 uStack_70;\r\n  undefined8 *puStack_68;\r\n  undefined *puStack_60;\r\n  undefined8 uStack_58;\r\n  undefined8 uStack_50;\r\n  longlong *plStack_48;\r\n  undefined1 uStack_39;\r\n  undefined8 uStack_38;\r\n  \r\n  uStack_38 = 0xfffffffffffffffe;\r\n  puStack_68 = &uStack_58;\r\n  puStack_60 = &UNK_140109e90;\r\n  plStack_1d8 = (longlong *)&UNK_142aafe50;\r\n  uStack_1d0 = 2;\r\n  ppuStack_1c8 = &puStack_68;\r\n  uStack_1c0 = 1;\r\n  uStack_1b8 = 0;\r\n  uStack_58 = param_2;\r\n  uStack_50 = param_3;\r\n  FUN_140d79f90(&lStack_118,&plStack_1d8);\r\n  plStack_48 = plStack_110;\r\n  plStack_1d8 = plStack_110;\r\n  uStack_1d0 = uStack_108;\r\n  uVar3 = FUN_1405bdda0(&plStack_1d8);\r\n  if (lStack_118 != 0) {\r\n    func_0x000140613c20(plStack_48,lStack_118,1);\r\n  }\r\n  uStack_e8 = *(undefined4 *)(param_6 + 3);\r\n  uStack_d4 = *(undefined4 *)((longlong)param_6 + 0x2c);\r\n  uStack_e4 = *(undefined8 *)((longlong)param_6 + 0x1c);\r\n  uStack_dc = *(undefined8 *)((longlong)param_6 + 0x24);\r\n  uStack_d0 = *(undefined4 *)(param_6 + 6);\r\n  uStack_cc = *(undefined8 *)((longlong)param_6 + 0x34);\r\n  uStack_c4 = *(undefined8 *)((longlong)param_6 + 0x3c);\r\n  uStack_bc = *(undefined4 *)((longlong)param_6 + 0x44);\r\n  uStack_b8 = *(undefined4 *)(param_6 + 9);\r\n  uStack_b4 = *(undefined8 *)((longlong)param_6 + 0x4c);\r\n  uStack_ac = *(undefined8 *)((longlong)param_6 + 0x54);\r\n  uStack_a4 = *(undefined4 *)((longlong)param_6 + 0x5c);\r\n  lStack_118 = 0;\r\n  plStack_110 = (longlong *)0x8;\r\n  uStack_108 = 0;\r\n  uStack_100 = *param_6;\r\n  uStack_f8 = *(undefined4 *)(param_6 + 1);\r\n  uStack_f4 = *(undefined4 *)((longlong)param_6 + 0xc);\r\n  uStack_f0 = *(undefined4 *)(param_6 + 2);\r\n  uStack_ec = *(undefined4 *)((longlong)param_6 + 0x14);\r\n  uStack_a0 = 1;\r\n  uStack_90 = 4;\r\n  uStack_8f = param_5;\r\n  uStack_8c = 0x4302000043020000;\r\n  uStack_70 = 0x100;\r\n  plVar1 = (longlong *)(param_1 + 0x60);\r\n  LOCK();\r\n  bVar5 = *(longlong *)(param_1 + 0x60) == 0;\r\n  if (bVar5) {\r\n    *(longlong *)(param_1 + 0x60) = 8;\r\n  }\r\n  UNLOCK();\r\n  uStack_9f = param_4;\r\n  if (!bVar5) {\r\n    uStack_39 = 1;\r\n    FUN_1428cb5f0(plVar1,uStack_b8,1000000000);\r\n  }\r\n  uStack_39 = 1;\r\n  FUN_140c81c70(plVar1);\r\n  uStack_39 = 1;\r\n  FUN_140c81c70((ulonglong)plVar1 | 1);\r\n  plStack_48 = plVar1;\r\n  func_0x000142923c00(&ppuStack_1c8,&lStack_118,0xb0);\r\n  plStack_1d8 = (longlong *)0x1;\r\n  uStack_1d0 = 1;\r\n  lVar4 = func_0x000140613c10(0xc0,8);\r\n  if (lVar4 == 0) {\r\n    FUN_1428d9000(8,0xc0);\r\n                    /* WARNING: Does not return */\r\n    pcVar2 = (code *)invalidInstructionException();\r\n    (*pcVar2)();\r\n  }\r\n  func_0x000142923c00(lVar4,&plStack_1d8,0xc0);\r\n  plStack_1d8 = (longlong *)FUN_140fb17e0(param_1 + 0x68,uVar3,lVar4);\r\n  if (plStack_1d8 != (longlong *)0x0) {\r\n    LOCK();\r\n    *plStack_1d8 = *plStack_1d8 + -1;\r\n    UNLOCK();\r\n    if (*plStack_1d8 == 0) {\r\n      FUN_140b5c330(&plStack_1d8);\r\n    }\r\n  }\r\n  plVar1 = plStack_48;\r\n  uStack_39 = 0;\r\n  FUN_140c81e10(plStack_48);\r\n  uStack_39 = 0;\r\n  FUN_140c81e10();\r\n  LOCK();\r\n  lVar4 = *plVar1;\r\n  if (lVar4 == 8) {\r\n    *plVar1 = 0;\r\n  }\r\n  UNLOCK();\r\n  if (lVar4 != 8) {\r\n    uStack_39 = 0;\r\n    FUN_1428cbf60(plVar1,0);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+          "database": "tg_va1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_va1",
+        "address": "0x14092df10"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14092DF10\",\"error_type\":\"NotFound\",\"database\":\"tg_va1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_va1",
+        "address": "0x14092e6b0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14092E6B0\",\"error_type\":\"NotFound\",\"database\":\"tg_va1\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_va1",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_va1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_va1"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}
