@@ -51,6 +51,9 @@ pub trait EventInstance {
     ) -> Result<(), Self::Error>;
     fn get_timeline_position(&self) -> Result<i32, Self::Error>;
     fn pause(&mut self, paused: bool) -> Result<(), Self::Error>;
+    /// TIMELINE_BEAT 回调安装（中央 agent 2026-10-16 仲裁批准补此方法；native.rs
+    /// `set_callback(TIMELINE_BEAT)` 已存在，`MusicEvent::install_beat_callback` 依赖它）。
+    fn install_beat_callback(&mut self) -> Result<(), Self::Error>;
 }
 
 /// AudioInstance. Native discriminant u64@+0: 0=Disabled, 1=Active, 2=Err.
@@ -577,6 +580,9 @@ mod tests {
             Ok(0)
         }
         fn pause(&mut self, _p: bool) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn install_beat_callback(&mut self) -> Result<(), Self::Error> {
             Ok(())
         }
     }

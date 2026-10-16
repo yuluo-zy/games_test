@@ -10,3 +10,13 @@ pub struct RoofBuffers {
     /// 字段语义 U：渲染域 SSBO 句柄容器待取证。
     pub(crate) _opaque: (),
 }
+
+/// 木框架 plank 实例缓冲（O：`resources::roofs::roof_buffers::WoodenPlankSsbo`
+/// 类型名串 0x142ff8cf0；`timberframe` crate 两构造系统写入、render 域
+/// `draw_callbacks_a` 以预设 9/10 消费（0x141631c90 引用面）。布局 U
+/// （re-analyst-A 契约 §2：梁实例记录字段明细 U，typed gap）。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct WoodenPlankSsbo {
+    /// 梁实例记录（0x20B 条目族；字段 U）。
+    pub(crate) _opaque: (),
+}

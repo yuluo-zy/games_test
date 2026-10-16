@@ -17,6 +17,12 @@ pub struct GladeBorder(pub BorderShape);
 pub struct DisplayOutOfBorder;
 #[derive(Event, Clone, Copy, Debug)]
 pub struct FeedbackInputOutOfBorder;
+/// 演示边界覆盖层事件（O：`glade_border::ShowDemoBorderOverlay`；render 域
+/// `draw_callbacks_a` 以 `Events<ShowDemoBorderOverlay>` 非空判别（O：`[+0x30]|[+0x10]`
+/// 为 0 → discard）。生产者（O）：`system_glade_border::display_glade_border`
+/// 0x141be0ad0 在进程全局 `*0x14362c098 == 1` 时发射。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct ShowDemoBorderOverlay;
 
 impl GladeBorder {
     pub fn is_pos_inside(&self, point: Vec2) -> bool {
@@ -46,3 +52,8 @@ impl GladeBorder {
         }
     }
 }
+
+/// 非演示提示事件（O：`resources::glade_border::NotInDemoHint`；color_menu
+/// 0x142291230 的 EventWriter 面——演示模式禁用功能提示）。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct NotInDemoHint;

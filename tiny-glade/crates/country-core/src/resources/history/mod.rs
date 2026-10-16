@@ -10,9 +10,10 @@ pub mod stairs_history_edit;
 pub mod tree_edit;
 
 use crate::recovered_building::{
-    building_history_transactions::RoofHistoryEdit, history_transactions::HistoryTransactions,
+    history_transactions::HistoryTransactions,
     wall_history_edit::WallCompoundHistoryEdit,
 };
+pub use crate::recovered_building::building_history_transactions::RoofHistoryEdit;
 use crate::resources::raster_stroke::RasterStroke;
 use crate::systems::terrain::deferred_terrain_history::TerrainEdit;
 use std::sync::Arc;
@@ -38,8 +39,11 @@ impl HistoryIdentity {
 
 #[derive(Clone, Debug)]
 pub enum EditType {
-    /// tag 0（E1：visit_str 0x140b3b630 权威 15 变体）。
-    Tree(Arc<tree_edit::TreeEdit>),
+    /// tag 0（① T3 权威 visit_str 0x140b3b630 case7："Terrain" 7 字符 → tag 0）。
+    /// 注意：native `deferred_terrain_history` 0x140ac9770 **不经 EditType**——地形历史
+    /// 直接写 0x38B 记录 `{tag=1, 载荷 6 qword}` 入 History；本变体 + `ReplayCommand::Terrain`
+    /// 是 crate 本地 CPU 侧等效模型（保持 + 标注，见 t3-edittype-terrain-tag 契约 §3）。
+    Terrain(Arc<TerrainEdit>),
     Path(Arc<RasterStroke>),
     Cobblestone1(Arc<RasterStroke>),
     Cobblestone2(Arc<RasterStroke>),
@@ -51,11 +55,10 @@ pub enum EditType {
     Color(Arc<color_edit::ColorEdit>),
     DecoratorV5(Arc<decorator_edit::DecoratorHistoryEdit>),
     Decorator(Arc<decorator_edit::DecoratorHistoryEdit>),
+    /// tag 12（① T3：visit_str case4 else `0x142aee14b="Tree"` → tag 0xc；旧 tag 0 错）。
+    Tree(Arc<tree_edit::TreeEdit>),
     AutoClutter(Arc<auto_clutter_edit::AutoClutterEdit>),
     Stairs(Arc<stairs_history_edit::StairsHistoryEdit>),
-    /// 地形历史（`history_record_terrain` 0x140ac9770 O；**原版 EditType visit_str
-    /// 0x140b3b630 无此名**——地形记录机制待 E 补挖，tag 待定位，不伪造）。
-    Terrain(Arc<TerrainEdit>),
 }
 impl From<RoofHistoryEdit> for EditType {
     fn from(edit: RoofHistoryEdit) -> Self {
@@ -65,8 +68,11 @@ impl From<RoofHistoryEdit> for EditType {
 impl EditType {
     pub const fn native_tag(&self) -> u64 {
         match self {
-            // E1（RE-EDITTYPE.md）：15 变体 tag 0..14 权威表。
-            Self::Tree(_) => 0,
+            // ① T3 t3-edittype-terrain-tag 契约 §2：权威 15 变体 tag 表
+            // （visit_str 0x140b3b630）：Terrain=0、Path=1、Cobblestone1-3=2/3/4、
+            // Water=5、Garden=6、Wall=7、Roof=8、Color=9、DecoratorV5=10、
+            // Decorator=11、Tree=12、AutoClutter=13、Stairs=14。
+            Self::Terrain(_) => 0,
             Self::Path(_) => 1,
             Self::Cobblestone1(_) => 2,
             Self::Cobblestone2(_) => 3,
@@ -78,10 +84,9 @@ impl EditType {
             Self::Color(_) => 9,
             Self::DecoratorV5(_) => 10,
             Self::Decorator(_) => 11,
+            Self::Tree(_) => 12,
             Self::AutoClutter(_) => 13,
             Self::Stairs(_) => 14,
-            // 地形：原版无此 EditType 名（tag 12 为 4 字符未解名）；保留登记待 E 定位。
-            Self::Terrain(_) => 15,
         }
     }
 }

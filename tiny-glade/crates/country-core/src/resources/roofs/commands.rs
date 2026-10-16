@@ -21,7 +21,7 @@ pub struct SetFlatRoofStyleCmd(pub FlatRoofStyleRequest);
 #[derive(Event, Clone, Copy, Debug)]
 pub struct SetFlatRoofRimStyleCmd(pub FlatRoofRimRequest);
 #[derive(Event, Clone, Copy, Debug)]
-pub struct EditRoofCmd(pub system_roof::edit_rules::RoofEditEvent);
+pub struct EditRoofCmd(pub crate::resources::roofs::geometry::edit_rules::RoofEditEvent);
 #[derive(Event, Clone, Copy, Debug)]
 pub struct RoofIsInvalid(pub WallId);
 #[derive(Event, Clone, Copy, Debug)]
@@ -36,8 +36,25 @@ pub struct RoofGeometryChanged {
     pub wall: WallId,
     pub kind: u8,
 }
+/// Original name for `RoofGeometryChanged` in the system faces:
+/// `country_core::resources::roofs::commands::RecalculateRoofCmd`.
+#[derive(Event, Clone, Copy, Debug)]
+pub struct RecalculateRoofCmd(pub WallId);
 #[derive(Event, Clone, Copy, Debug)]
 pub struct RecalculateWallHoles(pub WallId);
+/// B `country_core::resources::roofs::commands::SwitchRoofTypeCmd`: emitted by
+/// `edit_roof` on pitched/flat crossings, consumed by `switch_roof_type`.
+#[derive(Event, Clone, Copy, Debug)]
+pub struct SwitchRoofTypeCmd {
+    pub entity: Entity,
+    pub wall: WallId,
+    pub crossing: crate::resources::roofs::geometry::edit_rules::HeightCrossing,
+    pub source_flag: u8,
+}
+/// B `country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateWallBricks`:
+/// roof changes that invalidate brick construction.
+#[derive(Event, Clone, Copy, Debug)]
+pub struct RecalculateWallBricks(pub WallId);
 #[derive(Event, Clone, Copy, Debug)]
 pub struct RoofSound {
     pub entity: Entity,
@@ -54,14 +71,7 @@ pub struct RecordRoofHistory(pub RoofHistoryEdit);
 pub struct RoofEditFeedback {
     pub entity: Entity,
     pub wall: WallId,
-    pub feedback: system_roof::edit_rules::EditFeedback,
-}
-#[derive(Event, Clone, Copy, Debug)]
-pub struct RoofTypeChanged {
-    pub entity: Entity,
-    pub wall: WallId,
-    pub crossing: system_roof::edit_rules::HeightCrossing,
-    pub source_flag: u8,
+    pub feedback: crate::resources::roofs::geometry::edit_rules::EditFeedback,
 }
 
 #[derive(Event, Clone, Debug)]

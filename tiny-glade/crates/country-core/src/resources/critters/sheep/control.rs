@@ -63,6 +63,14 @@ pub fn apply_sheep_snapshot<'a>(
     }
 }
 
+/// save "Sheep" 节载荷（O `to_json_string<Option<SheepControlSnapshot>>`
+/// @0x140a51d40，save_game.rs 第 5 节）：`None` → JSON `null`，`Some` →
+/// `{"sheep":[...]}`。**纯函数接口，供 C 组 save agent 在 `systems/save/save_game.rs`
+/// 接线**（中央 agent 2026-10-16 仲裁：B 组提供接口，C 组写盘，避免并行写同文件）。
+pub fn sheep_section_json(snapshot: Option<&SheepControlSnapshot>) -> String {
+    serde_json::to_string(&snapshot).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,8 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn capture_and_apply_use_query_order_and_preserve_other_fields() {
-        let original = Transform::from_translation_scale(Vec3::new(1., 2., 3.), Vec3::splat(2.));
+    fn capture_and_apply_use_query_order_and_preserve_other_fields() {        let original = Transform::from_translation_scale(Vec3::new(1., 2., 3.), Vec3::splat(2.));
         let original_goal = CritterGoal(Some(Vec3::new(4., 5., 6.)));
         let original_move = SheepMoveState::Idle { timeout_s: 7. };
         let snapshot = capture_sheep_snapshot([(&original, &original_goal, &original_move)]);
@@ -121,5 +128,20 @@ mod tests {
         assert_eq!(transforms[1], Transform::identity());
         assert_eq!(goals[1], CritterGoal(None));
         assert_eq!(states[1], SheepMoveState::Idle { timeout_s: 0. });
+    }
+
+    #[test]
+    fn sheep_section_is_option_json_none_to_null() {
+        assert_eq!(sheep_section_json(None), "null");
+        let snapshot = capture_sheep_snapshot([(
+            &Transform::from_translation_scale(Vec3::new(1., 2., 3.), Vec3::ONE),
+            &CritterGoal(None),
+            &SheepMoveState::Idle { timeout_s: 2. },
+        )]);
+        let json = sheep_section_json(Some(&snapshot));
+        assert_eq!(
+            json,
+            r#"{"sheep":[{"position":[1.0,2.0,3.0],"goal":null,"move_state":{"Idle":{"timeout_s":2.0}}}]}"#
+        );
     }
 }

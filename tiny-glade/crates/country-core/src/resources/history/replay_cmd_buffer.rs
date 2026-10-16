@@ -31,6 +31,11 @@ pub enum ReplayCommand {
     AutoClutter(super::auto_clutter_edit::AutoClutterReplayCmd),
     /// 楼梯支撑移除/恢复（B `replay_stairs` tag 10）。
     Stairs(super::stairs_history_edit::StairsReplayCmd),
+    /// 地形回放（B `replay_terrain` 0x140995150 tag 3；CPU 侧模型，经中央仲裁接入）。
+    Terrain(crate::systems::terrain::replay_terrain::TerrainReplayCmd),
+    /// 树回放（O：`replay_tree` 0x141bc34f0 消费；组 A restorer 接线——
+    /// `system_tree::replay_tree` 的 `ResMut<ReplayBuffer>` 面）。
+    Tree(super::tree_edit::TreeReplayCmd),
 }
 #[derive(Clone, Debug)]
 pub struct ReplayBucket {
@@ -105,6 +110,16 @@ impl ReplayBucket {
                     );
                     continue;
                 }
+                EditType::Tree(edit) => ReplayCommand::Tree(
+                    super::tree_edit::TreeReplayCmd::expanded(edit, undo, instant),
+                ),
+                edit @ EditType::Terrain(_) => {
+                    // 共享 TerrainEdit（{pending, previous_state}）无点集载荷；桶展开
+                    // 暂不支持（revert/reapply 0x140858d30/0x1408592d0 属共享 owner）。
+                    // 真实点集 TerrainReplayCmd 由地形回放 producer 直接入桶
+                    // （CPU 侧模型，中央仲裁接入 ReplayCommand::Terrain）。
+                    return Err(HistoryReplayError::UnrestoredReplayOwner(edit.native_tag()));
+                }
                 edit => return Err(HistoryReplayError::UnrestoredReplayOwner(edit.native_tag())),
             });
         }
@@ -160,6 +175,8 @@ impl ReplayBuffer {
                     ReplayCommand::Raster(command) => command.make_instant(),
                     ReplayCommand::AutoClutter(command) => command.make_instant(),
                     ReplayCommand::Stairs(command) => command.instant = true,
+                    ReplayCommand::Terrain(command) => command.make_instant(),
+                    ReplayCommand::Tree(command) => command.make_instant(),
                 }
             }
         }

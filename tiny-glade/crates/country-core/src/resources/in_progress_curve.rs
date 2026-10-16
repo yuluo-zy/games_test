@@ -10,7 +10,7 @@
 
 use bevy_ecs::resource::Resource;
 use glam::Vec2;
-use system_roof::surface::Curve2;
+use crate::resources::roofs::geometry::surface::Curve2;
 
 use crate::resources::walls::WallId;
 

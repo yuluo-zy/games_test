@@ -93,7 +93,9 @@ pub struct IvyStorage {
     ivies: HashMap<IvyId, Ivy>,
     rng: PerchanceContext,
     next_ivy_id: IvyId,
-    /// Original new() byte at +48 is 1; its gameplay name is not established.
+    /// Native new() byte at +48 is 1. The grower's guard phase (0x14094c09f)
+    /// toggles bit0 each frame and runs the growth closure only while the bit
+    /// is set, so growth advances every other frame.
     pub flag_48: u8,
 }
 impl Default for IvyStorage {
@@ -193,5 +195,11 @@ impl IvyStorage {
             .values()
             .map(|ivy| ivy.points.len().saturating_sub(1))
             .sum()
+    }
+    /// Total stored points across every ivy. The native spawner budget
+    /// (`total_point_count + 0x13 < 0x9c40`, 0x14094d09b..a7) and the
+    /// per-frame 0x46 (70) point cap (0x14094db6e..b9e) compare this count.
+    pub fn total_point_count(&self) -> usize {
+        self.ivies.values().map(|ivy| ivy.points.len()).sum()
     }
 }

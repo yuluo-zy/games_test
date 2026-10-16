@@ -12,7 +12,7 @@ use crate::resources::color_id::ColorId;
 ///
 /// 三个字节枚举字段（freehand_ty/flat_rim_style/building_wall_style）的**变体名待取证**；
 /// 以 `u8` 保留字节存储与 serde 数字形态，枚举变体恢复后改为具名枚举。
-#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct GladeColorCustomization {
     /// index 0，+0x18
     pub freeform_wall: ColorId,
