@@ -70,6 +70,8 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<Events<RecalculateHeightMapCmd>>();
     world.init_resource::<Events<PlayTerrainSound>>();
     world.init_resource::<Events<deferred_terrain_history::DebugHistoryMsg>>();
+    world.init_resource::<Events<ui_draw_terrain::TerrainCanvasRegister>>();
+    world.init_resource::<Events<ui_draw_terrain::TerrainOutOfBorder>>();
 
     world.init_resource::<deferred_terrain_history::PendingTerrainHistory>();
     world.init_resource::<terrain_hover_idx::HoveredTerrainStrokeId>();
@@ -78,6 +80,7 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<ui_edit_terrain::MouseActivityTimer>();
     world.init_resource::<ui_edit_terrain::TerrainStrokeParamsCache>();
     world.init_resource::<ui_draw_terrain::TerrainHoverInput>();
+    world.init_resource::<ui_draw_terrain::TerrainDrawState>();
     world.init_resource::<ui_terrain_focus_mode::TerrainFocusModeState>();
     world.init_resource::<ui_terrain_focus_mode::TerrainFocusRaycast>();
 }

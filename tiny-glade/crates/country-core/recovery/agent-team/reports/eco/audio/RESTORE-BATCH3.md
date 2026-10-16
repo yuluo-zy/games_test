@@ -102,3 +102,20 @@
   - Segment 全名 → 0x5c83edb0d7b9a73d（≠ 0x2002d2fbdff3d80f）
   - 短名 IvyLeafSsbo/IvyFlowerSsbo/IvySegmentSsbo 及 Leaf/Flower/Segment 亦不匹配。
 - **结论**：全名串为真实 NAME 常量，但 ivy 三键**不是**这些名字经默认 xxh3_64 产生；`ssbo_library.rs` 的"NAME 串未定位→待取证"结论保持成立。`ivy_send_to_gpu_leaf/segments.rs` 现有处理（NAME 全名常量 + 独立 SSBO_ID 键 + SsboId::of 建模缺口注释）**无需修改**。产生 ivy 键的机制/字符串仍待取证（可能非 NameHash 来源）。
+
+---
+
+## 六、中央派"库内可闭合缺口"闭合（2026-10-16 追加；逐项 rne-read/disasm 定案）
+
+| 待取证项 | 定案结果（证据） | 落地 |
+|---|---|---|
+| clutter set_parameter 参数名 | **"clutter-context"**（0x142aa12d0 len 0xf）；值查表 {0.0,1.0,2.0}@0x142aa1590，按事件字节@+0x15 索引（disasm 0x1408c0aa7/aab） | clutter_audio.rs：`PlayClutterSoundCmd` 增 `context:u8`；set_parameter("clutter-context", 表值) |
+| sheep Pitch 值（原硬编码 0.0） | set_parameter 名 **"Pitch"**（0x142ac2460 len 5，章节"FirstPersonOff"系误读）；值=事件 f32@+0x14（0x1409d6158 `movss xmm3,[rbx+0x14]`） | sheep_audio.rs：`PlaySheepReactSound` 增 `pitch:f32`；一次性+kind4 loop 均 set_parameter("Pitch",event.pitch) |
+| firstperson WALK_LOOP_EVENT | **"event:/SFX/Player/Walking"**（0x142ad8e28 len 0x19）；全局参数 **"FirstPerson"**（0x142ad8eb0 len 0xb，非 FirstPersonOff）+ **"GroundType"**（0x142ad8ed8） | firstperson_steps.rs 常量改实 + 参数面 |
+| weather 参数名 | **"RainStrength"**（0x142c63000 len 0xb；内联点 0x141556935 set_parameter） | weather_audio.rs：`Weather.rain_strength` → set_parameter("RainStrength") |
+| replay AppMode==0xd 全局参数名 | **"undo"**（0x142ae1778 len 4）+ **"replay"**（0x142ae177c len 6），值 1.0（0x142925904；disasm 0x140ad5d8e/dac） | replay_audio.rs：mode==0xd 时 set_parameter("undo",1.0)+("replay",1.0) |
+| wall_audio_ui 其余 kind→事件 | 跳表 0x142a9fa44 全映射（kind 2 WallSnapToSegment/3 ShapeSnap/4 WallsMerged/5 WallsMergedEnclosed/6 ColorBricks/7 ColorGate/8 ColorFlag/9+0xf ToggleSmoke 选择器@+9/0xa ColorWindow/0xb ColorRoof/0xc ColorHalftimber/0xd ColorLantern/0xe Lantern/TurnOn/0x10 ChangeWallStyle/0x13·0x14 BuildingSupportsRemoveWooden；kind 0 设全局 wall_style；0x11·0x12·0x15·0x16 跳过） | wall_audio_ui.rs 全表 + ToggleSmoke 选择器 |
+| roof 事件类型 / ridge 常量 | roof_audio_system 分派 roof 编辑事件（RoofAppear/RoofRemove/RoofTilesLand/RoofTilesDetach/MerlonsAppear/GableAppear/GableDisappear/RoofSwitchDirection）；循环参数 RoofHeight/RoofProfile/RoofTipMoveSpeed/RoofTipOffset/ImpactStrength/isHalfTimbered/editing_speed/is_gable；bound 常量 0.2/0.05/5.0（0x1429cd068/0x142930d70/0x142925988）；ridge 几何属 resources/roofs/roof_ridge.rs（跨域） | roof_audio.rs 增事件/参数常量登记 |
+| decorator/roof 事件类型 | decorator=PlayDecoratorSoundCmd（16 事件已注册）；roof 事件流非 16 注册事件，属 roof 域（待接线）；decorator kind→loop 精确映射仍近似（循环名已验证） | 登记待接线 |
+
+**编译/测试**：`cargo check -p country-core` 通过；全 lib 1724 过/1 败（geometry/sphere 他组）；音频域 32 测试全过。各定案项均以 fresh disasm（capstone 于 RNE 发行件）+ rne-read 串表为证。

@@ -7,11 +7,15 @@
 //!   under the full type path string in the ssbo name table;
 //! - GPU element = 48 B (`count * 0x30`); capacity check + buffer write.
 //!
-//! The exact CPU segment → GPU 48 B mapping is a recorded blocker (re-analyst
-//! 卡点); the packed rows below carry the documented segment endpoints and
-//! thickness. The GPU commit needs a `GraphicsDevice`, supplied by the render
-//! world; `upload_ivy_segments` is the library-side business mirroring
-//! `rasterize_buildings::upload_buildings`.
+//! The GPU element is 48 B (`count * 0x30`), matching the shader struct in
+//! `reconstruction/human-readable-shaders/shaders/ivy/instanced_ivy_branch.raster.hlsl`:
+//! `{ start_pos: float3, start_thickness: float, end_pos: float3,
+//!   end_thickness: float, wall_normal: float3, arch_height: float }`. The CPU
+//! mapping is verified for start/end position and the point thicknesses;
+//! `wall_normal` and `arch_height` are 待取证 (the point's animated thickness
+//! fills `start_thickness`/`end_thickness`). The GPU commit needs a
+//! `GraphicsDevice`, supplied by the render world; `upload_ivy_segments` is
+//! the library-side business mirroring `rasterize_buildings::upload_buildings`.
 
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
@@ -25,18 +29,21 @@ pub const IVY_SEGMENT_SSBO_ID: u64 = 0x2002d2_fbdf_f3d80f;
 pub const IVY_SEGMENT_SSBO_NAME: &str =
     "country_core::systems::ivy::ivy_send_to_gpu_segments::IvySegmentSsbo";
 
-/// GPU segment element, 48 B (O: `count * 0x30`), and its SSBO type. Field
-/// subset documented; exact mapping is 待取证. The `u_a`/`u_b` pair keeps the
-/// 48-byte stride (candidate for the segment's source-u range).
+/// GPU segment element, 48 B (O: `count * 0x30`; shader `instanced_ivy_branch`).
+/// Field order matches the shader struct; `wall_normal`/`arch_height` mapping
+/// is 待取证.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct IvySegmentGpu {
-    pub from: Vec3,
-    pub to: Vec3,
-    pub normal: Vec3,
-    pub thickness: f32,
-    pub u_a: f32,
-    pub u_b: f32,
+    pub start_pos: Vec3,
+    pub start_thickness: f32,
+    pub end_pos: Vec3,
+    pub end_thickness: f32,
+    /// Shader `wall_normal`; the unit tangent perpendicular is the candidate
+    /// (待取证).
+    pub wall_normal: Vec3,
+    /// Shader `arch_height`; source 待取证 (needs the owning wall's arch).
+    pub arch_height: f32,
 }
 
 impl StorageElement for IvySegmentGpu {
@@ -51,8 +58,10 @@ impl SsboType for IvySegmentGpu {
 }
 
 /// Pack one ivy's consecutive points into 48 B GPU segment rows. The segment
-/// `from`/`to` are the deque-ordered point positions; the normal is the unit
-/// tangent perpendicular (待取证 for the exact GPU layout).
+/// start/end are the deque-ordered point positions; the animated point
+/// thickness fills the start/end thickness (the branch shader lerps the
+/// thickness across the segment). `wall_normal`/`arch_height` are 待取证
+/// (0.0 / tangent-perpendicular stand in).
 pub fn pack_ivy_segments(ivy: &Ivy) -> Vec<IvySegmentGpu> {
     ivy.points
         .iter()
@@ -62,12 +71,12 @@ pub fn pack_ivy_segments(ivy: &Ivy) -> Vec<IvySegmentGpu> {
             let len = d.length().max(1e-20);
             let normal = Vec3::new(-d.z / len, 0.0, d.x / len);
             IvySegmentGpu {
-                from: a.position,
-                to: b.position,
-                normal,
-                thickness: a.thickness,
-                u_a: 0.0, // 待取证: source-u range
-                u_b: 0.0,
+                start_pos: a.position,
+                start_thickness: a.thickness,
+                end_pos: b.position,
+                end_thickness: b.thickness,
+                wall_normal: normal,
+                arch_height: 0.0,
             }
         })
         .collect()
@@ -114,8 +123,9 @@ mod tests {
         ivy.add_point(Vec3::X, Vec3::X);
         let rows = pack_ivy_segments(ivy);
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].from, Vec3::ZERO);
-        assert_eq!(rows[0].to, Vec3::X);
+        // Verified start/end mapping (shader `instanced_ivy_branch.raster.hlsl`).
+        assert_eq!(rows[0].start_pos, Vec3::ZERO);
+        assert_eq!(rows[0].end_pos, Vec3::X);
     }
 
     #[test]

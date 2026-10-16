@@ -18,13 +18,14 @@ use crate::{
 };
 use bevy_ecs::prelude::*;
 
-/// `FirstPersonOff` global parameter (O: rne-read).
-pub const FIRST_PERSON_OFF_PARAM: &str = "FirstPersonOff";
+/// `FirstPerson` global parameter (O: 0x142ad8eb0, len 0xb; the chapter's
+/// "FirstPersonOff" is the signifier-side camera event, not this param).
+pub const FIRST_PERSON_PARAM: &str = "FirstPerson";
+/// `GroundType` global parameter (O: 0x142ad8ed8) — the walking material.
+pub const GROUND_TYPE_PARAM: &str = "GroundType";
 
-/// Walking loop event — 待取证 (not resolved in the string tables; the native
-/// instantiates it in the inline init). The value below is a documented
-/// placeholder the host should reconcile.
-pub const WALK_LOOP_EVENT: &str = "event:/SFX/FirstPerson/Steps";
+/// Walking loop event (O: 0x142ad8e28, len 0x19).
+pub const WALK_LOOP_EVENT: &str = "event:/SFX/Player/Walking";
 
 /// Ground material driving the footstep material parameter (O: native
 /// `GroundType::to_fmod_param`; the exact variant set/values 待取证).
@@ -85,15 +86,18 @@ pub fn firstperson_steps_init_system<S: Studio + Send + Sync + 'static>(
     commands.insert_resource(FirstPersonViewAudioState::<S::Event>::new(&core));
 }
 
-/// `firstperson_steps` (0x140a889b0): set the FirstPersonOff parameter and
-/// drive the walking loop by ground material (raster sampling 待接线).
+/// `firstperson_steps` (0x140a889b0): set the FirstPerson / GroundType global
+/// parameters and drive the walking loop by ground material (raster sampling
+/// 待接线).
 pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
     core: Res<AudioCore<S>>,
     mut state: ResMut<FirstPersonViewAudioState<S::Event>>,
 ) {
-    // O: set the global FirstPersonOff parameter (value from the camera/view
-    // state — 待接线; 0.0 = first-person off when not moving).
-    let _ = core.set_parameter(FIRST_PERSON_OFF_PARAM, 0.0);
+    // O: set_parameter("FirstPerson", value) at 0x140a88a27 (value source
+    // 待接线 — the camera/view state); and set_parameter("GroundType",
+    // material) at 0x140a88ec1.
+    let _ = core.set_parameter(FIRST_PERSON_PARAM, 1.0);
+    let _ = core.set_parameter(GROUND_TYPE_PARAM, state.ground.to_fmod_param());
 
     // O: GroundType==0 → play walking loop, else stop.
     if state.ground == GroundType::Grass {
@@ -108,7 +112,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn first_person_off_param_is_original() {
-        assert_eq!(FIRST_PERSON_OFF_PARAM, "FirstPersonOff");
+    fn first_person_param_and_walk_loop_are_original() {
+        assert_eq!(FIRST_PERSON_PARAM, "FirstPerson");
+        assert_eq!(WALK_LOOP_EVENT, "event:/SFX/Player/Walking");
+        assert_eq!(GROUND_TYPE_PARAM, "GroundType");
     }
 }

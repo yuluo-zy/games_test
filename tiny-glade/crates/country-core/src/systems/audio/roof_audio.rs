@@ -27,6 +27,38 @@ pub const ROOF_LOOP_EVENTS: [&str; 3] = [
     "event:/SFX/InterRoofMerlonsRearrange",
 ];
 
+/// Roof edit one-shots (O: decomp-0x140aa3860 rne-read). `roof_audio_system`
+/// dispatches the roof edit event stream to these one-shots and drives the
+/// roof loop parameters below.
+pub const ROOF_ONE_SHOT_EVENTS: [&str; 8] = [
+    "event:/SFX/RoofAppear",
+    "event:/SFX/RoofRemove",
+    "event:/SFX/RoofTilesLand",
+    "event:/SFX/RoofTilesDetach",
+    "event:/SFX/MerlonsAppear",
+    "event:/SFX/GableAppear",
+    "event:/SFX/GableDisappear",
+    "event:/SFX/RoofSwitchDirection",
+];
+
+/// Roof loop parameters (O: rne-read; the "ridge"-related controls —
+/// RoofHeight/RoofProfile/RoofTipMoveSpeed/RoofTipOffset — are set with the
+/// f32 constants below).
+pub const ROOF_PARAMS: [&str; 8] = [
+    "editing_speed",
+    "is_gable",
+    "RoofHeight",
+    "RoofProfile",
+    "RoofTipMoveSpeed",
+    "RoofTipOffset",
+    "ImpactStrength",
+    "isHalfTimbered",
+];
+
+/// Roof inverse_lerp / scale bounds (O: decomp f32 constants):
+/// `0.2` (0x1429cd068), `0.05` (0x142930d70), `5.0` (0x142925988).
+pub const ROOF_RIDGE_BOUNDS: (f32, f32, f32) = (0.2, 0.05, 5.0);
+
 /// `instantiate_audio_w_position` (0x140aa3360): instantiate → set_position →
 /// start_if_not_playing.
 pub fn instantiate_audio_w_position<S: Studio>(

@@ -64,10 +64,14 @@ pub fn replay_audio_system<S: Studio + Send + Sync + 'static>(
             }
         }
     }
-    // O: AppMode == 0xd (Replay) sets a global FMOD parameter at frame end.
-    // The parameter name is 待取证 (decomp shows AudioCoreInner::set_parameter
-    // with a .data name that is not resolved).
-    let _replaying = mode.native_tag() == 0xd;
+    // O (decomp 0x140ad5d8e/0x140ad5dac): AppMode == 0xd (Replay) sets two
+    // global FMOD parameters — "undo" (0x142ae1778, len 4) and "replay"
+    // (0x142ae177c, len 6) — to 1.0 (0x142925904) when the replay flag byte
+    // (state+0x38) is set.
+    if mode.native_tag() == 0xd {
+        let _ = core.set_parameter("undo", 1.0);
+        let _ = core.set_parameter("replay", 1.0);
+    }
 }
 
 #[cfg(test)]

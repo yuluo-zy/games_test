@@ -73,13 +73,15 @@ pub fn sheep_audio_system<S: Studio + Send + Sync + 'static>(
                 // E3: kind 4 packages the continuous Baah loop (no one-shot).
                 state.should_play4 = true;
                 let cursor = state.loop4.cursor;
-                let _ = state.loop4.entries[cursor].set_parameter(SHEEP_PITCH_PARAM, 0.0);
+                let _ = state.loop4.entries[cursor].set_parameter(SHEEP_PITCH_PARAM, event.pitch);
             }
             kind if kind < SHEEP_EVENTS.len() as u8 => {
                 let name = SHEEP_EVENTS[kind as usize];
                 let mut instance = core.instantiate_audio(name);
-                // O: set_parameter (FirstPersonOff) then start_if_not_playing.
-                let _ = instance.set_parameter("FirstPersonOff", 0.0);
+                // O (decomp 0x1409d6166): set_parameter("Pitch", event f32 @+0x14)
+                // then start_if_not_playing. (The chapter's "FirstPersonOff" is a
+                // mis-read — the string table reads "Pitch" at 0x142ac2460.)
+                let _ = instance.set_parameter(SHEEP_PITCH_PARAM, event.pitch);
                 let _ = instance.start_if_not_playing();
             }
             _ => {}

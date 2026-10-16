@@ -56,6 +56,16 @@ impl MouseButtonInput {
         self.just_pressed.contains(&button)
     }
 
+    /// 任一鼠标按钮本帧新按下（O：0x1417cd0a0 对 `ButtonInput<MouseButton>` 按下事件位扫描）。
+    pub fn just_pressed_any(&self) -> bool {
+        !self.just_pressed.is_empty()
+    }
+
+    /// 鼠标按钮本帧释放（O：`FUN_14089a9f0` = just_released 语义）。
+    pub fn just_released(&self, button: u16) -> bool {
+        self.just_pressed(button) && !self.pressed(button)
+    }
+
     pub fn reset_all(&mut self) {
         self.just_pressed.clear();
     }

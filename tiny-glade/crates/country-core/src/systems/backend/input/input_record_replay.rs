@@ -155,15 +155,55 @@ impl From<InputFrameSerde> for InputFrame {
     }
 }
 
-/// 录制文件（O：serialize<Compact> 0x1402e0060 两键 `{replay_initial_state, first_frame}`；
-/// `replay_initial_state` = 10 字段初始态（window_size/cursor_depth/…，见 ALGORITHMS §2.9），
-/// 字段语义待取证，本结构以 [`InputFrameSerde`] 承载帧、初始态登记为透传值）。
+/// 录制文件（O：serialize<Compact> 0x1402e0060 两键 `{replay_initial_state, first_frame}`）。
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RecordingFile {
-    /// `replay_initial_state`：10 字段初始态（I：字段语义 U，先透传）。
-    pub replay_initial_state: serde_json::Value,
+    /// `replay_initial_state`：10 字段初始态（见 [`InputReplayInitialState`]）。
+    pub replay_initial_state: InputReplayInitialState,
     /// `first_frame`：首帧（serde 视图）。
     pub first_frame: InputFrameSerde,
+}
+
+/// `InputReplayInitialState`（O：serialize<Pretty> 键表 0x142c5b422..0x142c5b46d，
+/// 长度 `0xb/0xc/0xd/0xd/0xb/0xf/0xf` = `window_size/cursor_depth/cursor_pos_ws/
+/// center_pos_ws/ui_settings/sheep_positions/sheep_rotations`，尾 3 键
+/// `app_mode/toolbar/camera`）。10 字段供 trailer 初始态恢复。
+///
+/// 字段名/序 O；各字段类型：window_size/cursor_pos_ws/center_pos_ws 为坐标（I：
+/// window 空间 f32 对）、cursor_depth f32（I）、app_mode/toolbar/camera 复用 crate
+/// 存档/工具栏类型（I：trailer 初始态与存档节共享 schema 候选）、ui_settings 与
+/// sheep_positions/rotations 的具体载荷 U（诚实登记，透传 JSON 值）。
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct InputReplayInitialState {
+    pub window_size: [f32; 2],
+    pub cursor_depth: f32,
+    pub cursor_pos_ws: [f32; 2],
+    pub center_pos_ws: [f32; 2],
+    pub ui_settings: serde_json::Value,
+    pub sheep_positions: Vec<[f32; 3]>,
+    pub sheep_rotations: Vec<f32>,
+    pub app_mode: crate::systems::mode_manager::AppMode,
+    pub toolbar: crate::resources::toolbar::Toolbar,
+    pub camera: crate::systems::camera_rig::CameraRigParametersCache,
+}
+
+impl Default for InputReplayInitialState {
+    fn default() -> Self {
+        Self {
+            window_size: [0.0; 2],
+            cursor_depth: 0.0,
+            cursor_pos_ws: [0.0; 2],
+            center_pos_ws: [0.0; 2],
+            ui_settings: serde_json::Value::Null,
+            sheep_positions: Vec::new(),
+            sheep_rotations: Vec::new(),
+            app_mode: crate::systems::mode_manager::AppMode::Editing(
+                crate::systems::mode_manager::EditSubject::None,
+            ),
+            toolbar: crate::resources::toolbar::Toolbar::default(),
+            camera: crate::systems::camera_rig::CameraRigParametersCache::default(),
+        }
+    }
 }
 
 /// `try_load` @0x1409499c0（O 结构）：读录制文件 → serde 反序列化 → 把首帧推入流，
@@ -179,15 +219,25 @@ pub fn try_load(path: &std::path::Path, stream: &mut InputStream<InputFrame>) ->
 /// 回退到同步点（O：RE-ANALYSIS2 `index = frame_index − 1` + clone toolbar +
 /// `load_parameters` + `immediately_finish_interpolating`）。
 ///
-/// 同步点 0x60 B 子字段（O）：`+0x18` toolbar current、`+0x20/+0x28` ToolbarCategoryModes
-/// Vec、`+0x30` camera、`+0x58` frame_index。toolbar/camera 从状态块子字段类型化恢复
-/// 仍待取证；本实现设置 index 并回写翻译状态 buffer。
+/// 同步点 0x60 B 子字段已类型化（O：0x140941a30）：
+/// - `@+0x18` 字节 = ToolbarCategoryModes `current`（[`InputTranslationState::toolbar_current`]）；
+/// - `@+0x20/+0x28` = 工具栏模式 Vec 头（clone 源 FUN_1412f7fa0，宿主持有分配）；
+/// - `@+0x30..+0x58` = MainCamera 参数（`load_parameters` 源，40 B）；
+/// - `@+0x58` = frame_index。
+///
+/// 本实现设置 index 并回写翻译状态 buffer（可测核心）；toolbar Vec 的 clone 与 camera 的
+/// `load_parameters`/`immediately_finish_interpolating` 依赖宿主持有资源的真实分配，
+/// 库内登记待接（偏移已定）。
 pub fn seek_to_sync_point(
     replay: &mut InputRecordReplayState,
     translation: &mut InputTranslationStateResource,
     sync_index: usize,
 ) {
-    let point = replay.stream.sync_points().get(sync_index).expect("No sync points found in replay state");
+    let point = replay
+        .stream
+        .sync_points()
+        .get(sync_index)
+        .expect("No sync points found in replay state");
     if replay.mode != InputRecordReplayMode::Replay {
         panic!(
             "Can only seek to sync point if replaying but mode is {}",
@@ -196,7 +246,14 @@ pub fn seek_to_sync_point(
     }
     replay.index = point.frame_index.wrapping_sub(1);
     translation.buffer = point.state;
-    // clone toolbar（sync+0x20）+ load_parameters（sync+0x30）依赖状态块子字段类型化，待取证。
+    // 子字段恢复（O 偏移类型化）：toolbar_current() → Toolbar current；
+    // toolbar_vec_cap_ptr() → 工具栏 Vec（clone FUN_1412f7fa0）；camera_params() →
+    // MainCamera::load_parameters + immediately_finish_interpolating。宿主接线待接。
+    let _ = (
+        point.state.toolbar_current(),
+        point.state.toolbar_vec_cap_ptr(),
+        point.state.camera_params(),
+    );
 }
 
 /// 录制/回放状态资源（O：0x1409423d0 `param_9` = `InputStream @0x00..0x40` + `mode @0x40`
@@ -478,7 +535,7 @@ mod tests {
             main_action_set_value: Vec::new(),
         };
         let file = RecordingFile {
-            replay_initial_state: serde_json::json!({}),
+            replay_initial_state: InputReplayInitialState::default(),
             first_frame: frame,
         };
         let json = serde_json::to_string(&file).unwrap();

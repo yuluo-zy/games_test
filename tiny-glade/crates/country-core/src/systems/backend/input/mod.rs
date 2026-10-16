@@ -31,6 +31,7 @@ pub fn register_input_events(world: &mut World) {
     world.init_resource::<Events<InputCursorDelta>>();
     world.init_resource::<Events<InputReplayCommand>>();
     world.init_resource::<Events<calculate_input_delta::UiHistoryButtonPressed>>();
+    world.init_resource::<Events<translate_input::MouseWheel>>();
 
     world.init_resource::<input_record_replay::InputRecordReplayState>();
     world.init_resource::<input_record_replay::InputTranslationStateResource>();
@@ -40,6 +41,7 @@ pub fn register_input_events(world: &mut World) {
     world.init_resource::<button_input::KeyButtonInput>();
     world.init_resource::<button_input::MouseButtonInput>();
     world.init_resource::<translate_input::SteamInputActive>();
+    world.init_resource::<translate_input::DemoModeEnabled>();
     world.init_resource::<input_replay_for_trailers::InputReplayForTrailers>();
 }
 

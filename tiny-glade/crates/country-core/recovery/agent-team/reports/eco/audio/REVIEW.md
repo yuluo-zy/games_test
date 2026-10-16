@@ -181,3 +181,27 @@ RESTORE-BATCH3 §三登记，不宣布整模块 100%。
 实测当前树 `cargo test --lib` **测试目标编译失败**：`wall_spatial_hash.rs:134`
 `seen.insert((endpoint, segment.wall))` 元组 (f32, WallId) 缺 Eq/Hash（wall 组在途，非 audio/eco）。
 此错使全库测试不可运行（含 audio 过滤）；协调者"1671/1"基线已被打破，请转 restorer-wall 修复后复验。
+
+## §六 audio 参数/事件名定案（2026-10-16）— ✅ 4 项全过
+
+1. **sheep Pitch**：`SHEEP_PITCH_PARAM="Pitch"`（0x142ac2460 len 5）；一次性 + kind4 均
+   `set_parameter("Pitch", event.pitch)`（decomp 0x1409d6158 movss [rbx+0x14]）——章节
+   "FirstPersonOff" 误读已删 ✓。
+2. **clutter "clutter-context"**：`CLUTTER_CONTEXT_PARAM="clutter-context"`（0x142aa12d0 len 0xf）；
+   值查表 `{0.0,1.0,2.0}`@0x142aa1590 按事件 context 字节@+0x15 索引（disasm 0x1408c0aa7/aab）；
+   `PlayClutterSoundCmd` 增 `context:u8` ✓。
+3. **wall_audio_ui 全表 vs 跳表 0x142a9fa44**：kind 2 WallSnapToSegment/3 ShapeSnap/4 WallsMerged/
+   5 WallsMergedEnclosed/6 ColorBricks/7 ColorGate/8 ColorFlag/9+0xf ToggleSmoke 选择器@+9/
+   0xa ColorWindow/0xb ColorRoof/0xc ColorHalftimber/0xd ColorLantern/0xe LanternTurnOn/
+   0x10 ChangeWallStyle/0x13·0x14 BuildingSupportsRemoveWooden；kind 0 设全局 wall_style；
+   0x11·0x12·0x15·0x16 跳过——逐条对上 ✓。
+4. **firstperson/weather/replay/roof**：WALK_LOOP_EVENT="event:/SFX/Player/Walking"（0x142ad8e28 len
+   0x19）+ 全局 `"FirstPerson"`（0x142ad8eb0，非 FirstPersonOff）+ `"GroundType"`；
+   weather `"RainStrength"`（0x142c63000）；replay AppMode==0xd 设 `"undo"/"replay"`
+   （0x142ae1778/7c）值 1.0（0x142925904）；roof 事件/参数常量（RoofHeight/RoofProfile/
+   editing_speed/is_gable + bound 0.2/0.05/5.0）登记 ✓。
+
+实测：cargo test --lib **1724/1**（唯一败 geometry/sphere 他组，StairsState 在途已消）；音频 32 测试过。
+
+**结论：audio 库内参数面闭合**。登记：kind1 预置事件两处待核、decorator kind→loop 近似、roof
+ridge 几何跨域。

@@ -18,12 +18,15 @@
 //! string) for the name-match assertion; their `SsboId::of` will not equal the
 //! verified keys until the producing name is resolved.
 //!
-//! The exact CPU (104 B) → GPU (48 B) field mapping is a recorded blocker
-//! (re-analyst 卡点); the packed rows below carry the documented leaf
-//! attributes (position, facing, scatter direction, size, thickness, growth).
-//! The actual GPU commit needs a `GraphicsDevice`, which the render world
-//! supplies; `upload_ivy_leaves` is the library-side business mirroring
-//! `rasterize_buildings::upload_buildings`.
+//! The GPU element is 48 B (`count * 0x30`), matching the shader struct in
+//! `reconstruction/human-readable-shaders/shaders/ivy/instanced_ivy_leaf.raster.hlsl`:
+//! `{ position: float3, size: float, forward_floattor: float3, seed: int,
+//!   branch_dir: float3, arch_height: float }`. The CPU (104 B `IvyLeaf`) →
+//! GPU mapping is verified for position/size/vector_2c→forward/
+//! branch_direction→branch_dir; `seed` and `arch_height` are 待取证 (the leaf
+//! spawner's `frame` is the seed candidate). The actual GPU commit needs a
+//! `GraphicsDevice`, which the render world supplies; `upload_ivy_leaves` is
+//! the library-side business mirroring `rasterize_buildings::upload_buildings`.
 
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
@@ -42,17 +45,23 @@ pub const IVY_LEAF_SSBO_NAME: &str =
 pub const IVY_FLOWER_SSBO_NAME: &str =
     "country_core::systems::ivy::ivy_send_to_gpu_leaf::IvyFlowerSsbo";
 
-/// GPU leaf element, 48 B (O: `count * 0x30`), and its SSBO type. Field subset
-/// documented; exact mapping to the 104 B CPU `IvyLeaf` is 待取证.
+/// GPU leaf element, 48 B (O: `count * 0x30`; shader `instanced_ivy_leaf`).
+/// The field order matches the shader struct; the CPU mapping for `seed` /
+/// `arch_height` is 待取证.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct IvyLeafGpu {
     pub position: Vec3,
-    pub vector_2c: Vec3,
-    pub vector_58: Vec3,
     pub size: f32,
-    pub branch_thickness: f32,
-    pub growth: f32,
+    /// The leaf's forward/facing direction (shader `forward_floattor`).
+    pub forward: Vec3,
+    /// Shader `seed` (int); the leaf spawner's `frame` is the candidate
+    /// (待取证).
+    pub seed: i32,
+    /// The leaf's branch direction (shader `branch_dir`).
+    pub branch_dir: Vec3,
+    /// Shader `arch_height`; source 待取证 (needs the owning wall's arch).
+    pub arch_height: f32,
 }
 
 impl StorageElement for IvyLeafGpu {
@@ -73,11 +82,11 @@ impl SsboType for IvyLeafGpu {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct IvyFlowerGpu {
     pub position: Vec3,
-    pub vector_2c: Vec3,
-    pub vector_58: Vec3,
     pub size: f32,
-    pub branch_thickness: f32,
-    pub growth: f32,
+    pub forward: Vec3,
+    pub seed: i32,
+    pub branch_dir: Vec3,
+    pub arch_height: f32,
 }
 impl StorageElement for IvyFlowerGpu {
     const NAME: &'static str = IVY_FLOWER_SSBO_NAME;
@@ -90,15 +99,17 @@ impl SsboType for IvyFlowerGpu {
     }
 }
 
-/// Pack one CPU leaf into a 48 B GPU row (subset; exact mapping 待取证).
+/// Pack one CPU leaf into a 48 B GPU row. `forward` = `vector_2c`,
+/// `branch_dir` = `branch_direction`, `seed` = `frame` (candidate);
+/// `arch_height` is 待取证 (0.0 stands in).
 pub fn pack_leaf(leaf: &IvyLeaf) -> IvyLeafGpu {
     IvyLeafGpu {
         position: leaf.position,
-        vector_2c: leaf.vector_2c,
-        vector_58: leaf.vector_58,
         size: leaf.size,
-        branch_thickness: leaf.branch_thickness,
-        growth: leaf.growth,
+        forward: leaf.vector_2c,
+        seed: leaf.frame as i32,
+        branch_dir: leaf.branch_direction,
+        arch_height: 0.0,
     }
 }
 
@@ -152,6 +163,10 @@ mod tests {
         let gpu = pack_leaf(&leaf);
         assert_eq!(gpu.position, leaf.position);
         assert_eq!(gpu.size, leaf.size);
+        // Verified GPU mapping (shader `instanced_ivy_leaf.raster.hlsl`).
+        assert_eq!(gpu.forward, leaf.vector_2c);
+        assert_eq!(gpu.branch_dir, leaf.branch_direction);
+        assert_eq!(gpu.seed, 5);
     }
 
     #[test]

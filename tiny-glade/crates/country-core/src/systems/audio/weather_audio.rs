@@ -9,27 +9,29 @@
 use crate::resources::audio_resources::{AudioCore, Studio};
 use bevy_ecs::prelude::*;
 
-/// Weather state (native `resources::weather` 待接线). The season index drives
-/// the global parameter below.
+/// Weather state (native `resources::weather::Weather` 待接线). The rain
+/// strength drives the global parameter below.
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct Weather {
     pub season: u8,
     pub time_of_day: f32,
+    /// O: the weather system's set_parameter value source (native reads the
+    /// weather state; the exact field mapping 待取证).
+    pub rain_strength: f32,
 }
 
-/// Global season parameter — 待取证 (name not resolved; documented placeholder
-/// the host reconciles against the FMOD project).
-pub const WEATHER_SEASON_PARAM: &str = "WeatherSeason";
+/// Global rain parameter (O: 0x142c63000, len 0xb).
+pub const WEATHER_RAIN_PARAM: &str = "RainStrength";
 
-/// `weather_audio_system` (native inline): push the weather/season global
-/// parameters.
+/// `weather_audio_system` (native inline, inlined into the
+/// `(Res<AudioCore>, Res<Weather>)` FunctionSystem): push the rain-strength
+/// global parameter (O: single `AudioCoreInner::set_parameter` at the inline
+/// site 0x141556935).
 pub fn weather_audio_system<S: Studio + Send + Sync + 'static>(
     weather: Res<Weather>,
     core: Res<AudioCore<S>>,
 ) {
-    let _ = core.set_parameter(WEATHER_SEASON_PARAM, f32::from(weather.season));
-    // O: the native also drives time-of-day / weather strength params; those
-    // names are 待取证.
+    let _ = core.set_parameter(WEATHER_RAIN_PARAM, weather.rain_strength);
 }
 
 #[cfg(test)]
@@ -37,7 +39,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn season_param_is_the_documented_placeholder() {
-        assert_eq!(WEATHER_SEASON_PARAM, "WeatherSeason");
+    fn rain_param_is_the_original_name() {
+        assert_eq!(WEATHER_RAIN_PARAM, "RainStrength");
     }
 }

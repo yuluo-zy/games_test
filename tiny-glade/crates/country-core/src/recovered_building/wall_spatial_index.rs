@@ -13,6 +13,20 @@ pub fn world_space_to_grid_coord_unclamped(p: [f32; 2]) -> [i32; 2] {
 pub fn grid_coord_to_cell_index(p: [i32; 2]) -> i64 {
     p[1].wrapping_mul(GRID_SIDE as i32).wrapping_add(p[0]) as i64
 }
+
+/// Cell index of a world-space point, clamped to the border cells.
+/// The original ivy grower/spawner/pruner compute the same pair with the CRT
+/// `floorf` import (0x142923ee0, NOT a perchance RNG) on each axis:
+/// `floor((WORLD_SIZE*0.5 + p) / (WORLD_SIZE / GRID_SIDE))`, then the
+/// `count * cell_z + cell_x` row-major index (0x14094b009/0x14094b00c).
+pub fn cell_index_of_world_point(p: [f32; 2]) -> usize {
+    let g = world_space_to_grid_coord_unclamped(p);
+    let g = [
+        g[0].clamp(0, GRID_SIDE as i32 - 1),
+        g[1].clamp(0, GRID_SIDE as i32 - 1),
+    ];
+    grid_coord_to_cell_index(g) as usize
+}
 fn inside(p: [f32; 2]) -> bool {
     p[0] > -65.0 && p[0] < 65.0 && p[1] > -65.0 && p[1] < 65.0
 }

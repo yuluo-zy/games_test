@@ -91,17 +91,22 @@ pub struct PlayStairsAudioCmd {
 }
 
 /// `PlayClutterSoundCmd` (clutter_audio). Slot stride 0x18, kind u8 @+0x14,
-/// position @+0/+8.
+/// position @+0/+8, context byte @+0x15 (indexes the clutter-context value table).
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlayClutterSoundCmd {
     pub kind: u8,
     pub position: Vec3,
+    /// O: byte @+0x15 → "clutter-context" value table index {0,1,2}.
+    pub context: u8,
 }
 
-/// `PlaySheepReactSound` (sheep_audio). Slot stride 0x20, kind u8 @+0x18.
+/// `PlaySheepReactSound` (sheep_audio). Slot stride 0x20, pitch f32 @+0x14,
+/// kind u8 @+0x18.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlaySheepReactSound {
     pub kind: u8,
+    /// O: pitch f32 @+0x14 (set_parameter("Pitch", value)).
+    pub pitch: f32,
 }
 
 /// `PlayMenuUiSound` (menu_audio). Slot stride 0x10, kind u8 @+0x8.

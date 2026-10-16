@@ -215,10 +215,11 @@ pub fn try_random_ivy_root(
         let dx = b[0] - a[0];
         let dz = b[1] - a[1];
         let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt().max(1e-20);
-        // FastNoise density gate: `noise >= threshold` (threshold at res+0x78,
-        // 待取证 for the exact source; the resource's `threshold` field).
+        // FastNoise density gate: the noise must be strictly greater than the
+        // threshold at res+0x78 (0x14094cf90: `if noise < t || noise == t →
+        // return`); threshold value 待取证.
         let density = noise.noise.get_noise3d(x, 0.0, z);
-        if density < noise.threshold {
+        if density <= noise.threshold {
             continue;
         }
         // Lateral side: `perchance get_bool` — true → −0.68, false → +0.68

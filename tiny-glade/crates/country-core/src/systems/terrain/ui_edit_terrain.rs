@@ -114,18 +114,20 @@ pub fn ui_edit_terrain(
         dirty |= DIRTY_MASK_POINTS;
     }
     if dirty & (DIRTY_MASK_HEIGHT | DIRTY_MASK_FALLOFF) != 0 {
-        // 原 `EditCommand` 字段序 `{falloff, height, position, id}`（id@+0x1c）与 tg_terrain
-        // `{id, falloff, height, position}` 差异待取证（reviewer 基线）；当前与 tg_terrain
-        // 同型生产/消费内部一致。
+        // 原 `EditCommand` 字节序 `{falloff, height, position, id}`（id@+0x1c，RE-EDITCMD
+        // E7 定案；Adjustment 紧凑 value 槽，非 tg_terrain 8 B 固定）——crate 内事件走
+        // tg_terrain `{id, falloff, height, position}` 共享接口，ABI 打包差异登记
+        // （host 序列化/跨进程时按原序对齐）。
+        // 判别（O，RE-EDITCMD 生产者）：falloff/height 均写 `Delta`（disc 2）。
         edits.write(EditTerrainStrokeCmd(tg_terrain::edit::EditCommand {
             id: StrokeId(hovered.id as u32),
             falloff: if dirty & DIRTY_MASK_FALLOFF != 0 {
-                Adjustment::Absolute(stroke.falloff)
+                Adjustment::Delta(stroke.falloff - cache.falloff)
             } else {
                 Adjustment::Keep
             },
             height: if dirty & DIRTY_MASK_HEIGHT != 0 {
-                Adjustment::Absolute(stroke.height_ws)
+                Adjustment::Delta(stroke.height_ws - cache.height)
             } else {
                 Adjustment::Keep
             },

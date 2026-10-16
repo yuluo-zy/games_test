@@ -56,6 +56,13 @@ pub const CLUTTER_EVENTS: [&str; 39] = [
     "event:/SFX/Cosmetics/DoorBell",                // 0x26
 ];
 
+/// The clutter-context parameter (O: 0x142aa12d0, len 0xf) — the value is a
+/// lookup-table entry {0.0, 1.0, 2.0} indexed by the event's context byte
+/// (0x1408c0aa7/0x1408c0aab disasm: `movss xmm3, [table + context*4]`).
+pub const CLUTTER_CONTEXT_PARAM: &str = "clutter-context";
+/// Value lookup table (O: 0x142aa1590 f32s).
+pub const CLUTTER_CONTEXT_VALUES: [f32; 3] = [0.0, 1.0, 2.0];
+
 /// `clutter_audio_system` (0x1408c02f0).
 pub fn clutter_audio_system<S: Studio + Send + Sync + 'static>(
     mut events: EventReader<PlayClutterSoundCmd>,
@@ -71,13 +78,12 @@ pub fn clutter_audio_system<S: Studio + Send + Sync + 'static>(
             continue; // O: kind 0x12 is skipped by the jump table.
         }
         let position = [event.position.x, event.position.y, event.position.z];
-        // O: instantiate_audio → set_position → set_parameter → start_if_not_playing.
+        // O: instantiate_audio → set_position → set_parameter("clutter-context")
+        // → start_if_not_playing (common block 0x1408c0990).
         let mut instance = core.instantiate_audio(name);
         let _ = instance.set_position(position);
-        // O: the common block sets a parameter on the instance before start
-        // (parameter name 待取证 — decomp shows impl$10::set_parameter with an
-        // unresolved .data name).
-        let _ = instance.set_parameter("editing_speed", 1.0);
+        let context = usize::from(event.context).min(CLUTTER_CONTEXT_VALUES.len() - 1);
+        let _ = instance.set_parameter(CLUTTER_CONTEXT_PARAM, CLUTTER_CONTEXT_VALUES[context]);
         let _ = instance.start_if_not_playing();
     }
 }

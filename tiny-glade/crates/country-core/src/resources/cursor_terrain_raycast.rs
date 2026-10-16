@@ -48,4 +48,9 @@ impl CursorTerrainRaycast {
             Vec3::ZERO
         }
     }
+
+    /// 射线距离（O：ui_draw_terrain @0x140a9fdc0 读 `+8`；与 `pos.y` 同槽）。
+    pub fn distance(&self) -> f32 {
+        self.pos.y
+    }
 }
