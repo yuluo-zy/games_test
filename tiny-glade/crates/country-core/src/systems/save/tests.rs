@@ -200,3 +200,124 @@ fn backup_scan_and_snapshot_gc_release_cancel_and_delete_actual_files() {
     );
     assert!(paths[2].exists());
 }
+
+#[test]
+fn execute_save_cmd_changes_sections_and_flushes_to_disk() {
+    use super::{
+        save_game::AsyncSaveCmd,
+        save_thread::{CurrentSaveFile, execute_save_cmd},
+    };
+    let root = tempfile::tempdir().unwrap();
+    let values = [
+        json!(27),
+        json!({"id":"fixture"}),
+        json!(0),
+        json!({"x":1}),
+        json!(12),
+        json!([]),
+        json!({}),
+        json!(2),
+        json!(-1),
+        json!([]),
+    ];
+    let sections = GameSaveSections {
+        values: values.map(|value| SerializedJson::new(&value).unwrap()),
+    };
+    let mut current = Some(CurrentSaveFile::create(root.path(), sections, &[]));
+    let camera = SerializedJson::new(&json!({"x": "large".repeat(200)})).unwrap();
+    execute_save_cmd(
+        &mut current,
+        AsyncSaveCmd::ChangeSection {
+            section: SaveFileSection::Camera,
+            value: camera,
+        },
+    );
+    execute_save_cmd(&mut current, AsyncSaveCmd::Flush);
+    let bytes = std::fs::read(root.path().join("history.json")).unwrap();
+    let parsed: Value = serde_json::from_slice(&bytes).unwrap();
+    let written = parsed["Camera"]["x"].as_str().unwrap();
+    assert_eq!(written.len(), 1000);
+    // CloseFile 清档；后续 ChangeSection 应 panic。
+    execute_save_cmd(&mut current, AsyncSaveCmd::CloseFile { session: crate::resources::session::SessionId::new() });
+    assert!(current.is_none());
+}
+
+#[test]
+#[should_panic(expected = "No active save file, but AsyncSaveCmd::ChangeSection has been issued")]
+fn change_section_without_active_file_panics() {
+    use super::{save_game::AsyncSaveCmd, save_thread::execute_save_cmd};
+    let mut current: Option<CurrentSaveFile> = None;
+    execute_save_cmd(
+        &mut current,
+        AsyncSaveCmd::ChangeSection {
+            section: SaveFileSection::Camera,
+            value: SerializedJson::new(&json!(1)).unwrap(),
+        },
+    );
+}
+
+#[test]
+fn save_thread_receives_shutdown_with_flush_and_acks() {
+    use super::save_thread::{AutosaveErrorState, UnsavedFileList, save_thread};
+    use std::sync::Arc;
+    let (cmd_sender, cmd_receiver) = crossbeam_channel::unbounded();
+    let (error_sender, _error_receiver) = AutosaveErrorState::channel();
+    let unsaved = Arc::new(UnsavedFileList::default());
+    let (ack_sender, ack_receiver) = crossbeam_channel::unbounded();
+    let handle = std::thread::spawn(move || {
+        save_thread(cmd_receiver, error_sender, unsaved, ack_sender)
+    });
+    cmd_sender
+        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: true })
+        .unwrap();
+    assert_eq!(
+        ack_receiver
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap(),
+        ()
+    );
+    handle.join().unwrap();
+}
+
+#[test]
+fn on_load_fence_terminates_both_replay_passes() {
+    use super::load_game::{ReplayedOnLoadCommand, advance_load_game};
+    use crate::meta_commander::{MetaCommand, MetaCommandFence};
+    use crate::resources::session::{NextSession, SessionId, ON_LOAD_VARIANT_MASK};
+    use crate::resources::session::NextSessionKind;
+
+    let mut session = NextSession::create(
+        SessionId::new(),
+        NextSessionKind::LoadOnLoad,
+    );
+    session.extend_on_load([
+        MetaCommand {
+            tag: 1,
+            payloads: [10, 0, 0, 0, 0, 0],
+        },
+        MetaCommand {
+            tag: 2,
+            payloads: [20, 0, 0, 0, 0, 0],
+        },
+    ]);
+    // 变体 0 会话加载命令（payload = fence）+ 两遍回放终止哨兵。
+    session.append_fence(MetaCommandFence::new_pair_blocked());
+    session.append_replay_terminator();
+    let mut manager = super::load_game::LoadGameManager::default();
+    manager.state = super::load_game::LoadGameState::Loaded;
+    let (parsed, commands) = advance_load_game(&mut manager, &session, None).unwrap();
+    assert!(parsed.is_none());
+    // 第一遍：批量展开为两条 MetaCommand + fence 变体 0 写 manager 状态；
+    // 第二遍：两条 Apply + fence 变体 0 SwitchAppMode（忽略）；终止哨兵后不再回放。
+    let meta = commands
+        .iter()
+        .filter(|c| matches!(c, ReplayedOnLoadCommand::MetaCommand(_)))
+        .count();
+    let apply = commands
+        .iter()
+        .filter(|c| matches!(c, ReplayedOnLoadCommand::Apply { .. }))
+        .count();
+    assert_eq!(meta, 2);
+    assert_eq!(apply, 2);
+    assert!(ON_LOAD_VARIANT_MASK != 0);
+}

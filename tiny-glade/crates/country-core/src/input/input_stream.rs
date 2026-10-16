@@ -26,8 +26,31 @@ pub const MAX_SYNC_POINTS: usize = 9;
 pub const SYNC_FRAME_LIMIT: usize = 10_000;
 
 /// 输入翻译状态：11 个 qword（O：同步点 `+0x00..+0x58`）。
+///
+/// 子字段（O：0x140941a30 同步点 seek 读取；偏移相对状态块基址）：
+/// - `@+0x18` 字节 = ToolbarCategoryModes `current`（qword3 低字节）；
+/// - `@+0x20/+0x28` = 工具栏模式 Vec 头（cap-first；clone 源 FUN_1412f7fa0）；
+/// - `@+0x30..+0x58` = MainCamera 参数（`load_parameters` 源，40 B）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct InputTranslationState(pub [u64; 11]);
+
+impl InputTranslationState {
+    /// `@+0x18` 字节：工具栏类别当前索引（O：0x140941a30 `*(u8*)(sync + 0x18)`）。
+    pub fn toolbar_current(&self) -> u8 {
+        (self.0[3] & 0xff) as u8
+    }
+
+    /// `@+0x20/+0x28`：工具栏模式 Vec 头 {cap, ptr}（O：seek 写回工具栏资源前 16 B；
+    /// len 与相机参数区共享布局，I）。
+    pub fn toolbar_vec_cap_ptr(&self) -> (u64, u64) {
+        (self.0[4], self.0[5])
+    }
+
+    /// `@+0x30..+0x58`：相机参数（40 B，`MainCamera::load_parameters` 源；O）。
+    pub fn camera_params(&self) -> [u64; 5] {
+        [self.0[6], self.0[7], self.0[8], self.0[9], self.0[10]]
+    }
+}
 
 /// 同步点（0x60 B）：翻译状态 + 它在帧环里的位置（`+0x58`）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

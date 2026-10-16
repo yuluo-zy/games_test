@@ -290,24 +290,51 @@ upsert_span(self, span, collider_handle, height):
 
 分派：`phase = *(u32*)(world+0x118)`（Bevy world 内状态槽）→ `jmp [表 + phase*4]`（0x14094aa1b/0x14094aa2f 原指令）。主闭包 0x14094AC20 生长管线（CLOSURE e8 扫描）：每株 ivy → `last_point`（0x1408694f0）→ `IvyDirectionProposer::get_direction`（0x141234590）→ `closest_segment_index`（0x14094c800）选墙段 → 墙跳检查 → `add_point`（0x140869460）推进。状态结构（相体反汇编）：{+0x10 ptr（相值写回通道）, +0x1c 相值, +0x48 守卫标志 bit0, +0x11c 计时 f32}。
 
-### 4.2 closest_segment_index（0x14094c800，666B）— O 全解
+### 4.2 closest_segment_index（0x14094c800，666B）— O 全解（2026-10-15 机器码字节级复核）
 
 ```
 closest_segment_index(out, point.xy, segments(56B 步长), count, max_height):
   # 段布局（7 qword = 56B）：{p0.xy@+0, p1.xy@+8, f32@+0x10, f32@+0x14, h0@+0x18, h1@+0x1c, 2 qword 未知}
-  #    @+0x10/+0x14 两 f32 打包进结果（语义 U，疑段标识/uv）
-  过滤1（机器码原文）：h0 ≤ max 或 h1 ≤ max → 跳过（保留两端点均 > max 的段）
-  过滤2：t 处插值高度 h1·t + h0·(1−t) > max → 跳过
-  len² = dx²+dy²；t = dot(P−P0, D)/len² 夹取 [0, 1.0]（_UNK_142925904 = 1.0，夹取下限 0）
+  过滤1（机器码复核）：ucomiss h0,max; jbe 进体 / ucomiss h1,max; ja 跳过
+    → 仅当 h0>max 且 h1>max 才跳过；h0≤max 或 h1≤max 均进体
+    （旧 decompiler 的 "h0<=max || h1<=max → break" 为误读，机器码相反）
+  过滤2：t 处插值高 h1·t + h0·(1−t) > max → 跳过（ucomiss;ja 0x14094c95e）
+  —— 两过滤自洽：保留生长投影点处墙高 ≤ max 的段（穿过 max 边界的段按 t 裁），无互斥疑点
+  len² = dx²+dy²；t = dot(P−P0, D)/max(len²,1e-20) 夹取 [0, 1.0]
+    （1e-20@0x142a7baa0，1.0@0x142925904）
   断言：夹取后 t ∈ [0,1]（机器码恒真，panic 串 @0x142aa53ed/0x142aa5468，0x2a=42 字符）
-  距离度量 = |(P0−P)·单位方向|（沿段方向投影距，另一项经 0 常量折叠）
+  距离度量 = 垂直分量 |unit·(P0−P)| + 沿段分量（机器码 0x14094c970 区）
   保留最近段: out = {found u64@+0, index u64@+8, dist f32@+0x10, h 打包 u32@+0x14}
+  调用方参数序（ivy_spawner 调用点证实）：(out, xz, 0, segments_ptr, count, max_height)
 ```
-注意：过滤 1 与过滤 2 在 t∈[0,1] 下看似互斥（两端点 > max ⇒ 凸组合 > max）—— 原语义疑为高度坐标取负向/阈值方向相反（U 待调用方数值确认）；机器码行为以此为准。
+
+### 4.2b ivy 生产者→GPU 验收链（2026-10-15 定点闭合）
+
+```
+ivy_spawner (0x14094cf90, 38KB) ── spawn_ivy (0x1408696f0) ──▶ IvyStorage (HashMap<usize,Ivy> @+0 + perchance RNG @+0x30 + next_ivy_id @+0x40)
+      │ 模式门 AppMode==1；株数上限≈40000；双路径：
+      │  A(株数<3)=try_ivy_root_next_to_cursor：光标位→空间哈希格(RNG 采样 32/65 换算)→closest_segment_index(max=0.5f)
+      │    →PublicWalls hashbrown 查墙(步长0x2a8)→曲线采样→根位 ±0.34 偏移(0.68×0.5)→距既有根>0.5(0.25²)或>1.6(2.56²)
+      │    →垂直 (rand×1.5−0.75)/墙高+段高 钳[0.000928,1.0]
+      │  B(株数≥3)=try_random_ivy_root：逐墙随机 u∈[0,1]→根位
+      ▼
+ivy_grower (0x14094a910, 10 相跳表@0x142ab3be0) 主闭包 0x14094ac20：
+  last_point→get_direction(0x141234590)→closest_segment_index→墙跳→add_point (每点 id=[Ivy+0x58]+1)
+      ▼ 段完成 → IvySegmentDoneGrowingMsg
+ivy_leaf_spawner (0x140996080)：沿末段放叶 → IvyLeafStorage::add (0x1408fe280, IvyLeaf 0x68B=104B push 到 HashMap<usize,Vec>)
+      ▼
+ivy_send_to_gpu_leaf (0x1408c1580)：all_leaves collect → IvyLeafSsbo(键 0x9e3cfa7f2993f406) + IvyFlowerSsbo(键 0x1d6de5e69ac50d2a) 48B 元素缓冲
+ivy_send_to_gpu_segments (0x140a9b4e0)：total_segment_count collect → IvySegmentSsbo(键 0x2002d2fbdff3d80f) 48B 元素缓冲
+  （缓冲分配原语 FUN_140beefa0 于 ssbo_library.rs；unwrap panic 串 ivy_send_to_gpu_*_rs）
+      ▼
+render draw_shaders/instanced_ivy：draw_instanced_ivy_branch_shader(0x1408dbc50)/leaf(0x1408dc180)/flower(0x1408dc1a0)/ivy_leaf_shader(0x1408dc1c0)
+```
+
+SSBO 键表（O，rne-read qword）：IvyLeafSsbo=0x9e3cfa7f2993f406、IvyFlowerSsbo=0x1d6de5e69ac50d2a、IvySegmentSsbo=0x2002d2fbdff3d80f。名表全名见 0x142a9d65d 区（IvyLeafSsbo/IvyFlowerSsbo/IvySegmentSsbo）。ivy RNG = **perchance-0.4.0**（range 断言 `end >= start` @0x142aa5710）。
 
 ### 4.3 ivy 其余系统 — 算法要点
 
-- `ivy_spawner`（0x14094cf90，38KB）：try_random_ivy_root / try_ivy_root_next_to_cursor / is_point_inside_wall_segment；调 `closest_segment_index`（0x14094c800）+ `func_0x000140c9cdc0` ×6（几何采样，疑墙段取点）。
+- `ivy_spawner`（0x14094cf90，38KB，O 全解 2026-10-15 补挖）：双路径——A=光标旁根（株数<3，光标位→格 RNG 32/65→closest_segment_index(max=0.5f)→PublicWalls→根位）；B=随机根（株数≥3：**随机墙 `perchance usize_less_than(墙数)`@0x14094d2e7 + 随机 u `uniform_f32`[0,1)@0x14094d394 + `Curve::get_coord_at_u` + FastNoise 密度闸门**）。共享 spawn：**侧向掷硬币 `perchance get_bool`@0x14094d6b0（±0.68 法向）**、`func_0x140c9cdc0=Vec2::x0y`（swizzle 非掷硬币）、垂直 u=`(uniform_f32×1.5−0.75)/curve_length(墙值+0x30)+clamp01(Curve::get_approx_u_from_pos)` 钳[0.000928,1.0]、距校验 0.25(0x142925950)/**2.56(0x142ab3214)**、尝试次数 2+usize_less_than(3)。
 - `ivy_pruner`（0x140997410，70KB）：墙空间哈希校验（"Spatial Hash returned a wall id " 0x142abb028）+ 逐点 `is_point_still_valid`（0x140998dc0，内含 closest_segment_index 复检）+ `ivy_pruner_cmd`（0x140999330，RemoveIvyCmd 消费）+ `remove_ivy_at_location`（0x140999860）。
 - `ivy_leaf_spawner`（0x140996080）：消费 `IvySegmentDoneGrowingMsg`（panic "Received IvySegmentDoneGrowingMsg with ivy id " 0x142abaeb0）→ 沿末段放叶（`IvyLeafStorage::add` 0x1408fe280，104B 叶）。
 - `IvyDirectionProposer::get_direction`（0x141234590）：3×noise3d + 3×uniform 混合 → θ∈[−40°,+40°] → (cosθ, sinθ)。

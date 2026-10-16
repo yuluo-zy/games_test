@@ -1,11 +1,54 @@
-//! Recovered save-file codec, mutable shadow and incremental write consumers.
-//! The original game-thread capture and asynchronous queue are not registered here yet.
+//! Recovered save-file codec, mutable shadow and incremental write consumers,
+//! plus the asynchronous capture thread. The original game-thread capture
+//! system that assembles GameSaveData from ~9 domain resources is not
+//! registered here yet (domain owners pending); load_game's on_load replay
+//! depends on meta_commander.rs per the coordinator ruling.
+pub mod load_completion_checker;
+pub mod load_game;
 pub mod save_backup_list;
 pub mod save_backup_metronome;
+pub mod save_file_identity;
 pub mod save_game;
 pub mod save_thread;
 pub mod shadow_file;
+pub mod snapshot;
 pub mod snapshot_gc;
 
 #[cfg(test)]
 mod tests;
+
+/// B `add_save_load_systems` 0x1409443b0：注册 save_game / load_game / save_thread /
+/// check_load_completion 等系统。当前域资源（GameProfile/各域 Query）未齐，系统注册
+/// 留待域恢复后接入；此函数保留合同签名并记录阻塞面，不注册空系统。
+/// on_load 回放链已由 `load_game::advance_load_game`/`load_game_session` 落地。
+pub fn add_save_load_systems(_schedule: &mut bevy_ecs::schedule::Schedule) {
+    // 阻塞：save_game 本体 ECS 组装（0x140a3f470，~9 资源）依赖
+    // CameraRigParametersCache 以外的 TimeOfDay/Sheep/chain_index/snapshots 域资源；
+    // capture_game_snapshot（0x1417a1d00 域 Query）；load_game 系统本体接线依赖
+    // AppMode/GameProfile/ActiveSession 等宿主资源。commander_update 由
+    // `meta_commander::configure_session_switch_systems` 注册。
+    // save_thread 是独立线程（`save_thread` 入口），不属于 Schedule。
+}
+
+/// B `add_save_load_events_and_resources` 0x1409447e0：注册事件/资源
+/// （SaveGameCmd/SavingGameComplete/LoadingGameComplete 等）。
+pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
+    use bevy_ecs::event::Events;
+    world.init_resource::<save_game::AutoSaveState>();
+    world.init_resource::<load_game::LoadGameManager>();
+    world.init_resource::<load_completion_checker::LoadingCompletionState>();
+    world.init_resource::<crate::resources::session::SavedSessionList>();
+    save_game::register_save_game_events(world);
+    world.init_resource::<Events<save_game::SavingGameComplete>>();
+    world.init_resource::<Events<load_game::LoadingGameComplete>>();
+    world.init_resource::<Events<load_game::StartupRevealStarted>>();
+    world.init_resource::<Events<load_game::StartupRevealFinished>>();
+    world.init_resource::<Events<load_completion_checker::DisplayCorruptedSaveFileWarning>>();
+    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
+    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
+}
+
+/// 注册 save 系统（save_game 节拍器/快照触发；X4 本体组装可接部分）。
+pub fn add_save_load_systems_impl(schedule: &mut bevy_ecs::schedule::Schedule) {
+    schedule.add_systems(save_game::save_game_system::<()>);
+}

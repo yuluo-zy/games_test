@@ -33,23 +33,27 @@ flowchart TD
 
 箭头表示恢复顺序上的数据前置，不是声称所有接线已经存在。编译器提取的类型/签名依赖见 `inventory.json.signature_dependency_edges`，它不是函数体调用图。原调用者见每个文件的 `original_consumers`，无索引边的地方明确保留待定位。
 
-## 当前优先级（2026-10-15 用户修正）
+## 当前进度（2026-10-15 更新）
 
-优先补实际实现程度最低的模块，依赖只补到足以实现当前业务。不再持续加深已经具备编辑/发布/回放链的墙、屋顶和历史；其当前改动仅作编译收尾。旧清单的“无正式映射”不能当成零实现，必须检查当前源码及 recovered_* 投影。
+2026-10-15 用户修正：优先补实际实现程度最低的模块，依赖只补到足以实现当前业务；不持续加深已具备编辑/发布/回放链的墙、屋顶和历史。2026-10-15 晚收口：**9 个最低实现模块已全部实现并限定复验通过**（`review_passed(限定已实现范围)`），逐模块证据见
+`recovery/agent-team/DISPATCH.md`（分派台账/状态流转）与
+`recovery/agent-team/reports/<组>/<模块>/{RESTORE,REVIEW,RE-ANALYSIS}.md`（逐模块核验证据 + fresh 反编译）。
+**限定复验 ≠ 整模块完成**：下列"验收层面开放项"未闭合前不宣布 100%（红线：不把编译通过或局部测试当整模块完成）。
 
-| 本批优先模块 | 核对到的起点 | 本批实现目标 |
-|---|---|---|
-| `resources/ivy`、`systems/ivy` | 无权威存储，仅 closest_segment_index | 实际株/叶存储、坐标和动画消费 |
-| `systems/garden` | 原两文件均无系统实现 | 接真实模式/画笔/UI/边界，绘制与历史记录 |
-| `resources/critters/sheep` | 仅移动类型谓词，旧草稿有 Gap | 核实移动状态和快照字段，实现捕获/恢复；不复制空壳 Sheep |
-| `systems/audio/music` | 仅分派表及边界纯函数 | 播放器拥有状态、随机队列和更新算法 |
-| `systems/backend/input` | 无实际后端输入消费者 | 已新增数字动作增量和光标事件合成；键盘/Steam/录制全链仍缺 |
-| `systems/terrain` | 仅高度资源及独立地形算法 | 已接点/参数编辑、聚合通知、延迟回读；工具UI和历史生产仍缺 |
-| `systems/save` | 仅节表/脏块等纯逻辑，无文件消费者 | 已落影子文件重试、分块刷新、节扩容和历史替换；完整异步捕获仍缺 |
-| `resources/session` | 仅 ID 与主题谓词 | 已接真实元数据/活动会话/图像 schema 及音乐消费；完整切换生命周期仍缺 |
-| `systems/ui_clutter` | 仅 Delete 序列化投影 | 已接权威删除集合、延迟历史及撤销/重做；拾取/生成可见消费仍缺 |
+| 模块 | 本批实现目标 | 现状（实现 + 限定复验） | 验收层面开放项 |
+|---|---|---|---|
+| `resources/ivy` + `systems/ivy` | 实际株/叶存储、坐标和动画消费 | 株/叶存储(20+7)、grower/pruner/leaf/branch 动画、spawner、send_to_gpu 库内业务均已实现；`review_passed(限定)` | GPU 提交待 render 域接线、SsboId::of 待 ssbo_library 对账、grower 主闭包逐相语义 / 48B↔104B 叶映射 / 噪声阈值待取证 |
+| `systems/garden` | 接真实模式/画笔/UI/边界，绘制与历史记录 | 模式/画笔/UI/边界/绘制/历史四链与 0x140ae4620/0x141695e10 对上；`review_passed(限定)` | pin 渲染与 scatter/audio 消费、全局注册(impl$0::build)待接线 |
+| `resources/critters/sheep` | 核实移动状态和快照字段，实现捕获/恢复；不复制空壳 Sheep | SheepMoveState 与快照 schema 定案、capture/apply 闭合、serde wire 验证；`review_passed(限定)` | 完整 Sheep owner/being_petted 按边界外；存档 Sheep 节接入 = save 组消费端 |
+| `systems/audio/music` | 播放器拥有状态、随机队列和更新算法 | 5 态播放器/洗牌队列/节拍回调/切换阈值实现；`review_passed` | native FMOD 现场集成与 GladeAudio 曲目生产者（load_glade_audio） |
+| `systems/backend/input` | 键盘/Steam/录制全链 | 数字动作增量(Shape B)、光标事件合成(方向/夹取/捕获)、录制回放状态机分派实现；`review_passed(限定)` | 动作↔槽映射、Steam 全链、帧 serde / try_load / SyncPoint、录制往返 |
+| `systems/terrain` | 工具 UI 和历史生产 | 点/参数编辑、聚合通知、延迟回读、工具 UI(ui_draw/ui_edit/focus_mode/hover) 与历史生产实现；`review_passed(限定)` | EditType::Terrain 真 tag、focus_mode switch 表、ui_draw 消费面、脏掩码位序、AppMode==10 门裁决 |
+| `systems/save` | 完整异步捕获 | 影子文件重试/分块刷新、节扩容/历史替换、节装载/GC/备份元节拍实现；`review_passed(限定)` | GameSaveData 域组装（域类型 CameraRigParametersCache/HistoryIdentity/GladeColorCustomization/GameProfile 已派 re-analyst-state 挖证据）、commander_update / on_load 回放、load_completion_checker |
+| `resources/session` | 完整切换生命周期 | 真实元数据/活动会话/图像 schema/音乐消费、NextSession 数据结构与 on_load 吸收、会话列表/删除实现；`review_passed(限定)` | 完整切换调度 / MetaCommand 应用 / 全局接线（load_game_session 会话切换链） |
+| `systems/ui_clutter` | 拾取/生成可见消费 | 权威删除集合、延迟历史、撤销/重做、spawn 事件/rmb 旋转/debug_spawn 实现；`review_passed(限定)` | DecoratorStorage 实体机制、ui_convert quat 接线、decoclutter 注册、ui_focus 主体、debug_spawn 消费端 |
 
-这不是完成率表。新增花园1项、地形1项、常春藤创建/剪枝/动画及叶片生成2项、音乐状态转换1项、输入5项、绵羊快照2项关键行为核对已通过；不据此宣布整个模块完成。本批存档文件往返1项、备份/GC1项、会话文件往返1项、自动杂物2项、场景设置及真实叶片开关2项已通过限定检查。当前继续补树存储和杂物资产库；常春藤叶片与原生音乐接口已通过限定编译/行为检查，仍有报告中列明的生产者和全局接线缺口。
+验收层面开放项已按依赖顺序编排为下一批任务卡，见 `recovery/agent-team/planning/2026-10-15-next-batch.md`。
+本批 9 模块"已实现并限定复验通过"不代表墙/屋顶/历史或本批模块的整体验收完成；完整全局调度、存档往返、视觉/碰撞消费者与 render 域 GPU 接线仍未验收。
 
 ## 依赖参考顺序
 
@@ -75,7 +79,7 @@ flowchart TD
 
 `utils/components/transform.rs` 是 core 的组件外壳，原算法属于共享 `crates/utils/src/components/transform.rs`；本轮复用其 look_at/abs_diff_eq，不重复实现依赖数学。这个外壳不算额外原 core 源文件。
 
-本次继续实现已进入墙 PublicWalls 发布/空间/高度/砖块创建、屋顶创建/删除/类型切换/回放、楼梯权威图/快照/差分、AppMode/工具栏转换，以及世界栅格开始/续画/提交/历史提取。GUI 已接 pending context、屏幕日志和已证实 DebugGui 控件。实现和剩余边界见 `evidence/core-recovery-20261015/{gui,walls,roofs-stairs,raster}/REPORT.md`；此前目录清单尚未重新提取，不作为本次新增实现总数。
+本次继续实现已进入墙 PublicWalls 发布/空间/高度/砖块创建、屋顶创建/删除/类型切换/回放、楼梯权威图/快照/差分、AppMode/工具栏转换，以及世界栅格开始/续画/提交/历史提取。GUI 已接 pending context、屏幕日志和已证实 DebugGui 控件。实现和剩余边界见 `skeleton/task-index/work/TG-cfac1f498c427933d2/core-gui-20261014/REPORT.md`（gui）、`skeleton/task-index/work/TG-9f411268a571c6bce1/core-walls-20261014/REPORT.md`（walls）、`evidence/country-core-deep/roofs-rt/ALGORITHMS.md`（roofs-stairs）、`evidence/country-core-audit/R5_world_raster_terrain.md`（raster）——原 `evidence/core-recovery-20261015/{gui,walls,roofs-stairs,raster}/REPORT.md` 引用从未落盘，2026-10-15 已重锚；此前目录清单尚未重新提取，不作为本次新增实现总数。
 
 墙、屋顶、栅格已增补统一历史消费者，当前改为上表的最低实现模块优先。完整全局调度、存档往返、视觉/碰撞消费者和未恢复的自有业务仍未验收；不把编译通过或局部测试通过当作整模块完成。GUI 设置 tag10、报告菜单 bool 和 warning_session 的准确命名仍待取证。
 

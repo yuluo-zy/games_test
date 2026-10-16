@@ -264,10 +264,12 @@ len()"，@0x142cca478/0x142cca410）。
        data"）；失败 → "Couldn't load save file from "；**upgrade 前先做存档备份**；
      - sel==2 → 内存路径：manager 状态字节 +9=2、无快照标记 +0xd=0xffffffff、
        on_load 命令回放；
-  3. **MetaCommand 回放**（on_load 列表，条目 4B tag）：`tag == 0x8000000000000003`
+  3. **MetaCommand 回放**（on_load 列表，**元素 0x20B、tag 首 8B**——旧"4B 条目"修正；
+     reanalyst 2026-10-15，见 state/session RE-ANALYSIS §2.3）：`tag == 0x8000000000000003`
      → **fence 终止**；`tag ^ 0x8000000000000000` 解码（>2 钳 1）：变体 0 → 写 manager
-     状态 + push 24B 事件；变体 1 → `FUN_140b5a180` push MetaCommand（meta_commander.rs
-     路径串 @0x142c5ae38）；变体 2+ → Arc LOCK dec drop；
+     状态 + push 24B 事件；变体 1 → `FUN_140b5a180` push MetaCommand（=MetaCommander::
+     extend_script/Vec::extend，meta_commander.rs 路径串 @0x142c5ae38）；变体 2+ → Arc LOCK
+     dec drop；
   4. **PostGameLoadCommand 回放**（第二轮 on_load 遍历）：变体 0（SwitchAppMode）→
      log "Ignoring PostGameLoadCommand::SwitchAppMode"（级别 >1，@0x142c642e0）跳过；
      变体 1 → push 24B {tag, 载荷×2}（grow @0x142c64308）；变体 2+ → 同上；fence 终止；
@@ -415,5 +417,7 @@ OpenFile：旧态 flush（若 != 3）→ 全量重写 → 新 state=3 形态装�
 
 - 0x14362c011（stairs checksum 开关）由 load_game 按存档版本写 → history 域
   add_decorator_diff 消费（本文件互证闭合）。
-- AsyncSaveCmd 0/1/2 存在性、NextSessionKind 变体 1 生产者、MetaCommand 头
-  {0, 0x80000000} 语义 → UI/会话流（vtable 间接调用，卡点保留）。
+- AsyncSaveCmd 0/1/2 存在性（**reanalyst 2026-10-15：execute_save_cmd 无 0/1/2 case、无 debug 串，维持"死/历史变体"**）、NextSessionKind 变体 1 生产者、MetaCommand 头载荷语义
+  → UI/会话流（vtable 间接调用，卡点保留）。
+- **MetaCommand/on_load/fence 链已解**：MetaCommand 0x38B 7 qword 结构 + commander_update 分派 +
+  on_load 0x20B 条目两遍回放（详见 state/session RE-ANALYSIS.md，作为 meta_commander.rs 前置证据）。

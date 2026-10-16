@@ -29,6 +29,8 @@ pub enum ReplayCommand {
     Wall(VecDeque<Vec<WallReplayCommand>>),
     Raster(crate::systems::history::replay_raster::RasterReplayCmd),
     AutoClutter(super::auto_clutter_edit::AutoClutterReplayCmd),
+    /// 楼梯支撑移除/恢复（B `replay_stairs` tag 10）。
+    Stairs(super::stairs_history_edit::StairsReplayCmd),
 }
 #[derive(Clone, Debug)]
 pub struct ReplayBucket {
@@ -95,6 +97,14 @@ impl ReplayBucket {
                             .map_err(HistoryReplayError::Wall)?,
                     )
                 }
+                EditType::Stairs(edit) => {
+                    commands.extend(
+                        super::stairs_history_edit::StairsReplayCmd::expanded(edit, undo, instant)
+                            .into_iter()
+                            .map(ReplayCommand::Stairs),
+                    );
+                    continue;
+                }
                 edit => return Err(HistoryReplayError::UnrestoredReplayOwner(edit.native_tag())),
             });
         }
@@ -149,6 +159,7 @@ impl ReplayBuffer {
                     }
                     ReplayCommand::Raster(command) => command.make_instant(),
                     ReplayCommand::AutoClutter(command) => command.make_instant(),
+                    ReplayCommand::Stairs(command) => command.instant = true,
                 }
             }
         }

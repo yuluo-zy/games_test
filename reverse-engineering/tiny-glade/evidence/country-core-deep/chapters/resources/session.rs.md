@@ -30,7 +30,7 @@
 | ``country_core::resources::session::NextSession::load`` | 0x140b46920 | 339 | IO/解析 | O：{cap-first 空 Vec(cap=8), kind=0x8000000000000002, uuid@+0x20, ignore_snapshot=false} | session-save\decomp\decomp-0x140b46920.txt  |
 | ``country_core::resources::session::NextSession::create`` | 0x140b46960 | 347 | 构造/注册/生成 | O：96B 模板(rdx)+32B(r8) 构造；kind@+0x18=模板首 qword；Vec 清空 | round2\session-save-CLOSURE.md  |
 | ``country_core::resources::session::NextSession::ignore_snapshot`` | 0x140b46a20 | 358 | 设置/写入 | O：写 +0x98 bool + memcpy 0xa0（builder） | session-save\DIGEST.md  |
-| ``country_core::resources::session::NextSession::append_on_load<array$<enum2$<country_core::meta_commander::MetaCommand>,3> >`` | 0x1403b5150 | 363 | 待推断 | O：push 3 条 MetaCommand（块 0xa8B）；载荷 U | —  |
+| ``country_core::resources::session::NextSession::append_on_load<array$<enum2$<country_core::meta_commander::MetaCommand>,3> >`` | 0x1403b5150 | 363 | 待推断 | O：push 0x20B 条目 {u64 3, Box<[MetaCommand;3]>}——alloc 0xa8=3×0x38 + memcpy Box 化（fresh 反编译；调用方 run_game_thread 0x1405a3440，3 条命令载荷在 rbx+0xb00 区，逐 cmd 原字节为残留） | evidence(state/session) decomp-0x1403b5150-fresh-shared.txt |
 | ``country_core::resources::session::NextSession::append_on_load<country_core::meta_commander::MetaCommandFence>`` | 0x141328ac0 | 363 | 待推断 | O：push 0x20B 条目 {u32 0, u32 0x80000000, u64 payload} | session-save\decomp\decomp-0x141328ac0.txt  |
 | ``country_core::resources::session::SavedSession::loading_background_path`` | 0x140b46a50 | 407 | IO/解析 | O：save_folder_path+"loading_background.jpg"（v2 名；v1 名 screenshot_path 错位） | session-save\decomp\decomp-0x140b46a50.txt  |
 | ``country_core::resources::session::refresh_session_list`` | 0x140b46b00 | 457 | 待推断 | O：清空后 paths::saves() readdir 重建 | round2\decomp-0x140b46b00.txt  |
@@ -84,6 +84,12 @@
   0x8000000000000002, uuid@+0x20, ignore_snapshot=false@+0x98}；create 0x140b46960 =
   96B 模板(rdx)+32B(r8) 构造（kind 由调用方模板决定——变体 1 生产者在 UI/会话流
   vtable，卡点）；ignore_snapshot 0x140b46a20 = 写 +0x98 + memcpy 0xa0（builder）；
-  append_on_load<MetaCommandFence> 0x141328ac0 = push 0x20B {u32 tag=0, u32
-  0x80000000, u64 payload} + memcpy 0xa0（on_load 列表 fence =
-  0x8000000000000003，load_game 回放终止条件）。
+- **on_load 列表（reanalyst 2026-10-15，O）**：元素 **0x20B**（非 0x38B）；load_game
+  遍历步长 `ptr+len*0x20`；fence 终止 0x8000000000000003。append_on_load<MetaCommandFence>
+  0x141328ac0 = push 0x20B `{u64 0x8000000000000000, fence_ptr}`（旧"{u32 0, u32 0x80000000,
+  u64 payload}"→新证据单 u64 niche；+0x10 区 alloc 残留）；append_on_load<[MetaCommand;3]>
+  0x1403b5150 = alloc 0xa8(=3×0x38)+memcpy Box 化 + push `{3, Box<[MetaCommand;3]>}`（调用方
+  = run_game_thread 0x1405a3440，数组在 rbx+0xb00 区）。load_game 回放两遍：Pass1(MetaCommand)
+  变体0=manager 状态+24B 事件 / 变体1=push MetaCommand(FUN_140b5a180=extend_script) / 变体2=
+  unblock+drop Arc；Pass2(PostGameLoadCommand) 变体0=忽略 SwitchAppMode / 变体1=push 24B 命令；
+  详见 session-save/RE-ANALYSIS(state/session §2.3)。

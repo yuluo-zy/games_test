@@ -24,5 +24,6 @@
 
 ## 实现方式（算法级）
 
-- `IvyLeafStorage::add`（0x1408fe280）：push 104B IvyLeaf 到对应 ivy（容器 = HashMap<usize, Vec<IvyLeaf>>，键 = ivy id；重建 Vec 建模不符）。
+- `IvyLeafStorage::add`（0x1408fe280）：按 ivy_id 查 HashMap<usize, Vec<IvyLeaf>>（hashbrown，`FUN_1405b0d70` 探测；键=ivy id）→ 未命中建新 Vec（cap 1）`FUN_141527390` 插入，命中 push 104B IvyLeaf。
+- **IvyLeaf = 0x68B（104B，O 机器码逐字段）**：`{u64@0, u64@8, ivy_id u64@0x10, u64@0x18, pos Vec3@0x20 (x,y@0x20, z@0x28), 法向? Vec3@0x2c, 上向? Vec3@0x38, u32@0x44, u64=0@0x48, u32@0x50, u32@0x54, Vec3@0x58}`。GPU 打包后每叶 0x30=48B（ivy_send_to_gpu_leaf 章）。
 - 内联面：`all_leaves` / `all_leaves_mut`（全量叶迭代，GPU 上传/动画用）；`delete_affected_leaves` 按 ivy id 过滤删除（pruner 联动）；`delete_all_leaves` 全清。

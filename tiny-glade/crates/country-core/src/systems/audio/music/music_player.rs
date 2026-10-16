@@ -125,7 +125,6 @@ impl<E: MusicEvent> MusicPlayer<E> {
     /// 0x1408b6b10: creation errors panic; disabled instances and callback failures
     /// are dropped. Existing playlist/current index are intentionally retained.
     pub fn load_tracks<B: MusicBackend<Event = E>>(&mut self, backend: &B, paths: &[String]) {
-        self.tracks.clear();
         self.track_names.clear();
         for path in paths {
             let mut instance = MusicInstance::create(backend, path);
@@ -204,8 +203,10 @@ impl<E: MusicEvent> MusicPlayer<E> {
                         self.fade_in.stop(StopMode::AllowFadeout);
                     }
                     if looped {
+                        // B1 0x1408b5615：只写 state=2、ticks=0，**不清 +0x11c**
+                        // （reviewer 复核；概率 elapsed/120 与采样时机偏移保持）。
                         self.state = PlayerState::PlayingLoopedOnce {
-                            elapsed_time: 0.0,
+                            elapsed_time: *elapsed_time,
                             ticks: 0,
                         };
                     }
@@ -298,7 +299,8 @@ pub fn timeline_snapshot() -> TimelineSnapshot {
 }
 /// 0x1408b7620 ignores null properties; increments on changed bars, then takes
 /// the unsigned maximum with the sign-extended bar number. Atomics avoid a race
-/// between FMOD's mixer callback and the frame consumer.
+/// between FMOD's mixer callback and the frame consumer. Reviewer 复核：存储顺序
+/// beat → tempo → count → upper → lower → **bar 最后写**。
 pub fn get_timeline_beat_properties(properties: Option<TimelineBeat>) {
     if let Some(p) = properties {
         let bar = p.bar as i64 as u64;
@@ -306,12 +308,12 @@ pub fn get_timeline_beat_properties(properties: Option<TimelineBeat>) {
             .load(Relaxed)
             .wrapping_add(u64::from(CURRENT_MUSIC_BAR.load(Relaxed) != bar))
             .max(bar);
-        BAR_COUNT.store(count, Relaxed);
         CURRENT_MUSIC_BEAT.store(p.beat as i64 as u64, Relaxed);
-        CURRENT_MUSIC_BAR.store(bar, Relaxed);
         CURRENT_TEMPO.store(p.tempo.to_bits(), Relaxed);
+        BAR_COUNT.store(count, Relaxed);
         CURRENT_TIME_UPPER.store(p.time_signature_upper as i64 as u64, Relaxed);
         CURRENT_TIME_LOWER.store(p.time_signature_lower as i64 as u64, Relaxed);
+        CURRENT_MUSIC_BAR.store(bar, Relaxed);
     }
 }
 
@@ -405,7 +407,8 @@ mod tests {
         assert_eq!(
             player.state,
             PlayerState::PlayingLoopedOnce {
-                elapsed_time: 0.0,
+                // B1 0x1408b5615 不清 +0x11c：1.5 + 0.1 保持（reviewer 复核）。
+                elapsed_time: 1.6,
                 ticks: 0
             }
         );

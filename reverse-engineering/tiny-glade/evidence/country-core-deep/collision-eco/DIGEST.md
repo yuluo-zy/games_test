@@ -158,12 +158,12 @@ legacy_spherecast 变体把状态写在 +0x30（不写 toi）——**round3 裁�
 
 ## 6. ivy（resources/ivy + systems/ivy）
 
-- `Ivy::add_point` 0x140869460 / `last_point` 0x1408694f0 / `last_segment_point_ids` 0x140869540 / `IvyStorage::spawn_ivy` 0x1408696f0 / `IvyLeafStorage::add` 0x1408fe280——与 wp16/wp21 合同一致（40B 点、VecDeque、HashMap<usize,Ivy>）。
+- `Ivy::add_point` 0x140869460 / `last_point` 0x1408694f0 / `last_segment_point_ids` 0x140869540 / `IvyStorage::spawn_ivy` 0x1408696f0 / `IvyLeafStorage::add` 0x1408fe280——与 wp16/wp21 合同一致（40B 点、VecDeque、HashMap<usize,Ivy>）。**2026-10-15 布局深化**：`IvyPoint = 0x28B {id u64@0, pos Vec3@8, dir Vec3@0x14, flags u32@0x20}`；`Ivy = 可增长 40B 元素容器 + point_id 计数@+0x58`；`IvyStorage = HashMap<usize,Ivy> @+0 + perchance RNG@+0x30 + next_ivy_id@+0x40`（**RNG = perchance-0.4.0**，range 断言 `end >= start` @0x142aa5710）；`IvyLeaf = 0x68B（104B）{u64,u64,ivy_id u64,u64, pos×4 Vec3, u32,u64(0),u32,u32}`。
 - `IvyDirectionProposer::get_direction` 0x141234590（θ∈[-40°,+40°] 混合，(cosθ,sinθ)）。
 - `WallCoord::into_world_space` 0x140b199e0（墙曲线采样 + 法向偏移 0.63*0.5）。
-- **grower**：`ivy_grower` 0x14094a910 = puffin + Bevy 系统跳表分派（`world+0x118` 索引 @0x142ab3be0 表——**10 相跳表字节级验证**，ALGORITHMS §4.1）；`closest_segment_index` 0x14094c800（**56B 步长墙段** {xy0,xy1,f32@+0x10/+0x14（打包进结果）,h0@+0x18,h1@+0x1c}，投影+高度过滤 `max_ivy_grow_height`，距离度量 = |(P0−P)·单位方向|；ALGORITHMS §4.2）；`get_wall_double_sided_normal` 0x14094caa0；`intersect_ivy_growth_w_wall_segment` 0x14094cc60（v2 名；v1 三名全错）。
-- **spawner** 0x14094cf90（38KB）、**pruner** 0x140997410（70KB）/ `is_point_still_valid` 0x140998dc0 / `ivy_pruner_cmd` 0x140999330 / `remove_ivy_at_location` 0x140999860、**leaf_spawner** 0x140996080、branch_thickness 0x140995a80、leaf_animation 0x140b0e380、send_to_gpu_{leaf,segments} 0x1408c1580/0x140a9b4e0。
-- panic/日志串（O）：`"Received IvySegmentDoneGrowingWithMsg with ivy id "`（leaf_spawner）、`"Spatial Hash returned a wall id "`（pruner 墙空间哈希）；引用 `"Tried to init CurveU from an invalid u: "` + `"assertion failed: !u.is_infinite()"`（CurveU 跨域）、`"assertion failed: ev_count < 2"`（merge_walls.rs）。
+- **grower**：`ivy_grower` 0x14094a910 = puffin + Bevy 系统跳表分派（`world+0x118` 索引 @0x142ab3be0 表——**10 相跳表字节级验证**，ALGORITHMS §4.1）；`closest_segment_index` 0x14094c800（**56B 步长墙段** {xy0,xy1,f32@+0x10/+0x14（打包进结果）,h0@+0x18,h1@+0x1c}，投影+高度过滤 `max_ivy_grow_height`；**过滤语义 2026-10-15 机器码复核纠正**：跳过条件 = h0>max 且 h1>max（保留至少一端 ≤max），过滤 2 = 插值高 >max 跳过 —— 两过滤自洽，旧"互斥疑点"闭合；调用参数序 `(out,xz,0,segments,count,max_height)`）；`get_wall_double_sided_normal` 0x14094caa0；`intersect_ivy_growth_w_wall_segment` 0x14094cc60（v2 名；v1 三名全错）。
+- **spawner** 0x14094cf90（38KB，O 全解 2026-10-15）：模式门 AppMode==1；株数上限≈40000；双路径 A=光标旁根（株数<3，空间哈希格+RNG+closest_segment_index(max=0.5f)+PublicWalls+±0.34 偏移+距校验 0.5/1.6）/ B=随机根（逐墙随机 u）；根位垂直 `(rand×1.5−0.75)/墙高+段高` 钳 [0.000928,1.0]；**pruner** 0x140997410（70KB）/ `is_point_still_valid` 0x140998dc0 / `ivy_pruner_cmd` 0x140999330 / `remove_ivy_at_location` 0x140999860、**leaf_spawner** 0x140996080、branch_thickness 0x140995a80、leaf_animation 0x140b0e380、send_to_gpu_{leaf,segments} 0x1408c1580/0x140a9b4e0（O 2026-10-15：**SSBO 键 IvyLeafSsbo=0x9e3cfa7f2993f406 / IvyFlowerSsbo=0x1d6de5e69ac50d2a / IvySegmentSsbo=0x2002d2fbdff3d80f，48B 元素**）。
+- panic/日志串（O）：`"Received IvySegmentDoneGrowingWithMsg with ivy id "`（leaf_spawner）、`"Spatial Hash returned a wall id "`（pruner 墙空间哈希）；引用 `"Tried to init CurveU from an invalid u: "` + `"assertion failed: !u.is_infinite()"`（CurveU 跨域）、`"assertion failed: ev_count < 2"`（merge_walls.rs）、`"assertion failed: end >= start"`（perchance RNG range）、`"assertion failed: w.simplified_curve_2d.is_valid()"`（spawner→public_walls 跨域）。
 
 ## 7. clutter（clutter_meshes.rs / preplaced_autoclutter.rs）
 
@@ -228,6 +228,7 @@ legacy_spherecast 变体把状态写在 +0x30（不写 toi）——**round3 裁�
 - SubworldIndex 17 槽完整名字↔槽号映射（Terrain=5 已锚定，其余待各 mask 使用点交叉验证）。
 - update_rapier_colliders（0x1408d0490）反编译失败，需 asm/邻接函数恢复（管线已闭合，见 ALGORITHMS §2.9）。
 - StairsState 完整 0x180B 布局（+0xb8 备份区结构已解：0x90B 镜像图区；+0x178 语义已裁决 = backed_up；残余字段 U）。
-- Ivy grower 相 5-9 宿主定位（跳表目标在 grower 体尾部区间，二级跳表/panic 入口，语义面已闭合）。
+- Ivy grower 相 5-9 宿主尾区间二级跳表（0x142ab3bf4）目标语义（主跳表已字节级验证，语义面已闭合）。
 - ClutterMeshTy 56 变体完整名序（名字表碎片化，需按 len-prefix 全量解析）。
-- closest_segment_index 双高度过滤互斥疑点（高度坐标方向语义，待调用方数值裁决）。
+- ~~closest_segment_index 双高度过滤互斥疑点~~ **2026-10-15 已闭合**：机器码字节级复核，跳过条件 = h0>max 且 h1>max，两过滤自洽（见 §6/ALGORITHMS §4.2）。
+- ivy_send_to_gpu_leaf/segments 的逐元素打包字段映射（SSBO 元素 48B；CPU 侧 IvyLeaf 104B 已 O，GPU 打包各字段对应 U——供 shader 侧交叉验证）。

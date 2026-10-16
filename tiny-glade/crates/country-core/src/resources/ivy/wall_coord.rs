@@ -33,10 +33,13 @@ impl WallCoord {
         let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt();
         let offset_x = (-dz * reciprocal) * 0.63 * 0.5;
         let offset_z = (dx * reciprocal) * 0.63 * 0.5;
+        // RNE 0x140b19acd/b72..ba7: the normal's second component offsets both
+        // the Y and Z outputs — out.y = v ± offset_z, out.z = z ± offset_z.
+        // The earlier draft added the offset to Z only.
         if side {
-            Vec3::new(x - offset_x, self.v - 0.0, z - offset_z)
+            Vec3::new(x - offset_x, self.v - offset_z, z - offset_z)
         } else {
-            Vec3::new(x + offset_x, 0.0 + self.v, z + offset_z)
+            Vec3::new(x + offset_x, self.v + offset_z, z + offset_z)
         }
     }
 }

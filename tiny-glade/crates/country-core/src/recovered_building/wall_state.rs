@@ -105,6 +105,15 @@ impl PublicWallBuildingState {
     pub fn is_halftimbered(&self) -> bool {
         self.0[0x299] >= 2
     }
+    /// B snapping/telegraph preview offset field @+0x284 (semantic 待取证).
+    pub fn float_0x284(&self) -> f32 {
+        self.float_at(0x284)
+    }
+    /// B snapped-flag byte copied by the snapping systems (+0x29e; semantic
+    /// 待取证).
+    pub fn byte_0x29e(&self) -> u8 {
+        self.0[0x29e]
+    }
     fn float_at(&self, offset: usize) -> f32 {
         f32::from_le_bytes(self.0[offset..offset + 4].try_into().unwrap())
     }

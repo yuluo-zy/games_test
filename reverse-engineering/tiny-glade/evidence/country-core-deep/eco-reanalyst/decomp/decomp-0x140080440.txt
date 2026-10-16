@@ -1,0 +1,59 @@
+// name: serialize<serde_json::value::ser::Serializer>
+// sig: void __cdecl serialize<serde_json::value::ser::Serializer>(void)
+// size: 620
+
+void __cdecl
+country_core::resources::critters::sheep::_::impl$0::serialize<serde_json::value::ser::Serializer>
+          (void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  longlong lVar1;
+  undefined1 *in_RCX;
+  char *in_RDX;
+  longlong local_a8;
+  undefined8 uStack_a0;
+  
+  if (*in_RDX == '\0') {
+    serde_json::value::ser::impl$1::serialize_struct_variant();
+    if (SBORROW8(0,local_a8)) goto LAB_1400805ba;
+    serde_json::value::ser::impl$9::serialize_field<f32>();
+    lVar1 = extraout_RAX_02;
+    if (extraout_RAX_02 == 0) {
+      serde_json::value::ser::impl$9::end();
+      return;
+    }
+  }
+  else {
+    serde_json::value::ser::impl$1::serialize_struct_variant();
+    if (SBORROW8(0,local_a8)) {
+LAB_1400805ba:
+      *(undefined8 *)(in_RCX + 8) = uStack_a0;
+      *in_RCX = 6;
+      return;
+    }
+    serde_json::value::ser::impl$9::serialize_field<f32>();
+    lVar1 = extraout_RAX;
+    if (((extraout_RAX == 0) &&
+        (serde_json::value::ser::impl$9::serialize_field<f32>(), lVar1 = extraout_RAX_00,
+        extraout_RAX_00 == 0)) &&
+       (serde_json::value::ser::impl$9::serialize_field<bool>(), lVar1 = extraout_RAX_01,
+       extraout_RAX_01 == 0)) {
+      serde_json::value::ser::impl$9::end();
+      return;
+    }
+  }
+  *(longlong *)(in_RCX + 8) = lVar1;
+  *in_RCX = 6;
+  if (local_a8 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  core::ptr::
+  drop_in_place<alloc::collections::btree::map::IntoIter<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>_>
+            ();
+  return;
+}
+

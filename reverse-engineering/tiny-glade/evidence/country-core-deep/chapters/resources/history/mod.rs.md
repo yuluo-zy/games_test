@@ -57,7 +57,9 @@
 - `country_core::resources::history::HistoryIdentity::mutate`（行 102）— 重随机身份（I；内联）
 - `country_core::resources::history::impl$26::clone`（行 115）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
 - `country_core::resources::history::impl$28::eq`（行 115）— derive 胶水（Debug/Clone/Eq/Default）（派生；复用 derive，不计业务）
-- `country_core::resources::history::impl$1::serialize`（行 120）— HistoryIdentity serde Serialize（u64 数字）（I；内联（闭包并入））
+- `country_core::resources::history::impl$1::serialize`（行 120）— HistoryIdentity serde Serialize
+  （**u64 新类型，reanalyst 2026-10-15：to_json_string 0x140b385e0 = 裸 u64 十进制数字，存档
+  Identity 节载荷为数字非串；见 state/save/RE-DOMAIN-TYPES §2**）（O；内联（闭包并入））
 - `country_core::resources::history::impl$1::serialize::closure$0`（行 127）— HistoryIdentity serde 数字序列化闭包（I；内联）
 - `country_core::resources::history::impl$2::deserialize`（行 134）— HistoryChainSnapshots::deserialize（O；符号 0x140b363e0）
 - `country_core::resources::history::impl$2::deserialize::closure$0`（行 141）— HistoryChainSnapshots::deserialize（O；符号 0x140b363e0）
@@ -161,3 +163,17 @@
   "History was mutated, but wasn't told about it"（@0x142a98ad8）由 Drop 守卫触发，
   panic-in-progress 门控 `*0x14362c420`。
 
+
+- **EditType 完整 tag 表（reanalyst 2026-10-16，visit_str 0x140b3b630 fresh 全解；详见
+  state/history/RE-EDITTYPE.md）**：
+  0=Tree / 1=Path / 2..4=Cobblestone1..3 / 5=Water / 6=Garden / 7=Wall(alias "WallNew…") /
+  8=Roof / 9=Color / 10=DecoratorV5(alias "Decorator5") / 11=Decorator(alias "Decorator4") /
+  12=(4 字符名未解) / 13=AutoClutter / 14=Stairs。**共 15 变体**（非 40——Debug fmt 60 项
+  跳表是 niche tag 空间 0..59 铺满，未用 tag 走 default 块）。src EditType 缺
+  Tree/Color/DecoratorV5/Decorator/Stairs，**Terrain→14 应改 Stairs→14**。
+- **WallHistoryEdit 操作枚举 17 变体 tag 0..16（visit_str 0x1414022c0 fresh）**：
+  WallChanged/CreateWall/DeleteWall/AdjustHeight/ChangeIsEnclosedState/MorphPremadeShape/
+  ChangeElevation/ChangeArchHeight/ChangeSupports/ChangeStairsType/ChangePlasterPeelAmount/
+  ChangeFreehandHeightType/ChangeArchType/MorphFreehandWall/DeprecatedMorphOriginal/(未解)/
+  ChangeSkirt。判别 = 首字段 niche（fmt 0x140a82eb0 跳表 0x142ad888c 互证），与顶层 EditType
+  判别不共用。

@@ -1,5 +1,6 @@
 //! B session owners. Metadata field names follow the original serializers.
 use super::image_formation::ImageFormationConfig;
+use crate::meta_commander::MetaCommand;
 use bevy_ecs::resource::Resource;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -218,6 +219,235 @@ impl ActiveSession {
     }
     pub fn is_winter(&self) -> bool {
         self.meta.glade.is_winter()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// NextSession / SessionOnLoadCmd / NextSessionKind（PDB：resources::session）
+// ---------------------------------------------------------------------------
+
+/// 会话请求的载入方式（PDB：`NextSessionKind`）。原 kind niche =
+/// `0x8000000000000000 | decoded`；`load_game` 0x14146d030 用
+/// `decoded = kind ^ 0x8000000000000000; sel = min(decoded, 2)` 解码。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum NextSessionKind {
+    /// decoded 0：无 on_load 语义。
+    None = 0x8000_0000_0000_0000,
+    /// decoded 1：parse_saved_game_data（含 upgrade 备份）。
+    LoadSavedGame = 0x8000_0000_0000_0001,
+    /// decoded 2：on_load 命令回放 + 内存快照（`NextSession::load` 默认）。
+    LoadOnLoad = 0x8000_0000_0000_0002,
+}
+impl NextSessionKind {
+    pub const fn decoded(self) -> u64 {
+        (self as u64) ^ 0x8000_0000_0000_0000
+    }
+}
+
+/// 会话 on_load 条目（PDB：`SessionOnLoadCmd`；**0x20B = {tag qword, payload qword}**，
+/// re-analyst RNE 原字节修正）。
+///
+/// - `append_on_load<MetaCommandFence>` 0x141328ac0 写
+///   `Command{tag=0x8000000000000000, payload=0x8000000000000003}`；
+/// - `append_on_load<[MetaCommand;3]>` 0x1403b5150 写 **批量条目 `{tag=3, Box<0xa8B>}`**
+///   （reviewer 二轮修正：tag=3，非 ON_LOAD_VARIANT_MASK|1；载荷为 0xa8B 批量缓冲，
+///   非单条 payload）；
+/// - load_game 两遍回放以 fence 终止（fence 值 0x8000000000000003）。
+/// 变体解码 `tag ^ 0x8000000000000000`，`min(·,2)`。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OnLoadEntry {
+    /// 单命令条目：0x20B = {tag, payload}。
+    Command { tag: u64, payload: u64 },
+    /// 批量条目（机器码 tag=3）：0x20B = {tag=3, Box<0xa8B>}，展开为 3 条 MetaCommand。
+    Batch { commands: Vec<MetaCommand> },
+}
+
+/// on_load 变体判别位（0x8000000000000000）。
+pub const ON_LOAD_VARIANT_MASK: u64 = 0x8000_0000_0000_0000;
+/// on_load 终止 fence（0x8000000000000003）。
+pub const ON_LOAD_FENCE: u64 = 0x8000_0000_0000_0003;
+
+/// 下一个会话请求资源（PDB：`NextSession`；0xa0B：on_load Vec + kind niche +
+/// uuid + ignore_snapshot bool）。
+#[derive(Resource, Clone, Debug)]
+pub struct NextSession {
+    pub on_load: Vec<OnLoadEntry>,
+    pub kind: NextSessionKind,
+    pub id: SessionId,
+    pub ignore_snapshot: bool,
+}
+impl NextSession {
+    /// `NextSession::load` 0x140b46920：{cap-first 空 Vec(cap=8),
+    /// kind=0x8000000000000002, uuid, ignore_snapshot=false}。
+    pub fn load(id: SessionId) -> Self {
+        Self {
+            on_load: Vec::new(),
+            kind: NextSessionKind::LoadOnLoad,
+            id,
+            ignore_snapshot: false,
+        }
+    }
+    /// `NextSession::create` 0x140b46960：kind 由调用方模板决定。
+    pub fn create(id: SessionId, kind: NextSessionKind) -> Self {
+        Self {
+            on_load: Vec::new(),
+            kind,
+            id,
+            ignore_snapshot: false,
+        }
+    }
+    /// `NextSession::ignore_snapshot` 0x140b46a20：写 +0x98 bool（builder）。
+    pub fn ignore_snapshot(mut self, ignore: bool) -> Self {
+        self.ignore_snapshot = ignore;
+        self
+    }
+    /// `NextSession::load_latest`（内联，行 331）：默认载入最近会话。最近会话 id
+    /// 由 `SavedSessionList` 消费者提供；此处保留占位语义（I）。
+    pub fn load_latest() -> Self {
+        Self::load(SessionId::new())
+    }
+    /// `append_on_load<MetaCommandFence>` 0x141328ac0：追加**变体 0 会话加载命令**
+    /// 条目 `{tag=0x8000000000000000, payload=fence}`（RE-SESSION-SWITCH 定案：
+    /// payload 是 fence Arc，**非** 0x8000000000000003；fence 释放走变体 2 条目）。
+    pub fn append_fence(&mut self, fence: crate::meta_commander::MetaCommandFence) {
+        self.on_load.push(OnLoadEntry::Command {
+            tag: ON_LOAD_VARIANT_MASK,
+            payload: fence.as_payload(),
+        });
+    }
+    /// 追加两遍回放终止哨兵 `{tag=0x8000000000000003, payload=0}`（0x8000000000000003 =
+    /// 回放 break 条件；生产者写入残留待追源，RE-SESSION-SWITCH）。
+    pub fn append_replay_terminator(&mut self) {
+        self.on_load.push(OnLoadEntry::Command {
+            tag: ON_LOAD_FENCE,
+            payload: 0,
+        });
+    }
+    /// `append_on_load<[MetaCommand;3]>` 0x1403b5150：追加**批量条目**（机器码 tag=3，
+    /// 载荷 = Box<0xa8B>；reviewer 二轮修正，非单条 payload）。
+    pub fn extend_on_load(&mut self, commands: impl IntoIterator<Item = MetaCommand>) {
+        let commands: Vec<MetaCommand> = commands.into_iter().collect();
+        self.on_load.push(OnLoadEntry::Batch { commands });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SavedSession / SavedSessionList / 会话列表与删除
+// ---------------------------------------------------------------------------
+
+/// 会话列表条目（PDB：`SavedSession`）。rhapsody 缩略图元数据消费待接入。
+#[derive(Clone, Debug)]
+pub struct SavedSession {
+    pub id: SessionId,
+    pub modified: std::time::SystemTime,
+    pub screenshot_exists: bool,
+    pub loading_background_exists: bool,
+}
+impl SavedSession {
+    /// `SavedSession::loading_background_path` 0x140b46a50：save_folder +
+    /// "loading_background.jpg"（PDB 名 screenshot_path 错位）。
+    pub fn loading_background_path(&self) -> PathBuf {
+        self.id.save_folder_path().join("loading_background.jpg")
+    }
+    /// 实际截图路径（行 403；与 loading_background_path 相对）。
+    pub fn screenshot_path(&self) -> PathBuf {
+        self.id.save_folder_path().join("screenshot.jpg")
+    }
+}
+
+/// 会话列表资源（PDB：`SavedSessionList`）。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct SavedSessionList {
+    pub sessions: Vec<SavedSession>,
+}
+
+/// `load_saved_session_list`（内联，行 420）：扫 `paths::saves()`，对 UUID 子目录
+/// 构建 `SavedSession`，按修改时间排序（`sort_by_key`，O）。rhapsody 缩略图过滤
+/// 待接入。
+pub fn load_saved_session_list() -> Vec<SavedSession> {
+    let mut sessions = Vec::new();
+    let Ok(entries) = std::fs::read_dir(paths::saves()) else {
+        return sessions;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        let Ok(uuid) = Uuid::try_parse(name) else {
+            continue;
+        };
+        let modified = entry
+            .metadata()
+            .ok()
+            .and_then(|metadata| metadata.modified().ok())
+            .unwrap_or(std::time::UNIX_EPOCH);
+        sessions.push(SavedSession {
+            id: SessionId(uuid),
+            modified,
+            screenshot_exists: path.join("screenshot.jpg").exists(),
+            loading_background_exists: path.join("loading_background.jpg").exists(),
+        });
+    }
+    // 最近会话在前（"Latest game session " 语义）。
+    sessions.sort_by_key(|session| std::cmp::Reverse(session.modified));
+    sessions
+}
+
+/// `refresh_session_list` 0x140b46b00：清空后由 `paths::saves()` readdir 重建。
+pub fn refresh_session_list(list: &mut SavedSessionList) {
+    list.sessions = load_saved_session_list();
+}
+
+/// `delete_session` 0x140b46d60：deleted_saves()/uuid 标记文件 → rename 移动 →
+/// 两段删除；失败 log "Error deleting glade: "。
+pub fn delete_session(id: SessionId) {
+    let source = id.save_folder_path();
+    let deleted = paths::deleted_saves().join(Uuid::new_v4().to_string());
+    if let Err(error) = std::fs::create_dir_all(paths::deleted_saves()) {
+        log::error!("Error deleting glade: {error}");
+        return;
+    }
+    // 第一段：写标记文件（rename 的原子前置）。
+    if let Err(error) = std::fs::write(deleted.with_extension("deleted"), b"") {
+        log::error!("Error deleting glade: {error}");
+        return;
+    }
+    // rename 移动进 deleted-saves。
+    if let Err(error) = std::fs::rename(&source, &deleted) {
+        log::error!("Error deleting glade: {error}");
+        return;
+    }
+    // 第二段：删除已移动的会话目录。
+    if let Err(error) = std::fs::remove_dir_all(&deleted) {
+        log::error!("Error deleting glade: {error}");
+    }
+}
+
+/// 会话事件（PDB：`NewSessionStartedCmd` / `SessionLoadedCmd`）。载荷待取证。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NewSessionStartedCmd;
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SessionLoadedCmd;
+
+/// `SessionFlowPlugin`（PDB：`session::SessionFlowPlugin`；Bevy Plugin）。
+/// country-core 不依赖 bevy_app；`build` 登记资源插入与事件注册合同，由宿主 App 装配。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SessionFlowPlugin;
+impl SessionFlowPlugin {
+    /// 原 build 0x140b47840：插入 ActiveSession/SavedSessionList/NextSession/
+    /// AutoSaveState 资源并注册会话事件。ActiveSession 为占位默认，真实会话启动后替换。
+    pub fn build(&self, world: &mut bevy_ecs::world::World) {
+        world.init_resource::<SavedSessionList>();
+        world.insert_resource(NextSession::load_latest());
+        world.init_resource::<crate::systems::save::save_game::AutoSaveState>();
+        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        world.init_resource::<bevy_ecs::event::Events<NewSessionStartedCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<SessionLoadedCmd>>();
     }
 }
 

@@ -5,6 +5,9 @@ use bracket_noise::prelude::{FastNoise, FractalType, NoiseType};
 use glam::{Quat, Vec2, Vec3};
 use perchance::PerchanceContext;
 
+/// B insert_ivy_resources 0x1409440c0 inserts this as a resource; it is
+/// consumed by the grower as `Res<IvyDirectionProposer>`.
+#[derive(Resource)]
 pub struct IvyDirectionProposer {
     base: FastNoise,
     rotation: FastNoise,

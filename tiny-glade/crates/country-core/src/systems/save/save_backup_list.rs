@@ -53,6 +53,27 @@ pub struct SaveBackupList {
     files: Vec<BackupSaveFile>,
     backup_metronome_counter: u32,
 }
+
+/// 提取文件名末尾的数字计数器（E/reviewer：每个入选条目的数字后缀取 max(n+1)）。
+/// 先剥已知前缀（history-auto-/history-manual-/history-recovered-/corrupted-），再取末尾
+/// 连续数字。无数字后缀返回 None。
+fn trailing_counter(stem: &str) -> Option<u32> {
+    let rest = stem
+        .strip_prefix("history-auto-")
+        .or_else(|| stem.strip_prefix("history-manual-"))
+        .or_else(|| stem.strip_prefix("history-recovered-"))
+        .or_else(|| stem.strip_prefix("corrupted-"))
+        .unwrap_or(stem);
+    // 末尾连续数字（解析 u32；非法数字名返回 None，与元数据跳过语义一致）。
+    let digits_end = rest.len();
+    let digits_start = rest
+        .char_indices()
+        .rev()
+        .take_while(|(_, c)| c.is_ascii_digit())
+        .last()
+        .map(|(i, _)| i)?;
+    rest.get(digits_start..digits_end)?.parse::<u32>().ok()
+}
 impl SaveBackupList {
     /// read_dir failure propagates; unreadable entries/metadata/modification
     /// times are skipped. Only regular .json and .bak files are accepted.
@@ -101,10 +122,9 @@ impl SaveBackupList {
         for file in files {
             if let Some(stem) = file.path.file_stem() {
                 let stem = stem.to_str().expect("backup save filename is not UTF-8");
-                if let Some(counter) = stem
-                    .strip_prefix("history-auto-")
-                    .and_then(|counter| counter.parse::<u32>().ok())
-                {
+                // E/reviewer 定案：原版对**每个入选条目**的数字后缀取 max(n+1)，不限于
+                // history-auto-（0x140ae8470 机器码；uStack_74=max(prev, parsed+1)）。
+                if let Some(counter) = trailing_counter(stem) {
                     list.backup_metronome_counter =
                         list.backup_metronome_counter.max(counter.wrapping_add(1));
                 }

@@ -263,6 +263,11 @@ panic: FUN_1428d8fe3(uVar23, param_7, &UNK_142c1ef98)（fmt）；分配失败 FU
 
 FUN_140a1cde0（get_mut）、FUN_14155b170（merge_with）、FUN_1402c9200（removed 标记）、FUN_141469a20（approximate_curve_u，utils::curve 域）、FUN_140b78140/FUN_140b78400/FUN_140b766e0/FUN_140b776d0/FUN_140b77b20（hashbrown 探针/移除族）、FUN_1405b0d70/FUN_1405b0ed0（哈希，seed 随 0x20/0x50/0x80 偏移）、FUN_141529bb0/FUN_1402ca2f0（map 遍历/工厂，inner_walls 共用）、FUN_1400d9b20（静态 Arc 克隆）、FUN_1428d9430（panic_str）、FUN_1428d9390（fmt panic）、FUN_140106160（4B memcpy）、FUN_1411fbfa0、FUN_1408cdb50/0x1408cdbd0（u32 键哈希）。
 
+### 实体机制与 ui_clutter 消费端（2026-10-15 补挖，见 reports/eco/walls/RE-DECORATOR-STORAGE.md）
+
+- **实体机制（O 结论）**：DecoratorStorage 存纯数据记录（DecoratorInfo 72B），**不含 bevy Entity**；装饰实体由消费系统读 DecoratorInfo 后另行生成（实体↔装饰关联靠 DecoratorId 组件）。DecoratorInfo 读面（apply_decorator_place 0x140a20c70）：+0x00/+0x08/+0x10 u64、+0x44 rank、+0x46/0x48 type、+0x4c/+0x50 u32、+0x55/+0x56 u8。
+- **ui_clutter 主读路径（O）**：`ui_focus_decoclutter`（0x1409a92c0）查 decorator_to_storage 索引（24B 条目）→ `DecoratorStorage::get`（0x140a1c2c0）→ Decorators 内嵌 map@+0x30（0x50B 条目）→ DecoratorInfo；随后经 clutter_mesh_ty_data（0x1408b8e90）+ UiState::add（0x1409231f0）+ SignifierFactory + EventWriter×4 驱动 deco-clutter 移动/旋转。
+
 ### 遗留 U
 
 - +0x30 map 与 removed 集合的关系：get_or_insert_default 的 terrain/stair 分支经它做插槽探测（常数键），而 iter_removed_storages 读同一区——两者是否同一结构未定（I：疑为"目的地→槽位"注册表兼 removed 集合，需 on_wall_removed 0x140a1f550 佐证）。

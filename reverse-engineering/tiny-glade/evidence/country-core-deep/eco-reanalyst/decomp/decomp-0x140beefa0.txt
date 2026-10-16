@@ -1,0 +1,205 @@
+// name: update_buffer_bytes
+// sig: void __cdecl update_buffer_bytes(void)
+// size: 1147
+
+void __cdecl rhapsody::raw::device::GraphicsDevice::update_buffer_bytes(void)
+
+{
+  ulonglong *puVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  longlong *in_RCX;
+  longlong in_RDX;
+  ulonglong uVar5;
+  ulonglong *puVar6;
+  longlong in_R8;
+  longlong in_R9;
+  longlong lVar7;
+  void *_Dst;
+  ulonglong _Size;
+  ulonglong in_stack_00000028;
+  ulonglong *in_stack_00000030;
+  longlong in_stack_00000038;
+  longlong in_stack_00000040;
+  longlong local_138;
+  longlong lStack_130;
+  longlong local_128;
+  longlong lStack_120;
+  longlong local_118;
+  longlong lStack_110;
+  longlong local_108;
+  longlong *local_100;
+  undefined **local_f8;
+  longlong local_f0;
+  longlong *plStack_e8;
+  longlong local_e0;
+  longlong lStack_d8;
+  longlong local_d0;
+  longlong lStack_c8;
+  void *local_c0;
+  ulonglong uStack_b8;
+  longlong local_b0;
+  longlong local_a8;
+  undefined4 local_a0;
+  undefined2 local_9c;
+  undefined1 local_9a;
+  longlong local_98;
+  code *pcStack_90;
+  longlong local_88;
+  longlong lStack_80;
+  longlong local_78;
+  undefined8 *puStack_70;
+  longlong local_68;
+  longlong local_58;
+  longlong local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  if (*(short *)(in_R8 + 0x14) != *(short *)(*(longlong *)(in_RDX + 0x648) + 0xa50)) {
+    local_f8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+    core::panicking::
+    assert_failed<rhapsody::raw::managed::handle::RuntimeDeviceId,rhapsody::raw::managed::handle::RuntimeDeviceId>
+              ();
+  }
+  if (*(char *)(in_R8 + 0x16) != '\x01') {
+    local_f8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+    core::panicking::
+    assert_failed<rhapsody::raw::managed::handle::ManagedResourceTypeId,rhapsody::raw::managed::handle::ManagedResourceTypeId>
+              ();
+  }
+  lVar2 = *(longlong *)(in_R8 + 8);
+  local_98 = lVar2 + 0x10;
+  local_50 = 0;
+  if (*(int *)(lVar2 + 0xc) != *(int *)(in_R8 + 0x10)) {
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  lVar7 = in_stack_00000038 * 0x10;
+  puVar1 = in_stack_00000030 + in_stack_00000038 * 2;
+  local_a8 = 0;
+  puVar6 = in_stack_00000030;
+  while( true ) {
+    local_50 = local_98;
+    if (lVar7 == 0) {
+      if ((*(byte *)(lVar2 + 0x28) & 2) == 0) {
+        pcStack_90 = core::fmt::impl$74::fmt<str_>;
+        local_f8 = &PTR_s_Buffer_must_be_created_with_vk__142b15a40;
+        local_f0 = 2;
+        lStack_d8 = 0;
+        plStack_e8 = &local_98;
+        local_e0 = 1;
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_fmt();
+      }
+      if (local_a8 == 0) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      local_a0 = 1;
+      local_9a = 3;
+      local_9c = 0;
+      local_108 = in_R8;
+      local_58 = in_RDX;
+      create_buffer_impl();
+      local_98 = local_f0;
+      pcStack_90 = (code *)plStack_e8;
+      local_88 = local_e0;
+      lStack_80 = lStack_d8;
+      local_78 = local_d0;
+      puStack_70 = (undefined8 *)lStack_c8;
+      if (local_f8 == (undefined **)0xb) {
+        local_118 = local_d0;
+        lStack_110 = lStack_c8;
+        local_128 = local_e0;
+        lStack_120 = lStack_d8;
+        local_138 = local_f0;
+        lStack_130 = (longlong)plStack_e8;
+        if (local_c0 == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+          core::option::expect_failed();
+        }
+        uVar5 = uStack_b8;
+        _Dst = local_c0;
+        local_100 = in_RCX;
+        if (in_stack_00000038 != 0) {
+          do {
+            uVar3 = *in_stack_00000030;
+            uVar4 = in_stack_00000030[1];
+            _Size = uVar4 - uVar3;
+            if (uVar4 < uVar3) {
+                    // WARNING: Subroutine does not return
+              core::slice::index::slice_index_order_fail();
+            }
+            if (in_stack_00000028 < uVar4) {
+                    // WARNING: Subroutine does not return
+              core::slice::index::slice_end_index_len_fail();
+            }
+            if (uVar5 < _Size) {
+                    // WARNING: Subroutine does not return
+              core::slice::index::slice_end_index_len_fail();
+            }
+            memcpy(_Dst,(void *)(uVar3 + in_R9),_Size);
+            in_stack_00000030 = in_stack_00000030 + 2;
+            uVar5 = uVar5 - _Size;
+            _Dst = (void *)((longlong)_Dst + _Size);
+          } while (in_stack_00000030 != puVar1);
+        }
+        local_98 = local_108;
+        pcStack_90 = (code *)&local_138;
+        local_88 = local_58;
+        puStack_70 = &stack0x00000040;
+        local_68 = local_50;
+        with_setup_cb<rhapsody::raw::buffer::impl_6::update_buffer_bytes::closure_env_0>();
+        if (local_f8 == (undefined **)0xb) {
+          *local_100 = 0xb;
+        }
+        else {
+          local_100[9] = local_b0;
+          local_100[7] = (longlong)local_c0;
+          local_100[8] = uStack_b8;
+          local_100[5] = local_d0;
+          local_100[6] = lStack_c8;
+          local_100[3] = local_e0;
+          local_100[4] = lStack_d8;
+          local_100[1] = local_f0;
+          local_100[2] = (longlong)plStack_e8;
+          *local_100 = (longlong)local_f8;
+        }
+        managed::handle::impl$6::drop();
+      }
+      else {
+        in_RCX[5] = local_d0;
+        in_RCX[6] = lStack_c8;
+        in_RCX[3] = local_e0;
+        in_RCX[4] = lStack_d8;
+        in_RCX[1] = local_f0;
+        in_RCX[2] = (longlong)plStack_e8;
+        *in_RCX = (longlong)local_f8;
+        in_RCX[7] = (longlong)local_c0;
+        in_RCX[8] = uStack_b8;
+        in_RCX[9] = local_b0;
+      }
+      return;
+    }
+    uVar5 = *puVar6;
+    uVar3 = puVar6[1];
+    if (uVar3 < uVar5) {
+                    // WARNING: Subroutine does not return
+      core::slice::index::slice_index_order_fail();
+    }
+    if (in_stack_00000028 < uVar3) break;
+    puVar6 = puVar6 + 2;
+    local_a8 = local_a8 + (uVar3 - uVar5);
+    lVar7 = lVar7 + -0x10;
+    if (*(ulonglong *)(lVar2 + 0x20) < (ulonglong)(local_a8 + in_stack_00000040)) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+  }
+                    // WARNING: Subroutine does not return
+  core::slice::index::slice_end_index_len_fail();
+}
+

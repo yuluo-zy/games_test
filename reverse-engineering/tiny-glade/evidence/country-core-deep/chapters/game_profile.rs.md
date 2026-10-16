@@ -7,6 +7,16 @@
 > NamedTempFile(`.tmp`) → ron to_string_pretty → persist。`save_game_profile` → write_profile_via_tmp。
 > 证据：load/save/write/路径/序列化反编译 + 原字节。
 > 注意：字段名修正重建的 `tutorial_completion/tutorial_backoff`（实为 tutorial/tutorial_cooldowns），见 DIGEST §5。
+> **reanalyst 2026-10-15 schema 全解**：ron 序列化只写 5 字段（struct 头计数 5）——`tutorial`(+500)、
+> `tutorial_cooldowns`(+0x1e0)、`game_installation_id`(+0x1c8)、`key_bindings`(+0x000)、
+> `new_glade_count`(+0x1d8)；**`player_id` 不序列化**但 deserialize 接受（0x1404b0ed0 visit_str
+> 6 名：tutorial→0、tutorial_cooldowns→1、player_id→2、key_bindings→3、new_glade_count→4、
+> game_installation_id→5，raw `mov byte[rax+1]` 逐字节确认）。布局 key_bindings@+0x000 /
+> game_installation_id@+0x1c8(Uuid 16B) / new_glade_count@+0x1d8(u32) / tutorial_cooldowns@+0x1e0 /
+> tutorial@+0x1f4(bool)；总 0x208B。**消费方**：load_game 0x14146d030 第 3 参 Res<GameProfile>
+> （新 glade 计数）；load_completion_checker **不含** GameProfile（其参数=AppMode/LoadingGameComplete
+> /Local<LoadingCompletionState>/ActiveSession；skeleton 的 GameProfile 引用是 load_game tuple 注释串）。
+> 详见 state/save/RE-DOMAIN-TYPES.md §4。
 
 函数总计 15：业务 6 / 内联无独立符号 0 / 派生胶水 9
 

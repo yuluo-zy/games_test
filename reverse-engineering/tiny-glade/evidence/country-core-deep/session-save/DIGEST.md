@@ -36,8 +36,8 @@
 | +0x98 | ignore_snapshot bool | 0x140b46a20：`mov byte[rdx+0x98],r8b; memcpy 0xa0` |
 | 其余 | 会话参数/模板 | U |
 
-- append_on_load<MetaCommandFence> 0x141328ac0：元素 **0x20B**，push 记录 `{u32 tag=0, u32 0x80000000, u64 payload}`，`memcpy 0xa0` 返回副本（builder 模式）。
-- on_load 列表以 `0x8000000000000003` 为 **fence 哨兵**（load_game 回放循环的终止条件，O）。
+- append_on_load<MetaCommandFence> 0x141328ac0：元素 **0x20B**，push 记录 `{u64 0x8000000000000000, fence_ptr}`（**reanalyst 2026-10-15：RNE 原字节证实单 u64 niche，旧"{u32 0, u32 0x80000000, u64 payload}"修正**；+0x10 区为 alloc 残留），`memcpy 0xa0` 返回副本（builder 模式）。append_on_load<[MetaCommand;3]> 0x1403b5150 = alloc 0xa8+memcpy Box 化 → push `{3, Box<[MetaCommand;3]>}`（调用方 run_game_thread 0x1405a3440）。
+- on_load 列表以 **0x8000000000000003** 为 **fence 哨兵**（load_game 回放循环两遍的终止条件，O；元素步长 0x20 已证实）。
 
 ### 2.2 LogoAnimation（Resource，≥0x28B，O）
 | 偏移 | 含义 | 证据 |
@@ -75,7 +75,7 @@
 | 0 Version | `Version` | 0 | 版本号（u64） |
 | 1 Identity | `Identity` | 16 | **HistoryIdentity**（0x140b385e0） |
 | 2 BackwardCompatibility | `BackwardCompatibility` | 0 | 兼容节（Value） |
-| 3 Camera | `Camera` | 128 | **CameraRigParametersCache**（0x1416f8470） |
+| 3 Camera | `Camera` | 128 | **CameraRigParametersCache**（0x1416f8470；**reanalyst 2026-10-15 schema 全解 = 6 字段** `{yaw@+0, pitch@+4, position@+8(Vec3), camera_rig_arm_length@+0x14, pitch_offset@+0x1c, yaw_offset@+0x20}`，0x24B；"position_cache"串在 blob 0x1429cca3b 但 save 序列化不含——DIGEST 旧 7 字段表修正，见 state/save/RE-DOMAIN-TYPES §1） |
 | 4 TimeOfDay | `Time of day` | 32 | **TimeOfDay**（0x140b389b0） |
 | 5 Sheep | `Sheep` | 128 | **Option<SheepControlSnapshot>**（0x140a51d40） |
 | 6 Colors | `Colors` | 64 | **GladeColorCustomization**（0x14085ee90） |
@@ -202,7 +202,12 @@
 
 ## 6. 跨领域线索
 
-- **camera-time 域（协调员同步，2026-10-14）**：会话相机存档 schema = `{yaw, pitch, position, camera_rig_arm_length, pitch_offset, yaw_offset, position_cache}`。本域对应存档节 **Camera（tag 3，json_key "Camera"，padding 128）**，载荷 = `CameraRigParametersCache`（to_json_string 实例 0x1416f8470，save_game.rs）。请对照相机字段顺序/序列化 tag 与本域 SaveFileSection::Camera 节序。
+- **camera-time 域（协调员同步，2026-10-14；reanalyst 2026-10-15 修正）**：会话相机存档 schema =
+  **6 字段** `{yaw, pitch, position, camera_rig_arm_length, pitch_offset, yaw_offset}`（0x24B；
+  **旧 7 字段表含 position_cache 修正**——position_cache 仅反序列化接受/内部缓存，save 序列化
+  0x1416f8470 只写 6 字段）。本域对应存档节 **Camera（tag 3，json_key "Camera"，padding 128）**，
+  载荷 = `CameraRigParametersCache`（to_json_string 实例 0x1416f8470，save_game.rs）。请对照相机
+  字段顺序/序列化 tag 与本域 SaveFileSection::Camera 节序。
 - **history 域**：save_game 调 `0x140a84760`（=set_current_snapshot，PLAYBOOK 已证）挂接新快照 Arc；save_game_to_file 序列化 HistoryIdentity/HistoryChainIndex/HistoryChainSnapshots；load_game 遍历 MultiEdit（变体 7/8/9）恢复 max wall id；ensure_current_snapshot 以 ShadowFile::mark_dirty 增量写历史 JSON。
 - **meta_commander**：NextSession::append_on_load<MetaCommandFence>（crates/country-core/src/meta_commander.rs 路径串 0x142c5ae38）。
 - **render 域**：loading_screen/logo 经 `load_mesh_into_library`（0x140b1aca0）/`load_shader_into_library`（0x140b3fe40）挂 AssetMeshLibrary/AssetShaderLibrary；`*.raster.hlsl` 命名（loading_screen、logo_animation、logo_branches_animation）；DrawableMeshBundle(vt 0x1412da5d0)+DesignatedRenderPass(0x12)+DontCastShadow；session_selection（0x1408f68c0/0x1408f6c00）缩略图渲染留待渲染域。
@@ -228,12 +233,14 @@
 
 ## U — 遗留未知
 
-- NextSessionKind 变体 1/2 的完整语义映射（1=解析存档、2=常规加载为 I）；on_load 条目 {0, 0x80000000, payload} 头部语义。
+- NextSessionKind 变体 1/2 的完整语义映射（1=解析存档、2=常规加载为 I）；**reanalyst 2026-10-15：
+  on_load 条目已解（0x20B {tag,payload1..3}，见 §2.1 与 state/session RE-ANALYSIS §2.3）**。
 - backup_folder_path 的叶名明文（描述符 @0x140aef328 未解）；"state" 串在 meta.json/快照中的角色。
 - SessionMeta 字段 0/2/5（unit/双 qword/String）与 "state" 键的对应。
-- execute_save_cmd 变体 0/1/2 归属；ChangeSection/ReplaceEdits 的载荷细节；快照 GC 的触发频率。
+- execute_save_cmd 变体 0/1/2 归属（**reanalyst：维持"死/历史变体无 case"**）；快照 GC 的触发频率。
 - update_loading_screen 的 UUID 键业务含义与增删时机。
 - try_approx_parse_save_file_identity 的近似解析规则。
+- **GameSaveData 逐字段 layout**（消费边界已闭合：16+ 项 SystemParam 数据源 + AutoSaveState 序列化缓冲；字段级需对 save_game 0x140a3f470 分段逐槽比对）。
 
 ## 9. 算法级深挖补充/纠错（2026-10-15，见 ALGORITHMS.md）
 

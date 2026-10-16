@@ -8,6 +8,12 @@ use crate::utils::components::transform::Transform;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
+/// One saved sheep row. Field names verified by rne-read on the B image:
+/// `sheep` at 0x142c91fa9; `position`/`goal`/`move_state` at
+/// 0x142c91f49/0x142c91f51/0x142c91f55 (re-analyst, 2026-10-15). The serde
+/// serialize (0x1416f9eb0) writes exactly these three entries in this order.
+/// The save file's Sheep section is `Option<SheepControlSnapshot>` (None →
+/// "null").
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SheepSnapshot {
     pub position: Vec3,

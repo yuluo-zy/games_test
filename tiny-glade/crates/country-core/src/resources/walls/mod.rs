@@ -1,5 +1,9 @@
 pub mod height_rules;
+pub mod decorator;
 pub mod decorator_archivist;
+pub mod decorator_storage;
+pub mod decorator_subtype;
+pub mod cached_decorator_transforms;
 pub mod inner_wall_state;
 pub mod inner_walls;
 pub mod public_walls;

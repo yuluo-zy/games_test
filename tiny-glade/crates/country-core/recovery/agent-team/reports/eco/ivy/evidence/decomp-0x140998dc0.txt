@@ -1,0 +1,386 @@
+
+void __cdecl country_core::systems::ivy::ivy_pruner::is_point_still_valid(void)
+
+{
+  char *pcVar1;
+  undefined8 *puVar2;
+  longlong lVar3;
+  uint uVar4;
+  uint uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  char extraout_AL;
+  ulonglong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  ulonglong extraout_RAX_01;
+  int iVar8;
+  float *in_RCX;
+  ulonglong uVar9;
+  longlong lVar10;
+  int iVar11;
+  uint uVar12;
+  longlong in_RDX;
+  longlong *in_R8;
+  longlong *in_R9;
+  longlong lVar13;
+  ushort uVar14;
+  longlong lVar15;
+  ulonglong uVar16;
+  byte bVar17;
+  char cVar18;
+  float fVar19;
+  float fVar20;
+  char cVar22;
+  char cVar23;
+  char cVar24;
+  undefined1 auVar21 [16];
+  int iVar27;
+  undefined1 auVar25 [16];
+  undefined1 auVar26 [16];
+  undefined1 auVar28 [16];
+  undefined1 auVar29 [16];
+  undefined1 auVar30 [16];
+  undefined1 auVar31 [16];
+  undefined1 auVar32 [16];
+  int iVar33;
+  ulonglong local_120;
+  undefined8 local_118;
+  undefined8 uStack_110;
+  undefined8 local_108;
+  undefined8 local_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  undefined8 local_e8;
+  undefined *local_e0;
+  undefined8 local_d8;
+  undefined4 local_d0;
+  undefined4 local_cc;
+  undefined **local_c8;
+  undefined8 local_c0;
+  ulonglong **local_b8;
+  undefined8 local_b0;
+  undefined8 local_a8;
+  ulonglong *local_98;
+  code *local_90;
+  
+  uVar9 = *(ulonglong *)(in_RDX + 0x50);
+  auVar21._8_8_ = 0;
+  auVar21._0_8_ = uVar9;
+  auVar32._0_4_ = *in_RCX + (float)uVar9 * 0.5;
+  auVar32._4_4_ = in_RCX[2] + (float)(uVar9 >> 0x20) * 0.5;
+  auVar32._8_8_ = 0;
+  iVar33 = (int)*(undefined8 *)(in_RDX + 0x48);
+  iVar27 = (int)((ulonglong)*(undefined8 *)(in_RDX + 0x48) >> 0x20);
+  auVar25._0_4_ = (float)iVar33;
+  auVar25._4_4_ = (float)iVar27;
+  auVar25._8_8_ = 0;
+  auVar21 = divps(auVar21,auVar25);
+  auVar21 = divps(auVar32,auVar21);
+  fVar19 = floorf(auVar21._4_4_);
+  fVar20 = floorf(auVar21._0_4_);
+  iVar8 = (int)fVar20;
+  if (2.1474835e+09 < fVar20) {
+    iVar8 = 0x7fffffff;
+  }
+  if (NAN(fVar20)) {
+    iVar8 = 0;
+  }
+  iVar11 = (int)fVar19;
+  if (2.1474835e+09 < fVar19) {
+    iVar11 = 0x7fffffff;
+  }
+  if (NAN(fVar19)) {
+    iVar11 = 0;
+  }
+  if (iVar8 < 0) {
+    return;
+  }
+  auVar26._0_4_ = -(uint)(iVar8 < iVar33);
+  iVar27 = -(uint)(iVar11 < iVar27);
+  auVar26._4_4_ = auVar26._0_4_;
+  auVar26._8_4_ = iVar27;
+  auVar26._12_4_ = iVar27;
+  uVar12 = movmskpd(iVar11,auVar26);
+  if ((uVar12 & 2) == 0) {
+    return;
+  }
+  if ((uVar12 & 1) == 0) {
+    return;
+  }
+  if (iVar11 < 0) {
+    return;
+  }
+  uVar9 = (ulonglong)(iVar11 * iVar33 + iVar8);
+  if (*(ulonglong *)(in_RDX + 0x10) <= uVar9) {
+    return;
+  }
+  lVar10 = uVar9 * 0x30;
+  uVar9 = *(ulonglong *)(*(longlong *)(in_RDX + 8) + 0x10 + lVar10);
+  if (uVar9 == 0) {
+    return;
+  }
+  lVar10 = *(longlong *)(*(longlong *)(in_RDX + 8) + 8 + lVar10);
+  ivy_grower::closest_segment_index();
+  if ((float)local_118 != 1.4013e-45) {
+    return;
+  }
+  local_120 = (ulonglong)uStack_110;
+  if (uVar9 <= uStack_110) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  if (0.365 <= (float)local_108) {
+    return;
+  }
+  lVar10 = *(longlong *)(lVar10 + 0x28 + (longlong)uStack_110 * 0x38);
+  local_118 = lVar10;
+  if (in_R8[3] != 0) {
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+    lVar3 = *in_R8;
+    bVar17 = (byte)(extraout_RAX >> 0x39);
+    auVar21 = ZEXT216(CONCAT11(bVar17,bVar17));
+    auVar21 = pshuflw(auVar21,auVar21,0);
+    lVar13 = 0;
+    uVar9 = extraout_RAX;
+    while( true ) {
+      uVar9 = in_R8[1] & uVar9;
+      pcVar1 = (char *)(lVar3 + uVar9);
+      cVar18 = auVar21[0];
+      auVar30[0] = -(*pcVar1 == cVar18);
+      cVar22 = auVar21[1];
+      auVar30[1] = -(pcVar1[1] == cVar22);
+      cVar23 = auVar21[2];
+      auVar30[2] = -(pcVar1[2] == cVar23);
+      cVar24 = auVar21[3];
+      auVar30[3] = -(pcVar1[3] == cVar24);
+      auVar30[4] = -(pcVar1[4] == cVar18);
+      auVar30[5] = -(pcVar1[5] == cVar22);
+      auVar30[6] = -(pcVar1[6] == cVar23);
+      auVar30[7] = -(pcVar1[7] == cVar24);
+      auVar30[8] = -(pcVar1[8] == cVar18);
+      auVar30[9] = -(pcVar1[9] == cVar22);
+      auVar30[10] = -(pcVar1[10] == cVar23);
+      auVar30[0xb] = -(pcVar1[0xb] == cVar24);
+      auVar30[0xc] = -(pcVar1[0xc] == cVar18);
+      auVar30[0xd] = -(pcVar1[0xd] == cVar22);
+      auVar30[0xe] = -(pcVar1[0xe] == cVar23);
+      auVar30[0xf] = -(pcVar1[0xf] == cVar24);
+      uVar14 = (ushort)(SUB161(auVar30 >> 7,0) & 1) | (ushort)(SUB161(auVar30 >> 0xf,0) & 1) << 1 |
+               (ushort)(SUB161(auVar30 >> 0x17,0) & 1) << 2 |
+               (ushort)(SUB161(auVar30 >> 0x1f,0) & 1) << 3 |
+               (ushort)(SUB161(auVar30 >> 0x27,0) & 1) << 4 |
+               (ushort)(SUB161(auVar30 >> 0x2f,0) & 1) << 5 |
+               (ushort)(SUB161(auVar30 >> 0x37,0) & 1) << 6 |
+               (ushort)(SUB161(auVar30 >> 0x3f,0) & 1) << 7 |
+               (ushort)(SUB161(auVar30 >> 0x47,0) & 1) << 8 |
+               (ushort)(SUB161(auVar30 >> 0x4f,0) & 1) << 9 |
+               (ushort)(SUB161(auVar30 >> 0x57,0) & 1) << 10 |
+               (ushort)(SUB161(auVar30 >> 0x5f,0) & 1) << 0xb |
+               (ushort)(SUB161(auVar30 >> 0x67,0) & 1) << 0xc |
+               (ushort)(SUB161(auVar30 >> 0x6f,0) & 1) << 0xd |
+               (ushort)(SUB161(auVar30 >> 0x77,0) & 1) << 0xe | (ushort)(auVar30[0xf] >> 7) << 0xf;
+      uVar12 = (uint)uVar14;
+      while (uVar14 != 0) {
+        uVar4 = 0;
+        for (uVar5 = uVar12; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+          uVar4 = uVar4 + 1;
+        }
+        lVar15 = (uVar4 + uVar9 & in_R8[1]) * -0x2a8;
+        if (*(longlong *)(lVar3 + -0x2a8 + lVar15) == lVar10) {
+          if ((*(ulonglong *)(lVar3 + -0x290 + lVar15) < 2) ||
+             (*(float *)(lVar3 + -0x270 + lVar15) <= 0.0)) {
+                    // WARNING: Subroutine does not return
+            core::panicking::panic();
+          }
+          fVar19 = 0.01 / *(float *)(lVar3 + lVar15 + -0x270);
+          if (local_108._4_4_ <= -fVar19) {
+            return;
+          }
+          if (local_108._4_4_ < fVar19 + 1.0) {
+            if (in_R9[3] == 0) {
+              return;
+            }
+            local_118 = lVar10;
+            core::hash::BuildHasher::
+            hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+            lVar3 = *in_R9;
+            bVar17 = (byte)(extraout_RAX_01 >> 0x39);
+            auVar21 = ZEXT216(CONCAT11(bVar17,bVar17));
+            auVar21 = pshuflw(auVar21,auVar21,0);
+            lVar13 = 0;
+            uVar9 = extraout_RAX_01;
+            do {
+              uVar9 = in_R9[1] & uVar9;
+              pcVar1 = (char *)(lVar3 + uVar9);
+              cVar18 = auVar21[0];
+              auVar31[0] = -(*pcVar1 == cVar18);
+              cVar22 = auVar21[1];
+              auVar31[1] = -(pcVar1[1] == cVar22);
+              cVar23 = auVar21[2];
+              auVar31[2] = -(pcVar1[2] == cVar23);
+              cVar24 = auVar21[3];
+              auVar31[3] = -(pcVar1[3] == cVar24);
+              auVar31[4] = -(pcVar1[4] == cVar18);
+              auVar31[5] = -(pcVar1[5] == cVar22);
+              auVar31[6] = -(pcVar1[6] == cVar23);
+              auVar31[7] = -(pcVar1[7] == cVar24);
+              auVar31[8] = -(pcVar1[8] == cVar18);
+              auVar31[9] = -(pcVar1[9] == cVar22);
+              auVar31[10] = -(pcVar1[10] == cVar23);
+              auVar31[0xb] = -(pcVar1[0xb] == cVar24);
+              auVar31[0xc] = -(pcVar1[0xc] == cVar18);
+              auVar31[0xd] = -(pcVar1[0xd] == cVar22);
+              auVar31[0xe] = -(pcVar1[0xe] == cVar23);
+              auVar31[0xf] = -(pcVar1[0xf] == cVar24);
+              uVar14 = (ushort)(SUB161(auVar31 >> 7,0) & 1) |
+                       (ushort)(SUB161(auVar31 >> 0xf,0) & 1) << 1 |
+                       (ushort)(SUB161(auVar31 >> 0x17,0) & 1) << 2 |
+                       (ushort)(SUB161(auVar31 >> 0x1f,0) & 1) << 3 |
+                       (ushort)(SUB161(auVar31 >> 0x27,0) & 1) << 4 |
+                       (ushort)(SUB161(auVar31 >> 0x2f,0) & 1) << 5 |
+                       (ushort)(SUB161(auVar31 >> 0x37,0) & 1) << 6 |
+                       (ushort)(SUB161(auVar31 >> 0x3f,0) & 1) << 7 |
+                       (ushort)(SUB161(auVar31 >> 0x47,0) & 1) << 8 |
+                       (ushort)(SUB161(auVar31 >> 0x4f,0) & 1) << 9 |
+                       (ushort)(SUB161(auVar31 >> 0x57,0) & 1) << 10 |
+                       (ushort)(SUB161(auVar31 >> 0x5f,0) & 1) << 0xb |
+                       (ushort)(SUB161(auVar31 >> 0x67,0) & 1) << 0xc |
+                       (ushort)(SUB161(auVar31 >> 0x6f,0) & 1) << 0xd |
+                       (ushort)(SUB161(auVar31 >> 0x77,0) & 1) << 0xe |
+                       (ushort)(auVar31[0xf] >> 7) << 0xf;
+              uVar12 = (uint)uVar14;
+              while (uVar14 != 0) {
+                uVar4 = 0;
+                for (uVar5 = uVar12; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+                  uVar4 = uVar4 + 1;
+                }
+                uVar16 = uVar4 + uVar9 & in_R9[1];
+                if (*(longlong *)(lVar3 + -0x28 + uVar16 * -0x28) == lVar10) {
+                  lVar10 = *(longlong *)(lVar3 + -0x10 + uVar16 * -0x28);
+                  if (lVar10 == 0) {
+                    return;
+                  }
+                  lVar3 = *(longlong *)(lVar3 + -0x18 + uVar16 * -0x28);
+                  wall::wall_state::wall_spatial_hash::WallSegment::terrain_height_closest_to_ws_pos
+                            ();
+                  bevy_app::plugin::Plugin::
+                  finish<country_core::systems::main_camera::MainCameraPlugin>();
+                  lVar13 = 0;
+                  do {
+                    puVar2 = (undefined8 *)(lVar3 + lVar13);
+                    uVar6 = *puVar2;
+                    uVar7 = puVar2[1];
+                    local_118._0_4_ = (float)uVar6;
+                    local_118._4_4_ = (float)((ulonglong)uVar6 >> 0x20);
+                    uStack_110._0_4_ = (float)uVar7;
+                    uStack_110._4_4_ = (float)((ulonglong)uVar7 >> 0x20);
+                    local_118 = CONCAT44(local_118._4_4_ + -0.1,(float)local_118 + -0.1);
+                    uStack_110 = (undefined *)
+                                 CONCAT44(uStack_110._4_4_ + 0.1,(float)uStack_110 + 0.1);
+                    ::utils::geometry::aabb::Aabb2::contains();
+                    if (extraout_AL != '\0') {
+                      return;
+                    }
+                    lVar13 = lVar13 + 0x14;
+                  } while (lVar10 * 0x14 != lVar13);
+                  return;
+                }
+                uVar14 = (ushort)(uVar12 - 1) & (ushort)uVar12;
+                uVar12 = CONCAT22((short)(uVar12 - 1 >> 0x10),uVar14);
+              }
+              auVar29[0] = -(*pcVar1 == -1);
+              auVar29[1] = -(pcVar1[1] == -1);
+              auVar29[2] = -(pcVar1[2] == -1);
+              auVar29[3] = -(pcVar1[3] == -1);
+              auVar29[4] = -(pcVar1[4] == -1);
+              auVar29[5] = -(pcVar1[5] == -1);
+              auVar29[6] = -(pcVar1[6] == -1);
+              auVar29[7] = -(pcVar1[7] == -1);
+              auVar29[8] = -(pcVar1[8] == -1);
+              auVar29[9] = -(pcVar1[9] == -1);
+              auVar29[10] = -(pcVar1[10] == -1);
+              auVar29[0xb] = -(pcVar1[0xb] == -1);
+              auVar29[0xc] = -(pcVar1[0xc] == -1);
+              auVar29[0xd] = -(pcVar1[0xd] == -1);
+              auVar29[0xe] = -(pcVar1[0xe] == -1);
+              auVar29[0xf] = -(pcVar1[0xf] == -1);
+              if ((((((((((((((((SUB161(auVar29 >> 7,0) & 1) != 0 ||
+                               (SUB161(auVar29 >> 0xf,0) & 1) != 0) ||
+                              (SUB161(auVar29 >> 0x17,0) & 1) != 0) ||
+                             (SUB161(auVar29 >> 0x1f,0) & 1) != 0) ||
+                            (SUB161(auVar29 >> 0x27,0) & 1) != 0) ||
+                           (SUB161(auVar29 >> 0x2f,0) & 1) != 0) ||
+                          (SUB161(auVar29 >> 0x37,0) & 1) != 0) ||
+                         (SUB161(auVar29 >> 0x3f,0) & 1) != 0) ||
+                        (SUB161(auVar29 >> 0x47,0) & 1) != 0) ||
+                       (SUB161(auVar29 >> 0x4f,0) & 1) != 0) || (SUB161(auVar29 >> 0x57,0) & 1) != 0
+                      ) || (SUB161(auVar29 >> 0x5f,0) & 1) != 0) ||
+                    (SUB161(auVar29 >> 0x67,0) & 1) != 0) || (SUB161(auVar29 >> 0x6f,0) & 1) != 0)
+                  || (SUB161(auVar29 >> 0x77,0) & 1) != 0) || auVar29[0xf] < '\0') {
+                return;
+              }
+              uVar9 = uVar9 + lVar13 + 0x10;
+              lVar13 = lVar13 + 0x10;
+            } while( true );
+          }
+          return;
+        }
+        uVar14 = (ushort)(uVar12 - 1) & (ushort)uVar12;
+        uVar12 = CONCAT22((short)(uVar12 - 1 >> 0x10),uVar14);
+      }
+      auVar28[0] = -(*pcVar1 == -1);
+      auVar28[1] = -(pcVar1[1] == -1);
+      auVar28[2] = -(pcVar1[2] == -1);
+      auVar28[3] = -(pcVar1[3] == -1);
+      auVar28[4] = -(pcVar1[4] == -1);
+      auVar28[5] = -(pcVar1[5] == -1);
+      auVar28[6] = -(pcVar1[6] == -1);
+      auVar28[7] = -(pcVar1[7] == -1);
+      auVar28[8] = -(pcVar1[8] == -1);
+      auVar28[9] = -(pcVar1[9] == -1);
+      auVar28[10] = -(pcVar1[10] == -1);
+      auVar28[0xb] = -(pcVar1[0xb] == -1);
+      auVar28[0xc] = -(pcVar1[0xc] == -1);
+      auVar28[0xd] = -(pcVar1[0xd] == -1);
+      auVar28[0xe] = -(pcVar1[0xe] == -1);
+      auVar28[0xf] = -(pcVar1[0xf] == -1);
+      if ((((((((((((((((SUB161(auVar28 >> 7,0) & 1) != 0 || (SUB161(auVar28 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar28 >> 0x17,0) & 1) != 0) || (SUB161(auVar28 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar28 >> 0x27,0) & 1) != 0) || (SUB161(auVar28 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar28 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar28 >> 0x3f,0) & 1) != 0) || (SUB161(auVar28 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar28 >> 0x4f,0) & 1) != 0) || (SUB161(auVar28 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar28 >> 0x5f,0) & 1) != 0) || (SUB161(auVar28 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar28 >> 0x6f,0) & 1) != 0) || (SUB161(auVar28 >> 0x77,0) & 1) != 0) ||
+          auVar28[0xf] < '\0') break;
+      uVar9 = uVar9 + lVar13 + 0x10;
+      lVar13 = lVar13 + 0x10;
+    }
+  }
+  if (*(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E < 2) {
+    return;
+  }
+  local_98 = &local_120;
+  local_90 = core::fmt::num::imp::impl$9::fmt;
+  toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+  local_f8 = *extraout_RAX_00;
+  uStack_f0 = extraout_RAX_00[1];
+  local_cc = *(undefined4 *)(extraout_RAX_00 + 2);
+  local_e8 = 2;
+  local_e0 = &DAT_142abb060;
+  local_d8 = 0x26;
+  local_c8 = &PTR_s_Spatial_Hash_returned_a_wall_id_t_142abb028;
+  local_c0 = 2;
+  local_b8 = &local_98;
+  local_b0 = 1;
+  local_a8 = 0;
+  local_118 = 0;
+  uStack_110 = &DAT_142abb060;
+  local_108 = 0x26;
+  local_100 = 0;
+  local_d0 = 1;
+  ::log::__private_api::impl$2::log();
+  return;
+}
+

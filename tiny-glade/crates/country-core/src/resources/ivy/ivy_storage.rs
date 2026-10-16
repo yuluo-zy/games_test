@@ -38,7 +38,10 @@ pub struct Ivy {
     pub pending_growth: Option<IvyGrowthSegment>,
     /// Native +84, interpolation progress for the pending segment.
     pub growth_progress: f32,
-    pub scalar_88: f32,
+    /// Native +88: the per-ivy growth cooldown. The grower decrements it by
+    /// `time.delta` while it exceeds 0.001 (0x1429cd060) and skips the ivy
+    /// (0x14094aea9..0x14094adf5); `spawn_ivy` seeds it from the scalar range.
+    pub growth_delay: f32,
     pub flag_8c: u8,
 }
 
@@ -137,7 +140,10 @@ impl IvyStorage {
             .rng
             .usize_less_than(count_range.end - count_range.start)
             + count_range.start;
-        let scalar_88 =
+        // Native +88 growth cooldown: the grower waits out this many seconds
+        // (0x14094adf5: `delay -= delta` while `delay > 0.001`) before the ivy
+        // starts growing.
+        let growth_delay =
             (scalar_range.end - scalar_range.start) * self.rng.uniform_f32() + scalar_range.start;
         let root = IvyPoint {
             id: 0,
@@ -157,7 +163,7 @@ impl IvyStorage {
                 source_60,
                 pending_growth: None,
                 growth_progress: 0.0,
-                scalar_88,
+                growth_delay,
                 flag_8c: 0,
             },
         );
