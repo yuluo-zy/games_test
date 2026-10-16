@@ -79,6 +79,8 @@ impl BuiltinSamplerSpec {
     }
 }
 
+// 内建采样器表逐项列出原表字段，参数一一对应，不另造参数结构。
+#[allow(clippy::too_many_arguments)]
 const fn spec(
     name: &'static str,
     mag_min: vk::Filter,

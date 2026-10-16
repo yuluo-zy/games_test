@@ -160,12 +160,20 @@ impl SharedResources {
         let records = std::mem::take(&mut *dropped);
         drop(dropped);
         let count = records.len();
-        for mut record in records {
+        let mut records = records.into_iter();
+        while let Some(mut record) = records.next() {
             // 原跳表 0x142d060f0：tag 3（TextureView）是 `todo!()`；tag ≥ 8 不可达（8 为 None 哨兵）。
             if record.abi.resource_type == ResourceTag::UNIMPLEMENTED {
                 todo!("ResourceType::TextureView 没有 dispose_cb_resource 单态");
             }
-            record.task.take().unwrap()(self, buckets, strict)?;
+            if let Err(error) = record.task.take().unwrap()(self, buckets, strict) {
+                // 失败项的 task 已消费；其后尚未处理的记录放回队首（先于期间新入队的），不能随 Vec 丢失。
+                let mut dropped = self.dropped.lock();
+                let mut rest: Vec<Dropped> = records.collect();
+                rest.append(&mut dropped);
+                *dropped = rest;
+                return Err(error);
+            }
         }
         Ok(count)
     }
@@ -754,5 +762,30 @@ mod tests {
         let views = ResourceManager::with_shared(shared, 3);
         drop(views.allocate(0_u8));
         views.take_out_dropped_waste();
+    }
+
+    /// 中途某条记录的 task 失败时，尚未处理的记录要放回 `dropped`，不能随 `mem::take` 的 Vec 一起丢失。
+    #[test]
+    fn failed_record_keeps_unprocessed_records_pending() {
+        let shared = SharedResources::new();
+        let store = ResourceManager::with_shared(shared.clone(), 1);
+        for value in 0..4_u32 {
+            drop(store.allocate(value));
+        }
+        {
+            let mut dropped = shared.dropped.lock();
+            assert_eq!(dropped.len(), 4);
+            if let Some(task) = dropped[1].task.take() {
+                std::mem::forget(task);
+            }
+            dropped[1].task = Some(Box::new(|_, _, _| Err(Failure::DeviceMismatch)));
+        }
+        assert_eq!(
+            shared.take_out_dropped_waste(false),
+            Err(Failure::DeviceMismatch)
+        );
+        // 第 0 条已处理、第 1 条失败（task 已消费），第 2、3 条必须仍待处理。
+        assert_eq!(store.pending_disposals(), 2);
+        assert_eq!(store.take_out_dropped_waste(), 2);
     }
 }

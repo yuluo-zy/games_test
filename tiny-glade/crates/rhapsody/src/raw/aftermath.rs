@@ -248,10 +248,10 @@ pub fn wait_for_status_with(
     let mut elapsed = Duration::ZERO;
     let mut current = status();
     while current != STATUS_EXIT_A && current != STATUS_EXIT_B {
-        if let Some(limit) = timeout {
-            if elapsed >= limit {
-                return current;
-            }
+        if let Some(limit) = timeout
+            && elapsed >= limit
+        {
+            return current;
         }
         sleep(POLL_INTERVAL);
         elapsed = elapsed

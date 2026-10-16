@@ -381,10 +381,10 @@ pub fn per_mip_regions<'a>(
     let chain = MipChainIter::new(extent, mip_levels, 1, [1, 1])?;
     let mut regions = Vec::with_capacity(slices.len());
     for (slice, item) in slices.iter().zip(chain) {
-        if let Some(need) = min_len(&item) {
-            if (slice.len() as u64) < need {
-                return Err(Error::Invalid("逐 mip 初始数据短于该级所需字节数"));
-            }
+        if let Some(need) = min_len(&item)
+            && (slice.len() as u64) < need
+        {
+            return Err(Error::Invalid("逐 mip 初始数据短于该级所需字节数"));
         }
         regions.push(TextureUpdateRegion {
             data: slice,
@@ -425,7 +425,7 @@ pub fn plan_texture_copies(
     let mut offset = 0u64;
     let mut copies = Vec::with_capacity(regions.len());
     for region in regions {
-        if block_bytes == 0 || offset % u64::from(block_bytes) != 0 {
+        if block_bytes == 0 || !offset.is_multiple_of(u64::from(block_bytes)) {
             return Err(Error::Invalid(
                 "assertion `left == right` failed: 区域偏移不是 block_bytes 的整数倍",
             ));

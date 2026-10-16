@@ -184,10 +184,11 @@ impl MemoryBudgetSnapshot {
         }
     }
     pub fn to_vk(self) -> vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static> {
-        let mut out = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
-        out.heap_budget = self.heap_budget;
-        out.heap_usage = self.heap_usage;
-        out
+        vk::PhysicalDeviceMemoryBudgetPropertiesEXT {
+            heap_budget: self.heap_budget,
+            heap_usage: self.heap_usage,
+            ..Default::default()
+        }
     }
     /// 16 个同构钳位块：只钳 budget，usage 原样取驱动值。
     pub fn clamped_against(mut self, old: &Self) -> Self {

@@ -4,7 +4,11 @@
 //! epoch，并在该次提交末尾让设备持有的“退役时间线信号量”signal 到这个 epoch；入场项记录入场时的
 //! epoch，只有时间线计数 `>= epoch`（入场前发出的所有主队列提交已由 GPU 完成）才销毁，查询用
 //! `vkGetSemaphoreCounterValue`，不阻塞。非主队列的提交不在这条时间线上，保守地要求一次整设备
-//! idle 才能确认。显存以 [`DeferredMemory`] 随句柄一起延后释放，且不持有设备 Arc，避免引用环。
+//! idle 才能确认；为免入场无界增长，入场累积到 [`AUTO_COLLECT_THRESHOLD`] 且能非阻塞拿到
+//! `queue_lock` 时，若仍有未确认的非主队列提交，就地做一次整设备 idle 并回收（唯一的入场侧 idle）。
+//! 显存以 [`DeferredMemory`] 随句柄一起延后释放，且不持有设备 Arc，避免引用环。
+//!
+//! ⚠️ 本模块是宿主/候选层策略（原作按 `cb_seq` 桶退役，见 [`InOrderRetire`]），非原版机器码行为。
 use super::device::VulkanDevice;
 use ash::vk;
 use parking_lot::Mutex;
@@ -183,12 +187,29 @@ impl VulkanDevice {
         let epoch = self.graveyard.next_epoch(primary);
         primary.then_some((self.retire_timeline, epoch))
     }
-    /// 提交失败时由宿主补发退役信号，保证时间线不会停在这个 epoch 之前。
+    /// 提交失败时由宿主补发退役信号，保证时间线不会停在这个 epoch 之前。调用者必须持有 `queue_lock`。
+    ///
+    /// 失败的提交不会 signal，但更早的 epoch（`< value`）可能仍在 GPU 上：直接主机 signal 到 `value`
+    /// 会让完成线越过在途工作（`destroy_now` 释放仍在用的资源），且新值小于挂起的 signal 违反
+    /// VUID-VkSemaphoreSignalInfo-value-03258/03260。故先整设备 idle（`queue_lock` 已挡住新提交），
+    /// 确认全部已发提交完成后再补发；idle 失败（如设备丢失）则不补发、不推进完成线。
     pub fn note_submit_failed(&self, signal: Option<(vk::Semaphore, u64)>) {
-        if let Some((semaphore, value)) = signal {
-            let info = vk::SemaphoreSignalInfo::default().semaphore(semaphore).value(value);
-            let _ = unsafe { self.device.signal_semaphore(&info) };
+        let Some((semaphore, value)) = signal else {
+            return;
+        };
+        if self.idle_and_confirm_locked().is_err() {
+            return;
         }
+        let info = vk::SemaphoreSignalInfo::default().semaphore(semaphore).value(value);
+        let _ = unsafe { self.device.signal_semaphore(&info) };
+    }
+    /// 整设备 idle，把完成线推进到当前提交上界（含非主队列提交）。调用者必须持有 `queue_lock`。
+    fn idle_and_confirm_locked(&self) -> Result<(), vk::Result> {
+        let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
+        self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
+        unsafe { self.device.device_wait_idle() }?;
+        self.graveyard.completed_epoch.fetch_max(target, Ordering::AcqRel);
+        Ok(())
     }
     /// 用时间线计数推进完成线（非阻塞）；有未确认的非主队列提交时不推进。
     fn refresh_completed(&self) {
@@ -200,6 +221,8 @@ impl VulkanDevice {
         }
     }
     /// 把对象送入延迟销毁场。入场前的提交都已完成则就地销毁；达到阈值时尝试非阻塞回收。
+    ///
+    /// 有未确认的非主队列提交时时间线无法推进完成线，阈值处改为整设备 idle 再回收，否则永不回收。
     pub fn bury(&self, doomed: Doomed) {
         self.refresh_completed();
         if self.graveyard.is_quiescent() {
@@ -209,6 +232,10 @@ impl VulkanDevice {
         if self.graveyard.push(doomed) >= AUTO_COLLECT_THRESHOLD
             && let Some(guard) = self.queue_lock.try_lock()
         {
+            if self.graveyard.foreign_unconfirmed() {
+                // idle 失败（设备丢失）时完成线不动，只回收已确认部分。
+                let _ = self.idle_and_confirm_locked();
+            }
             self.collect_locked();
             drop(guard);
         }
@@ -221,10 +248,7 @@ impl VulkanDevice {
     /// 整设备 idle 并回收：把完成线推进到当前提交上界。
     pub fn wait_idle_and_collect(&self) -> Result<usize, vk::Result> {
         let _guard = self.queue_lock.lock();
-        let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
-        self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
-        unsafe { self.device.device_wait_idle() }?;
-        self.graveyard.completed_epoch.fetch_max(target, Ordering::AcqRel);
+        self.idle_and_confirm_locked()?;
         Ok(self.collect_locked())
     }
     /// 宿主访问前的同步：等待时间线到当前 epoch（只等已提交的工作，不整设备停顿）；
@@ -234,16 +258,14 @@ impl VulkanDevice {
         if self.graveyard.is_quiescent() {
             return Ok(());
         }
-        let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
         if self.graveyard.foreign_unconfirmed() {
-            self.graveyard.idle_waits.fetch_add(1, Ordering::Relaxed);
-            unsafe { self.device.device_wait_idle() }?;
-        } else {
-            let semaphores = [self.retire_timeline];
-            let values = [target];
-            let info = vk::SemaphoreWaitInfo::default().semaphores(&semaphores).values(&values);
-            unsafe { self.device.wait_semaphores(&info, u64::MAX) }?;
+            return self.idle_and_confirm_locked();
         }
+        let target = self.graveyard.submit_epoch.load(Ordering::Acquire);
+        let semaphores = [self.retire_timeline];
+        let values = [target];
+        let info = vk::SemaphoreWaitInfo::default().semaphores(&semaphores).values(&values);
+        unsafe { self.device.wait_semaphores(&info, u64::MAX) }?;
         self.graveyard.completed_epoch.fetch_max(target, Ordering::AcqRel);
         Ok(())
     }

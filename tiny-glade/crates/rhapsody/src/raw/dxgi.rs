@@ -71,6 +71,8 @@ impl fmt::Display for DxgiError {
 impl std::error::Error for DxgiError {}
 
 /// 一次 `EnumAdapters(index)` + `GetDesc` 的结果。
+// 镜像原 `GetDesc` 返回的 `DXGI_ADAPTER_DESC` 按值承载，保持 Copy 不装箱。
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Copy, Debug)]
 pub enum AdapterProbe {
     /// `EnumAdapters` 返回任何错误：结束枚举。

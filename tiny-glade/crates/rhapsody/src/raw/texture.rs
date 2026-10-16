@@ -290,7 +290,7 @@ impl TextureDesc {
     /// 任一除数为 0 则 panic（0x142b0fab0 `1428d99e0`）。返回整份描述（原函数整拷 0x20B）。
     pub fn div_up_extent_by(mut self, divisors: [u32; 3]) -> Self {
         assert!(divisors.iter().all(|&d| d != 0), "attempt to divide by zero");
-        let f = |x: u32, d: u32| (x / d + u32::from(x % d != 0)).max(1);
+        let f = |x: u32, d: u32| (x / d + u32::from(!x.is_multiple_of(d))).max(1);
         self.width = f(self.width, divisors[0]);
         self.height = f(self.height, divisors[1]);
         self.depth = f(self.depth, divisors[2]);

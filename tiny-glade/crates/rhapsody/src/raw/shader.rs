@@ -399,8 +399,7 @@ impl RasterPipelineOpts {
         desc.depth_compare = self.depth_compare_op();
         desc.stencil_test = self.stencil_test();
         desc.stencil = self.stencil_state();
-        desc.blend_attachments =
-            vec![get_vk_blend_mode((self.blend_mode() << 5) as u8); color_attachments];
+        desc.blend_attachments = vec![get_vk_blend_mode(self.blend_mode() << 5); color_attachments];
     }
 }
 pub struct VulkanPipeline {

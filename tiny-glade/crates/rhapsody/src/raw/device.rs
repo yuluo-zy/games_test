@@ -221,13 +221,14 @@ impl Drop for VulkanDevice {
     fn drop(&mut self) {
         // 所有拥有的 Vulkan 子对象都持有设备 Arc，因此会先于设备销毁；延迟场在此排空。
         self.drain_graveyard_for_drop();
+        // 先整设备 idle 再释放内存块：子分配器 shutdown 会 vkFreeMemory，GPU 仍在读写时释放属于 use-after-free。
+        let _ = unsafe { self.device.device_wait_idle() };
         // 子分配器的内存块必须先于设备销毁释放。
         #[cfg(feature = "suballocation")]
         if let Some(sub) = &self.suballocator {
             sub.shutdown();
         }
         unsafe {
-            let _ = self.device.device_wait_idle();
             self.device.destroy_semaphore(self.retire_timeline, None);
             self.device.destroy_device(None);
         }
@@ -467,10 +468,10 @@ impl GraphicsDevice {
             log::error!(target: "rhapsody::raw::device", "crash tracking buffer: {error:?}");
             vk::Result::ERROR_INITIALIZATION_FAILED
         })?;
-        let cache = super::shader::PipelineCache::new(device.clone(), &[]).map_err(|error| {
-            log::error!(target: "rhapsody::raw::device", "vkCreatePipelineCache: {error:?}");
-            error
-        })?;
+        let cache =
+            super::shader::PipelineCache::new(device.clone(), &[]).inspect_err(|error| {
+                log::error!(target: "rhapsody::raw::device", "vkCreatePipelineCache: {error:?}");
+            })?;
         let this = Self::build(device, Some(cache), Some(crash));
         log::trace!(target: "rhapsody::raw::device", "Backend device fully initialized.");
         Ok(this)

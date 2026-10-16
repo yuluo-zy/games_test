@@ -271,9 +271,9 @@ pub fn meets_original_memory_threshold(kind: GraphicsDeviceKind, local: u64, hos
 /// 对设备表做原排序：稳定升序（比较器严格 `<`）。原版 `<0x15` 个用插入排序，≥0x15 个走
 /// `FUN_1418bb250`——它分配暂存区并以 `eager_sort = len<0x41` 调 `FUN_14213bee0`，是 Rust std 的 driftsort
 /// （稳定 `slice::sort_by`；**不是**文档所说的不稳定 introsort）。两条路径都稳定，因此 tie 保持枚举顺序，
-/// 结果与实现无关，直接用 `sort_by` 即得到同一排列。
+/// 结果与实现无关，直接用（同为稳定的）`sort_by_key` 即得到同一排列。
 pub fn sort_devices_original(devices: &mut [AvailableGraphicsDevice]) {
-    devices.sort_by(|a, b| a.device_order_key().cmp(&b.device_order_key()));
+    devices.sort_by_key(|a| a.device_order_key());
 }
 
 /// 系统（DXGI）适配器：原 `missing_devices` 的输入（FUN_1418b29c0 枚举，0x28B 元素：

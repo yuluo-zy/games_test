@@ -48,9 +48,16 @@ fn present_result(result: std::result::Result<bool, vk::Result>) -> Result<(bool
     match result {
         Ok(suboptimal) => Ok((suboptimal, suboptimal)),
         Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => Ok((false, true)),
-        Err(error) if error.as_raw() == -1_000_255_000 => Ok((false, true)),
+        Err(vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) => Ok((false, true)),
         Err(error) => Err(error.into()),
     }
+}
+/// 请求尺寸为零（窗口最小化）：不重建，跳过本帧（见 `validate_swapchain_and_acquire_image`）。
+const ZERO_WINDOW_EXTENT: &str = "窗口尺寸为零，延迟交换链重建";
+/// 表面当前尺寸为零（Windows 最小化时 `currentExtent = 0×0`）：同样跳帧。
+const ZERO_SURFACE_EXTENT: &str = "表面尺寸为零，等待窗口恢复";
+fn is_zero_extent(error: &Error) -> bool {
+    matches!(error, Error::Invalid(m) if *m == ZERO_WINDOW_EXTENT || *m == ZERO_SURFACE_EXTENT)
 }
 pub struct Surface {
     pub instance: Arc<VulkanInstance>,
@@ -112,6 +119,7 @@ impl Drop for Surface {
 ///   目标 `rhapsody::raw::managed::swapchain`）；其它值按 3 处理 → `stale`（重建只用 bool：非 2 视为 stale）；
 /// - `@0xb0` next image index（取模 image count 推进）→ `next_slot`；
 /// - 呈现过一次的标记 → `any_presented`（⚠️ 原字节位置未读）。
+///
 /// 句柄/格式/图像/视图在创建后不变（重建产生新 `Swapchain`），仍是 `Swapchain` 的公开字段。
 pub(crate) struct SwapchainInner {
     desc: SwapchainDesc,
@@ -235,10 +243,27 @@ impl Swapchain {
                 .get_physical_device_surface_formats(self.device.physical, self.surface.handle)
         }?)
     }
+    /// `vkGetPhysicalDeviceImageFormatProperties` 校验交换链图像（2D、OPTIMAL）能否带请求用途。
+    fn format_supports_usage(&self, format: vk::Format) -> bool {
+        unsafe {
+            self.device
+                .instance
+                .instance
+                .get_physical_device_image_format_properties(
+                    self.device.physical,
+                    format,
+                    vk::ImageType::TYPE_2D,
+                    vk::ImageTiling::OPTIMAL,
+                    self.usage,
+                    vk::ImageCreateFlags::empty(),
+                )
+        }
+        .is_ok()
+    }
     fn recreate(&mut self, requested: vk::Extent2D, old: vk::SwapchainKHR) -> Result<()> {
         if requested.width == 0 || requested.height == 0 {
             self.mark_stale();
-            return Err(Error::Invalid("窗口尺寸为零，延迟交换链重建"));
+            return Err(Error::Invalid(ZERO_WINDOW_EXTENT));
         }
         let caps = unsafe {
             self.surface
@@ -249,14 +274,19 @@ impl Swapchain {
             return Err(Error::Unsupported("表面不支持请求的图片用途"));
         }
         let formats = self.enumerate_surface_formats()?;
+        // 首选 B8G8R8A8_SRGB；回退时只取支持请求用途（OPTIMAL 2D 图像）的格式，不盲取第一个。
         let mut format = *formats
             .iter()
             .find(|f| {
                 f.format == vk::Format::B8G8R8A8_SRGB
                     && f.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
             })
-            .or_else(|| formats.first())
-            .ok_or(Error::Unsupported("表面没有可用格式"))?;
+            .or_else(|| {
+                formats.iter().find(|f| {
+                    f.format == vk::Format::UNDEFINED || self.format_supports_usage(f.format)
+                })
+            })
+            .ok_or(Error::Unsupported("表面没有支持请求用途的格式"))?;
         if format.format == vk::Format::UNDEFINED {
             format.format = vk::Format::B8G8R8A8_SRGB;
         }
@@ -288,7 +318,7 @@ impl Swapchain {
             }
         };
         if extent.width == 0 || extent.height == 0 {
-            return Err(Error::Invalid("表面尺寸为零，等待窗口恢复"));
+            return Err(Error::Invalid(ZERO_SURFACE_EXTENT));
         }
         let count = caps.min_image_count.saturating_add(1);
         let count = if caps.max_image_count == 0 {
@@ -404,9 +434,13 @@ impl Swapchain {
         self.inner.read().desc
     }
     /// 先将旧链标为退役；已有图像租约仍持有旧对象，不能被新链替换后提前销毁。
+    ///
+    /// 全程持旧链写锁：`oldSwapchain` 是外部同步参数，acquire 不再取 `queue_lock`，
+    /// 与旧链 acquire/present 的互斥改由这把写锁承担（锁序：交换链写锁 → `queue_lock`，同 present）。
     pub(crate) fn replacement(&self) -> Result<Self> {
-        self.mark_stale();
-        let desc = self.desc();
+        let mut inner = self.inner.write();
+        inner.stale = true;
+        let desc = inner.desc;
         unsafe {
             Self::new_with_old(
                 self.device.clone(),
@@ -427,12 +461,14 @@ impl Swapchain {
     /// - “stale”（旧链已被 `mark_stale`，tag 0/1/3 默认分支）→ debug 日志
     ///   `Re-creating a stale swapchain ({reason}).` → 重建；
     /// - “retired”（tag 4，驱动 OUT_OF_DATE）→ debug 日志 `Re-creating a retired swapchain.` → 重建；
-    /// - 其余错误（tag 5）→ 原版 panic `Vulkan swapchain error: {e}`，这里改为 `Err`（调用方可见）；
+    /// - 其余错误（tag 5）→ 原版 panic `Vulkan swapchain error: {e}`，这里改为 `Err`（调用方可见）。
+    ///
     /// 重建（0x140bfd720）成功后再取一次：租约 → 产出；NOT_READY/TIMEOUT → `Ok(None)`；
     /// 新链被报 stale → warn 日志 `The newly-created swapchain was reported stale: {..}` 并 `Ok(None)`；
     /// 新链被报 retired → 原版 panic `Newly created swapchain claims to have been retired`，这里 `Err`；
     /// 其余错误 → 原版 panic `Vulkan swapchain error after re-creation: {e}`，这里 `Err`；
-    /// 重建失败 → 原版 panic `Vulkan swapchain re-creation error: {e}`，这里 `Err`。
+    /// 重建失败 → 原版 panic `Vulkan swapchain re-creation error: {e}`，这里 `Err`；
+    /// 例外：请求/表面尺寸为零（最小化）不算失败，保留旧链跳帧 `Ok(None)`（宿主偏差）。
     /// 日志级别门控（原 `*0x14362c3a8 > 3` = debug、`> 1` = warn）由 `log` 宏承担。
     pub fn validate_swapchain_and_acquire_image(
         chain: &mut Arc<Self>,
@@ -450,9 +486,19 @@ impl Swapchain {
                 "retired"
             }
         };
-        let replacement = chain.replacement().inspect_err(|error| {
-            log::error!(target: "rhapsody::raw::swapchain", "Vulkan swapchain re-creation error: {error:?} (after {reason})");
-        })?;
+        let replacement = match chain.replacement() {
+            Ok(replacement) => replacement,
+            // ⚠️ 宿主偏差：零尺寸（最小化）不是失败，保留旧链（已 stale）并跳过本帧，恢复尺寸后再重建；
+            // 与 rg/frame.rs “没有图像的帧跳过呈现”一致，不每帧报错。
+            Err(error) if is_zero_extent(&error) => {
+                log::debug!(target: "rhapsody::raw::swapchain", "Skipping frame: {error} (after {reason})");
+                return Ok(None);
+            }
+            Err(error) => {
+                log::error!(target: "rhapsody::raw::swapchain", "Vulkan swapchain re-creation error: {error:?} (after {reason})");
+                return Err(error);
+            }
+        };
         *chain = Arc::new(replacement);
         match Self::acquire_classified(chain) {
             Acquired::Frame(frame) => Ok(Some(frame)),
@@ -493,30 +539,34 @@ impl Swapchain {
     pub fn on_focus(&self) {
         self.inner.write().stale = true;
     }
+    /// 宿主入口：`timeout`（纳秒）照实传给 `vkAcquireNextImageKHR`；原版固定 3 s 的路径是 [`Self::acquire_frame`]。
     pub fn acquire_next_image(
         self: &Arc<Self>,
-        _timeout: u64,
+        timeout: u64,
         semaphore: vk::Semaphore,
         fence: vk::Fence,
     ) -> Result<SwapchainImageLease> {
         // 0x1418cb520：整个 acquire 持写锁（CAS 0→8）。
         let mut inner = self.inner.write();
-        self.acquire_image_locked(&mut inner, semaphore, fence)
+        self.acquire_image_locked(&mut inner, timeout, semaphore, fence)
     }
     /// 已持写锁的 acquire 体；锁不可重入，所以状态变更都走传入的 `inner`。
+    ///
+    /// 不取设备 `queue_lock`：acquire 不是队列操作，外部同步对象（swapchain/semaphore/fence）
+    /// 由交换链写锁与槽预留保护；持全局提交锁阻塞最长 `timeout` 会卡住所有队列提交（宿主层修正）。
     fn acquire_image_locked(
         self: &Arc<Self>,
         inner: &mut SwapchainInner,
+        timeout: u64,
         semaphore: vk::Semaphore,
         fence: vk::Fence,
     ) -> Result<SwapchainImageLease> {
-        let _guard = self.device.queue_lock.lock();
         if inner.stale || inner.state != SwapchainState::Created {
             return Err(Error::Vulkan(vk::Result::ERROR_OUT_OF_DATE_KHR));
         }
         let (index, suboptimal) = acquire_result(&mut inner.stale, unsafe {
             self.loader
-                .acquire_next_image(self.handle, ACQUIRE_TIMEOUT_NS, semaphore, fence)
+                .acquire_next_image(self.handle, timeout, semaphore, fence)
         })?;
         Ok(SwapchainImageLease {
             swapchain: Arc::clone(self),
@@ -538,7 +588,12 @@ impl Swapchain {
             .ok_or(Error::Invalid("交换链没有图像槽"))?
             .clone();
         sync.reserve()?;
-        let lease = match self.acquire_image_locked(&mut inner, sync.acquired, vk::Fence::null()) {
+        let lease = match self.acquire_image_locked(
+            &mut inner,
+            ACQUIRE_TIMEOUT_NS,
+            sync.acquired,
+            vk::Fence::null(),
+        ) {
             Ok(lease) => lease,
             Err(error) => {
                 sync.release();
@@ -611,7 +666,8 @@ impl SwapchainImageLease {
 struct FrameSemaphores {
     device: Arc<VulkanDevice>,
     acquired: vk::Semaphore,
-    rendered: vk::Semaphore,
+    /// 呈现失败（非 OUT_OF_DATE 等已入队的错误）时信号量会停在已 signal 态，需整体换新，故可变。
+    rendered: Mutex<vk::Semaphore>,
     fence: vk::Fence,
     state: Mutex<FrameSlotState>,
 }
@@ -648,7 +704,7 @@ impl FrameSemaphores {
         Ok(Self {
             device,
             acquired,
-            rendered,
+            rendered: Mutex::new(rendered),
             fence,
             state: Mutex::new(FrameSlotState::default()),
         })
@@ -676,6 +732,23 @@ impl FrameSemaphores {
     fn release(&self) {
         self.state.lock().reserved = false;
     }
+    /// 换掉可能停在已 signal 态的 `rendered`（二进制信号量不可重复 signal，也无法主机复位）。
+    /// 先等呈现队列空闲，保证没有挂起的 signal/wait 引用旧信号量，再销毁旧的；新建失败则保留旧的并返回错误。
+    fn recycle_rendered(&self) -> Result<()> {
+        let fresh = unsafe {
+            self.device
+                .device
+                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+        }?;
+        let _guard = self.device.queue_lock.lock();
+        if let Err(error) = unsafe { self.device.device.queue_wait_idle(self.device.queue) } {
+            unsafe { self.device.device.destroy_semaphore(fresh, None) };
+            return Err(error.into());
+        }
+        let old = std::mem::replace(&mut *self.rendered.lock(), fresh);
+        unsafe { self.device.device.destroy_semaphore(old, None) };
+        Ok(())
+    }
 }
 impl Drop for FrameSemaphores {
     fn drop(&mut self) {
@@ -691,7 +764,9 @@ impl Drop for FrameSemaphores {
         }
         unsafe {
             self.device.device.destroy_fence(self.fence, None);
-            self.device.device.destroy_semaphore(self.rendered, None);
+            self.device
+                .device
+                .destroy_semaphore(*self.rendered.get_mut(), None);
             self.device.device.destroy_semaphore(self.acquired, None);
         }
     }
@@ -720,7 +795,7 @@ impl AcquiredSwapchainFrame {
         self.sync.acquired
     }
     pub fn render_semaphore(&self) -> vk::Semaphore {
-        self.sync.rendered
+        *self.sync.rendered.lock()
     }
     pub fn submission_fence(&self) -> vk::Fence {
         self.sync.fence
@@ -752,7 +827,7 @@ impl AcquiredSwapchainFrame {
         unsafe { device.device.reset_fences(&[fence]) }?;
         let waits = [self.sync.acquired];
         let stages = [wait_stage];
-        let signals = [self.sync.rendered];
+        let signals = [*self.sync.rendered.lock()];
         let commands = [command.handle];
         let result = {
             let _guard = device.queue_lock.lock();
@@ -792,12 +867,20 @@ impl AcquiredSwapchainFrame {
             suboptimal: lease.suboptimal,
         };
         let lease = self.lease.take().unwrap();
+        let lease_swapchain = lease.swapchain.clone();
         match lease.present(&signals) {
             Ok(suboptimal) => {
                 pending.suboptimal |= suboptimal;
                 Ok(pending)
             }
             Err(error) => {
+                // 提交已 signal `rendered`，而这次失败的 present 未必入队等待它：换新信号量，
+                // 防止同槽下次提交重复 signal 已 signal 的二进制信号量（宿主层修正）。
+                let _ = pending.wait(u64::MAX);
+                if let Err(recycle) = self.sync.recycle_rendered() {
+                    log::error!(target: "rhapsody::raw::swapchain", "rendered semaphore recycle failed: {recycle:?}");
+                    lease_swapchain.mark_stale();
+                }
                 drop(pending);
                 Err(error)
             }
@@ -933,6 +1016,20 @@ mod tests {
         w.state = SwapchainState::Created;
     }
 
+    /// 呈现失败后 `rendered` 换成新句柄，旧的（可能已 signal）被销毁，不再被同槽复用。
+    #[test]
+    fn present_failure_recycles_rendered_semaphore() {
+        let Ok(device) = crate::raw::init::create_headless_device() else {
+            return;
+        };
+        let slot = FrameSemaphores::new(device).unwrap();
+        let before = *slot.rendered.lock();
+        slot.recycle_rendered().unwrap();
+        let after = *slot.rendered.lock();
+        assert_ne!(before, after);
+        assert_ne!(after, vk::Semaphore::null());
+    }
+
     #[test]
     fn wsi_result_policy_preserves_original_nonfatal_codes() {
         assert_eq!(ACQUIRE_TIMEOUT_NS, 3_000_000_000);
@@ -943,7 +1040,7 @@ mod tests {
             (false, true)
         );
         assert_eq!(
-            present_result(Err(vk::Result::from_raw(-1_000_255_000))).unwrap(),
+            present_result(Err(vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)).unwrap(),
             (false, true)
         );
         assert!(matches!(

@@ -1,7 +1,7 @@
 //! 交换链托管。创建、获取与呈现复用 raw 层，CPU 退役与 GPU 完成分离。
 use super::{handle::Managed, resources::ResourceManager};
 use crate::raw::{
-    error::Result,
+    error::{Error, Result},
     swapchain::{
         ACQUIRE_TIMEOUT_NS, AcquiredSwapchainFrame, Swapchain, SwapchainDesc, SwapchainImageLease,
     },
@@ -79,9 +79,17 @@ impl SwapchainInner {
     pub fn raw(&self) -> vk::SwapchainKHR {
         self.inner.handle
     }
-    pub fn acquire_next_image(&self, timeout: u64) -> Result<SwapchainImageLease> {
-        self.inner
-            .acquire_next_image(timeout, vk::Semaphore::null(), vk::Fence::null())
+    /// `semaphore` 与 `fence` 至少给一个（VUID-vkAcquireNextImageKHR-semaphore-01780），否则无法得知图像何时可用。
+    pub fn acquire_next_image(
+        &self,
+        timeout: u64,
+        semaphore: vk::Semaphore,
+        fence: vk::Fence,
+    ) -> Result<SwapchainImageLease> {
+        if semaphore == vk::Semaphore::null() && fence == vk::Fence::null() {
+            return Err(Error::Invalid("获取交换链图像需要信号量或栅栏"));
+        }
+        self.inner.acquire_next_image(timeout, semaphore, fence)
     }
     pub fn present_image(&self, index: u32, waits: &[vk::Semaphore]) -> Result<bool> {
         self.inner.present(index, waits)

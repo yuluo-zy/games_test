@@ -81,6 +81,7 @@ impl Managed<Texture> {
 ///   相等（0x1418bd600）是 `#[derive(PartialEq)]` 的逐字段比较；
 /// * “纹理全局 id 计数器”不存在：0x140bdc2d0 里被递增的线程局部 `{inited, k0, k1}` 是 std
 ///   `RandomState::new()` 的每线程密钥（首次用 OS 随机 `0x140d64e00`，之后每建一个 HashMap `k0 += 1`）。
+///
 /// 这里 `HashMap<完整描述符, 视图>` 语义等价（相同描述符命中同一视图），只是哈希器不同（不影响可见行为）。
 #[derive(Default)]
 pub(crate) struct ViewCache {
