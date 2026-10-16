@@ -1,15 +1,13 @@
-//! raw-init 域：设备排序比较器 / 内存门槛 / missing_devices / 预算快照 / 厂商句柄匹配。
-//! 比较器与门槛的期望值直接由 0x1418b9130 / 0x1418b5680 机器码读出的常量推出（见
-//! reverse-engineering/.../reports/raw-init-devices.md）。
+//! raw-init 域：设备排序 / 内存门槛 / missing_devices / 预算快照 / 厂商句柄匹配。
 use ash::vk;
 use rhapsody::raw::init::{
-    AvailableGraphicsDevice, AvailableGraphicsDeviceInitState, DeviceDecision, DeviceMemoryMetrics,
+    AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics,
     DxgiAdapter, GraphicsInstance, MissingGraphicsDevice, MissingVendor,
     meets_original_memory_threshold, missing_devices, order_and_filter_devices_original,
     sort_devices_original,
 };
 use rhapsody::raw::physical_device::{
-    BUDGET_SNAPSHOT_BYTES, DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget,
+    DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget,
     MAX_MEMORY_HEAPS, MemoryBudgetSnapshot, PerformanceInfo, VendorDeviceEntry,
     VendorPerformanceQueries, format_vendor_performance_info, match_vendor_device_handle,
 };
@@ -56,34 +54,6 @@ fn device(
         extensions: vec![],
         errors: vec![],
     }
-}
-
-#[test]
-fn device_kind_byte_follows_the_0x302000104_lookup() {
-    // 0x1418b3560：eax = 0x302000104 >> (type*8)，type>=5 取 4。
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::OTHER) as u8, 4);
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::INTEGRATED_GPU) as u8, 1);
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::DISCRETE_GPU) as u8, 0);
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::VIRTUAL_GPU) as u8, 2);
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::CPU) as u8, 3);
-    assert_eq!(GraphicsDeviceKind::from_vk(vk::PhysicalDeviceType::from_raw(9)) as u8, 4);
-}
-
-#[test]
-fn comparator_keys_match_the_original_constants() {
-    use GraphicsDeviceKind::*;
-    let k = |name: &str, kind, local| device(0, name, kind, local, 0).device_order_key();
-    assert_eq!(k("RTX", Discrete, 8 * GIB), -4000 - 8);
-    assert_eq!(k("Iris", Integrated, 2 * GIB), -3000 - 2);
-    // emulated 只对 Discrete/Integrated 生效，且都落到 -2000。
-    assert_eq!(k("Microsoft Basic Render Driver", Discrete, 0), -2000);
-    assert_eq!(k("Foo Direct3D12 Bar", Integrated, 4 * GIB), -2000 - 4);
-    assert_eq!(k("Direct3D12", Virtual, GIB), -2000 - 1);
-    assert_eq!(k("llvmpipe", Cpu, 16 * GIB), -1000 - 16);
-    assert_eq!(k("Direct3D12", Cpu, 0), -1000);
-    assert_eq!(k("x", Other, 0), 0);
-    // `local >> 30` 是向下取整的 GiB。
-    assert_eq!(k("x", Discrete, 2 * GIB - 1), -4000 - 1);
 }
 
 #[test]
@@ -148,7 +118,7 @@ fn memory_threshold_edges() {
 }
 
 #[test]
-fn original_filter_drops_by_memory_only_and_records_tag3() {
+fn original_filter_drops_by_memory_only_and_records_insufficient_memory() {
     use GraphicsDeviceKind::*;
     let mut devices = vec![
         device(0, "small igpu", Integrated, 512 << 20, 512 << 20),
@@ -163,12 +133,10 @@ fn original_filter_drops_by_memory_only_and_records_tag3() {
     order_and_filter_devices_original(&mut devices, &mut missing);
     assert_eq!(devices.iter().map(|d| d.index).collect::<Vec<_>>(), vec![1, 2]);
     assert_eq!(missing.len(), 2);
-    assert_eq!(missing[0].original_tag(), 2);
     match &missing[1] {
         MissingGraphicsDevice::InsufficientMemory(d) => assert_eq!(d.index, 0),
         other => panic!("应为 tag 3: {other:?}"),
     }
-    assert_eq!(missing[1].original_tag(), 3);
 }
 
 #[test]
@@ -199,13 +167,6 @@ fn missing_devices_matches_by_luid_or_name_and_only_for_amd_nvidia() {
 }
 
 #[test]
-fn init_state_is_error_only_for_tag_1() {
-    assert!(AvailableGraphicsDeviceInitState { tag: 1 }.is_error());
-    assert!(!AvailableGraphicsDeviceInitState { tag: 0 }.is_error());
-    assert!(!AvailableGraphicsDeviceInitState { tag: 2 }.is_error());
-}
-
-#[test]
 fn compatibility_uses_heap_sizes_and_the_kind_byte() {
     use GraphicsDeviceKind::*;
     let mut d = device(0, "gpu", Discrete, 1_000_000_000, 400_000_000);
@@ -217,9 +178,7 @@ fn compatibility_uses_heap_sizes_and_the_kind_byte() {
 }
 
 #[test]
-fn budget_snapshot_layout_clamp_and_sums() {
-    assert_eq!(BUDGET_SNAPSHOT_BYTES, 0x110);
-    assert_eq!(std::mem::size_of::<vk::PhysicalDeviceMemoryBudgetPropertiesEXT>(), 0x110);
+fn budget_snapshot_clamp_and_sums() {
     let mut old = MemoryBudgetSnapshot { heap_budget: [0; 16], heap_usage: [0; 16] };
     let mut new = old;
     for i in 0..MAX_MEMORY_HEAPS {

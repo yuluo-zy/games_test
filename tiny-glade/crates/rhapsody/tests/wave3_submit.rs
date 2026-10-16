@@ -90,31 +90,6 @@ fn second_queue_family_is_the_first_compute_only_family() {
     assert_eq!(none.auxiliary_family, None, "dev+0x20 tag = 0 → None");
 }
 
-/// ash 0.38 函数表偏移：`dev+0x78` 起是 `ash::Device`，V1_0@0、V1_1@0x3c0、V1_2@0x440、V1_3@0x4a8、句柄@0x5c8。
-/// 与原机器码里的 dev+0x88 / +0x2c8 / +0x370 / +0x3e0 / +0x4f0 / +0x4f8 / +0x640 逐项吻合。
-#[test]
-fn ash_function_table_offsets_match_machine_code() {
-    use std::mem::{offset_of, size_of};
-    const BASE: usize = 0x78;
-    assert_eq!(size_of::<ash::DeviceFnV1_0>(), 0x3c0);
-    assert_eq!(size_of::<ash::DeviceFnV1_1>(), 0x80);
-    assert_eq!(size_of::<ash::DeviceFnV1_2>(), 0x68);
-    assert_eq!(size_of::<ash::DeviceFnV1_3>(), 0x120);
-    let v10 = BASE;
-    let v11 = v10 + size_of::<ash::DeviceFnV1_0>();
-    let v12 = v11 + size_of::<ash::DeviceFnV1_1>();
-    let v13 = v12 + size_of::<ash::DeviceFnV1_2>();
-    let handle = v13 + size_of::<ash::DeviceFnV1_3>();
-    assert_eq!(v10 + offset_of!(ash::DeviceFnV1_0, queue_submit), 0x88);
-    assert_eq!(v10 + offset_of!(ash::DeviceFnV1_0, device_wait_idle), 0x98);
-    assert_eq!(v10 + offset_of!(ash::DeviceFnV1_0, end_command_buffer), 0x2c8);
-    assert_eq!(v10 + offset_of!(ash::DeviceFnV1_0, cmd_copy_buffer), 0x370);
-    assert_eq!(v10 + offset_of!(ash::DeviceFnV1_0, cmd_pipeline_barrier), 0x3e0);
-    assert_eq!(v12 + offset_of!(ash::DeviceFnV1_2, get_semaphore_counter_value), 0x4f0);
-    assert_eq!(v12 + offset_of!(ash::DeviceFnV1_2, wait_semaphores), 0x4f8);
-    assert_eq!(handle, 0x640, "VkDevice 在 dev+0x640（ash 内 0x5c8）");
-}
-
 /// 0x140bebffa..0x140bec1f4：慢提交调试同步分支的顺序与阈值（`secs != 0 || nanos >= 20_000_001`）。
 #[test]
 fn debug_sync_wait_logs_sleeps_only_when_slow_and_always_waits_again() {

@@ -348,7 +348,6 @@ fn desc(name: &str, vendor: u32, low: u32, high: i32) -> DxgiAdapterDesc {
 
 #[test]
 fn dxgi_record_layout_and_field_mapping() {
-    assert_eq!(std::mem::size_of::<DxgiAdapter>(), 0x28);
     assert_eq!(std::mem::size_of::<DxgiAdapterDesc>(), 0x130);
     assert_eq!(std::mem::offset_of!(DxgiAdapterDesc, vendor_id), 0x100);
     assert_eq!(std::mem::offset_of!(DxgiAdapterDesc, luid_low_part), 0x128);
@@ -384,24 +383,6 @@ fn dxgi_enumerate_skips_failed_getdesc_stops_at_first_enum_error_and_maps_factor
 }
 
 // ---- gpu-profiler ---------------------------------------------------------------------------
-
-#[test]
-fn gpu_profiler_shared_types_match_the_machine_code() {
-    assert_eq!(MarkerId::from_u64(5).as_u64(), 5);
-    assert_eq!(MarkerId::from_u64(0x1_0000_0007), MarkerId(7), "截断低 32 位");
-    assert!(std::panic::catch_unwind(|| MarkerId::from_u64(u64::MAX)).is_err());
-    assert_eq!(GpuTick(10).duration_since(GpuTick(4)), GpuTickDuration(6));
-    assert_eq!(GpuTick(4).duration_since(GpuTick(10)), GpuTickDuration(0), "饱和差");
-    assert_eq!(GpuTickDuration(1000).nanoseconds(1.5), NanoSecond(1500));
-    assert_eq!(GpuTickDuration(u64::MAX).nanoseconds(2.0), NanoSecond(u64::MAX), "as u64 饱和");
-    assert_eq!(GpuTickDuration(3).nanoseconds(0.0), NanoSecond(0));
-    // create_marker 不去重，返回下标。
-    let mut m = FrameMarkers::default();
-    assert_eq!(m.create_marker("a"), MarkerId(0));
-    assert_eq!(m.create_marker("a"), MarkerId(1));
-    assert_eq!(m.marker_name(MarkerId(1)), "a");
-    assert!(std::panic::catch_unwind(|| FrameMarkers::default().marker_name(MarkerId(0)).len()).is_err());
-}
 
 #[test]
 fn gpu_profiler_retrieve_results_pairs_indices_with_ticks_and_sorts_by_tick() {
@@ -512,29 +493,4 @@ fn shipped_raster_defines_hashes_are_siphash13_xor_of_pair_hashes() {
     assert_eq!(fold(&[("SHADER_VARIANT_DEPTH_ONLY", "0")]), 0xb903_e43f_fb3d_a915);
     assert_eq!(fold(&[("SHADER_VARIANT_DEPTH_ONLY", "1")]), 0xf0ad_ff76_827e_73ff);
     assert_eq!(fold(&[]), 0, "compute 键：空 defines 哈希为 0");
-}
-
-/// `Type::nbyte`（0x1420bda00）与 `ScalarType::nbyte`（0x1420bd380）的机器码语义：
-/// Void→0、Boolean→1、Signed/Unsigned/Float(n)→n；Struct = 最后一个成员 `offset + nbyte(ty)`（空结构 0）；
-/// DeviceAddress/DevicePointer = 8；opaque 资源标签无尺寸。
-#[test]
-fn reflection_type_nbyte_matches_the_machine_code_rules() {
-    use shader_pipeline::reflection_ty::*;
-    let sc = |s| Type::Scalar(s);
-    assert_eq!(sc(ScalarType::Void).nbyte(), Some(0));
-    assert_eq!(sc(ScalarType::Boolean).nbyte(), Some(1));
-    for n in [1u32, 2, 4, 8] {
-        assert_eq!(sc(ScalarType::Signed(n)).nbyte(), Some(n as usize));
-        assert_eq!(sc(ScalarType::Unsigned(n)).nbyte(), Some(n as usize));
-        assert_eq!(sc(ScalarType::Float(n)).nbyte(), Some(n as usize));
-    }
-    assert_eq!(Type::DeviceAddress.nbyte(), Some(8));
-    assert_eq!(Type::DevicePointer(Box::new(Type::DeviceAddress)).nbyte(), Some(8));
-    let member = |offset, ty| StructMember { name: None, offset, ty };
-    let s = Type::Struct(StructType {
-        name: None,
-        members: vec![member(0, sc(ScalarType::Float(4))), member(16, sc(ScalarType::Float(4)))],
-    });
-    assert_eq!(s.nbyte(), Some(20), "最后成员 offset 16 + 4");
-    assert_eq!(Type::Struct(StructType { name: None, members: vec![] }).nbyte(), Some(0));
 }

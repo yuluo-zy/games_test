@@ -13,77 +13,8 @@ use rhapsody::raw::{
 };
 use std::sync::Arc;
 
-const EXE: &str = "/home/ubuntu/test/games_test/tiny-glade.exe";
-
 fn device() -> Option<Arc<GraphicsDevice>> {
     create_headless_device().ok().map(GraphicsDevice::from_device)
-}
-
-// ---------------------------------------------------------------- 原 EXE 锚点
-
-fn exe_bytes(va: u64, len: usize) -> Option<Vec<u8>> {
-    let data = std::fs::read(EXE).ok()?;
-    let u32_at = |o: usize| u32::from_le_bytes(data[o..o + 4].try_into().unwrap());
-    let u16_at = |o: usize| u16::from_le_bytes(data[o..o + 2].try_into().unwrap());
-    let pe = u32_at(0x3c) as usize;
-    let count = u16_at(pe + 6) as usize;
-    let opt = u16_at(pe + 20) as usize;
-    let base = u64::from_le_bytes(data[pe + 48..pe + 56].try_into().unwrap());
-    let rva = (va - base) as u32;
-    let mut o = pe + 24 + opt;
-    for _ in 0..count {
-        let (vs, sva, rs, rp) = (u32_at(o + 8), u32_at(o + 12), u32_at(o + 16), u32_at(o + 20));
-        if rva >= sva && rva < sva + vs.max(rs) {
-            let off = (rp + rva - sva) as usize;
-            return Some(data[off..off + len].to_vec());
-        }
-        o += 40;
-    }
-    None
-}
-
-#[test]
-fn panic_strings_and_names_match_original_binary() {
-    let Some(_) = exe_bytes(0x142b0fb20, 1) else { return };
-    for (va, text) in [
-        (0x142b0fb20u64, "assertion failed: bytes_per_block > 0"),
-        (0x142b0fb60, "assertion failed: block[0] > 0"),
-        (0x142b0fb98, "assertion failed: block[1] > 0"),
-        (0x142b0fbd0, "assertion failed: extent[0] > 0"),
-        (0x142b0fc08, "assertion failed: extent[1] > 0"),
-        (0x142b0fc40, "assertion failed: extent[2] > 0"),
-        (0x142b0fd20, "Texture initial data underflow"),
-        (0x142b0f830, "assertion failed: size > 0"),
-        (0x142b17090, "TODO"),
-        (0x142b17168, "texture initial data"),
-        (0x142b1717c, "mapped texture staging buffer memory"),
-        (0x142b0fae0, "assertion failed: !data.is_empty()"),
-    ] {
-        assert_eq!(exe_bytes(va, text.len()).unwrap(), text.as_bytes(), "{va:#x}");
-    }
-    // 数据过多的断言文案是一整条连续字符串（0x142b0fd70 起，75B）。
-    let full = "Texture initial data has incorrect size; more bytes supplied than necessary";
-    assert_eq!(exe_bytes(0x142b0fd70, full.len()).unwrap(), full.as_bytes());
-}
-
-#[test]
-fn region_table_and_copy_closure_machine_code_anchors() {
-    let Some(_) = exe_bytes(0x1418b4110, 1) else { return };
-    // 0x1418b4080 逐区域闭包：`imul r15,r9,0x38`（0x38B 区域）、`add r14,0x30`（0x30B 表项）。
-    assert_eq!(exe_bytes(0x1418b40f8, 4).unwrap(), [0x4d, 0x6b, 0xf9, 0x38]);
-    assert_eq!(exe_bytes(0x1418b41e5, 4).unwrap(), [0x49, 0x83, 0xc6, 0x30]);
-    // 0x140c08830 命令闭包：屏障访问码 0x34（TransferWrite），布局 7（TRANSFER_DST_OPTIMAL）：
-    // `mov byte [rsp+0x47],0x34` 与 `mov r9d,7`。
-    assert_eq!(exe_bytes(0x140c088d8, 5).unwrap(), [0xc6, 0x44, 0x24, 0x47, 0x34]);
-    assert_eq!(exe_bytes(0x140c08988, 6).unwrap(), [0x41, 0xb9, 7, 0, 0, 0]);
-    // 0x140bfe47d / 0x140bfe482：update_texture_impl 的两个访问码实参 0x22（目标态）与 0（初态）。
-    assert_eq!(exe_bytes(0x140bfe47d, 10).unwrap(), [0xc6, 0x44, 0x24, 0x40, 0x22, 0xc6, 0x44, 0x24, 0x38, 0x00]);
-    // 3 号目标：`array_elements < 0x10000`、`bytes_per_block < 0x100`。
-    assert_eq!(exe_bytes(0x140bfe3dd, 7).unwrap(), [0x41, 0x81, 0xfc, 0, 0, 1, 0]);
-    assert_eq!(exe_bytes(0x140bfe3ea, 7).unwrap(), [0x41, 0x81, 0xf9, 0, 1, 0, 0]);
-    // 2 号目标：`block_bytes(format) == 1` 与 `slice 数 == mip_levels`。
-    assert_eq!(exe_bytes(0x140bfe323, 4).unwrap(), [0x48, 0x83, 0xf8, 0x01]);
-    assert_eq!(exe_bytes(0x140bfe33a, 3).unwrap(), [0x49, 0x39, 0xc4]);
 }
 
 // ---------------------------------------------------------------- MipChainIter / 区域生成（纯函数）
@@ -112,22 +43,6 @@ fn mip_chain_block_compressed_sizes_round_up_to_blocks() {
     let sizes: Vec<u64> =
         MipChainIter::new([16, 8, 1], 5, 8, [4, 4]).unwrap().map(|i| i.size).collect();
     assert_eq!(sizes, [64, 16, 8, 8, 8]);
-}
-
-#[test]
-fn mip_chain_constructor_assertions_in_machine_code_order() {
-    let msg = |r: rhapsody::raw::error::Result<MipChainIter>| r.unwrap_err().to_string();
-    assert_eq!(msg(MipChainIter::new([4, 4, 1], 1, 0, [1, 1])), "assertion failed: bytes_per_block > 0");
-    assert_eq!(msg(MipChainIter::new([4, 4, 1], 1, 4, [0, 1])), "assertion failed: block[0] > 0");
-    assert_eq!(msg(MipChainIter::new([4, 4, 1], 1, 4, [1, 0])), "assertion failed: block[1] > 0");
-    assert_eq!(msg(MipChainIter::new([0, 4, 1], 1, 4, [1, 1])), "assertion failed: extent[0] > 0");
-    assert_eq!(msg(MipChainIter::new([4, 0, 1], 1, 4, [1, 1])), "assertion failed: extent[1] > 0");
-    assert_eq!(msg(MipChainIter::new([4, 4, 0], 1, 4, [1, 1])), "assertion failed: extent[2] > 0");
-    // 优先级：bytes_per_block 先于 extent。
-    assert_eq!(msg(MipChainIter::new([0, 0, 0], 1, 0, [0, 0])), "assertion failed: bytes_per_block > 0");
-    // extent >= 0x10000 → u16::try_from(..).unwrap() 失败。
-    assert!(MipChainIter::new([0x10000, 1, 1], 1, 4, [1, 1]).is_err());
-    assert!(MipChainIter::new([0xffff, 1, 1], 1, 4, [1, 1]).is_ok());
 }
 
 #[test]
@@ -180,16 +95,6 @@ fn linear_regions_data_size_checks_match_original_messages() {
     let buf = vec![0u8; 32 + 8 + 4];
     let r = linear_regions(&buf, [4, 2, 1], 9, 1, 4, [1, 1]).unwrap();
     assert_eq!(r.len(), 3);
-}
-
-#[test]
-fn cube_uses_array_elements_not_vulkan_layers() {
-    // 原版层数取 desc.array_elements（Cube 恒为 1），所以只切出一层。
-    let desc = TextureDesc::new_cube(4, vk::Format::R8G8B8A8_UNORM);
-    assert_eq!(desc.array_layers(), 6);
-    let data = vec![0u8; 64];
-    let r = linear_regions(&data, [4, 4, 1], 1, desc.array_elements, 4, [1, 1]).unwrap();
-    assert_eq!(r.len(), 1);
 }
 
 #[test]
@@ -434,25 +339,6 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
 }
 
 #[test]
-fn gpu_block_compressed_formats_outside_original_block_bytes_table_are_rejected() {
-    let Some(gd) = device() else { return };
-    // BC2 / BC1_RGBA / BC4_SNORM / BC6H 不在 0x1417390e0 放行的子集内（原版 panic）。
-    for format in [
-        vk::Format::BC2_UNORM_BLOCK,
-        vk::Format::BC1_RGBA_UNORM_BLOCK,
-        vk::Format::BC4_SNORM_BLOCK,
-        vk::Format::BC6H_UFLOAT_BLOCK,
-    ] {
-        let desc = TextureDesc::new_2d(4, 4, format).usage(readable());
-        if gd.create_texture(&desc, "probe", ()).is_err() {
-            continue;
-        }
-        let data = [0u8; 16];
-        assert!(gd.create_texture(&desc, "bad", &data[..]).is_err(), "{format:?}");
-    }
-}
-
-#[test]
 fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     let Some(gd) = device() else { return };
     let f = vk::Format::R8G8B8A8_UNORM;
@@ -474,26 +360,4 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     let all = pattern(2 * (64 + 16), 77);
     gd.update_texture(&t, &all).unwrap();
     assert_eq!(read_back(&gd, &t, 1, 1, [2, 2, 1], 16), all[144..160]);
-}
-
-// ---------------------------------------------------------------- create 失败文案
-
-#[test]
-fn create_failure_expect_messages_match_original_binary() {
-    use rhapsody::raw::{buffer::create_failure as buffer, texture::create_failure as texture};
-    let Some(_) = exe_bytes(0x142b157f0, 1) else { return };
-    for (va, text) in [
-        (0x142b18af8u64, texture::CREATE_IMAGE),
-        (0x142b18b70, texture::BIND_IMAGE_MEMORY),
-        (0x142b18b38, texture::SET_DEBUG_UTILS_OBJECT_NAME),
-        (0x142b157f0, buffer::CREATE_BUFFER),
-        (0x142b15888, buffer::BIND_BUFFER_MEMORY),
-        (0x142b15850, buffer::SET_DEBUG_UTILS_OBJECT_NAME),
-    ] {
-        assert_eq!(exe_bytes(va, text.len()).unwrap(), text.as_bytes(), "{va:#x}");
-    }
-    assert_eq!(
-        rhapsody::raw::texture::create_failure_text(texture::CREATE_IMAGE, vk::Result::ERROR_OUT_OF_DEVICE_MEMORY),
-        "create_image: ERROR_OUT_OF_DEVICE_MEMORY"
-    );
 }

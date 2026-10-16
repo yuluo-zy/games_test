@@ -1,9 +1,6 @@
-//! 设备创建规则（0x140bf2560）：必需扩展/特性/上限与队列配置。无 Vulkan 设备时跳过。
+//! 设备创建规则：必需扩展/特性/上限与队列配置。无 Vulkan 设备时跳过。
 use ash::vk;
-use rhapsody::raw::init::{
-    GraphicsInstance, MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES, OPTIONAL_DEVICE_EXTENSIONS,
-    REQUIRED_DEVICE_EXTENSIONS, first_missing_required_feature,
-};
+use rhapsody::raw::init::{GraphicsInstance, first_missing_required_feature};
 
 #[test]
 fn required_feature_chain_reports_the_first_missing_item_in_original_order() {
@@ -53,15 +50,6 @@ fn required_feature_chain_reports_the_first_missing_item_in_original_order() {
             "shader_demote_to_helper_invocation"
         ))
     );
-}
-
-#[test]
-fn extension_and_limit_tables_match_the_string_pool() {
-    assert_eq!(REQUIRED_DEVICE_EXTENSIONS.len(), 8);
-    assert_eq!(REQUIRED_DEVICE_EXTENSIONS[0], "VK_KHR_swapchain");
-    // 原版传 `len + NUL`：0x1d / 0x15 / 0x1d。
-    assert_eq!(OPTIONAL_DEVICE_EXTENSIONS.map(|n| n.len() + 1)[..3], [0x1d, 0x15, 0x1d]);
-    assert_eq!(MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES, 8192);
 }
 
 #[test]

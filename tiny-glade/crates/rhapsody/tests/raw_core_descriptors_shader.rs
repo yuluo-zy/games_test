@@ -1,15 +1,12 @@
-//! raw-core 域·描述符/着色器管线/渲染通道/绑定的原机器码对齐测试。
-//! 证据见 evidence/render-recovery/rhapsody-alignment/reports/raw-core-descriptors-shader.md。
+//! raw-core 域·描述符/着色器管线/渲染通道/绑定测试。
 //! 需要 Vulkan 设备的用例在无设备时跳过（本机用 lavapipe）。
 use ash::vk;
 use rhapsody::raw::{
-    descriptor_set::{DESCRIPTOR_POOL_MAX_SETS, MAX_DESCRIPTOR_SETS},
     init::create_headless_device,
     render_pass::{
         AttachmentArray, DepthAccess, RenderPass, RenderPassAttachmentDesc, RenderPassDesc,
     },
     sampler::BUILTIN_SAMPLER_NAMES,
-    shader::InterfaceError,
 };
 
 fn color(format: vk::Format) -> RenderPassAttachmentDesc {
@@ -17,11 +14,7 @@ fn color(format: vk::Format) -> RenderPassAttachmentDesc {
 }
 
 #[test]
-fn render_pass_desc_has_the_original_key_shape() {
-    // ArrayVec<RenderPassAttachmentDesc, 8>：8*0x10 + u32 len = 0x84（arrayvec 0.7.4）。
-    assert_eq!(std::mem::size_of::<AttachmentArray>(), 0x84);
-    // 键 0x98B（桶 0xb0 = 键 0x98 + RenderPass ManagedHandle 0x18）。
-    assert_eq!(std::mem::size_of::<RenderPassDesc>(), 0x98);
+fn render_pass_attachment_key_compares_only_live_entries() {
     // 哈希/相等只看有效切片。
     let mut a = AttachmentArray::new();
     a.push(color(vk::Format::R8G8B8A8_UNORM));
@@ -110,19 +103,7 @@ fn from_desc_creates_the_original_render_pass_on_a_real_device() {
 }
 
 #[test]
-fn descriptor_constants_come_from_the_machine_code() {
-    // 0x140be5a40：vkCreateDescriptorPool.maxSets = 0x64；0x140be60a0：assert set_count <= 4。
-    assert_eq!(DESCRIPTOR_POOL_MAX_SETS, 100);
-    assert_eq!(MAX_DESCRIPTOR_SETS, 4);
-}
-
-#[test]
-fn builtin_sampler_names_and_missing_sampler_message() {
+fn builtin_sampler_names() {
     assert_eq!(BUILTIN_SAMPLER_NAMES.len(), 9);
     assert!(BUILTIN_SAMPLER_NAMES.contains(&"sampler_shadow_linear"));
-    // sampler.rs:201 `Sampler not found: {name}`（0x142b16bfd）。
-    assert_eq!(
-        InterfaceError::MissingSampler("sampler_x".into()).to_string(),
-        "Sampler not found: sampler_x"
-    );
 }

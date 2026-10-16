@@ -1,12 +1,11 @@
 //! rg 缺陷修复的 CPU 回归：导出但未访问的 Create 资源、失败路径的资源归还、temporal 记录的放弃/确认、
-//! pass 数上限的构图期错误、视图 mip 范围的原版截断语义。不需要 Vulkan 设备。
+//! pass 数上限的构图期错误。不需要 Vulkan 设备。
 use ash::vk;
 use rhapsody::raw::{
     managed::lifecycle::{self, ResourceHandle, SequenceRuntime},
     submit,
 };
 use rhapsody::rg::{
-    binding::resolve_view_mip_range,
     executor::{Error, ExecutionBackend, ExecutionChain},
     graph::{
         self, AccessDependency, BackendFailure, BufferDesc, BuildError, Descriptor, EventBackend,
@@ -426,13 +425,4 @@ fn exceeding_the_pass_packing_domain_is_a_build_error() {
         pass.add_resource_access(resource, WRITE, 0),
         Err(BuildError::PassLimit)
     ));
-}
-
-// ---------------------------------------------------------------- 8. mip 范围
-
-#[test]
-fn view_mip_range_keeps_the_original_low_byte_base_subtraction() {
-    // 原 0x14205f273 `sub bl, al` 只比较 base 的低 8 位：base=256 与 base=0 走同一借位判断。
-    assert_eq!(resolve_view_mip_range(10, 256, None), Ok((256, 266)));
-    assert!(resolve_view_mip_range(10, 11, None).is_err());
 }

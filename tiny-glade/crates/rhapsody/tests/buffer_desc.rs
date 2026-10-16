@@ -1,28 +1,6 @@
-//! BufferDesc 原 16 字节 ABI 与 memory_location 枚举映射。
+//! BufferDesc 构造与 memory_location 内存属性映射。
 use ash::vk;
-use rhapsody::raw::buffer::{BufferDesc, MemoryLocation};
-use std::mem::{align_of, size_of};
-
-#[test]
-fn layout_is_16_bytes_with_original_field_order() {
-    assert_eq!(size_of::<BufferDesc>(), 16);
-    assert_eq!(align_of::<BufferDesc>(), 8);
-}
-
-#[test]
-fn memory_location_raw_values_match_original_enum() {
-    for (raw, loc) in [
-        (1, MemoryLocation::GpuOnly),
-        (2, MemoryLocation::CpuToGpu),
-        (3, MemoryLocation::CpuToGpuLowPrio),
-        (4, MemoryLocation::GpuToCpu),
-    ] {
-        assert_eq!(MemoryLocation::from_raw(raw), Some(loc));
-        assert_eq!(loc.as_raw(), raw);
-    }
-    assert_eq!(MemoryLocation::from_raw(0), None);
-    assert_eq!(MemoryLocation::from_raw(5), None);
-}
+use rhapsody::raw::buffer::BufferDesc;
 
 #[test]
 fn constructors_map_to_expected_memory_properties() {

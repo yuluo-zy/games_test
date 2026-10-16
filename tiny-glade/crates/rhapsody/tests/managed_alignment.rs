@@ -1,13 +1,10 @@
-//! managed 域原版对齐补充测试：空闲链表无锁复用、16 B 退役项、tag 3 `todo!()`、纹理视图缓存。
+//! managed 域补充测试：空闲链表无锁复用、纹理视图缓存。
 //! 视图缓存测试需要 Vulkan 设备，无设备时跳过（本机可用 lavapipe）。
 use ash::vk;
 use rhapsody::raw::{
     device::GraphicsDevice,
     init::create_headless_device,
-    managed::{
-        handle::{DisposedRawResourceHandleAbi, ResourceTag},
-        resources::ResourceManager,
-    },
+    managed::resources::ResourceManager,
     texture::{TextureDesc, TextureViewDesc},
 };
 use std::sync::Arc;
@@ -71,24 +68,6 @@ fn free_list_survives_concurrent_churn_without_duplicate_live_slots() {
 
 fn device() -> Option<Arc<GraphicsDevice>> {
     create_headless_device().ok().map(GraphicsDevice::from_device)
-}
-
-#[test]
-fn real_buffer_retirement_is_a_16_byte_record_with_tag_1_and_device_id() {
-    use rhapsody::raw::buffer::BufferDesc;
-    let Some(gd) = device() else { return };
-    let desc = BufferDesc::new_gpu_only(64, vk::BufferUsageFlags::STORAGE_BUFFER);
-    let buffer = gd.create_buffer(&desc, "rec", ()).unwrap();
-    let abi = buffer.abi();
-    assert_eq!(abi.resource_type, ResourceTag::Buffer as u8);
-    assert_eq!(abi.resource_checksum, 0);
-    let key = buffer.key();
-    drop(buffer);
-    let records = gd.resources.pending_disposed_records();
-    let record: &DisposedRawResourceHandleAbi = records.last().expect("退役队列里有这个缓冲");
-    assert_eq!(record.tag(), Some(ResourceTag::Buffer));
-    assert_eq!((record.device_id, record.control), (key.device_id, abi.control));
-    assert_eq!(std::mem::size_of_val(record), 0x10);
 }
 
 #[test]

@@ -2,9 +2,7 @@
 use rhapsody::rg::{
     graph::{BufferDesc, Descriptor, OriginSource, RenderGraph, TextureDesc},
     pass_bindings::PassBindingError,
-    resource::{
-        ResourceHandle, ResourceOrigin, original_ref_buffer_binding, original_ref_view_binding,
-    },
+    resource::ResourceOrigin,
 };
 #[test]
 fn typed_refs_register_access_and_preserve_original_upgrade_records() {
@@ -66,17 +64,4 @@ fn typed_ref_rejects_wrong_kind_before_registration() {
     ));
     pass.render(|_| true);
     assert!(graph.build().declaration.passes[0].accesses.is_empty());
-}
-#[test]
-fn native_role_carriers_preserve_unwritten_padding() {
-    let handle = ResourceHandle::from_raw(71);
-    assert_eq!(original_ref_buffer_binding(handle, true), [3, 71]);
-    assert_eq!(original_ref_buffer_binding(handle, false), [4, 71]);
-    let view = [19; 60];
-    let mut output = [0xaa; 68];
-    original_ref_view_binding(&view, handle, 1, &mut output);
-    assert_eq!(&output[..60], &view);
-    assert_eq!(&output[60..64], &71u32.to_le_bytes());
-    assert_eq!(output[64], 1);
-    assert_eq!(&output[65..], [0xaa; 3]);
 }

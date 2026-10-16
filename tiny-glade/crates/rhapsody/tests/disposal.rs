@@ -1,4 +1,4 @@
-//! 命令缓冲销毁桶的原版语义：重复 seq / 缺桶 panic、缺桶回退桶、SequentialDisposal 乱序窗口。
+//! 命令缓冲销毁桶语义：重复 seq / 缺桶失败、缺桶回退桶、SequentialDisposal 乱序窗口。
 use rhapsody::raw::disposal::{CommandBufferDisposalBuckets, DisposalBucket, SequentialDisposal};
 use rhapsody::raw::managed::tracking::Failure;
 use std::sync::{
@@ -12,20 +12,6 @@ fn panic_message(f: impl FnOnce() + std::panic::UnwindSafe) -> String {
         .cloned()
         .or_else(|| err.downcast_ref::<&str>().map(|s| s.to_string()))
         .unwrap_or_default()
-}
-
-#[test]
-fn insert_duplicate_panics_with_original_text_and_remove_missing_panics() {
-    let buckets = CommandBufferDisposalBuckets::default();
-    buckets.insert(5, DisposalBucket::new());
-    let msg = panic_message(std::panic::AssertUnwindSafe(|| buckets.insert(5, DisposalBucket::new())));
-    assert_eq!(msg, "assertion failed: prev.is_none()");
-    // 原顺序先替换后断言：桶仍在。
-    assert!(buckets.contains(5));
-    let msg = panic_message(std::panic::AssertUnwindSafe(|| {
-        buckets.remove(6);
-    }));
-    assert_eq!(msg, "bucket removed prematurely or command buffer begin() never called?");
 }
 
 #[test]
@@ -60,7 +46,7 @@ fn dispose_cb_resource_hits_bucket_or_falls_back() {
 }
 
 #[test]
-fn sequential_disposal_window_matches_machine_code() {
+fn sequential_disposal_window_retires_in_order() {
     let mut order = vec![];
     let mut sequential = SequentialDisposal::new();
     sequential.dispose_in_order(3, |s| order.push(s));

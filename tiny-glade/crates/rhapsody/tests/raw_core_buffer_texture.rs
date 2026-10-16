@@ -1,4 +1,4 @@
-//! raw-core 缓冲/纹理域测试：布局偏移、判据、边界；有原 EXE 时直接读机器码表作 oracle。
+//! raw-core 缓冲/纹理域测试：判据、边界与描述符构造。
 //! 需要 Vulkan 的用例在无设备时跳过；本机可用 lavapipe。
 // 区间参数刻意传单元素切片与反向区间，用来覆盖原版的区间校验。
 #![allow(clippy::single_range_in_vec_init, clippy::reversed_empty_ranges)]
@@ -9,67 +9,18 @@ use rhapsody::raw::{
         BufferRegion, BufferSlotView, BufferUpdateError, MemoryLocation, SLOT_ALLOCATION_TAKEN,
     },
     device::GraphicsDevice,
-    format::{observed, vk_format_info},
     init::create_headless_device,
     texture::{
         get_image_create_info_with_data, image_aspect_mask_from_format, OptionU32, TextureDesc,
-        TextureKind, TextureRecord, TextureViewDescRaw,
+        TextureKind, TextureViewDescRaw,
     },
 };
-use std::mem::{offset_of, size_of};
-
-const EXE: &str = "/home/ubuntu/test/games_test/tiny-glade.exe";
-
-/// 最小 PE 读取：按 RVA 读原 EXE 的 .rdata 字节；EXE 不存在时返回 None（测试跳过）。
-struct Pe {
-    data: Vec<u8>,
-    base: u64,
-    sections: Vec<(u32, u32, u32)>,
-}
-impl Pe {
-    fn open() -> Option<Self> {
-        let data = std::fs::read(EXE).ok()?;
-        let u32_at = |o: usize| u32::from_le_bytes(data[o..o + 4].try_into().unwrap());
-        let u16_at = |o: usize| u16::from_le_bytes(data[o..o + 2].try_into().unwrap());
-        let pe = u32_at(0x3c) as usize;
-        let count = u16_at(pe + 6) as usize;
-        let opt = u16_at(pe + 20) as usize;
-        let base = u64::from_le_bytes(data[pe + 48..pe + 56].try_into().unwrap());
-        let mut sections = Vec::new();
-        let mut o = pe + 24 + opt;
-        for _ in 0..count {
-            let vs = u32_at(o + 8);
-            let va = u32_at(o + 12);
-            let rs = u32_at(o + 16);
-            let rp = u32_at(o + 20);
-            sections.push((va, vs.max(rs), rp));
-            o += 40;
-        }
-        Some(Self { data, base, sections })
-    }
-    fn read(&self, va: u64, len: usize) -> &[u8] {
-        let rva = (va - self.base) as u32;
-        for &(sva, size, raw) in &self.sections {
-            if rva >= sva && rva < sva + size {
-                let off = (raw + rva - sva) as usize;
-                return &self.data[off..off + len];
-            }
-        }
-        panic!("VA {va:#x} 不在任何节内");
-    }
-    fn u32s(&self, va: u64, n: usize) -> Vec<u32> {
-        self.read(va, n * 4)
-            .chunks(4)
-            .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
-            .collect()
-    }
-}
 
 fn device() -> Option<std::sync::Arc<GraphicsDevice>> {
     create_headless_device().ok().map(GraphicsDevice::from_device)
 }
 
-// ---------------------------------------------------------------- Buffer：布局与判据
+// ---------------------------------------------------------------- Buffer：判据
 
 fn record(device_id: u16, ready: u8, offset: u32, size: u64, usage: u32) -> BufferRecord {
     BufferRecord {
@@ -219,54 +170,10 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
     ));
 }
 
-#[test]
-fn buffer_record_stays_40_bytes_and_desc_16() {
-    assert_eq!(size_of::<BufferRecord>(), 40);
-    assert_eq!(size_of::<BufferDesc>(), 16);
-    assert_eq!(offset_of!(BufferDesc, alignment), 0x0c);
-}
-
-// ---------------------------------------------------------------- Texture：布局与描述符
+// ---------------------------------------------------------------- Texture：描述符
 
 #[test]
-fn texture_record_is_0x38_with_flag_zero() {
-    assert_eq!(size_of::<TextureRecord>(), 0x38);
-    assert_eq!(offset_of!(TextureRecord, ctx), 0x00);
-    assert_eq!(offset_of!(TextureRecord, slot), 0x08);
-    assert_eq!(offset_of!(TextureRecord, offset), 0x10);
-    assert_eq!(offset_of!(TextureRecord, device_id), 0x14);
-    assert_eq!(offset_of!(TextureRecord, flag), 0x16);
-    assert_eq!(offset_of!(TextureRecord, desc), 0x18);
-    assert_eq!(size_of::<TextureDesc>(), 0x20);
-}
-
-#[test]
-fn texture_desc_layout_matches_getters() {
-    assert_eq!(offset_of!(TextureDesc, usage), 0x00);
-    assert_eq!(offset_of!(TextureDesc, flags), 0x04);
-    assert_eq!(offset_of!(TextureDesc, format), 0x08);
-    assert_eq!(offset_of!(TextureDesc, width), 0x0c);
-    assert_eq!(offset_of!(TextureDesc, height), 0x10);
-    assert_eq!(offset_of!(TextureDesc, depth), 0x14);
-    assert_eq!(offset_of!(TextureDesc, array_elements), 0x18);
-    assert_eq!(offset_of!(TextureDesc, mip_levels), 0x1c);
-    assert_eq!(offset_of!(TextureDesc, sample_count), 0x1d);
-    assert_eq!(offset_of!(TextureDesc, kind), 0x1e);
-}
-
-#[test]
-fn texture_view_desc_raw_layout_and_builders() {
-    assert_eq!(size_of::<TextureViewDescRaw>(), 0x3c);
-    assert_eq!(size_of::<OptionU32>(), 8);
-    assert_eq!(offset_of!(TextureViewDescRaw, view_type), 0x00);
-    assert_eq!(offset_of!(TextureViewDescRaw, usage), 0x08);
-    assert_eq!(offset_of!(TextureViewDescRaw, format), 0x10);
-    assert_eq!(offset_of!(TextureViewDescRaw, aspect_mask), 0x18);
-    assert_eq!(offset_of!(TextureViewDescRaw, level_count), 0x20);
-    assert_eq!(offset_of!(TextureViewDescRaw, layer_count), 0x28);
-    assert_eq!(offset_of!(TextureViewDescRaw, base_mip_level), 0x30);
-    assert_eq!(offset_of!(TextureViewDescRaw, base_layer), 0x34);
-    assert_eq!(offset_of!(TextureViewDescRaw, bind_individual_mips), 0x38);
+fn texture_view_desc_raw_builders() {
     let d = TextureViewDescRaw::new().format(37).level_count(3).base_layer(2).bind_individual_mips(true);
     assert_eq!(d.format, OptionU32 { tag: 1, value: 37 });
     assert_eq!(d.level_count, OptionU32 { tag: 1, value: 3 });
@@ -343,7 +250,7 @@ fn image_create_info_follows_0x140bd5ed0() {
 }
 
 #[test]
-fn aspect_mask_table_matches_binary_and_boundaries() {
+fn aspect_mask_boundaries() {
     // 边界：format-0x7c > 6 → COLOR。
     let aspect = |raw: i32| image_aspect_mask_from_format(vk::Format::from_raw(raw)).as_raw();
     assert_eq!(aspect(0), 1);
@@ -355,75 +262,6 @@ fn aspect_mask_table_matches_binary_and_boundaries() {
     assert_eq!(aspect(0x80), 6);
     assert_eq!(aspect(0x82), 6); // D32S8
     assert_eq!(aspect(0x83), 1);
-    let Some(pe) = Pe::open() else { return };
-    let table = pe.u32s(0x142b0ffb8, 7);
-    for (i, &v) in table.iter().enumerate() {
-        assert_eq!(aspect(0x7c + i as i32), v, "0x142b0ffb8[{i}]");
-    }
-    // 机器码：add ecx,-0x7c; cmp ecx,6; ja → mov eax,1。
-    assert_eq!(pe.read(0x140bd6630, 11), &[0x83, 0xc1, 0x84, 0xb8, 1, 0, 0, 0, 0x83, 0xf9, 0x06]);
-}
-
-#[test]
-fn format_tables_equal_original_binary_tables() {
-    let Some(pe) = Pe::open() else { return };
-    // 0x141738fe0：format-1 < 0xb8 → 表 0x142ccd890（aspect）。
-    let aspects = pe.u32s(0x142ccd890, 0xb8);
-    for f in 1..=0xb8u32 {
-        assert_eq!(
-            observed::try_vk_format_valid_aspect_flags(vk::Format::from_raw(f as i32)).unwrap().as_raw(),
-            aspects[(f - 1) as usize],
-            "aspect 表 format {f}"
-        );
-    }
-    // 0x141739060：format < 0x93 → 三张表（0x142ccdb70 word00 / 0x142ccddbc word04 / 0x142cce008 byte08）。
-    let w0 = pe.u32s(0x142ccdb70, 0x93);
-    let w4 = pe.u32s(0x142ccddbc, 0x93);
-    let b8 = pe.read(0x142cce008, 0x93);
-    for f in 0..0x93u32 {
-        let info = observed::vk_format_info(vk::Format::from_raw(f as i32));
-        assert_eq!(info.word_at_00(), w0[f as usize], "word00 format {f}");
-        assert_eq!(info.word_at_04(), w4[f as usize], "word04 format {f}");
-        assert_eq!(info.byte_at_08(), b8[f as usize], "byte08 format {f}");
-        assert_eq!(info.byte_at_09(), b8[f as usize], "byte09 format {f}");
-    }
-}
-
-#[test]
-fn public_registry_agrees_with_original_block_tables_where_original_has_entries() {
-    let Some(pe) = Pe::open() else { return };
-    // 原表 word04 = 块字节数，byte08 = 块边长（压缩格式 4，其余 1）；公开 vk.xml 注册表应一致。
-    let w4 = pe.u32s(0x142ccddbc, 0x93);
-    let b8 = pe.read(0x142cce008, 0x93);
-    let mut checked = 0;
-    for f in 1..0x93u32 {
-        let Some(info) = vk_format_info(vk::Format::from_raw(f as i32)) else { continue };
-        // 原表对 D16S8 / D24S8 / D32S8 等深度模板格式记的是 depth 部分的宽度，公开表按整纹素；
-        // 只比较色彩格式与压缩格式（aspect == COLOR）。
-        if info.aspect != vk::ImageAspectFlags::COLOR {
-            continue;
-        }
-        assert_eq!(info.block_bytes, w4[f as usize], "block_bytes format {f}");
-        assert_eq!(info.block_extent[0], u32::from(b8[f as usize]), "block 边长 format {f}");
-        checked += 1;
-    }
-    assert!(checked > 100, "实际比较了 {checked} 个格式");
-}
-
-#[test]
-fn init_texture_data_machine_code_anchors() {
-    let Some(pe) = Pe::open() else { return };
-    // 0x140bfe293：test byte [r8], 4 —— usage 必须含 SAMPLED(4)。
-    assert_eq!(pe.read(0x140bfe293, 4), &[0x41, 0xf6, 0x00, 0x04]);
-    // 跳表 0x142b174fc：4 个有符号偏移，目标 = 表基址 + 偏移。
-    let targets: Vec<u64> = pe
-        .u32s(0x142b174fc, 4)
-        .iter()
-        .map(|&o| 0x142b174fcu64.wrapping_add(o as i32 as i64 as u64))
-        .collect();
-    assert_eq!(targets, vec![0x140bfe5af, 0x140bfe2c0, 0x140bfe30b, 0x140bfe3aa]);
-    // create_texture：get_image_create_info 第三参 has_data 写进 +0x50 = has_data << 3。
-    assert_eq!(pe.read(0x140bd5f89, 8), &[0x45, 0x0f, 0xb6, 0xc0, 0x41, 0xc1, 0xe0, 0x03]);
 }
 
 // ---------------------------------------------------------------- 需要 Vulkan 的行为

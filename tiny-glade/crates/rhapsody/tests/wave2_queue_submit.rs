@@ -93,7 +93,7 @@ fn setup_take_end_failure_is_reported() {
 }
 
 #[test]
-fn in_order_retire_matches_machine_code_semantics() {
+fn in_order_retire_parks_and_drains_in_order() {
     let mut r = InOrderRetire::new();
     assert_eq!(r.retire(1), vec![1]);
     assert!(r.retire(4).is_empty(), "4 > next+1：暂存");
