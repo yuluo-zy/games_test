@@ -190,9 +190,6 @@ impl VulkanCommandBuffer {
     /// # Safety
     /// 调用者必须已等待覆盖此命令缓冲全部提交的时间线/fence（与 `release_completed_owners` 同一契约）。
     pub unsafe fn reset_after_completion(&mut self) -> Result<(), vk::Result> {
-        if self.recording {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
-        }
         {
             let _guard = self.pool.lock.lock();
             unsafe {
@@ -266,12 +263,7 @@ impl VulkanCommandBuffer {
     }
     /// 显式生产时间线 wait/signal 数组，并持有信号量到真实 fence 完成。
     ///
-    /// 与原 `queue_submit`（0x140c04e20）的差异（wave2 读通，详见
-    /// `rhapsody-alignment/reports/wave2-queue-submit.md`）：原版 `fence = VK_NULL_HANDLE`，完成靠**每队列时间线**
-    /// （`Queue+0x88`，每条命令 signal 一个递增值）；提交依次持 `dev+0x800` 读锁与队列自身字节锁（`Queue+0x70`）；
-    /// 提交后 `FUN_1418c0a70(dev+0x648)` 处理延迟操作并对本队列 `reclaim_command_buffer_resources`。
-    /// 本函数仍是 fence + 设备级退役时间线（`retire_timeline`）的自设计路径，纯 CPU 对齐版见
-    /// [`super::submit::SubmissionEngine::queue_submit`]。
+    /// 提交走设备每队列时间线；此独立命令入口额外保留 fence 供 PendingCommand 等待。
     pub fn submit_to(
         self,
         queue: super::device::DeviceQueue,
@@ -304,37 +296,27 @@ impl VulkanCommandBuffer {
         let wait_handles = waits.iter().map(|(s, _, _)| s.handle).collect::<Vec<_>>();
         let wait_values = waits.iter().map(|(_, value, _)| *value).collect::<Vec<_>>();
         let wait_stages = waits.iter().map(|(_, _, stage)| *stage).collect::<Vec<_>>();
-        let mut signal_handles = signals.iter().map(|(s, _)| s.handle).collect::<Vec<_>>();
-        let mut signal_values = signals.iter().map(|(_, value)| *value).collect::<Vec<_>>();
+        let signal_handles = signals.iter().map(|(s, _)| s.handle).collect::<Vec<_>>();
+        let signal_values = signals.iter().map(|(_, value)| *value).collect::<Vec<_>>();
         let fence = unsafe {
             device
                 .device
                 .create_fence(&vk::FenceCreateInfo::default(), None)?
         };
-        let buffers = [self.handle];
-        let result = {
-            let _guard = device.queue_lock.lock();
-            // 退役信号必须与提交同在 queue_lock 内取 epoch，保证时间线值按提交顺序单调。
-            let retire = device.note_submit_on(queue.handle);
-            if let Some((semaphore, value)) = retire {
-                signal_handles.push(semaphore);
-                signal_values.push(value);
-            }
-            let mut timeline = vk::TimelineSemaphoreSubmitInfo::default()
-                .wait_semaphore_values(&wait_values)
-                .signal_semaphore_values(&signal_values);
-            let submits = [vk::SubmitInfo::default()
-                .command_buffers(&buffers)
-                .wait_semaphores(&wait_handles)
-                .wait_dst_stage_mask(&wait_stages)
-                .signal_semaphores(&signal_handles)
-                .push_next(&mut timeline)];
-            let result = unsafe { device.device.queue_submit(queue.handle, &submits, fence) };
-            if result.is_err() {
-                device.note_submit_failed(retire);
-            }
-            result
-        };
+        let result = device
+            .submit_prepared(
+                queue.handle,
+                &[super::submit::PreparedSubmit {
+                    commands: vec![self.handle],
+                    wait_semaphores: wait_handles,
+                    wait_values,
+                    wait_stages,
+                    signal_semaphores: signal_handles,
+                    signal_values,
+                }],
+                fence,
+            )
+            .map_err(crate::device::legacy_vk_error);
         if let Err(error) = result {
             unsafe { device.device.destroy_fence(fence, None) };
             return Err(error);
@@ -440,23 +422,28 @@ impl CommandBufferPool {
     pub fn take(&self, family: u32) -> Option<VulkanCommandBuffer> {
         let mut lists = self.lists.lock();
         let len = lists.len();
-        let list = lists
-            .get_mut(family as usize)
-            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"));
+        let list = lists.get_mut(family as usize).unwrap_or_else(|| {
+            panic!("index out of bounds: the len is {len} but the index is {family}")
+        });
         list.pop()
     }
     /// 还：压回命令缓冲所属族的空闲链。
     ///
     /// # Safety
     /// 覆盖该命令缓冲全部提交的时间线必须已完成（与 `reset_after_completion` 同一契约）。
-    pub unsafe fn recycle_completed(&self, mut command: VulkanCommandBuffer) -> Result<(), vk::Result> {
+    pub unsafe fn recycle_completed(
+        &self,
+        mut command: VulkanCommandBuffer,
+    ) -> Result<(), vk::Result> {
         unsafe { command.reset_after_completion()? };
         let family = command.pool.family;
         let mut lists = self.lists.lock();
         let len = lists.len();
         lists
             .get_mut(family as usize)
-            .unwrap_or_else(|| panic!("index out of bounds: the len is {len} but the index is {family}"))
+            .unwrap_or_else(|| {
+                panic!("index out of bounds: the len is {len} but the index is {family}")
+            })
             .push(command);
         Ok(())
     }

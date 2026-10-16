@@ -76,10 +76,16 @@ mod tests {
     fn unused_or_completed_items_come_back_immediately() {
         let mut retirement = Retirement::new();
         let done = CompletedValues::default();
-        assert_eq!(retirement.retire(SyncSet::EMPTY, "never submitted", &done), Some("never submitted"));
+        assert_eq!(
+            retirement.retire(SyncSet::EMPTY, "never submitted", &done),
+            Some("never submitted")
+        );
         let mut done = done;
         done.raise(QueueId::new(0).unwrap(), 3);
-        assert_eq!(retirement.retire(point(0, 3), "finished", &done), Some("finished"));
+        assert_eq!(
+            retirement.retire(point(0, 3), "finished", &done),
+            Some("finished")
+        );
         assert!(retirement.is_empty());
     }
 

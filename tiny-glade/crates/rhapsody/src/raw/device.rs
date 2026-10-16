@@ -30,15 +30,17 @@ pub struct VulkanDevice {
     pub queue: vk::Queue,
     pub queue_family: u32,
     pub instance: Arc<super::instance::VulkanInstance>,
-    pub queue_lock: Mutex<()>,
+    pub timelines: crate::sync::timeline::Timelines<ash::Device>,
     pub capabilities: DeviceCapabilities,
     /// 创建时实际启用的设备扩展名（`vkCreateDevice` 的 `ppEnabledExtensionNames`）。
     pub enabled_extensions: Vec<String>,
     pub additional_queues: Vec<DeviceQueue>,
+    /// 配置入口创建时保留的类别映射；直接提供 VkDeviceCreateInfo 的底层入口无此映射。
+    pub queue_plan: Option<crate::device::QueuePlan>,
     pub allocator_stats: Arc<super::allocator::AllocatorStats>,
-    pub graveyard: super::graveyard::Graveyard,
-    /// 退役时间线：每次主队列提交末尾 signal 到该次的 epoch，供延迟销毁非阻塞判断完成。
-    pub(crate) retire_timeline: vk::Semaphore,
+    pub(crate) retirement: Mutex<crate::sync::retire::Retirement<super::graveyard::Doomed>>,
+    pub(crate) idle_waits: AtomicU64,
+
     /// 原 `device+0xab0`：累计 `vkUpdateDescriptorSets` 调用次数。四个写入点（`lock inc`）：
     /// 0x1416a26aa（update_persistent_descriptor_set）与 0x1416a56e5 / 0x1416a5ce8 / 0x1416a63f2
     /// （三个 bind_descriptor_set 单态，每次调用一条 vkUpdateDescriptorSets 后 +1）；初始化为 0
@@ -83,6 +85,23 @@ impl VulkanDevice {
         physical: vk::PhysicalDevice,
         queue_family: u32,
         info: &vk::DeviceCreateInfo<'_>,
+    ) -> Result<Arc<Self>, vk::Result> {
+        Self::create_internal(instance, physical, queue_family, info, None)
+    }
+    pub(crate) fn create_planned(
+        instance: Arc<super::instance::VulkanInstance>,
+        physical: vk::PhysicalDevice,
+        info: &vk::DeviceCreateInfo<'_>,
+        plan: crate::device::QueuePlan,
+    ) -> Result<Arc<Self>, vk::Result> {
+        Self::create_internal(instance, physical, plan.queues[0].family, info, Some(plan))
+    }
+    fn create_internal(
+        instance: Arc<super::instance::VulkanInstance>,
+        physical: vk::PhysicalDevice,
+        queue_family: u32,
+        info: &vk::DeviceCreateInfo<'_>,
+        queue_plan: Option<crate::device::QueuePlan>,
     ) -> Result<Arc<Self>, vk::Result> {
         unsafe {
             let mut capabilities = DeviceCapabilities::default();
@@ -146,7 +165,11 @@ impl VulkanDevice {
                     info.enabled_extension_count as usize,
                 )
                 .iter()
-                .map(|name| std::ffi::CStr::from_ptr(*name).to_string_lossy().into_owned())
+                .map(|name| {
+                    std::ffi::CStr::from_ptr(*name)
+                        .to_string_lossy()
+                        .into_owned()
+                })
                 .collect()
             };
             let device = instance.instance.create_device(physical, info, None)?;
@@ -171,6 +194,18 @@ impl VulkanDevice {
                     });
                 }
             }
+            if let Some(plan) = &queue_plan {
+                // VkDeviceQueueCreateInfo 按族排序，逻辑队列按 Graphics/Compute/Transfer 分配。
+                // 统一顺序，确保 QueueId 与设备时间线、additional_queues 一一对应。
+                additional_queues.sort_by_key(|queue| {
+                    plan.queues
+                        .iter()
+                        .position(|physical| {
+                            physical.family == queue.family && physical.index == queue.index
+                        })
+                        .expect("配置队列都来自同一规划")
+                });
+            }
             #[cfg(feature = "suballocation")]
             let suballocator = match super::suballoc::default_allocation_mode() {
                 super::suballoc::AllocationMode::Dedicated => None,
@@ -181,18 +216,45 @@ impl VulkanDevice {
                         physical,
                         capabilities.buffer_device_address,
                     )
-                    .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?,
+                    .map_err(|_| {
+                        device.destroy_device(None);
+                        vk::Result::ERROR_INITIALIZATION_FAILED
+                    })?,
                 ),
             };
-            let mut timeline_type = vk::SemaphoreTypeCreateInfo::default()
-                .semaphore_type(vk::SemaphoreType::TIMELINE)
-                .initial_value(0);
-            let retire_timeline = device.create_semaphore(
-                &vk::SemaphoreCreateInfo::default().push_next(&mut timeline_type),
-                None,
-            )?;
+            if additional_queues.len() + 1 > crate::sync::MAX_QUEUES {
+                #[cfg(feature = "suballocation")]
+                if let Some(sub) = &suballocator {
+                    sub.shutdown();
+                }
+                device.destroy_device(None);
+                return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            }
+            let mut semaphores = Vec::new();
+            for _ in 0..=additional_queues.len() {
+                let mut ty = vk::SemaphoreTypeCreateInfo::default()
+                    .semaphore_type(vk::SemaphoreType::TIMELINE);
+                match device
+                    .create_semaphore(&vk::SemaphoreCreateInfo::default().push_next(&mut ty), None)
+                {
+                    Ok(semaphore) => semaphores.push(semaphore),
+                    Err(error) => {
+                        for semaphore in semaphores {
+                            device.destroy_semaphore(semaphore, None);
+                        }
+                        #[cfg(feature = "suballocation")]
+                        if let Some(sub) = &suballocator {
+                            sub.shutdown();
+                        }
+                        device.destroy_device(None);
+                        return Err(error);
+                    }
+                }
+            }
+            let timelines = crate::sync::timeline::Timelines::new(device.clone(), &semaphores)
+                .expect("队列数已校验且每队列创建一条时间线");
             Ok(Arc::new(Self {
-                retire_timeline,
+                timelines,
                 descriptor_update_count: AtomicU64::new(0),
                 device,
                 physical,
@@ -200,12 +262,14 @@ impl VulkanDevice {
                 queue,
                 queue_family,
                 instance,
-                queue_lock: Mutex::new(()),
+
                 capabilities,
                 enabled_extensions,
                 additional_queues,
+                queue_plan,
                 allocator_stats: Arc::new(super::allocator::AllocatorStats::default()),
-                graveyard: Default::default(),
+                retirement: Default::default(),
+                idle_waits: AtomicU64::new(0),
                 #[cfg(feature = "suballocation")]
                 suballocator,
             }))
@@ -221,15 +285,19 @@ impl Drop for VulkanDevice {
     fn drop(&mut self) {
         // 所有拥有的 Vulkan 子对象都持有设备 Arc，因此会先于设备销毁；延迟场在此排空。
         self.drain_graveyard_for_drop();
-        // 先整设备 idle 再释放内存块：子分配器 shutdown 会 vkFreeMemory，GPU 仍在读写时释放属于 use-after-free。
-        let _ = unsafe { self.device.device_wait_idle() };
         // 子分配器的内存块必须先于设备销毁释放。
         #[cfg(feature = "suballocation")]
         if let Some(sub) = &self.suballocator {
             sub.shutdown();
         }
         unsafe {
-            self.device.destroy_semaphore(self.retire_timeline, None);
+            for index in 0..self.timelines.queue_count() {
+                let queue = crate::sync::QueueId::new(index).expect("已校验的队列数");
+                self.device.destroy_semaphore(
+                    self.timelines.semaphore(queue).expect("已创建的队列"),
+                    None,
+                );
+            }
             self.device.destroy_device(None);
         }
     }
@@ -418,6 +486,7 @@ impl GraphicsDevice {
     ) -> Result<Arc<Self>, vk::Result> {
         let mut features2 = vk::PhysicalDeviceFeatures2::default();
         let mut vk12 = vk::PhysicalDeviceVulkan12Features::default()
+            .timeline_semaphore(true)
             .buffer_device_address(true)
             .runtime_descriptor_array(true)
             .descriptor_binding_partially_bound(true)
@@ -495,9 +564,14 @@ impl GraphicsDevice {
             "Device memory properties: {:?}",
             &device.memory.memory_heaps[..heap_count]
         );
-        if device.enabled_extensions.iter().any(|e| e == "VK_EXT_memory_budget") {
+        if device
+            .enabled_extensions
+            .iter()
+            .any(|e| e == "VK_EXT_memory_budget")
+        {
             let mut budget = vk::PhysicalDeviceMemoryBudgetPropertiesEXT::default();
-            let mut properties = vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut budget);
+            let mut properties =
+                vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut budget);
             unsafe {
                 device
                     .instance
@@ -561,7 +635,11 @@ impl GraphicsDevice {
     }
     /// `VK_EXT_subgroup_size_control` 已启用时读 `min_subgroup_size`，否则 `None`（`+0x40` 标志为 0）。
     fn query_min_subgroup_size(device: &VulkanDevice) -> Option<u32> {
-        if !device.enabled_extensions.iter().any(|e| e == "VK_EXT_subgroup_size_control") {
+        if !device
+            .enabled_extensions
+            .iter()
+            .any(|e| e == "VK_EXT_subgroup_size_control")
+        {
             return None;
         }
         let mut control = vk::PhysicalDeviceSubgroupSizeControlProperties::default();
@@ -677,7 +755,7 @@ impl GraphicsDevice {
     }
     /// 0x140bf8980 `wait_idle`：日志 `Waiting for the device to be idle...`（debug）+ 提交锁握手 →
     /// `vkDeviceWaitIdle` → 解锁。原版锁是 `RwLock<()>`（`+0x800`，写锁 0→8）；本重建的
-    /// `queue_lock` 互斥量在 `wait_idle_and_collect` 内取得，排他语义不弱于原版。
+    /// `wait_idle_and_collect` 按 QueueId 顺序锁住所有队列，避免与提交或呈现并发。
     pub fn wait_idle(&self) -> Result<(), vk::Result> {
         log::debug!(target: "rhapsody::raw::device", "Waiting for the device to be idle...");
         self.inner.wait_idle()
@@ -726,8 +804,11 @@ impl GraphicsDevice {
             Some(command) => command,
             None => {
                 log::trace!(target: "rhapsody::raw::command_buffer", "Allocating a new command buffer");
-                super::command_buffer::VulkanCommandPool::new_for_family(self.inner.clone(), family)?
-                    .allocate()?
+                super::command_buffer::VulkanCommandPool::new_for_family(
+                    self.inner.clone(),
+                    family,
+                )?
+                .allocate()?
             }
         };
         if let Some(utils) = self.debug_utils_option() {

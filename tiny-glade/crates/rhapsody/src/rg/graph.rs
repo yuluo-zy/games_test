@@ -116,6 +116,42 @@ pub struct GraphDeclaration {
     pub exports: Vec<ExportDeclaration>,
     pub batch_per_pass: bool,
 }
+impl GraphDeclaration {
+    /// 在资源分配和索引打包之前检查调用方可直接构造的声明。
+    pub fn validate(&self) -> Result<(), BuildError> {
+        if self.resources.len() > 65536 {
+            return Err(BuildError::ResourceLimit);
+        }
+        if self.passes.len() > MAX_PASSES {
+            return Err(BuildError::PassLimit);
+        }
+        let mut count = 0usize;
+        for pass in &self.passes {
+            count = count
+                .checked_add(pass.accesses.len())
+                .ok_or(BuildError::AccessLimit)?;
+            if count >= NO_ACCESS as usize {
+                return Err(BuildError::AccessLimit);
+            }
+            for access in &pass.accesses {
+                if access.resource_index as usize >= self.resources.len() {
+                    return Err(BuildError::InvalidHandle(access.resource_index));
+                }
+            }
+        }
+        for export in &self.exports {
+            let resource = self
+                .resources
+                .get(export.resource_index as usize)
+                .ok_or(BuildError::InvalidHandle(export.resource_index))?;
+            if export.tag != resource.descriptor.kind_code() {
+                return Err(BuildError::ResourceKindMismatch(export.resource_index));
+            }
+        }
+        Ok(())
+    }
+}
+
 pub trait AccessDependency {
     fn access_mask(&mut self, code: u8) -> u32;
     fn is_write(&mut self, code: u8) -> bool;
@@ -130,6 +166,8 @@ pub enum BuildError {
     IncompatibleAccess(super::access_ledger::IncompatibleAccess),
     ResourceLimit,
     InvalidHandle(u32),
+    ResourceKindMismatch(u32),
+    AccessLimit,
     MissingTemporal(String),
     DuplicateResourceName(String),
     ResourceCreationFailed(String),
@@ -138,7 +176,7 @@ pub enum BuildError {
 }
 
 /// 生命周期事件把 pass 下标左移 17 位打包进 u32（`resource_rules::calculate_lifetime_events`），
-/// 故单图最多 `1 << 15` 个 pass；`compile_graph` 对超出保留断言，构图入口提前返回 [`BuildError::PassLimit`]。
+/// 故单图最多 `1 << 15` 个 pass；构图与编译入口均返回 [`BuildError::PassLimit`]。
 pub const MAX_PASSES: usize = 1 << 15;
 impl std::fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -270,11 +308,8 @@ impl BuiltGraph {
         (self.declaration, self.callbacks, self.retire_callbacks)
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BackendFailure {
-    pub discriminant: u8,
-    pub message: String,
-}
+/// 资源创建错误保留设备丢失、显存不足等类别。
+pub type BackendFailure = crate::Error;
 pub trait ResourceBackend {
     fn create_without_initial_data(
         &mut self,
@@ -316,10 +351,9 @@ impl ResourceBackend for EventBackend {
         if let Some((failure_attempt, tag)) = self.fail_at_creation
             && attempt == failure_attempt
         {
-            return Err(BackendFailure {
-                discriminant: tag,
-                message: format!("oracle backend creation {attempt}"),
-            });
+            return Err(crate::Error::invalid_usage(format!(
+                "injected resource creation {attempt}, class {tag}"
+            )));
         }
         let token = self.next_token;
         self.next_token += 1;
@@ -415,16 +449,6 @@ pub fn populate_resources(
                         {
                             Ok(token) => token,
                             Err(error) => {
-                                assert!(
-                                    error.discriminant <= 10,
-                                    "unsupported BackendError discriminant"
-                                );
-                                if error.discriminant >= 9 {
-                                    panic!(
-                                        "original population fatal backend class: {}",
-                                        error.message
-                                    );
-                                }
                                 return Err(PopulationFailure {
                                     error,
                                     partial: Box::new(population),
@@ -651,15 +675,8 @@ pub fn compile_graph(
     pool: &mut Pool,
     backend: &mut impl ResourceBackend,
     dependency: &mut impl AccessDependency,
-) -> Result<CompiledGraph, PopulationFailure> {
-    assert!(
-        graph.resources.len() <= 65536,
-        "resource count exceeds lifetime packing domain"
-    );
-    assert!(
-        graph.passes.len() <= MAX_PASSES,
-        "pass count exceeds lifetime packing domain"
-    );
+) -> crate::Result<CompiledGraph> {
+    graph.validate()?;
     let origins = graph
         .resources
         .iter()
@@ -685,7 +702,7 @@ pub fn compile_graph(
                 pool,
                 backend,
             );
-            return Err(failure);
+            return Err(failure.error);
         }
     };
     let registry = population.registry;

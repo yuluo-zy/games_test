@@ -253,7 +253,8 @@ pub struct DisposedRawResourceHandleAbi {
     pub _pad: u8,
 }
 const _: () = assert!(std::mem::size_of::<DisposedRawResourceHandleAbi>() == 0x10);
-const _: () = assert!(std::mem::offset_of!(DisposedRawResourceHandleAbi, resource_checksum) == 0x08);
+const _: () =
+    assert!(std::mem::offset_of!(DisposedRawResourceHandleAbi, resource_checksum) == 0x08);
 const _: () = assert!(std::mem::offset_of!(DisposedRawResourceHandleAbi, device_id) == 0x0c);
 const _: () = assert!(std::mem::offset_of!(DisposedRawResourceHandleAbi, resource_type) == 0x0e);
 impl DisposedRawResourceHandleAbi {
@@ -519,8 +520,16 @@ mod gpu_owned_tests {
             ]
         );
         assert_eq!(ResourceTag::from_u8(ResourceTag::NONE_NICHE), None);
-        assert!(!ResourceTag::from_u8(ResourceTag::UNIMPLEMENTED).unwrap().is_disposable());
-        assert!((0..8).filter(|&t| t != 3).all(|t| ResourceTag::from_u8(t).unwrap().is_disposable()));
+        assert!(
+            !ResourceTag::from_u8(ResourceTag::UNIMPLEMENTED)
+                .unwrap()
+                .is_disposable()
+        );
+        assert!(
+            (0..8)
+                .filter(|&t| t != 3)
+                .all(|t| ResourceTag::from_u8(t).unwrap().is_disposable())
+        );
     }
 
     #[test]
@@ -538,10 +547,19 @@ mod gpu_owned_tests {
         // 原 PartialEq 不比较队列指针（+0）。
         let b = RawManagedHandleAbi { resources: 99, ..a };
         assert!(a.original_eq(&b));
-        assert!(!a.original_eq(&RawManagedHandleAbi { resource_checksum: 8, ..a }));
-        assert!(!a.original_eq(&RawManagedHandleAbi { control: 0x2000, ..a }));
+        assert!(!a.original_eq(&RawManagedHandleAbi {
+            resource_checksum: 8,
+            ..a
+        }));
+        assert!(!a.original_eq(&RawManagedHandleAbi {
+            control: 0x2000,
+            ..a
+        }));
         let d = DisposedRawResourceHandleAbi::from_handle(&a);
-        assert_eq!((d.control, d.resource_checksum, d.device_id, d.tag()), (0x1000, 7, 2, Some(ResourceTag::Buffer)));
+        assert_eq!(
+            (d.control, d.resource_checksum, d.device_id, d.tag()),
+            (0x1000, 7, 2, Some(ResourceTag::Buffer))
+        );
         assert_eq!(d._pad, 0);
     }
 
@@ -561,11 +579,20 @@ mod gpu_owned_tests {
         let c = Counter(Default::default());
         let owned = GpuOwned::new(7u32, &c);
         assert_eq!(owned.state(), GpuOwnedState::Owned);
-        let ok = CommandState { tag: 1, sequence: 3 };
+        let ok = CommandState {
+            tag: 1,
+            sequence: 3,
+        };
         assert_eq!(owned.track_unwrap(ok), 7);
         assert_eq!(c.0.get(), 1);
-        let bad = CommandState { tag: 0, sequence: 3 };
-        assert_eq!(GpuOwned::new(1u8, &c).try_track_unwrap(bad), Err(Failure::InvalidCommandState));
+        let bad = CommandState {
+            tag: 0,
+            sequence: 3,
+        };
+        assert_eq!(
+            GpuOwned::new(1u8, &c).try_track_unwrap(bad),
+            Err(Failure::InvalidCommandState)
+        );
         assert_eq!(c.0.get(), 1);
     }
 
@@ -573,7 +600,10 @@ mod gpu_owned_tests {
     #[should_panic(expected = "Can't use a resource for a command buffer in state Initial")]
     fn track_unwrap_panics_on_bad_state_like_the_original() {
         let c = Counter(Default::default());
-        GpuOwned::new(1u8, &c).track_unwrap(CommandState { tag: 0, sequence: 3 });
+        GpuOwned::new(1u8, &c).track_unwrap(CommandState {
+            tag: 0,
+            sequence: 3,
+        });
     }
 
     #[test]

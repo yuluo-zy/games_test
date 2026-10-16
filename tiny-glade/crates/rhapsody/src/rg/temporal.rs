@@ -500,6 +500,13 @@ impl GetOrCreateTemporal for TemporalRenderGraphRecorder<'_> {
     }
 }
 
+impl std::fmt::Display for TemporalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for TemporalError {}
+
 #[cfg(test)]
 mod recorder_tests {
     use super::*;
@@ -512,7 +519,10 @@ mod recorder_tests {
         use original_layout as l;
         // 表 1 在 +0xb0..0xe0，表 2 在 +0xe0..0x110，各 RawTable(0x20)+RandomState(0x10)=0x30。
         assert_eq!(l::RECORDER_STATE, l::RECORDER_DEVICE + 8);
-        assert_eq!(l::RECORDER_STATE + l::RECORDER_STATE_BYTES, l::RECORDER_SIZE);
+        assert_eq!(
+            l::RECORDER_STATE + l::RECORDER_STATE_BYTES,
+            l::RECORDER_SIZE
+        );
         assert_eq!(l::RECORDER_PARITY_TABLE, l::RECORDER_STATE + 0x30);
         assert_eq!(l::RECORDER_TABLE_LEN, l::RECORDER_TABLE_CTRL + 0x18);
         assert_eq!(l::RECORDER_PARITY_LEN, l::RECORDER_PARITY_TABLE + 0x18);
@@ -539,14 +549,24 @@ mod recorder_tests {
         let mut state = TemporalRenderGraphState::default();
         let mut graph = RenderGraph::new();
         {
-            let mut rec = TemporalRenderGraphRecorder { state: &mut state, graph: &mut graph };
-            let fresh = rec.get_or_create_temporal("hist", image(), || Ok(5)).unwrap();
+            let mut rec = TemporalRenderGraphRecorder {
+                state: &mut state,
+                graph: &mut graph,
+            };
+            let fresh = rec
+                .get_or_create_temporal("hist", image(), || Ok(5))
+                .unwrap();
             assert!(!fresh.reused);
             rec.export_temporal().unwrap();
         }
         let mut graph = RenderGraph::new();
-        let mut rec = TemporalRenderGraphRecorder { state: &mut state, graph: &mut graph };
-        let again = rec.get_or_create_temporal("hist", image(), || panic!("must reuse")).unwrap();
+        let mut rec = TemporalRenderGraphRecorder {
+            state: &mut state,
+            graph: &mut graph,
+        };
+        let again = rec
+            .get_or_create_temporal("hist", image(), || panic!("must reuse"))
+            .unwrap();
         assert!(again.reused);
         assert_eq!(again.resource.token, 5);
     }

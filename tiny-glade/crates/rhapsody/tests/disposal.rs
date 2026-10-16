@@ -18,9 +18,15 @@ fn panic_message(f: impl FnOnce() + std::panic::UnwindSafe) -> String {
 fn try_variants_keep_failure_contract() {
     let buckets = CommandBufferDisposalBuckets::default();
     assert_eq!(buckets.begin_command_bucket(1), Ok(()));
-    assert_eq!(buckets.begin_command_bucket(1), Err(Failure::DuplicateBucket));
+    assert_eq!(
+        buckets.begin_command_bucket(1),
+        Err(Failure::DuplicateBucket)
+    );
     assert!(matches!(buckets.try_remove(2), Err(Failure::MissingBucket)));
-    assert_eq!(buckets.drain_completed_sequence(2), Err(Failure::MissingBucket));
+    assert_eq!(
+        buckets.drain_completed_sequence(2),
+        Err(Failure::MissingBucket)
+    );
 }
 
 #[test]
@@ -61,9 +67,16 @@ fn sequential_disposal_window_retires_in_order() {
     assert_eq!(order, [1, 2, 3, 4, 5]);
     assert_eq!(sequential.last_retired(), 5);
     // seq <= last_retired 断言；窗口内重复同一 seq 也 panic。
-    let msg = panic_message(std::panic::AssertUnwindSafe(|| sequential.dispose_in_order(5, |_| {})));
+    let msg = panic_message(std::panic::AssertUnwindSafe(|| {
+        sequential.dispose_in_order(5, |_| {})
+    }));
     assert_eq!(msg, "assertion failed: seq > self.last_retired");
     let mut sequential = SequentialDisposal::new();
     sequential.dispose_in_order(4, |_| {});
-    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sequential.dispose_in_order(4, |_| {}))).is_err());
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+            || sequential.dispose_in_order(4, |_| {})
+        ))
+        .is_err()
+    );
 }

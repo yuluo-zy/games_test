@@ -2,6 +2,14 @@
 
 自有渲染框架：把渲染 pass 和资源访问声明编译为录制、屏障、提交及 GPU 完成回收链。目录对应 B 版 `rhapsody/src/{rg,raw}`；shader 资产协议与构建器分别位于嵌套的 `shader-pipeline`、`shader-compiler` 包。
 
+## 架构重构
+
+当前按 [ARCHITECTURE.md](ARCHITECTURE.md) 与 [REFACTOR_PLAN.md](REFACTOR_PLAN.md) 改造，以正确性和性能为标准。实现进度与验证见 [REFACTOR_PROGRESS.md](REFACTOR_PROGRESS.md)。下文来源记录保留用于追溯，不约束新接口的布局或行为。
+
+设备提交统一走每队列时间线与锁；提交成功才确认完成点，延迟销毁使用 `Retirement`。`create_headless_device()` 默认单队列；需要计算/传输辅助队列时使用 `create_headless_device_configured(&QueueConfig { require_present: false, ..QueueConfig::prefer_all() })`。`VulkanGraphBackend::new_for_class` 按配置选择类别，别名类别共享同一条设备时间线。
+
+图会话默认串行录制，一个普通批次使用一个命令缓冲。资源创建错误保留设备错误类别；录制失败取消未提交部分，已提交部分等待真实完成后清理，其 GPU 副作用不会撤销。只有设备丢失使会话永久不可用。
+
 ## 已恢复与功能布局
 
 | 模块 | 当前实现 |
@@ -27,9 +35,9 @@
 
 ## 候选集成与剩余功能
 
-有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、epoch graveyard、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；`[device+0xad9]` 已更正为 wideLines 门控并接入设备创建；子通道号恒 0 仍是候选。
+有原指令证据的图编译、生命周期、PGO、格式和绑定规则已放入对应模块；整帧尚未验收不再成为排除这些实现的理由。可运行适配也不被冒称为原完整对象 ABI：`VulkanDevice`、主图 provider 桥、串行 session、同步 setup 上传、WSI 重建和诊断后端仍有登记的候选策略。`RasterPipelineOpts` 已按 0x1416a3720 还原为 4 字节位域（同时是 `RasterPipelineKey.selector`）；`[device+0xad9]` 已更正为 wideLines 门控并接入设备创建；子通道号恒 0 仍是候选。
 
-`suballocation` 默认开启，启用公共 `gpu-allocator 0.27`：原版是子分配，B 版 Cargo.lock 记 0.26.0 本地分叉，但 PDB 中 `AllocatorReport` 只在 0.27 出现，故按 0.27 复用（见 Cargo.toml 注释）；该分叉源码仍未找到，`tools/verify_inventory.py` 对此依赖身份仍报差异。`candidate-optimizations` 默认关闭，才启用 Balanced 分块与 ADAPTIVE 轻帧门槛；默认 session 使用原 PGO 分块策略，序列号回收和原并行命令池来源仍需进一步原码对照。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
+`suballocation` 默认开启，启用公共 `gpu-allocator 0.27`：原版是子分配，B 版 Cargo.lock 记 0.26.0 本地分叉，但 PDB 中 `AllocatorReport` 只在 0.27 出现，故按 0.27 复用（见 Cargo.toml 注释）；该分叉源码仍未找到，`tools/verify_inventory.py` 对此依赖身份仍报差异。`candidate-optimizations` 默认关闭；session 默认串行，调用方可显式设置 `ParallelRecording`。旧序号回收与逐命令复用仍在迁移到帧环池的过程中。没有重写 Bevy、ash 或分配库算法。`raw/descriptor_binding` 覆盖已取证的资源 tag 0–6、8–9；tag 7 等未知路径保留显式不支持边界，不把错误返回宣称为原完整分支恢复。
 
 尚缺原完整设备排序/驱动编码、原 managed 槽位与销毁桶布局、首个真实 shader callback 自动绑定、原多队列 ownership transfer/调度、原 temporal 淘汰与 ABI、原窗口焦点/全屏策略、厂商故障转储、完整游戏 producer/consumer。原版没有硬件光追路径（`rt()` 恒为 None）；`should_reset_temporal` 属 country-core consumer。temporal 已可经 `VulkanGraphSession::execute_temporal_frame` 走导出与 `validate_compiled_exports`，但 `tiny-glade/src/raster_host.rs` 的三个 temporal 入口仍未接（core 键 `ustr_contract::intern` 未恢复）。`get_setup_cb_submit_info` 已按 0x140bf84e0 实现为 `SetupCommandSlot::take_for_submit`；未恢复的 `set_fullscreen_exclusive`、`require_vendor_crash_dump` 占位方法没有迁入。
 

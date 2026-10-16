@@ -7,7 +7,9 @@ use rhapsody::raw::{
     device::{GraphicsDevice, VulkanDevice},
     init::create_headless_device,
     managed::{
-        buffer::ManagedBuffer, framebuffer::ManagedFramebuffer, render_pass::ManagedRenderPass,
+        buffer::ManagedBuffer,
+        framebuffer::ManagedFramebuffer,
+        render_pass::ManagedRenderPass,
         texture::{ManagedTexture, ManagedTextureView},
     },
     render_pass::RenderPassAttachmentDesc,
@@ -48,14 +50,25 @@ pub fn shaders() -> (Vec<u8>, Vec<u8>) {
         let position = b.variable(in_ptr, None, StorageClass::Input, None);
         b.decorate(position, Decoration::Location, [Operand::LiteralInt32(0)]);
         let gl_position = b.variable(out_ptr, None, StorageClass::Output, None);
-        b.decorate(gl_position, Decoration::BuiltIn, [Operand::BuiltIn(BuiltIn::Position)]);
-        let main = b.begin_function(void, None, FunctionControl::NONE, fn_ty).unwrap();
+        b.decorate(
+            gl_position,
+            Decoration::BuiltIn,
+            [Operand::BuiltIn(BuiltIn::Position)],
+        );
+        let main = b
+            .begin_function(void, None, FunctionControl::NONE, fn_ty)
+            .unwrap();
         b.begin_block(None).unwrap();
         let v = b.load(vec4, None, position, None, []).unwrap();
         b.store(gl_position, v, None, []).unwrap();
         b.ret().unwrap();
         b.end_function().unwrap();
-        b.entry_point(ExecutionModel::Vertex, main, "vs_main", [position, gl_position]);
+        b.entry_point(
+            ExecutionModel::Vertex,
+            main,
+            "vs_main",
+            [position, gl_position],
+        );
         bytes(b.module().assemble())
     };
     let fragment = {
@@ -73,7 +86,9 @@ pub fn shaders() -> (Vec<u8>, Vec<u8>) {
         let one = b.constant_f32(float, 1.0);
         let zero = b.constant_f32(float, 0.0);
         let value = b.constant_composite(vec4, [one, zero, zero, one]);
-        let main = b.begin_function(void, None, FunctionControl::NONE, fn_ty).unwrap();
+        let main = b
+            .begin_function(void, None, FunctionControl::NONE, fn_ty)
+            .unwrap();
         b.begin_block(None).unwrap();
         b.store(color, value, None, []).unwrap();
         b.ret().unwrap();
@@ -109,7 +124,15 @@ fn image_barrier(
             layer_count: 1,
         });
     unsafe {
-        device.cmd_pipeline_barrier(cb, src.0, dst.0, vk::DependencyFlags::empty(), &[], &[], &[barrier])
+        device.cmd_pipeline_barrier(
+            cb,
+            src.0,
+            dst.0,
+            vk::DependencyFlags::empty(),
+            &[],
+            &[],
+            &[barrier],
+        )
     };
 }
 
@@ -135,7 +158,9 @@ impl Rig {
         let device = create_headless_device().ok()?;
         let gd = GraphicsDevice::from_device(device.clone());
         let pass = gd
-            .create_render_pass(&[RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()])
+            .create_render_pass(&[
+                RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()
+            ])
             .unwrap();
         let (vs, fs) = shaders();
         let vertex = ShaderModule::from_spirv(device.clone(), &vs).unwrap();
@@ -162,15 +187,28 @@ impl Rig {
         RasterPipelineOpts(0).apply_to(&mut desc, 1);
         let pipeline = VulkanPipeline::create_raster_pipeline(&cache, desc).unwrap();
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
-        Some(Self { device, gd, pass, pipeline, pool })
+        Some(Self {
+            device,
+            gd,
+            pass,
+            pipeline,
+            pool,
+        })
     }
 
     pub fn new_target(&self, name: &str) -> Target {
-        let mut desc = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM).color_attachment();
+        let mut desc =
+            TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM).color_attachment();
         desc.usage |= vk::ImageUsageFlags::TRANSFER_SRC;
         let texture = self.gd.create_texture(&desc, name, ()).unwrap();
-        let view = self.gd.get_vk_image_view(&texture, &TextureViewDesc::new(&desc)).unwrap();
-        let extent = vk::Extent2D { width: SIZE, height: SIZE };
+        let view = self
+            .gd
+            .get_vk_image_view(&texture, &TextureViewDesc::new(&desc))
+            .unwrap();
+        let extent = vk::Extent2D {
+            width: SIZE,
+            height: SIZE,
+        };
         let framebuffer = self
             .gd
             .create_framebuffer(&self.pass, vec![view.view.clone()], extent, 1)
@@ -178,12 +216,20 @@ impl Rig {
         let readback = self
             .gd
             .create_buffer(
-                &BufferDesc::new_gpu_to_cpu(u64::from(SIZE * SIZE * 4), vk::BufferUsageFlags::TRANSFER_DST),
+                &BufferDesc::new_gpu_to_cpu(
+                    u64::from(SIZE * SIZE * 4),
+                    vk::BufferUsageFlags::TRANSFER_DST,
+                ),
                 "readback",
                 (),
             )
             .unwrap();
-        Target { texture, view, framebuffer, readback }
+        Target {
+            texture,
+            view,
+            framebuffer,
+            readback,
+        }
     }
 
     /// 录制并提交一帧：布局转换 → 清除 + 绘制三角形 → 拷到读回缓冲。顶点缓冲每次新建，
@@ -191,10 +237,17 @@ impl Rig {
     pub fn draw(&self, target: &Target, triangle: &Triangle, clear: [u8; 4]) -> PendingCommand {
         let gd = &self.gd;
         let raw = &self.device.device;
-        let bytes: Vec<u8> = triangle.iter().flatten().flat_map(|v| v.to_le_bytes()).collect();
+        let bytes: Vec<u8> = triangle
+            .iter()
+            .flatten()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
         let vbuf = gd
             .create_buffer(
-                &BufferDesc::new_cpu_to_gpu(bytes.len() as u64, vk::BufferUsageFlags::VERTEX_BUFFER),
+                &BufferDesc::new_cpu_to_gpu(
+                    bytes.len() as u64,
+                    vk::BufferUsageFlags::VERTEX_BUFFER,
+                ),
                 "triangle vb",
                 bytes.as_slice(),
             )
@@ -207,13 +260,27 @@ impl Rig {
             raw,
             handle,
             image,
-            (vk::ImageLayout::UNDEFINED, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL),
-            (vk::PipelineStageFlags::TOP_OF_PIPE, vk::AccessFlags::empty()),
-            (vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT, vk::AccessFlags::COLOR_ATTACHMENT_WRITE),
+            (
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            ),
+            (
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::AccessFlags::empty(),
+            ),
+            (
+                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            ),
         );
-        let extent = vk::Extent2D { width: SIZE, height: SIZE };
+        let extent = vk::Extent2D {
+            width: SIZE,
+            height: SIZE,
+        };
         let clear_value = [vk::ClearValue {
-            color: vk::ClearColorValue { float32: clear.map(|c| f32::from(c) / 255.0) },
+            color: vk::ClearColorValue {
+                float32: clear.map(|c| f32::from(c) / 255.0),
+            },
         }];
         unsafe {
             raw.cmd_begin_render_pass(
@@ -221,18 +288,39 @@ impl Rig {
                 &vk::RenderPassBeginInfo::default()
                     .render_pass(self.pass.raw())
                     .framebuffer(target.framebuffer.raw())
-                    .render_area(vk::Rect2D { offset: vk::Offset2D::default(), extent })
+                    .render_area(vk::Rect2D {
+                        offset: vk::Offset2D::default(),
+                        extent,
+                    })
                     .clear_values(&clear_value),
                 vk::SubpassContents::INLINE,
             );
             raw.cmd_set_viewport(
                 handle,
                 0,
-                &[vk::Viewport { x: 0.0, y: 0.0, width: SIZE as f32, height: SIZE as f32, min_depth: 0.0, max_depth: 1.0 }],
+                &[vk::Viewport {
+                    x: 0.0,
+                    y: 0.0,
+                    width: SIZE as f32,
+                    height: SIZE as f32,
+                    min_depth: 0.0,
+                    max_depth: 1.0,
+                }],
             );
-            raw.cmd_set_scissor(handle, 0, &[vk::Rect2D { offset: vk::Offset2D::default(), extent }]);
+            raw.cmd_set_scissor(
+                handle,
+                0,
+                &[vk::Rect2D {
+                    offset: vk::Offset2D::default(),
+                    extent,
+                }],
+            );
             raw.cmd_set_stencil_reference(handle, vk::StencilFaceFlags::FRONT_AND_BACK, 0);
-            raw.cmd_bind_pipeline(handle, vk::PipelineBindPoint::GRAPHICS, self.pipeline.handle);
+            raw.cmd_bind_pipeline(
+                handle,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline.handle,
+            );
             raw.cmd_bind_vertex_buffers(handle, 0, &[gd.get_vk_buffer(&vbuf).unwrap()], &[0]);
             raw.cmd_draw(handle, 3, 1, 0, 0);
             raw.cmd_end_render_pass(handle);
@@ -241,9 +329,18 @@ impl Rig {
             raw,
             handle,
             image,
-            (vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, vk::ImageLayout::TRANSFER_SRC_OPTIMAL),
-            (vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT, vk::AccessFlags::COLOR_ATTACHMENT_WRITE),
-            (vk::PipelineStageFlags::TRANSFER, vk::AccessFlags::TRANSFER_READ),
+            (
+                vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            ),
+            (
+                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            ),
+            (
+                vk::PipelineStageFlags::TRANSFER,
+                vk::AccessFlags::TRANSFER_READ,
+            ),
         );
         let readback = gd.get_vk_buffer(&target.readback).unwrap();
         unsafe {
@@ -263,7 +360,11 @@ impl Rig {
                         layer_count: 1,
                     },
                     image_offset: vk::Offset3D::default(),
-                    image_extent: vk::Extent3D { width: SIZE, height: SIZE, depth: 1 },
+                    image_extent: vk::Extent3D {
+                        width: SIZE,
+                        height: SIZE,
+                        depth: 1,
+                    },
                 }],
             );
             raw.cmd_pipeline_barrier(
@@ -309,9 +410,16 @@ pub fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
 
 /// 以像素中心做边函数的 CPU 参考光栅化（不剔除）。返回每像素是否被覆盖。
 pub fn reference_coverage(tri: &Triangle) -> Vec<bool> {
-    let to_px = |v: &[f32; 4]| ((v[0] + 1.0) * 0.5 * SIZE as f32, (v[1] + 1.0) * 0.5 * SIZE as f32);
+    let to_px = |v: &[f32; 4]| {
+        (
+            (v[0] + 1.0) * 0.5 * SIZE as f32,
+            (v[1] + 1.0) * 0.5 * SIZE as f32,
+        )
+    };
     let [a, b, c] = [to_px(&tri[0]), to_px(&tri[1]), to_px(&tri[2])];
-    let edge = |p: (f32, f32), q: (f32, f32), r: (f32, f32)| (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0);
+    let edge = |p: (f32, f32), q: (f32, f32), r: (f32, f32)| {
+        (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0)
+    };
     let area = edge(a, b, c);
     let mut covered = vec![false; (SIZE * SIZE) as usize];
     for y in 0..SIZE {
@@ -333,14 +441,23 @@ pub fn reference_coverage(tri: &Triangle) -> Vec<bool> {
 
 /// 基础三角形绕 NDC 原点旋转 `angle` 弧度。
 pub fn rotated_triangle(angle: f32) -> Triangle {
-    let base: Triangle = [[-0.5, -0.5, 0.0, 1.0], [0.5, -0.5, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]];
+    let base: Triangle = [
+        [-0.5, -0.5, 0.0, 1.0],
+        [0.5, -0.5, 0.0, 1.0],
+        [0.0, 0.5, 0.0, 1.0],
+    ];
     let (s, c) = angle.sin_cos();
     base.map(|v| [v[0] * c - v[1] * s, v[0] * s + v[1] * c, 0.0, 1.0])
 }
 
 /// 每帧不同的清除色（蓝分量始终 ≥ 155，不会和红色三角形混淆）。
 pub fn frame_clear_color(frame: usize) -> [u8; 4] {
-    [(frame * 5 % 100) as u8, (frame * 9 % 200) as u8, 255 - (frame * 3 % 100) as u8, 255]
+    [
+        (frame * 5 % 100) as u8,
+        (frame * 9 % 200) as u8,
+        255 - (frame * 3 % 100) as u8,
+        255,
+    ]
 }
 
 pub struct FrameCheck {
@@ -361,7 +478,10 @@ pub fn check_animation_frame(frame: usize, step_deg: f32, pixels: &[u8]) -> Fram
         for x in 0..SIZE {
             let p = pixel(pixels, x, y);
             let is_fill = p == FILL;
-            assert!(is_fill || p == clear, "第 {frame} 帧 ({x},{y}) 出现既非填充色也非本帧清除色的像素 {p:?}（上一帧内容泄漏？）");
+            assert!(
+                is_fill || p == clear,
+                "第 {frame} 帧 ({x},{y}) 出现既非填充色也非本帧清除色的像素 {p:?}（上一帧内容泄漏？）"
+            );
             if is_fill != covered[(y * SIZE + x) as usize] {
                 mismatches += 1;
             }
@@ -372,13 +492,30 @@ pub fn check_animation_frame(frame: usize, step_deg: f32, pixels: &[u8]) -> Fram
             }
         }
     }
-    assert!(mismatches <= 8, "第 {frame} 帧与 CPU 参考光栅化有 {mismatches} 个像素不一致");
-    assert!((470..=555).contains(&filled), "第 {frame} 帧三角形像素数 {filled} 偏离 512（旋转不改面积）");
+    assert!(
+        mismatches <= 8,
+        "第 {frame} 帧与 CPU 参考光栅化有 {mismatches} 个像素不一致"
+    );
+    assert!(
+        (470..=555).contains(&filled),
+        "第 {frame} 帧三角形像素数 {filled} 偏离 512（旋转不改面积）"
+    );
     let (s, c) = angle.sin_cos();
     let (cx, cy) = (s * (1.0 / 6.0), -c * (1.0 / 6.0));
-    let expected = ((cx + 1.0) * 0.5 * SIZE as f32, (cy + 1.0) * 0.5 * SIZE as f32);
+    let expected = (
+        (cx + 1.0) * 0.5 * SIZE as f32,
+        (cy + 1.0) * 0.5 * SIZE as f32,
+    );
     let measured = (sum_x / filled as f32, sum_y / filled as f32);
-    let centroid_error = ((measured.0 - expected.0).powi(2) + (measured.1 - expected.1).powi(2)).sqrt();
-    assert!(centroid_error < 0.8, "第 {frame} 帧质心 {measured:?} 偏离预期 {expected:?}（{centroid_error:.2} px）");
-    FrameCheck { mismatches, filled, centroid_error }
+    let centroid_error =
+        ((measured.0 - expected.0).powi(2) + (measured.1 - expected.1).powi(2)).sqrt();
+    assert!(
+        centroid_error < 0.8,
+        "第 {frame} 帧质心 {measured:?} 偏离预期 {expected:?}（{centroid_error:.2} px）"
+    );
+    FrameCheck {
+        mismatches,
+        filled,
+        centroid_error,
+    }
 }

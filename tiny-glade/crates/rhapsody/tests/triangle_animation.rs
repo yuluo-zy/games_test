@@ -18,14 +18,23 @@ const STEP_DEG: f32 = 15.0;
 
 /// 基础三角形绕 NDC 原点旋转 `angle` 弧度。
 fn rotated(angle: f32) -> Triangle {
-    let base: Triangle = [[-0.5, -0.5, 0.0, 1.0], [0.5, -0.5, 0.0, 1.0], [0.0, 0.5, 0.0, 1.0]];
+    let base: Triangle = [
+        [-0.5, -0.5, 0.0, 1.0],
+        [0.5, -0.5, 0.0, 1.0],
+        [0.0, 0.5, 0.0, 1.0],
+    ];
     let (s, c) = angle.sin_cos();
     base.map(|v| [v[0] * c - v[1] * s, v[0] * s + v[1] * c, 0.0, 1.0])
 }
 
 /// 每帧不同的清除色（蓝分量始终 ≥ 155，不会和红色三角形混淆）。
 fn clear_color(frame: usize) -> [u8; 4] {
-    [(frame * 5 % 100) as u8, (frame * 9 % 200) as u8, 255 - (frame * 3 % 100) as u8, 255]
+    [
+        (frame * 5 % 100) as u8,
+        (frame * 9 % 200) as u8,
+        255 - (frame * 3 % 100) as u8,
+        255,
+    ]
 }
 
 struct Slot {
@@ -51,7 +60,10 @@ fn verify(frame: usize, target: &Target, stats: &mut Stats) {
         for x in 0..SIZE {
             let p = pixel(&pixels, x, y);
             let is_fill = p == FILL;
-            assert!(is_fill || p == clear, "第 {frame} 帧 ({x},{y}) 出现既非填充色也非本帧清除色的像素 {p:?}（上一帧内容泄漏？）");
+            assert!(
+                is_fill || p == clear,
+                "第 {frame} 帧 ({x},{y}) 出现既非填充色也非本帧清除色的像素 {p:?}（上一帧内容泄漏？）"
+            );
             if is_fill != covered[(y * SIZE + x) as usize] {
                 mismatches += 1;
             }
@@ -62,22 +74,48 @@ fn verify(frame: usize, target: &Target, stats: &mut Stats) {
             }
         }
     }
-    assert!(mismatches <= 8, "第 {frame} 帧与 CPU 参考光栅化有 {mismatches} 个像素不一致");
-    assert!((470..=555).contains(&filled), "第 {frame} 帧三角形像素数 {filled} 偏离 512（旋转不改面积）");
+    assert!(
+        mismatches <= 8,
+        "第 {frame} 帧与 CPU 参考光栅化有 {mismatches} 个像素不一致"
+    );
+    assert!(
+        (470..=555).contains(&filled),
+        "第 {frame} 帧三角形像素数 {filled} 偏离 512（旋转不改面积）"
+    );
 
     // 解析质心：重心 (0,-1/6) 随同一旋转移动。
     let a = frame as f32 * STEP_DEG.to_radians();
     let (s, c) = a.sin_cos();
     let (cx, cy) = (s * (1.0 / 6.0), -c * (1.0 / 6.0));
-    let expected = ((cx + 1.0) * 0.5 * SIZE as f32, (cy + 1.0) * 0.5 * SIZE as f32);
+    let expected = (
+        (cx + 1.0) * 0.5 * SIZE as f32,
+        (cy + 1.0) * 0.5 * SIZE as f32,
+    );
     let measured = (sum_x / filled as f32, sum_y / filled as f32);
     let error = ((measured.0 - expected.0).powi(2) + (measured.1 - expected.1).powi(2)).sqrt();
-    assert!(error < 0.8, "第 {frame} 帧质心 {measured:?} 偏离预期 {expected:?}（{error:.2} px）");
+    assert!(
+        error < 0.8,
+        "第 {frame} 帧质心 {measured:?} 偏离预期 {expected:?}（{error:.2} px）"
+    );
 
     if frame.is_multiple_of(6) {
-        println!("--- 第 {frame} 帧（旋转 {:.0}°，清除色 {clear:?}）质心 ({:.1},{:.1}) ---", frame as f32 * STEP_DEG, measured.0, measured.1);
+        println!(
+            "--- 第 {frame} 帧（旋转 {:.0}°，清除色 {clear:?}）质心 ({:.1},{:.1}) ---",
+            frame as f32 * STEP_DEG,
+            measured.0,
+            measured.1
+        );
         for y in (0..SIZE).step_by(4) {
-            let row: String = (0..SIZE).step_by(2).map(|x| if pixel(&pixels, x, y) == FILL { '#' } else { '.' }).collect();
+            let row: String = (0..SIZE)
+                .step_by(2)
+                .map(|x| {
+                    if pixel(&pixels, x, y) == FILL {
+                        '#'
+                    } else {
+                        '.'
+                    }
+                })
+                .collect();
             println!("{row}");
         }
     }
@@ -90,9 +128,16 @@ fn verify(frame: usize, target: &Target, stats: &mut Stats) {
 fn a_rotating_triangle_renders_correctly_across_many_frames_in_flight() {
     let Some(rig) = Rig::new() else { return };
     let mut slots: Vec<Slot> = (0..IN_FLIGHT)
-        .map(|i| Slot { target: rig.new_target(&format!("frame target {i}")), pending: None })
+        .map(|i| Slot {
+            target: rig.new_target(&format!("frame target {i}")),
+            pending: None,
+        })
         .collect();
-    let mut stats = Stats { frames_checked: 0, worst_mismatch: 0, worst_centroid_error: 0.0 };
+    let mut stats = Stats {
+        frames_checked: 0,
+        worst_mismatch: 0,
+        worst_centroid_error: 0.0,
+    };
     let mut max_in_flight = 0;
 
     for frame in 0..FRAMES {
@@ -102,7 +147,11 @@ fn a_rotating_triangle_renders_correctly_across_many_frames_in_flight() {
             pending.wait(u64::MAX).unwrap();
             verify(old_frame, &slot.target, &mut stats);
         }
-        let pending = rig.draw(&slot.target, &rotated(frame as f32 * STEP_DEG.to_radians()), clear_color(frame));
+        let pending = rig.draw(
+            &slot.target,
+            &rotated(frame as f32 * STEP_DEG.to_radians()),
+            clear_color(frame),
+        );
         slot.pending = Some((frame, pending));
         max_in_flight = max_in_flight.max(slots.iter().filter(|s| s.pending.is_some()).count());
     }
@@ -121,7 +170,10 @@ fn a_rotating_triangle_renders_correctly_across_many_frames_in_flight() {
         stats.frames_checked, stats.worst_mismatch, stats.worst_centroid_error
     );
     assert_eq!(stats.frames_checked, FRAMES, "每一帧都必须被校验到");
-    assert_eq!(max_in_flight, IN_FLIGHT, "测试必须真的出现多帧同时在飞，否则没有验证到帧间重叠");
+    assert_eq!(
+        max_in_flight, IN_FLIGHT,
+        "测试必须真的出现多帧同时在飞，否则没有验证到帧间重叠"
+    );
     // 全部结束后设备应可正常空闲（没有遗留的错误状态）。
     rig.device.wait_idle().unwrap();
 }

@@ -10,9 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct ExecutionChain {
     pub counters: sequence::DeviceCounters,
     pub lifecycle: sequence::SequenceRuntime,
-    pub device: submit::DeviceState,
+    queues: Vec<vk::Queue>,
     command_snapshots: BTreeMap<u64, sequence::Command>,
-    queue_failure: bool,
+    recorded_sequences: Vec<u64>,
     graph_queue_domain: Option<sequence::Queue>,
     pool_family_count: u32,
     /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
@@ -53,6 +53,7 @@ struct ChunkResult {
 pub enum Error {
     /// 并行录制的分块或规划无效，或后端未提供并行视图。
     ChunkPlan,
+    CallbackPanic,
     Begin(sequence::BeginFailure),
     Lifecycle(sequence::Failure),
     Record(record::Outcome),
@@ -60,12 +61,10 @@ pub enum Error {
     EmptyCommands,
     InvalidLastState,
     EndFailed,
-    Queue(submit::Outcome),
-    Compile(crate::rg::graph::PopulationFailure),
+    Compile(crate::Error),
     ResourceUnavailable(usize),
     CallbackCount,
     ManagedResourceUnresolved(usize),
-    CompletionAfterQueueFailure,
     QueueUnavailable(sequence::Queue),
     InvalidSynchronization,
     UnsupportedQueueDomainSwitch,
@@ -74,7 +73,7 @@ pub enum Error {
         actual: usize,
     },
     /// 调用方对编译结果的校验失败（如 temporal 导出映射）；发生在任何命令开始之前。
-    Validation(String),
+    Validation(crate::Error),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -149,20 +148,17 @@ pub struct ExecutionStats {
     pub barrier_transitions: u32,
 }
 impl ExecutionStats {
-    /// 从录制器事件统计屏障：`barrier:*` 是一个转换，`emit:*` 是一次非空屏障命令。
-    /// 串行与并行录制共用同一套事件，所以两条路径的计数必须相同。
-    fn count_barriers(&mut self, events: &[String]) {
-        for event in events {
-            if event.starts_with("barrier:") {
-                self.barrier_transitions += 1;
-            } else if event.starts_with("emit:") {
-                self.barrier_commands += 1;
-            }
-        }
+    fn count_barriers(&mut self, outcome: &record::Outcome) {
+        self.barrier_commands += outcome.barrier_commands;
+        self.barrier_transitions += outcome.barrier_transitions;
     }
 }
 
 pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
+    /// 兼容录制器 bool/生命周期接口期间，取出设备调用的原始错误，避免丢失错误类别。
+    fn take_error(&mut self) -> Option<crate::Error> {
+        None
+    }
     /// 包括 Pool 命中与导入资源；运行回调前重新发布真实物理映射。
     fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::CompiledGraph) -> bool {
         true
@@ -213,20 +209,27 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     fn flush_barriers(&mut self, _command: u64) -> bool {
         true
     }
-    fn submit(&mut self, queue: vk::Queue, prepared: &[submit::PreparedSubmit]) -> (i32, bool);
+    fn submit(
+        &mut self,
+        queue: vk::Queue,
+        prepared: &[submit::PreparedSubmit],
+    ) -> crate::Result<crate::sync::SyncPoint>;
     /// 支持并行录制的后端返回只读视图；返回 None 时执行器始终走串行路径。
     fn chunk_recorder(&self) -> Option<Box<dyn ChunkRecorder + '_>> {
         None
     }
     /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
     fn abandon_command(&mut self, _handle: u64) {}
+    fn wait_submission(&self, _receipt: sequence::SubmissionReceipt) -> crate::Result<()> {
+        Ok(())
+    }
 }
 
 pub struct GraphExecution {
     pub compiled: crate::rg::graph::CompiledGraph,
     pub receipts: Vec<sequence::SubmissionReceipt>,
     pub resources: Vec<sequence::ResourceHandle>,
-    pub recorder_events: Vec<String>,
+    pub command_sequences: Vec<u64>,
     pub stats: ExecutionStats,
 }
 
@@ -252,7 +255,10 @@ impl PassContext<'_> {
     }
 }
 
-fn access(record: &crate::rg::graph::ResourceAccessRecord, write: bool) -> crate::raw::barrier::Access {
+fn access(
+    record: &crate::rg::graph::ResourceAccessRecord,
+    write: bool,
+) -> crate::raw::barrier::Access {
     crate::raw::barrier::Access {
         code: record.access_code,
         group: record.synchronization_group,
@@ -298,7 +304,7 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let result =
             self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
@@ -314,8 +320,9 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> Result<(), String>,
+        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
+        self.recorded_sequences.clear();
         let mut stats = ExecutionStats::default();
         if callbacks.len() != graph.passes.len() {
             return Err(Error::CallbackCount);
@@ -324,8 +331,7 @@ impl ExecutionChain {
         if family >= self.pool_family_count {
             return Err(Error::Lifecycle(sequence::Failure::PoolFamilyBounds));
         }
-        if matches!(queue, sequence::Queue::Auxiliary(i) if i as usize >= self.device.auxiliary.len())
-        {
+        if matches!(queue, sequence::Queue::Auxiliary(i) if i as usize + 1 >= self.queues.len()) {
             return Err(Error::QueueUnavailable(queue));
         }
         // 已恢复的 resource bucket key 仍为全局 u64。跨队列同号可能冲突，不能伪造域映射。
@@ -347,42 +353,47 @@ impl ExecutionChain {
             .copied()
             .collect::<BTreeSet<_>>();
         let mut receipts = Vec::new();
-        let result = validate(&compiled)
-            .map_err(Error::Validation)
-            .and_then(|()| {
-                self.record_compiled(
-                    &compiled,
-                    dependency,
-                    backend,
-                    callbacks,
-                    (queue, family),
-                    &mut stats,
-                    &mut receipts,
-                )
-            });
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            validate(&compiled)
+                .map_err(Error::Validation)
+                .and_then(|()| {
+                    self.record_compiled(
+                        &compiled,
+                        dependency,
+                        backend,
+                        callbacks,
+                        (queue, family),
+                        &mut stats,
+                        &mut receipts,
+                    )
+                })
+        }))
+        .unwrap_or(Err(Error::CallbackPanic));
         match result {
-            Ok((resources, recorder_events)) => Ok(GraphExecution {
+            Ok(resources) => Ok(GraphExecution {
                 compiled,
                 receipts,
                 resources,
-                recorder_events,
+                command_sequences: self.recorded_sequences.clone(),
                 stats,
             }),
             Err(error) => {
-                // 队列提交失败时设备侧已登记命令，状态不确定：不放弃命令、不归还资源，交给停态与 idle 清理。
-                if !matches!(error, Error::Queue(_)) {
-                    self.abandon_unsubmitted(&error, &existing, backend);
-                    // 已有批次提交时 GPU 可能仍在使用这些资源，不能立刻放回资源池。
-                    if receipts.is_empty() {
-                        crate::rg::graph::reclaim_failed_resources(
-                            &mut compiled.registry,
-                            &compiled.declarations.resources,
-                            &compiled.snapshot.pool_hits,
-                            pool,
-                            backend,
-                        );
-                    }
+                let error = backend.take_error().map(Error::Validation).unwrap_or(error);
+                // 已经成功提交的批次先完成，再回滚本次资源；未提交命令直接取消。
+                for receipt in &receipts {
+                    backend
+                        .wait_submission(*receipt)
+                        .map_err(Error::Validation)?;
+                    self.complete(receipt.queue, receipt.last_timeline)?;
                 }
+                self.abandon_unsubmitted(&error, &existing, backend);
+                crate::rg::graph::reclaim_failed_resources(
+                    &mut compiled.registry,
+                    &compiled.declarations.resources,
+                    &compiled.snapshot.pool_hits,
+                    pool,
+                    backend,
+                );
                 Err(error)
             }
         }
@@ -402,7 +413,9 @@ impl ExecutionChain {
             .filter(|handle| !existing.contains(handle))
             .collect::<Vec<_>>();
         for handle in &handles {
-            self.command_snapshots.remove(handle);
+            if let Some(command) = self.command_snapshots.remove(handle) {
+                let _ = self.lifecycle.abandon(&command);
+            }
         }
         if let Error::Begin(failure) = error
             && !handles.contains(&failure.command.handle())
@@ -425,7 +438,7 @@ impl ExecutionChain {
         (queue, family): (sequence::Queue, u32),
         stats: &mut ExecutionStats,
         receipts: &mut Vec<sequence::SubmissionReceipt>,
-    ) -> Result<(Vec<sequence::ResourceHandle>, Vec<String>), Error> {
+    ) -> Result<Vec<sequence::ResourceHandle>, Error> {
         let pass_names = compiled
             .declarations
             .passes
@@ -450,8 +463,12 @@ impl ExecutionChain {
             .map(|record| dependency.is_write(record.access_code))
             .collect();
         let resolve_access = |index: u32| {
-            (index != crate::rg::graph::NO_ACCESS)
-                .then(|| access(&compiled.info.accesses[index as usize], writes[index as usize]))
+            (index != crate::rg::graph::NO_ACCESS).then(|| {
+                access(
+                    &compiled.info.accesses[index as usize],
+                    writes[index as usize],
+                )
+            })
         };
         let mut resources = Vec::new();
         let mut logical_handles = Vec::new();
@@ -520,7 +537,7 @@ impl ExecutionChain {
             })
             .collect::<Vec<_>>();
         if compiled.snapshot.batches.is_empty() {
-            return Ok((resources, vec![]));
+            return Ok(resources);
         }
         let first_handle = backend.command_handle().map_err(Error::Lifecycle)?;
         let first = self.begin(
@@ -539,7 +556,6 @@ impl ExecutionChain {
                 .collect(),
             commands: vec![first.record_command()],
         };
-        let mut events = Vec::new();
         for (batch_index, batch) in compiled.snapshot.batches.iter().enumerate() {
             let synchronization = synchronization[batch_index].clone();
             // 初始屏障消费上一条活动命令；新命令分配前更新已恢复的跟踪状态。
@@ -593,13 +609,28 @@ impl ExecutionChain {
                     },
                     backend,
                 )?;
-                stats.count_barriers(&outcome.1.events);
-                events.extend(outcome.1.events);
+                stats.count_barriers(&outcome.1);
                 outcome.0
             } else {
-                let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-                let new = self.begin(handle, family, queue, backend.begin_command(handle))?;
-                backend.command_started(&new).map_err(Error::Lifecycle)?;
+                let new = if matches!(
+                    self.parallel.strategy,
+                    crate::rg::parallel::ChunkStrategy::Serial
+                ) {
+                    let handle = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
+                    self.command_snapshots
+                        .get(&handle)
+                        .ok_or(Error::MissingCommand(handle))?
+                        .clone()
+                } else {
+                    let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+                    let command =
+                        self.begin(handle, family, queue, backend.begin_command(handle))?;
+                    backend
+                        .command_started(&command)
+                        .map_err(Error::Lifecycle)?;
+                    command
+                };
+                let handle = new.handle();
                 let start = batch.pass_range.start;
                 let owners = std::cell::RefCell::new(Vec::new());
                 let mut durations = Vec::new();
@@ -659,8 +690,7 @@ impl ExecutionChain {
                 }
                 self.pgo.current.extend(durations);
                 let outcome = outcome?;
-                stats.count_barriers(&outcome.events);
-                events.extend(outcome.events);
+                stats.count_barriers(&outcome);
                 new
             };
             stats.record_ns += record_start.elapsed().as_nanos() as u64;
@@ -684,12 +714,52 @@ impl ExecutionChain {
                 .ok_or(Error::EmptyCommands)?;
             let submit_start = std::time::Instant::now();
             let end_ok = backend.end_command(vk::CommandBuffer::from_raw(ended));
-            let (receipt, _) = self.submit_recorded_with_sync(
-                &mut recorder,
-                synchronization,
-                |_| end_ok,
-                |queue, prepared| backend.submit(queue, prepared),
-            )?;
+            if !end_ok {
+                return Err(Error::EndFailed);
+            }
+            let commands = std::mem::take(&mut recorder.commands);
+            let handles = commands
+                .iter()
+                .map(|c| vk::CommandBuffer::from_raw(c.handle))
+                .collect();
+            let prepared = submit::PreparedSubmit {
+                commands: handles,
+                wait_semaphores: synchronization.waits.iter().map(|w| w.semaphore).collect(),
+                wait_stages: synchronization.waits.iter().map(|w| w.stage).collect(),
+                wait_values: synchronization.waits.iter().map(|w| w.value).collect(),
+                signal_semaphores: synchronization
+                    .signals
+                    .iter()
+                    .map(|s| s.semaphore)
+                    .collect(),
+                signal_values: synchronization.signals.iter().map(|s| s.value).collect(),
+            };
+            let raw_queue = match queue {
+                sequence::Queue::Primary => self.queues[0],
+                sequence::Queue::Auxiliary(index) => self.queues[index as usize + 1],
+            };
+            let point = backend
+                .submit(raw_queue, &[prepared])
+                .map_err(Error::Validation)?;
+            let receipt = sequence::SubmissionReceipt {
+                queue,
+                last_timeline: sequence::Timeline(point.value),
+            };
+            let pending = commands
+                .iter()
+                .map(|c| {
+                    let mut command = self
+                        .command_snapshots
+                        .remove(&c.handle)
+                        .expect("本批命令已登记");
+                    command.set_state(3);
+                    sequence::PendingCommand {
+                        command,
+                        threshold: sequence::Timeline(point.value),
+                    }
+                })
+                .collect();
+            self.lifecycle.accept_submission(receipt, pending);
             stats.submit_ns += submit_start.elapsed().as_nanos() as u64;
             receipts.push(receipt);
             if !backend.collect_managed_waste() {
@@ -702,15 +772,16 @@ impl ExecutionChain {
                 recorder.commands.push(active.record_command());
             }
         }
-        Ok((resources, events))
+        Ok(resources)
     }
-    pub fn new(auxiliary_count: u32, family_count: u32, device: submit::DeviceState) -> Self {
+    pub fn new(primary: vk::Queue, auxiliary: Vec<vk::Queue>, family_count: u32) -> Self {
+        let auxiliary_count = auxiliary.len() as u32;
         Self {
             counters: sequence::DeviceCounters::new(auxiliary_count),
             lifecycle: sequence::SequenceRuntime::new(family_count),
-            device,
+            queues: std::iter::once(primary).chain(auxiliary).collect(),
             command_snapshots: BTreeMap::new(),
-            queue_failure: false,
+            recorded_sequences: Vec::new(),
             graph_queue_domain: None,
             pool_family_count: family_count,
             parallel: Default::default(),
@@ -734,6 +805,7 @@ impl ExecutionChain {
                 backend,
             )
             .map_err(Error::Begin)?;
+        self.recorded_sequences.push(command.sequence().0);
         self.command_snapshots.insert(handle, command.clone());
         Ok(command)
     }
@@ -974,143 +1046,11 @@ impl ExecutionChain {
         Ok((last, outcome))
     }
 
-    /// 接管命令所有权、结束最后开放命令、构造队列契约，再转移真实每命令阈值。
-    pub fn submit_recorded(
-        &mut self,
-        recorder: &mut record::Recorder,
-        end: impl FnMut(vk::CommandBuffer) -> bool,
-        backend: impl FnMut(vk::Queue, &[submit::PreparedSubmit]) -> (i32, bool),
-    ) -> Result<(sequence::SubmissionReceipt, submit::Outcome), Error> {
-        self.submit_recorded_with_sync(recorder, GraphBatchSync::default(), end, backend)
-    }
-    pub fn submit_recorded_with_sync(
-        &mut self,
-        recorder: &mut record::Recorder,
-        synchronization: GraphBatchSync,
-        mut end: impl FnMut(vk::CommandBuffer) -> bool,
-        backend: impl FnMut(vk::Queue, &[submit::PreparedSubmit]) -> (i32, bool),
-    ) -> Result<(sequence::SubmissionReceipt, submit::Outcome), Error> {
-        if !synchronization.valid() {
-            return Err(Error::InvalidSynchronization);
-        }
-        let mut commands = std::mem::take(&mut recorder.commands);
-        let last = commands.last_mut().ok_or(Error::EmptyCommands)?;
-        if last.state != 1 {
-            return Err(Error::InvalidLastState);
-        }
-        if !end(vk::CommandBuffer::from_raw(last.handle)) {
-            return Err(Error::EndFailed);
-        }
-        last.state = 2;
-        let first = self
-            .command_snapshots
-            .get(&commands[0].handle)
-            .ok_or(Error::MissingCommand(commands[0].handle))?;
-        let queue = first.queue().map_err(Error::Lifecycle)?;
-        let (tag, index) = queue.raw();
-        let queue_id = submit::QueueId { tag, index };
-        let queue_commands = commands
-            .iter()
-            .map(|recorded| {
-                let original = self
-                    .command_snapshots
-                    .get_mut(&recorded.handle)
-                    .ok_or(Error::MissingCommand(recorded.handle))?;
-                original.set_state(recorded.state);
-                let (tag, index) = original.queue().map_err(Error::Lifecycle)?.raw();
-                Ok(submit::Command {
-                    state: u64::from(recorded.state),
-                    sequence: original.sequence().0,
-                    queue: submit::QueueId { tag, index },
-                    handle: vk::CommandBuffer::from_raw(recorded.handle),
-                })
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-        let synchronized = !synchronization.waits.is_empty() || !synchronization.signals.is_empty();
-        let batch = submit::Batch {
-            commands: queue_commands,
-            wait_semaphores: synchronization.waits.iter().map(|w| w.semaphore).collect(),
-            wait_stages: synchronization.waits.iter().map(|w| w.stage).collect(),
-            wait_values: synchronization.waits.iter().map(|w| w.value).collect(),
-            signal_semaphores: synchronization
-                .signals
-                .iter()
-                .map(|s| s.semaphore)
-                .collect(),
-            signal_values: synchronization.signals.iter().map(|s| s.value).collect(),
-        };
-        // 原 current 槽只有单个 binary wait/signal（值 0）；完整 timeline 数组由 prior Batch 槽承载。
-        // 外部同步批次保留原 prior→current 的顺序，末尾 current 为空；默认图不改变既有行为。
-        let input = if synchronized {
-            submit::SubmissionInput {
-                flushed_command: None,
-                prior: Some(batch),
-                current: submit::Batch::default(),
-            }
-        } else {
-            submit::SubmissionInput {
-                flushed_command: None,
-                prior: None,
-                current: batch,
-            }
-        };
-        let out = self.device.queue_submit(queue_id, input, backend);
-        if out.panic.is_some() {
-            // 注册与状态 3 写入发生在后端调用前；失败不伪造回执或回滚，也不继续复用。
-            self.queue_failure = true;
-            return Err(Error::Queue(out));
-        }
-        let (returned_queue, last_timeline) =
-            out.receipt.ok_or_else(|| Error::Queue(out.clone()))?;
-        let queue = sequence::Queue::from_raw(returned_queue.tag, returned_queue.index)
-            .map_err(Error::Lifecycle)?;
-        let receipt = sequence::SubmissionReceipt {
-            queue,
-            last_timeline: sequence::Timeline(last_timeline),
-        };
-        let selected = match queue {
-            sequence::Queue::Primary => &mut self.device.primary,
-            sequence::Queue::Auxiliary(index) => &mut self.device.auxiliary[index as usize],
-        };
-        // 转移新注册的队列命令，不重新生成其时间线。
-        let pending = selected
-            .pending_commands
-            .drain(..)
-            .map(|item| {
-                let mut original = self
-                    .command_snapshots
-                    .remove(&item.command.handle.as_raw())
-                    .ok_or(Error::MissingCommand(item.command.handle.as_raw()))?;
-                original.set_state(item.command.state as u32);
-                Ok(sequence::PendingCommand {
-                    command: original,
-                    threshold: sequence::Timeline(item.timeline),
-                })
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-        self.lifecycle.accept_submission(receipt, pending);
-        Ok((receipt, out))
-    }
-
     pub fn complete(
         &mut self,
         queue: sequence::Queue,
         value: sequence::Timeline,
     ) -> Result<(), Error> {
-        if self.queue_failure {
-            return Err(Error::CompletionAfterQueueFailure);
-        }
-        let selected = match queue {
-            sequence::Queue::Primary => &mut self.device.primary,
-            sequence::Queue::Auxiliary(index) => &mut self.device.auxiliary[index as usize],
-        };
-        while selected
-            .pending_timelines
-            .front()
-            .is_some_and(|v| *v <= value.0)
-        {
-            selected.pending_timelines.pop_front();
-        }
         self.lifecycle.observe_timeline(queue, value);
         self.lifecycle
             .reclaim_ready(queue)
@@ -1299,3 +1239,10 @@ impl ExecutedRenderGraph {
         std::mem::take(&mut self.retire)
     }
 }
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for Error {}

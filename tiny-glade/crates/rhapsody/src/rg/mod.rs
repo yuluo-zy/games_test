@@ -1,6 +1,7 @@
 pub mod access_ledger;
 pub mod attachments;
 pub mod binding;
+pub mod cache;
 pub mod compiled;
 // 既有已恢复 CPU 叶 API 保留兼容导出。
 pub mod compiled_graph;
@@ -22,6 +23,7 @@ pub mod resource_registry;
 pub mod resource_usage;
 pub mod state;
 pub mod temporal;
+pub mod transient_memory;
 pub mod util;
 
 pub mod resource_rules;

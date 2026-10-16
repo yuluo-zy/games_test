@@ -76,7 +76,10 @@ fn retirement_waits_for_completed_threshold_in_order() {
         let values = values.clone();
         assert!(
             buckets
-                .append_existing(sequence, Box::new(move || values.lock().unwrap().push(sequence)))
+                .append_existing(
+                    sequence,
+                    Box::new(move || values.lock().unwrap().push(sequence))
+                )
                 .is_ok()
         );
     }

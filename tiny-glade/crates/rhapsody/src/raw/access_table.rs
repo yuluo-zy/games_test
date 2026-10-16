@@ -21,133 +21,389 @@ pub const ACCESS_CODE_COUNT: usize = 64;
 
 pub static ACCESS_TABLE: [AccessInfo; ACCESS_CODE_COUNT] = [
     // 0x00
-    AccessInfo { stage: 0x0, access: 0x0, layout: 0 },
+    AccessInfo {
+        stage: 0x0,
+        access: 0x0,
+        layout: 0,
+    },
     // 0x01
-    AccessInfo { stage: 0x20000, access: 0x20000, layout: 0 },
+    AccessInfo {
+        stage: 0x20000,
+        access: 0x20000,
+        layout: 0,
+    },
     // 0x02
-    AccessInfo { stage: 0x10000, access: 0x21, layout: 0 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x21,
+        layout: 0,
+    },
     // 0x03
-    AccessInfo { stage: 0x4, access: 0x2, layout: 0 },
+    AccessInfo {
+        stage: 0x4,
+        access: 0x2,
+        layout: 0,
+    },
     // 0x04
-    AccessInfo { stage: 0x4, access: 0x4, layout: 0 },
+    AccessInfo {
+        stage: 0x4,
+        access: 0x4,
+        layout: 0,
+    },
     // 0x05
-    AccessInfo { stage: 0x8, access: 0x20, layout: 0 },
+    AccessInfo {
+        stage: 0x8,
+        access: 0x20,
+        layout: 0,
+    },
     // 0x06
-    AccessInfo { stage: 0x8, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x8,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x07
-    AccessInfo { stage: 0x8, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x8,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x08
-    AccessInfo { stage: 0x10, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x10,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x09
-    AccessInfo { stage: 0x10, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x10,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x0a
-    AccessInfo { stage: 0x10, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x10,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x0b
-    AccessInfo { stage: 0x20, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x20,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x0c
-    AccessInfo { stage: 0x20, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x20,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x0d
-    AccessInfo { stage: 0x20, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x20,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x0e
-    AccessInfo { stage: 0x40, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x40,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x0f
-    AccessInfo { stage: 0x40, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x40,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x10
-    AccessInfo { stage: 0x40, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x40,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x11
-    AccessInfo { stage: 0x80, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x12
-    AccessInfo { stage: 0x80, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x13
-    AccessInfo { stage: 0x80, access: 0x10, layout: 5 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x10,
+        layout: 5,
+    },
     // 0x14
-    AccessInfo { stage: 0x80, access: 0x10, layout: 4 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x10,
+        layout: 4,
+    },
     // 0x15
-    AccessInfo { stage: 0x80, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x16
-    AccessInfo { stage: 0x400, access: 0x80, layout: 2 },
+    AccessInfo {
+        stage: 0x400,
+        access: 0x80,
+        layout: 2,
+    },
     // 0x17
-    AccessInfo { stage: 0x300, access: 0x200, layout: 4 },
+    AccessInfo {
+        stage: 0x300,
+        access: 0x200,
+        layout: 4,
+    },
     // 0x18
-    AccessInfo { stage: 0x800, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x800,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x19
-    AccessInfo { stage: 0x800, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x800,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x1a
-    AccessInfo { stage: 0x800, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x800,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x1b
-    AccessInfo { stage: 0xf8, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0xf8,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x1c
-    AccessInfo { stage: 0xf8, access: 0xc, layout: 0 },
+    AccessInfo {
+        stage: 0xf8,
+        access: 0xc,
+        layout: 0,
+    },
     // 0x1d
-    AccessInfo { stage: 0xf8, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0xf8,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x1e
-    AccessInfo { stage: 0x3f8, access: 0x220, layout: 4 },
+    AccessInfo {
+        stage: 0x3f8,
+        access: 0x220,
+        layout: 4,
+    },
     // 0x1f
-    AccessInfo { stage: 0x3f8, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x3f8,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x20
-    AccessInfo { stage: 0x10000, access: 0x8, layout: 0 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x8,
+        layout: 0,
+    },
     // 0x21
-    AccessInfo { stage: 0x10000, access: 0xc, layout: 0 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0xc,
+        layout: 0,
+    },
     // 0x22
-    AccessInfo { stage: 0x10000, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x23
-    AccessInfo { stage: 0x10000, access: 0x220, layout: 4 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x220,
+        layout: 4,
+    },
     // 0x24
-    AccessInfo { stage: 0x10000, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x25
-    AccessInfo { stage: 0x1000, access: 0x800, layout: 6 },
+    AccessInfo {
+        stage: 0x1000,
+        access: 0x800,
+        layout: 6,
+    },
     // 0x26
-    AccessInfo { stage: 0x4000, access: 0x2000, layout: 1 },
+    AccessInfo {
+        stage: 0x4000,
+        access: 0x2000,
+        layout: 1,
+    },
     // 0x27
-    AccessInfo { stage: 0x0, access: 0x0, layout: 1000001002 },
+    AccessInfo {
+        stage: 0x0,
+        access: 0x0,
+        layout: 1000001002,
+    },
     // 0x28
-    AccessInfo { stage: 0x20000, access: 0x40000, layout: 0 },
+    AccessInfo {
+        stage: 0x20000,
+        access: 0x40000,
+        layout: 0,
+    },
     // 0x29
-    AccessInfo { stage: 0x8, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x8,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x2a
-    AccessInfo { stage: 0x10, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x10,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x2b
-    AccessInfo { stage: 0x20, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x20,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x2c
-    AccessInfo { stage: 0x40, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x40,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x2d
-    AccessInfo { stage: 0x80, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x80,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x2e
-    AccessInfo { stage: 0x400, access: 0x100, layout: 2 },
+    AccessInfo {
+        stage: 0x400,
+        access: 0x100,
+        layout: 2,
+    },
     // 0x2f
-    AccessInfo { stage: 0x300, access: 0x600, layout: 3 },
+    AccessInfo {
+        stage: 0x300,
+        access: 0x600,
+        layout: 3,
+    },
     // 0x30
-    AccessInfo { stage: 0x300, access: 0x600, layout: 1000117001 },
+    AccessInfo {
+        stage: 0x300,
+        access: 0x600,
+        layout: 1000117001,
+    },
     // 0x31
-    AccessInfo { stage: 0x300, access: 0x600, layout: 1000117000 },
+    AccessInfo {
+        stage: 0x300,
+        access: 0x600,
+        layout: 1000117000,
+    },
     // 0x32
-    AccessInfo { stage: 0x800, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x800,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x33
-    AccessInfo { stage: 0x10000, access: 0x40, layout: 1 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x40,
+        layout: 1,
+    },
     // 0x34
-    AccessInfo { stage: 0x1000, access: 0x1000, layout: 7 },
+    AccessInfo {
+        stage: 0x1000,
+        access: 0x1000,
+        layout: 7,
+    },
     // 0x35
-    AccessInfo { stage: 0x4000, access: 0x4000, layout: 1 },
+    AccessInfo {
+        stage: 0x4000,
+        access: 0x4000,
+        layout: 1,
+    },
     // 0x36
-    AccessInfo { stage: 0x400, access: 0x180, layout: 2 },
+    AccessInfo {
+        stage: 0x400,
+        access: 0x180,
+        layout: 2,
+    },
     // 0x37
-    AccessInfo { stage: 0x10000, access: 0x18000, layout: 1 },
+    AccessInfo {
+        stage: 0x10000,
+        access: 0x18000,
+        layout: 1,
+    },
     // 0x38
-    AccessInfo { stage: 0x200000, access: 0x20, layout: 5 },
+    AccessInfo {
+        stage: 0x200000,
+        access: 0x20,
+        layout: 5,
+    },
     // 0x39
-    AccessInfo { stage: 0x200000, access: 0x10, layout: 5 },
+    AccessInfo {
+        stage: 0x200000,
+        access: 0x10,
+        layout: 5,
+    },
     // 0x3a
-    AccessInfo { stage: 0x200000, access: 0x10, layout: 4 },
+    AccessInfo {
+        stage: 0x200000,
+        access: 0x10,
+        layout: 4,
+    },
     // 0x3b
-    AccessInfo { stage: 0x200000, access: 0x200000, layout: 0 },
+    AccessInfo {
+        stage: 0x200000,
+        access: 0x200000,
+        layout: 0,
+    },
     // 0x3c
-    AccessInfo { stage: 0x200000, access: 0x20, layout: 1 },
+    AccessInfo {
+        stage: 0x200000,
+        access: 0x20,
+        layout: 1,
+    },
     // 0x3d
-    AccessInfo { stage: 0x2000000, access: 0x400000, layout: 0 },
+    AccessInfo {
+        stage: 0x2000000,
+        access: 0x400000,
+        layout: 0,
+    },
     // 0x3e
-    AccessInfo { stage: 0x2000000, access: 0x200000, layout: 0 },
+    AccessInfo {
+        stage: 0x2000000,
+        access: 0x200000,
+        layout: 0,
+    },
     // 0x3f
-    AccessInfo { stage: 0x2000000, access: 0x1000, layout: 0 },
+    AccessInfo {
+        stage: 0x2000000,
+        access: 0x1000,
+        layout: 0,
+    },
 ];
 
 pub fn access_info(code: u8) -> Option<AccessInfo> {
@@ -194,7 +450,12 @@ struct Accumulated {
 }
 
 fn accumulate(codes: &[u8]) -> Accumulated {
-    let mut acc = Accumulated { stages: 0, write_access: 0, all_access: 0, layout: 0 };
+    let mut acc = Accumulated {
+        stages: 0,
+        write_access: 0,
+        all_access: 0,
+        layout: 0,
+    };
     for &code in codes {
         // 原版对越界码不检查，直接读相邻 `.rdata`；这里取 `Nothing`（全 0）。
         let info = access_info(code).unwrap_or(ACCESS_TABLE[0]);
@@ -208,11 +469,25 @@ fn accumulate(codes: &[u8]) -> Accumulated {
     acc
 }
 
-fn stage_pair(prev: &Accumulated, next: &Accumulated) -> (vk::PipelineStageFlags, vk::PipelineStageFlags) {
+fn stage_pair(
+    prev: &Accumulated,
+    next: &Accumulated,
+) -> (vk::PipelineStageFlags, vk::PipelineStageFlags) {
     // `cmp r,1; adc r,0`（0→1）与 `test; cmovne eax,0x2000`：空阶段回落到 TOP / BOTTOM_OF_PIPE。
-    let src = if prev.stages == 0 { TOP_OF_PIPE } else { prev.stages };
-    let dst = if next.stages == 0 { BOTTOM_OF_PIPE } else { next.stages };
-    (vk::PipelineStageFlags::from_raw(src), vk::PipelineStageFlags::from_raw(dst))
+    let src = if prev.stages == 0 {
+        TOP_OF_PIPE
+    } else {
+        prev.stages
+    };
+    let dst = if next.stages == 0 {
+        BOTTOM_OF_PIPE
+    } else {
+        next.stages
+    };
+    (
+        vk::PipelineStageFlags::from_raw(src),
+        vk::PipelineStageFlags::from_raw(dst),
+    )
 }
 
 /// 原 `vk_sync_fork::get_memory_barrier`（0x140c107c0）。逻辑与公开 vk-sync-fork 0.4.0 一致：
@@ -220,7 +495,11 @@ fn stage_pair(prev: &Accumulated, next: &Accumulated) -> (vk::PipelineStageFlags
 pub fn get_memory_barrier(
     previous: &[u8],
     next: &[u8],
-) -> (vk::PipelineStageFlags, vk::PipelineStageFlags, vk::MemoryBarrier<'static>) {
+) -> (
+    vk::PipelineStageFlags,
+    vk::PipelineStageFlags,
+    vk::MemoryBarrier<'static>,
+) {
     let (p, n) = (accumulate(previous), accumulate(next));
     let dst_access = if p.write_access != 0 { n.all_access } else { 0 };
     let (src, dst) = stage_pair(&p, &n);
@@ -245,7 +524,11 @@ pub struct BufferBarrier<'a> {
 /// 原 `get_buffer_memory_barrier`：访问掩码规则同 [`get_memory_barrier`]（dst 仅当 src 有写时收）。
 pub fn get_buffer_memory_barrier(
     barrier: &BufferBarrier<'_>,
-) -> (vk::PipelineStageFlags, vk::PipelineStageFlags, vk::BufferMemoryBarrier<'static>) {
+) -> (
+    vk::PipelineStageFlags,
+    vk::PipelineStageFlags,
+    vk::BufferMemoryBarrier<'static>,
+) {
     let (p, n) = (accumulate(barrier.previous), accumulate(barrier.next));
     let dst_access = if p.write_access != 0 { n.all_access } else { 0 };
     let (src, dst) = stage_pair(&p, &n);
@@ -289,7 +572,11 @@ fn resolve_layout(mode: BarrierLayout, codes: &[u8], optimal: i32) -> i32 {
 /// （0x140c10c52..0x140c10c56，不像 memory/buffer 版那样受 src 有写的条件约束）。
 pub fn get_image_memory_barrier(
     barrier: &ImageBarrier<'_>,
-) -> (vk::PipelineStageFlags, vk::PipelineStageFlags, vk::ImageMemoryBarrier<'static>) {
+) -> (
+    vk::PipelineStageFlags,
+    vk::PipelineStageFlags,
+    vk::ImageMemoryBarrier<'static>,
+) {
     let (p, n) = (accumulate(barrier.previous), accumulate(barrier.next));
     let (src, dst) = stage_pair(&p, &n);
     let old_layout = if barrier.discard_contents || barrier.previous.is_empty() {
@@ -323,11 +610,22 @@ mod tests {
         // TransferWrite：stage TRANSFER、access TRANSFER_WRITE、layout TRANSFER_DST_OPTIMAL。
         assert_eq!(
             access_info(0x34),
-            Some(AccessInfo { stage: 0x1000, access: 0x1000, layout: 7 })
+            Some(AccessInfo {
+                stage: 0x1000,
+                access: 0x1000,
+                layout: 7
+            })
         );
         // Present：PRESENT_SRC_KHR。
         assert_eq!(access_info(0x27).unwrap().layout, 1000001002);
-        assert_eq!(access_info(0), Some(AccessInfo { stage: 0, access: 0, layout: 0 }));
+        assert_eq!(
+            access_info(0),
+            Some(AccessInfo {
+                stage: 0,
+                access: 0,
+                layout: 0
+            })
+        );
         assert_eq!(access_info(64), None);
     }
 

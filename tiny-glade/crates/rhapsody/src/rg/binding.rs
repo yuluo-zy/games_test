@@ -263,7 +263,8 @@ pub const TODO_SLOT_LOCATION: (&str, u32, u32) = ("crates/rhapsody/src/rg/bindin
 pub const REGISTRY_UNREACHABLE_LOCATION: (&str, u32, u32) =
     ("crates/rhapsody/src/rg/resource_registry.rs", 100, 59);
 /// 视图 mip 范围校验 panic 的源位置（格式串片段在 0x142fcf520，Location 0x142fcf560）。
-pub const MIP_RANGE_PANIC_LOCATION: (&str, u32, u32) = ("crates/rhapsody/src/rg/binding.rs", 54, 25);
+pub const MIP_RANGE_PANIC_LOCATION: (&str, u32, u32) =
+    ("crates/rhapsody/src/rg/binding.rs", 54, 25);
 
 /// 原 `TextureViewDesc`（0x3cB）。已读到的字段（其余字节按原样保留，**语义未证实**）：
 /// `+0x00` u32 种类（= 槽判别式 0/1/2）；`+0x20` u8 的 bit0 = "显式 mip 数" Option 标志，
@@ -328,17 +329,32 @@ impl RenderPassBindingRaw {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MipRangeError {
     /// `sub bl, al` 借位（0x14205f275 `jb`）：图像 mip 数（u8）小于 base（低 8 位）。
-    BaseBeyondImage { image_mips: u8, base: u8 },
+    BaseBeyondImage {
+        image_mips: u8,
+        base: u32,
+    },
+    EmptyRange,
     /// 0x14205f28d `cmp edi,esi; jae`：请求的 mip 数 ≥ 图像 mip 数 − base。
-    RequestedTooLarge { requested: u32, image_mips: u8, base: u32 },
+    RequestedTooLarge {
+        requested: u32,
+        image_mips: u8,
+        base: u32,
+    },
 }
 
 impl std::fmt::Display for MipRangeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::BaseBeyondImage { .. } => write!(f, "attempt to subtract with overflow"),
+            Self::BaseBeyondImage { image_mips, base } => {
+                write!(f, "base mip {base} is outside {image_mips} image levels")
+            }
+            Self::EmptyRange => write!(f, "a mip view must contain at least one level"),
             // 片段 0x142fcf520：4 段 + 3 个 Display 参数（请求 mip 数 / 图像 mip 数 / base）。
-            Self::RequestedTooLarge { requested, image_mips, base } => write!(
+            Self::RequestedTooLarge {
+                requested,
+                image_mips,
+                base,
+            } => write!(
                 f,
                 "The requested mip count ({requested}) is larger than the image mip count ({image_mips}) minus base level ({base})"
             ),
@@ -347,24 +363,31 @@ impl std::fmt::Display for MipRangeError {
 }
 impl std::error::Error for MipRangeError {}
 
-/// 0x14205f263..0x14205f2b0：子范围视图的 `[base, end)`。`avail = image_mips − base`（u8 运算）；
-/// 若有显式 mip 数 `n`：`n >= avail` 时 panic，否则 `end = n + base`；否则 `end = avail + base`。
+/// 校验非空子范围并返回 `[base, end)`；在完整 u32 域内检查，避免截断。
 pub fn resolve_view_mip_range(
     image_mips: u8,
     base: u32,
     explicit: Option<u32>,
 ) -> Result<(u32, u32), MipRangeError> {
-    let avail = image_mips
-        .checked_sub(base as u8)
-        .ok_or(MipRangeError::BaseBeyondImage { image_mips, base: base as u8 })?;
+    let avail = u32::from(image_mips)
+        .checked_sub(base)
+        .filter(|&remaining| remaining > 0)
+        .ok_or(MipRangeError::BaseBeyondImage { image_mips, base })?;
     let count = match explicit {
         Some(n) => {
-            if n >= u32::from(avail) {
-                return Err(MipRangeError::RequestedTooLarge { requested: n, image_mips, base });
+            if n == 0 {
+                return Err(MipRangeError::EmptyRange);
+            }
+            if n > avail {
+                return Err(MipRangeError::RequestedTooLarge {
+                    requested: n,
+                    image_mips,
+                    base,
+                });
             }
             n
         }
-        None => u32::from(avail),
+        None => avail,
     };
     Ok((base, count + base))
 }
@@ -383,15 +406,29 @@ mod raw_layout_tests {
     }
 
     #[test]
-    fn mip_range_follows_original_branches() {
+    fn mip_range_accepts_exact_remainder_and_rejects_empty_or_truncated_ranges() {
         assert_eq!(resolve_view_mip_range(10, 2, None), Ok((2, 10)));
         assert_eq!(resolve_view_mip_range(10, 2, Some(3)), Ok((2, 5)));
-        let e = resolve_view_mip_range(10, 2, Some(8)).unwrap_err();
+        assert_eq!(resolve_view_mip_range(10, 2, Some(8)), Ok((2, 10)));
+        assert!(matches!(
+            resolve_view_mip_range(10, 2, Some(9)),
+            Err(MipRangeError::RequestedTooLarge { .. })
+        ));
         assert_eq!(
-            e.to_string(),
-            "The requested mip count (8) is larger than the image mip count (10) minus base level (2)"
+            resolve_view_mip_range(10, 2, Some(0)),
+            Err(MipRangeError::EmptyRange)
         );
-        assert!(matches!(resolve_view_mip_range(3, 5, None), Err(MipRangeError::BaseBeyondImage { .. })));
+        for base in [10, 256, u32::MAX] {
+            assert!(matches!(
+                resolve_view_mip_range(10, base, None),
+                Err(MipRangeError::BaseBeyondImage { .. })
+            ));
+        }
+        assert!(resolve_view_mip_range(0, 0, None).is_err());
+        assert!(matches!(
+            resolve_view_mip_range(3, 5, None),
+            Err(MipRangeError::BaseBeyondImage { .. })
+        ));
     }
 
     #[test]

@@ -25,7 +25,11 @@ fn pgo_lookup_has_the_original_option_shape_and_frames_swap() {
     frames.current.record(PassPgoDuration::new(id, 700));
     frames.current.record(PassPgoDuration::new(id, 300));
     frames.end_frame();
-    assert_eq!(frames.previous.get(id), Some(300), "insert 覆盖：同名取最后一次");
+    assert_eq!(
+        frames.previous.get(id),
+        Some(300),
+        "insert 覆盖：同名取最后一次"
+    );
     assert_eq!(frames.previous.total_ns(), 1000);
     assert_eq!(frames.previous.max_ns(), 700);
     assert!(frames.current.is_empty(), "新的本帧被清空");
@@ -40,7 +44,17 @@ fn pgo_lookup_has_the_original_option_shape_and_frames_swap() {
 #[test]
 fn render_loop_order_matches_the_original_call_sequence() {
     use FrameStage::*;
-    let order = [Compile, BeginFrame, ExecuteMain, Retire, Acquire, ExecutePresentation, EndFrame, Present, WaitGpuQueueTrim];
+    let order = [
+        Compile,
+        BeginFrame,
+        ExecuteMain,
+        Retire,
+        Acquire,
+        ExecutePresentation,
+        EndFrame,
+        Present,
+        WaitGpuQueueTrim,
+    ];
     assert!(order.windows(2).all(|w| w[0] < w[1]));
     let mut seq = frame::FrameSequence::new();
     for stage in order {
@@ -56,7 +70,9 @@ fn render_loop_order_matches_the_original_call_sequence() {
 fn session_ledger_counts_the_submission_and_gpu_duration_is_option() {
     use rhapsody::raw::init::create_headless_device;
     use rhapsody::rg::vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession};
-    let Some(device) = create_headless_device().ok() else { return };
+    let Some(device) = create_headless_device().ok() else {
+        return;
+    };
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let mut session = VulkanGraphSession::new(backend);
     assert_eq!(session.last_known_gpu_frame_duration_ns(), None);

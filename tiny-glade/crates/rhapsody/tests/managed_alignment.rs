@@ -40,13 +40,18 @@ fn free_list_survives_concurrent_churn_without_duplicate_live_slots() {
             let store = store.clone();
             std::thread::spawn(move || {
                 for round in 0..400u32 {
-                    let handles: Vec<_> = (0..4).map(|i| store.allocate(t * 100_000 + round * 10 + i)).collect();
+                    let handles: Vec<_> = (0..4)
+                        .map(|i| store.allocate(t * 100_000 + round * 10 + i))
+                        .collect();
                     let mut slots: Vec<u32> = handles.iter().map(|h| h.key().index).collect();
                     slots.sort_unstable();
                     slots.dedup();
                     assert_eq!(slots.len(), 4);
                     for h in &handles {
-                        assert_eq!(store.get(h.key()).map(|m| *m.resource()), Some(*h.resource()));
+                        assert_eq!(
+                            store.get(h.key()).map(|m| *m.resource()),
+                            Some(*h.resource())
+                        );
                     }
                     drop(handles);
                     store.take_out_dropped_waste();
@@ -67,18 +72,26 @@ fn free_list_survives_concurrent_churn_without_duplicate_live_slots() {
 }
 
 fn device() -> Option<Arc<GraphicsDevice>> {
-    create_headless_device().ok().map(GraphicsDevice::from_device)
+    create_headless_device()
+        .ok()
+        .map(GraphicsDevice::from_device)
 }
 
 #[test]
 fn texture_view_cache_returns_the_same_view_for_equal_descriptors() {
     let Some(gd) = device() else { return };
-    let desc = TextureDesc::new_2d(16, 16, vk::Format::R8G8B8A8_UNORM).sampled().color_attachment();
+    let desc = TextureDesc::new_2d(16, 16, vk::Format::R8G8B8A8_UNORM)
+        .sampled()
+        .color_attachment();
     let texture = gd.create_texture(&desc, "cache", ()).unwrap();
     assert_eq!(texture.cached_view_count(), 0);
     let default_a = texture.view(None).unwrap();
     let default_b = texture.view(None).unwrap();
-    assert_eq!(default_a.raw(), default_b.raw(), "默认视图只建一次（+0x70 缓存）");
+    assert_eq!(
+        default_a.raw(),
+        default_b.raw(),
+        "默认视图只建一次（+0x70 缓存）"
+    );
     assert_eq!(texture.cached_view_count(), 0, "默认视图不占缓存表");
 
     let view_desc = TextureViewDesc::new(&desc);
@@ -92,7 +105,11 @@ fn texture_view_cache_returns_the_same_view_for_equal_descriptors() {
     other.layer_count = 1;
     other.view_type = vk::ImageViewType::TYPE_2D;
     let single = texture.view(Some(&other)).unwrap();
-    assert_eq!(texture.cached_view_count(), 1, "描述符与默认一致（单层 2D）仍命中同一键");
+    assert_eq!(
+        texture.cached_view_count(),
+        1,
+        "描述符与默认一致（单层 2D）仍命中同一键"
+    );
     assert_eq!(single.raw(), first.raw());
 
     let mut desc2 = TextureDesc::new_2d(16, 16, vk::Format::R8G8B8A8_UNORM).sampled();

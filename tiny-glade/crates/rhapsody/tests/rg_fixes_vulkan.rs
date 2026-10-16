@@ -40,6 +40,43 @@ fn scratch() -> ResourceSpec {
     ))
 }
 
+#[test]
+fn recording_failures_and_panics_roll_back_and_allow_the_next_frame() {
+    let Some(mut session) = session() else {
+        eprintln!("skip: no Vulkan device");
+        return;
+    };
+    for panic_callback in [false, true] {
+        for _ in 0..4 {
+            let mut graph = session.begin_frame().unwrap();
+            let a = session
+                .backend
+                .declare(&mut graph, "failed", scratch())
+                .unwrap();
+            let mut pass = graph.add_pass("fail");
+            pass.add_resource_access(a, TRANSFER_WRITE, 0).unwrap();
+            pass.render(move |_| {
+                assert!(!panic_callback, "injected callback panic");
+                false
+            });
+            let retired = Arc::new(AtomicBool::new(false));
+            let flag = retired.clone();
+            graph.on_retire(move || flag.store(true, Ordering::SeqCst));
+            let error = session.execute_frame(graph.build()).unwrap_err();
+            assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+            assert!(retired.load(Ordering::SeqCst));
+            assert!(!session.is_poisoned());
+            assert_eq!(session.pending_frame_count(), 0);
+            assert!(session.chain.lifecycle.bucket_keys().is_empty());
+            let (graph, _) = scratch_frame(&mut session, false);
+            let receipt = session.execute_frame(graph.build()).unwrap();
+            assert_eq!(receipt.command_sequences.len(), 1);
+            session.wait_submits_done(TIMEOUT).unwrap();
+        }
+    }
+    assert_eq!(session.command_count(), 1, "失败帧命令缓冲必须可复用");
+}
+
 /// 声明 `a`（被 pass 写入）；`export_only` 时再声明一个只导出、从未被访问的 `b`。
 fn scratch_frame(session: &mut VulkanGraphSession, export_only: bool) -> (RenderGraph, u32) {
     let mut graph = session.begin_frame().unwrap();
@@ -60,7 +97,7 @@ fn a_rejected_export_only_resource_keeps_the_session_usable_and_returns_resource
     // 新建资源在失败后交还后端。
     let (graph, _) = scratch_frame(&mut session, true);
     let error = session.execute_frame(graph.build()).unwrap_err();
-    assert!(error.contains("ResourceUnavailable"), "{error}");
+    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     assert!(!session.is_poisoned(), "命令开始前的失败不应停止会话");
     assert_eq!(session.resource_count(), 0, "失败帧新建的资源必须释放");
     assert_eq!(session.pending_frame_count(), 0);
@@ -317,4 +354,107 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
         .execute_temporal_frame(graph, &mut temporal_state, &temporal)
         .unwrap();
     session.wait_submits_done(TIMEOUT).unwrap();
+}
+
+#[test]
+fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
+    let Some(mut session) = session() else { return };
+    for _ in 0..8 {
+        let mut graph = session.begin_frame().unwrap();
+        graph.batch_per_pass(true);
+        for (name, ok) in [("submitted", true), ("abandoned", false)] {
+            let buffer = session
+                .backend
+                .declare(&mut graph, name, scratch())
+                .unwrap();
+            let mut pass = graph.add_pass(name);
+            pass.add_resource_access(buffer, TRANSFER_WRITE, 0).unwrap();
+            pass.render(move |_| ok);
+        }
+        let retired = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let flag = retired.clone();
+        graph.on_retire(move || {
+            flag.fetch_add(1, Ordering::SeqCst);
+        });
+        assert!(session.execute_frame(graph.build()).is_err());
+        assert_eq!(retired.load(Ordering::SeqCst), 1);
+        assert_eq!(session.pending_frame_count(), 0);
+        assert!(session.chain.lifecycle.bucket_keys().is_empty());
+        assert!(!session.is_poisoned());
+    }
+    assert_eq!(session.command_count(), 2, "已提交和未提交的命令都应回收");
+    let (graph, _) = scratch_frame(&mut session, false);
+    session.execute_frame(graph.build()).unwrap();
+    session.wait_submits_done(TIMEOUT).unwrap();
+}
+
+#[test]
+fn two_sessions_share_the_device_submission_timeline() {
+    let Some(mut first) = session() else { return };
+    let device = first.backend.device.clone();
+    let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
+    let mut second = VulkanGraphSession::new(backend);
+    let mut previous = device
+        .timelines
+        .submitted(rhapsody::sync::QueueId::new(0).unwrap())
+        .unwrap();
+    for index in 0..4 {
+        let session = if index % 2 == 0 {
+            &mut first
+        } else {
+            &mut second
+        };
+        let (graph, _) = scratch_frame(session, false);
+        let receipt = session.execute_frame(graph.build()).unwrap();
+        let value = receipt.receipts.last().unwrap().last_timeline.0;
+        assert_eq!(value, previous + 1);
+        previous = value;
+        session.wait_submits_done(TIMEOUT).unwrap();
+    }
+}
+
+#[test]
+fn device_lost_is_visible_to_every_session() {
+    let Some(mut first) = session() else { return };
+    let device = first.backend.device.clone();
+    let mut second = VulkanGraphSession::new(
+        VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
+    );
+    // 没有在飞命令时注入终止状态；无需让驱动真的丢失设备。
+    device.timelines.mark_device_lost();
+    for session in [&mut first, &mut second] {
+        assert!(session.is_poisoned());
+        assert_eq!(
+            session.begin_frame().err().unwrap().kind(),
+            rhapsody::ErrorKind::DeviceLost
+        );
+    }
+}
+
+#[test]
+fn raw_submission_cannot_signal_the_owned_device_timeline() {
+    use rhapsody::raw::command_buffer::VulkanCommandPool;
+    let Some(session) = session() else { return };
+    let device = session.backend.device.clone();
+    let queue = rhapsody::raw::device::DeviceQueue {
+        handle: device.queue,
+        family: device.queue_family,
+        index: 0,
+    };
+    let id = device.queue_id(queue.handle).unwrap();
+    let previous = device.timelines.submitted(id).unwrap();
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let mut command = pool.allocate().unwrap();
+    command.begin().unwrap();
+    command.end().unwrap();
+    let result = command.submit_to(
+        queue,
+        &[],
+        &[(session.backend.timeline.clone(), previous + 10)],
+    );
+    assert!(
+        result.is_err(),
+        "设备拥有的时间线不能经外部信号数组再次 signal"
+    );
+    assert_eq!(device.timelines.submitted(id).unwrap(), previous);
 }

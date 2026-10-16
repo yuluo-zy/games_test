@@ -154,9 +154,17 @@ impl TextureKind {
     /// `get_image_create_info` 的 extent 选择（0x140bd5ed0 跳表各 case）。
     pub fn image_extent(self, desc: &TextureDesc) -> vk::Extent3D {
         match self {
-            Self::D1 | Self::D1Array => vk::Extent3D { width: desc.width, height: 1, depth: 1 },
+            Self::D1 | Self::D1Array => vk::Extent3D {
+                width: desc.width,
+                height: 1,
+                depth: 1,
+            },
             Self::D3 => desc.extent(),
-            _ => vk::Extent3D { width: desc.width, height: desc.height, depth: 1 },
+            _ => vk::Extent3D {
+                width: desc.width,
+                height: desc.height,
+                depth: 1,
+            },
         }
     }
     pub fn is_cube(self) -> bool {
@@ -280,16 +288,27 @@ impl TextureDesc {
     /// 整除 extent 的三分量（向上取整）；除数 0 保留原值（防御）。
     pub fn div_up_extent(&self, divisor: u32) -> vk::Extent3D {
         let f = |v: u32| if divisor == 0 { v } else { v.div_ceil(divisor) };
-        vk::Extent3D { width: f(self.width), height: f(self.height), depth: f(self.depth) }
+        vk::Extent3D {
+            width: f(self.width),
+            height: f(self.height),
+            depth: f(self.depth),
+        }
     }
     pub fn div_extent(&self, divisor: u32) -> vk::Extent3D {
         let f = |v: u32| v.checked_div(divisor).unwrap_or(v);
-        vk::Extent3D { width: f(self.width), height: f(self.height), depth: f(self.depth) }
+        vk::Extent3D {
+            width: f(self.width),
+            height: f(self.height),
+            depth: f(self.depth),
+        }
     }
     /// 原 `div_up_extent(self, divisors)`（0x140bd55e0）：三个维度各 `ceil(x / d)`，结果至少为 1，
     /// 任一除数为 0 则 panic（0x142b0fab0 `1428d99e0`）。返回整份描述（原函数整拷 0x20B）。
     pub fn div_up_extent_by(mut self, divisors: [u32; 3]) -> Self {
-        assert!(divisors.iter().all(|&d| d != 0), "attempt to divide by zero");
+        assert!(
+            divisors.iter().all(|&d| d != 0),
+            "attempt to divide by zero"
+        );
         let f = |x: u32, d: u32| (x / d + u32::from(!x.is_multiple_of(d))).max(1);
         self.width = f(self.width, divisors[0]);
         self.height = f(self.height, divisors[1]);
@@ -299,7 +318,10 @@ impl TextureDesc {
     /// 原 `div_extent(self, divisors)`（0x140bd56a0）：三个维度各 `floor(x / d)`，结果至少为 1，
     /// 任一除数为 0 则 panic。
     pub fn div_extent_by(mut self, divisors: [u32; 3]) -> Self {
-        assert!(divisors.iter().all(|&d| d != 0), "attempt to divide by zero");
+        assert!(
+            divisors.iter().all(|&d| d != 0),
+            "attempt to divide by zero"
+        );
         self.width = (self.width / divisors[0]).max(1);
         self.height = (self.height / divisors[1]).max(1);
         self.depth = (self.depth / divisors[2]).max(1);
@@ -357,7 +379,10 @@ impl TextureDesc {
         self
     }
     pub fn extent_2d(&self) -> vk::Extent2D {
-        vk::Extent2D { width: self.width, height: self.height }
+        vk::Extent2D {
+            width: self.width,
+            height: self.height,
+        }
     }
     /// 原 `half_res`（0x140bd5730）：宽/高/深各 `x - (x >> 1)`（= `ceil(x/2)`），结果为 0 时取 1。
     /// （旧实现漏了 depth；3D 纹理的 depth 同样减半。）
@@ -404,7 +429,11 @@ impl OptionU32 {
         Self { tag: 1, value }
     }
     pub const fn get(self) -> Option<u32> {
-        if self.tag == 1 { Some(self.value) } else { None }
+        if self.tag == 1 {
+            Some(self.value)
+        } else {
+            None
+        }
     }
 }
 

@@ -2,9 +2,7 @@
 // 这是行为重建，不是原作者源码。
 //! 消费真实每队列命令序号的类型化生命周期模型。对象分配由后端提供；全局桶使用 u64。
 pub use crate::raw::device::DeviceCounters;
-use crate::raw::managed::tracking::{
-    CommandState, ControlBlock, TrackOutcome, drop_reference, try_track_handle,
-};
+use crate::raw::managed::tracking::{CommandState, ControlBlock, drop_reference, try_track_handle};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::Ordering;
 
@@ -147,7 +145,6 @@ pub struct SequenceRuntime {
     waste: Vec<ResourceHandle>,
     pools: BTreeMap<u32, Vec<Command>>,
     pool_family_count: u32,
-    pub events: Vec<String>,
 }
 impl SequenceRuntime {
     pub fn new(pool_family_count: u32) -> Self {
@@ -158,7 +155,6 @@ impl SequenceRuntime {
             waste: Vec::new(),
             pools: BTreeMap::new(),
             pool_family_count,
-            events: Vec::new(),
         }
     }
     /// 在实际后端 reset/begin 后调用；使用设备序号生产者，不从默认零开始。
@@ -190,10 +186,6 @@ impl SequenceRuntime {
         command.bytes[16..20].copy_from_slice(&tag.to_le_bytes());
         command.bytes[20..24].copy_from_slice(&index.to_le_bytes());
         command.bytes[86] = 0;
-        self.events.push(format!(
-            "begin:{}:{sequence}:{tag}:{index}",
-            command.handle()
-        ));
         if let Err(reason) = self.accept_begun(&command) {
             return Err(BeginFailure { reason, command });
         }
@@ -206,11 +198,6 @@ impl SequenceRuntime {
         }
         command.queue()?;
         let previous = self.buckets.insert(command.sequence().0, Vec::new());
-        self.events.push(format!(
-            "insert:{}:{}",
-            command.sequence().0,
-            u8::from(previous.is_some())
-        ));
         if previous.is_some() {
             return Err(Failure::DuplicateBucket);
         }
@@ -232,7 +219,7 @@ impl SequenceRuntime {
             .get(&handle.id)
             .ok_or(Failure::UnknownResource)?;
         // 该 runtime 记账层返回 Result（不 panic）；原版 tag != 1 的 panic 见 `track_handle`。
-        let result = try_track_handle(
+        try_track_handle(
             &resource.control,
             handle.generation,
             CommandState {
@@ -241,12 +228,6 @@ impl SequenceRuntime {
             },
         )
         .map_err(|_| Failure::InvalidRecordingState)?;
-        self.events.push(format!(
-            "track:{}:{}:{}",
-            handle.id,
-            resource.control.last_sequence.load(Ordering::SeqCst),
-            u8::from(result == TrackOutcome::GenerationSkipped)
-        ));
         Ok(())
     }
     /// 录制器输出的是命令序号，不能当成队列时间线；用于绑定真实 Command sequence。
@@ -265,9 +246,6 @@ impl SequenceRuntime {
             .fetch_max(sequence.0, Ordering::SeqCst);
         Ok(())
     }
-    pub fn cpu_retire(&mut self, handle: ResourceHandle) {
-        self.events.push(format!("cpu-retire:{}", handle.id));
-    }
     pub fn clone_handle(&self, handle: ResourceHandle) -> Result<(), Failure> {
         let r = self
             .resources
@@ -283,11 +261,6 @@ impl SequenceRuntime {
             .ok_or(Failure::UnknownResource)?;
         let last = drop_reference(&resource.control, resource.dropped)
             .map_err(|_| Failure::ResourceAlreadyDropped)?;
-        self.events.push(format!(
-            "drop:{}:{}",
-            handle.id,
-            resource.control.references.load(Ordering::SeqCst)
-        ));
         if last {
             resource.dropped = true;
             self.waste.push(handle);
@@ -302,9 +275,8 @@ impl SequenceRuntime {
                 .load(Ordering::SeqCst);
             if let Some(bucket) = self.buckets.get_mut(&sequence) {
                 bucket.push(handle);
-                self.events.push(format!("attach:{}:{sequence}", handle.id));
             } else {
-                self.events.push(format!("dispose:{}", handle.id));
+                self.resources.remove(&handle.id);
             }
         }
     }
@@ -312,11 +284,6 @@ impl SequenceRuntime {
     pub fn accept_submission(&mut self, receipt: SubmissionReceipt, pending: Vec<PendingCommand>) {
         let q = self.queues.entry(receipt.queue).or_default();
         for item in pending {
-            self.events.push(format!(
-                "submit:{}:{}",
-                item.command.sequence().0,
-                item.threshold.0
-            ));
             q.timelines.push_back(item.threshold);
             q.pending.push_back(item);
         }
@@ -344,9 +311,6 @@ impl SequenceRuntime {
     }
     /// 原查询直接保存返回值；值单调递增由 Vulkan 运行时保证，测试替身可提供回退值。
     pub fn observe_timeline(&mut self, queue: Queue, value: Timeline) {
-        let (tag, index) = queue.raw();
-        self.events
-            .push(format!("complete:{tag}:{index}:{}", value.0));
         let q = self.queues.entry(queue).or_default();
         q.completed = value.0;
         while q.timelines.front().is_some_and(|t| t.0 <= value.0) {
@@ -358,9 +322,8 @@ impl SequenceRuntime {
             .buckets
             .remove(&sequence)
             .ok_or(Failure::MissingBucket)?;
-        self.events.push(format!("remove:{sequence}"));
         for handle in bucket {
-            self.events.push(format!("dispose:{}", handle.id));
+            self.resources.remove(&handle.id);
         }
         Ok(())
     }
@@ -412,7 +375,6 @@ impl SequenceRuntime {
             }
             let item = q.pending.pop_front().unwrap();
             let command = item.command;
-            self.events.push(format!("pop:{}", command.sequence().0));
             if command.state() != 3 {
                 return Err(Failure::InvalidPendingState);
             }
@@ -423,12 +385,18 @@ impl SequenceRuntime {
             if command.pool_family() >= self.pool_family_count {
                 return Err(Failure::PoolFamilyBounds);
             }
-            self.events.push(format!("pool:{}", command.sequence().0));
             self.pools
                 .entry(command.pool_family())
                 .or_default()
                 .push(command);
         }
+    }
+    /// 未提交的录制也必须关闭序号缺口；没有伪造 GPU 完成值。
+    pub fn abandon(&mut self, command: &Command) -> Result<(), Failure> {
+        self.dispose_sequence(command.queue()?, command.sequence().0)
+    }
+    pub fn resource_count(&self) -> usize {
+        self.resources.len()
     }
     pub fn recycle(&mut self, family: u32) -> Option<Command> {
         self.pools.get_mut(&family)?.pop()
@@ -461,3 +429,10 @@ impl SequenceRuntime {
         ))
     }
 }
+
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for Failure {}

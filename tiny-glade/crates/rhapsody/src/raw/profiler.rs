@@ -5,9 +5,7 @@
 //! 0x140bd3c80）是 `gpu-profiler` 与 `GraphicsDevice` 之间的胶水；`gpu-profiler` 本体见 [`super::gpu_profiler`]。
 //! 本文件下方 `GpuProfiler`/`TimedFrame` 是候选（每区段两条时间戳），不是原版结构。
 use crate::raw::{
-    buffer::BufferDesc,
-    device::VulkanDevice,
-    error::Result as RawResult,
+    buffer::BufferDesc, device::VulkanDevice, error::Result as RawResult,
     managed::buffer::ManagedBuffer,
 };
 use ash::vk;
@@ -152,7 +150,10 @@ pub const GPU_PROFILER_OUTPUT_BYTES: u64 = 0x2000;
 
 /// 输出缓冲描述（`GpuToCpu`、`TRANSFER_DST`、0x2000B）。
 pub fn gpu_profiler_output_buffer_desc() -> BufferDesc {
-    BufferDesc::new_gpu_to_cpu(GPU_PROFILER_OUTPUT_BYTES, vk::BufferUsageFlags::TRANSFER_DST)
+    BufferDesc::new_gpu_to_cpu(
+        GPU_PROFILER_OUTPUT_BYTES,
+        vk::BufferUsageFlags::TRANSFER_DST,
+    )
 }
 
 /// 原 `ProfilerBuffer::mapped_slice`（0x140bd3c80）的读回形态：把输出缓冲解释为 u64 时间戳数组。
@@ -163,5 +164,8 @@ pub unsafe fn read_output_timestamps(buffer: &ManagedBuffer) -> RawResult<Vec<u6
     let mut bytes = vec![0u8; GPU_PROFILER_OUTPUT_BYTES as usize];
     // SAFETY: 由调用者保证。
     unsafe { buffer.read_bytes_after_completion(0, &mut bytes) }?;
-    Ok(bytes.chunks_exact(8).map(|c| u64::from_le_bytes(c.try_into().unwrap())).collect())
+    Ok(bytes
+        .chunks_exact(8)
+        .map(|c| u64::from_le_bytes(c.try_into().unwrap()))
+        .collect())
 }

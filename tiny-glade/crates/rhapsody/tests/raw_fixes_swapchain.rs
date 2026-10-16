@@ -125,19 +125,25 @@ fn acquire_next_image_honors_timeout_and_does_not_take_queue_lock() {
     let (sender, receiver) = mpsc::channel();
     let worker_chain = chain.clone();
     let worker_device = device.clone();
-    let guard = device.queue_lock.lock();
-    let worker = std::thread::spawn(move || {
-        let fence = unsafe { worker_device.device.create_fence(&fence_info, None) }.unwrap();
-        let result = worker_chain.acquire_next_image(0, vk::Semaphore::null(), fence);
-        let _ = sender.send(());
-        let lease = result.ok();
-        if lease.is_none() {
-            unsafe { worker_device.device.destroy_fence(fence, None) };
-        }
-        lease.map(|lease| (fence, lease))
-    });
-    let returned = receiver.recv_timeout(Duration::from_secs(2)).is_ok();
-    drop(guard);
+
+    let (worker, returned) = device
+        .timelines
+        .with_queue(device.queue_id(device.queue).unwrap(), || {
+            let worker = std::thread::spawn(move || {
+                let fence =
+                    unsafe { worker_device.device.create_fence(&fence_info, None) }.unwrap();
+                let result = worker_chain.acquire_next_image(0, vk::Semaphore::null(), fence);
+                let _ = sender.send(());
+                let lease = result.ok();
+                if lease.is_none() {
+                    unsafe { worker_device.device.destroy_fence(fence, None) };
+                }
+                lease.map(|lease| (fence, lease))
+            });
+            let returned = receiver.recv_timeout(Duration::from_secs(2)).is_ok();
+            Ok((worker, returned))
+        })
+        .unwrap();
     if let Some((fence, lease)) = worker.join().unwrap() {
         fences.push(fence);
         leases.push(lease);
@@ -162,6 +168,9 @@ fn managed_acquire_rejects_null_semaphore_and_fence() {
     };
     let inner = rhapsody::raw::managed::swapchain::SwapchainInner::new(chain(&device, &surface));
     let result = inner.acquire_next_image(0, vk::Semaphore::null(), vk::Fence::null());
-    assert!(matches!(result, Err(rhapsody::raw::error::Error::InvalidUsage { .. })));
+    assert!(matches!(
+        result,
+        Err(rhapsody::raw::error::Error::InvalidUsage { .. })
+    ));
     device.wait_idle().unwrap();
 }

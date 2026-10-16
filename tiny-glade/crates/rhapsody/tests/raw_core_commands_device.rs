@@ -59,12 +59,19 @@ fn update_pending_pops_from_front_only_and_stops_at_first_greater() {
     e.update_pending_submissions(QueueId { tag: 0, index: 0 }, 4);
     assert_eq!(e.state.primary.pending_timelines, VecDeque::from([5, 3]));
     assert_eq!(e.completed_value(QueueId { tag: 0, index: 0 }), 4);
-    assert_eq!(e.state.oldest_pending, Some(5), "oldest 取各队列队首的最小值");
+    assert_eq!(
+        e.state.oldest_pending,
+        Some(5),
+        "oldest 取各队列队首的最小值"
+    );
 }
 
 #[test]
 fn update_queue_pending_submissions_walks_primary_then_each_auxiliary() {
-    let mut e = engine(queue(&[1, 2], &[]), vec![queue(&[7, 8], &[]), queue(&[2, 9], &[])]);
+    let mut e = engine(
+        queue(&[1, 2], &[]),
+        vec![queue(&[7, 8], &[]), queue(&[2, 9], &[])],
+    );
     let mut seen = Vec::new();
     e.update_queue_pending_submissions_with(|q| {
         let counter = q.pending_timelines.front().copied().unwrap_or(0);
@@ -84,7 +91,10 @@ fn reclaim_only_pops_front_items_covered_by_the_stored_completed_value() {
     // 完成计数 6：时间线 5 出队，7 留下；前面 3 也出队。
     let mut e = engine(queue(&[], &[(3, 3), (3, 5), (3, 7), (3, 4)]), vec![]);
     let id = QueueId { tag: 0, index: 0 };
-    assert!(e.reclaim_queue(id).is_empty(), "未更新完成值（+0x80=0）时什么都不回收");
+    assert!(
+        e.reclaim_queue(id).is_empty(),
+        "未更新完成值（+0x80=0）时什么都不回收"
+    );
     e.update_pending_submissions(id, 6);
     assert_eq!(e.reclaim_queue(id).len(), 2);
     // 队首 7 > 6 挡住了后面的 4（与原版 cap-first 环的队首判定一致）。
@@ -114,12 +124,17 @@ fn command_buffer_pool_starts_empty_per_family_and_bounds_checks() {
     assert_eq!(pool.family_count(), 3);
     assert!((0..3).all(|f| pool.free_count(f) == 0 && pool.take(f).is_none()));
     let oob = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| pool.take(3)));
-    assert!(oob.is_err(), "越界族索引 panic（原版 FUN_1428d9518 越界断言）");
+    assert!(
+        oob.is_err(),
+        "越界族索引 panic（原版 FUN_1428d9518 越界断言）"
+    );
 }
 
 #[test]
 fn create_command_buffer_reuses_the_recycled_buffer_lifo() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let gd = GraphicsDevice::from_device(device);
     let family = gd.queue_family_index();
     assert_eq!(gd.free_command_buffers(family), 0);
@@ -147,7 +162,9 @@ fn create_command_buffer_reuses_the_recycled_buffer_lifo() {
 
 #[test]
 fn device_micro_functions_and_creation_tail_state() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let gd = GraphicsDevice::from_device(device);
     // from_device 路径不跑创建尾段。
     assert!(gd.pipeline_cache().is_none() && gd.crash_tracking_buffer().is_none());
@@ -166,7 +183,9 @@ fn device_micro_functions_and_creation_tail_state() {
 #[test]
 fn create_runs_the_device_creation_tail() {
     use rhapsody::raw::init::GraphicsInstance;
-    let Ok(graphics) = GraphicsInstance::new() else { return };
+    let Ok(graphics) = GraphicsInstance::new() else {
+        return;
+    };
     let instance = graphics.instance.clone();
     let Some(physical) = unsafe { instance.instance.enumerate_physical_devices() }
         .ok()
@@ -174,9 +193,13 @@ fn create_runs_the_device_creation_tail() {
     else {
         return;
     };
-    let family = unsafe { instance.instance.get_physical_device_queue_family_properties(physical) }
-        .iter()
-        .position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS));
+    let family = unsafe {
+        instance
+            .instance
+            .get_physical_device_queue_family_properties(physical)
+    }
+    .iter()
+    .position(|p| p.queue_flags.contains(vk::QueueFlags::GRAPHICS));
     let Some(family) = family else { return };
     // 简化入口启用的扩展在个别驱动上不可用时，创建失败属于环境问题，跳过。
     let gd = match GraphicsDevice::create(instance, physical, family as u32) {

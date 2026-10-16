@@ -176,11 +176,17 @@ pub mod original_layout {
             (PASS_VEC, PASS_VEC_BYTES),
             (RESOURCE_REGISTRY, RESOURCE_REGISTRY_BYTES),
             (SYNCHRONIZATION_SCOPE, SYNCHRONIZATION_SCOPE_BYTES),
-            (PENDING_INITIAL_TRANSITIONS, PENDING_INITIAL_TRANSITIONS_BYTES),
+            (
+                PENDING_INITIAL_TRANSITIONS,
+                PENDING_INITIAL_TRANSITIONS_BYTES,
+            ),
         ];
         let mut end = 0;
         for (start, len) in segments {
-            assert_eq!(start, end, "segment at {start:#x} must start where the previous ended");
+            assert_eq!(
+                start, end,
+                "segment at {start:#x} must start where the previous ended"
+            );
             end = start + len;
         }
         assert_eq!(end, SIZE);
@@ -227,7 +233,10 @@ pub struct ResourceExportHandle<T> {
 }
 impl<T> ResourceExportHandle<T> {
     pub const fn new(resource_index: u32) -> Self {
-        Self { resource_index, _marker: std::marker::PhantomData }
+        Self {
+            resource_index,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -262,15 +271,30 @@ mod compile_layout_tests {
 
     #[test]
     fn compiled_graph_layout_matches_original_offsets() {
-        assert_eq!(size_of::<CompiledRenderGraphLayout>(), original_layout::SIZE);
-        assert_eq!(offset_of!(CompiledRenderGraphLayout, graph_record), original_layout::GRAPH_RECORD);
-        assert_eq!(offset_of!(CompiledRenderGraphLayout, passes), original_layout::PASS_VEC);
+        assert_eq!(
+            size_of::<CompiledRenderGraphLayout>(),
+            original_layout::SIZE
+        );
+        assert_eq!(
+            offset_of!(CompiledRenderGraphLayout, graph_record),
+            original_layout::GRAPH_RECORD
+        );
+        assert_eq!(
+            offset_of!(CompiledRenderGraphLayout, passes),
+            original_layout::PASS_VEC
+        );
         assert_eq!(
             offset_of!(CompiledRenderGraphLayout, passes) + offset_of!(RawVecLayout, len),
             original_layout::PASS_VEC_LEN
         );
-        assert_eq!(offset_of!(CompiledRenderGraphLayout, resource_registry), original_layout::RESOURCE_REGISTRY);
-        assert_eq!(offset_of!(CompiledRenderGraphLayout, synchronization_scope), original_layout::SYNCHRONIZATION_SCOPE);
+        assert_eq!(
+            offset_of!(CompiledRenderGraphLayout, resource_registry),
+            original_layout::RESOURCE_REGISTRY
+        );
+        assert_eq!(
+            offset_of!(CompiledRenderGraphLayout, synchronization_scope),
+            original_layout::SYNCHRONIZATION_SCOPE
+        );
         assert_eq!(
             offset_of!(CompiledRenderGraphLayout, pending_initial_transitions),
             original_layout::PENDING_INITIAL_TRANSITIONS
@@ -280,8 +304,14 @@ mod compile_layout_tests {
     #[test]
     fn compile_ok_layout_has_the_export_handle_at_0x218() {
         assert_eq!(size_of::<ResourceExportHandle<TextureKind>>(), 4);
-        assert_eq!(offset_of!(CompileOkLayout<ResourceExportHandle<TextureKind>>, export), 0x218);
-        assert_eq!(size_of::<CompileOkLayout<ResourceExportHandle<TextureKind>>>(), 0x220);
+        assert_eq!(
+            offset_of!(CompileOkLayout<ResourceExportHandle<TextureKind>>, export),
+            0x218
+        );
+        assert_eq!(
+            size_of::<CompileOkLayout<ResourceExportHandle<TextureKind>>>(),
+            0x220
+        );
         assert_eq!(size_of::<CompileOkLayout<()>>(), 0x218);
     }
 
@@ -289,6 +319,9 @@ mod compile_layout_tests {
     fn err_is_the_i64_min_niche() {
         assert!(compile_result_is_err(i64::MIN as u64));
         assert!(!compile_result_is_err(0));
-        assert_eq!(ResourceExportHandle::<TextureKind>::new(7).resource_index, 7);
+        assert_eq!(
+            ResourceExportHandle::<TextureKind>::new(7).resource_index,
+            7
+        );
     }
 }

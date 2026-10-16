@@ -22,7 +22,8 @@ pub type DestroyAction = Box<dyn FnOnce() + Send>;
 pub type CommandBufferSeq = u64;
 
 /// 原 panic 文本（0x142d069c1 / 0x142d06a40）。
-pub const REMOVE_MISSING_MSG: &str = "bucket removed prematurely or command buffer begin() never called?";
+pub const REMOVE_MISSING_MSG: &str =
+    "bucket removed prematurely or command buffer begin() never called?";
 pub const INSERT_DUPLICATE_MSG: &str = "assertion failed: prev.is_none()";
 
 /// 日志环记录 kind（`dispose_cb_resource` 的 3/4，`dispose_in_order` 的 0x1e）。
@@ -76,16 +77,27 @@ pub struct CommandBufferDisposalBuckets {
 impl CommandBufferDisposalBuckets {
     /// 原 `insert`（0x1418c4260）：先替换，再断言 `prev.is_none()`。被覆盖的桶不执行 vkDestroy。
     pub fn insert(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) {
-        assert!(self.replace(sequence, bucket).is_none(), "{INSERT_DUPLICATE_MSG}");
+        assert!(
+            self.replace(sequence, bucket).is_none(),
+            "{INSERT_DUPLICATE_MSG}"
+        );
     }
-    fn replace(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) -> Option<DisposalBucket> {
+    fn replace(
+        &self,
+        sequence: CommandBufferSeq,
+        bucket: DisposalBucket,
+    ) -> Option<DisposalBucket> {
         self.map
             .write()
             .insert(sequence, Mutex::new(bucket))
             .map(Mutex::into_inner)
     }
     /// `insert` 的非 panic 兼容入口：重复 seq 仍按原语义替换，但返回 `DuplicateBucket`。
-    pub fn try_insert(&self, sequence: CommandBufferSeq, bucket: DisposalBucket) -> Result<(), Failure> {
+    pub fn try_insert(
+        &self,
+        sequence: CommandBufferSeq,
+        bucket: DisposalBucket,
+    ) -> Result<(), Failure> {
         match self.replace(sequence, bucket) {
             None => Ok(()),
             Some(previous) => {
@@ -140,7 +152,11 @@ impl CommandBufferDisposalBuckets {
         }
     }
     /// 已有桶时追加动作；缺桶把动作还给调用方（`Result` 兼容路径用）。
-    pub fn append_existing(&self, sequence: CommandBufferSeq, action: DestroyAction) -> Result<(), DestroyAction> {
+    pub fn append_existing(
+        &self,
+        sequence: CommandBufferSeq,
+        action: DestroyAction,
+    ) -> Result<(), DestroyAction> {
         match self.map.read().get(&sequence) {
             Some(bucket) => {
                 bucket.lock().push(action);
@@ -165,7 +181,11 @@ impl CommandBufferDisposalBuckets {
         bucket.dispose()
     }
     pub fn pending(&self) -> usize {
-        self.map.read().values().map(|bucket| bucket.lock().len()).sum()
+        self.map
+            .read()
+            .values()
+            .map(|bucket| bucket.lock().len())
+            .sum()
     }
     pub fn bucket_count(&self) -> usize {
         self.map.read().len()
@@ -217,7 +237,10 @@ impl SequentialDisposal {
     /// 每个新退役的序号（含之前乱序到达、现在连续了的）依次调用 `retire(seq)`
     /// （原版此处：写日志 kind 0x1e → `remove` 桶 → 执行桶 → 释放桶）。乱序重复 panic。
     pub fn dispose_in_order(&mut self, seq: u64, mut retire: impl FnMut(u64)) {
-        assert!(seq > self.last_retired, "assertion failed: seq > self.last_retired");
+        assert!(
+            seq > self.last_retired,
+            "assertion failed: seq > self.last_retired"
+        );
         let idx = (seq - self.last_retired - 1) as usize;
         if idx == 0 {
             self.last_retired += 1;

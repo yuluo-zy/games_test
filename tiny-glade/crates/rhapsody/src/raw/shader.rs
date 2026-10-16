@@ -736,7 +736,8 @@ pub enum InterfaceError {
 /// 原 `rhapsody/src/raw/shader.rs` 管线创建路径的 panic 文案（`.rne` 0x1416a3720 / 0x1416a4f1a 冷尾段读出）。
 pub mod original_panics {
     /// 0x1416a4f21（shader.rs:397:9，字串 0x142c88c30，55 字节）。
-    pub const COMPUTE_INPUTS_NOT_EMPTY: &str = "assertion failed: compiled.reflection.inputs.is_empty()";
+    pub const COMPUTE_INPUTS_NOT_EMPTY: &str =
+        "assertion failed: compiled.reflection.inputs.is_empty()";
     /// 0x1416a50ed（shader.rs:460:60，字串 0x142c88cf8，18 字节）。
     pub const VALID_GROUP_SIZE: &str = "a valid group size";
     /// 0x1416a50d1（shader.rs:453:39，片段 0x142c88d50）：`"Failed creating shader pipeline {name}: {err}"`。
@@ -748,14 +749,17 @@ pub mod original_panics {
     /// 0x1416a451d（shader.rs:840:47，字串 0x142c88b78，30 字节）。
     pub const VERTEX_INPUT_ATTRIB_BYTE_COUNT: &str = "vertex input attrib byte count";
     /// 0x1416a458c（shader.rs:838:26，片段 0x142c88be0，35 字节）。
-    pub const UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX: &str = "Unsupported vertex attribute type: ";
+    pub const UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX: &str =
+        "Unsupported vertex attribute type: ";
     /// `Result::unwrap()` 失败的固定前缀（0x142c88708，43 字节），用于 shader.rs:796:18（vkCreatePipelineLayout，
     /// 调用 `[device+0x210]`）、426:18 / 437:18 / 428:78（compute 路径的 vkCreate*）。
     pub const UNWRAP_ON_ERR: &str = "called `Result::unwrap()` on an `Err` value";
 
     /// compute 管线创建失败（453:39）的完整 panic 文本。
     pub fn failed_creating_shader_pipeline(name: &str, err: &dyn std::fmt::Debug) -> String {
-        format!("{FAILED_CREATING_SHADER_PIPELINE_PREFIX}{name}{FAILED_CREATING_SHADER_PIPELINE_SEP}{err:?}")
+        format!(
+            "{FAILED_CREATING_SHADER_PIPELINE_PREFIX}{name}{FAILED_CREATING_SHADER_PIPELINE_SEP}{err:?}"
+        )
     }
 }
 /// 原 compute 管线创建在使用反射前的两个检查（shader.rs:397 assert + 460 expect，顺序按机器码：
@@ -766,14 +770,22 @@ pub fn validate_compute_reflection(
     if !reflection.vertex_inputs.is_empty() {
         return Err(InterfaceError::ComputeHasVertexInputs);
     }
-    reflection.local_size.ok_or(InterfaceError::MissingGroupSize)
+    reflection
+        .local_size
+        .ok_or(InterfaceError::MissingGroupSize)
 }
 impl std::fmt::Display for InterfaceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::VertexInputByteCount => f.write_str(original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT),
+            Self::VertexInputByteCount => {
+                f.write_str(original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT)
+            }
             Self::UnsupportedVertexAttributeType(ty) => {
-                write!(f, "{}{ty}", original_panics::UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX)
+                write!(
+                    f,
+                    "{}{ty}",
+                    original_panics::UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX
+                )
             }
             Self::ComputeHasVertexInputs => f.write_str(original_panics::COMPUTE_INPUTS_NOT_EMPTY),
             Self::MissingGroupSize => f.write_str(original_panics::VALID_GROUP_SIZE),
@@ -1047,7 +1059,6 @@ pub fn map_vertex_attribute_format(
     Ok(vk::Format::from_raw(base + 3 * (bytes as i32 / 4 - 1)))
 }
 
-
 /// 反射里的顶点输入 → 每个 location 一个顶点绑定（binding == location，offset 0，
 /// stride = 类型字节数，输入率 VERTEX），读自 `create_raster_pipeline`（O 0x1416a3720，0x1416a3a60 起的循环）。
 /// 只接受 32 位标量/向量（`map_vertex_attribute_format` 的 tag 2/3/4 = 有符号/无符号/浮点）。
@@ -1067,12 +1078,17 @@ pub fn vertex_input_from_reflection(
     for input in reflection.effective_vertex_inputs().into_values() {
         // 原版先 `ty.nbyte().expect("vertex input attrib byte count")`（0x1416a3ba2），
         // 再按类型分派；非标量/向量 → `panic!("Unsupported vertex attribute type: {:?}")`。
-        input.ty.nbyte().ok_or(InterfaceError::VertexInputByteCount)?;
+        input
+            .ty
+            .nbyte()
+            .ok_or(InterfaceError::VertexInputByteCount)?;
         let (scalar, count) = match &input.ty {
             Type::Scalar(s) => (s.clone(), 1),
             Type::Vector(v) => (v.scalar_ty.clone(), v.nscalar),
             other => {
-                return Err(InterfaceError::UnsupportedVertexAttributeType(format!("{other:?}")))
+                return Err(InterfaceError::UnsupportedVertexAttributeType(format!(
+                    "{other:?}"
+                )));
             }
         };
         let tag = match scalar {
@@ -1778,7 +1794,6 @@ impl ShaderLibrary {
     }
 }
 
-
 #[cfg(test)]
 mod raster_opts_tests {
     use super::*;
@@ -1889,12 +1904,30 @@ mod raster_opts_tests {
     #[test]
     fn map_vertex_attribute_format_follows_the_exe_table() {
         // 0x140be6850：`(bytes-4)/4*3 + base`，base：tag2→99(SINT) / tag3→98(UINT) / tag4→100(SFLOAT)。
-        assert_eq!(map_vertex_attribute_format(4, 4).unwrap(), vk::Format::R32_SFLOAT);
-        assert_eq!(map_vertex_attribute_format(4, 8).unwrap(), vk::Format::R32G32_SFLOAT);
-        assert_eq!(map_vertex_attribute_format(4, 12).unwrap(), vk::Format::R32G32B32_SFLOAT);
-        assert_eq!(map_vertex_attribute_format(4, 16).unwrap(), vk::Format::R32G32B32A32_SFLOAT);
-        assert_eq!(map_vertex_attribute_format(3, 4).unwrap(), vk::Format::R32_UINT);
-        assert_eq!(map_vertex_attribute_format(2, 16).unwrap(), vk::Format::R32G32B32A32_SINT);
+        assert_eq!(
+            map_vertex_attribute_format(4, 4).unwrap(),
+            vk::Format::R32_SFLOAT
+        );
+        assert_eq!(
+            map_vertex_attribute_format(4, 8).unwrap(),
+            vk::Format::R32G32_SFLOAT
+        );
+        assert_eq!(
+            map_vertex_attribute_format(4, 12).unwrap(),
+            vk::Format::R32G32B32_SFLOAT
+        );
+        assert_eq!(
+            map_vertex_attribute_format(4, 16).unwrap(),
+            vk::Format::R32G32B32A32_SFLOAT
+        );
+        assert_eq!(
+            map_vertex_attribute_format(3, 4).unwrap(),
+            vk::Format::R32_UINT
+        );
+        assert_eq!(
+            map_vertex_attribute_format(2, 16).unwrap(),
+            vk::Format::R32G32B32A32_SINT
+        );
         assert!(map_vertex_attribute_format(4, 20).is_err());
         assert!(map_vertex_attribute_format(5, 4).is_err());
     }

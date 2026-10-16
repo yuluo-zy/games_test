@@ -15,14 +15,24 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 pub trait TimelineApi: Send + Sync {
     fn counter_value(&self, semaphore: vk::Semaphore) -> Result<u64>;
     /// 等待全部信号量到达对应值。到达返回 `Ok(true)`，超时返回 `Ok(false)`。
-    fn wait_all(&self, semaphores: &[vk::Semaphore], values: &[u64], timeout_ns: u64) -> Result<bool>;
+    fn wait_all(
+        &self,
+        semaphores: &[vk::Semaphore],
+        values: &[u64],
+        timeout_ns: u64,
+    ) -> Result<bool>;
 }
 
 impl TimelineApi for ash::Device {
     fn counter_value(&self, semaphore: vk::Semaphore) -> Result<u64> {
         Ok(unsafe { self.get_semaphore_counter_value(semaphore) }?)
     }
-    fn wait_all(&self, semaphores: &[vk::Semaphore], values: &[u64], timeout_ns: u64) -> Result<bool> {
+    fn wait_all(
+        &self,
+        semaphores: &[vk::Semaphore],
+        values: &[u64],
+        timeout_ns: u64,
+    ) -> Result<bool> {
         let info = vk::SemaphoreWaitInfo::default()
             .semaphores(semaphores)
             .values(values);
@@ -130,7 +140,10 @@ impl<A: TimelineApi> Timelines<A> {
         self.check_alive()?;
         let timeline = self.queue(queue)?;
         let mut last = timeline.submit.lock();
-        let value = *last + 1;
+        self.check_alive()?;
+        let value = last
+            .checked_add(1)
+            .ok_or_else(|| Error::invalid_usage("队列时间线已耗尽"))?;
         let output = self.observe(submit(SubmitSignal {
             semaphore: timeline.semaphore,
             value,
@@ -141,10 +154,34 @@ impl<A: TimelineApi> Timelines<A> {
     }
 
     /// 在该队列的提交锁内执行不 signal 时间线的队列操作（例如 `vkQueuePresentKHR`）。
-    pub fn with_queue<R>(&self, queue: QueueId, operation: impl FnOnce() -> Result<R>) -> Result<R> {
+    pub fn with_queue<R>(
+        &self,
+        queue: QueueId,
+        operation: impl FnOnce() -> Result<R>,
+    ) -> Result<R> {
         self.check_alive()?;
         let _guard = self.queue(queue)?.submit.lock();
+        self.check_alive()?;
         self.observe(operation())
+    }
+
+    /// 整设备 idle 需要同步所有 VkQueue；按稳定的 QueueId 顺序取锁。
+    pub fn with_all_queues<R>(&self, operation: impl FnOnce() -> Result<R>) -> Result<R> {
+        let _guards: Vec<_> = self.queues.iter().map(|q| q.submit.lock()).collect();
+        self.check_alive()?;
+        self.observe(operation())
+    }
+
+    /// 只包含成功提交的工作；不为失败或尚未提交的命令生成等待目标。
+    pub fn submitted_set(&self) -> SyncSet {
+        let mut set = SyncSet::default();
+        for (index, queue) in self.queues.iter().enumerate() {
+            set.insert(SyncPoint {
+                queue: QueueId::new(index).expect("构造时已限制队列数"),
+                value: queue.submitted.load(Ordering::Acquire),
+            });
+        }
+        set
     }
 
     /// 该队列最后一次成功提交的值（0 = 尚无提交）。
@@ -265,11 +302,18 @@ mod tests {
     #[test]
     fn values_are_committed_only_after_a_successful_submit() {
         let t = timelines(1);
-        let (point, ()) = t.submit(q(0), |signal| {
-            assert_eq!(signal, SubmitSignal { semaphore: sem(1), value: 1 });
-            Ok(())
-        })
-        .unwrap();
+        let (point, ()) = t
+            .submit(q(0), |signal| {
+                assert_eq!(
+                    signal,
+                    SubmitSignal {
+                        semaphore: sem(1),
+                        value: 1
+                    }
+                );
+                Ok(())
+            })
+            .unwrap();
         assert_eq!(point.value, 1);
 
         let failed = t.submit(q(0), |signal| {
@@ -279,20 +323,30 @@ mod tests {
         assert_eq!(failed.unwrap_err().kind(), ErrorKind::OutOfMemory);
         assert_eq!(t.submitted(q(0)).unwrap(), 1, "失败的提交不占用值");
 
-        let (point, ()) = t.submit(q(0), |signal| {
-            assert_eq!(signal.value, 2, "失败后复用同一个值");
-            Ok(())
-        })
-        .unwrap();
+        let (point, ()) = t
+            .submit(q(0), |signal| {
+                assert_eq!(signal.value, 2, "失败后复用同一个值");
+                Ok(())
+            })
+            .unwrap();
         assert_eq!(point.value, 2);
     }
 
     #[test]
     fn waiting_on_an_unsubmitted_value_is_rejected_instead_of_hanging() {
         let t = timelines(1);
-        let future = SyncSet::from_point(SyncPoint { queue: q(0), value: 1 });
-        assert_eq!(t.wait(&future, u64::MAX).unwrap_err().kind(), ErrorKind::InvalidUsage);
-        assert_eq!(t.is_reached(&future).unwrap_err().kind(), ErrorKind::InvalidUsage);
+        let future = SyncSet::from_point(SyncPoint {
+            queue: q(0),
+            value: 1,
+        });
+        assert_eq!(
+            t.wait(&future, u64::MAX).unwrap_err().kind(),
+            ErrorKind::InvalidUsage
+        );
+        assert_eq!(
+            t.is_reached(&future).unwrap_err().kind(),
+            ErrorKind::InvalidUsage
+        );
     }
 
     #[test]
@@ -316,14 +370,22 @@ mod tests {
     fn poll_skips_queues_without_outstanding_work() {
         let t = timelines(3);
         t.poll().unwrap();
-        assert_eq!(t.api().queries.load(Ordering::Relaxed), 0, "无提交时不查询设备");
+        assert_eq!(
+            t.api().queries.load(Ordering::Relaxed),
+            0,
+            "无提交时不查询设备"
+        );
         t.submit(q(1), |_| Ok(())).unwrap();
         t.poll().unwrap();
         assert_eq!(t.api().queries.load(Ordering::Relaxed), 1);
         t.api().complete(sem(2), 1);
         t.poll().unwrap();
         t.poll().unwrap();
-        assert_eq!(t.api().queries.load(Ordering::Relaxed), 2, "完成值缓存后不再查询");
+        assert_eq!(
+            t.api().queries.load(Ordering::Relaxed),
+            2,
+            "完成值缓存后不再查询"
+        );
     }
 
     #[test]
@@ -332,9 +394,15 @@ mod tests {
         let lost = t.submit(q(0), |_| Err::<(), _>(vk::Result::ERROR_DEVICE_LOST.into()));
         assert_eq!(lost.unwrap_err().kind(), ErrorKind::DeviceLost);
         assert!(t.is_device_lost());
-        assert_eq!(t.submit(q(0), |_| Ok(())).unwrap_err().kind(), ErrorKind::DeviceLost);
+        assert_eq!(
+            t.submit(q(0), |_| Ok(())).unwrap_err().kind(),
+            ErrorKind::DeviceLost
+        );
         assert_eq!(t.poll().unwrap_err().kind(), ErrorKind::DeviceLost);
-        assert_eq!(t.with_queue(q(0), || Ok(())).unwrap_err().kind(), ErrorKind::DeviceLost);
+        assert_eq!(
+            t.with_queue(q(0), || Ok(())).unwrap_err().kind(),
+            ErrorKind::DeviceLost
+        );
     }
 
     #[test]
@@ -352,7 +420,10 @@ mod tests {
         let too_many: Vec<_> = (1..=MAX_QUEUES as u64 + 1).map(sem).collect();
         assert!(Timelines::new(FakeApi::default(), &too_many).is_err());
         let t = timelines(1);
-        assert_eq!(t.submit(q(1), |_| Ok(())).unwrap_err().kind(), ErrorKind::InvalidUsage);
+        assert_eq!(
+            t.submit(q(1), |_| Ok(())).unwrap_err().kind(),
+            ErrorKind::InvalidUsage
+        );
     }
 
     #[test]
@@ -373,6 +444,9 @@ mod tests {
             t.submit(q(1), |_| Ok(())).unwrap();
             release.wait();
         });
-        assert_eq!((t.submitted(q(0)).unwrap(), t.submitted(q(1)).unwrap()), (1, 1));
+        assert_eq!(
+            (t.submitted(q(0)).unwrap(), t.submitted(q(1)).unwrap()),
+            (1, 1)
+        );
     }
 }

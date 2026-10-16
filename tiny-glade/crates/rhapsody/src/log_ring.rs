@@ -45,16 +45,26 @@ impl RingBuffer {
         let len = bytes.len() as u64;
         let pos = self.cursor.fetch_add(len, Ordering::Relaxed);
         let cap = self.data.len();
-        assert!(cap != 0, "attempt to calculate the remainder with a divisor of zero");
+        assert!(
+            cap != 0,
+            "attempt to calculate the remainder with a divisor of zero"
+        );
         let pos = (pos % cap as u64) as usize;
-        assert!(bytes.len() <= cap, "assertion failed: part1 <= self.data.len()");
+        assert!(
+            bytes.len() <= cap,
+            "assertion failed: part1 <= self.data.len()"
+        );
         for (index, byte) in bytes.iter().enumerate() {
             self.data[(pos + index) % cap].store(*byte, Ordering::Relaxed);
         }
     }
     /// 原 FUN_1418c1430。
     pub fn dump(&self) -> Vec<u8> {
-        let mut copy: Vec<u8> = self.data.iter().map(|byte| byte.load(Ordering::Relaxed)).collect();
+        let mut copy: Vec<u8> = self
+            .data
+            .iter()
+            .map(|byte| byte.load(Ordering::Relaxed))
+            .collect();
         let cursor = self.cursor.load(Ordering::Relaxed);
         let cap = copy.len() as u64;
         if cursor <= cap {
@@ -70,7 +80,9 @@ static RING: RwLock<Option<Arc<RingBuffer>>> = RwLock::new(None);
 
 /// 建 0x10000 字节环；先替换全局再断言旧值为空（原顺序）。
 pub fn init_logging() {
-    let previous = RING.write().replace(Arc::new(RingBuffer::new(LOG_RING_BYTES)));
+    let previous = RING
+        .write()
+        .replace(Arc::new(RingBuffer::new(LOG_RING_BYTES)));
     assert!(previous.is_none(), "assertion failed: prev.is_none()");
 }
 
@@ -109,7 +121,10 @@ pub fn record_named(name: &str, payload: Option<u64>, kind: u8) {
 
 /// 原 `dump_log`：返回按时间顺序（最旧在前）的字节；未初始化 panic。
 pub fn dump_log_vec() -> Vec<u8> {
-    RING.read().clone().expect("rhapsody log not initialised").dump()
+    RING.read()
+        .clone()
+        .expect("rhapsody log not initialised")
+        .dump()
 }
 
 pub fn dump_log(out: &mut impl Write) -> std::io::Result<()> {

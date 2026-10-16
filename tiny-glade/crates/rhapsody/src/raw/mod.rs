@@ -37,7 +37,7 @@ pub mod texture;
 
 pub mod resource_usage;
 
-pub mod texture_upload;
 pub mod aftermath;
 pub mod dxgi;
 pub mod gpu_profiler;
+pub mod texture_upload;

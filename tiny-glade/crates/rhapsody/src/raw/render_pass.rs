@@ -100,7 +100,6 @@ impl RenderPassAttachmentDesc {
     }
 }
 
-
 /// 深度附件的访问模式（原 `RasterPass` `+0x12*0x10+0xc` 字节；`create_render_pass` 跳表 0x142b174cc）：
 /// 0→`DEPTH_STENCIL_READ_ONLY_OPTIMAL(4)`、1→`DEPTH_STENCIL_ATTACHMENT_OPTIMAL(3)`、
 /// 2→`1000117001`(`DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)`；值 3 在 `Option` 里是 `None`（无深度）。
@@ -117,7 +116,9 @@ impl DepthAccess {
         match self {
             Self::ReadOnly => vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
             Self::ReadWrite => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            Self::DepthWriteStencilRead => vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+            Self::DepthWriteStencilRead => {
+                vk::ImageLayout::DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+            }
         }
     }
     pub fn from_tag(tag: u8) -> Option<Option<Self>> {

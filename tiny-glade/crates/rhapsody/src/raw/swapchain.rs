@@ -349,7 +349,6 @@ impl Swapchain {
             .present_mode(present_mode)
             .clipped(true)
             .old_swapchain(old);
-        let _guard = self.device.queue_lock.lock();
         // 成功建立新交换链后旧对象可能已被驱动退役；任何后续失败都不得继续获取旧图像。
         self.inner.get_mut().stale = true;
         let handle = unsafe { self.loader.create_swapchain(&info, None) }?;
@@ -435,8 +434,8 @@ impl Swapchain {
     }
     /// 先将旧链标为退役；已有图像租约仍持有旧对象，不能被新链替换后提前销毁。
     ///
-    /// 全程持旧链写锁：`oldSwapchain` 是外部同步参数，acquire 不再取 `queue_lock`，
-    /// 与旧链 acquire/present 的互斥改由这把写锁承担（锁序：交换链写锁 → `queue_lock`，同 present）。
+    /// 全程持旧链写锁：`oldSwapchain` 是外部同步参数，
+    /// 与旧链 acquire/present 的互斥由这把锁承担（锁序：交换链锁 → 当前队列锁）。
     pub(crate) fn replacement(&self) -> Result<Self> {
         let mut inner = self.inner.write();
         inner.stale = true;
@@ -552,7 +551,7 @@ impl Swapchain {
     }
     /// 已持写锁的 acquire 体；锁不可重入，所以状态变更都走传入的 `inner`。
     ///
-    /// 不取设备 `queue_lock`：acquire 不是队列操作，外部同步对象（swapchain/semaphore/fence）
+    /// 不取队列锁：acquire 不是队列操作，外部同步对象（swapchain/semaphore/fence）
     /// 由交换链写锁与槽预留保护；持全局提交锁阻塞最长 `timeout` 会卡住所有队列提交（宿主层修正）。
     fn acquire_image_locked(
         self: &Arc<Self>,
@@ -620,9 +619,12 @@ impl Swapchain {
             .image_indices(&indices);
         // 0x1418cc1b0：先取写锁，再取设备提交 Mutex（`+0x718`）。
         let mut inner = self.inner.write();
-        let _guard = self.device.queue_lock.lock();
-        let (suboptimal, stale) =
-            present_result(unsafe { self.loader.queue_present(self.device.queue, &info) })?;
+        let (suboptimal, stale) = self
+            .device
+            .timelines
+            .with_queue(self.device.queue_id(self.device.queue)?, || {
+                present_result(unsafe { self.loader.queue_present(self.device.queue, &info) })
+            })?;
         inner.any_presented = true;
         if stale {
             inner.stale = true;
@@ -632,11 +634,10 @@ impl Swapchain {
 }
 impl Drop for Swapchain {
     fn drop(&mut self) {
-        let _guard = self.device.queue_lock.lock();
         unsafe {
             // 这里只保护此链的呈现队列；尺寸登记与新链创建都不等待整台设备。
             // 原 retire/dispose 桶接线尚未恢复，此处仍是保守的 Vulkan 销毁边界。
-            let _ = self.device.device.queue_wait_idle(self.device.queue);
+            let _ = self.device.queue_wait_idle(self.device.queue);
             for view in self.views.drain(..) {
                 self.device.device.destroy_image_view(view, None);
             }
@@ -722,8 +723,7 @@ impl FrameSemaphores {
             }?;
             // 现后端未启用 present-wait/maintenance 扩展。渲染 fence 不证明呈现已消费
             // rendered 信号量；仅在同槽再次使用时等待呈现队列，这是明确的保守候选边界。
-            let _guard = self.device.queue_lock.lock();
-            unsafe { self.device.device.queue_wait_idle(self.device.queue) }?;
+            self.device.queue_wait_idle(self.device.queue)?;
             state.submitted = false;
         }
         state.reserved = true;
@@ -740,10 +740,9 @@ impl FrameSemaphores {
                 .device
                 .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
         }?;
-        let _guard = self.device.queue_lock.lock();
-        if let Err(error) = unsafe { self.device.device.queue_wait_idle(self.device.queue) } {
+        if let Err(error) = self.device.queue_wait_idle(self.device.queue) {
             unsafe { self.device.device.destroy_semaphore(fresh, None) };
-            return Err(error.into());
+            return Err(error);
         }
         let old = std::mem::replace(&mut *self.rendered.lock(), fresh);
         unsafe { self.device.device.destroy_semaphore(old, None) };
@@ -753,13 +752,12 @@ impl FrameSemaphores {
 impl Drop for FrameSemaphores {
     fn drop(&mut self) {
         if self.state.get_mut().submitted {
-            let _guard = self.device.queue_lock.lock();
             unsafe {
                 let _ = self
                     .device
                     .device
                     .wait_for_fences(&[self.fence], true, u64::MAX);
-                let _ = self.device.device.queue_wait_idle(self.device.queue);
+                let _ = self.device.queue_wait_idle(self.device.queue);
             }
         }
         unsafe {
@@ -829,35 +827,19 @@ impl AcquiredSwapchainFrame {
         let stages = [wait_stage];
         let signals = [*self.sync.rendered.lock()];
         let commands = [command.handle];
-        let result = {
-            let _guard = device.queue_lock.lock();
-            let retire = device.note_submit_on(device.queue);
-            // present 只等 `rendered`；退役信号另附在同一次提交上。二进制信号量的值被忽略，填 0。
-            let mut signal_handles = vec![signals[0]];
-            let mut signal_values = vec![0u64];
-            if let Some((semaphore, value)) = retire {
-                signal_handles.push(semaphore);
-                signal_values.push(value);
-            }
-            let wait_values = [0u64];
-            let mut timeline = vk::TimelineSemaphoreSubmitInfo::default()
-                .wait_semaphore_values(&wait_values)
-                .signal_semaphore_values(&signal_values);
-            let submits = [vk::SubmitInfo::default()
-                .wait_semaphores(&waits)
-                .wait_dst_stage_mask(&stages)
-                .command_buffers(&commands)
-                .signal_semaphores(&signal_handles)
-                .push_next(&mut timeline)];
-            let result = unsafe { device.device.queue_submit(device.queue, &submits, fence) };
-            if result.is_err() {
-                device.note_submit_failed(retire);
-            }
-            result
-        };
-        if let Err(error) = result {
-            return Err(error.into());
-        }
+        let result = device.submit_prepared(
+            device.queue,
+            &[super::submit::PreparedSubmit {
+                commands: commands.to_vec(),
+                wait_semaphores: waits.to_vec(),
+                wait_values: vec![0],
+                wait_stages: stages.to_vec(),
+                signal_semaphores: signals.to_vec(),
+                signal_values: vec![0],
+            }],
+            fence,
+        );
+        result?;
         self.sync.state.lock().submitted = true;
         // 提交成功后，无论 present 成功与否，都先建立持有者以保护未完成的命令。
         let mut pending = PendingSwapchainFrame {
@@ -980,17 +962,25 @@ mod tests {
     #[test]
     fn acquire_suboptimal_keeps_image_usable_and_only_out_of_date_rebuilds() {
         let mut stale = false;
-        assert_eq!(acquire_result(&mut stale, Ok((2, true))).unwrap(), (2, true));
+        assert_eq!(
+            acquire_result(&mut stale, Ok((2, true))).unwrap(),
+            (2, true)
+        );
         assert!(!stale);
         for (error, kind) in [
             (vk::Result::NOT_READY, ErrorKind::Vulkan),
             (vk::Result::TIMEOUT, ErrorKind::Timeout),
         ] {
-            assert_eq!(acquire_result(&mut stale, Err(error)).unwrap_err().kind(), kind);
+            assert_eq!(
+                acquire_result(&mut stale, Err(error)).unwrap_err().kind(),
+                kind
+            );
             assert!(!stale);
         }
         assert_eq!(
-            acquire_result(&mut stale, Err(vk::Result::ERROR_OUT_OF_DATE_KHR)).unwrap_err().kind(),
+            acquire_result(&mut stale, Err(vk::Result::ERROR_OUT_OF_DATE_KHR))
+                .unwrap_err()
+                .kind(),
             ErrorKind::SurfaceOutOfDate
         );
         assert!(stale);
@@ -1001,7 +991,10 @@ mod tests {
     fn swapchain_state_lives_in_one_rwlock_with_original_state_value() {
         assert_eq!(SwapchainState::Created as u32, 2); // 0x1418cb520 判 `[state] == 2`
         let desc = SwapchainDesc {
-            extent: vk::Extent2D { width: 4, height: 2 },
+            extent: vk::Extent2D {
+                width: 4,
+                height: 2,
+            },
             vsync: true,
             usage: vk::ImageUsageFlags::COLOR_ATTACHMENT,
         };
@@ -1046,7 +1039,9 @@ mod tests {
             (false, true)
         );
         assert_eq!(
-            present_result(Err(vk::Result::ERROR_SURFACE_LOST_KHR)).unwrap_err().kind(),
+            present_result(Err(vk::Result::ERROR_SURFACE_LOST_KHR))
+                .unwrap_err()
+                .kind(),
             ErrorKind::SurfaceLost
         );
     }

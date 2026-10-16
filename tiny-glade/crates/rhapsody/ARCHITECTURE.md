@@ -2,7 +2,11 @@
 
 本文是 rhapsody 重构的目标架构与各模块详细设计，进度与阶段见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)。
 
+逐版交付范围、M0–M9 里程碑、窗口 demo 与验收门槛见 [DELIVERY_PLAN.md](DELIVERY_PLAN.md)。
+
 **唯一标准：正确性与高性能。** 原版 Tiny Glade 的地址、内存布局、panic 行为与错误文案不再约束设计；原版 oracle 测试已删除；对外 API 允许破坏性变更（下游只有 `tiny-glade`、`tg-text`，随改随迁）。
+
+2026-10-16 设计升级：补入帧提交事务、呈现完成域、图计划与帧实例分离、子图缓存、瞬态内存着色、分层分配、预算与有界后台任务。本文描述目标设计，新增接口及验收项不代表已实现；实施顺序见 §4.9 与 `REFACTOR_PLAN.md` 的“设计升级实施表”。
 
 ---
 
@@ -83,7 +87,7 @@ pub enum ErrorKind { DeviceLost, OutOfMemory, SurfaceOutOfDate, SurfaceLost, Tim
 3. 调用方可触发的误用（越界、过期句柄、阶段顺序错误、不合法描述符）→ `Error::invalid_usage(..)`（同时记 error 日志），**不 panic**。
 4. `debug_assert!` 只用于 rhapsody 内部不变量（违反即 rhapsody 自身 bug）。`unwrap`/`expect` 只允许出现在不变量已由类型或前置校验保证之处，并就地注释理由。
 5. 模块内部错误枚举（图编译、绑定、temporal 等）用 `thiserror` 派生，并实现 `From<X> for crate::Error`：携带的 Vulkan 失败保留其类别，其余映射为 `InvalidUsage { source: Some(x) }`。
-6. 帧失败只回滚本帧；仅 `DeviceLost` 使设备/会话永久不可用（粘滞）。
+6. 帧失败取消未提交部分；已提交的 GPU 副作用不可回滚，按实际完成点收尾（§3.10）。仅 `DeviceLost` 使设备/会话永久不可用（粘滞）。
 7. 窗口最小化、交换链过期不是错误路径上的"误用"：由 `FrameOutcome::Skipped/Recreated` 表达，不记 error 日志。
 
 ### 3.2 同步与完成（`src/sync/`，已实现）
@@ -120,7 +124,7 @@ impl<A: TimelineApi> Timelines<A> {
 不变量与协议：
 
 1. 每个逻辑队列一把提交锁（`Mutex<u64>`，值为最后一次成功提交的时间线值）。该锁就是 Vulkan 要求的单 `VkQueue` 外部同步：`vkQueueSubmit`、`vkQueuePresentKHR`、`vkQueueWaitIdle` 都必须经 `submit`/`with_queue` 执行。
-2. `submit` 在锁内计算 `value = last + 1`，把 `SubmitSignal { semaphore, value }` 交给闭包；闭包成功返回后才写回 `last` 与无锁镜像 `submitted`。**失败的提交不占用值**，因此任何已知 `SyncPoint` 最终都会完成。
+2. `submit` 在锁内计算 `value = last + 1`，把 `SubmitSignal { semaphore, value }` 交给闭包；闭包成功返回后才写回 `last` 与无锁镜像 `submitted`。**失败的提交不占用值**，不发布等待目标；成功提交也不保证在设备丢失或外部依赖停滞时最终完成，等待仍须处理超时与设备丢失。
 3. `wait`/`is_reached` 先校验每个目标值 ≤ `submitted`，否则返回 `InvalidUsage`（等待未提交的值会永久挂起）。
 4. `poll` 只对 `completed_cache < submitted` 的队列调用 `vkGetSemaphoreCounterValue`，结果写回缓存；空闲队列零开销。
 5. 任何调用观测到 `DeviceLost` 都置粘滞标志；此后 `submit`/`with_queue`/`poll`/`wait` 立即返回 `DeviceLost`。
@@ -264,14 +268,14 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
    - `Exclusive`：上游批次末尾 release 屏障（`srcQueueFamily`→`dstQueueFamily`），下游批次开头 acquire 屏障；
    - `Concurrent`：创建时用 `VK_SHARING_MODE_CONCURRENT` 与 `QueuePlan::families()`，不插 ownership 屏障。
    别名队列（同一 `QueueId`）退化为单队列，无额外同步。
-5. 编译结果缓存（见 §4.4）：对图结构（pass 列表、队列类别、资源描述、访问关系、导入资源的描述与起始访问）计算 64 位哈希；命中时复用上次的 `CompiledGraph`（校验结果、生命周期、池分配、屏障计划、批次与队列划分），每帧只重新绑定导入资源与执行回调；分辨率变化或效果开关使哈希变化时重新编译。编译逻辑因此必须是不依赖设备状态的纯函数。
+5. 编译结果缓存（见 §4.4）：拆成 `GraphDefinition → CompiledPlan → FrameInstance`。只缓存不持有具体 Vulkan 资源的不可变计划；导入对象、真实池命中、回调与提交回执属于帧实例。哈希只负责查找，完整规范化键比较确认命中。规划以声明、显式能力/队列配置为输入，不查询可变设备状态；实际内存需求查询与物理绑定另行执行。
 6. 光栅 pass 使用动态渲染（`VK_KHR_dynamic_rendering`，Vulkan 1.3 核心）：不创建 `VkRenderPass`/`VkFramebuffer`，`vkCmdBeginRendering` 直接给出附件；`raw::render_pass`、`raw::framebuffer` 及其缓存随之删除，管线以 `VkPipelineRenderingCreateInfo` 声明附件格式。
 7. 并行录制分块：`RecordingPolicy { Serial, PerBatch, Chunked { min_pass_ns, max_chunks } }`，默认 `PerBatch`（一批一个命令缓冲）；PGO 分块保留为可选策略。P0 基线显示 6 pass 单批每帧 3 个命令缓冲，默认改为 `PerBatch` 后应为 1。
 
 **执行**
 
 - `Executor::execute(compiled, frame: &mut FrameContext) -> Result<ExecutionReceipt>`；`ExecutionReceipt { submissions: SmallVec<SyncPoint>, stats }` 直接返回，**不再有事件日志**；诊断用 `#[cfg(feature = "trace")]` 的定长环形缓冲。
-- 回调失败或录制失败：本帧已开始的命令池整池复位、池资源归还、借用的导入释放，会话保持可用；只有 `DeviceLost` 使会话不可用。
+- 回调失败或录制失败：未提交资源直接释放；已提交命令及其资源按 §3.10 退役。同一池内只要仍有在飞命令就不能整池复位，会话保留可继续执行的状态；只有 `DeviceLost` 使会话不可用。
 - 提交成功后对本帧引用的所有资源登记 `SyncPoint`。
 
 ### 3.7 命令录制（`src/command/`，P3/P7）
@@ -280,6 +284,7 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
 - `begin_frame` 选下一个槽：等待 `slot.done`（`Device::wait`）→ `vkResetCommandPool` 整池复位 → 复用其中已分配的命令缓冲。取代逐个命令缓冲回收、`pool_sequences`、销毁桶。
 - 描述符：bindless 落地后（§3.5），pass 只通过 push constant 传参数结构索引或设备地址，不再分配描述符集；过渡期每槽一个 `VkDescriptorPool`、帧开始整池 reset，取代每次 dispatch 分配瞬时集。
 - 动态常量/上传：每槽一块持久映射的线性分配环（bump allocator），帧完成后整块复用。
+- 每个录制 worker 独占其池与临时 arena；任务窃取时按实际执行 worker 获取池，不能由并发任务共享同一池。并行录制期间不访问共享空闲链，低频批量借还内存块。局部缓存设字节上限、空闲回流与设备代际，避免线程数放大常驻占用。框架 CPU 临时 arena 在 CPU 使用结束后可重置；GPU 可见上传区必须等其完成点。
 
 ### 3.8 交换链与帧循环（`src/swapchain.rs`、`src/frame.rs`，P5）
 
@@ -308,11 +313,15 @@ impl FrameLoop {
 2. `acquire`（只持交换链锁）：零尺寸 → `Skipped`；`OUT_OF_DATE` → 重建后 `Recreated`（本帧不渲染）；`SUBOPTIMAL` → 正常渲染并标记 `stale`。
 3. 构图：主图与展示图合并为一张图，交换链图像作为 `Import`（起始 `UNDEFINED`，结束 `PRESENT_SRC_KHR`）。
 4. 编译、录制。
-5. 提交：`Device::submit(graphics, ..)`，首个触碰交换链图像的批次等待 `acquire[slot]` @ `COLOR_ATTACHMENT_OUTPUT`，最后批次 signal `present[image]` 与本队列时间线。
+5. 提交：`Device::submit(graphics, ..)`，首个触碰交换链图像的批次等待 `acquire[slot]`，等待阶段由首次访问推导（光栅颜色附件通常为 `COLOR_ATTACHMENT_OUTPUT`，拷贝/compute 使用对应阶段），最后批次 signal `present[image]` 与本队列时间线。
 6. present：`Timelines::with_queue(graphics, vkQueuePresentKHR)`；`OUT_OF_DATE`/`SUBOPTIMAL` → 标记 `stale`，下一帧重建。
 7. 记录 `slot.done = point`，返回 `Presented(point)`。
 
-失败处理：步骤 3–5 失败 → 回滚本帧（池复位、资源归还），acquire 已取得的图像通过一次空提交（等待 acquire、signal present）+ present 归还，避免图像泄漏；交换链重建前 `Device::wait(set of all in-flight)` 而非 `vkDeviceWaitIdle`。
+失败处理由 `AcquiredImageLease` 记录 acquire 信号是否已消费、图像布局、提交完成点与呈现状态。未提交部分取消；已提交部分依 §3.10 收尾。设备可用时，已取得图像走支持的 release-images 路径，或补救提交后 present；补救提交必须等待尚未消费的 acquire，并在需要时录制到 `PRESENT_SRC_KHR` 的布局转换，不能无条件用空提交，也不能重复等待已消费的二值信号量。释放图像不等于消费 acquire 信号，二值信号量的复用/销毁单独跟踪。设备丢失时停止补救提交，转入设备销毁路径。
+
+**呈现完成域**：`SyncPoint` 证明 GPU 提交完成，`PresentTicket` 证明相应呈现资源可以回收，二者不混用。支持并启用 swapchain maintenance1 时用呈现 fence；否则按再次 acquire 同一图像并等待其信号、呈现历史及交换链代际实现延迟销毁协议。旧交换链停止 acquire 后，不能依赖它未来再次 acquire，应采用官方交换链重建示例的代际关联方案。重建同时满足在飞提交与呈现资源的回收条件；只等待设备时间线不足以证明呈现资源已释放。
+
+参考：[呈现信号量复用](https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html)、[交换链重建示例](https://docs.vulkan.org/samples/latest/samples/api/swapchain_recreation/README.html)、[呈现布局约束](https://docs.vulkan.org/refpages/latest/refpages/source/VkPresentInfoKHR.html)。
 
 ### 3.9 性能目标
 
@@ -325,11 +334,34 @@ impl FrameLoop {
 | 每帧堆分配 | 未测 | 稳态 0（事件日志删除、SmallVec、帧环复用） |
 | 长时间运行 | events 无限增长 | 所有计数平稳（`p0_stability` 两个用例全绿） |
 
+### 3.10 帧事务与部分提交
+
+`FrameTransaction` 状态为 `Preparing → Recorded → PartiallySubmitted → Submitted → Completed`；执行器允许批次交错录制/提交，但每次提交都以成功返回为不可逆边界。
+
+- 提交前预备资源引用、回执存储与退役记录容量，成功后登记完成点的步骤不得再依赖可失败的分配或用户回调。
+- 每个成功批次立即登记 `SyncPoint`、资源使用、实际访问/所有权终态；后续失败不能把状态恢复成图开始前的值。未提交工作释放，已提交工作移交持有资源的退役记录，正常失败路径不为清理而无限等待 GPU。
+- 同一命令池、上传区、描述符池的完成集合覆盖其中全部已提交工作，只有满足集合才可整体 reset。取消未提交命令不授予整池 reset 权限。
+- temporal 的内容版本只有在对应产出已成功提交、且后继使用有完成依赖时才发布；部分写入或缺失最终产出的历史失效。其他 CPU 业务副作用不承诺由框架自动回滚，录制回调应避免此类副作用。
+- RAII 守卫保证引用和租约不会丢失；析构不执行无界等待或可失败的业务补救。需要 Vulkan 调用的补救显式执行，失败记录交由帧循环/设备销毁收尾。
+- 清理和退役回调执行一次；逐项收集清理失败，保留首个业务错误作为主错误。设备丢失取消后续提交并排空可安全销毁的记录。
+
+### 3.11 异步传输、内存预算与能力策略
+
+**传输服务**：`UploadManager` / `ReadbackManager` 返回带资源区间、设备代际与 `SyncPoint` 的 ticket。上传合并脏区，readback 提供非阻塞 `try_read`；需要同步的便捷 API 只等待相关资源区间，不等待整设备所有提交。区间预留与 GPU 使用登记必须防止宿主写入和并发新提交竞争，不能只读一次完成快照就授予写权限。非 coherent 内存的范围对齐、flush/invalidate 由分配层统一处理。上传环容量有上限，满时由策略选择延后、受限扩容或显式等待；传输队列是可选策略，不是正确性的前提。
+
+**统一预算**：`MemoryBudgetController` 记录 live、in-flight、可淘汰 cache、pending-retirement 字节数。各缓存有局部上限，统一预算约束总量；先淘汰已完成的空闲资源，再延后低优先级上传，画质降级交上层决定。高低水位与滞回防止频繁淘汰/重建。常规回收限制每帧工作量，内存压力触发加速回收；不能淘汰在飞资源。`VK_EXT_memory_budget` 的动态估计仅作为策略输入，未支持时使用配置预算，任何情况下仍处理真实 OOM。
+
+**有界后台任务**：管线编译、资源上传按规范化键合并重复请求，队列有容量、优先级及过期请求取消规则。管线热重载结果在帧边界发布；失败保留旧版本，旧对象按实际使用完成点退役。缓存落盘使用版本/设备兼容标识与原子替换，损坏或不兼容时丢弃并重建。
+
+**能力与身份**：`DeviceCaps` 保存硬件支持和设备实际启用特性，`ExecutionPolicy` 在初始化时选择描述符实现、队列、录制和分配策略。句柄携带设备归属/代际，图内 ID 带图作用域校验，拒绝跨设备或跨图误用。设备恢复可后续实施，但旧代际资源不得进入新设备的帧实例。
+
+参考：[非 coherent 映射内存规则](https://docs.vulkan.org/spec/latest/chapters/memory.html)、[动态内存预算](https://docs.vulkan.org/refpages/latest/refpages/source/VK_EXT_memory_budget.html)。
+
 ---
 
 ## 4. 性能路线图
 
-§3 的重构主要解决正确性与结构问题，性能只拿到"去掉明显浪费"一层（命令缓冲 3→1、去掉 graveyard 空提交、稳态零堆分配），且**尚未测量**。下列方向按预期收益排序；除标注"并入 P4"的两项外，其余在剖析数据支持后单独立项。
+§3 的重构主要解决正确性与结构问题，性能只拿到"去掉明显浪费"一层（命令缓冲 3→1、去掉 graveyard 空提交、稳态零堆分配），且**尚未测量**。下列方向的收益是待验证假设；图计划分层、缓存边界、内存着色接口随 P4 设计，优化默认启用须满足 §4.9 的验收条件。
 
 | # | 方向 | 预期收益 | 代价 | 决策 |
 | --- | --- | --- | --- | --- |
@@ -337,8 +369,8 @@ impl FrameLoop {
 | 4.1 | 管线编译去卡顿 | 消除首次遇到材质/变体时的帧时间尖刺 | 中 | 最优先 |
 | 4.2 | Bindless 描述符 | 描述符分配与绑定的 CPU 开销接近 0 | 中 | 并入 P4（影响句柄设计） |
 | 4.3 | GPU 驱动渲染 | draw 提交 CPU 成本从 O(对象数) 降到 O(材质类别数) | 高 | 剖析确认 CPU 提交是瓶颈后 |
-| 4.4 | 渲染图编译缓存 | 每帧编译开销接近 0 | 低~中 | 并入 P4（编译须为纯函数） |
-| 4.5 | 瞬态资源内存别名 | 瞬态显存常见省 30–50%，带宽与缓存命中改善 | 中 | 真机测显存压力后 |
+| 4.4 | 整图/子图编译缓存、版本驱动结果缓存 | 减少重复编译与未变化内容的重复执行 | 中 | P4 分层与整图缓存；子图/结果缓存按命中率启用 |
+| 4.5 | 瞬态内存着色、分层分配 | 降低峰值显存及分配次数；不承诺帧率提升 | 中 | P4 单队列方案，P6 扩展到多队列偏序 |
 | 4.6 | 异步 compute 按关键路径调度 | GPU 利用率 | 高 | 真机 GPU 时间戳证明有重叠空间后 |
 | 4.7 | 数据导向热路径 | 框架自身 CPU 常数开销 | 中 | 剖析显示框架开销占比可观时 |
 
@@ -370,13 +402,59 @@ impl FrameLoop {
 
 ### 4.4 渲染图编译缓存
 
-设计见 §3.6 第 5 点。缓存键必须覆盖所有影响编译结果的输入；导入资源只把描述与起始访问纳入键，具体对象每帧重新绑定。缓存容量小（常见 2–4 种图形态：加载图、世界图、展示图、截图），用 LRU。
+**计划与实例分离**
 
-### 4.5 瞬态资源内存别名
+| 类型 | 内容 | 可缓存性 |
+| --- | --- | --- |
+| `GraphDefinition` | 资源规格、资源版本、子资源访问、pass 与显式副作用 | 结构不变时复用 |
+| `CompiledPlan` | 校验、依赖图、保留的 pass、队列调度、屏障模板、虚拟资源生命周期 | 不可变、可跨帧复用，不持有具体资源或回调 |
+| `FrameInstance` | 资源实际绑定、导入初始状态、回调参数、提交回执和资源引用 | 每帧独立，不进编译缓存 |
 
-- 编译器对瞬态资源的生命周期区间做区间着色，不重叠者共享同一大内存块的同一偏移（`vkBindImageMemory`/`vkBindBufferMemory` 到共享分配）。
-- 别名切换处插入以 `UNDEFINED` 为起点的屏障，内容视为丢弃；同一别名组内资源的内存类型与对齐须兼容。
-- 结果随编译缓存（4.4）一起复用。正确性可在 lavapipe 上验证，收益需真机测。
+每次写入在图内形成新资源版本；读依赖明确版本，以最终导出和显式副作用为根反向裁剪无用 pass。访问范围表达 texture 的 aspect/mip/layer 和 buffer 的 offset/size。原地更新保留物理存储反依赖约束，不能因逻辑版本不同就错误地并发执行。
+
+缓存键覆盖拓扑、资源规格与使用标志、访问范围、导出、副作用、队列映射、选择的能力策略和编译器版本。凡被烘焙进计划的导入初始状态、shader 接口等也必须入键；选择作为运行时参数的状态则由绑定阶段重新校验并生成边界屏障。哈希只定位候选，完整规范化键比较才确认命中，不能因 64 位哈希相同复用错误计划。缓存同时受条目数与字节预算约束，记录命中、未命中与失效原因。
+
+**子图编译缓存**
+
+- `SubgraphInterface` 声明输入/输出规格、读写范围、边界状态、队列约束和副作用。稳定的阴影、后处理、文字等子图可独立编译，父图修改时只重编受影响的结构。
+- 子图缓存保存局部依赖和符号化计划；全图组合后仍统一完成跨子图同步、队列调度和瞬态内存放置。子图不能私自固化全局内存偏移或时间线值。
+- 先实现整图缓存，统计重复子图比例、编译耗时与缓存管理成本后启用细粒度缓存。过细划分会增加键构造与边界协调成本，不要求所有 pass 都成为子图。
+
+**结果缓存（与编译缓存独立）**
+
+- `ResultCacheKey` 包含输入内容版本、参数、相关 shader 实现版本和设备代际。上层发布脏标记，依赖图传播失效；名字或资源地址不能代替内容版本。
+- 适用候选：未变化建筑的生成网格、输入稳定的阴影结果、文字排版及顶点数据。时间、随机种子、相机、光源、遮挡物或 temporal 历史只要影响输出，都必须纳入依赖；无法完整声明依赖的 pass 不允许复用结果。
+- 命中结果仍需等待其产出完成点，并登记本帧的实际使用。输出成为受预算管理的持久资源，不再属于可任意覆盖的瞬态别名区。
+- 业务版本与脏标记由 `tiny-glade` / `tg-text` 提供，rhapsody 负责缓存协议、同步和生命周期，不引入建筑业务知识。
+
+### 4.5 瞬态内存着色与分层分配
+
+**内存着色 / 别名规划**
+
+`TransientMemoryPlan` 为短生命周期资源生成兼容分组、内存块/偏移、别名切换依赖及预计峰值。概念上对可能并存的资源建立冲突图，但大小与对齐不同，实际采用带容量约束的贪心放置/区间分配；不要求求解最优图着色，也不必显式构造稠密冲突矩阵。
+
+1. 拓扑规划输出符号化生命周期；资源实现层查询真实 `VkMemoryRequirements` 和 dedicated 要求。放置器接收这些不可变事实后生成物理方案；设备相关方案只能在相同兼容性签名下复用。
+2. 检查 size、alignment、memoryTypeBits 交集、buffer-image granularity、资源创建标志、图像别名规则与独立分配要求。仅依据纹理宽高和估算字节数分组不够。需要独立分配或外部所有权的资源不进入普通别名组。
+3. 单队列按包含同步边界的生命周期区间规划。多队列按依赖偏序证明“旧资源的全部访问先于新资源首次访问”；pass 编号不重叠不代表实际执行不重叠。不同在飞帧也不得无依赖地复用同一物理区间。
+4. 别名切换生成适用的执行/内存依赖、布局转换及必要的队列同步。`oldLayout = UNDEFINED` 表示丢弃内容，不免除先前访问的同步；新资源首次使用必须建立所需内容，拒绝读取未定义数据。相关规则见 [Vulkan 资源别名](https://docs.vulkan.org/spec/latest/chapters/resources.html) 与 [同步规范](https://docs.vulkan.org/spec/latest/chapters/synchronization.html)。
+5. 第一版只为本来已被依赖排序的资源复用内存。默认 `PreserveParallelism` 不新增串行依赖；可选 `MinimizeMemory` 才允许受控添加无环依赖，并报告新增等待和关键路径代价。任何策略都不能通过覆盖仍在用的资源达成预算。
+6. temporal、导出持久结果、外部导入及结果缓存输出默认排除；跨帧瞬态堆随帧槽完成点复用。显式支持更复杂生命周期前，不尝试跨这些边界着色。
+
+示例：A 需要 64 MiB，B 需要 32 MiB；只有当 A 全部访问先于 B、内存约束兼容且内容无需保留时，二者才可共享 64 MiB。收益按实际峰值对比，不预设节省比例；省显存不等于省带宽或提高帧率。
+
+**分层分配（与着色不同）**
+
+| 资源类别 | 策略 | 复用条件 |
+| --- | --- | --- |
+| 持久纹理、网格缓冲 | 复用 `gpu-allocator` 的通用子分配；同时存活对象使用不同区间 | 对象退役完成 |
+| 动态常量、上传与读回 | 持久映射 ring/bump，按使用方向和对齐要求分区 | 对应区间的 GPU 使用完成 |
+| 图内瞬态附件/缓冲 | `TransientMemoryPlan` 约束的别名堆 | 图内依赖及帧槽完成条件满足 |
+| 要求独立分配的资源 | dedicated allocation；其他特大资源按测量与碎片策略选择 | 对象退役完成 |
+| CPU 编译/录制临时数据 | 每 worker / 帧的 arena，预留高水位容量并设上限 | 所有相关 CPU 任务结束 |
+
+不另写通用 GPU 分配器。别名区由单一 backing-allocation owner 拥有，多资源共享该分配并汇总完成点；不能让每个资源重复释放同一分配。若现有分配器接口不支持受控别名，用狭窄的瞬态堆适配层承载，保持预算与释放责任唯一。
+
+记录 committed/live/峰值字节、内部与外部碎片、别名复用字节、分配次数、额外同步和 GPU 时长；预算协调遵循 §3.11。
 
 ### 4.6 异步 compute 按关键路径调度
 
@@ -390,17 +468,20 @@ impl FrameLoop {
 - 图执行按索引访问资源表，`Arc`/`Mutex` 只出现在资源创建与销毁处。
 - pass 与访问记录用结构数组（SoA）存放，编译按列遍历。
 - 并行录制基于 `bevy_tasks` 任务窃取，按上一帧 pass 耗时分块。
+- 线程局部池按 §3.7 隔离，各池完成后整体 reset；共享缓存采用只读快照或短临界区发布，不在逐 draw 热路径做全局查找/分配。局部缓存命中率、锁等待与总驻留字节一起度量。参考 [Khronos 多线程命令录制示例](https://docs.vulkan.org/samples/latest/samples/performance/command_buffer_usage/README.html)。
 
 ### 4.8 其他较小改进
 
 - **动态渲染**：已写入 §3.6 第 6 点，随 P4/P7 落地。
-- **上传路径**：专用 transfer 队列 + 持久映射暂存环；设备支持 ReBAR（可映射的 DEVICE_LOCAL 大堆）时直接写显存，跳过暂存拷贝。
+- **上传路径**：按 §3.11 实现异步传输与区间同步；专用 transfer 队列、可映射 DEVICE_LOCAL 内存直写均为可选策略，按实际内存属性与测量选择，不能仅凭 ReBAR 支持就默认直写更快。
 - **帧延迟控制**：`VK_KHR_present_id` + `VK_KHR_present_wait` 按显示节奏决定何时开始下一帧，降低输入延迟。
 
 ### 4.9 硬件要求与顺序
 
 - 依赖较新特性：descriptor indexing、buffer device address、dynamic rendering、synchronization2、timeline semaphore（Vulkan 1.2/1.3 核心，lavapipe 支持）；descriptor buffer、graphics pipeline library、shader object、mesh shader 为可选，需按设备探测（lavapipe 不支持 mesh shader，其余需实测）。目标硬件的最低要求尚未确定，须在 4.2/4.3 动工前确认。
-- 建议顺序：4.0 剖析 → 4.1 管线去卡顿 → 4.4 编译缓存 + 动态渲染（并入 P4/P7）→ 4.2 bindless（并入 P4）→ 4.3 GPU 驱动渲染（剖析确认后）→ 4.5/4.6（真机测量后）。
+- 基础顺序：P2 能力策略与通用子分配 → P3 帧局部池、区间完成点与预算计数 → P4 图计划/帧实例分离、资源版本/子图边界、整图缓存、单队列瞬态着色 → P5 提交事务与呈现完成域 → P6 多队列偏序校验与别名规划。部分提交收尾与独立检查模型需在对应功能启用前完成，不等到 P5/P7 才补正确性。
+- 后续优化：剖析和异步管线编译先行；子图编译缓存、结果缓存依据重复率与脏数据分布启用；bindless、动态渲染按 P4 集成；GPU 驱动、复杂异步计算与为省内存而增加串行依赖须经真机 A/B 验证。
+- 每项优化保留关闭路径；相同负载下比较 CPU/GPU 的 p50/p95/p99、峰值显存、稳态分配数、等待时长及长跑计数。未证明收益的策略保持可选，不把“实现了”当成“默认更快”。测试记录硬件、驱动、构建配置和负载；无对应硬件时标记未验证，不外推 lavapipe 结果。
 
 ---
 
@@ -411,17 +492,22 @@ impl FrameLoop {
 - **整帧**（P5）：`VK_EXT_headless_surface` 跑 acquire → 主图 → 展示图 → present 全链路。
 - **多队列**：lavapipe 只有 1 族 1 队列，用别名队列验证逻辑；真实多族路径的测试保留但无独立队列时跳过，需在有独立 compute 队列的显卡上补测。
 - **性能**：`cargo test --release -p rhapsody --test p0_perf_baseline -- --ignored --nocapture`，每阶段对比 3.9 表；GPU 侧数据按 §4.0 在真显卡上采集。
+- **独立计划检查器**：以声明与编译结果为输入，用独立规则检查读取来源、冲突访问的依赖路径、跨族交接、别名区间不并发、回收覆盖全部使用；不照抄编译器算法。随机小图及随机完成顺序与保守无别名/串行执行对照。
+- **缓存**：缓存开关输出一致；强制哈希碰撞仍正确；只改变输入内容、子图结构、导入初态、shader 接口/实现或设备代际时，分别验证正确层级失效。结果缓存命中不能跳过完成依赖。
+- **内存与局部池**：覆盖跨队列/在飞帧生命周期重叠、对齐/类型不兼容、dedicated 排除、别名首次读取拒绝；使用 Vulkan 验证层检查支持的路径。循环切换分辨率和图形态、填满上传环与后台队列，验证预算上限、背压及退役积压最终消退。
+- **失败矩阵**：在 acquire、分配、录制、首批/后续提交、present、清理步骤注入失败；确认已提交部分不复位/不重复释放、未提交部分释放、回调恰好一次、原始错误保留、可恢复错误后的下一帧可执行。交换链代际与二值信号量状态另行验证。
+- **可观测性**：记录 pass GPU 时间、CPU 编译/录制/提交/回收时间、缓存失效原因、锁等待、内存高水位和退役年龄；诊断事件有界且不参与控制流。设备丢失或超时输出最近提交及资源版本的关联信息。
 
 ## 6. 迁移与删除清单
 
 | 阶段 | 新增 | 删除 |
 | --- | --- | --- |
-| P2 | `device::{Device, DeviceConfig, init, memory}` | `raw::device::{VulkanDevice, GraphicsDevice}`、`queue_lock`、`raw::init` 中的原版排序/白名单 |
-| P3 | `command::FrameRing`、`Device::retire/collect_garbage`、`Doomed` | `raw::graveyard`、`raw::managed::lifecycle::SequenceRuntime`、`raw::submit::SubmissionEngine/DeviceState`、`raw::disposal`、`CommandBufferSeqTracker`、`ManagedResources` 退役记录、`events` |
-| P4 | `resource::*`、图层 `TextureId/BufferId/Persistent/Temporal`、bindless 描述符堆与 `BindlessIndex`、图编译缓存、动态渲染 | `raw::managed::*` 句柄与 checksum、`rg::temporal` token 方案、`VulkanGraphBackend` 的 u64 resolver、`raw::render_pass`/`raw::framebuffer` 及其缓存、每次 dispatch 的瞬时描述符集 |
-| P5 | `swapchain`、`frame::FrameLoop` | `raw::swapchain` 租约表、`rg::frame` 原版阶段检查器、`rg::state` |
-| P6 | 图内 `QueueClass` 调度、`SharingPolicy` | 跨队列族"拒绝提交"分支 |
-| P7 | 性能三项 | `rg/compiled_graph.rs`、多余的屏障计算、`rg/resource_usage`、原版地址注释、`pass_entries.rs` |
+| P2 | `device::{Device, DeviceConfig, init, memory}`、能力策略与设备代际 | `raw::device::{VulkanDevice, GraphicsDevice}`、`queue_lock`、`raw::init` 中的原版排序/白名单 |
+| P3 | `command::FrameRing`、worker 局部池、`Device::retire/collect_garbage`、`Doomed`、预算计数与帧事务基础 | `raw::graveyard`、`raw::managed::lifecycle::SequenceRuntime`、`raw::submit::SubmissionEngine/DeviceState`、`raw::disposal`、`CommandBufferSeqTracker`、`ManagedResources` 退役记录、`events` |
+| P4 | `resource::*`、类型化/命名资源、bindless、动态渲染、图计划/帧实例分层、资源版本、子图边界、整图缓存、单队列瞬态着色、传输 ticket | `raw::managed::*` 句柄与 checksum、`rg::temporal` token 方案、`VulkanGraphBackend` 的 u64 resolver、`raw::render_pass`/`raw::framebuffer` 及其缓存、每次 dispatch 的瞬时描述符集 |
+| P5 | `swapchain`、`frame::FrameLoop`、帧事务闭合、图像租约与呈现完成域 | `raw::swapchain` 租约表、`rg::frame` 原版阶段检查器、`rg::state` |
+| P6 | 图内 `QueueClass` 调度、`SharingPolicy`、偏序驱动别名规划 | 跨队列族"拒绝提交"分支 |
+| P7 | 性能 A/B、预算与尾延迟验收、按测量启用子图/结果缓存 | `rg/compiled_graph.rs`、多余的屏障计算、`rg/resource_usage`、原版地址注释、`pass_entries.rs` |
 
 下游 `tiny-glade`（`render_host.rs`、`raster_host.rs`、测试）与 `tg-text`（`gpu.rs`）在 P2、P4、P5 同步迁移。
 

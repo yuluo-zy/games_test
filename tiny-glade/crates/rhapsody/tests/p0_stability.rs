@@ -33,7 +33,7 @@ const SIZE: u32 = 16;
 /// 会话内部账本的一次快照。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Bookkeeping {
-    lifecycle_events: usize,
+    lifecycle_resources: usize,
     pending_frames: usize,
     resources: usize,
     commands: usize,
@@ -53,7 +53,7 @@ fn sample(session: &VulkanGraphSession, imports_waiting_release: usize) -> Bookk
     let lifecycle = &session.chain.lifecycle;
     let stores = &session.backend.stores;
     Bookkeeping {
-        lifecycle_events: lifecycle.events.len(),
+        lifecycle_resources: lifecycle.resource_count(),
         pending_frames: session.pending_frame_count(),
         resources: session.resource_count(),
         commands: session.command_count(),
@@ -82,16 +82,30 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
 
     let mut color_desc = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);
     color_desc.usage |= vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::TRANSFER_SRC;
-    let color = session.backend.declare(&mut graph, "color", ResourceSpec::Image(color_desc)).unwrap();
+    let color = session
+        .backend
+        .declare(&mut graph, "color", ResourceSpec::Image(color_desc))
+        .unwrap();
     let scratch_desc = BufferDesc::new_gpu_only(UNIFORM_BYTES, vk::BufferUsageFlags::TRANSFER_DST);
-    let scratch = session.backend.declare(&mut graph, "scratch", ResourceSpec::Buffer(scratch_desc)).unwrap();
+    let scratch = session
+        .backend
+        .declare(&mut graph, "scratch", ResourceSpec::Buffer(scratch_desc))
+        .unwrap();
 
-    let uniform_desc = BufferDesc::new_cpu_to_gpu(UNIFORM_BYTES, vk::BufferUsageFlags::TRANSFER_SRC);
+    let uniform_desc =
+        BufferDesc::new_cpu_to_gpu(UNIFORM_BYTES, vk::BufferUsageFlags::TRANSFER_SRC);
     let uniform = Arc::new(Buffer::new(device.clone(), &uniform_desc).unwrap());
-    uniform.write_bytes_unsynchronized(0, &[frame as u8; UNIFORM_BYTES as usize]).unwrap();
+    uniform
+        .write_bytes_unsynchronized(0, &[frame as u8; UNIFORM_BYTES as usize])
+        .unwrap();
     let token = session.backend.bind_import(GpuResource::Buffer(uniform));
     let ub = graph
-        .import_unowned("uniform", ResourceSpec::Buffer(uniform_desc).descriptor(), token, HOST_WRITE)
+        .import_unowned(
+            "uniform",
+            ResourceSpec::Buffer(uniform_desc).descriptor(),
+            token,
+            HOST_WRITE,
+        )
         .unwrap();
 
     {
@@ -101,8 +115,12 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
         let mut pass = graph.add_pass("clear color");
         pass.add_resource_access(color, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
-            let Some(managed) = ctx.managed else { return false };
-            let Ok(image) = managed.texture_for(index) else { return false };
+            let Some(managed) = ctx.managed else {
+                return false;
+            };
+            let Ok(image) = managed.texture_for(index) else {
+                return false;
+            };
             ctx.keep_alive(Arc::new(image.clone()));
             // SAFETY: 命令缓冲处于录制状态；图已把纹理转到 TRANSFER_DST_OPTIMAL，资源由 keep_alive 保活。
             unsafe {
@@ -125,9 +143,12 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
         let (src, dst) = (ub.raw(), scratch.raw());
         let mut pass = graph.add_pass("upload uniform");
         pass.add_resource_access(ub, TRANSFER_READ, 0).unwrap();
-        pass.add_resource_access(scratch, TRANSFER_WRITE, 0).unwrap();
+        pass.add_resource_access(scratch, TRANSFER_WRITE, 0)
+            .unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
-            let Some(managed) = ctx.managed else { return false };
+            let Some(managed) = ctx.managed else {
+                return false;
+            };
             let (Ok(src), Ok(dst)) = (managed.buffer_for(src), managed.buffer_for(dst)) else {
                 return false;
             };
@@ -139,7 +160,11 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
                     src.raw(),
                     dst.raw(),
-                    &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: UNIFORM_BYTES }],
+                    &[vk::BufferCopy {
+                        src_offset: 0,
+                        dst_offset: 0,
+                        size: UNIFORM_BYTES,
+                    }],
                 );
             }
             true
@@ -186,7 +211,10 @@ fn run() -> Option<Samples> {
     }
     assert!(!session.is_poisoned());
     let pick = |v: &[Bookkeeping]| (v[WARM_CYCLE - 1], *v.last().unwrap());
-    Some(Samples { mid: pick(&mid), collected: pick(&collected) })
+    Some(Samples {
+        mid: pick(&mid),
+        collected: pick(&collected),
+    })
 }
 
 /// 会话外层账本：资源/命令/在飞帧/托管退役队列/提交捕获在稳态下不增长。
@@ -207,31 +235,62 @@ fn assert_bookkeeping_bounded(warm: &Bookkeeping, end: &Bookkeeping) {
     bounded("pending_frames", warm.pending_frames, end.pending_frames);
     bounded("resources", warm.resources, end.resources);
     bounded("commands", warm.commands, end.commands);
-    bounded("lifecycle_pending", warm.lifecycle_pending, end.lifecycle_pending);
+    bounded(
+        "lifecycle_pending",
+        warm.lifecycle_pending,
+        end.lifecycle_pending,
+    );
     bounded("lifecycle_pool", warm.lifecycle_pool, end.lifecycle_pool);
-    bounded("lifecycle_buckets", warm.lifecycle_buckets, end.lifecycle_buckets);
-    bounded("store_pending_disposals", warm.store_pending_disposals, end.store_pending_disposals);
-    bounded("store_pending_destroy", warm.store_pending_destroy, end.store_pending_destroy);
-    bounded("buffer_retained_submissions", warm.buffer_retained_submissions, end.buffer_retained_submissions);
-    bounded("texture_retained_submissions", warm.texture_retained_submissions, end.texture_retained_submissions);
-    bounded("submission_captures", warm.submission_captures, end.submission_captures);
-    bounded("imports_waiting_release", warm.imports_waiting_release, end.imports_waiting_release);
+    bounded(
+        "lifecycle_buckets",
+        warm.lifecycle_buckets,
+        end.lifecycle_buckets,
+    );
+    bounded(
+        "store_pending_disposals",
+        warm.store_pending_disposals,
+        end.store_pending_disposals,
+    );
+    bounded(
+        "store_pending_destroy",
+        warm.store_pending_destroy,
+        end.store_pending_destroy,
+    );
+    bounded(
+        "buffer_retained_submissions",
+        warm.buffer_retained_submissions,
+        end.buffer_retained_submissions,
+    );
+    bounded(
+        "texture_retained_submissions",
+        warm.texture_retained_submissions,
+        end.texture_retained_submissions,
+    );
+    bounded(
+        "submission_captures",
+        warm.submission_captures,
+        end.submission_captures,
+    );
+    bounded(
+        "imports_waiting_release",
+        warm.imports_waiting_release,
+        end.imports_waiting_release,
+    );
 }
 
-/// `SequenceRuntime::events`（raw/managed/lifecycle.rs）只追加从不清理：每帧数十条字符串，长跑无界增长。
+/// 生命周期资源记录在回收后移除，不能随帧数增长。
 #[test]
-#[ignore = "P3: 统一回收后转绿（events 日志无限增长）"]
-fn lifecycle_event_log_stays_bounded_over_many_frames() {
+fn lifecycle_metadata_stays_bounded_over_many_frames() {
     let Some(samples) = run() else {
         eprintln!("skip: no Vulkan device");
         return;
     };
     for (warm, end) in [samples.mid, samples.collected] {
         assert!(
-            end.lifecycle_events <= warm.lifecycle_events,
-            "lifecycle events 增长: {} -> {}",
-            warm.lifecycle_events,
-            end.lifecycle_events
+            end.lifecycle_resources <= warm.lifecycle_resources,
+            "lifecycle resources 增长: {} -> {}",
+            warm.lifecycle_resources,
+            end.lifecycle_resources
         );
     }
 }

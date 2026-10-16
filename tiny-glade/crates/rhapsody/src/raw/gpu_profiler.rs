@@ -27,8 +27,9 @@ pub const MAX_MARKERS: usize = 0x3ff;
 /// 索引缓冲的初值（`0xffffffff`）。
 pub const INDEX_BUFFER_FILL: u64 = 0xffff_ffff;
 /// `end_frame` 的 `vkCmdCopyQueryPoolResults` 标志：`64_BIT | WAIT`（原版立即数 3）、stride 8。
-pub const COPY_FLAGS: vk::QueryResultFlags =
-    vk::QueryResultFlags::from_raw(vk::QueryResultFlags::TYPE_64.as_raw() | vk::QueryResultFlags::WAIT.as_raw());
+pub const COPY_FLAGS: vk::QueryResultFlags = vk::QueryResultFlags::from_raw(
+    vk::QueryResultFlags::TYPE_64.as_raw() | vk::QueryResultFlags::WAIT.as_raw(),
+);
 
 /// `shared::MarkerId`（u32 包装）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -39,7 +40,10 @@ impl MarkerId {
     }
     /// 0x140c10e20：`u64::MAX` 是非法哨兵 → panic；其余截断低 32 位。
     pub fn from_u64(value: u64) -> Self {
-        assert!(value != u64::MAX, "MarkerId::from_u64: u64::MAX is not a valid marker");
+        assert!(
+            value != u64::MAX,
+            "MarkerId::from_u64: u64::MAX is not a valid marker"
+        );
         Self(value as u32)
     }
 }
@@ -108,7 +112,9 @@ impl Profiler {
         // SAFETY: `info` 有效；池由本结构保存，调用者负责 `destroy`。
         let pool = unsafe { device.create_query_pool(&info, None) }?;
         Ok(Self {
-            index_buf: (0..MAX_MARKERS).map(|_| AtomicU64::new(INDEX_BUFFER_FILL)).collect(),
+            index_buf: (0..MAX_MARKERS)
+                .map(|_| AtomicU64::new(INDEX_BUFFER_FILL))
+                .collect(),
             pool,
             used_count: AtomicU32::new(0),
         })
@@ -134,11 +140,18 @@ impl Profiler {
     ///
     /// # Safety
     /// `cmd` 必须处于录制状态，且上一帧对池的使用已完成。
-    pub unsafe fn begin_frame<'a>(&'a self, device: &ash::Device, cmd: vk::CommandBuffer) -> ActiveProfiler<'a> {
+    pub unsafe fn begin_frame<'a>(
+        &'a self,
+        device: &ash::Device,
+        cmd: vk::CommandBuffer,
+    ) -> ActiveProfiler<'a> {
         // SAFETY: 由调用者保证。
         unsafe { device.cmd_reset_query_pool(cmd, self.pool, 0, QUERY_POOL_SIZE) };
         self.used_count.store(0, Ordering::Release);
-        ActiveProfiler { markers: FrameMarkers::default(), profiler: self }
+        ActiveProfiler {
+            markers: FrameMarkers::default(),
+            profiler: self,
+        }
     }
 }
 
@@ -156,13 +169,26 @@ impl ActiveProfiler<'_> {
     ///
     /// # Safety
     /// `cmd` 必须处于录制状态，且本帧已 `begin_frame`。
-    pub unsafe fn write_marker(&self, device: &ash::Device, cmd: vk::CommandBuffer, marker: MarkerId) {
+    pub unsafe fn write_marker(
+        &self,
+        device: &ash::Device,
+        cmd: vk::CommandBuffer,
+        marker: MarkerId,
+    ) {
         let idx = self.profiler.used_count.fetch_add(1, Ordering::AcqRel) as usize;
-        assert!(idx < MAX_MARKERS, "index out of bounds: the len is {MAX_MARKERS} but the index is {idx}");
+        assert!(
+            idx < MAX_MARKERS,
+            "index out of bounds: the len is {MAX_MARKERS} but the index is {idx}"
+        );
         self.profiler.index_buf[idx].store(marker.as_u64(), Ordering::Relaxed);
         // SAFETY: 由调用者保证。
         unsafe {
-            device.cmd_write_timestamp(cmd, vk::PipelineStageFlags::BOTTOM_OF_PIPE, self.profiler.pool, idx as u32)
+            device.cmd_write_timestamp(
+                cmd,
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                self.profiler.pool,
+                idx as u32,
+            )
         }
     }
     /// 0x1418c3910：`CopyQueryPoolResults(pool, 0, used_count, dst, 0, stride 8, 64_BIT|WAIT)`；把索引缓冲前
@@ -179,14 +205,26 @@ impl ActiveProfiler<'_> {
         let count = self.profiler.used_count.load(Ordering::Acquire);
         // SAFETY: 由调用者保证。
         unsafe {
-            device.cmd_copy_query_pool_results(cmd, self.profiler.pool, 0, count, dst, 0, 8, COPY_FLAGS)
+            device.cmd_copy_query_pool_results(
+                cmd,
+                self.profiler.pool,
+                0,
+                count,
+                dst,
+                0,
+                8,
+                COPY_FLAGS,
+            )
         };
         let take = (count as usize).min(MAX_MARKERS);
         let query_indices = self.profiler.index_buf[..take]
             .iter()
             .map(|slot| slot.load(Ordering::Relaxed) as u32)
             .collect();
-        ProfilerSubmittedFrame { markers: self.markers, query_indices }
+        ProfilerSubmittedFrame {
+            markers: self.markers,
+            query_indices,
+        }
     }
 }
 
@@ -205,7 +243,10 @@ pub struct ProfilerSubmittedFrame {
 impl ProfilerSubmittedFrame {
     /// 由已知的 marker 表与查询下标构造（`end_frame` 之外的重建/测试入口）。
     pub fn from_parts(markers: FrameMarkers, query_indices: Vec<u32>) -> Self {
-        Self { markers, query_indices }
+        Self {
+            markers,
+            query_indices,
+        }
     }
     pub fn query_indices(&self) -> &[u32] {
         &self.query_indices
@@ -215,12 +256,19 @@ impl ProfilerSubmittedFrame {
     /// 原版有两处 panic（对齐检查 0x5a 字节文案、`count > len` 越界）；这里 `count > timestamps.len()` 同样 panic。
     pub fn retrieve_results(self, timestamps: &[u64]) -> (Vec<MarkerTimestamp>, FrameMarkers) {
         let count = self.query_indices.len();
-        assert!(count <= timestamps.len(), "range end index {count} out of range for slice of length {}", timestamps.len());
+        assert!(
+            count <= timestamps.len(),
+            "range end index {count} out of range for slice of length {}",
+            timestamps.len()
+        );
         let mut entries: Vec<MarkerTimestamp> = self
             .query_indices
             .iter()
             .zip(timestamps)
-            .map(|(&marker, &tick)| MarkerTimestamp { marker: MarkerId(marker), tick: GpuTick(tick) })
+            .map(|(&marker, &tick)| MarkerTimestamp {
+                marker: MarkerId(marker),
+                tick: GpuTick(tick),
+            })
             .collect();
         entries.sort_unstable_by_key(|e| e.tick);
         (entries, self.markers)

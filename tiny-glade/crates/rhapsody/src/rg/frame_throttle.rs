@@ -75,11 +75,7 @@ impl<R> FrameThrottle<R> {
         self.pending.push_back(receipt);
     }
     /// 带超时地等队首；`timeout_ns == 0` 或在途不足 2 个时不等。返回是否发起了等待。
-    pub fn wait_gpu_queue_trim(
-        &self,
-        timeout_ns: u64,
-        wait_until: impl FnOnce(&R, u64),
-    ) -> bool {
+    pub fn wait_gpu_queue_trim(&self, timeout_ns: u64, wait_until: impl FnOnce(&R, u64)) -> bool {
         if timeout_ns == 0 || self.pending.len() <= 1 {
             return false;
         }

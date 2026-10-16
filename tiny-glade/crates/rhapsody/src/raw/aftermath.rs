@@ -17,7 +17,7 @@
 //! 不能由机器码确定的（I）：0x217/2/1 的头文件名（`GFSDK_Aftermath_Version_API`、WatchedApi=Vulkan、
 //! Feature=DeferDebugInfoCallbacks 是按 SDK 头命名的推断，数值是实测）；状态值 2/4 对应的 SDK 枚举名。
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{CStr, c_char, c_void},
     fmt,
     time::Duration,
 };
@@ -103,7 +103,11 @@ unsafe fn bytes<'a>(ptr: *const c_void, size: u32) -> &'a [u8] {
 ///
 /// # Safety
 /// `user` 必须是 `Aftermath::new` 产生的用户数据；`dump` 指向 `size` 字节。
-pub unsafe extern "C" fn gpu_crash_dump_callback(dump: *const c_void, size: u32, user: *mut c_void) {
+pub unsafe extern "C" fn gpu_crash_dump_callback(
+    dump: *const c_void,
+    size: u32,
+    user: *mut c_void,
+) {
     // SAFETY: 见函数契约。
     unsafe { delegate(user).dumped(bytes(dump, size)) }
 }
@@ -111,7 +115,11 @@ pub unsafe extern "C" fn gpu_crash_dump_callback(dump: *const c_void, size: u32,
 ///
 /// # Safety
 /// 同 [`gpu_crash_dump_callback`]。
-pub unsafe extern "C" fn shader_debug_info_callback(info: *const c_void, size: u32, user: *mut c_void) {
+pub unsafe extern "C" fn shader_debug_info_callback(
+    info: *const c_void,
+    size: u32,
+    user: *mut c_void,
+) {
     // SAFETY: 见函数契约。
     unsafe { delegate(user).shader_debug_info(bytes(info, size)) }
 }
@@ -145,7 +153,10 @@ pub unsafe extern "C" fn resolve_marker_callback(
 /// 原版导入的四个 SDK 入口。
 pub trait AftermathApi {
     /// `GFSDK_Aftermath_EnableGpuCrashDumps(version, watched_apis, flags, cb×4, user_data)`。
-    fn enable_gpu_crash_dumps(
+    ///
+    /// # Safety
+    /// 回调须能安全处理 user_data；其指向的数据必须在 SDK 所有回调结束前保持有效。
+    unsafe fn enable_gpu_crash_dumps(
         &self,
         version: u32,
         watched_apis: u32,
@@ -165,7 +176,14 @@ pub trait AftermathApi {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct UnavailableApi;
 impl AftermathApi for UnavailableApi {
-    fn enable_gpu_crash_dumps(&self, _: u32, _: u32, _: u32, _: Callbacks, _: *mut c_void) -> i32 {
+    unsafe fn enable_gpu_crash_dumps(
+        &self,
+        _: u32,
+        _: u32,
+        _: u32,
+        _: Callbacks,
+        _: *mut c_void,
+    ) -> i32 {
         0
     }
     fn disable_gpu_crash_dumps(&self) -> i32 {
@@ -198,8 +216,16 @@ impl<A: AftermathApi> Aftermath<A> {
             description: gpu_crash_dump_description_callback,
             resolve_marker: resolve_marker_callback,
         };
-        let enable_result =
-            api.enable_gpu_crash_dumps(API_VERSION, WATCHED_APIS, FEATURE_FLAGS, callbacks, user_data);
+        // SAFETY: delegate 与 UserData 都保留到进程结束，回调使用相同的 UserData 类型。
+        let enable_result = unsafe {
+            api.enable_gpu_crash_dumps(
+                API_VERSION,
+                WATCHED_APIS,
+                FEATURE_FLAGS,
+                callbacks,
+                user_data,
+            )
+        };
         Self { api, enable_result }
     }
     pub fn enable_result(&self) -> i32 {
@@ -214,7 +240,11 @@ impl<A: AftermathApi> Aftermath<A> {
         self.wait_for_status_with(timeout, std::thread::sleep)
     }
     /// 可注入 sleep 的版本（便于测试）。
-    pub fn wait_for_status_with(&self, timeout: Option<Duration>, mut sleep: impl FnMut(Duration)) -> u8 {
+    pub fn wait_for_status_with(
+        &self,
+        timeout: Option<Duration>,
+        mut sleep: impl FnMut(Duration),
+    ) -> u8 {
         wait_for_status_with(|| self.status(), timeout, &mut sleep)
     }
     /// 原 `get_shader_debug_info_identifier`（0x140c10620）。
@@ -224,7 +254,10 @@ impl<A: AftermathApi> Aftermath<A> {
     ) -> Result<ShaderDebugInfoIdentifier, AftermathError> {
         let (code, id) = self.api.shader_debug_info_identifier(API_VERSION, info);
         if code != RESULT_SUCCESS {
-            return Err(AftermathError { call: "GFSDK_Aftermath_GetShaderDebugInfoIdentifier", code });
+            return Err(AftermathError {
+                call: "GFSDK_Aftermath_GetShaderDebugInfoIdentifier",
+                code,
+            });
         }
         Ok(ShaderDebugInfoIdentifier(id))
     }
@@ -307,7 +340,7 @@ pub mod windows_api {
     #[derive(Clone, Copy, Debug, Default)]
     pub struct SdkApi;
     impl AftermathApi for SdkApi {
-        fn enable_gpu_crash_dumps(
+        unsafe fn enable_gpu_crash_dumps(
             &self,
             version: u32,
             watched_apis: u32,

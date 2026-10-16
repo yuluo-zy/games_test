@@ -57,7 +57,9 @@ impl log::Log for Capture {
     }
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            WARNINGS.lock().push(format!("[{}] {}", record.target(), record.args()));
+            WARNINGS
+                .lock()
+                .push(format!("[{}] {}", record.target(), record.args()));
         }
     }
     fn flush(&self) {}
@@ -68,15 +70,26 @@ fn install_log_capture() {
     log::set_max_level(log::LevelFilter::Warn);
 }
 fn ledger_warnings() -> Vec<String> {
-    WARNINGS.lock().iter().filter(|w| w.contains("账本")).cloned().collect()
+    WARNINGS
+        .lock()
+        .iter()
+        .filter(|w| w.contains("账本"))
+        .cloned()
+        .collect()
 }
 
 fn buffer_spec(desc: BufferDesc) -> (ResourceSpec, rhapsody::rg::graph::Descriptor) {
-    (ResourceSpec::Buffer(desc), ResourceSpec::Buffer(desc).descriptor())
+    (
+        ResourceSpec::Buffer(desc),
+        ResourceSpec::Buffer(desc).descriptor(),
+    )
 }
 
 fn extent() -> vk::Extent2D {
-    vk::Extent2D { width: SIZE, height: SIZE }
+    vk::Extent2D {
+        width: SIZE,
+        height: SIZE,
+    }
 }
 
 fn full_image_copy() -> vk::ImageSubresourceLayers {
@@ -124,7 +137,10 @@ struct Submitted {
 }
 
 fn new_slot(backend: &mut VulkanGraphBackend) -> Slot {
-    let desc = BufferDesc::new_gpu_to_cpu(u64::from(SIZE * SIZE * 4), vk::BufferUsageFlags::TRANSFER_DST);
+    let desc = BufferDesc::new_gpu_to_cpu(
+        u64::from(SIZE * SIZE * 4),
+        vk::BufferUsageFlags::TRANSFER_DST,
+    );
     let buffer = Arc::new(Buffer::new(backend.device.clone(), &desc).unwrap());
     let token = backend.bind_import(GpuResource::Buffer(buffer.clone()));
     Slot { token, buffer }
@@ -134,16 +150,17 @@ impl Harness {
     fn new() -> Option<Self> {
         let rig = Rig::new()?;
         let backend = VulkanGraphBackend::new(rig.device.clone(), AccessTable::original()).ok()?;
-        let mut session = VulkanGraphSession::new(backend);
+        let session = VulkanGraphSession::new(backend);
         // 提交引擎镜像：之后帧完成会回收设备侧的命令缓冲。
-        session.attach_graphics_device(rig.gd.clone());
+
         let attachments = Arc::new(Mutex::new(AttachmentCache::new(rig.device.clone())));
         let mut temporal = TemporalGpuResources::new(rig.device.clone());
         let mut hist = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);
         hist.usage |= vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
         let hist_descriptor = temporal.register("hist:0", ResourceSpec::Image(hist));
         temporal.register("hist:1", ResourceSpec::Image(hist));
-        let color_spec = ResourceSpec::Image(TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM));
+        let color_spec =
+            ResourceSpec::Image(TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM));
         Some(Self {
             rig,
             session,
@@ -163,7 +180,10 @@ impl Harness {
     /// 此刻（`execute_frame` 之前）读它们的读回槽是安全的。
     fn begin(&mut self) -> RenderGraph {
         let graph = self.session.begin_frame().expect("begin_frame");
-        assert!(self.session.pending_frame_count() <= 1, "begin_frame 后在飞帧数必须 ≤ 1");
+        assert!(
+            self.session.pending_frame_count() <= 1,
+            "begin_frame 后在飞帧数必须 ≤ 1"
+        );
         graph
     }
 
@@ -178,7 +198,9 @@ impl Harness {
             .expect("temporal pair");
         for lookup in [pair.first, pair.second] {
             let token = lookup.resource.token;
-            self.temporal.import_into(&mut session.backend, &format!("hist-token-{token}"), token).unwrap();
+            self.temporal
+                .import_into(&mut session.backend, &format!("hist-token-{token}"), token)
+                .unwrap();
         }
         // pair.first = 本帧写入的历史纹理；pair.second = 上一帧写入的那张。
         let (hist_cur, hist_prev) = (pair.first.handle, pair.second.handle);
@@ -198,19 +220,36 @@ impl Harness {
             vk::BufferUsageFlags::TRANSFER_DST,
         ));
         let rb = graph
-            .import_unowned(format!("rb{slot}"), buffer_descriptor, self.readback[slot].token, HOST_READ)
+            .import_unowned(
+                format!("rb{slot}"),
+                buffer_descriptor,
+                self.readback[slot].token,
+                HOST_READ,
+            )
             .unwrap();
 
         // 3. 每帧新建顶点缓冲（y 取反：rg 的 set_default_view_and_scissor 用负高度视口翻转 Y）。
         let triangle = rotated_triangle(frame as f32 * STEP_DEG.to_radians());
-        let bytes: Vec<u8> = triangle.iter().flat_map(|v| [v[0], -v[1], v[2], v[3]]).flat_map(f32::to_le_bytes).collect();
-        let vb_desc = BufferDesc::new_cpu_to_gpu(bytes.len() as u64, vk::BufferUsageFlags::VERTEX_BUFFER);
+        let bytes: Vec<u8> = triangle
+            .iter()
+            .flat_map(|v| [v[0], -v[1], v[2], v[3]])
+            .flat_map(f32::to_le_bytes)
+            .collect();
+        let vb_desc =
+            BufferDesc::new_cpu_to_gpu(bytes.len() as u64, vk::BufferUsageFlags::VERTEX_BUFFER);
         let vertex_buffer = Arc::new(Buffer::new(self.rig.device.clone(), &vb_desc).unwrap());
         vertex_buffer.write_bytes_unsynchronized(0, &bytes).unwrap();
         self.vertex_buffers.push(Arc::downgrade(&vertex_buffer));
-        let vb_token = session.backend.bind_import(GpuResource::Buffer(vertex_buffer));
+        let vb_token = session
+            .backend
+            .bind_import(GpuResource::Buffer(vertex_buffer));
         let vb = graph
-            .import_unowned("triangle vb", ResourceSpec::Buffer(vb_desc).descriptor(), vb_token, HOST_WRITE)
+            .import_unowned(
+                "triangle vb",
+                ResourceSpec::Buffer(vb_desc).descriptor(),
+                vb_token,
+                HOST_WRITE,
+            )
             .unwrap();
         let retired = self.retired.clone();
         graph.on_retire(move || {
@@ -218,7 +257,10 @@ impl Harness {
         });
 
         // 4. 图内创建的颜色目标（由执行器的资源池分配/复用）。
-        let color = session.backend.declare(&mut graph, "color", self.color_spec).unwrap();
+        let color = session
+            .backend
+            .declare(&mut graph, "color", self.color_spec)
+            .unwrap();
 
         // pass 1：渲染（begin render pass → 管线 → 顶点缓冲 → draw），经 rg 的 RenderPassApi + AttachmentCache。
         {
@@ -231,12 +273,19 @@ impl Harness {
             pass.add_resource_access(vb, VERTEX_READ, 0).unwrap();
             pass.add_resource_access(color, COLOR_WRITE, 0).unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
-                let Some(managed) = ctx.managed else { return false };
-                let (Ok(texture), Ok(vertices)) = (managed.texture_for(color_index), managed.buffer_for(vb_index)) else {
+                let Some(managed) = ctx.managed else {
+                    return false;
+                };
+                let (Ok(texture), Ok(vertices)) = (
+                    managed.texture_for(color_index),
+                    managed.buffer_for(vb_index),
+                ) else {
                     return false;
                 };
                 let attachment = Attachment::color(texture.shared(), 0, Some(clear));
-                let Ok(prepared) = cache.lock().prepare(&[attachment], extent(), 1) else { return false };
+                let Ok(prepared) = cache.lock().prepare(&[attachment], extent(), 1) else {
+                    return false;
+                };
                 ctx.keep_alive(prepared.framebuffer.clone());
                 ctx.keep_alive(pipeline.clone());
                 ctx.keep_alive(Arc::new(vertices.clone()));
@@ -249,7 +298,13 @@ impl Harness {
                 api.set_default_view_and_scissor(extent());
                 api.set_stencil_ref(0);
                 // rg 的 RenderPassApi 没有 bind_pipeline（原版在 pass 之外绑定管线），这里直接用 ash。
-                unsafe { device.device.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pipeline.handle) };
+                unsafe {
+                    device.device.cmd_bind_pipeline(
+                        cb,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline.handle,
+                    )
+                };
                 api.bind_vertex_buffer_by_binding_point(0, vertices.raw());
                 api.draw(3, 1, 0, 0);
                 api.end_render_pass();
@@ -263,12 +318,17 @@ impl Harness {
             let mut pass = graph.add_pass("copy_out");
             pass.add_resource_access(color, TRANSFER_READ, 0).unwrap();
             pass.add_resource_access(rb, TRANSFER_WRITE, 0).unwrap();
-            pass.add_resource_access(hist_cur, TRANSFER_WRITE, 0).unwrap();
+            pass.add_resource_access(hist_cur, TRANSFER_WRITE, 0)
+                .unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
-                let Some(managed) = ctx.managed else { return false };
-                let (Ok(texture), Ok(history), Ok(readback)) =
-                    (managed.texture_for(color_index), managed.texture_for(hist_index), managed.buffer_for(rb_index))
-                else {
+                let Some(managed) = ctx.managed else {
+                    return false;
+                };
+                let (Ok(texture), Ok(history), Ok(readback)) = (
+                    managed.texture_for(color_index),
+                    managed.texture_for(hist_index),
+                    managed.buffer_for(rb_index),
+                ) else {
                     return false;
                 };
                 ctx.keep_alive(Arc::new(texture.clone()));
@@ -283,7 +343,11 @@ impl Harness {
                         readback.raw(),
                         &[vk::BufferImageCopy {
                             image_subresource: full_image_copy(),
-                            image_extent: vk::Extent3D { width: SIZE, height: SIZE, depth: 1 },
+                            image_extent: vk::Extent3D {
+                                width: SIZE,
+                                height: SIZE,
+                                depth: 1,
+                            },
                             ..Default::default()
                         }],
                     );
@@ -296,7 +360,11 @@ impl Harness {
                         &[vk::ImageCopy {
                             src_subresource: full_image_copy(),
                             dst_subresource: full_image_copy(),
-                            extent: vk::Extent3D { width: SIZE, height: SIZE, depth: 1 },
+                            extent: vk::Extent3D {
+                                width: SIZE,
+                                height: SIZE,
+                                depth: 1,
+                            },
                             ..Default::default()
                         }],
                     );
@@ -307,16 +375,27 @@ impl Harness {
         // pass 3（第 1 帧起）：上一帧写入的历史纹理 → 历史读回槽。
         let hb = (frame > 0).then(|| {
             let hb = graph
-                .import_unowned(format!("hb{slot}"), buffer_descriptor, self.history_readback[slot].token, HOST_READ)
+                .import_unowned(
+                    format!("hb{slot}"),
+                    buffer_descriptor,
+                    self.history_readback[slot].token,
+                    HOST_READ,
+                )
                 .unwrap();
             let device = self.rig.device.clone();
             let (hist_index, hb_index) = (hist_prev.raw(), hb.raw());
             let mut pass = graph.add_pass("history_readback");
-            pass.add_resource_access(hist_prev, TRANSFER_READ, 0).unwrap();
+            pass.add_resource_access(hist_prev, TRANSFER_READ, 0)
+                .unwrap();
             pass.add_resource_access(hb, TRANSFER_WRITE, 0).unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
-                let Some(managed) = ctx.managed else { return false };
-                let (Ok(history), Ok(readback)) = (managed.texture_for(hist_index), managed.buffer_for(hb_index)) else {
+                let Some(managed) = ctx.managed else {
+                    return false;
+                };
+                let (Ok(history), Ok(readback)) = (
+                    managed.texture_for(hist_index),
+                    managed.buffer_for(hb_index),
+                ) else {
                     return false;
                 };
                 ctx.keep_alive(Arc::new(history.clone()));
@@ -330,7 +409,11 @@ impl Harness {
                         readback.raw(),
                         &[vk::BufferImageCopy {
                             image_subresource: full_image_copy(),
-                            image_extent: vk::Extent3D { width: SIZE, height: SIZE, depth: 1 },
+                            image_extent: vk::Extent3D {
+                                width: SIZE,
+                                height: SIZE,
+                                depth: 1,
+                            },
                             ..Default::default()
                         }],
                     );
@@ -351,7 +434,10 @@ impl Harness {
         let color_index = color.raw() as usize;
         let mapping = &receipt.snapshot.physical_mapping[color_index];
         for handle in [hist_cur, hist_prev] {
-            assert!(receipt.snapshot.exports.contains(&(handle.raw() as u16)), "temporal 纹理必须出现在本帧导出里");
+            assert!(
+                receipt.snapshot.exports.contains(&(handle.raw() as u16)),
+                "temporal 纹理必须出现在本帧导出里"
+            );
         }
         Submitted {
             parity: pair.parity,
@@ -369,7 +455,11 @@ impl Harness {
     fn read_slot(slot: &Slot) -> Vec<u8> {
         let mut pixels = vec![0u8; (SIZE * SIZE * 4) as usize];
         // SAFETY: 调用点已等到对应帧的时间线；导出的 HostRead 访问码提供了可见性。
-        unsafe { slot.buffer.read_bytes_after_completion(0, &mut pixels).unwrap() };
+        unsafe {
+            slot.buffer
+                .read_bytes_after_completion(0, &mut pixels)
+                .unwrap()
+        };
         pixels
     }
 }
@@ -415,7 +505,9 @@ fn verify(harness: &Harness, frame: usize, stats: &mut Stats) {
 #[test]
 fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
     install_log_capture();
-    let Some(mut harness) = Harness::new() else { return };
+    let Some(mut harness) = Harness::new() else {
+        return;
+    };
     let mut stats = Stats::default();
     let mut max_pending = 0;
     let mut submitted: Vec<Submitted> = Vec::new();
@@ -430,16 +522,33 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
                 verify(&harness, next_verify, &mut stats);
                 next_verify += 1;
             }
-            let mut retained: Vec<u64> = harness.readback.iter().chain(&harness.history_readback).map(|s| s.token).collect();
-            retained.extend([submitted.last().unwrap().hist_cur_token, submitted.last().unwrap().hist_prev_token]);
+            let mut retained: Vec<u64> = harness
+                .readback
+                .iter()
+                .chain(&harness.history_readback)
+                .map(|s| s.token)
+                .collect();
+            retained.extend([
+                submitted.last().unwrap().hist_cur_token,
+                submitted.last().unwrap().hist_prev_token,
+            ]);
             harness.attachments.lock().clear();
             let removed = harness.session.collect_after_completion(&retained).unwrap();
-            let alive = harness.vertex_buffers.iter().filter(|w| w.upgrade().is_some()).count();
-            assert_eq!(alive, 0, "collect_after_completion 之后，此前每帧新建的顶点缓冲必须全部销毁");
+            let alive = harness
+                .vertex_buffers
+                .iter()
+                .filter(|w| w.upgrade().is_some())
+                .count();
+            assert_eq!(
+                alive, 0,
+                "collect_after_completion 之后，此前每帧新建的顶点缓冲必须全部销毁"
+            );
             let collected_buffers = harness.vertex_buffers.len();
             // 被淘汰：24 个顶点缓冲 + 池里的颜色目标（>= 2）。
             assert!(removed >= COLLECT_AT + 2, "淘汰数 {removed} 小于预期");
-            println!("第 {frame} 帧前排空点：淘汰物理资源 {removed} 个（含 {collected_buffers} 个顶点缓冲）");
+            println!(
+                "第 {frame} 帧前排空点：淘汰物理资源 {removed} 个（含 {collected_buffers} 个顶点缓冲）"
+            );
         }
         let graph = harness.begin();
         // begin_frame 已把 frame-2 排空：在本帧 execute_frame（会覆盖同一读回槽）之前校验它。
@@ -453,7 +562,10 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         assert!(harness.session.frame_ledger().submissions() >= 1);
         assert_eq!(sub.receipt.frame, frame as u64 + 1, "帧回执序号单调递增");
         max_pending = max_pending.max(harness.session.pending_frame_count());
-        assert!(harness.session.pending_frame_count() <= 2, "在飞帧数不得超过 FrameThrottle 容量 2");
+        assert!(
+            harness.session.pending_frame_count() <= 2,
+            "在飞帧数不得超过 FrameThrottle 容量 2"
+        );
         submitted.push(sub);
     }
     harness.session.wait_submits_done(TIMEOUT_NS).unwrap();
@@ -471,7 +583,10 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
     let before: Vec<usize> = submitted.iter().map(|s| s.pending_before_execute).collect();
     for (frame, &n) in before.iter().enumerate() {
         let expected = usize::from(frame != 0 && frame != COLLECT_AT);
-        assert_eq!(n, expected, "第 {frame} 帧 begin_frame 之后的在飞数：{before:?}");
+        assert_eq!(
+            n, expected,
+            "第 {frame} 帧 begin_frame 之后的在飞数：{before:?}"
+        );
     }
 
     // temporal：parity 0,1,0,1…；物理纹理恒等（本帧读的 = 上一帧写的）；首帧新建，其后全部命中。
@@ -481,27 +596,53 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         if frame == 0 {
             assert_eq!(s.temporal_reused, [false, false]);
         } else {
-            assert_eq!(s.temporal_reused, [true, true], "第 {frame} 帧 temporal 纹理必须复用");
-            assert_eq!(s.hist_prev_token, submitted[frame - 1].hist_cur_token, "第 {frame} 帧读的历史纹理必须是上一帧写的那张");
-            assert_eq!(s.hist_cur_token, submitted[frame - 1].hist_prev_token, "双缓冲交替");
+            assert_eq!(
+                s.temporal_reused,
+                [true, true],
+                "第 {frame} 帧 temporal 纹理必须复用"
+            );
+            assert_eq!(
+                s.hist_prev_token,
+                submitted[frame - 1].hist_cur_token,
+                "第 {frame} 帧读的历史纹理必须是上一帧写的那张"
+            );
+            assert_eq!(
+                s.hist_cur_token,
+                submitted[frame - 1].hist_prev_token,
+                "双缓冲交替"
+            );
         }
     }
-    let temporal_hits: usize = submitted.iter().map(|s| s.temporal_reused.iter().filter(|&&r| r).count()).sum();
+    let temporal_hits: usize = submitted
+        .iter()
+        .map(|s| s.temporal_reused.iter().filter(|&&r| r).count())
+        .sum();
     assert_eq!(temporal_hits, 2 * (FRAMES - 1));
     assert_eq!(harness.temporal.len(), 2, "temporal 物理纹理全程只有 2 张");
 
     // 资源池：颜色目标图内创建。预热（首帧、次帧）和排空点后的头两帧必然未命中，其余全部命中。
     let pool_reused = submitted.iter().filter(|s| s.color_reused).count();
-    let distinct_colors = submitted.iter().map(|s| s.color_token).collect::<std::collections::BTreeSet<_>>();
+    let distinct_colors = submitted
+        .iter()
+        .map(|s| s.color_token)
+        .collect::<std::collections::BTreeSet<_>>();
     println!(
         "池复用命中帧 {pool_reused}/{FRAMES}，颜色目标物理纹理 {} 个，temporal 复用命中 {temporal_hits} 次",
         distinct_colors.len()
     );
     let expected_misses = [0, 1, COLLECT_AT, COLLECT_AT + 1];
     for (frame, s) in submitted.iter().enumerate() {
-        assert_eq!(s.color_reused, !expected_misses.contains(&frame), "第 {frame} 帧颜色目标池命中情况");
+        assert_eq!(
+            s.color_reused,
+            !expected_misses.contains(&frame),
+            "第 {frame} 帧颜色目标池命中情况"
+        );
     }
-    assert_eq!(distinct_colors.len(), 4, "2 帧在飞 × 2 段（排空点清池）= 4 张物理颜色纹理");
+    assert_eq!(
+        distinct_colors.len(),
+        4,
+        "2 帧在飞 × 2 段（排空点清池）= 4 张物理颜色纹理"
+    );
 
     // 退役：每帧的 on_retire 回调都已在帧完成时执行。
     assert_eq!(harness.retired.load(Ordering::SeqCst), FRAMES);
@@ -510,21 +651,32 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
     harness.attachments.lock().clear();
     let removed = harness.session.collect_after_completion(&[]).unwrap();
     assert!(removed >= FRAMES - COLLECT_AT);
-    assert_eq!(harness.vertex_buffers.iter().filter(|w| w.upgrade().is_some()).count(), 0);
-    let engine_pending = harness
-        .rig
-        .gd
-        .with_submission_engine(|engine| (engine.state.primary.pending_commands.len(), engine.state.primary.pending_timelines.len()))
-        .expect("提交引擎已挂接");
+    assert_eq!(
+        harness
+            .vertex_buffers
+            .iter()
+            .filter(|w| w.upgrade().is_some())
+            .count(),
+        0
+    );
+    let engine_pending = harness.session.pending_frame_count();
+    assert_eq!(engine_pending, 0);
     harness.rig.device.wait_idle().unwrap();
     assert!(!harness.session.is_poisoned());
 
     println!(
         "共校验 {} 帧；最大在飞帧数 {max_pending}；与参考光栅化最多 {} 个像素不一致；质心最大误差 {:.2} px；\
          历史纹理校验 {} 次；提交引擎遗留 (命令, 时间线) = {engine_pending:?}",
-        stats.frames_checked, stats.worst_mismatch, stats.worst_centroid_error, stats.history_checked
+        stats.frames_checked,
+        stats.worst_mismatch,
+        stats.worst_centroid_error,
+        stats.history_checked
     );
-    assert!(ledger_warnings().is_empty(), "帧账本出现告警：{:?}", ledger_warnings());
+    assert!(
+        ledger_warnings().is_empty(),
+        "帧账本出现告警：{:?}",
+        ledger_warnings()
+    );
 }
 
 /// `FrameThrottle` / `wait_*` / 账本的返回语义，用空 pass 的小图隔离验证（不依赖像素）。
@@ -537,40 +689,67 @@ fn frame_throttle_and_wait_semantics_of_the_session() {
 
     // 空会话。
     assert_eq!(session.pending_frame_count(), 0);
-    assert_eq!(session.wait_gpu_queue_trim(0), Ok(true), "没有待完成帧：视为已完成");
-    assert!(session.wait_frame(1, TIMEOUT_NS).is_err(), "没有待完成帧时 wait_frame 报错");
+    assert!(
+        session.wait_gpu_queue_trim(0).unwrap(),
+        "没有待完成帧：视为已完成"
+    );
+    assert!(
+        session.wait_frame(1, TIMEOUT_NS).is_err(),
+        "没有待完成帧时 wait_frame 报错"
+    );
     session.wait_submits_done(TIMEOUT_NS).unwrap();
 
     let noop_frame = |session: &mut VulkanGraphSession| {
         let mut graph = session.begin_frame().unwrap();
-        assert_eq!(session.frame_ledger().submissions(), 0, "begin_frame 清零账本");
+        assert_eq!(
+            session.frame_ledger().submissions(),
+            0,
+            "begin_frame 清零账本"
+        );
         assert!(!session.frame_ledger().has_ended());
         graph.add_pass("noop").render(|_| true);
         let receipt = session.execute_frame(graph.build()).unwrap();
-        assert!(session.frame_ledger().has_ended(), "execute_frame 结束本帧账本");
-        assert!(session.frame_ledger().submissions() >= 1, "execute_frame 记提交");
+        assert!(
+            session.frame_ledger().has_ended(),
+            "execute_frame 结束本帧账本"
+        );
+        assert!(
+            session.frame_ledger().submissions() >= 1,
+            "execute_frame 记提交"
+        );
         receipt.frame
     };
     let f1 = noop_frame(&mut session);
     assert_eq!(session.pending_frame_count(), 1);
     let f2 = noop_frame(&mut session);
-    assert_eq!(session.pending_frame_count(), 2, "容量 2：第二帧提交后两帧在飞");
+    assert_eq!(
+        session.pending_frame_count(),
+        2,
+        "容量 2：第二帧提交后两帧在飞"
+    );
     assert_eq!((f1, f2), (1, 2));
 
     // 超过容量：不 begin_frame（不节流）直接再提交被拒绝，在飞数不增长。
     let rejected = session.execute_frame(RenderGraph::new().build());
-    assert!(rejected.is_err(), "2 帧在飞时未经 begin_frame 的 execute_frame 必须被拒绝");
+    assert!(
+        rejected.is_err(),
+        "2 帧在飞时未经 begin_frame 的 execute_frame 必须被拒绝"
+    );
     assert_eq!(session.pending_frame_count(), 2);
 
     // wait_gpu_queue_trim 只等队首，不弹出；长超时返回 Ok(true)。
-    assert_eq!(session.wait_gpu_queue_trim(TIMEOUT_NS), Ok(true));
+    assert!(session.wait_gpu_queue_trim(TIMEOUT_NS).unwrap());
     assert_eq!(session.pending_frame_count(), 2, "trim 只等待，不改变队列");
     // 0 超时：GPU 是否已完成不确定，但只能是 Ok(_)，不能是 Err。
     assert!(session.wait_gpu_queue_trim(0).is_ok());
 
     // wait_frame 只接受队首帧。
     assert!(session.wait_frame(f2, TIMEOUT_NS).is_err(), "非队首帧");
-    assert_eq!(session.pending_frame_count(), 2, "失败的 wait_frame 不改变队列");
+    assert_eq!(
+        session.pending_frame_count(),
+        2,
+        "失败的 wait_frame 不改变队列"
+    );
     session.wait_frame(f1, TIMEOUT_NS).unwrap();
     assert_eq!(session.pending_frame_count(), 1);
 
@@ -580,12 +759,16 @@ fn frame_throttle_and_wait_semantics_of_the_session() {
     // 再 begin_frame：排到只剩 1（等 f2 完成），而不是无限增长。
     let _graph = session.begin_frame().unwrap();
     assert_eq!(session.pending_frame_count(), 1);
-    assert_eq!(session.wait_gpu_queue_trim(TIMEOUT_NS), Ok(true));
+    assert!(session.wait_gpu_queue_trim(TIMEOUT_NS).unwrap());
     drop(_graph);
 
     session.wait_submits_done(TIMEOUT_NS).unwrap();
     assert_eq!(session.pending_frame_count(), 0);
-    assert_eq!(session.collect_after_completion(&[]).map(|_| ()), Ok(()));
+    session.collect_after_completion(&[]).unwrap();
     rig.device.wait_idle().unwrap();
-    assert!(ledger_warnings().is_empty(), "帧账本出现告警：{:?}", ledger_warnings());
+    assert!(
+        ledger_warnings().is_empty(),
+        "帧账本出现告警：{:?}",
+        ledger_warnings()
+    );
 }

@@ -368,7 +368,11 @@ mod debug_line_tests {
             format_debug_record_line(0, &log.records[0]),
             "\u{1f525} 0: assertion failed (5 > 7) in foo.slang:42"
         );
-        let unknown = parse_gpu_debug_info(&[0, 1, 0, 0, 9 << 24, 1, 0, 0], &BTreeMap::new()).unwrap();
-        assert_eq!(format_debug_record_line(2, &unknown.records[0]), "\u{1f525} 2: ??? in ???:0");
+        let unknown =
+            parse_gpu_debug_info(&[0, 1, 0, 0, 9 << 24, 1, 0, 0], &BTreeMap::new()).unwrap();
+        assert_eq!(
+            format_debug_record_line(2, &unknown.records[0]),
+            "\u{1f525} 2: ??? in ???:0"
+        );
     }
 }

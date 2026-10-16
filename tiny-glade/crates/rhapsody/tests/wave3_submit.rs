@@ -6,8 +6,8 @@ use rhapsody::raw::submit::{
     Batch, Command, DeviceState, QueueId, QueueState, SubmissionEngine, SubmissionInput,
 };
 use rhapsody::rg::frame::{
-    debug_sync_wait, is_slow_submit, DEBUG_SYNC_EXTRA_SLEEP, DEBUG_SYNC_HICCUP_MESSAGE,
-    DEBUG_SYNC_WAITING_MESSAGE,
+    DEBUG_SYNC_EXTRA_SLEEP, DEBUG_SYNC_HICCUP_MESSAGE, DEBUG_SYNC_WAITING_MESSAGE, debug_sync_wait,
+    is_slow_submit,
 };
 use rhapsody::rg::frame_throttle::FrameThrottle;
 use std::collections::VecDeque;
@@ -77,10 +77,26 @@ fn setup_record_goes_after_prior_and_before_current() {
 #[test]
 fn second_queue_family_is_the_first_compute_only_family() {
     let families = [
-        QueueFamily { flags: 0b111, queue_count: 1, family_index: 0 },
-        QueueFamily { flags: 0b110, queue_count: 4, family_index: 1 }, // 含 graphics? 0b110 = compute|transfer：flags&3 == 2
-        QueueFamily { flags: 0b010, queue_count: 2, family_index: 2 },
-        QueueFamily { flags: 0b011, queue_count: 1, family_index: 3 }, // graphics+compute：不是
+        QueueFamily {
+            flags: 0b111,
+            queue_count: 1,
+            family_index: 0,
+        },
+        QueueFamily {
+            flags: 0b110,
+            queue_count: 4,
+            family_index: 1,
+        }, // 含 graphics? 0b110 = compute|transfer：flags&3 == 2
+        QueueFamily {
+            flags: 0b010,
+            queue_count: 2,
+            family_index: 2,
+        },
+        QueueFamily {
+            flags: 0b011,
+            queue_count: 1,
+            family_index: 3,
+        }, // graphics+compute：不是
     ];
     let plan = QueuePlan::select(&families).unwrap();
     assert_eq!(plan.primary_family, 0);

@@ -28,7 +28,10 @@ fn required_feature_chain_reports_the_first_missing_item_in_original_order() {
         .buffer_device_address(true);
     let demote_all = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures::default()
         .shader_demote_to_helper_invocation(true);
-    assert_eq!(first_missing_required_feature(&core_all, &v12_all, &demote_all), None);
+    assert_eq!(
+        first_missing_required_feature(&core_all, &v12_all, &demote_all),
+        None
+    );
 
     // 同时缺 core 与 v12 时先报 core；core 里先报排在前面的。
     let none12 = vk::PhysicalDeviceVulkan12Features::default();
@@ -54,8 +57,12 @@ fn required_feature_chain_reports_the_first_missing_item_in_original_order() {
 
 #[test]
 fn the_default_device_is_created_with_the_original_queue_layout() {
-    let Ok(graphics) = GraphicsInstance::new() else { return };
-    let Ok(devices) = graphics.available_for_surface(None, Default::default()) else { return };
+    let Ok(graphics) = GraphicsInstance::new() else {
+        return;
+    };
+    let Ok(devices) = graphics.available_for_surface(None, Default::default()) else {
+        return;
+    };
     match devices.create_device(&graphics) {
         Ok(device) => {
             // 原版通用队列 1 个；独立 compute 族（若有）全部队列都被取出。

@@ -49,7 +49,11 @@ const _: () = assert!(std::mem::size_of::<DxgiAdapter>() == 0x28);
 impl DxgiAdapter {
     /// 0x1418b2ae1..0x1418b2c71：`GetDesc` 结果 → 元素。
     pub fn from_desc(desc: &DxgiAdapterDesc) -> Self {
-        let len = desc.description.iter().position(|&c| c == 0).unwrap_or(desc.description.len());
+        let len = desc
+            .description
+            .iter()
+            .position(|&c| c == 0)
+            .unwrap_or(desc.description.len());
         Self {
             name: String::from_utf16_lossy(&desc.description[..len]),
             luid: ((desc.luid_high_part as i64 as u64) << 32) | u64::from(desc.luid_low_part),
@@ -65,7 +69,11 @@ pub struct DxgiError {
 }
 impl fmt::Display for DxgiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CreateDXGIFactory: HRESULT {:#010x}", self.hresult as u32)
+        write!(
+            f,
+            "CreateDXGIFactory: HRESULT {:#010x}",
+            self.hresult as u32
+        )
     }
 }
 impl std::error::Error for DxgiError {}
@@ -177,7 +185,9 @@ mod windows_impl {
             Ok(())
         }
         fn probe(&mut self, index: u32) -> AdapterProbe {
-            let Some(factory) = self.factory else { return AdapterProbe::End };
+            let Some(factory) = self.factory else {
+                return AdapterProbe::End;
+            };
             let mut adapter = std::ptr::null_mut();
             // SAFETY: vtable 槽 7 = IDXGIFactory::EnumAdapters（原版 +0x38）。
             let hr = unsafe { slot::<EnumAdapters>(factory, 7)(factory, index, &mut adapter) };
@@ -185,13 +195,16 @@ mod windows_impl {
                 return AdapterProbe::End;
             }
             // SAFETY: `DxgiAdapterDesc` 为 repr(C) 且全零合法；槽 8 = IDXGIAdapter::GetDesc（原版 +0x40）。
-            let result = unsafe {
+            unsafe {
                 let mut desc: DxgiAdapterDesc = std::mem::zeroed();
                 let hr = slot::<GetDesc>(adapter, 8)(adapter, &mut desc);
                 slot::<Release>(adapter, 2)(adapter);
-                if hr < 0 { AdapterProbe::DescFailed } else { AdapterProbe::Desc(desc) }
-            };
-            result
+                if hr < 0 {
+                    AdapterProbe::DescFailed
+                } else {
+                    AdapterProbe::Desc(desc)
+                }
+            }
         }
     }
     impl Drop for SystemDxgi {

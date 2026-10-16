@@ -5,7 +5,7 @@
 //! 不改变内部所有权结构。依据：`create_buffer<D>` 0x140c03460 等、`create_texture<D>` 0x140c07950、
 //! `get_vk_image_view` 0x140bfeea0、`update_buffer_bytes` 0x140beefa0（见 PLAN M3.1–M3.5）。
 use super::{
-    buffer::{plan_buffer_update, Buffer, BufferDesc, MappedBufferParts, MemoryLocation},
+    buffer::{Buffer, BufferDesc, MappedBufferParts, MemoryLocation, plan_buffer_update},
     device::GraphicsDevice,
     error::{Error, Result},
     managed::{
@@ -122,9 +122,7 @@ impl GraphicsDevice {
             "assertion failed: matches!(desc.memory_location, MemoryLocation::CpuToGpu | MemoryLocation::GpuToCpu)"
         );
         let managed = self.create_buffer(desc, name, ())?;
-        let mapped = managed
-            .mapped_full_slice_mut()
-            .expect("mapped memory");
+        let mapped = managed.mapped_full_slice_mut().expect("mapped memory");
         let parts = MappedBufferParts {
             ptr: mapped.as_mut_ptr(),
             len: mapped.len(),
@@ -163,11 +161,23 @@ impl GraphicsDevice {
         if bytes.is_some() {
             desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
         }
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
-        let texture =
-            super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, bytes.is_some())?;
+        assert!(
+            desc.width > 0,
+            "assertion failed: create_info.extent.width > 0"
+        );
+        assert!(
+            desc.height > 0,
+            "assertion failed: create_info.extent.height > 0"
+        );
+        assert!(
+            desc.depth > 0,
+            "assertion failed: create_info.extent.depth > 0"
+        );
+        let texture = super::texture::Texture::new_with_initial_data(
+            self.inner.clone(),
+            &desc,
+            bytes.is_some(),
+        )?;
         self.set_debug_name(texture.handle, name);
         if let Some(bytes) = bytes {
             super::setup::init_texture_data(&self.inner, &texture, bytes)?;
@@ -190,10 +200,20 @@ impl GraphicsDevice {
         );
         let mut desc = *desc;
         desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
-        let texture = super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
+        assert!(
+            desc.width > 0,
+            "assertion failed: create_info.extent.width > 0"
+        );
+        assert!(
+            desc.height > 0,
+            "assertion failed: create_info.extent.height > 0"
+        );
+        assert!(
+            desc.depth > 0,
+            "assertion failed: create_info.extent.depth > 0"
+        );
+        let texture =
+            super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_data_with(&self.inner, &texture, data)?;
         Ok(self.resources.textures.allocate(texture))
@@ -209,10 +229,20 @@ impl GraphicsDevice {
         );
         let mut desc = *desc;
         desc.usage |= vk::ImageUsageFlags::TRANSFER_DST;
-        assert!(desc.width > 0, "assertion failed: create_info.extent.width > 0");
-        assert!(desc.height > 0, "assertion failed: create_info.extent.height > 0");
-        assert!(desc.depth > 0, "assertion failed: create_info.extent.depth > 0");
-        let texture = super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
+        assert!(
+            desc.width > 0,
+            "assertion failed: create_info.extent.width > 0"
+        );
+        assert!(
+            desc.height > 0,
+            "assertion failed: create_info.extent.height > 0"
+        );
+        assert!(
+            desc.depth > 0,
+            "assertion failed: create_info.extent.depth > 0"
+        );
+        let texture =
+            super::texture::Texture::new_with_initial_data(self.inner.clone(), &desc, true)?;
         self.set_debug_name(texture.handle, name);
         super::setup::init_texture_zero_fill(&self.inner, &texture)?;
         Ok(self.resources.textures.allocate(texture))
@@ -252,7 +282,8 @@ impl GraphicsDevice {
         layers: u32,
     ) -> Result<super::managed::framebuffer::ManagedFramebuffer> {
         self.owns(&pass.device)?;
-        let framebuffer = super::framebuffer::Framebuffer::new(pass.shared(), views, extent, layers)?;
+        let framebuffer =
+            super::framebuffer::Framebuffer::new(pass.shared(), views, extent, layers)?;
         Ok(self.resources.framebuffers.allocate(framebuffer))
     }
 
@@ -366,7 +397,13 @@ impl GraphicsDevice {
             .iter()
             .map(|c| (c.src_offset, c.dst_offset, c.size))
             .collect();
-        self.upload_via_staging(buffer, &gathered, plan.total, &regions, "Buffer update data")
+        self.upload_via_staging(
+            buffer,
+            &gathered,
+            plan.total,
+            &regions,
+            "Buffer update data",
+        )
     }
 
     pub fn set_buffer_debug_name(&self, buffer: &ManagedBuffer, name: &str) {
@@ -411,7 +448,11 @@ impl GraphicsDevice {
         staging.write_bytes_unsynchronized(0, gathered)?;
         let copies: Vec<vk::BufferCopy> = regions
             .iter()
-            .map(|&(src, dst, size)| vk::BufferCopy { src_offset: src, dst_offset: dst, size })
+            .map(|&(src, dst, size)| vk::BufferCopy {
+                src_offset: src,
+                dst_offset: dst,
+                size,
+            })
             .collect();
         self.with_setup_cb(|command| unsafe {
             self.inner

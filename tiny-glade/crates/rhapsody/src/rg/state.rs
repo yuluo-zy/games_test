@@ -63,7 +63,8 @@ impl RenderGraphState {
         dependency: &mut impl AccessDependency,
         build: impl FnOnce(&mut RenderGraph),
     ) -> Result<CompiledFrame, FrameCompileError> {
-        self.compile(backend, dependency, build).map(|(frame, ())| frame)
+        self.compile(backend, dependency, build)
+            .map(|(frame, ())| frame)
     }
     /// 导出发生在 population 之前；后续失败不会回滚成旧的 raw 历史。
     pub fn compile_frame(
@@ -99,7 +100,7 @@ pub struct CompiledFrame {
 #[derive(Debug)]
 pub enum FrameCompileError {
     Temporal(super::temporal::TemporalError),
-    Population(graph::PopulationFailure),
+    Population(crate::Error),
 }
 
 /// 原 compile 前段的 Option 所有权合同，不恢复标准容器或 panic ABI。

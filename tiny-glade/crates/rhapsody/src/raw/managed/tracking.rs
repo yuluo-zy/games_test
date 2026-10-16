@@ -76,7 +76,10 @@ pub fn command_state_debug(command: CommandState) -> String {
 #[cold]
 #[track_caller]
 pub fn panic_invalid_command_state(command: CommandState) -> ! {
-    panic!("{INVALID_COMMAND_STATE_MSG}{}", command_state_debug(command))
+    panic!(
+        "{INVALID_COMMAND_STATE_MSG}{}",
+        command_state_debug(command)
+    )
 }
 
 /// 原 `CommandBufferSeqTracker::track`/`RawManagedHandle::track` 的 `fetch_max`：tag != 1 → panic。
@@ -226,6 +229,13 @@ pub struct CommandKey {
     pub sequence: u64,
 }
 
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+impl std::error::Error for Failure {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,7 +249,14 @@ mod tests {
         assert_eq!(size_of::<ControlBlock>(), 0x10);
         // 新槽 `{seq=0, refcount=1, checksum=0}`（allocate push 的 `{0,1,resource}` 元素）。
         let c = ControlBlock::new(0);
-        assert_eq!((c.last_sequence.load(Ordering::SeqCst), c.references.load(Ordering::SeqCst), c.checksum()), (0, 1, 0));
+        assert_eq!(
+            (
+                c.last_sequence.load(Ordering::SeqCst),
+                c.references.load(Ordering::SeqCst),
+                c.checksum()
+            ),
+            (0, 1, 0)
+        );
     }
 
     /// 0x140bd6a70：校验和不等 → 静默跳过；tag != 1 → panic；否则 `fetch_max`。
@@ -251,14 +268,28 @@ mod tests {
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 0);
         // 校验和不等时连 tag 也不看（先比校验和）。
         assert_eq!(
-            track_handle(&c, 4, CommandState { tag: 0, sequence: 9 }),
+            track_handle(
+                &c,
+                4,
+                CommandState {
+                    tag: 0,
+                    sequence: 9
+                }
+            ),
             TrackOutcome::GenerationSkipped
         );
         assert_eq!(track_handle(&c, 5, ok(9)), TrackOutcome::Updated);
         assert_eq!(track_handle(&c, 5, ok(3)), TrackOutcome::Updated);
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 9, "fetch_max");
         assert_eq!(
-            try_track_handle(&c, 5, CommandState { tag: 0, sequence: 99 }),
+            try_track_handle(
+                &c,
+                5,
+                CommandState {
+                    tag: 0,
+                    sequence: 99
+                }
+            ),
             Err(Failure::InvalidCommandState)
         );
         assert_eq!(c.last_sequence.load(Ordering::SeqCst), 9);
@@ -268,20 +299,40 @@ mod tests {
     #[should_panic(expected = "Can't use a resource for a command buffer in state Submitted")]
     fn track_handle_panics_when_state_is_not_recording() {
         let c = ControlBlock::new(5);
-        track_handle(&c, 5, CommandState { tag: 3, sequence: 1 });
+        track_handle(
+            &c,
+            5,
+            CommandState {
+                tag: 3,
+                sequence: 1,
+            },
+        );
     }
 
     #[test]
     #[should_panic(expected = "Can't use a resource for a command buffer in state Initial")]
     fn track_sequence_panics_when_state_is_not_recording() {
-        track_sequence(&AtomicU64::new(0), CommandState { tag: 0, sequence: 1 });
+        track_sequence(
+            &AtomicU64::new(0),
+            CommandState {
+                tag: 0,
+                sequence: 1,
+            },
+        );
     }
 
     #[test]
     fn mismatched_generation_never_panics_even_for_bad_state() {
         let c = ControlBlock::new(5);
         assert_eq!(
-            track_handle(&c, 6, CommandState { tag: 2, sequence: 1 }),
+            track_handle(
+                &c,
+                6,
+                CommandState {
+                    tag: 2,
+                    sequence: 1
+                }
+            ),
             TrackOutcome::GenerationSkipped
         );
     }

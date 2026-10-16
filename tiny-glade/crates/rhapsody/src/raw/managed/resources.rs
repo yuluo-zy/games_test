@@ -7,8 +7,8 @@ use super::handle::{DisposedRawResourceHandleAbi, Managed, ManagedInner, Resourc
 use super::tracking::{CommandKey, CommandState, ControlBlock, Failure, dispose_control_kind};
 use crate::log_ring;
 use crate::raw::disposal::{
-    CommandBufferDisposalBuckets, DestroyAction, LOG_KIND_BUCKET_HIT, LOG_KIND_BUCKET_MISS, LOG_KIND_RETIRED,
-    SequentialDisposal,
+    CommandBufferDisposalBuckets, DestroyAction, LOG_KIND_BUCKET_HIT, LOG_KIND_BUCKET_MISS,
+    LOG_KIND_RETIRED, SequentialDisposal,
 };
 use append_only_vec::AppendOnlyVec;
 use arc_swap::ArcSwapWeak;
@@ -58,8 +58,9 @@ pub trait AccessManagedResource {
 }
 /// 参数 `strict`：true = 缺桶返回 `MissingBucket`（兼容检查路径）；false = 原版语义，缺桶立即销毁。
 /// 第二参数是调用方（原版：`&GraphicsDevice+0xa50`）传入的销毁桶表。
-type DisposeTask =
-    Box<dyn FnOnce(&SharedResources, &CommandBufferDisposalBuckets, bool) -> Result<(), Failure> + Send>;
+type DisposeTask = Box<
+    dyn FnOnce(&SharedResources, &CommandBufferDisposalBuckets, bool) -> Result<(), Failure> + Send,
+>;
 struct Dropped {
     /// 原 16 B `DisposedRawResourceHandle` 项（`{control@0, checksum@8, device@0xc, tag@0xe}`）。
     abi: DisposedRawResourceHandleAbi,
@@ -286,12 +287,18 @@ impl<T: Send + Sync + 'static> ResourceState<T> {
             if top == 0 {
                 return None;
             }
-            let next = u64::from(self.slots[(top - 1) as usize].next_free.load(Ordering::Relaxed));
+            let next = u64::from(
+                self.slots[(top - 1) as usize]
+                    .next_free
+                    .load(Ordering::Relaxed),
+            );
             let new = ((head >> 32).wrapping_add(1) << 32) | next;
-            match self
-                .free_head
-                .compare_exchange_weak(head, new, Ordering::AcqRel, Ordering::Acquire)
-            {
+            match self.free_head.compare_exchange_weak(
+                head,
+                new,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
                 Ok(_) => return Some(top - 1),
                 Err(current) => head = current,
             }
@@ -303,10 +310,12 @@ impl<T: Send + Sync + 'static> ResourceState<T> {
         loop {
             slot.next_free.store(head as u32, Ordering::Relaxed);
             let new = ((head >> 32).wrapping_add(1) << 32) | u64::from(index + 1);
-            match self
-                .free_head
-                .compare_exchange_weak(head, new, Ordering::AcqRel, Ordering::Acquire)
-            {
+            match self.free_head.compare_exchange_weak(
+                head,
+                new,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
                 Ok(_) => return,
                 Err(current) => head = current,
             }
@@ -407,10 +416,19 @@ impl<T: Send + Sync + 'static> ResourceManager<T> {
             (std::any::TypeId::of::<Texture>(), ResourceTag::Texture),
             (std::any::TypeId::of::<Buffer>(), ResourceTag::Buffer),
             (std::any::TypeId::of::<Swapchain>(), ResourceTag::Swapchain),
-            (std::any::TypeId::of::<RenderPass>(), ResourceTag::RenderPass),
+            (
+                std::any::TypeId::of::<RenderPass>(),
+                ResourceTag::RenderPass,
+            ),
             (std::any::TypeId::of::<Sampler>(), ResourceTag::Sampler),
-            (std::any::TypeId::of::<VulkanDescriptorSet>(), ResourceTag::DescriptorSet),
-            (std::any::TypeId::of::<Framebuffer>(), ResourceTag::Framebuffer),
+            (
+                std::any::TypeId::of::<VulkanDescriptorSet>(),
+                ResourceTag::DescriptorSet,
+            ),
+            (
+                std::any::TypeId::of::<Framebuffer>(),
+                ResourceTag::Framebuffer,
+            ),
         ];
         let tag = tags
             .into_iter()
@@ -748,9 +766,19 @@ mod tests {
         let records: Vec<_> = shared.dropped.lock().iter().map(|r| r.abi).collect();
         assert_eq!(records.len(), 2);
         assert_eq!(std::mem::size_of_val(&records[0]), 0x10);
-        assert_eq!((records[0].control, records[0].resource_type), (t_abi.control, 0));
-        assert_eq!((records[1].control, records[1].resource_type), (s_abi.control, 5));
-        assert!(records.iter().all(|r| r.device_id == device && r.resource_checksum == 0 && r._pad == 0));
+        assert_eq!(
+            (records[0].control, records[0].resource_type),
+            (t_abi.control, 0)
+        );
+        assert_eq!(
+            (records[1].control, records[1].resource_type),
+            (s_abi.control, 5)
+        );
+        assert!(
+            records
+                .iter()
+                .all(|r| r.device_id == device && r.resource_checksum == 0 && r._pad == 0)
+        );
         textures.take_out_dropped_waste();
     }
 

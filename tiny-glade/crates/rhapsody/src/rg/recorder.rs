@@ -43,7 +43,8 @@ pub struct PlannedTransition {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Outcome {
-    pub events: Vec<String>,
+    pub barrier_commands: u32,
+    pub barrier_transitions: u32,
     pub panic: bool,
     pub consumed_passes: usize,
     pub receipt: Option<(u32, u64)>,
@@ -61,19 +62,11 @@ fn validate(resource: Resource) -> bool {
     resource.kind <= 1 && resource.validity == 0
 }
 
-fn event(out: &mut Outcome, text: impl Into<String>) {
-    out.events.push(text.into());
+fn barrier(out: &mut Outcome, _phase: &str, _resource: usize, _from: u8, _to: u8) {
+    out.barrier_transitions += 1;
 }
-
-fn barrier(out: &mut Outcome, phase: &str, resource: usize, from: u8, to: u8) {
-    event(out, format!("barrier:{phase}:{resource}:{from}:{to}"));
-}
-
-fn close_scope(out: &mut Outcome, phase: &str, command: u64, nonempty: bool) {
-    if nonempty {
-        event(out, format!("emit:{phase}:{command}"));
-    }
-    event(out, format!("reset:{phase}"));
+fn close_scope(out: &mut Outcome, _phase: &str, _command: u64, nonempty: bool) {
+    out.barrier_commands += u32::from(nonempty);
 }
 
 /// 录制器向实际后端提交的操作；资源序号始终是图内逻辑索引。
@@ -105,15 +98,14 @@ impl Recorder {
         }
 
         // 输入命令来自实际设备 create/begin 边界。
-        event(&mut out, format!("create:{}", command.handle));
-        event(&mut out, format!("begin:{}", command.handle));
+
         for (index, pass) in passes.iter_mut().enumerate() {
             for access in &pass.accesses {
                 let Some(resource) = self.resources.get_mut(access.resource) else {
                     out.panic = true;
                     return out;
                 };
-                event(&mut out, format!("track-pass:{}", access.resource));
+
                 // 原跟踪忽略过期 generation；后续屏障校验仍可能拒绝这个句柄。
                 if resource.metadata.validity != 3 {
                     resource.last_command_sequence =
@@ -155,7 +147,7 @@ impl Recorder {
                 return out;
             }
             out.consumed_passes += 1;
-            event(&mut out, format!("pass:{index}"));
+
             if !boundary(RecordAction::Pass(index)) {
                 out.panic = true;
                 return out;
@@ -184,10 +176,6 @@ impl Recorder {
             out.panic = true;
             return (plan, out);
         }
-        for command in commands {
-            event(&mut out, format!("create:{}", command.handle));
-            event(&mut out, format!("begin:{}", command.handle));
-        }
         for (index, pass) in passes.iter_mut().enumerate() {
             let Some(command) = commands.get(chunk_of_pass[index]) else {
                 out.panic = true;
@@ -198,7 +186,7 @@ impl Recorder {
                     out.panic = true;
                     return (plan, out);
                 };
-                event(&mut out, format!("track-pass:{}", access.resource));
+
                 if resource.metadata.validity != 3 {
                     resource.last_command_sequence =
                         resource.last_command_sequence.max(command.sequence);
@@ -233,7 +221,7 @@ impl Recorder {
                 return (plan, out);
             }
             out.consumed_passes += 1;
-            event(&mut out, format!("pass:{index}"));
+
             plan.push(transitions);
         }
         (plan, out)
@@ -278,7 +266,7 @@ impl Recorder {
             if !validate(resource.metadata) {
                 return false;
             }
-            event(out, format!("track-barrier:initial:{id}"));
+
             barrier(out, "initial", id, resource.metadata.initial, first.code);
             if !boundary(RecordAction::Transition {
                 command: initial_handle,
@@ -302,11 +290,18 @@ impl Recorder {
         final_batch: bool,
         boundary: &mut impl FnMut(RecordAction) -> bool,
     ) -> bool {
-        self.commands.extend(new_commands);
+        for command in new_commands {
+            if self
+                .commands
+                .last()
+                .is_none_or(|last| last.handle != command.handle)
+            {
+                self.commands.push(command);
+            }
+        }
         let len = self.commands.len();
         // 结束旧最后命令及新追加序列中除最后一条以外的命令。
         for command in &mut self.commands[..len - 1] {
-            event(out, format!("end:{}", command.handle));
             if !boundary(RecordAction::End(command.handle)) {
                 return false;
             }
@@ -321,7 +316,7 @@ impl Recorder {
                 if !validate(resource.metadata) {
                     return false;
                 }
-                event(out, format!("track-barrier:export:{id}"));
+
                 barrier(
                     out,
                     "export",
@@ -357,12 +352,12 @@ impl Recorder {
             out.taken_command_states = Some(commands.iter().map(|c| c.state).collect());
             return;
         }
-        event(out, "end:last");
+
         if end_error {
             out.panic = true;
         } else {
             last.state = 2;
-            event(out, format!("queue:{}", commands.len()));
+
             out.receipt = Some(receipt);
         }
         out.taken_command_states = Some(commands.iter().map(|c| c.state).collect());

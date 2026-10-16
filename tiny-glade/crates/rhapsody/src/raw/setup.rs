@@ -13,7 +13,8 @@ use super::{
     format::{observed, vk_format_info},
     texture::Texture,
     texture_upload::{
-        copy_format_params, linear_regions, per_mip_regions, plan_texture_copies, TextureUpdateRegion,
+        TextureUpdateRegion, copy_format_params, linear_regions, per_mip_regions,
+        plan_texture_copies,
     },
 };
 use ash::vk;
@@ -28,8 +29,12 @@ pub(crate) fn code_image_barrier(
     next: u8,
     image: vk::Image,
     range: vk::ImageSubresourceRange,
-) -> (vk::PipelineStageFlags, vk::PipelineStageFlags, vk::ImageMemoryBarrier<'static>) {
-    use super::access_table::{get_image_memory_barrier, BarrierLayout, ImageBarrier};
+) -> (
+    vk::PipelineStageFlags,
+    vk::PipelineStageFlags,
+    vk::ImageMemoryBarrier<'static>,
+) {
+    use super::access_table::{BarrierLayout, ImageBarrier, get_image_memory_barrier};
     get_image_memory_barrier(&ImageBarrier {
         previous: &[previous],
         next: &[next],
@@ -46,10 +51,22 @@ pub(crate) fn code_image_barrier(
 fn cmd_code_barrier(
     device: &VulkanDevice,
     cb: vk::CommandBuffer,
-    (src, dst, barrier): (vk::PipelineStageFlags, vk::PipelineStageFlags, vk::ImageMemoryBarrier<'static>),
+    (src, dst, barrier): (
+        vk::PipelineStageFlags,
+        vk::PipelineStageFlags,
+        vk::ImageMemoryBarrier<'static>,
+    ),
 ) {
     unsafe {
-        device.device.cmd_pipeline_barrier(cb, src, dst, vk::DependencyFlags::empty(), &[], &[], &[barrier]);
+        device.device.cmd_pipeline_barrier(
+            cb,
+            src,
+            dst,
+            vk::DependencyFlags::empty(),
+            &[],
+            &[],
+            &[barrier],
+        );
     }
 }
 
@@ -82,26 +99,17 @@ pub fn with_setup_cb<R>(
             .device
             .create_fence(&vk::FenceCreateInfo::default(), None)?
     };
-    let commands = [command.handle];
-    let submitted = {
-        let _guard = device.queue_lock.lock();
-        let retire = device.note_submit_on(device.queue);
-        let signal_handles: Vec<_> = retire.iter().map(|(s, _)| *s).collect();
-        let signal_values: Vec<_> = retire.iter().map(|(_, v)| *v).collect();
-        let mut timeline =
-            vk::TimelineSemaphoreSubmitInfo::default().signal_semaphore_values(&signal_values);
-        let submits = [vk::SubmitInfo::default()
-            .command_buffers(&commands)
-            .signal_semaphores(&signal_handles)
-            .push_next(&mut timeline)];
-        let result = unsafe { device.device.queue_submit(device.queue, &submits, fence) };
-        if result.is_err() {
-            device.note_submit_failed(retire);
-        }
-        result
-    };
-    let waited =
-        submitted.and_then(|_| unsafe { device.device.wait_for_fences(&[fence], true, u64::MAX) });
+    let submitted = device.submit_prepared(
+        device.queue,
+        &[super::submit::PreparedSubmit {
+            commands: vec![command.handle],
+            ..Default::default()
+        }],
+        fence,
+    );
+    let waited = submitted.and_then(|_| {
+        unsafe { device.device.wait_for_fences(&[fence], true, u64::MAX) }.map_err(Error::from)
+    });
     unsafe { device.device.destroy_fence(fence, None) };
     waited?;
     Ok(result)
@@ -153,8 +161,16 @@ pub fn upload_regions(
         .layer_count(vk::REMAINING_ARRAY_LAYERS);
     with_setup_cb(device, |cb| unsafe {
         // 访问码 old(0 或 0x22) → 0x34；old 非 UNDEFINED 时用 0x22（静止布局 SHADER_READ_ONLY_OPTIMAL）。
-        let old_code = if old_layout == vk::ImageLayout::UNDEFINED { 0 } else { 0x22 };
-        cmd_code_barrier(device, cb, code_image_barrier(old_code, 0x34, texture.handle, range));
+        let old_code = if old_layout == vk::ImageLayout::UNDEFINED {
+            0
+        } else {
+            0x22
+        };
+        cmd_code_barrier(
+            device,
+            cb,
+            code_image_barrier(old_code, 0x34, texture.handle, range),
+        );
         device.device.cmd_copy_buffer_to_image(
             cb,
             staging.handle,
@@ -162,13 +178,20 @@ pub fn upload_regions(
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             &plan.copies,
         );
-        cmd_code_barrier(device, cb, code_image_barrier(0x34, 0x22, texture.handle, range));
+        cmd_code_barrier(
+            device,
+            cb,
+            code_image_barrier(0x34, 0x22, texture.handle, range),
+        );
     })
 }
 
 /// 线性数据（3 号目标）的区域生成，参数取自纹理描述与原格式表 `vk_format_info`（0x141739060）：
 /// `{bytes_per_block = word04, block = (byte08, byte09)}`。
-fn linear_regions_for<'a>(texture: &Texture, bytes: &'a [u8]) -> Result<Vec<TextureUpdateRegion<'a>>> {
+fn linear_regions_for<'a>(
+    texture: &Texture,
+    bytes: &'a [u8],
+) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
     let info = observed::try_vk_format_info(desc.format)
         .map_err(|_| Error::unsupported("原构建不支持该格式的 info 查询"))?;
@@ -191,7 +214,9 @@ fn per_mip_regions_for<'a>(
     let block_bytes = observed::try_vk_format_block_bytes(desc.format)
         .map_err(|_| Error::unsupported("原构建不支持该格式的 block_bytes 查询"))?;
     if block_bytes != 1 {
-        return Err(Error::invalid_usage("assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）"));
+        return Err(Error::invalid_usage(
+            "assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）",
+        ));
     }
     let texel = vk_format_info(desc.format)
         .filter(|info| info.aspect == vk::ImageAspectFlags::COLOR)
@@ -202,7 +227,10 @@ fn per_mip_regions_for<'a>(
         desc.mip_levels,
         |item| {
             texel.map(|bytes| {
-                u64::from(item.extent[0]) * u64::from(item.extent[1]) * u64::from(item.extent[2]) * bytes
+                u64::from(item.extent[0])
+                    * u64::from(item.extent[1])
+                    * u64::from(item.extent[2])
+                    * bytes
             })
         },
     )
@@ -272,7 +300,11 @@ pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> 
         .base_array_layer(0)
         .layer_count(desc.array_layers());
     with_setup_cb(device, |cb| unsafe {
-        cmd_code_barrier(device, cb, code_image_barrier(0, 0x34, texture.handle, range));
+        cmd_code_barrier(
+            device,
+            cb,
+            code_image_barrier(0, 0x34, texture.handle, range),
+        );
         if !aspect.intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
             device.device.cmd_clear_color_image(
                 cb,
@@ -290,7 +322,11 @@ pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> 
                 &[range],
             );
         }
-        cmd_code_barrier(device, cb, code_image_barrier(0x34, 0x22, texture.handle, range));
+        cmd_code_barrier(
+            device,
+            cb,
+            code_image_barrier(0x34, 0x22, texture.handle, range),
+        );
     })
 }
 
@@ -298,7 +334,11 @@ pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> 
 /// `bytes` 与首次上传的线性数据同形（整张纹理、层主序、mip 次序）；缺少 TRANSFER_DST 用途直接拒绝
 /// （原版 `update_texture_impl` 不查，Vulkan 要求）。
 pub fn update_texture(device: &Arc<VulkanDevice>, texture: &Texture, bytes: &[u8]) -> Result<()> {
-    if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
+    if !texture
+        .desc
+        .usage
+        .contains(vk::ImageUsageFlags::TRANSFER_DST)
+    {
         return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     let regions = linear_regions_for(texture, bytes)?;
@@ -316,7 +356,11 @@ pub fn update_texture_regions(
     texture: &Texture,
     regions: &[TextureUpdateRegion<'_>],
 ) -> Result<()> {
-    if !texture.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST) {
+    if !texture
+        .desc
+        .usage
+        .contains(vk::ImageUsageFlags::TRANSFER_DST)
+    {
         return Err(Error::invalid_usage("纹理缺少 TRANSFER_DST 用途"));
     }
     upload_regions(

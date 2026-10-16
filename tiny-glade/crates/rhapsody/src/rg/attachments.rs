@@ -305,7 +305,9 @@ impl AttachmentCache {
             || extent.height == 0
             || layers == 0
         {
-            return Err(Error::invalid_usage("附件数应为 1..9，帧缓冲范围及层数必须非零"));
+            return Err(Error::invalid_usage(
+                "附件数应为 1..9，帧缓冲范围及层数必须非零",
+            ));
         }
         let colors = attachments.iter().filter(|a| !a.depth_stencil).count();
         if colors > 8

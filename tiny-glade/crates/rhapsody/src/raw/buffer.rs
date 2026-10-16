@@ -141,7 +141,9 @@ pub fn buffer_alignment(requirement_alignment: u64, desc_alignment: u16, usage: 
     } else {
         0x10
     };
-    requirement_alignment.max(u64::from(desc_alignment)).max(floor)
+    requirement_alignment
+        .max(u64::from(desc_alignment))
+        .max(floor)
 }
 
 /// 原版 `slot`（`ManagedResource<ManagedBuffer>`，`inner`）里被各消费函数读取的字段视图。
@@ -218,11 +220,21 @@ impl std::error::Error for BufferAccessError {}
 pub enum BufferUpdateError {
     Access(BufferAccessError),
     /// 区间 `start > end`。
-    RangeInverted { start: usize, end: usize },
+    RangeInverted {
+        start: usize,
+        end: usize,
+    },
     /// 区间 `end > src_data.len()`。
-    RangeOutOfData { end: usize, len: usize },
+    RangeOutOfData {
+        end: usize,
+        len: usize,
+    },
     /// `assert!(total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size)`（0x142b15b00）。
-    ExceedsCapacity { total: u64, dst_offset: u64, capacity: u64 },
+    ExceedsCapacity {
+        total: u64,
+        dst_offset: u64,
+        capacity: u64,
+    },
     /// `"Buffer {} must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"`。
     MissingTransferDst,
     /// `assert!(size > 0)`：合计字节为 0（0x142b0f830）。
@@ -305,10 +317,16 @@ pub fn plan_buffer_update(
     let mut regions = Vec::with_capacity(ranges.len());
     for r in ranges {
         if r.start > r.end {
-            return Err(BufferUpdateError::RangeInverted { start: r.start, end: r.end });
+            return Err(BufferUpdateError::RangeInverted {
+                start: r.start,
+                end: r.end,
+            });
         }
         if r.end > data_len {
-            return Err(BufferUpdateError::RangeOutOfData { end: r.end, len: data_len });
+            return Err(BufferUpdateError::RangeOutOfData {
+                end: r.end,
+                len: data_len,
+            });
         }
         let len = (r.end - r.start) as u64;
         regions.push(BufferRegion {
@@ -414,6 +432,7 @@ pub struct Buffer {
     pub desc: BufferDesc,
     allocation: std::mem::ManuallyDrop<MemoryBlock>,
     mapped_ptr: Option<usize>,
+    host_access: parking_lot::Mutex<()>,
 }
 impl Buffer {
     /// 转成原版 40 字节记录；`ctx`/`slot`/`offset`/`device_id` 由托管槽表提供。
@@ -449,11 +468,8 @@ impl Buffer {
         let handle = unsafe { device.device.create_buffer(&info, None) }?;
         let mut requirements = unsafe { device.device.get_buffer_memory_requirements(handle) };
         // 0x140bee200：max(memreq.alignment, desc.alignment, usage&0x400 ? 0x40 : 0x10)。
-        requirements.alignment = buffer_alignment(
-            requirements.alignment,
-            desc.alignment,
-            desc.usage.as_raw(),
-        );
+        requirements.alignment =
+            buffer_alignment(requirements.alignment, desc.alignment, desc.usage.as_raw());
         let flags = if desc
             .usage
             .contains(vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS)
@@ -520,6 +536,7 @@ impl Buffer {
             desc: *desc,
             allocation: std::mem::ManuallyDrop::new(allocation),
             mapped_ptr,
+            host_access: parking_lot::Mutex::new(()),
         })
     }
 
@@ -578,8 +595,7 @@ impl Buffer {
                 self.allocation.host_ptr().map_or(0, |p| p as usize)
             }
             None => {
-                let _queue = self.device.queue_lock.lock();
-                self.device.idle_if_in_flight_locked()?;
+                self.device.wait_submitted()?;
                 let pointer = unsafe {
                     self.device.device.map_memory(
                         self.allocation.handle,
@@ -647,9 +663,10 @@ impl Buffer {
         {
             return Err(Error::unsupported("内存不可映射"));
         }
-        let _queue = self.device.queue_lock.lock();
+
+        let _host = self.host_access.lock();
         if sync {
-            self.device.idle_if_in_flight_locked()?;
+            self.device.wait_submitted()?;
         }
         // 子分配直接用已持久映射的指针；专用分配每次自己 map/unmap。
         let shared_pointer = self

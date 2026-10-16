@@ -13,12 +13,17 @@ use rhapsody::{
         },
         instance::{InstanceBuilder, KHRONOS_VALIDATION_LAYER, ValidationMessenger},
         render_pass::RenderPassAttachmentDesc,
-        shader::{PipelineCache, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts, ShaderModule, VulkanPipeline},
+        shader::{
+            PipelineCache, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts, ShaderModule,
+            VulkanPipeline,
+        },
     },
     rg::{
         executor::{PassContext, PassPgoDuration, PassPgoNameId},
         parallel::ParallelRecording,
-        vulkan::{AccessTable, GpuResource, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession},
+        vulkan::{
+            AccessTable, GpuResource, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession,
+        },
     },
 };
 use std::sync::Arc;
@@ -32,27 +37,45 @@ pub struct ValidatedEnv {
 
 /// 带 debug utils 收集器的实例；Khronos 校验层可用时一并启用。无 Vulkan 时返回 None。
 pub fn validated_env() -> Option<ValidatedEnv> {
+    validated_env_configured(&rhapsody::device::QueueConfig {
+        require_present: false,
+        ..Default::default()
+    })
+}
+
+pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Option<ValidatedEnv> {
     let mut builder = InstanceBuilder::default();
     let layer_enabled = builder.enable_validation().ok()?;
     let mut allowlist = GraphicsInstanceLayerAllowlist::default();
     if layer_enabled {
-        allowlist.entries.push(GraphicsInstanceLayerAllowlistEntry::Layer(KHRONOS_VALIDATION_LAYER.into()));
+        allowlist
+            .entries
+            .push(GraphicsInstanceLayerAllowlistEntry::Layer(
+                KHRONOS_VALIDATION_LAYER.into(),
+            ));
     }
     let graphics = GraphicsInstance::new_with_allowlist(&builder, &allowlist).ok()?;
     let messenger = ValidationMessenger::new(&graphics.instance).ok()?;
     let device = graphics
         .available_for_surface(None, DeviceSelectionPolicy::default())
         .ok()?
-        .create_device(&graphics)
+        .create_device_configured(&graphics, config)
         .ok()?;
-    Some(ValidatedEnv { graphics, messenger, layer_enabled, device })
+    Some(ValidatedEnv {
+        graphics,
+        messenger,
+        layer_enabled,
+        device,
+    })
 }
 
 /// 与 `Rig::new` 相同的构造，但使用调用方给的设备。
 pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
     let gd = GraphicsDevice::from_device(device.clone());
     let pass = gd
-        .create_render_pass(&[RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()])
+        .create_render_pass(&[
+            RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()
+        ])
         .unwrap();
     let (vs, fs) = draw_support::shaders();
     let vertex = ShaderModule::from_spirv(device.clone(), &vs).unwrap();
@@ -78,7 +101,13 @@ pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
     RasterPipelineOpts(0).apply_to(&mut desc, 1);
     let pipeline = VulkanPipeline::create_raster_pipeline(&cache, desc).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
-    Rig { device, gd, pass, pipeline, pool }
+    Rig {
+        device,
+        gd,
+        pass,
+        pipeline,
+        pool,
+    }
 }
 
 // ---------------------------------------------------------------- 大图
@@ -86,7 +115,8 @@ pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
 pub const BUF_BYTES: u64 = 256;
 
 /// 填充回调实际运行所在的线程（用来观察并行录制是否真的跨线程）。
-static THREADS: parking_lot::Mutex<Vec<std::thread::ThreadId>> = parking_lot::Mutex::new(Vec::new());
+static THREADS: parking_lot::Mutex<Vec<std::thread::ThreadId>> =
+    parking_lot::Mutex::new(Vec::new());
 /// 取走并清空：返回去重后的线程数。多个测试并行时会互相污染，使用方应放在同一个测试函数里串行读取。
 pub fn take_thread_count() -> usize {
     let mut v = THREADS.lock();
@@ -110,11 +140,23 @@ impl BigBuffers {
         let mut make = |usage: vk::BufferUsageFlags| {
             let desc = BufferDesc::new_gpu_to_cpu(BUF_BYTES, usage);
             let buffer = Arc::new(Buffer::new(session.backend.device.clone(), &desc).unwrap());
-            (session.backend.bind_import(GpuResource::Buffer(buffer.clone())), buffer)
+            (
+                session
+                    .backend
+                    .bind_import(GpuResource::Buffer(buffer.clone())),
+                buffer,
+            )
         };
-        let fills_v = (0..fills).map(|_| make(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC)).collect();
-        let outs_v = (0..copies).map(|_| make(vk::BufferUsageFlags::TRANSFER_DST)).collect();
-        Self { fills: fills_v, outs: outs_v }
+        let fills_v = (0..fills)
+            .map(|_| make(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC))
+            .collect();
+        let outs_v = (0..copies)
+            .map(|_| make(vk::BufferUsageFlags::TRANSFER_DST))
+            .collect();
+        Self {
+            fills: fills_v,
+            outs: outs_v,
+        }
     }
     /// 全部缓冲字节，fills 在前、outs 在后。调用前必须已等到帧完成。
     pub fn read_all(&self) -> Vec<Vec<u8>> {
@@ -137,8 +179,15 @@ pub fn fill_word(i: usize, salt: u32) -> u32 {
 }
 /// 期望的全部缓冲内容：fills[i] = 常量 i；outs[k] = fills[2k] 的拷贝。
 pub fn expected_buffers(fills: usize, copies: usize, salt: u32) -> Vec<Vec<u8>> {
-    let word = |i: usize| fill_word(i, salt).to_le_bytes().repeat(BUF_BYTES as usize / 4);
-    (0..fills).map(word).chain((0..copies).map(|k| word(2 * k))).collect()
+    let word = |i: usize| {
+        fill_word(i, salt)
+            .to_le_bytes()
+            .repeat(BUF_BYTES as usize / 4)
+    };
+    (0..fills)
+        .map(word)
+        .chain((0..copies).map(|k| word(2 * k)))
+        .collect()
 }
 
 pub fn fill_pass_name(i: usize) -> String {
@@ -184,13 +233,21 @@ pub fn run_big_graph(
         .fills
         .iter()
         .enumerate()
-        .map(|(i, (token, _))| graph.import_unowned(format!("f{i}"), desc, *token, HOST_READ).unwrap())
+        .map(|(i, (token, _))| {
+            graph
+                .import_unowned(format!("f{i}"), desc, *token, HOST_READ)
+                .unwrap()
+        })
         .collect();
     let outs: Vec<_> = bufs
         .outs
         .iter()
         .enumerate()
-        .map(|(k, (token, _))| graph.import_unowned(format!("o{k}"), out_desc, *token, HOST_READ).unwrap())
+        .map(|(k, (token, _))| {
+            graph
+                .import_unowned(format!("o{k}"), out_desc, *token, HOST_READ)
+                .unwrap()
+        })
         .collect();
     for (i, &handle) in fills.iter().enumerate() {
         let device = device.clone();
@@ -199,12 +256,20 @@ pub fn run_big_graph(
         let mut pass = graph.add_pass(fill_pass_name(i));
         pass.add_resource_access(handle, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
-            let Some(managed) = ctx.managed else { return false };
-            let Ok(buffer) = managed.buffer_for(index) else { return false };
+            let Some(managed) = ctx.managed else {
+                return false;
+            };
+            let Ok(buffer) = managed.buffer_for(index) else {
+                return false;
+            };
             ctx.keep_alive(Arc::new(buffer.clone()));
             THREADS.lock().push(std::thread::current().id());
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
-            unsafe { device.device.cmd_fill_buffer(cb, buffer.raw(), 0, vk::WHOLE_SIZE, word) };
+            unsafe {
+                device
+                    .device
+                    .cmd_fill_buffer(cb, buffer.raw(), 0, vk::WHOLE_SIZE, word)
+            };
             true
         });
     }
@@ -216,8 +281,11 @@ pub fn run_big_graph(
         pass.add_resource_access(src, TRANSFER_READ, 0).unwrap();
         pass.add_resource_access(dst, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
-            let Some(managed) = ctx.managed else { return false };
-            let (Ok(from), Ok(to)) = (managed.buffer_for(src_index), managed.buffer_for(dst_index)) else {
+            let Some(managed) = ctx.managed else {
+                return false;
+            };
+            let (Ok(from), Ok(to)) = (managed.buffer_for(src_index), managed.buffer_for(dst_index))
+            else {
                 return false;
             };
             ctx.keep_alive(Arc::new(from.clone()));
@@ -228,7 +296,11 @@ pub fn run_big_graph(
                     cb,
                     from.raw(),
                     to.raw(),
-                    &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: BUF_BYTES }],
+                    &[vk::BufferCopy {
+                        src_offset: 0,
+                        dst_offset: 0,
+                        size: BUF_BYTES,
+                    }],
                 )
             };
             true
@@ -239,7 +311,10 @@ pub fn run_big_graph(
     }
     let receipt = session.execute_frame(graph.build()).expect("execute_frame");
     session.wait_submits_done(10_000_000_000).unwrap();
-    BigRun { receipt, buffers: bufs.read_all() }
+    BigRun {
+        receipt,
+        buffers: bufs.read_all(),
+    }
 }
 
 /// 新会话 + 并行配置。
@@ -251,10 +326,18 @@ pub fn new_session(device: &Arc<VulkanDevice>, parallel: ParallelRecording) -> V
 }
 
 /// 给分块器的上一帧统计写入指定耗时（ns），按图内 pass 顺序；`None` 表示该 pass 没有记录。
-pub fn seed_pgo(session: &mut VulkanGraphSession, names: &[PassPgoNameId], durations: &[Option<u64>]) {
+pub fn seed_pgo(
+    session: &mut VulkanGraphSession,
+    names: &[PassPgoNameId],
+    durations: &[Option<u64>],
+) {
     for (name, d) in names.iter().zip(durations) {
         if let Some(d) = d {
-            session.chain.pgo.previous.record(PassPgoDuration::new(*name, *d));
+            session
+                .chain
+                .pgo
+                .previous
+                .record(PassPgoDuration::new(*name, *d));
         }
     }
 }

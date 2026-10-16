@@ -153,8 +153,11 @@ impl DynamicConstants {
         if self.pages.is_empty() || offset + size > DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES {
             let buffer = Arc::new(Buffer::new(
                 self.device.clone(),
-                &BufferDesc::new_cpu_to_gpu(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, DYNAMIC_CONSTANTS_USAGE)
-                    .with_alignment(self.device_alignment as u16),
+                &BufferDesc::new_cpu_to_gpu(
+                    DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES,
+                    DYNAMIC_CONSTANTS_USAGE,
+                )
+                .with_alignment(self.device_alignment as u16),
             )?);
             self.pages.push(Page { buffer });
             offset = 0;

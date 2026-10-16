@@ -1,6 +1,9 @@
 //! 后端导入 token 与跨帧 temporal token 必须来自同一个空间：先后各分配一个资源，token 不能撞。
 use ash::vk;
-use rhapsody::raw::{buffer::{Buffer, BufferDesc}, init::create_headless_device};
+use rhapsody::raw::{
+    buffer::{Buffer, BufferDesc},
+    init::create_headless_device,
+};
 use rhapsody::rg::{
     graph::Descriptor,
     temporal::TemporalResourceOwner,
@@ -9,12 +12,20 @@ use rhapsody::rg::{
 use std::sync::Arc;
 
 fn buffer(device: &Arc<rhapsody::raw::device::VulkanDevice>) -> Arc<Buffer> {
-    Arc::new(Buffer::new(device.clone(), &BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER)).unwrap())
+    Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER),
+        )
+        .unwrap(),
+    )
 }
 
 #[test]
 fn temporal_tokens_never_collide_with_backend_import_tokens() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let mut temporal = TemporalGpuResources::new(device.clone());
     let desc = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER);
@@ -26,7 +37,9 @@ fn temporal_tokens_never_collide_with_backend_import_tokens() {
     assert_ne!(imported, created, "两个来源的 token 撞了");
 
     // 把 temporal 资源导入同一个后端：不能因为 token 已被占用而失败。
-    temporal.import_into(&mut backend, "history", created).expect("temporal 导入不应因 token 冲突失败");
+    temporal
+        .import_into(&mut backend, "history", created)
+        .expect("temporal 导入不应因 token 冲突失败");
 
     // 反方向：temporal 先分配，后端随后 bind_import，也不能撞。
     let second = temporal.create_temporal("history", descriptor).unwrap();
@@ -39,7 +52,9 @@ fn temporal_tokens_never_collide_with_backend_import_tokens() {
 #[test]
 fn imported_resources_are_released_per_token_once_their_frame_completed() {
     use rhapsody::rg::vulkan::VulkanGraphSession;
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let mut session = VulkanGraphSession::new(backend);
     let desc = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER);
@@ -49,7 +64,9 @@ fn imported_resources_are_released_per_token_once_their_frame_completed() {
         let weak = Arc::downgrade(&buffer);
         let token = session.backend.bind_import(GpuResource::Buffer(buffer));
         let mut graph = session.begin_frame().unwrap();
-        let handle = graph.import_unowned("imported", descriptor, token, 0x34).unwrap();
+        let handle = graph
+            .import_unowned("imported", descriptor, token, 0x34)
+            .unwrap();
         let mut pass = graph.add_pass("touch");
         pass.add_resource_access(handle, 0x34, 0).unwrap();
         pass.render(|_| true);
@@ -65,7 +82,10 @@ fn imported_resources_are_released_per_token_once_their_frame_completed() {
         session.wait_frame(receipt.frame, 10_000_000_000).unwrap();
         assert!(session.release_import(token).unwrap(), "帧完成后应当释放");
         assert_eq!(session.resource_count(), 0);
-        assert!(!session.release_import(token).unwrap(), "重复释放返回 false，不报错");
+        assert!(
+            !session.release_import(token).unwrap(),
+            "重复释放返回 false，不报错"
+        );
         weak
     };
     device.wait_idle().unwrap();

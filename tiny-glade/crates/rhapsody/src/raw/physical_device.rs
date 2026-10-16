@@ -203,7 +203,9 @@ impl MemoryBudgetSnapshot {
             .iter()
             .take(MAX_MEMORY_HEAPS)
             .zip(self.heap_budget)
-            .filter(|(h, _)| h.flags.contains(vk::MemoryHeapFlags::DEVICE_LOCAL) == want_device_local)
+            .filter(|(h, _)| {
+                h.flags.contains(vk::MemoryHeapFlags::DEVICE_LOCAL) == want_device_local
+            })
             .fold(0u64, |sum, (_, b)| sum.wrapping_add(b))
     }
 }
@@ -407,7 +409,9 @@ impl PhysicalDevice {
     }
     pub fn with_presentation_support(&self, surface: vk::SurfaceKHR) -> Result<Vec<u32>> {
         if surface == vk::SurfaceKHR::null() {
-            return Err(super::error::Error::invalid_usage("呈现查询需要有效surface"));
+            return Err(super::error::Error::invalid_usage(
+                "呈现查询需要有效surface",
+            ));
         }
         let loader =
             ash::khr::surface::Instance::new(&self.instance.entry, &self.instance.instance);
@@ -435,8 +439,15 @@ impl PhysicalDevice {
     /// → 记 info "Matched to NVAPI device" 并返回该项句柄。非 NVIDIA / 无匹配 → None
     /// （原版此时记 "No vendor-specific info" 后返回 Err 判别 1；日志级别未证实）。
     /// NVAPI 是 Windows 专有库，清单由调用方提供，这里不重新实现厂商库。
-    pub fn find_vendor_specific_device_handle(&self, nvapi_devices: &[VendorDeviceEntry]) -> Option<u64> {
-        match_vendor_device_handle(self.properties.vendor_id, self.properties.device_id, nvapi_devices)
+    pub fn find_vendor_specific_device_handle(
+        &self,
+        nvapi_devices: &[VendorDeviceEntry],
+    ) -> Option<u64> {
+        match_vendor_device_handle(
+            self.properties.vendor_id,
+            self.properties.device_id,
+            nvapi_devices,
+        )
     }
     /// 设备 LUID（`VkPhysicalDeviceIDProperties`），无效时 None。原 AvailableGraphicsDevice 前 16B 是
     /// `Option<u64>`（tag@0 / 值@8），`missing_devices` 以它与 DXGI 适配器的 u64@+0x18 比较；

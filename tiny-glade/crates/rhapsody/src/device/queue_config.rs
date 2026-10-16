@@ -4,7 +4,7 @@
 //! （`VkDeviceQueueCreateInfo`），以及每个 [`QueueClass`] 落在哪个逻辑队列上。
 //!
 //! 选择规则：
-//! - **Graphics**：必需。优先同时支持 compute 的族；`require_present` 时必须能呈现。
+//! - **Graphics**：必需。必须同时支持 compute 的族，保证类别别名有效；`require_present` 时必须能呈现。
 //! - **Compute**：优先专用族（有 COMPUTE、无 GRAPHICS）；否则用 graphics 族里的第二个队列；
 //!   都没有时 `Prefer`/`Off` 别名到 graphics，`Require` 报 [`Error::Unsupported`]。
 //! - **Transfer**：优先专用 DMA 族（只有 TRANSFER，且图像传输粒度为 1×1×1）；否则用专用
@@ -130,7 +130,10 @@ impl QueuePlan {
     pub fn create_counts(&self) -> Vec<(u32, u32)> {
         let mut counts: Vec<(u32, u32)> = Vec::new();
         for queue in &self.queues {
-            match counts.iter_mut().find(|(family, _)| *family == queue.family) {
+            match counts
+                .iter_mut()
+                .find(|(family, _)| *family == queue.family)
+            {
                 Some((_, count)) => *count = (*count).max(queue.index + 1),
                 None => counts.push((queue.family, queue.index + 1)),
             }
@@ -181,12 +184,11 @@ pub fn plan_queues(families: &[FamilyInfo], config: &QueueConfig) -> Result<Queu
     let present_ok = |f: &FamilyInfo| f.present || !config.require_present;
     let graphics_family = alloc
         .first(|f| f.has(vk::QueueFlags::GRAPHICS | vk::QueueFlags::COMPUTE) && present_ok(f))
-        .or_else(|| alloc.first(|f| f.has(vk::QueueFlags::GRAPHICS) && present_ok(f)))
         .ok_or_else(|| {
             Error::unsupported(if config.require_present {
-                "没有支持呈现的图形队列族"
+                "没有同时支持图形、计算与呈现的队列族"
             } else {
-                "没有图形队列族"
+                "没有同时支持图形与计算的队列族"
             })
         })?;
     let graphics = alloc.take(graphics_family);
@@ -253,11 +255,19 @@ mod tests {
             flags,
             count,
             present,
-            min_image_transfer_granularity: vk::Extent3D { width: 1, height: 1, depth: 1 },
+            min_image_transfer_granularity: vk::Extent3D {
+                width: 1,
+                height: 1,
+                depth: 1,
+            },
         }
     }
     fn coarse(mut f: FamilyInfo) -> FamilyInfo {
-        f.min_image_transfer_granularity = vk::Extent3D { width: 8, height: 8, depth: 8 };
+        f.min_image_transfer_granularity = vk::Extent3D {
+            width: 8,
+            height: 8,
+            depth: 8,
+        };
         f
     }
     fn pq(family: u32, index: u32) -> PhysicalQueue {
@@ -277,12 +287,19 @@ mod tests {
             async_compute: QueuePreference::Require,
             ..QueueConfig::default()
         };
-        assert_eq!(plan_queues(&families, &require).unwrap_err().kind(), ErrorKind::Unsupported);
+        assert_eq!(
+            plan_queues(&families, &require).unwrap_err().kind(),
+            ErrorKind::Unsupported
+        );
     }
 
     #[test]
     fn off_never_creates_extra_queues() {
-        let families = [family(G | C | T, 16, true), family(C | T, 8, false), family(T, 2, false)];
+        let families = [
+            family(G | C | T, 16, true),
+            family(C | T, 8, false),
+            family(T, 2, false),
+        ];
         let plan = plan_queues(&families, &QueueConfig::default()).unwrap();
         assert_eq!(plan.queues, [pq(0, 0)]);
     }
@@ -290,7 +307,11 @@ mod tests {
     #[test]
     fn discrete_layout_uses_dedicated_compute_and_dma_families() {
         // 常见独显：通用族 + 专用计算族 + 专用 DMA 族。
-        let families = [family(G | C | T, 16, true), family(T, 2, false), family(C | T, 8, false)];
+        let families = [
+            family(G | C | T, 16, true),
+            family(T, 2, false),
+            family(C | T, 8, false),
+        ];
         let plan = plan_queues(&families, &QueueConfig::prefer_all()).unwrap();
         assert_eq!(plan.physical(QueueClass::Graphics), pq(0, 0));
         assert_eq!(plan.physical(QueueClass::Compute), pq(2, 0));
@@ -302,10 +323,18 @@ mod tests {
 
     #[test]
     fn coarse_granularity_dma_is_skipped_for_a_spare_compute_queue() {
-        let families = [family(G | C | T, 1, true), family(C | T, 4, false), coarse(family(T, 2, false))];
+        let families = [
+            family(G | C | T, 1, true),
+            family(C | T, 4, false),
+            coarse(family(T, 2, false)),
+        ];
         let plan = plan_queues(&families, &QueueConfig::prefer_all()).unwrap();
         assert_eq!(plan.physical(QueueClass::Compute), pq(1, 0));
-        assert_eq!(plan.physical(QueueClass::Transfer), pq(1, 1), "粗粒度 DMA 族不用于图像传输");
+        assert_eq!(
+            plan.physical(QueueClass::Transfer),
+            pq(1, 1),
+            "粗粒度 DMA 族不用于图像传输"
+        );
         assert_eq!(plan.create_counts(), [(0, 1), (1, 2)]);
     }
 
@@ -320,7 +349,7 @@ mod tests {
 
     #[test]
     fn graphics_family_must_present_when_required() {
-        let families = [family(G | C | T, 1, false), family(G | T, 1, true)];
+        let families = [family(G | C | T, 1, false), family(G | C | T, 1, true)];
         let plan = plan_queues(&families, &QueueConfig::default()).unwrap();
         assert_eq!(plan.physical(QueueClass::Graphics), pq(1, 0));
 
@@ -328,14 +357,35 @@ mod tests {
             require_present: false,
             ..QueueConfig::default()
         };
-        assert_eq!(plan_queues(&families, &headless).unwrap().physical(QueueClass::Graphics), pq(0, 0));
+        assert_eq!(
+            plan_queues(&families, &headless)
+                .unwrap()
+                .physical(QueueClass::Graphics),
+            pq(0, 0)
+        );
 
         let no_present = [family(G | C | T, 1, false)];
         assert_eq!(
-            plan_queues(&no_present, &QueueConfig::default()).unwrap_err().kind(),
+            plan_queues(&no_present, &QueueConfig::default())
+                .unwrap_err()
+                .kind(),
             ErrorKind::Unsupported
         );
-        assert_eq!(plan_queues(&[], &headless).unwrap_err().kind(), ErrorKind::Unsupported);
+        assert_eq!(
+            plan_queues(&[], &headless).unwrap_err().kind(),
+            ErrorKind::Unsupported
+        );
+    }
+
+    #[test]
+    fn graphics_only_family_cannot_back_a_compute_alias() {
+        let families = [family(G | T, 4, true)];
+        for config in [QueueConfig::default(), QueueConfig::prefer_all()] {
+            assert_eq!(
+                plan_queues(&families, &config).unwrap_err().kind(),
+                ErrorKind::Unsupported
+            );
+        }
     }
 
     #[test]
@@ -345,6 +395,9 @@ mod tests {
             transfer: QueuePreference::Require,
             ..QueueConfig::default()
         };
-        assert_eq!(plan_queues(&families, &config).unwrap_err().kind(), ErrorKind::Unsupported);
+        assert_eq!(
+            plan_queues(&families, &config).unwrap_err().kind(),
+            ErrorKind::Unsupported
+        );
     }
 }

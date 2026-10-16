@@ -20,9 +20,18 @@ fn compute_checks_follow_assert_then_expect_order() {
     assert_eq!(validate_compute_reflection(&empty()).unwrap(), [8, 8, 1]);
     let mut r = empty();
     r.local_size = None;
-    assert_eq!(validate_compute_reflection(&r).unwrap_err().to_string(), "a valid group size");
+    assert_eq!(
+        validate_compute_reflection(&r).unwrap_err().to_string(),
+        "a valid group size"
+    );
     // 两个都不满足时先报 assert（机器码顺序 397 → 460）。
-    r.vertex_inputs.push(("a".into(), VertexInput { location: 0, ty: Type::Scalar(ScalarType::Float(4)) }));
+    r.vertex_inputs.push((
+        "a".into(),
+        VertexInput {
+            location: 0,
+            ty: Type::Scalar(ScalarType::Float(4)),
+        },
+    ));
     assert_eq!(
         validate_compute_reflection(&r).unwrap_err().to_string(),
         "assertion failed: compiled.reflection.inputs.is_empty()"

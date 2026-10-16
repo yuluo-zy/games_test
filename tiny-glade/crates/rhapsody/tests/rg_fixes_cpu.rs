@@ -61,10 +61,12 @@ struct Mock {
     next_token: u64,
     creations: usize,
     fail_creation_at: Option<usize>,
+    creation_error: Option<rhapsody::Error>,
     fail_prepare: bool,
     released: Vec<u64>,
     abandoned: Vec<u64>,
     next_command: u64,
+    next_submit: u64,
 }
 impl ResourceBackend for Mock {
     fn create_without_initial_data(
@@ -75,10 +77,10 @@ impl ResourceBackend for Mock {
         let attempt = self.creations;
         self.creations += 1;
         if self.fail_creation_at == Some(attempt) {
-            return Err(BackendFailure {
-                discriminant: 0,
-                message: format!("fail {name}"),
-            });
+            return Err(self
+                .creation_error
+                .take()
+                .unwrap_or_else(|| BackendFailure::invalid_usage(format!("fail {name}"))));
         }
         self.next_token += 1;
         Ok(500 + self.next_token)
@@ -109,8 +111,16 @@ impl ExecutionBackend for Mock {
     fn end_command(&mut self, _handle: vk::CommandBuffer) -> bool {
         true
     }
-    fn submit(&mut self, _queue: vk::Queue, _prepared: &[submit::PreparedSubmit]) -> (i32, bool) {
-        (0, false)
+    fn submit(
+        &mut self,
+        _queue: vk::Queue,
+        _prepared: &[submit::PreparedSubmit],
+    ) -> rhapsody::Result<rhapsody::sync::SyncPoint> {
+        self.next_submit += 1;
+        Ok(rhapsody::sync::SyncPoint {
+            queue: rhapsody::sync::QueueId::new(0).unwrap(),
+            value: self.next_submit,
+        })
     }
     fn abandon_command(&mut self, handle: u64) {
         self.abandoned.push(handle);
@@ -118,22 +128,7 @@ impl ExecutionBackend for Mock {
 }
 
 fn chain() -> ExecutionChain {
-    let queue = submit::QueueState {
-        handle: vk::Queue::null(),
-        timeline_semaphore: vk::Semaphore::null(),
-        pending_timelines: Default::default(),
-        pending_commands: Default::default(),
-    };
-    ExecutionChain::new(
-        0,
-        1,
-        submit::DeviceState {
-            primary: queue,
-            auxiliary: vec![],
-            next_timeline: 1,
-            oldest_pending: None,
-        },
-    )
+    ExecutionChain::new(vk::Queue::null(), vec![], 1)
 }
 
 /// 三个缓冲在同一 pass 中写入：r0 命中资源池，r1 新建，r2 第二次创建（可配置失败）。
@@ -308,7 +303,7 @@ fn a_recording_failure_abandons_begun_commands_and_reclaims_resources() {
     assert!(matches!(error, Error::Record(_)), "{error:?}");
     let mut abandoned = backend.abandoned.clone();
     abandoned.sort_unstable();
-    assert_eq!(abandoned, vec![1001, 1002], "已开始但未提交的命令全部放弃");
+    assert_eq!(abandoned, vec![1001], "已开始但未提交的命令全部放弃");
     let Descriptor::Buffer(desc) = buffer().with_usage(0x20) else {
         unreachable!()
     };
@@ -425,4 +420,71 @@ fn exceeding_the_pass_packing_domain_is_a_build_error() {
         pass.add_resource_access(resource, WRITE, 0),
         Err(BuildError::PassLimit)
     ));
+}
+
+#[test]
+fn malformed_declarations_fail_before_creating_resources() {
+    use rhapsody::rg::graph::{AccessDeclaration, ExportDeclaration, PassDeclaration};
+    let invalid_access = graph::GraphDeclaration {
+        passes: vec![PassDeclaration {
+            name: "invalid".into(),
+            accesses: vec![AccessDeclaration {
+                resource_index: u32::MAX,
+                synchronization_group: 0,
+                access_code: 0x34,
+            }],
+        }],
+        ..Default::default()
+    };
+    let invalid_export = graph::GraphDeclaration {
+        exports: vec![ExportDeclaration {
+            tag: 0,
+            resource_index: 0,
+            access_code: 0x26,
+        }],
+        ..Default::default()
+    };
+    for declaration in [invalid_access, invalid_export] {
+        let mut backend = Mock::default();
+        let error = graph::compile_graph(
+            declaration,
+            &mut graph::Pool::default(),
+            &mut backend,
+            &mut rhapsody::rg::vulkan::AccessTable::original(),
+        )
+        .err()
+        .unwrap();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        assert_eq!(backend.creations, 0);
+    }
+}
+
+#[test]
+fn resource_creation_preserves_device_error_categories() {
+    for injected in [
+        rhapsody::Error::DeviceLost,
+        rhapsody::Error::OutOfHostMemory,
+        rhapsody::Error::OutOfDeviceMemory,
+    ] {
+        let expected = injected.kind();
+        let mut backend = Mock {
+            fail_creation_at: Some(1),
+            creation_error: Some(injected),
+            ..Default::default()
+        };
+        let error = run(
+            &mut chain(),
+            three_buffer_graph(true),
+            &mut Pool::default(),
+            &mut backend,
+            true,
+        )
+        .unwrap_err();
+        assert_eq!(rhapsody::Error::from(error).kind(), expected);
+        assert_eq!(
+            backend.released,
+            [501],
+            "部分创建的资源在返回设备错误前仍须归还"
+        );
+    }
 }

@@ -136,26 +136,50 @@ mod tests {
     fn sync_set_keeps_the_latest_value_per_queue() {
         let mut set = SyncSet::EMPTY;
         assert!(set.is_empty());
-        set.insert(SyncPoint { queue: q(0), value: 5 });
-        set.insert(SyncPoint { queue: q(0), value: 3 });
-        set.insert(SyncPoint { queue: q(2), value: 7 });
+        set.insert(SyncPoint {
+            queue: q(0),
+            value: 5,
+        });
+        set.insert(SyncPoint {
+            queue: q(0),
+            value: 3,
+        });
+        set.insert(SyncPoint {
+            queue: q(2),
+            value: 7,
+        });
         assert_eq!(set.get(q(0)), 5);
         assert_eq!(
             set.points().collect::<Vec<_>>(),
             [
-                SyncPoint { queue: q(0), value: 5 },
-                SyncPoint { queue: q(2), value: 7 }
+                SyncPoint {
+                    queue: q(0),
+                    value: 5
+                },
+                SyncPoint {
+                    queue: q(2),
+                    value: 7
+                }
             ]
         );
-        let mut other = SyncSet::from_point(SyncPoint { queue: q(0), value: 9 });
+        let mut other = SyncSet::from_point(SyncPoint {
+            queue: q(0),
+            value: 9,
+        });
         other.merge(&set);
         assert_eq!((other.get(q(0)), other.get(q(2))), (9, 7));
     }
 
     #[test]
     fn reached_requires_every_queue() {
-        let mut set = SyncSet::from_point(SyncPoint { queue: q(0), value: 4 });
-        set.insert(SyncPoint { queue: q(1), value: 2 });
+        let mut set = SyncSet::from_point(SyncPoint {
+            queue: q(0),
+            value: 4,
+        });
+        set.insert(SyncPoint {
+            queue: q(1),
+            value: 2,
+        });
         let mut done = CompletedValues::default();
         done.raise(q(0), 10);
         assert!(!set.is_reached(&done), "队列 1 尚未完成");

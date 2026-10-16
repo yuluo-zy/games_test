@@ -36,8 +36,14 @@ fn ninth_attachment_panics_like_arrayvec_push() {
 #[test]
 fn depth_access_tags_decode_like_the_jump_table() {
     // 0x142b174cc：tag0→4(READ_ONLY)，tag1→3(ATTACHMENT)，tag2→1000117001，tag3→无深度。
-    assert_eq!(DepthAccess::from_tag(0).unwrap().unwrap().layout().as_raw(), 4);
-    assert_eq!(DepthAccess::from_tag(1).unwrap().unwrap().layout().as_raw(), 3);
+    assert_eq!(
+        DepthAccess::from_tag(0).unwrap().unwrap().layout().as_raw(),
+        4
+    );
+    assert_eq!(
+        DepthAccess::from_tag(1).unwrap().unwrap().layout().as_raw(),
+        3
+    );
     assert_eq!(
         DepthAccess::from_tag(2).unwrap().unwrap().layout().as_raw(),
         0x3b9c_9309
@@ -51,7 +57,8 @@ fn pass_samples_follow_the_original_selection() {
     let mut desc = RenderPassDesc::default();
     // 无附件：原版 `attachments[0]` 越界 panic，这里是错误。
     assert!(desc.pass_samples().is_err());
-    desc.colors.push(color(vk::Format::R8G8B8A8_UNORM).sample_count(4));
+    desc.colors
+        .push(color(vk::Format::R8G8B8A8_UNORM).sample_count(4));
     assert_eq!(desc.pass_samples().unwrap(), 4);
     // 有深度时取深度附件的采样数。
     desc.depth = Some((
@@ -75,15 +82,21 @@ fn flat_conversion_splits_depth_and_matches_attachment_key_semantics() {
     assert_eq!(key.load, vk::AttachmentLoadOp::CLEAR.as_raw());
     assert_eq!(key.stencil_load, vk::AttachmentLoadOp::LOAD.as_raw());
     assert_eq!(key.stencil_store, vk::AttachmentStoreOp::STORE.as_raw());
-    assert_eq!(key.initial_layout, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL.as_raw());
+    assert_eq!(
+        key.initial_layout,
+        vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL.as_raw()
+    );
     assert_eq!(key.final_layout, key.initial_layout);
 }
 
 #[test]
 fn from_desc_creates_the_original_render_pass_on_a_real_device() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let mut desc = RenderPassDesc::default();
-    desc.colors.push(color(vk::Format::R8G8B8A8_UNORM).clear_input());
+    desc.colors
+        .push(color(vk::Format::R8G8B8A8_UNORM).clear_input());
     desc.colors.push(color(vk::Format::R8G8B8A8_UNORM));
     desc.depth = Some((color(vk::Format::D32_SFLOAT), DepthAccess::ReadOnly));
     let pass = RenderPass::from_desc(device.clone(), &desc).unwrap();

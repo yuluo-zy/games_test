@@ -123,8 +123,38 @@ impl From<vk::Result> for Error {
             | vk::Result::ERROR_EXTENSION_NOT_PRESENT
             | vk::Result::ERROR_LAYER_NOT_PRESENT
             | vk::Result::ERROR_FORMAT_NOT_SUPPORTED
-            | vk::Result::ERROR_INCOMPATIBLE_DRIVER => Self::Unsupported(format!("{result:?}").into()),
+            | vk::Result::ERROR_INCOMPATIBLE_DRIVER => {
+                Self::Unsupported(format!("{result:?}").into())
+            }
             other => Self::Vulkan(other),
+        }
+    }
+}
+
+// 过渡模块保留结构化细节；公共边界统一为可采取措施的错误类别。
+macro_rules! usage_error {
+    ($($ty:path),+ $(,)?) => {$(
+        impl From<$ty> for Error {
+            fn from(source: $ty) -> Self {
+                Self::invalid_usage_with("渲染状态无效", source)
+            }
+        }
+    )+};
+}
+usage_error!(
+    crate::rg::graph::BuildError,
+    crate::rg::binding::MipRangeError,
+    crate::raw::managed::lifecycle::Failure,
+    crate::raw::managed::tracking::Failure,
+    crate::rg::temporal::TemporalError,
+);
+
+impl From<crate::rg::executor::Error> for Error {
+    fn from(error: crate::rg::executor::Error) -> Self {
+        match error {
+            crate::rg::executor::Error::Validation(error)
+            | crate::rg::executor::Error::Compile(error) => error,
+            other => Self::invalid_usage_with("图执行失败", other),
         }
     }
 }
@@ -137,12 +167,21 @@ mod tests {
     fn vulkan_results_map_to_actionable_categories() {
         let cases = [
             (vk::Result::ERROR_DEVICE_LOST, ErrorKind::DeviceLost),
-            (vk::Result::ERROR_OUT_OF_DEVICE_MEMORY, ErrorKind::OutOfMemory),
+            (
+                vk::Result::ERROR_OUT_OF_DEVICE_MEMORY,
+                ErrorKind::OutOfMemory,
+            ),
             (vk::Result::ERROR_OUT_OF_HOST_MEMORY, ErrorKind::OutOfMemory),
-            (vk::Result::ERROR_OUT_OF_DATE_KHR, ErrorKind::SurfaceOutOfDate),
+            (
+                vk::Result::ERROR_OUT_OF_DATE_KHR,
+                ErrorKind::SurfaceOutOfDate,
+            ),
             (vk::Result::ERROR_SURFACE_LOST_KHR, ErrorKind::SurfaceLost),
             (vk::Result::TIMEOUT, ErrorKind::Timeout),
-            (vk::Result::ERROR_EXTENSION_NOT_PRESENT, ErrorKind::Unsupported),
+            (
+                vk::Result::ERROR_EXTENSION_NOT_PRESENT,
+                ErrorKind::Unsupported,
+            ),
             (vk::Result::ERROR_INITIALIZATION_FAILED, ErrorKind::Vulkan),
         ];
         for (result, kind) in cases {
@@ -157,6 +196,9 @@ mod tests {
         struct Detail;
         let error = Error::invalid_usage_with("越界", Detail);
         assert_eq!(error.kind(), ErrorKind::InvalidUsage);
-        assert_eq!(std::error::Error::source(&error).unwrap().to_string(), "细节");
+        assert_eq!(
+            std::error::Error::source(&error).unwrap().to_string(),
+            "细节"
+        );
     }
 }

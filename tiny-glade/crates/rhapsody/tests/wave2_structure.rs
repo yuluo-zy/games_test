@@ -28,7 +28,10 @@ fn graphics_device_owns_the_destruction_bucket_table() {
     device.resources.begin_command_bucket(7).unwrap();
     assert!(device.disposal().contains(7));
     device.disposal().insert(8, Default::default());
-    assert_eq!(device.resources.begin_command_bucket(8), Err(rhapsody::raw::managed::tracking::Failure::DuplicateBucket));
+    assert_eq!(
+        device.resources.begin_command_bucket(8),
+        Err(rhapsody::raw::managed::tracking::Failure::DuplicateBucket)
+    );
     // 真实签名 take_out_dropped_waste(&ManagedResources, &GraphicsDevice)：无待排水项时为 0。
     assert_eq!(device.resources.take_out_dropped_waste_on(&device), 0);
     assert_eq!(device.take_out_dropped_waste(), 0);
@@ -84,7 +87,11 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
     assert!(graphics.devices.iter().any(|p| Arc::ptr_eq(p, attached)));
     assert_eq!(attached.handle, device.physical_device());
     // 第二次挂接被拒（原版只设置一次）。
-    assert!(device.attach_physical_device_info(attached.clone()).is_err());
+    assert!(
+        device
+            .attach_physical_device_info(attached.clone())
+            .is_err()
+    );
     // refresh_memory_budget 经包装委托：扩展门开时给出快照，门关时 Ok(None)。
     let budget = device.refresh_memory_budget().unwrap();
     if device
@@ -94,7 +101,10 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
         .any(|e| e == "VK_EXT_memory_budget")
     {
         assert!(budget.is_some());
-        assert!(attached.cached_performance_info().is_some(), "委托必须发布快照");
+        assert!(
+            attached.cached_performance_info().is_some(),
+            "委托必须发布快照"
+        );
     } else {
         assert!(budget.is_none());
     }
@@ -104,15 +114,24 @@ fn create_graphics_device_attaches_the_physical_device_wrapper() {
 fn track_panics_on_non_recording_state_but_try_track_reports_err() {
     let store = ResourceManager::new();
     let handle = store.allocate(1_u8);
-    let bad = CommandState { tag: 3, sequence: 4 };
+    let bad = CommandState {
+        tag: 3,
+        sequence: 4,
+    };
     assert!(handle.try_track(bad).is_err());
     let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle.track(bad)));
     let message = *caught
         .expect_err("原版 track 在状态非 Recording 时 panic")
         .downcast::<String>()
         .unwrap();
-    assert!(message.starts_with("Can't use a resource for a command buffer in state "), "{message}");
+    assert!(
+        message.starts_with("Can't use a resource for a command buffer in state "),
+        "{message}"
+    );
     assert_eq!(handle.tracked_sequence(), 0);
-    handle.track(CommandState { tag: 1, sequence: 4 });
+    handle.track(CommandState {
+        tag: 1,
+        sequence: 4,
+    });
     assert_eq!(handle.tracked_sequence(), 4);
 }

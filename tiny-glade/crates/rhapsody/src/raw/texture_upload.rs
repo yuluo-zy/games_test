@@ -44,7 +44,9 @@ pub fn validate_texture_regions(
         .contains(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
         || !staging_usage.contains(vk::BufferUsageFlags::TRANSFER_SRC)
     {
-        return Err(Error::invalid_usage("区域上传缺少 transfer 或 sampled 用途"));
+        return Err(Error::invalid_usage(
+            "区域上传缺少 transfer 或 sampled 用途",
+        ));
     }
     if regions.is_empty() || regions.len() > u32::MAX as usize {
         return Err(Error::invalid_usage("上传区域数量无效"));
@@ -250,7 +252,9 @@ impl MipChainIter {
         block: [u8; 2],
     ) -> Result<Self> {
         if bytes_per_block == 0 {
-            return Err(Error::invalid_usage("assertion failed: bytes_per_block > 0"));
+            return Err(Error::invalid_usage(
+                "assertion failed: bytes_per_block > 0",
+            ));
         }
         if block[0] == 0 {
             return Err(Error::invalid_usage("assertion failed: block[0] > 0"));
@@ -328,7 +332,8 @@ pub fn linear_regions(
     block: [u8; 2],
 ) -> Result<Vec<TextureUpdateRegion<'_>>> {
     let layers = u16::try_from(array_elements).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
-    let bytes_per_block = u8::try_from(bytes_per_block).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
+    let bytes_per_block =
+        u8::try_from(bytes_per_block).map_err(|_| Error::invalid_usage(UNWRAP_ERR))?;
     if data.is_empty() {
         return Err(Error::invalid_usage("assertion failed: !data.is_empty()"));
     }

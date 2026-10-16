@@ -5,19 +5,22 @@
 use ash::vk;
 use rhapsody::raw::{
     buffer::{
-        buffer_alignment, plan_buffer_update, BufferAccessError, BufferDesc, BufferRecord,
-        BufferRegion, BufferSlotView, BufferUpdateError, MemoryLocation, SLOT_ALLOCATION_TAKEN,
+        BufferAccessError, BufferDesc, BufferRecord, BufferRegion, BufferSlotView,
+        BufferUpdateError, MemoryLocation, SLOT_ALLOCATION_TAKEN, buffer_alignment,
+        plan_buffer_update,
     },
     device::GraphicsDevice,
     init::create_headless_device,
     texture::{
-        get_image_create_info_with_data, image_aspect_mask_from_format, OptionU32, TextureDesc,
-        TextureKind, TextureViewDescRaw,
+        OptionU32, TextureDesc, TextureKind, TextureViewDescRaw, get_image_create_info_with_data,
+        image_aspect_mask_from_format,
     },
 };
 
 fn device() -> Option<std::sync::Arc<GraphicsDevice>> {
-    create_headless_device().ok().map(GraphicsDevice::from_device)
+    create_headless_device()
+        .ok()
+        .map(GraphicsDevice::from_device)
 }
 
 // ---------------------------------------------------------------- Buffer：判据
@@ -53,7 +56,11 @@ fn alignment_is_max_of_requirement_desc_and_usage_floor() {
     assert_eq!(buffer_alignment(4, 0, 0x400), 0x40);
     assert_eq!(buffer_alignment(0x100, 0x20, 0x400), 0x100);
     assert_eq!(buffer_alignment(4, 0x80, 0), 0x80);
-    assert_eq!(buffer_alignment(0x10, 0, 0x20 | 0x2), 0x10, "非 0x400 位不抬高");
+    assert_eq!(
+        buffer_alignment(0x10, 0, 0x20 | 0x2),
+        0x10,
+        "非 0x400 位不抬高"
+    );
 }
 
 #[test]
@@ -62,7 +69,10 @@ fn buffer_handle_checks_follow_original_order() {
     // 0x140bd4c00 / 0x140bd4cd0 / 0x140beefa0：设备代号 → flag==1 → 槽偏移。
     assert_eq!(
         record(1, 0, 9, 64, 2).validate(2, &s),
-        Err(BufferAccessError::DeviceMismatch { handle: 1, device: 2 }),
+        Err(BufferAccessError::DeviceMismatch {
+            handle: 1,
+            device: 2
+        }),
         "设备代号先于 flag 与偏移"
     );
     assert_eq!(
@@ -89,8 +99,15 @@ fn device_address_is_not_cached_and_uses_slot_vk_buffer() {
         b.as_raw() + calls
     };
     assert_eq!(r.device_address(3, &s, &mut query), Ok(0xabcd + 1));
-    assert_eq!(r.device_address(3, &s, &mut query), Ok(0xabcd + 2), "每次都走设备函数");
-    assert!(r.device_address(4, &s, |_| 0).is_err(), "校验失败不调用设备函数");
+    assert_eq!(
+        r.device_address(3, &s, &mut query),
+        Ok(0xabcd + 2),
+        "每次都走设备函数"
+    );
+    assert!(
+        r.device_address(4, &s, |_| 0).is_err(),
+        "校验失败不调用设备函数"
+    );
 }
 
 #[test]
@@ -102,17 +119,27 @@ fn mapped_slice_parts_follow_0x140bd4cd0() {
     assert_eq!(r.mapped_slice_parts(1, &s), Ok(None));
     s.mapped_ptr = backing.as_mut_ptr();
     s.block_size = 32;
-    assert_eq!(r.mapped_slice_parts(1, &s), Ok(Some((backing.as_mut_ptr(), 24))), "全长 = Buffer+0x18");
+    assert_eq!(
+        r.mapped_slice_parts(1, &s),
+        Ok(Some((backing.as_mut_ptr(), 24))),
+        "全长 = Buffer+0x18"
+    );
     // 缓冲大小超过块大小：原版 slice_end_index_len_fail。
     s.block_size = 16;
     assert_eq!(
         r.mapped_slice_parts(1, &s),
-        Err(BufferAccessError::SizeExceedsBlock { size: 24, block: 16 })
+        Err(BufferAccessError::SizeExceedsBlock {
+            size: 24,
+            block: 16
+        })
     );
     // inner+0x7c == 2：分配已被取走，原版直接 panic（先于指针检查）。
     s.allocation_state = SLOT_ALLOCATION_TAKEN;
     s.mapped_ptr = std::ptr::null_mut();
-    assert_eq!(r.mapped_slice_parts(1, &s), Err(BufferAccessError::AllocationTaken));
+    assert_eq!(
+        r.mapped_slice_parts(1, &s),
+        Err(BufferAccessError::AllocationTaken)
+    );
 }
 
 #[test]
@@ -126,9 +153,21 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
     assert_eq!(
         plan.regions,
         vec![
-            BufferRegion { src_offset: 0, dst_offset: 10, size: 2 },
-            BufferRegion { src_offset: 2, dst_offset: 14, size: 2 },
-            BufferRegion { src_offset: 4, dst_offset: 16, size: 2 },
+            BufferRegion {
+                src_offset: 0,
+                dst_offset: 10,
+                size: 2
+            },
+            BufferRegion {
+                src_offset: 2,
+                dst_offset: 14,
+                size: 2
+            },
+            BufferRegion {
+                src_offset: 4,
+                dst_offset: 16,
+                size: 2
+            },
         ]
     );
     // 区间合法性：先 start<=end，再 end<=data.len。
@@ -143,7 +182,11 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
     // total + dst_offset 超过容量。
     assert!(matches!(
         plan_buffer_update(&r, 1, &s, 8, &[0..8], 60),
-        Err(BufferUpdateError::ExceedsCapacity { total: 8, dst_offset: 60, capacity: 64 })
+        Err(BufferUpdateError::ExceedsCapacity {
+            total: 8,
+            dst_offset: 60,
+            capacity: 64
+        })
     ));
     // 稀疏区间：原版只比较 total+offset，这里额外拒绝 dst_end 越界（有意超集）。
     assert!(matches!(
@@ -157,8 +200,14 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
         Err(BufferUpdateError::MissingTransferDst)
     );
     // 合计 0：`assert!(size > 0)`；顺序在 TRANSFER_DST 检查之后。
-    assert_eq!(plan_buffer_update(&r, 1, &s, 8, &[], 0), Err(BufferUpdateError::Empty));
-    assert_eq!(plan_buffer_update(&r, 1, &s, 8, &[3..3], 0), Err(BufferUpdateError::Empty));
+    assert_eq!(
+        plan_buffer_update(&r, 1, &s, 8, &[], 0),
+        Err(BufferUpdateError::Empty)
+    );
+    assert_eq!(
+        plan_buffer_update(&r, 1, &s, 8, &[3..3], 0),
+        Err(BufferUpdateError::Empty)
+    );
     assert_eq!(
         plan_buffer_update(&r, 1, &no_dst, 8, &[], 0),
         Err(BufferUpdateError::MissingTransferDst)
@@ -166,7 +215,9 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
     // 句柄校验先于一切。
     assert!(matches!(
         plan_buffer_update(&r, 2, &s, 8, &[0..2], 0),
-        Err(BufferUpdateError::Access(BufferAccessError::DeviceMismatch { .. }))
+        Err(BufferUpdateError::Access(
+            BufferAccessError::DeviceMismatch { .. }
+        ))
     ));
 }
 
@@ -174,7 +225,11 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
 
 #[test]
 fn texture_view_desc_raw_builders() {
-    let d = TextureViewDescRaw::new().format(37).level_count(3).base_layer(2).bind_individual_mips(true);
+    let d = TextureViewDescRaw::new()
+        .format(37)
+        .level_count(3)
+        .base_layer(2)
+        .bind_individual_mips(true);
     assert_eq!(d.format, OptionU32 { tag: 1, value: 37 });
     assert_eq!(d.level_count, OptionU32 { tag: 1, value: 3 });
     assert_eq!(d.view_type.get(), None);
@@ -204,10 +259,24 @@ fn desc_builders_follow_machine_code() {
     let up = e.div_up_extent_by([8, 8, 1]);
     assert_eq!((up.width, up.height, up.depth), (3, 1, 1));
     let dn = e.div_extent_by([8, 8, 2]);
-    assert_eq!((dn.width, dn.height, dn.depth), (2, 1, 1), "floor(3/8)=0 → 1，floor(1/2)=0 → 1");
+    assert_eq!(
+        (dn.width, dn.height, dn.depth),
+        (2, 1, 1),
+        "floor(3/8)=0 → 1，floor(1/2)=0 → 1"
+    );
     // 0x140bd54a0：max(bitlen(w), bitlen(h), bitlen(depth))。
-    assert_eq!(TextureDesc::new_3d(4, 4, 64, vk::Format::R8_UNORM).all_mip_levels().mip_levels, 7);
-    assert_eq!(TextureDesc::new_2d(1024, 512, vk::Format::R8_UNORM).all_mip_levels().mip_levels, 11);
+    assert_eq!(
+        TextureDesc::new_3d(4, 4, 64, vk::Format::R8_UNORM)
+            .all_mip_levels()
+            .mip_levels,
+        7
+    );
+    assert_eq!(
+        TextureDesc::new_2d(1024, 512, vk::Format::R8_UNORM)
+            .all_mip_levels()
+            .mip_levels,
+        11
+    );
     // 0x140bd5540：只有 kind ∈ {1,3,6} 可以 array_elements > 1（掩码 0x4a）。
     for k in 0..7u8 {
         let kind = TextureKind::from_raw(k).unwrap();
@@ -226,23 +295,64 @@ fn image_create_info_follows_0x140bd5ed0() {
     let f = vk::Format::R8G8B8A8_UNORM;
     // initialLayout = has_data << 3（PREINITIALIZED = 8）。
     let d2 = TextureDesc::new_2d(16, 8, f).sampled();
-    assert_eq!(get_image_create_info_with_data(&d2, false).initial_layout, vk::ImageLayout::UNDEFINED);
-    assert_eq!(get_image_create_info_with_data(&d2, true).initial_layout.as_raw(), 8);
+    assert_eq!(
+        get_image_create_info_with_data(&d2, false).initial_layout,
+        vk::ImageLayout::UNDEFINED
+    );
+    assert_eq!(
+        get_image_create_info_with_data(&d2, true)
+            .initial_layout
+            .as_raw(),
+        8
+    );
     // extent 随 kind：1D → (w,1,1)；2D → (w,h,1)；3D → (w,h,d)。
-    let d1 = TextureDesc::new(vk::Extent3D { width: 9, height: 7, depth: 5 }, TextureKind::D1, f);
+    let d1 = TextureDesc::new(
+        vk::Extent3D {
+            width: 9,
+            height: 7,
+            depth: 5,
+        },
+        TextureKind::D1,
+        f,
+    );
     let e = get_image_create_info_with_data(&d1, false).extent;
     assert_eq!((e.width, e.height, e.depth), (9, 1, 1));
     let e = get_image_create_info_with_data(&d2, false).extent;
     assert_eq!((e.width, e.height, e.depth), (16, 8, 1));
     let d3 = TextureDesc::new_3d(4, 5, 6, f);
     let info3 = get_image_create_info_with_data(&d3, false);
-    assert_eq!((info3.extent.depth, info3.image_type), (6, vk::ImageType::TYPE_3D));
+    assert_eq!(
+        (info3.extent.depth, info3.image_type),
+        (6, vk::ImageType::TYPE_3D)
+    );
     // Cube = 6 层，CubeArray = n*6。
-    let cube = TextureDesc::new(vk::Extent3D { width: 4, height: 4, depth: 1 }, TextureKind::Cube, f);
-    assert_eq!(get_image_create_info_with_data(&cube, false).array_layers, 6);
-    let carr = TextureDesc::new(vk::Extent3D { width: 4, height: 4, depth: 1 }, TextureKind::CubeArray, f)
-        .array_elements(3);
-    assert_eq!(get_image_create_info_with_data(&carr, false).array_layers, 18);
+    let cube = TextureDesc::new(
+        vk::Extent3D {
+            width: 4,
+            height: 4,
+            depth: 1,
+        },
+        TextureKind::Cube,
+        f,
+    );
+    assert_eq!(
+        get_image_create_info_with_data(&cube, false).array_layers,
+        6
+    );
+    let carr = TextureDesc::new(
+        vk::Extent3D {
+            width: 4,
+            height: 4,
+            depth: 1,
+        },
+        TextureKind::CubeArray,
+        f,
+    )
+    .array_elements(3);
+    assert_eq!(
+        get_image_create_info_with_data(&carr, false).array_layers,
+        18
+    );
     // 其余固定字段：tiling OPTIMAL、sharing EXCLUSIVE、sType 14。
     assert_eq!(info3.tiling, vk::ImageTiling::OPTIMAL);
     assert_eq!(info3.sharing_mode, vk::SharingMode::EXCLUSIVE);
@@ -284,7 +394,10 @@ fn create_buffer_initial_data_paths() {
     let gpu = BufferDesc::new_gpu_only(16, vk::BufferUsageFlags::STORAGE_BUFFER);
     let g = gd.create_buffer(&gpu, "gpu", init).unwrap();
     // lavapipe/UMA 的 DEVICE_LOCAL 内存同时 HOST_VISIBLE，所以只断言“有无映射 ⇔ 有无切片”。
-    assert_eq!(gd.buffer_mapped_slice_mut(&g).is_none(), g.slot_view(0).mapped_ptr.is_null());
+    assert_eq!(
+        gd.buffer_mapped_slice_mut(&g).is_none(),
+        g.slot_view(0).mapped_ptr.is_null()
+    );
 }
 
 #[test]
@@ -300,7 +413,10 @@ fn mapped_slice_is_full_length_and_follows_slot_pointer() {
     assert!(out.iter().all(|&v| v == 0x5a));
     let gpu = BufferDesc::new_gpu_only(48, vk::BufferUsageFlags::UNIFORM_BUFFER);
     let g = gd.create_buffer(&gpu, "g", ()).unwrap();
-    assert_eq!(gd.buffer_mapped_slice_mut(&g).is_none(), g.slot_view(0).mapped_ptr.is_null());
+    assert_eq!(
+        gd.buffer_mapped_slice_mut(&g).is_none(),
+        g.slot_view(0).mapped_ptr.is_null()
+    );
 }
 
 #[test]
@@ -334,18 +450,26 @@ fn update_buffer_bytes_requires_transfer_dst_and_always_stages() {
     plain.read_bytes(0, &mut out).unwrap();
     assert_eq!(out, [0u8; 16]);
     // 有 TRANSFER_DST：多区间按 {累计 src, start+offset} 写入；空更新（合计 0）被拒绝。
-    let dst = BufferDesc::new_cpu_to_gpu(16, vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST);
+    let dst = BufferDesc::new_cpu_to_gpu(
+        16,
+        vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+    );
     let b = gd.create_buffer(&dst, "dst", ()).unwrap();
-    gd.update_buffer_bytes(&b, &[1, 2, 3, 4, 5, 6], &[0..2, 4..6], 4).unwrap();
+    gd.update_buffer_bytes(&b, &[1, 2, 3, 4, 5, 6], &[0..2, 4..6], 4)
+        .unwrap();
     b.read_bytes(0, &mut out).unwrap();
     assert_eq!(&out[4..6], &[1, 2]);
     assert_eq!(&out[8..10], &[5, 6]);
     assert!(gd.update_buffer_bytes(&b, &[1], &[], 0).is_err());
     assert!(gd.update_buffer_bytes(&b, &[1], &[0..0], 0).is_err());
     // GpuOnly + TRANSFER_DST 也能更新（暂存路径）。
-    let gpu = BufferDesc::new_gpu_only(16, vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST);
+    let gpu = BufferDesc::new_gpu_only(
+        16,
+        vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+    );
     let g = gd.create_buffer(&gpu, "gpu", ()).unwrap();
-    gd.update_buffer_bytes(&g, &[7, 7, 7, 7], &[0..4], 8).unwrap();
+    gd.update_buffer_bytes(&g, &[7, 7, 7, 7], &[0..4], 8)
+        .unwrap();
 }
 
 #[test]
@@ -355,7 +479,9 @@ fn buffer_device_address_is_forwarded_every_time() {
         64,
         vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS,
     );
-    let Ok(buffer) = gd.create_buffer(&desc, "bda", ()) else { return };
+    let Ok(buffer) = gd.create_buffer(&desc, "bda", ()) else {
+        return;
+    };
     let a = gd.buffer_device_address(&buffer).unwrap();
     assert_ne!(a, 0);
     assert_eq!(a, gd.buffer_device_address(&buffer).unwrap());
@@ -373,7 +499,9 @@ fn create_texture_zeroed_and_sampled_gate() {
     let t = gd.create_texture_zeroed(&desc, "zero").unwrap();
     assert!(t.desc.usage.contains(vk::ImageUsageFlags::TRANSFER_DST));
     // 深度模板走 vkCmdClearDepthStencilImage。
-    let ds = TextureDesc::new_2d(8, 8, vk::Format::D32_SFLOAT).sampled().depth_stencil_attachment();
+    let ds = TextureDesc::new_2d(8, 8, vk::Format::D32_SFLOAT)
+        .sampled()
+        .depth_stencil_attachment();
     gd.create_texture_zeroed(&ds, "ds").unwrap();
     // 没有 SAMPLED 的纹理不能带初始数据（`desc.usage.contains(SAMPLED)` 断言）。
     let storage = TextureDesc::new_2d(4, 4, f).storage();

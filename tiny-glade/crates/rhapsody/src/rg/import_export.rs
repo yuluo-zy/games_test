@@ -188,7 +188,10 @@ mod trait_tests {
 
     #[test]
     fn imported_buffer_is_twenty_bytes_with_the_original_offsets() {
-        assert_eq!(std::mem::size_of::<ImportedBuffer>(), ImportedBuffer::ORIGINAL_BYTES);
+        assert_eq!(
+            std::mem::size_of::<ImportedBuffer>(),
+            ImportedBuffer::ORIGINAL_BYTES
+        );
         let record = crate::raw::buffer::BufferRecord {
             ctx: 1,
             slot: 2,
@@ -223,9 +226,20 @@ mod trait_tests {
         let mut graph = RenderGraph::new();
         let a = tex().import_unowned(&mut graph, "a", 0).unwrap();
         let b = tex().import_owned(&mut graph, "b", 0).unwrap();
-        let sources: Vec<_> = graph.declaration.resources.iter().map(|r| r.source).collect();
-        assert!(matches!(sources[a.raw() as usize], OriginSource::ImportUnowned { token: 41, .. }));
-        assert!(matches!(sources[b.raw() as usize], OriginSource::ImportOwned { token: 41, .. }));
+        let sources: Vec<_> = graph
+            .declaration
+            .resources
+            .iter()
+            .map(|r| r.source)
+            .collect();
+        assert!(matches!(
+            sources[a.raw() as usize],
+            OriginSource::ImportUnowned { token: 41, .. }
+        ));
+        assert!(matches!(
+            sources[b.raw() as usize],
+            OriginSource::ImportOwned { token: 41, .. }
+        ));
     }
 
     #[test]

@@ -63,7 +63,7 @@ pub struct SubmissionInput {
     pub current: Batch,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct PreparedSubmit {
     pub wait_semaphores: Vec<vk::Semaphore>,
     pub wait_stages: Vec<vk::PipelineStageFlags>,
@@ -153,6 +153,7 @@ impl PreparedSubmit {
 
 #[derive(Clone, Debug, Default)]
 pub struct Outcome {
+    pub backend_error: i32,
     pub panic: Option<&'static str>,
     pub receipt: Option<(QueueId, u64)>,
     pub prepared: Vec<PreparedSubmit>,
@@ -228,24 +229,16 @@ impl DeviceState {
             });
         }
         batches.push(input.current);
-        let total = batches.iter().map(|b| b.commands.len() as u64).sum::<u64>();
-        let start = self.next_timeline;
-        self.next_timeline = self.next_timeline.wrapping_add(total);
-        let end = self.next_timeline;
+        let value = self.next_timeline;
+        let Some(next) = value.checked_add(1) else {
+            out.panic = Some("timeline-overflow");
+            return out;
+        };
         let Some(queue) = self.selected(id) else {
             out.panic = Some("queue-index");
             return out;
         };
-        queue.pending_timelines.extend(start..end);
-        out.events.push("register-range");
-        self.oldest_pending = std::iter::once(&self.primary)
-            .chain(&self.auxiliary)
-            .filter_map(|q| q.pending_timelines.front().copied())
-            .min();
-        // 事件 0xd：`(u32)dev+0x7f8 - (u32)最旧待完成值`（0x140c04e20 @ 0x140c059xx）。
-        out.in_flight = Some((end as u32).wrapping_sub(self.oldest_pending.unwrap_or(0) as u32));
-        let queue = self.selected(id).expect("selected above");
-        let mut value = start;
+        let mut pending = Vec::new();
         for mut batch in batches {
             let mut handles = Vec::new();
             for mut command in std::mem::take(&mut batch.commands) {
@@ -257,15 +250,12 @@ impl DeviceState {
                     out.panic = Some("queue-identity");
                     return out;
                 }
-                batch.signal_semaphores.push(queue.timeline_semaphore);
-                batch.signal_values.push(value);
                 handles.push(command.handle);
                 command.state = 3;
-                queue.pending_commands.push_back(PendingCommand {
+                pending.push(PendingCommand {
                     command,
                     timeline: value,
                 });
-                value = value.wrapping_add(1);
             }
             out.prepared.push(PreparedSubmit {
                 wait_semaphores: batch.wait_semaphores,
@@ -276,22 +266,27 @@ impl DeviceState {
                 commands: handles,
             });
         }
+        // 一个提交只 signal 一次队列时间线；全部命令共用这个完成点。
+        let last = out.prepared.last_mut().expect("current 批次总会存在");
+        last.signal_semaphores.push(queue.timeline_semaphore);
+        last.signal_values.push(value);
         out.backend_queue = Some(queue.handle);
-        out.events.push("backend");
-        let (error, converted_success) = backend(queue.handle, &out.prepared);
+        let (error, _) = backend(queue.handle, &out.prepared);
+        out.backend_error = error;
         if error != 0 {
-            out.events.push("convert-error");
-            if !converted_success {
-                out.panic = Some("backend-error");
-                return out;
-            }
-        }
-        out.events.push("post-submit");
-        if value == 0 {
-            out.panic = Some("zero-receipt");
+            out.panic = Some("backend-error");
             return out;
         }
-        out.receipt = Some((id, value - 1));
+        // Vulkan 成功后才登记；失败不会留下永远无法完成的 pending 项。
+        queue.pending_commands.extend(pending);
+        queue.pending_timelines.push_back(value);
+        self.next_timeline = next;
+        self.oldest_pending = std::iter::once(&self.primary)
+            .chain(&self.auxiliary)
+            .filter_map(|q| q.pending_timelines.front().copied())
+            .min();
+        out.in_flight = Some((next - self.oldest_pending.unwrap_or(next)) as u32);
+        out.receipt = Some((id, value));
         out.outer_lock_at_stop = false;
         out
     }
@@ -322,8 +317,9 @@ pub struct SetupCommandSlot {
 /// `srcStage = dstStage = ALL_COMMANDS(0x10000)`，`VkMemoryBarrier(sType=0x2e){src = dst = 0x18000 = MEMORY_READ|MEMORY_WRITE}`，
 /// `dependencyFlags = 0`（0x140bf84e0）。
 pub const SETUP_BARRIER_STAGE: vk::PipelineStageFlags = vk::PipelineStageFlags::ALL_COMMANDS;
-pub const SETUP_BARRIER_ACCESS: vk::AccessFlags =
-    vk::AccessFlags::from_raw(vk::AccessFlags::MEMORY_READ.as_raw() | vk::AccessFlags::MEMORY_WRITE.as_raw());
+pub const SETUP_BARRIER_ACCESS: vk::AccessFlags = vk::AccessFlags::from_raw(
+    vk::AccessFlags::MEMORY_READ.as_raw() | vk::AccessFlags::MEMORY_WRITE.as_raw(),
+);
 /// 槽中命令缓冲的调试名（0x142b18788，8 字节）。
 pub const SETUP_CB_NAME: &str = "setup cb";
 /// `+0x9f8` 空槽标记。
@@ -369,7 +365,9 @@ impl SetupCommandSlot {
         };
         record_barrier(command.handle);
         if command.state != 1 {
-            return Err(SetupTakeError::Unreachable { state: command.state });
+            return Err(SetupTakeError::Unreachable {
+                state: command.state,
+            });
         }
         let code = end(command.handle);
         if code != 0 {
@@ -428,7 +426,11 @@ impl SubmissionEngine {
     pub fn new(state: DeviceState) -> Self {
         let completed = vec![0; 1 + state.auxiliary.len()];
         let retire = vec![super::graveyard::InOrderRetire::new(); 1 + state.auxiliary.len()];
-        Self { state, completed, retire }
+        Self {
+            state,
+            completed,
+            retire,
+        }
     }
     pub fn queue(&self, id: QueueId) -> Option<&QueueState> {
         if id.tag == 0 {
@@ -445,7 +447,11 @@ impl SubmissionEngine {
         }
     }
     fn slot(id: QueueId) -> usize {
-        if id.tag == 0 { 0 } else { 1 + id.index as usize }
+        if id.tag == 0 {
+            0
+        } else {
+            1 + id.index as usize
+        }
     }
     fn sync_completed_len(&mut self) {
         let want = 1 + self.state.auxiliary.len();
@@ -453,7 +459,8 @@ impl SubmissionEngine {
             self.completed.resize(want, 0);
         }
         if self.retire.len() < want {
-            self.retire.resize(want, super::graveyard::InOrderRetire::new());
+            self.retire
+                .resize(want, super::graveyard::InOrderRetire::new());
         }
     }
     /// 队列 `+0x80`：最近一次读到的完成计数。
@@ -470,7 +477,9 @@ impl SubmissionEngine {
     pub fn update_pending_submissions(&mut self, id: QueueId, counter: u64) {
         self.sync_completed_len();
         let slot = Self::slot(id);
-        let Some(queue) = self.queue_mut(id) else { return };
+        let Some(queue) = self.queue_mut(id) else {
+            return;
+        };
         // 队首弹出：遇到第一个 `counter < 值` 就停。
         while let Some(&front) = queue.pending_timelines.front() {
             if counter < front {
@@ -491,7 +500,13 @@ impl SubmissionEngine {
         self.update_pending_submissions(QueueId { tag: 0, index: 0 }, primary);
         for index in 0..self.state.auxiliary.len() {
             let counter = counter_of(&self.state.auxiliary[index]);
-            self.update_pending_submissions(QueueId { tag: 1, index: index as u32 }, counter);
+            self.update_pending_submissions(
+                QueueId {
+                    tag: 1,
+                    index: index as u32,
+                },
+                counter,
+            );
         }
     }
     /// 以显式完成计数推进所有队列（兼容旧入口；`completed` 同时作为每个队列的计数）。
@@ -560,7 +575,10 @@ impl SubmissionEngine {
         for seq in sequences {
             retired_sequences.extend(self.retire[slot].retire(seq));
         }
-        ReclaimOutcome { handles, retired_sequences }
+        ReclaimOutcome {
+            handles,
+            retired_sequences,
+        }
     }
     /// 整条 `queue_submit`（0x140c04e20）：先 `update_queue_pending_submissions`（0x1418c3300，推进所有队列完成值，
     /// 发生在时间线分配之前），再 CPU 部分提交，成功后做尾部回收（`FUN_140bf0cc0`，仅对本次提交的队列）。
@@ -574,7 +592,9 @@ impl SubmissionEngine {
         backend: impl FnMut(vk::Queue, &[PreparedSubmit]) -> (i32, bool),
     ) -> (Outcome, ReclaimOutcome) {
         self.update_queue_pending_submissions_with(counter_of);
-        let out = self.state.queue_submit_with_setup(id, setup, input, backend);
+        let out = self
+            .state
+            .queue_submit_with_setup(id, setup, input, backend);
         if out.panic.is_some() {
             return (out, ReclaimOutcome::default());
         }
@@ -593,7 +613,10 @@ impl SubmissionEngine {
         }
         let mut reclaimed = self.reclaim_queue(QueueId { tag: 0, index: 0 });
         for index in 0..self.state.auxiliary.len() {
-            reclaimed.extend(self.reclaim_queue(QueueId { tag: 1, index: index as u32 }));
+            reclaimed.extend(self.reclaim_queue(QueueId {
+                tag: 1,
+                index: index as u32,
+            }));
         }
         reclaimed
     }

@@ -147,7 +147,10 @@ mod original_panic_tests {
 
     #[test]
     fn extent_comes_from_the_common_attachment_size() {
-        assert_eq!(extent_from_attachment_sizes(&[(64, 32), (64, 32)]), (64, 32));
+        assert_eq!(
+            extent_from_attachment_sizes(&[(64, 32), (64, 32)]),
+            (64, 32)
+        );
     }
 
     #[test]
@@ -164,7 +167,10 @@ mod original_panic_tests {
 
     #[test]
     fn result_form_reports_invalid_usage() {
-        assert_eq!(try_extent_from_attachment_sizes(&[(8, 4), (8, 4)]).unwrap(), (8, 4));
+        assert_eq!(
+            try_extent_from_attachment_sizes(&[(8, 4), (8, 4)]).unwrap(),
+            (8, 4)
+        );
         for bad in [&[][..], &[(8, 4), (8, 5)]] {
             let error = try_extent_from_attachment_sizes(bad).unwrap_err();
             assert_eq!(error.kind(), crate::error::ErrorKind::InvalidUsage);

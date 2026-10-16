@@ -7,14 +7,16 @@ use rhapsody::raw::{
     setup::TextureInitialData,
     texture::TextureDesc,
     texture_upload::{
-        linear_regions, per_mip_regions, plan_texture_copies, MipChainIter, MipLevelItem,
-        TextureUpdateRegion,
+        MipChainIter, MipLevelItem, TextureUpdateRegion, linear_regions, per_mip_regions,
+        plan_texture_copies,
     },
 };
 use std::sync::Arc;
 
 fn device() -> Option<Arc<GraphicsDevice>> {
-    create_headless_device().ok().map(GraphicsDevice::from_device)
+    create_headless_device()
+        .ok()
+        .map(GraphicsDevice::from_device)
 }
 
 // ---------------------------------------------------------------- MipChainIter / 区域生成（纯函数）
@@ -22,26 +24,43 @@ fn device() -> Option<Arc<GraphicsDevice>> {
 #[test]
 fn mip_chain_halves_until_one_by_one_and_stops_early() {
     // 8x4x1 RGBA8：8x4, 4x2, 2x1, 1x1。mip_levels 给大了也只产出到 1x1x1。
-    let chain: Vec<MipLevelItem> =
-        MipChainIter::new([8, 4, 1], 10, 4, [1, 1]).unwrap().collect();
+    let chain: Vec<MipLevelItem> = MipChainIter::new([8, 4, 1], 10, 4, [1, 1])
+        .unwrap()
+        .collect();
     let dims: Vec<[u32; 3]> = chain.iter().map(|i| i.extent).collect();
     assert_eq!(dims, [[8, 4, 1], [4, 2, 1], [2, 1, 1], [1, 1, 1]]);
-    assert_eq!(chain.iter().map(|i| i.size).collect::<Vec<_>>(), [128, 32, 8, 4]);
-    assert_eq!(chain.iter().map(|i| i.mip_level).collect::<Vec<_>>(), [0, 1, 2, 3]);
+    assert_eq!(
+        chain.iter().map(|i| i.size).collect::<Vec<_>>(),
+        [128, 32, 8, 4]
+    );
+    assert_eq!(
+        chain.iter().map(|i| i.mip_level).collect::<Vec<_>>(),
+        [0, 1, 2, 3]
+    );
     // mip_levels 限制。
-    assert_eq!(MipChainIter::new([8, 4, 1], 2, 4, [1, 1]).unwrap().count(), 2);
-    assert_eq!(MipChainIter::new([8, 4, 1], 0, 4, [1, 1]).unwrap().count(), 0);
+    assert_eq!(
+        MipChainIter::new([8, 4, 1], 2, 4, [1, 1]).unwrap().count(),
+        2
+    );
+    assert_eq!(
+        MipChainIter::new([8, 4, 1], 0, 4, [1, 1]).unwrap().count(),
+        0
+    );
     // 3D：深度同样减半。
-    let d: Vec<[u32; 3]> =
-        MipChainIter::new([4, 4, 4], 8, 1, [1, 1]).unwrap().map(|i| i.extent).collect();
+    let d: Vec<[u32; 3]> = MipChainIter::new([4, 4, 4], 8, 1, [1, 1])
+        .unwrap()
+        .map(|i| i.extent)
+        .collect();
     assert_eq!(d, [[4, 4, 4], [2, 2, 2], [1, 1, 1]]);
 }
 
 #[test]
 fn mip_chain_block_compressed_sizes_round_up_to_blocks() {
     // BC1 16x8：4x2 块 * 8B = 64；8x4 → 2x1 块 = 16；4x2 → 1 块 = 8；2x1 / 1x1 各 1 块 = 8。
-    let sizes: Vec<u64> =
-        MipChainIter::new([16, 8, 1], 5, 8, [4, 4]).unwrap().map(|i| i.size).collect();
+    let sizes: Vec<u64> = MipChainIter::new([16, 8, 1], 5, 8, [4, 4])
+        .unwrap()
+        .map(|i| i.size)
+        .collect();
     assert_eq!(sizes, [64, 16, 8, 8, 8]);
 }
 
@@ -77,15 +96,21 @@ fn linear_regions_reject_wrong_data_sizes() {
     let ok = vec![0u8; 40];
     assert!(linear_regions(&ok, [4, 2, 1], 2, 1, 4, [1, 1]).is_ok());
     // 少一个字节：underflow。
-    let err = linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().kind();
+    let err = linear_regions(&ok[..39], [4, 2, 1], 2, 1, 4, [1, 1])
+        .unwrap_err()
+        .kind();
     assert_eq!(err, rhapsody::ErrorKind::InvalidUsage);
     // 多一个字节：断言文案。
     let long = vec![0u8; 41];
-    let err = linear_regions(&long, [4, 2, 1], 2, 1, 4, [1, 1]).unwrap_err().kind();
+    let err = linear_regions(&long, [4, 2, 1], 2, 1, 4, [1, 1])
+        .unwrap_err()
+        .kind();
     assert_eq!(err, rhapsody::ErrorKind::InvalidUsage);
     // 空数据。
     assert_eq!(
-        linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1]).unwrap_err().kind(),
+        linear_regions(&[], [4, 2, 1], 1, 1, 4, [1, 1])
+            .unwrap_err()
+            .kind(),
         rhapsody::ErrorKind::InvalidUsage
     );
     // array_elements >= 0x10000、bytes_per_block >= 0x100 都是 unwrap 失败。
@@ -105,8 +130,14 @@ fn per_mip_regions_require_matching_slice_count_and_zip_with_chain() {
     let slices: [&[u8]; 3] = [&a, &b, &c];
     let r = per_mip_regions(&slices, [4, 2, 1], 3, |_| None).unwrap();
     assert_eq!(
-        r.iter().map(|r| (r.mip_level, r.extent, r.array_layer, r.data.len())).collect::<Vec<_>>(),
-        [(0, [4, 2, 1], 0, 32), (1, [2, 1, 1], 0, 8), (2, [1, 1, 1], 0, 4)]
+        r.iter()
+            .map(|r| (r.mip_level, r.extent, r.array_layer, r.data.len()))
+            .collect::<Vec<_>>(),
+        [
+            (0, [4, 2, 1], 0, 32),
+            (1, [2, 1, 1], 0, 8),
+            (2, [1, 1, 1], 0, 4)
+        ]
     );
     assert!(per_mip_regions(&slices[..2], [4, 2, 1], 3, |_| None).is_err());
     // 额外的最小长度校验（有意偏差）。
@@ -118,8 +149,18 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     let a = [0u8; 16];
     let b = [0u8; 8];
     let regions = [
-        TextureUpdateRegion { data: &a, extent: [4, 4, 1], mip_level: 0, array_layer: 1 },
-        TextureUpdateRegion { data: &b, extent: [2, 2, 1], mip_level: 1, array_layer: 1 },
+        TextureUpdateRegion {
+            data: &a,
+            extent: [4, 4, 1],
+            mip_level: 0,
+            array_layer: 1,
+        },
+        TextureUpdateRegion {
+            data: &b,
+            extent: [2, 2, 1],
+            mip_level: 1,
+            array_layer: 1,
+        },
     ];
     let plan = plan_texture_copies(&regions, 8, vk::ImageAspectFlags::COLOR).unwrap();
     assert_eq!(plan.total, 24);
@@ -127,7 +168,10 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     assert_eq!(plan.copies[1].buffer_offset, 16);
     for c in &plan.copies {
         assert_eq!((c.buffer_row_length, c.buffer_image_height), (0, 0));
-        assert_eq!((c.image_offset.x, c.image_offset.y, c.image_offset.z), (0, 0, 0));
+        assert_eq!(
+            (c.image_offset.x, c.image_offset.y, c.image_offset.z),
+            (0, 0, 0)
+        );
         assert_eq!(c.image_subresource.layer_count, 1);
         assert_eq!(c.image_subresource.base_array_layer, 1);
     }
@@ -137,9 +181,16 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     assert!(plan_texture_copies(&regions, 16, vk::ImageAspectFlags::COLOR).is_ok());
     assert!(plan_texture_copies(&regions, 32, vk::ImageAspectFlags::COLOR).is_err());
     // 总长 0：`assert!(size > 0)`。
-    let empty = [TextureUpdateRegion { data: &[], extent: [1, 1, 1], mip_level: 0, array_layer: 0 }];
+    let empty = [TextureUpdateRegion {
+        data: &[],
+        extent: [1, 1, 1],
+        mip_level: 0,
+        array_layer: 0,
+    }];
     assert_eq!(
-        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR).unwrap_err().kind(),
+        plan_texture_copies(&empty, 1, vk::ImageAspectFlags::COLOR)
+            .unwrap_err()
+            .kind(),
         rhapsody::ErrorKind::InvalidUsage
     );
 }
@@ -190,7 +241,11 @@ fn read_back(
                 base_array_layer: layer,
                 layer_count: 1,
             })
-            .image_extent(vk::Extent3D { width: extent[0], height: extent[1], depth: extent[2] })];
+            .image_extent(vk::Extent3D {
+                width: extent[0],
+                height: extent[1],
+                depth: extent[2],
+            })];
         device.cmd_copy_image_to_buffer(
             cb,
             texture.handle,
@@ -222,7 +277,9 @@ fn read_back(
 }
 
 fn pattern(len: usize, seed: u8) -> Vec<u8> {
-    (0..len).map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed)).collect()
+    (0..len)
+        .map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed))
+        .collect()
 }
 
 fn readable() -> vk::ImageUsageFlags {
@@ -234,7 +291,9 @@ fn gpu_multi_mip_multi_layer_linear_upload_reads_back_exactly() {
     let Some(gd) = device() else { return };
     let f = vk::Format::R8G8B8A8_UNORM;
     // 8x4 RGBA8，3 个 mip（8x4, 4x2, 2x1），4 层。
-    let desc = TextureDesc::new_2d_array(8, 4, 4, f).mip_levels(3).usage(readable());
+    let desc = TextureDesc::new_2d_array(8, 4, 4, f)
+        .mip_levels(3)
+        .usage(readable());
     let mips: [([u32; 3], usize); 3] = [([8, 4, 1], 128), ([4, 2, 1], 32), ([2, 1, 1], 8)];
     let mut data = Vec::new();
     let mut expect = Vec::new();
@@ -264,7 +323,10 @@ fn gpu_create_texture_with_plain_slice_is_linear_and_rejects_wrong_sizes() {
     assert_eq!(read_back(&gd, &t, 1, 0, [2, 2, 1], 16), full[64..80]);
     assert_eq!(read_back(&gd, &t, 2, 0, [1, 1, 1], 4), full[80..84]);
     assert!(gd.create_texture(&desc, "short", &full[..83]).is_err());
-    assert!(gd.create_texture(&desc, "long", &pattern(85, 0)[..]).is_err());
+    assert!(
+        gd.create_texture(&desc, "long", &pattern(85, 0)[..])
+            .is_err()
+    );
 }
 
 #[test]
@@ -273,24 +335,39 @@ fn gpu_per_mip_slices_upload_reads_back_exactly() {
     let f = vk::Format::R8G8B8A8_UNORM;
     let desc = TextureDesc::new_2d(8, 8, f).mip_levels(4).usage(readable());
     let sizes = [256usize, 64, 16, 4];
-    let chunks: Vec<Vec<u8>> = sizes.iter().enumerate().map(|(i, &n)| pattern(n, 40 + i as u8)).collect();
+    let chunks: Vec<Vec<u8>> = sizes
+        .iter()
+        .enumerate()
+        .map(|(i, &n)| pattern(n, 40 + i as u8))
+        .collect();
     let slices: Vec<&[u8]> = chunks.iter().map(Vec::as_slice).collect();
     let t = gd
         .create_texture_with_data(&desc, "permip", TextureInitialData::PerMip(&slices))
         .unwrap();
     let dims = [[8, 8, 1], [4, 4, 1], [2, 2, 1], [1, 1, 1]];
     for (mip, (extent, chunk)) in dims.iter().zip(&chunks).enumerate() {
-        assert_eq!(read_back(&gd, &t, mip as u32, 0, *extent, chunk.len() as u64), *chunk, "mip {mip}");
+        assert_eq!(
+            read_back(&gd, &t, mip as u32, 0, *extent, chunk.len() as u64),
+            *chunk,
+            "mip {mip}"
+        );
     }
     // 切片数必须等于 mip_levels。
-    assert!(gd
-        .create_texture_with_data(&desc, "bad", TextureInitialData::PerMip(&slices[..3]))
-        .is_err());
+    assert!(
+        gd.create_texture_with_data(&desc, "bad", TextureInitialData::PerMip(&slices[..3]))
+            .is_err()
+    );
     // 过短切片被拒绝（有意偏差）。
-    let short = [&chunks[0][..255], &chunks[1][..], &chunks[2][..], &chunks[3][..]];
-    assert!(gd
-        .create_texture_with_data(&desc, "short", TextureInitialData::PerMip(&short))
-        .is_err());
+    let short = [
+        &chunks[0][..255],
+        &chunks[1][..],
+        &chunks[2][..],
+        &chunks[3][..],
+    ];
+    assert!(
+        gd.create_texture_with_data(&desc, "short", TextureInitialData::PerMip(&short))
+            .is_err()
+    );
 }
 
 #[test]
@@ -302,9 +379,10 @@ fn gpu_per_mip_rejects_block_compressed_formats() {
     }
     let data = vec![0u8; 32];
     let slices: [&[u8]; 1] = [&data];
-    assert!(gd
-        .create_texture_with_data(&desc, "bc-permip", TextureInitialData::PerMip(&slices))
-        .is_err());
+    assert!(
+        gd.create_texture_with_data(&desc, "bc-permip", TextureInitialData::PerMip(&slices))
+            .is_err()
+    );
 }
 
 #[test]
@@ -316,7 +394,9 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
         (vk::Format::BC3_UNORM_BLOCK, 16),
         (vk::Format::BC7_UNORM_BLOCK, 16),
     ] {
-        let desc = TextureDesc::new_2d(16, 8, format).mip_levels(3).usage(readable());
+        let desc = TextureDesc::new_2d(16, 8, format)
+            .mip_levels(3)
+            .usage(readable());
         if gd.create_texture(&desc, "probe", ()).is_err() {
             eprintln!("跳过 {format:?}：设备不支持");
             continue; // 设备不支持该 BC 格式：跳过。
@@ -324,8 +404,11 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
         // 16x8：4x2 块；8x4：2x1 块；4x2：1 块。
         let blocks = [8usize, 2, 1];
         let extents = [[16, 8, 1], [8, 4, 1], [4, 2, 1]];
-        let chunks: Vec<Vec<u8>> =
-            blocks.iter().enumerate().map(|(i, &b)| pattern(b * block_bytes, 90 + i as u8)).collect();
+        let chunks: Vec<Vec<u8>> = blocks
+            .iter()
+            .enumerate()
+            .map(|(i, &b)| pattern(b * block_bytes, 90 + i as u8))
+            .collect();
         let data: Vec<u8> = chunks.concat();
         eprintln!("BC 读回：{format:?}");
         let t = gd
@@ -342,14 +425,21 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
 fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     let Some(gd) = device() else { return };
     let f = vk::Format::R8G8B8A8_UNORM;
-    let desc = TextureDesc::new_2d_array(4, 4, 2, f).mip_levels(2).usage(readable());
+    let desc = TextureDesc::new_2d_array(4, 4, 2, f)
+        .mip_levels(2)
+        .usage(readable());
     let base = pattern(2 * (64 + 16), 1);
     let t = gd.create_texture(&desc, "upd", &base[..]).unwrap();
     let patch = pattern(16, 200);
     rhapsody::raw::setup::update_texture_regions(
         &gd.inner,
         &t,
-        &[TextureUpdateRegion { data: &patch, extent: [2, 2, 1], mip_level: 1, array_layer: 1 }],
+        &[TextureUpdateRegion {
+            data: &patch,
+            extent: [2, 2, 1],
+            mip_level: 1,
+            array_layer: 1,
+        }],
     )
     .unwrap();
     // 被更新的（mip 1, layer 1）变成补丁，其余保持原值。

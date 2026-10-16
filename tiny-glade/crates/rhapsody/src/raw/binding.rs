@@ -151,6 +151,14 @@ pub unsafe fn bind_persistent_descriptor_set_single(
     set: vk::DescriptorSet,
 ) {
     unsafe {
-        bind_persistent_descriptor_set(device, command_buffer, point, layout, first_set, &[set], &[])
+        bind_persistent_descriptor_set(
+            device,
+            command_buffer,
+            point,
+            layout,
+            first_set,
+            &[set],
+            &[],
+        )
     }
 }

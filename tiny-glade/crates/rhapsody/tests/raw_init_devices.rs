@@ -1,15 +1,14 @@
 //! raw-init 域：设备排序 / 内存门槛 / missing_devices / 预算快照 / 厂商句柄匹配。
 use ash::vk;
 use rhapsody::raw::init::{
-    AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics,
-    DxgiAdapter, GraphicsInstance, MissingGraphicsDevice, MissingVendor,
-    meets_original_memory_threshold, missing_devices, order_and_filter_devices_original,
-    sort_devices_original,
+    AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics, DxgiAdapter, GraphicsInstance,
+    MissingGraphicsDevice, MissingVendor, meets_original_memory_threshold, missing_devices,
+    order_and_filter_devices_original, sort_devices_original,
 };
 use rhapsody::raw::physical_device::{
-    DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget,
-    MAX_MEMORY_HEAPS, MemoryBudgetSnapshot, PerformanceInfo, VendorDeviceEntry,
-    VendorPerformanceQueries, format_vendor_performance_info, match_vendor_device_handle,
+    DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget, MAX_MEMORY_HEAPS,
+    MemoryBudgetSnapshot, PerformanceInfo, VendorDeviceEntry, VendorPerformanceQueries,
+    format_vendor_performance_info, match_vendor_device_handle,
 };
 
 const GIB: u64 = 1 << 30;
@@ -106,14 +105,30 @@ fn equal_keys_keep_enumeration_order_for_both_sort_paths() {
 fn memory_threshold_edges() {
     use GraphicsDeviceKind::*;
     // Discrete（类别字节 0）：local>=1e9 且 host>=4e8。
-    assert!(meets_original_memory_threshold(Discrete, 1_000_000_000, 400_000_000));
-    assert!(!meets_original_memory_threshold(Discrete, 999_999_999, 400_000_000));
-    assert!(!meets_original_memory_threshold(Discrete, 1_000_000_000, 399_999_999));
+    assert!(meets_original_memory_threshold(
+        Discrete,
+        1_000_000_000,
+        400_000_000
+    ));
+    assert!(!meets_original_memory_threshold(
+        Discrete,
+        999_999_999,
+        400_000_000
+    ));
+    assert!(!meets_original_memory_threshold(
+        Discrete,
+        1_000_000_000,
+        399_999_999
+    ));
     // 其余类别：local+host>=1.4e9，host 不单独要求。
     for kind in [Integrated, Virtual, Cpu, Other] {
         assert!(meets_original_memory_threshold(kind, 1_400_000_000, 0));
         assert!(!meets_original_memory_threshold(kind, 1_399_999_999, 0));
-        assert!(meets_original_memory_threshold(kind, 1_000_000_000, 400_000_000));
+        assert!(meets_original_memory_threshold(
+            kind,
+            1_000_000_000,
+            400_000_000
+        ));
     }
 }
 
@@ -131,7 +146,10 @@ fn original_filter_drops_by_memory_only_and_records_insufficient_memory() {
         vendor: MissingVendor::Nvidia,
     }];
     order_and_filter_devices_original(&mut devices, &mut missing);
-    assert_eq!(devices.iter().map(|d| d.index).collect::<Vec<_>>(), vec![1, 2]);
+    assert_eq!(
+        devices.iter().map(|d| d.index).collect::<Vec<_>>(),
+        vec![1, 2]
+    );
     assert_eq!(missing.len(), 2);
     match &missing[1] {
         MissingGraphicsDevice::InsufficientMemory(d) => assert_eq!(d.index, 0),
@@ -147,22 +165,56 @@ fn missing_devices_matches_by_luid_or_name_and_only_for_amd_nvidia() {
     let b = device(1, "AMD Radeon RX 7900", Discrete, 24 * GIB, 24 * GIB);
     let adapters = vec![
         // LUID 命中
-        DxgiAdapter { name: "renamed".into(), luid: 0xAAAA, vendor_id: 0x10de, device_id: 1 },
+        DxgiAdapter {
+            name: "renamed".into(),
+            luid: 0xAAAA,
+            vendor_id: 0x10de,
+            device_id: 1,
+        },
         // 名字相同命中（LUID 不同）
-        DxgiAdapter { name: "AMD Radeon RX 7900".into(), luid: 0xBBBB, vendor_id: 0x1002, device_id: 2 },
+        DxgiAdapter {
+            name: "AMD Radeon RX 7900".into(),
+            luid: 0xBBBB,
+            vendor_id: 0x1002,
+            device_id: 2,
+        },
         // 缺失的 NVIDIA / AMD
-        DxgiAdapter { name: "Quadro".into(), luid: 0xCCCC, vendor_id: 0x10de, device_id: 3 },
-        DxgiAdapter { name: "Radeon Pro".into(), luid: 0xDDDD, vendor_id: 0x1002, device_id: 4 },
+        DxgiAdapter {
+            name: "Quadro".into(),
+            luid: 0xCCCC,
+            vendor_id: 0x10de,
+            device_id: 3,
+        },
+        DxgiAdapter {
+            name: "Radeon Pro".into(),
+            luid: 0xDDDD,
+            vendor_id: 0x1002,
+            device_id: 4,
+        },
         // 其它厂商直接丢弃，即使 Vulkan 里没有
-        DxgiAdapter { name: "Intel Arc".into(), luid: 0xEEEE, vendor_id: 0x8086, device_id: 5 },
+        DxgiAdapter {
+            name: "Intel Arc".into(),
+            luid: 0xEEEE,
+            vendor_id: 0x8086,
+            device_id: 5,
+        },
     ];
     let missing = missing_devices(&[a, b], &adapters);
     assert_eq!(missing.len(), 2);
-    assert!(matches!(&missing[0], MissingGraphicsDevice::NotInVulkan { name, vendor: MissingVendor::Nvidia } if name == "Quadro"));
-    assert!(matches!(&missing[1], MissingGraphicsDevice::NotInVulkan { name, vendor: MissingVendor::Amd } if name == "Radeon Pro"));
+    assert!(
+        matches!(&missing[0], MissingGraphicsDevice::NotInVulkan { name, vendor: MissingVendor::Nvidia } if name == "Quadro")
+    );
+    assert!(
+        matches!(&missing[1], MissingGraphicsDevice::NotInVulkan { name, vendor: MissingVendor::Amd } if name == "Radeon Pro")
+    );
     // luid 为 None 时第一个条件（tag==1）不成立，不会拿 0 去匹配。
     let c = device(2, "x", Discrete, 24 * GIB, 24 * GIB);
-    let zero = vec![DxgiAdapter { name: "other".into(), luid: 0, vendor_id: 0x10de, device_id: 0 }];
+    let zero = vec![DxgiAdapter {
+        name: "other".into(),
+        luid: 0,
+        vendor_id: 0x10de,
+        device_id: 0,
+    }];
     assert_eq!(missing_devices(&[c], &zero).len(), 1);
 }
 
@@ -173,13 +225,20 @@ fn compatibility_uses_heap_sizes_and_the_kind_byte() {
     d.driver = DeviceDriverVersion::from_parts(DriverVendor::Nvidia, [600, 0, 0, 0]);
     assert_eq!(d.is_compatible(), DeviceDecision::Yes);
     d.kind = Integrated;
-    d.original_memory_metrics = Some(DeviceMemoryMetrics { local: 1_000_000_000, host: 399_999_999, shared: true });
+    d.original_memory_metrics = Some(DeviceMemoryMetrics {
+        local: 1_000_000_000,
+        host: 399_999_999,
+        shared: true,
+    });
     assert!(matches!(d.is_compatible(), DeviceDecision::No(_)));
 }
 
 #[test]
 fn budget_snapshot_clamp_and_sums() {
-    let mut old = MemoryBudgetSnapshot { heap_budget: [0; 16], heap_usage: [0; 16] };
+    let mut old = MemoryBudgetSnapshot {
+        heap_budget: [0; 16],
+        heap_usage: [0; 16],
+    };
     let mut new = old;
     for i in 0..MAX_MEMORY_HEAPS {
         old.heap_budget[i] = 800 + i as u64;
@@ -201,12 +260,28 @@ fn budget_snapshot_clamp_and_sums() {
     assert_eq!(MemoryBudgetSnapshot::from_vk(&vk), clamped);
 
     let heaps = [
-        vk::MemoryHeap { size: 1, flags: vk::MemoryHeapFlags::DEVICE_LOCAL },
-        vk::MemoryHeap { size: 1, flags: vk::MemoryHeapFlags::empty() },
-        vk::MemoryHeap { size: 1, flags: vk::MemoryHeapFlags::DEVICE_LOCAL | vk::MemoryHeapFlags::MULTI_INSTANCE },
+        vk::MemoryHeap {
+            size: 1,
+            flags: vk::MemoryHeapFlags::DEVICE_LOCAL,
+        },
+        vk::MemoryHeap {
+            size: 1,
+            flags: vk::MemoryHeapFlags::empty(),
+        },
+        vk::MemoryHeap {
+            size: 1,
+            flags: vk::MemoryHeapFlags::DEVICE_LOCAL | vk::MemoryHeapFlags::MULTI_INSTANCE,
+        },
     ];
     let snap = MemoryBudgetSnapshot {
-        heap_budget: { let mut b = [0; 16]; b[0] = 10; b[1] = 20; b[2] = 30; b[3] = 999; b },
+        heap_budget: {
+            let mut b = [0; 16];
+            b[0] = 10;
+            b[1] = 20;
+            b[2] = 30;
+            b[3] = 999;
+            b
+        },
         heap_usage: [0; 16],
     };
     assert_eq!(snap.sum_budget(&heaps, true), 40);
@@ -216,11 +291,23 @@ fn budget_snapshot_clamp_and_sums() {
 #[test]
 fn vendor_handle_match_is_nvidia_only_and_skips_entries_without_pci_id() {
     let entries = [
-        VendorDeviceEntry { handle: 1, pci_device_id: None },
-        VendorDeviceEntry { handle: 2, pci_device_id: Some(0x2684) },
-        VendorDeviceEntry { handle: 3, pci_device_id: Some(0x2504) },
+        VendorDeviceEntry {
+            handle: 1,
+            pci_device_id: None,
+        },
+        VendorDeviceEntry {
+            handle: 2,
+            pci_device_id: Some(0x2684),
+        },
+        VendorDeviceEntry {
+            handle: 3,
+            pci_device_id: Some(0x2504),
+        },
     ];
-    assert_eq!(match_vendor_device_handle(0x10de, 0x2504, &entries), Some(3));
+    assert_eq!(
+        match_vendor_device_handle(0x10de, 0x2504, &entries),
+        Some(3)
+    );
     assert_eq!(match_vendor_device_handle(0x10de, 0x9999, &entries), None);
     // 非 NVIDIA 一律不查表。
     assert_eq!(match_vendor_device_handle(0x1002, 0x2504, &entries), None);
@@ -242,14 +329,23 @@ fn performance_info_text_follows_the_original_sections() {
         format_vendor_performance_info(Some(&q)),
         "Clocks: c\nUtilization: u\nMemory: m\nSensors: s"
     );
-    assert_eq!(format_vendor_performance_info(Some(&Default::default())), "");
+    assert_eq!(
+        format_vendor_performance_info(Some(&Default::default())),
+        ""
+    );
 }
 
 #[test]
 fn create_by_uuid_selects_that_device_and_panics_when_absent() {
-    let Ok(graphics) = GraphicsInstance::new() else { return };
-    let Ok(surface) = graphics.available_for_surface(None, Default::default()) else { return };
-    let Some(first) = surface.available_devices().into_iter().next() else { return };
+    let Ok(graphics) = GraphicsInstance::new() else {
+        return;
+    };
+    let Ok(surface) = graphics.available_for_surface(None, Default::default()) else {
+        return;
+    };
+    let Some(first) = surface.available_devices().into_iter().next() else {
+        return;
+    };
     // 物化 Vec：克隆而非借用。
     assert_eq!(surface.available_devices().len(), surface.available.len());
     let device = surface
@@ -257,10 +353,17 @@ fn create_by_uuid_selects_that_device_and_panics_when_absent() {
         .expect("按 uuid 选中的设备应能创建");
     drop(device);
     let missing_uuid = [0xEE; 16];
-    if surface.available_devices().iter().all(|d| d.device_uuid != missing_uuid) {
+    if surface
+        .available_devices()
+        .iter()
+        .all(|d| d.device_uuid != missing_uuid)
+    {
         let result = std::panic::catch_unwind(|| {
             let _ = surface.create_device_by_uuid(&graphics, missing_uuid);
         });
-        assert!(result.is_err(), "缺候选必须 panic（原 Option::unwrap on None）");
+        assert!(
+            result.is_err(),
+            "缺候选必须 panic（原 Option::unwrap on None）"
+        );
     }
 }

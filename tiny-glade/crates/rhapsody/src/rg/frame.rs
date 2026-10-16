@@ -67,7 +67,10 @@ pub const EXECUTOR_LAYOUT: ExecutorLayout = ExecutorLayout {
 /// `period_ns_per_tick (f32) as f64 × (end − begin) as f64`，不小于 1e9 → `None`，否则 `Some(v as u64)`（饱和）。
 ///
 /// `timestamps = None` 对应"缓冲当前没有可读映射"（0x140bd4cd0 返回空）→ `None`。
-pub fn last_known_frame_duration_ns(timestamps: Option<&[u64]>, period_ns_per_tick: f32) -> Option<u64> {
+pub fn last_known_frame_duration_ns(
+    timestamps: Option<&[u64]>,
+    period_ns_per_tick: f32,
+) -> Option<u64> {
     let slice = timestamps?;
     assert!(
         slice.len() * 8 >= TIMESTAMP_BUFFER_BYTES as usize,
@@ -93,7 +96,8 @@ pub fn is_slow_submit(elapsed: Duration) -> bool {
 /// 先判 `log` 最大级别 >= 3；文件 `crates/rhapsody/src/rg/executor.rs` 第 598 / 603 行）。
 pub const DEBUG_SYNC_LOG_TARGET: &str = "rhapsody::rg::executor";
 pub const DEBUG_SYNC_WAITING_MESSAGE: &str = "Waiting for the device to be idle...";
-pub const DEBUG_SYNC_HICCUP_MESSAGE: &str = "Device idle wait hiccup detected. Suspicious; waiting more.";
+pub const DEBUG_SYNC_HICCUP_MESSAGE: &str =
+    "Device idle wait hiccup detected. Suspicious; waiting more.";
 /// 慢等待之后额外睡眠：`FUN_140d55980(2, 0)` 是 Windows `std::thread::sleep(Duration::new(2, 0))`
 /// （`CreateWaitableTimerExW` + 100ns 刻度乘数 `0x989680`）。
 pub const DEBUG_SYNC_EXTRA_SLEEP: Duration = Duration::from_secs(2);
@@ -146,7 +150,10 @@ pub enum FrameStage {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FrameOrderError {
-    OutOfOrder { last: Option<FrameStage>, attempted: FrameStage },
+    OutOfOrder {
+        last: Option<FrameStage>,
+        attempted: FrameStage,
+    },
     /// 展示图与 present 只在 acquire 成功后才有。
     NotAcquired(FrameStage),
 }
@@ -176,7 +183,10 @@ impl FrameSequence {
             (None, _) => false,
         };
         if !ok {
-            return Err(FrameOrderError::OutOfOrder { last: self.last, attempted: stage });
+            return Err(FrameOrderError::OutOfOrder {
+                last: self.last,
+                attempted: stage,
+            });
         }
         // 必经阶段不能被跳过：BeginFrame→ExecuteMain→Retire 与 EndFrame 必须出现。
         if let (Some(prev), s) = (self.last, stage) {
@@ -190,7 +200,10 @@ impl FrameSequence {
                 _ => true,
             };
             if !must_follow {
-                return Err(FrameOrderError::OutOfOrder { last: self.last, attempted: stage });
+                return Err(FrameOrderError::OutOfOrder {
+                    last: self.last,
+                    attempted: stage,
+                });
             }
         }
         if matches!(stage, ExecutePresentation | Present) && !self.acquired {
@@ -294,9 +307,18 @@ mod tests {
     #[test]
     fn duration_is_none_over_one_second_and_saturates_below() {
         assert_eq!(last_known_frame_duration_ns(None, 1.0), None);
-        assert_eq!(last_known_frame_duration_ns(Some(&[100, 1100]), 1.0), Some(1000));
-        assert_eq!(last_known_frame_duration_ns(Some(&[0, 2_000_000_000]), 1.0), None);
-        assert_eq!(last_known_frame_duration_ns(Some(&[0, 999_999_999]), 1.0), Some(999_999_999));
+        assert_eq!(
+            last_known_frame_duration_ns(Some(&[100, 1100]), 1.0),
+            Some(1000)
+        );
+        assert_eq!(
+            last_known_frame_duration_ns(Some(&[0, 2_000_000_000]), 1.0),
+            None
+        );
+        assert_eq!(
+            last_known_frame_duration_ns(Some(&[0, 999_999_999]), 1.0),
+            Some(999_999_999)
+        );
         // 周期 0.5 ns/tick
         assert_eq!(last_known_frame_duration_ns(Some(&[10, 30]), 0.5), Some(10));
         // end < begin：u64 回绕得到巨大值 → 超过 1e9 → None
@@ -344,7 +366,10 @@ mod tests {
             f.advance(s).unwrap();
         }
         f.set_acquired(false);
-        assert_eq!(f.advance(ExecutePresentation), Err(FrameOrderError::NotAcquired(ExecutePresentation)));
+        assert_eq!(
+            f.advance(ExecutePresentation),
+            Err(FrameOrderError::NotAcquired(ExecutePresentation))
+        );
         f.advance(EndFrame).unwrap();
         assert!(f.advance(Present).is_err());
     }

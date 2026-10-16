@@ -9,10 +9,10 @@ use rhapsody::raw::{
     gpu_profiler::*,
 };
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{CStr, c_char, c_void},
     sync::{
-        atomic::{AtomicU32, Ordering},
         Arc, Mutex,
+        atomic::{AtomicU32, Ordering},
     },
     time::Duration,
 };
@@ -25,30 +25,102 @@ const PUBLIC_VARIANTS: &[(&str, u8, u32, u32, i32)] = &[
     ("IndexBuffer", 0x03, 0x4, 0x2, 0),
     ("VertexBuffer", 0x04, 0x4, 0x4, 0),
     ("VertexShaderReadUniformBuffer", 0x05, 0x8, 0x20, 0),
-    ("VertexShaderReadSampledImageOrUniformTexelBuffer", 0x06, 0x8, 0x20, 5),
+    (
+        "VertexShaderReadSampledImageOrUniformTexelBuffer",
+        0x06,
+        0x8,
+        0x20,
+        5,
+    ),
     ("VertexShaderReadOther", 0x07, 0x8, 0x20, 1),
-    ("TessellationControlShaderReadUniformBuffer", 0x08, 0x10, 0x8, 0),
-    ("TessellationControlShaderReadSampledImageOrUniformTexelBuffer", 0x09, 0x10, 0x20, 5),
+    (
+        "TessellationControlShaderReadUniformBuffer",
+        0x08,
+        0x10,
+        0x8,
+        0,
+    ),
+    (
+        "TessellationControlShaderReadSampledImageOrUniformTexelBuffer",
+        0x09,
+        0x10,
+        0x20,
+        5,
+    ),
     ("TessellationControlShaderReadOther", 0x0a, 0x10, 0x20, 1),
-    ("TessellationEvaluationShaderReadUniformBuffer", 0x0b, 0x20, 0x8, 0),
-    ("TessellationEvaluationShaderReadSampledImageOrUniformTexelBuffer", 0x0c, 0x20, 0x20, 5),
+    (
+        "TessellationEvaluationShaderReadUniformBuffer",
+        0x0b,
+        0x20,
+        0x8,
+        0,
+    ),
+    (
+        "TessellationEvaluationShaderReadSampledImageOrUniformTexelBuffer",
+        0x0c,
+        0x20,
+        0x20,
+        5,
+    ),
     ("TessellationEvaluationShaderReadOther", 0x0d, 0x20, 0x20, 1),
     ("GeometryShaderReadUniformBuffer", 0x0e, 0x40, 0x8, 0),
-    ("GeometryShaderReadSampledImageOrUniformTexelBuffer", 0x0f, 0x40, 0x20, 5),
+    (
+        "GeometryShaderReadSampledImageOrUniformTexelBuffer",
+        0x0f,
+        0x40,
+        0x20,
+        5,
+    ),
     ("GeometryShaderReadOther", 0x10, 0x40, 0x20, 1),
     ("FragmentShaderReadUniformBuffer", 0x11, 0x80, 0x8, 0),
-    ("FragmentShaderReadSampledImageOrUniformTexelBuffer", 0x12, 0x80, 0x20, 5),
-    ("FragmentShaderReadColorInputAttachment", 0x13, 0x80, 0x10, 5),
-    ("FragmentShaderReadDepthStencilInputAttachment", 0x14, 0x80, 0x10, 4),
+    (
+        "FragmentShaderReadSampledImageOrUniformTexelBuffer",
+        0x12,
+        0x80,
+        0x20,
+        5,
+    ),
+    (
+        "FragmentShaderReadColorInputAttachment",
+        0x13,
+        0x80,
+        0x10,
+        5,
+    ),
+    (
+        "FragmentShaderReadDepthStencilInputAttachment",
+        0x14,
+        0x80,
+        0x10,
+        4,
+    ),
     ("FragmentShaderReadOther", 0x15, 0x80, 0x20, 1),
     ("ColorAttachmentRead", 0x16, 0x400, 0x80, 2),
     ("DepthStencilAttachmentRead", 0x17, 0x300, 0x200, 4),
     ("ComputeShaderReadUniformBuffer", 0x18, 0x800, 0x8, 0),
-    ("ComputeShaderReadSampledImageOrUniformTexelBuffer", 0x19, 0x800, 0x20, 5),
+    (
+        "ComputeShaderReadSampledImageOrUniformTexelBuffer",
+        0x19,
+        0x800,
+        0x20,
+        5,
+    ),
     ("ComputeShaderReadOther", 0x1a, 0x800, 0x20, 1),
     ("AnyShaderReadUniformBuffer", 0x20, 0x10000, 0x8, 0),
-    ("AnyShaderReadUniformBufferOrVertexBuffer", 0x21, 0x10000, 0xc, 0),
-    ("AnyShaderReadSampledImageOrUniformTexelBuffer", 0x22, 0x10000, 0x20, 5),
+    (
+        "AnyShaderReadUniformBufferOrVertexBuffer",
+        0x21,
+        0x10000,
+        0xc,
+        0,
+    ),
+    (
+        "AnyShaderReadSampledImageOrUniformTexelBuffer",
+        0x22,
+        0x10000,
+        0x20,
+        5,
+    ),
     ("AnyShaderReadOther", 0x24, 0x10000, 0x20, 1),
     ("TransferRead", 0x25, 0x1000, 0x800, 6),
     ("HostRead", 0x26, 0x4000, 0x2000, 1),
@@ -61,22 +133,77 @@ const PUBLIC_VARIANTS: &[(&str, u8, u32, u32, i32)] = &[
     ("FragmentShaderWrite", 0x2d, 0x80, 0x40, 1),
     ("ColorAttachmentWrite", 0x2e, 0x400, 0x100, 2),
     ("DepthStencilAttachmentWrite", 0x2f, 0x300, 0x400, 3),
-    ("DepthAttachmentWriteStencilReadOnly", 0x30, 0x300, 0x600, 1000117001),
-    ("StencilAttachmentWriteDepthReadOnly", 0x31, 0x300, 0x600, 1000117000),
+    (
+        "DepthAttachmentWriteStencilReadOnly",
+        0x30,
+        0x300,
+        0x600,
+        1000117001,
+    ),
+    (
+        "StencilAttachmentWriteDepthReadOnly",
+        0x31,
+        0x300,
+        0x600,
+        1000117000,
+    ),
     ("ComputeShaderWrite", 0x32, 0x800, 0x40, 1),
     ("AnyShaderWrite", 0x33, 0x10000, 0x40, 1),
     ("TransferWrite", 0x34, 0x1000, 0x1000, 7),
     ("HostWrite", 0x35, 0x4000, 0x4000, 1),
     ("ColorAttachmentReadWrite", 0x36, 0x400, 0x180, 2),
     ("General", 0x37, 0x10000, 0x18000, 1),
-    ("RayTracingShaderReadSampledImageOrUniformTexelBuffer", 0x38, 0x200000, 0x20, 5),
-    ("RayTracingShaderReadColorInputAttachment", 0x39, 0x200000, 0x10, 5),
-    ("RayTracingShaderReadDepthStencilInputAttachment", 0x3a, 0x200000, 0x10, 4),
-    ("RayTracingShaderReadAccelerationStructure", 0x3b, 0x200000, 0x200000, 0),
+    (
+        "RayTracingShaderReadSampledImageOrUniformTexelBuffer",
+        0x38,
+        0x200000,
+        0x20,
+        5,
+    ),
+    (
+        "RayTracingShaderReadColorInputAttachment",
+        0x39,
+        0x200000,
+        0x10,
+        5,
+    ),
+    (
+        "RayTracingShaderReadDepthStencilInputAttachment",
+        0x3a,
+        0x200000,
+        0x10,
+        4,
+    ),
+    (
+        "RayTracingShaderReadAccelerationStructure",
+        0x3b,
+        0x200000,
+        0x200000,
+        0,
+    ),
     ("RayTracingShaderReadOther", 0x3c, 0x200000, 0x20, 1),
-    ("AccelerationStructureBuildWrite", 0x3d, 0x2000000, 0x400000, 0),
-    ("AccelerationStructureBuildRead", 0x3e, 0x2000000, 0x200000, 0),
-    ("AccelerationStructureBufferWrite", 0x3f, 0x2000000, 0x1000, 0),];
+    (
+        "AccelerationStructureBuildWrite",
+        0x3d,
+        0x2000000,
+        0x400000,
+        0,
+    ),
+    (
+        "AccelerationStructureBuildRead",
+        0x3e,
+        0x2000000,
+        0x200000,
+        0,
+    ),
+    (
+        "AccelerationStructureBufferWrite",
+        0x3f,
+        0x2000000,
+        0x1000,
+        0,
+    ),
+];
 /// 原版新增（公开枚举里没有）的 6 个读变体码。
 const FORK_ONLY: [u8; 6] = [0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x23];
 /// 与公开值不同的两项：IndirectBuffer（stage 0x2→0x10000，access 0x1→0x21）、DepthStencilAttachmentWrite（access 0x400→0x600）。
@@ -87,13 +214,21 @@ fn table_matches_public_vk_sync_fork_except_documented_differences() {
     for &(name, code, stage, access, layout) in PUBLIC_VARIANTS {
         let info = access_info(code).unwrap();
         let same = (info.stage, info.access, info.layout) == (stage, access, layout);
-        assert_eq!(same, !DIFFERS_FROM_PUBLIC.contains(&code), "{name} (0x{code:02x}): {info:?}");
+        assert_eq!(
+            same,
+            !DIFFERS_FROM_PUBLIC.contains(&code),
+            "{name} (0x{code:02x}): {info:?}"
+        );
     }
     let ind = access_info(0x02).unwrap();
     assert_eq!((ind.stage, ind.access), (0x10000, 0x21));
     assert_eq!(access_info(0x2f).unwrap().access, 0x600);
     // 公开 58 个变体 + 原版 6 个新增 = 64 个码，且互不重叠。
-    let mut seen: Vec<u8> = PUBLIC_VARIANTS.iter().map(|v| v.1).chain(FORK_ONLY).collect();
+    let mut seen: Vec<u8> = PUBLIC_VARIANTS
+        .iter()
+        .map(|v| v.1)
+        .chain(FORK_ONLY)
+        .collect();
     seen.sort_unstable();
     assert_eq!(seen, (0..64u8).collect::<Vec<_>>());
     // 新增读变体：stage 为 VS..FS 的并集或 ALL，layout 沿用 0/5/4/1 约定。
@@ -107,15 +242,24 @@ fn memory_barrier_follows_original_stage_defaults_and_write_only_src_access() {
     // 空 → TOP / BOTTOM_OF_PIPE（`cmp r,1; adc r,0` 与 `cmovne eax,0x2000`）。
     let (s, d, b) = get_memory_barrier(&[], &[]);
     assert_eq!((s.as_raw(), d.as_raw()), (1, 0x2000));
-    assert_eq!((b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()), (0, 0));
+    assert_eq!(
+        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
+        (0, 0)
+    );
     assert_eq!(b.s_type, vk::StructureType::MEMORY_BARRIER);
     // 写→读：src 取写 access，dst 取读 access。
     let (s, d, b) = get_memory_barrier(&[0x32], &[0x1a]);
     assert_eq!((s.as_raw(), d.as_raw()), (0x800, 0x800));
-    assert_eq!((b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()), (0x40, 0x20));
+    assert_eq!(
+        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
+        (0x40, 0x20)
+    );
     // 读→读：src 无写 → dst access 清零（RAR/WAR 不需要可见性）。
     let (_, _, b) = get_memory_barrier(&[0x1a], &[0x1a]);
-    assert_eq!((b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()), (0, 0));
+    assert_eq!(
+        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
+        (0, 0)
+    );
 }
 
 #[test]
@@ -131,8 +275,19 @@ fn buffer_barrier_passes_fields_through() {
         size: 64,
     });
     assert_eq!((s.as_raw(), d.as_raw()), (0x1000, 0x4 | 0x800));
-    assert_eq!((b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()), (0x1000, 0x2 | 0x20));
-    assert_eq!((b.src_queue_family_index, b.dst_queue_family_index, b.offset, b.size), (2, 3, 16, 64));
+    assert_eq!(
+        (b.src_access_mask.as_raw(), b.dst_access_mask.as_raw()),
+        (0x1000, 0x2 | 0x20)
+    );
+    assert_eq!(
+        (
+            b.src_queue_family_index,
+            b.dst_queue_family_index,
+            b.offset,
+            b.size
+        ),
+        (2, 3, 16, 64)
+    );
     assert_eq!(b.buffer, buffer);
     assert_eq!(b.s_type, vk::StructureType::BUFFER_MEMORY_BARRIER);
 }
@@ -168,11 +323,17 @@ fn image_barrier_layouts_and_unconditional_dst_access() {
     g.previous_layout = BarrierLayout::General;
     g.next_layout = BarrierLayout::General;
     let (_, _, b) = get_image_memory_barrier(&g);
-    assert_eq!((b.old_layout.as_raw(), b.new_layout.as_raw()), (0x3b9acdea, 0x3b9acdea));
+    assert_eq!(
+        (b.old_layout.as_raw(), b.new_layout.as_raw()),
+        (0x3b9acdea, 0x3b9acdea)
+    );
     let mut g = image_barrier(&[0x32], &[]);
     g.previous_layout = BarrierLayout::General;
     let (_, d, b) = get_image_memory_barrier(&g);
-    assert_eq!((d.as_raw(), b.old_layout.as_raw(), b.new_layout.as_raw()), (0x2000, 1, 0));
+    assert_eq!(
+        (d.as_raw(), b.old_layout.as_raw(), b.new_layout.as_raw()),
+        (0x2000, 1, 0)
+    );
     // 最后一个访问码的布局胜出。
     let (_, _, b) = get_image_memory_barrier(&image_barrier(&[], &[0x34, 0x25]));
     assert_eq!(b.new_layout.as_raw(), 6);
@@ -214,7 +375,14 @@ struct MockState {
 #[derive(Clone, Default)]
 struct MockApi(Arc<MockState>);
 impl AftermathApi for MockApi {
-    fn enable_gpu_crash_dumps(&self, v: u32, w: u32, f: u32, cb: Callbacks, user: *mut c_void) -> i32 {
+    unsafe fn enable_gpu_crash_dumps(
+        &self,
+        v: u32,
+        w: u32,
+        f: u32,
+        cb: Callbacks,
+        user: *mut c_void,
+    ) -> i32 {
         *self.0.enable_args.lock().unwrap() = Some((v, w, f, user as usize));
         *self.0.callbacks.lock().unwrap() = Some((cb, user as usize));
         aftermath::RESULT_SUCCESS
@@ -238,7 +406,9 @@ impl AftermathApi for MockApi {
 static DESC_KEYS: Mutex<Vec<(u32, String)>> = Mutex::new(Vec::new());
 unsafe extern "C" fn fake_add(key: u32, value: *const c_char) {
     // SAFETY: 测试里传入的是 NUL 结尾的字面量。
-    let s = unsafe { CStr::from_ptr(value) }.to_string_lossy().into_owned();
+    let s = unsafe { CStr::from_ptr(value) }
+        .to_string_lossy()
+        .into_owned();
     DESC_KEYS.lock().unwrap().push((key, s));
 }
 
@@ -273,7 +443,11 @@ fn aftermath_registers_with_original_arguments_forwards_callbacks_and_disables_o
         assert_eq!(*DESC_KEYS.lock().unwrap(), vec![(7, "hello".to_string())]);
         assert_eq!(state.disabled.load(Ordering::SeqCst), 0);
     }
-    assert_eq!(state.disabled.load(Ordering::SeqCst), 1, "Drop = DisableGpuCrashDumps");
+    assert_eq!(
+        state.disabled.load(Ordering::SeqCst),
+        1,
+        "Drop = DisableGpuCrashDumps"
+    );
 }
 
 #[test]
@@ -295,12 +469,18 @@ fn aftermath_wait_for_status_polls_every_50ms_until_2_or_4_and_honours_timeout()
     state.polls.store(0, Ordering::SeqCst);
     *state.statuses.lock().unwrap() = vec![1];
     sleeps.clear();
-    assert_eq!(am.wait_for_status_with(Some(Duration::from_millis(180)), |d| sleeps.push(d)), 1);
+    assert_eq!(
+        am.wait_for_status_with(Some(Duration::from_millis(180)), |d| sleeps.push(d)),
+        1
+    );
     assert_eq!(sleeps.len(), 4);
     // timeout 0：读一次就返回。
     state.polls.store(0, Ordering::SeqCst);
     sleeps.clear();
-    assert_eq!(am.wait_for_status_with(Some(Duration::ZERO), |d| sleeps.push(d)), 1);
+    assert_eq!(
+        am.wait_for_status_with(Some(Duration::ZERO), |d| sleeps.push(d)),
+        1
+    );
     assert!(sleeps.is_empty());
 }
 
@@ -310,11 +490,23 @@ fn aftermath_identifier_error_text_matches_the_original_format() {
     let state = api.0.clone();
     let am = Aftermath::new(Delegate(Arc::default()), api);
     *state.id_result.lock().unwrap() = (1, [0x1122, 0x3344]);
-    assert_eq!(am.shader_debug_info_identifier(&[1]).unwrap(), ShaderDebugInfoIdentifier([0x1122, 0x3344]));
+    assert_eq!(
+        am.shader_debug_info_identifier(&[1]).unwrap(),
+        ShaderDebugInfoIdentifier([0x1122, 0x3344])
+    );
     *state.id_result.lock().unwrap() = (0x8bad_f00d_u32 as i32, [0; 2]);
     let err = am.shader_debug_info_identifier(&[1]).unwrap_err();
-    assert_eq!(err.to_string(), format!("GFSDK_Aftermath_GetShaderDebugInfoIdentifier: {:?}\n", 0x8bad_f00d_u32 as i32));
-    assert_eq!(ShaderDebugInfoIdentifier::default(), ShaderDebugInfoIdentifier([0, 0]));
+    assert_eq!(
+        err.to_string(),
+        format!(
+            "GFSDK_Aftermath_GetShaderDebugInfoIdentifier: {:?}\n",
+            0x8bad_f00d_u32 as i32
+        )
+    );
+    assert_eq!(
+        ShaderDebugInfoIdentifier::default(),
+        ShaderDebugInfoIdentifier([0, 0])
+    );
 }
 
 #[test]
@@ -374,12 +566,24 @@ fn dxgi_enumerate_skips_failed_getdesc_stops_at_first_enum_error_and_maps_factor
         ],
     };
     let list = dxgi::enumerate(&mut src).unwrap();
-    assert_eq!(list.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(), ["A", "B"]);
+    assert_eq!(
+        list.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(),
+        ["A", "B"]
+    );
     assert_eq!(list[1].luid, 2);
-    let mut bad = FixedDxgi { factory_error: Some(DxgiError { hresult: 0x887a0004_u32 as i32 }), adapters: vec![] };
+    let mut bad = FixedDxgi {
+        factory_error: Some(DxgiError {
+            hresult: 0x887a0004_u32 as i32,
+        }),
+        adapters: vec![],
+    };
     let err = dxgi::enumerate(&mut bad).unwrap_err();
     assert!(err.to_string().starts_with("CreateDXGIFactory"));
-    assert!(dxgi::enumerate(&mut FixedDxgi::default()).unwrap().is_empty());
+    assert!(
+        dxgi::enumerate(&mut FixedDxgi::default())
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // ---- gpu-profiler ---------------------------------------------------------------------------
@@ -394,14 +598,20 @@ fn gpu_profiler_retrieve_results_pairs_indices_with_ticks_and_sorts_by_tick() {
     assert_eq!(got, vec![(0, 10), (1, 20), (2, 30)]);
     // count > len → panic。
     let frame = ProfilerSubmittedFrameForTest::build(&["x"], &[0, 0]);
-    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame.retrieve_results(&[1]))).is_err());
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame.retrieve_results(&[1])))
+            .is_err()
+    );
 }
 
 /// `ProfilerSubmittedFrame` 的字段私有（只由 `end_frame` 构造）：这里走真实 Vulkan 的链路测试在下面；
 /// 纯逻辑测试用 lavapipe 可用时的真实帧，不可用时跳过。
 struct ProfilerSubmittedFrameForTest;
 impl ProfilerSubmittedFrameForTest {
-    fn build(_names: &[&str], _indices: &[u32]) -> rhapsody::raw::gpu_profiler::ProfilerSubmittedFrame {
+    fn build(
+        _names: &[&str],
+        _indices: &[u32],
+    ) -> rhapsody::raw::gpu_profiler::ProfilerSubmittedFrame {
         rhapsody::raw::gpu_profiler::ProfilerSubmittedFrame::from_parts(
             _names.iter().fold(FrameMarkers::default(), |mut m, n| {
                 m.create_marker(n);
@@ -416,7 +626,9 @@ impl ProfilerSubmittedFrameForTest {
 /// CopyQueryPoolResults(64_BIT|WAIT) → 读回 → retrieve_results。无 Vulkan 设备时跳过。
 #[test]
 fn gpu_profiler_chain_runs_on_a_real_device() {
-    use rhapsody::raw::{buffer::Buffer, init::create_headless_device, profiler::gpu_profiler_output_buffer_desc};
+    use rhapsody::raw::{
+        buffer::Buffer, init::create_headless_device, profiler::gpu_profiler_output_buffer_desc,
+    };
     let Ok(vk_device) = create_headless_device() else {
         eprintln!("skip: no Vulkan device");
         return;
@@ -426,9 +638,14 @@ fn gpu_profiler_chain_runs_on_a_real_device() {
     let profiler = Profiler::new(device).unwrap();
     // 索引缓冲初值全是 0xffffffff。
     assert!((0..MAX_MARKERS).all(|i| profiler.index_slot(i) == INDEX_BUFFER_FILL));
-    let period = unsafe { vk_device.instance.instance.get_physical_device_properties(vk_device.physical) }
-        .limits
-        .timestamp_period;
+    let period = unsafe {
+        vk_device
+            .instance
+            .instance
+            .get_physical_device_properties(vk_device.physical)
+    }
+    .limits
+    .timestamp_period;
     // SAFETY: 单线程录制并同步等待；对象在等待完成后销毁。
     unsafe {
         let pool = device
@@ -444,9 +661,15 @@ fn gpu_profiler_chain_runs_on_a_real_device() {
                     .command_buffer_count(1),
             )
             .unwrap()[0];
-        device.begin_command_buffer(cmd, &vk::CommandBufferBeginInfo::default()).unwrap();
+        device
+            .begin_command_buffer(cmd, &vk::CommandBufferBeginInfo::default())
+            .unwrap();
         let mut active = profiler.begin_frame(device, cmd);
-        let (a, b, c) = (active.create_marker("a"), active.create_marker("b"), active.create_marker("a"));
+        let (a, b, c) = (
+            active.create_marker("a"),
+            active.create_marker("b"),
+            active.create_marker("a"),
+        );
         assert_eq!((a, b, c), (MarkerId(0), MarkerId(1), MarkerId(2)));
         active.write_marker(device, cmd, c);
         active.write_marker(device, cmd, a);
@@ -458,19 +681,32 @@ fn gpu_profiler_chain_runs_on_a_real_device() {
         device.end_command_buffer(cmd).unwrap();
         let cmds = [cmd];
         device
-            .queue_submit(vk_device.queue, &[vk::SubmitInfo::default().command_buffers(&cmds)], vk::Fence::null())
+            .queue_submit(
+                vk_device.queue,
+                &[vk::SubmitInfo::default().command_buffers(&cmds)],
+                vk::Fence::null(),
+            )
             .unwrap();
         device.queue_wait_idle(vk_device.queue).unwrap();
         device.destroy_command_pool(pool, None);
         assert_eq!(frame.query_indices(), &[2, 0, 1]);
         let mut bytes = vec![0u8; 0x2000];
         output.read_bytes(0, &mut bytes).unwrap();
-        let ticks: Vec<u64> = bytes.chunks_exact(8).map(|c| u64::from_le_bytes(c.try_into().unwrap())).collect();
+        let ticks: Vec<u64> = bytes
+            .chunks_exact(8)
+            .map(|c| u64::from_le_bytes(c.try_into().unwrap()))
+            .collect();
         let (entries, markers) = frame.retrieve_results(&ticks);
         assert_eq!(entries.len(), 3);
-        assert!(entries.windows(2).all(|w| w[0].tick <= w[1].tick), "按 tick 升序");
+        assert!(
+            entries.windows(2).all(|w| w[0].tick <= w[1].tick),
+            "按 tick 升序"
+        );
         assert_eq!(markers.marker_name(MarkerId(2)), "a");
-        let span = entries[2].tick.duration_since(entries[0].tick).nanoseconds(period);
+        let span = entries[2]
+            .tick
+            .duration_since(entries[0].tick)
+            .nanoseconds(period);
         let _ = span; // 数值取决于驱动；只要求换算不 panic。
         profiler.destroy(device);
     }
@@ -490,7 +726,13 @@ fn shipped_raster_defines_hashes_are_siphash13_xor_of_pair_hashes() {
             acc ^ h.finish()
         })
     };
-    assert_eq!(fold(&[("SHADER_VARIANT_DEPTH_ONLY", "0")]), 0xb903_e43f_fb3d_a915);
-    assert_eq!(fold(&[("SHADER_VARIANT_DEPTH_ONLY", "1")]), 0xf0ad_ff76_827e_73ff);
+    assert_eq!(
+        fold(&[("SHADER_VARIANT_DEPTH_ONLY", "0")]),
+        0xb903_e43f_fb3d_a915
+    );
+    assert_eq!(
+        fold(&[("SHADER_VARIANT_DEPTH_ONLY", "1")]),
+        0xf0ad_ff76_827e_73ff
+    );
     assert_eq!(fold(&[]), 0, "compute 键：空 defines 哈希为 0");
 }

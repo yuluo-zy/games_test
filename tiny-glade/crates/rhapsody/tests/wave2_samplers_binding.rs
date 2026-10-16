@@ -9,9 +9,19 @@ use std::sync::Arc;
 
 /// 内置采样器的创建/索引顺序。
 const POOL_ORDER: [&str; 13] = [
-    "sampler_lnc", "sampler_llr", "sampler_nnc", "sampler_llc", "sampler_llb",
-    "sampler_lnc_iso", "sampler_llr_iso", "sampler_llc_iso", "sampler_llb_iso",
-    "sampler_default", "sampler_mipmap", "sampler_shadow_nearest", "sampler_shadow_linear",
+    "sampler_lnc",
+    "sampler_llr",
+    "sampler_nnc",
+    "sampler_llc",
+    "sampler_llb",
+    "sampler_lnc_iso",
+    "sampler_llr_iso",
+    "sampler_llc_iso",
+    "sampler_llb_iso",
+    "sampler_default",
+    "sampler_mipmap",
+    "sampler_shadow_nearest",
+    "sampler_shadow_linear",
 ];
 
 #[test]
@@ -27,7 +37,12 @@ fn specs_follow_the_creation_order() {
 #[test]
 fn only_shadow_linear_compares() {
     for spec in BUILTIN_SAMPLER_SPECS {
-        assert_eq!(spec.compare_enable, spec.name == "sampler_shadow_linear", "{}", spec.name);
+        assert_eq!(
+            spec.compare_enable,
+            spec.name == "sampler_shadow_linear",
+            "{}",
+            spec.name
+        );
     }
     let s = builtin_sampler_spec("sampler_shadow_linear").unwrap();
     assert_eq!(s.compare_op, vk::CompareOp::LESS_OR_EQUAL);
@@ -37,7 +52,9 @@ fn only_shadow_linear_compares() {
 
 #[test]
 fn device_creates_all_thirteen_samplers_and_looks_up_by_name() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     let mut gd: Arc<GraphicsDevice> = GraphicsDevice::from_device(device);
     let g = Arc::get_mut(&mut gd).expect("unique");
     if g.create_samplers().is_err() {
@@ -55,9 +72,13 @@ fn device_creates_all_thirteen_samplers_and_looks_up_by_name() {
 
 #[test]
 fn descriptor_update_counter_starts_at_zero() {
-    let Ok(device) = create_headless_device() else { return };
+    let Ok(device) = create_headless_device() else {
+        return;
+    };
     assert_eq!(
-        device.descriptor_update_count.load(std::sync::atomic::Ordering::SeqCst),
+        device
+            .descriptor_update_count
+            .load(std::sync::atomic::Ordering::SeqCst),
         0
     );
 }

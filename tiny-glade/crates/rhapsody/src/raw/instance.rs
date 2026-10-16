@@ -142,7 +142,10 @@ impl InstanceBuilder {
                 description: String::new(),
             };
             if !allowlist.permits(&layer) {
-                return Err(Error::unsupported(format!("layer不在白名单: {}", layer.name)));
+                return Err(Error::unsupported(format!(
+                    "layer不在白名单: {}",
+                    layer.name
+                )));
             }
         }
         self.build()
@@ -223,7 +226,11 @@ impl InstanceBuilder {
         let loader = GraphicsInstanceLoader::new()?;
         self.debug_markers();
         let layer = CString::new(KHRONOS_VALIDATION_LAYER).unwrap();
-        if !loader.layers.iter().any(|l| l.name == KHRONOS_VALIDATION_LAYER) {
+        if !loader
+            .layers
+            .iter()
+            .any(|l| l.name == KHRONOS_VALIDATION_LAYER)
+        {
             return Ok(false);
         }
         if !self.layers.contains(&layer) {
@@ -270,7 +277,10 @@ pub const DEFAULT_INSTANCE_EXTENSIONS: [&str; 2] = [
 pub const LAYER_SETTINGS_EXTENSION: &str = "VK_EXT_layer_settings";
 
 /// 默认扩展 + 调用方扩展（去重，保序）+ 探测到的 `VK_EXT_layer_settings`。
-pub fn effective_extensions(requested: &[CString], available: &[vk::ExtensionProperties]) -> Vec<CString> {
+pub fn effective_extensions(
+    requested: &[CString],
+    available: &[vk::ExtensionProperties],
+) -> Vec<CString> {
     let mut out: Vec<CString> = Vec::new();
     for name in DEFAULT_INSTANCE_EXTENSIONS
         .iter()
@@ -328,7 +338,10 @@ pub fn apply_vulkan_blocklist_with(
     // 1. 先整体禁用 implicit 层。
     set("VK_LOADER_LAYERS_DISABLE", "~implicit~");
     // 2. 白名单 → 逗号连接后选择性重新启用（原版此处记 "Selectively enabling implicit Vulkan layers: {allow_list}"）。
-    log::debug!("Selectively enabling implicit Vulkan layers: {}", allow_list_value(allowlist));
+    log::debug!(
+        "Selectively enabling implicit Vulkan layers: {}",
+        allow_list_value(allowlist)
+    );
     set("VK_LOADER_LAYERS_ALLOW", &allow_list_value(allowlist));
     // 3. 16 个覆盖层各自写 "1"（原版每个前有 "[legacy] Force-disabling a Vulkan layer via {env}"）。
     for name in VULKAN_LAYER_DISABLE_ENV {
@@ -398,8 +411,16 @@ impl ValidationCollector {
     pub fn all(&self) -> Vec<DebugMessage> {
         self.messages.lock().clone()
     }
-    pub fn with_severity(&self, severity: vk::DebugUtilsMessageSeverityFlagsEXT) -> Vec<DebugMessage> {
-        self.messages.lock().iter().filter(|m| m.severity.contains(severity)).cloned().collect()
+    pub fn with_severity(
+        &self,
+        severity: vk::DebugUtilsMessageSeverityFlagsEXT,
+    ) -> Vec<DebugMessage> {
+        self.messages
+            .lock()
+            .iter()
+            .filter(|m| m.severity.contains(severity))
+            .cloned()
+            .collect()
     }
     pub fn errors(&self) -> Vec<DebugMessage> {
         self.with_severity(vk::DebugUtilsMessageSeverityFlagsEXT::ERROR)
@@ -422,7 +443,11 @@ pub struct ValidationMessenger {
 impl ValidationMessenger {
     /// 收集 WARNING 与 ERROR（含 VERBOSE/INFO 以外的全部类型）。实例须已 `debug_markers()`。
     pub fn new(instance: &Arc<VulkanInstance>) -> Result<Self> {
-        if !instance.enabled_extensions.iter().any(|name| name == "VK_EXT_debug_utils") {
+        if !instance
+            .enabled_extensions
+            .iter()
+            .any(|name| name == "VK_EXT_debug_utils")
+        {
             return Err(Error::unsupported("实例未启用 VK_EXT_debug_utils"));
         }
         let loader = ash::ext::debug_utils::Instance::new(&instance.entry, &instance.instance);
@@ -440,7 +465,11 @@ impl ValidationMessenger {
             let collector = unsafe { &*(user as *const ValidationCollector) };
             let data = unsafe { &*data };
             let text = |p: *const std::ffi::c_char| {
-                if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned() }
+                if p.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
+                }
             };
             collector.messages.lock().push(DebugMessage {
                 severity,
@@ -452,7 +481,8 @@ impl ValidationMessenger {
         }
         let info = vk::DebugUtilsMessengerCreateInfoEXT::default()
             .message_severity(
-                vk::DebugUtilsMessageSeverityFlagsEXT::WARNING | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
+                vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+                    | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
             )
             .message_type(
                 vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
@@ -462,13 +492,24 @@ impl ValidationMessenger {
             .pfn_user_callback(Some(callback))
             .user_data(Arc::as_ptr(&collector) as *mut std::ffi::c_void);
         let handle = unsafe { loader.create_debug_utils_messenger(&info, None) }?;
-        Ok(Self { loader, handle, collector, _instance: instance.clone() })
+        Ok(Self {
+            loader,
+            handle,
+            collector,
+            _instance: instance.clone(),
+        })
     }
     /// 主动提交一条消息（经 loader，无需校验层）；用来验证收集器本身。
     pub fn submit(&self, severity: vk::DebugUtilsMessageSeverityFlagsEXT, id: &CStr, text: &CStr) {
-        let data = vk::DebugUtilsMessengerCallbackDataEXT::default().message_id_name(id).message(text);
+        let data = vk::DebugUtilsMessengerCallbackDataEXT::default()
+            .message_id_name(id)
+            .message(text);
         unsafe {
-            self.loader.submit_debug_utils_message(severity, vk::DebugUtilsMessageTypeFlagsEXT::GENERAL, &data)
+            self.loader.submit_debug_utils_message(
+                severity,
+                vk::DebugUtilsMessageTypeFlagsEXT::GENERAL,
+                &data,
+            )
         };
     }
 }
@@ -485,7 +526,9 @@ mod blocklist_tests {
     #[test]
     fn env_chain_matches_original_write_order() {
         let mut writes = Vec::new();
-        use crate::raw::init::{GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry as E};
+        use crate::raw::init::{
+            GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry as E,
+        };
         let allowlist = GraphicsInstanceLayerAllowlist {
             version: 1,
             entries: vec![
@@ -494,18 +537,21 @@ mod blocklist_tests {
                 E::Layer("other".into()),
             ],
         };
-        apply_vulkan_blocklist_with(
-            &allowlist,
-            |name, value| {
-                writes.push((name.to_owned(), value.to_owned()));
-                Ok(())
-            },
-        );
+        apply_vulkan_blocklist_with(&allowlist, |name, value| {
+            writes.push((name.to_owned(), value.to_owned()));
+            Ok(())
+        });
         assert_eq!(writes.len(), 18);
-        assert_eq!(writes[0], ("VK_LOADER_LAYERS_DISABLE".into(), "~implicit~".into()));
+        assert_eq!(
+            writes[0],
+            ("VK_LOADER_LAYERS_DISABLE".into(), "~implicit~".into())
+        );
         assert_eq!(
             writes[1],
-            ("VK_LOADER_LAYERS_ALLOW".into(), "VK_LAYER_foo,VK_LAYER_NV*,other".into())
+            (
+                "VK_LOADER_LAYERS_ALLOW".into(),
+                "VK_LAYER_foo,VK_LAYER_NV*,other".into()
+            )
         );
         assert!(writes[2..].iter().all(|(_, v)| v == "1"));
         assert_eq!(writes[10].0, "EOS_OVERLAY_DISABLE_VULKAN_WIN64");
@@ -516,13 +562,20 @@ mod blocklist_tests {
     #[test]
     fn env_name_lengths_match_the_string_pool() {
         let lens: Vec<usize> = VULKAN_LAYER_DISABLE_ENV.iter().map(|n| n.len()).collect();
-        assert_eq!(lens, [18, 16, 32, 15, 20, 20, 26, 39, 32, 29, 31, 26, 29, 16, 13, 25]);
+        assert_eq!(
+            lens,
+            [
+                18, 16, 32, 15, 20, 20, 26, 39, 32, 29, 31, 26, 29, 16, 13, 25
+            ]
+        );
     }
 
     #[test]
     #[should_panic(expected = "failed to set environment variable `VK_LOADER_LAYERS_DISABLE`")]
     fn set_var_failure_panics() {
-        apply_vulkan_blocklist_with(&Default::default(), |_, _| Err(std::io::Error::other("boom")));
+        apply_vulkan_blocklist_with(&Default::default(), |_, _| {
+            Err(std::io::Error::other("boom"))
+        });
     }
 }
 
@@ -540,16 +593,30 @@ mod extension_tests {
 
     #[test]
     fn defaults_first_then_requested_deduped_and_layer_settings_only_when_available() {
-        let requested = [CString::new("VK_EXT_debug_utils").unwrap(), CString::new(DEFAULT_INSTANCE_EXTENSIONS[0]).unwrap()];
-        let names = |v: &[CString]| v.iter().map(|c| c.to_str().unwrap().to_owned()).collect::<Vec<_>>();
+        let requested = [
+            CString::new("VK_EXT_debug_utils").unwrap(),
+            CString::new(DEFAULT_INSTANCE_EXTENSIONS[0]).unwrap(),
+        ];
+        let names = |v: &[CString]| {
+            v.iter()
+                .map(|c| c.to_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        };
         let without = effective_extensions(&requested, &[]);
         assert_eq!(
             names(&without),
-            ["VK_KHR_get_physical_device_properties2", "VK_KHR_get_surface_capabilities2", "VK_EXT_debug_utils"]
+            [
+                "VK_KHR_get_physical_device_properties2",
+                "VK_KHR_get_surface_capabilities2",
+                "VK_EXT_debug_utils"
+            ]
         );
         let with = effective_extensions(&requested, &[props("VK_EXT_layer_settings")]);
         assert_eq!(names(&with).last().unwrap(), "VK_EXT_layer_settings");
         // 前缀相同但更长的名字不算命中（原版按整个 22 字节含 NUL 比较）。
-        assert_eq!(effective_extensions(&[], &[props("VK_EXT_layer_settings2")]).len(), 2);
+        assert_eq!(
+            effective_extensions(&[], &[props("VK_EXT_layer_settings2")]).len(),
+            2
+        );
     }
 }
