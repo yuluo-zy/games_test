@@ -1,6 +1,6 @@
 # rhapsody 架构重构计划
 
-2026-10-16 起，rhapsody 不再以"还原原版"为目标，**正确性与高性能是唯一标准**。原版地址、布局、panic 行为不再约束设计；原版 oracle 测试直接删除；对外 API 允许破坏性变更（下游 `tiny-glade`、`tg-text` 同步修改）。本文件是各阶段的进度入口。
+2026-10-16 起，rhapsody 不再以"还原原版"为目标，**正确性与高性能是唯一标准**。原版地址、布局、panic 行为不再约束设计；原版 oracle 测试直接删除；对外 API 允许破坏性变更（下游 `tiny-glade`、`tg-text` 同步修改）。本文件是各阶段的进度入口；目标架构与各模块详细设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 目标架构
 
@@ -30,7 +30,7 @@ rhapsody
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | P0 | 删除原版 oracle 测试；1000 帧稳定性测试（P3 前 ignore）；性能基线 | 完成 |
-| P1 | 统一错误模型（去 `Result<_, String>` 与原版 panic） | 未开始 |
+| P1 | 统一错误模型（去 `Result<_, String>` 与原版 panic） | 部分：`src/error.rs` 已落地并全仓迁移；rg/raw 深改半成品存于分支 `wip/p1-partial`（未编译），按用户要求暂停 |
 | P2 | 设备合一 + 可配置队列 + 去全局 `queue_lock`（下游同步迁移） | 未开始 |
 | P3 | 统一同步/回收：`SyncPoint` + `Retirement`；删 graveyard/SequenceRuntime/SubmissionEngine/销毁桶/events 日志 | 未开始 |
 | P4 | 语义化资源身份：`Handle<T>`、`ResourceName`、命名 temporal | 未开始 |
