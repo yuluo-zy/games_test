@@ -1,22 +1,16 @@
 //! rg 缺陷修复的 CPU 回归：导出但未访问的 Create 资源、失败路径的资源归还、temporal 记录的放弃/确认、
 //! pass 数上限的构图期错误。不需要 Vulkan 设备。
 use ash::vk;
-use rhapsody::raw::{
-    managed::lifecycle::{self, ResourceHandle, SequenceRuntime},
-    submit,
-};
 use rhapsody::rg::{
     executor::{Error, ExecutionBackend, ExecutionChain},
     graph::{
         self, AccessDependency, BackendFailure, BufferDesc, BuildError, Descriptor, EventBackend,
-        OriginSource, Pool, RenderGraph, ResourceBackend, TextureDesc,
+        OriginSource, Pool, RenderGraph, ResourceBackend,
     },
     resource::ResourceOrigin,
-    state::RenderGraphState,
-    temporal::{
-        TEMPORAL_EXPORT_ACCESS, TemporalError, TemporalRecordState, TemporalRenderGraphState,
-    },
 };
+use rhapsody::{command::recording, raw::submit};
+mod cpu_graph_support;
 
 const WRITE: u8 = 0x34;
 /// 测试用访问掩码：缓冲 → STORAGE_BUFFER(0x20)。
@@ -67,6 +61,12 @@ struct Mock {
     abandoned: Vec<u64>,
     next_command: u64,
     next_submit: u64,
+    submit_attempts: usize,
+    fail_submit_at: Option<usize>,
+    waits: std::cell::RefCell<Vec<rhapsody::sync::SyncPoint>>,
+    queue: Option<recording::Queue>,
+    fail_wait: bool,
+    ranges: cpu_graph_support::CpuRanges,
 }
 impl ResourceBackend for Mock {
     fn create_without_initial_data(
@@ -91,21 +91,53 @@ impl ResourceBackend for Mock {
     }
 }
 impl ExecutionBackend for Mock {
-    fn prepare_compiled_resources(&mut self, _compiled: &graph::CompiledGraph) -> bool {
-        !self.fail_prepare
+    fn chunk_recorder(&self) -> Option<Box<dyn rhapsody::rg::executor::ChunkRecorder + '_>> {
+        struct View;
+        impl rhapsody::rg::executor::ChunkRecorder for View {
+            fn record_transitions(
+                &self,
+                _: u64,
+                _: &[rhapsody::rg::executor::ChunkTransition],
+                _: &mut rhapsody::rg::owner_storage::ResourceOwners,
+            ) -> rhapsody::Result<()> {
+                Ok(())
+            }
+        }
+        Some(Box::new(View))
     }
-    fn managed_resource(
-        &mut self,
-        token: u64,
-        lifecycle: &mut SequenceRuntime,
-    ) -> Option<ResourceHandle> {
-        Some(lifecycle.create_resource(token, 1))
+    fn synchronization_plan(
+        &self,
+    ) -> std::sync::Arc<rhapsody::rg::sync_plan::SynchronizationPlanner> {
+        self.ranges.planner.clone()
     }
-    fn command_handle(&mut self) -> Result<u64, lifecycle::Failure> {
+    fn prepare_batch_submission(&mut self, _: &[u64], batch: usize) -> rhapsody::Result<()> {
+        self.ranges.prepare(batch)
+    }
+    fn prepare_compiled_resources(&mut self, compiled: &graph::FrameInstance) -> bool {
+        if self.fail_prepare {
+            return false;
+        }
+        self.ranges
+            .bind(compiled)
+            .expect("bind the formal range planner for the CPU fault adapter");
+        true
+    }
+    fn graph_queue(&self) -> (recording::Queue, u32) {
+        (self.queue.unwrap_or(recording::Queue::Primary), 0)
+    }
+    fn wait_submission(&self, point: rhapsody::sync::SyncPoint) -> rhapsody::Result<()> {
+        self.waits.borrow_mut().push(point);
+        if self.fail_wait {
+            Err(rhapsody::Error::Timeout)
+        } else {
+            Ok(())
+        }
+    }
+    fn command_handle(&mut self) -> Result<u64, recording::Failure> {
         self.next_command += 1;
         Ok(1000 + self.next_command)
     }
-    fn begin_command(&mut self, _handle: u64) -> Result<(), lifecycle::Failure> {
+    fn begin_command(&mut self, _handle: u64) -> Result<(), recording::Failure> {
         Ok(())
     }
     fn end_command(&mut self, _handle: vk::CommandBuffer) -> bool {
@@ -116,11 +148,23 @@ impl ExecutionBackend for Mock {
         _queue: vk::Queue,
         _prepared: &[submit::PreparedSubmit],
     ) -> rhapsody::Result<rhapsody::sync::SyncPoint> {
+        self.submit_attempts += 1;
+        if self.fail_submit_at == Some(self.submit_attempts) {
+            return Err(rhapsody::Error::OutOfDeviceMemory);
+        }
         self.next_submit += 1;
-        Ok(rhapsody::sync::SyncPoint {
-            queue: rhapsody::sync::QueueId::new(0).unwrap(),
+        let point = rhapsody::sync::SyncPoint {
+            queue: rhapsody::sync::QueueId::new(
+                match self.queue.unwrap_or(recording::Queue::Primary) {
+                    recording::Queue::Primary => 0,
+                    recording::Queue::Auxiliary(index) => index as usize + 1,
+                },
+            )
+            .unwrap(),
             value: self.next_submit,
-        })
+        };
+        self.ranges.publish(point);
+        Ok(point)
     }
     fn abandon_command(&mut self, handle: u64) {
         self.abandoned.push(handle);
@@ -131,11 +175,329 @@ fn chain() -> ExecutionChain {
     ExecutionChain::new(vk::Queue::null(), vec![], 1)
 }
 
+#[test]
+fn result_callbacks_preserve_device_errors_in_serial_and_parallel_recording() {
+    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+    for parallel in [
+        ParallelRecording::SERIAL,
+        ParallelRecording {
+            runner: TaskRunner::Inline,
+            ..ParallelRecording::ORIGINAL
+        },
+    ] {
+        for device_lost in [false, true] {
+            let mut backend = Mock::default();
+            let mut chain = chain();
+            chain.parallel = parallel;
+            let mut graph = RenderGraph::new();
+            graph
+                .add_pass("successful sibling")
+                .with_side_effect()
+                .render_with_result_context(|_| Ok(()));
+            graph
+                .add_pass("device error")
+                .with_side_effect()
+                .render_with_result_context(move |_| {
+                    Err(if device_lost {
+                        rhapsody::Error::DeviceLost
+                    } else {
+                        rhapsody::Error::OutOfDeviceMemory
+                    })
+                });
+            let (declaration, mut callbacks, _) = graph.build().into_parts();
+            let error = chain
+                .execute_graph_with_context(
+                    declaration,
+                    &mut Pool::default(),
+                    &mut Dependency,
+                    &mut backend,
+                    &mut callbacks,
+                )
+                .unwrap_err();
+            assert_eq!(
+                rhapsody::Error::from(error).kind(),
+                if device_lost {
+                    rhapsody::ErrorKind::DeviceLost
+                } else {
+                    rhapsody::ErrorKind::OutOfMemory
+                }
+            );
+            assert_eq!(backend.submit_attempts, 0);
+            assert_eq!(chain.recording_command_count(), 0);
+            assert!(!backend.abandoned.is_empty());
+        }
+    }
+}
+
+#[test]
+fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
+    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+    for parallel in [
+        ParallelRecording::SERIAL,
+        ParallelRecording {
+            runner: TaskRunner::Inline,
+            ..ParallelRecording::ORIGINAL
+        },
+    ] {
+        let mut backend = Mock::default();
+        let mut chain = chain();
+        chain.parallel = parallel;
+        let mut graph = RenderGraph::new();
+        graph
+            .add_pass("reported error")
+            .with_side_effect()
+            .render_with_context(|context| {
+                context.report_error(rhapsody::Error::OutOfHostMemory);
+                true
+            });
+        graph
+            .add_pass("sibling")
+            .with_side_effect()
+            .render(|_| true);
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let error = chain
+            .execute_graph_with_context(
+                declaration,
+                &mut Pool::default(),
+                &mut Dependency,
+                &mut backend,
+                &mut callbacks,
+            )
+            .unwrap_err();
+        assert_eq!(
+            rhapsody::Error::from(error).kind(),
+            rhapsody::ErrorKind::OutOfMemory
+        );
+        assert_eq!(backend.submit_attempts, 0);
+    }
+}
+
+#[test]
+fn result_callback_error_after_a_successful_batch_keeps_the_partial_transaction() {
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    graph
+        .add_pass("first batch")
+        .with_side_effect()
+        .render_with_result_context(|_| Ok(()));
+    graph
+        .add_pass("second batch")
+        .with_side_effect()
+        .render_with_result_context(|_| Err(rhapsody::Error::OutOfDeviceMemory));
+    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let error = chain
+        .execute_graph_with_context(
+            declaration,
+            &mut Pool::default(),
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        )
+        .unwrap_err();
+    let Error::PartialSubmission {
+        original,
+        execution,
+    } = error
+    else {
+        panic!("successful batch must remain pending");
+    };
+    assert!(matches!(
+        *original,
+        Error::Validation(rhapsody::Error::OutOfDeviceMemory)
+    ));
+    assert_eq!(execution.transaction.receipts().len(), 1);
+    assert_eq!(backend.submit_attempts, 1);
+    assert_eq!(chain.pending_command_count(), 1);
+}
+
+#[test]
+fn cached_plans_cull_dead_callbacks_and_rebind_each_frames_imports() {
+    use std::sync::{Arc, Mutex};
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let mut chain = chain();
+    let mut pool = Pool::default();
+    let mut backend = Mock::default();
+    let mut first_plan = None;
+    for frame in 0..3u64 {
+        let mut graph = RenderGraph::new();
+        let input = graph
+            .import_unowned("input", buffer(), 50 + frame, 0x35)
+            .unwrap();
+        let output = create(&mut graph, "output");
+        let dead = create(&mut graph, "unused");
+        let mut pass = graph.add_pass("unused computation");
+        pass.add_resource_access(dead, WRITE, 0).unwrap();
+        pass.render(|_| panic!("a culled callback must never run"));
+        let mut pass = graph.add_pass("compute output");
+        pass.add_resource_access(input, 0x25, 0).unwrap();
+        pass.add_resource_access(output, WRITE, 0).unwrap();
+        let trace = calls.clone();
+        pass.render(move |_| {
+            trace.lock().unwrap().push((frame, "output"));
+            true
+        });
+        let trace = calls.clone();
+        graph
+            .add_pass("external effect")
+            .with_side_effect()
+            .render(move |_| {
+                trace.lock().unwrap().push((frame, "effect"));
+                true
+            });
+        graph.export(output, 0x25).unwrap();
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let execution = chain
+            .execute_graph_with_context(
+                declaration,
+                &mut pool,
+                &mut Dependency,
+                &mut backend,
+                &mut callbacks,
+            )
+            .unwrap();
+        assert_eq!(execution.compiled.plan.retained_passes, [1, 2]);
+        assert!(Arc::ptr_eq(
+            &execution.compiled.info,
+            &execution.compiled.plan.info
+        ));
+        assert!(Arc::ptr_eq(
+            &execution.compiled.snapshot.shared,
+            &execution.compiled.plan.snapshot
+        ));
+        assert_eq!(execution.stats.culled_passes, 1);
+        assert_eq!(execution.stats.plan_cache_hit, frame != 0);
+        assert_eq!(
+            graph::payload_projection(execution.compiled.registry.resource(input.raw()).0).1,
+            Some(50 + frame)
+        );
+        assert!(!execution.compiled.registry.is_populated(dead.raw()));
+        if let Some(plan) = &first_plan {
+            assert!(Arc::ptr_eq(plan, &execution.compiled.plan));
+        } else {
+            first_plan = Some(execution.compiled.plan.clone());
+        }
+    }
+    assert_eq!(
+        *calls.lock().unwrap(),
+        [
+            (0, "output"),
+            (0, "effect"),
+            (1, "output"),
+            (1, "effect"),
+            (2, "output"),
+            (2, "effect")
+        ]
+    );
+    assert_eq!(chain.plan_cache_stats().hits, 2);
+    assert!(chain.plan_cache_bytes() <= 16 * 1024 * 1024);
+}
+
+#[test]
+fn stable_subgraph_analysis_is_reused_on_the_real_executor_whole_plan_miss_path() {
+    use rhapsody::rg::resource::AccessRange;
+    use std::sync::{Arc, Mutex};
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let mut chain = chain();
+    let mut pool = Pool::default();
+    let mut backend = Mock::default();
+    for frame in 0..3u64 {
+        let mut graph = RenderGraph::new();
+        let input = graph
+            .import_unowned("input", buffer(), 70 + frame, 0x25)
+            .unwrap();
+        let middle = create(&mut graph, "middle");
+        let output = create(&mut graph, "output");
+        graph
+            .subgraph("stable", |subgraph| {
+                subgraph.input(input, AccessRange::Whole, 0x25)?;
+                let mut pass = subgraph.graph().add_pass("stable copy");
+                pass.add_resource_access(input, 0x25, 0)?;
+                pass.add_resource_access(middle, WRITE, 0)?;
+                let trace = calls.clone();
+                pass.render(move |_| {
+                    trace.lock().unwrap().push((frame, "stable"));
+                    true
+                });
+                subgraph.output(middle, AccessRange::Whole, WRITE)?;
+                Ok(())
+            })
+            .unwrap();
+        graph
+            .subgraph("changing", |subgraph| {
+                subgraph.interface_mut().implementation_signature = frame;
+                subgraph.input(middle, AccessRange::Whole, 0x25)?;
+                let mut pass = subgraph.graph().add_pass(format!("changed frame {frame}"));
+                pass.add_resource_access(middle, 0x25, 0)?;
+                pass.add_resource_access(output, WRITE, 0)?;
+                let trace = calls.clone();
+                pass.render(move |_| {
+                    trace.lock().unwrap().push((frame, "changing"));
+                    true
+                });
+                subgraph.output(output, AccessRange::Whole, WRITE)?;
+                Ok(())
+            })
+            .unwrap();
+        graph.export(output, 0x25).unwrap();
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let execution = chain
+            .execute_graph_with_context(
+                declaration,
+                &mut pool,
+                &mut Dependency,
+                &mut backend,
+                &mut callbacks,
+            )
+            .unwrap();
+        assert!(
+            !execution.stats.plan_cache_hit,
+            "the changing subgraph must invalidate the whole plan"
+        );
+        assert!(
+            execution.compiled.plan.dependency_edges.contains(&(0, 1)),
+            "cross-subgraph write/read dependency must survive local reuse"
+        );
+        assert!(
+            backend
+                .synchronization_plan()
+                .bound()
+                .transitions()
+                .iter()
+                .any(|transition| transition.phase
+                    == rhapsody::rg::sync_plan::BarrierPhase::BeforePass(1)
+                    && transition.source.write
+                    && !transition.destination.write),
+            "global coordination must restore the boundary barrier"
+        );
+        assert_eq!(
+            graph::payload_projection(execution.compiled.registry.resource(input.raw()).0).1,
+            Some(70 + frame)
+        );
+        let stats = chain.subgraph_cache_stats();
+        assert_eq!(stats.compilations, frame + 2);
+        assert_eq!(stats.hits, frame);
+        assert!(stats.bytes <= 16 * 1024 * 1024);
+    }
+    assert_eq!(
+        *calls.lock().unwrap(),
+        [
+            (0, "stable"),
+            (0, "changing"),
+            (1, "stable"),
+            (1, "changing"),
+            (2, "stable"),
+            (2, "changing")
+        ]
+    );
+}
+
 /// 三个缓冲在同一 pass 中写入：r0 命中资源池，r1 新建，r2 第二次创建（可配置失败）。
 fn three_buffer_graph(callback_ok: bool) -> graph::GraphDeclaration {
     let mut graph = RenderGraph::new();
     let handles = ["r0", "r1", "r2"].map(|name| create(&mut graph, name));
-    let mut pass = graph.add_pass("write");
+    let mut pass = graph.add_pass("write").with_side_effect();
     for handle in handles {
         pass.add_resource_access(handle, WRITE, 0).unwrap();
     }
@@ -149,74 +511,63 @@ fn run(
     pool: &mut Pool,
     backend: &mut Mock,
     ok: bool,
-) -> Result<(), Error> {
+) -> Result<rhapsody::rg::executor::GraphExecution, Error> {
     let mut callbacks = (0..declaration.passes.len())
         .map(|_| move |_: u64| ok)
         .collect::<Vec<_>>();
-    chain
-        .execute_graph(declaration, pool, &mut Dependency, backend, &mut callbacks)
-        .map(|_| ())
+    chain.execute_graph(declaration, pool, &mut Dependency, backend, &mut callbacks)
 }
 
 // ---------------------------------------------------------------- 1. 导出但从未访问的 Create 资源
 
 #[test]
-fn an_exported_but_unaccessed_create_resource_compiles_without_panicking() {
+fn an_exported_but_unaccessed_create_resource_is_rejected_before_allocation() {
     let mut graph = RenderGraph::new();
     let touched = create(&mut graph, "touched");
     let exported = create(&mut graph, "export only");
-    let mut pass = graph.add_pass("touch");
+    let mut pass = graph.add_pass("touch").with_side_effect();
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
     let declaration = graph.build().into_parts().0;
-    let compiled = graph::compile_graph(
+    let mut backend = EventBackend::default();
+    let error = graph::compile_graph(
         declaration,
         &mut Pool::default(),
-        &mut EventBackend::default(),
+        &mut backend,
         &mut Dependency,
     )
-    .expect("导出未访问资源不应让编译 panic");
-    let mapping = &compiled.snapshot.physical_mapping[exported.raw() as usize];
-    assert_eq!(
-        (mapping.physical, mapping.token),
-        (u16::MAX, None),
-        "未填充的资源保持无物理映射"
-    );
+    .err()
+    .expect("uninitialized exports must be rejected");
+    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     assert!(
-        compiled
-            .snapshot
-            .export
-            .iter()
-            .all(|t| t.resource != exported.raw()),
-        "未填充资源不产生导出屏障"
-    );
-    let exports = compiled.into_exports();
-    assert!(
-        !exports.exported.contains_key(&(exported.raw() as u16)),
-        "未填充资源不能作为导出取出"
+        backend.events.is_empty(),
+        "validation runs before physical allocation"
     );
 }
 
 #[test]
-fn executing_an_exported_but_unaccessed_create_resource_reports_resource_unavailable() {
+fn executing_an_uninitialized_export_records_and_allocates_nothing() {
     let mut graph = RenderGraph::new();
     let touched = create(&mut graph, "touched");
     let exported = create(&mut graph, "export only");
-    let mut pass = graph.add_pass("touch");
+    let mut pass = graph.add_pass("touch").with_side_effect();
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
     let declaration = graph.build().into_parts().0;
     let mut backend = Mock::default();
     let mut pool = Pool::default();
-    let error = run(&mut chain(), declaration, &mut pool, &mut backend, true).unwrap_err();
+    let error = run(&mut chain(), declaration, &mut pool, &mut backend, true)
+        .err()
+        .unwrap();
     assert!(
-        matches!(error, Error::ResourceUnavailable(id) if id == exported.raw() as usize),
+        matches!(error, Error::Compile(ref source) if source.kind() == rhapsody::ErrorKind::InvalidUsage),
         "{error:?}"
     );
-    // 被访问资源已创建，失败后交还后端而不是悄悄泄漏。
-    assert_eq!(backend.released, vec![501]);
+    assert_eq!(backend.creations, 0);
+    assert!(backend.released.is_empty());
+    assert_eq!(backend.next_command, 0);
 }
 
 // ---------------------------------------------------------------- 2. 失败路径归还资源
@@ -236,7 +587,8 @@ fn a_population_failure_returns_pool_resources_and_releases_created_tokens() {
         &mut backend,
         true,
     )
-    .unwrap_err();
+    .err()
+    .unwrap();
     assert!(matches!(error, Error::Compile(_)), "{error:?}");
     let Descriptor::Buffer(desc) = buffer().with_usage(0x20) else {
         unreachable!()
@@ -268,7 +620,8 @@ fn a_failure_after_compilation_returns_pool_resources_and_releases_created_token
         &mut backend,
         true,
     )
-    .unwrap_err();
+    .err()
+    .unwrap();
     assert!(
         matches!(error, Error::ResourceUnavailable(usize::MAX)),
         "{error:?}"
@@ -299,7 +652,8 @@ fn a_recording_failure_abandons_begun_commands_and_reclaims_resources() {
         &mut backend,
         false,
     )
-    .unwrap_err();
+    .err()
+    .unwrap();
     assert!(matches!(error, Error::Record(_)), "{error:?}");
     let mut abandoned = backend.abandoned.clone();
     abandoned.sort_unstable();
@@ -315,93 +669,6 @@ fn a_recording_failure_abandons_begun_commands_and_reclaims_resources() {
     assert_eq!(backend.released.len(), 2);
 }
 
-// ---------------------------------------------------------------- 5. temporal 记录放弃 / 确认
-
-fn image() -> Descriptor {
-    Descriptor::Image(TextureDesc {
-        words_at_00_through_18: [1, 2, 3, 4, 5, 6, 7],
-        bytes_at_1c_through_1e: [0; 3],
-    })
-}
-
-#[test]
-fn an_abandoned_temporal_request_is_released_at_the_next_frame_begin() {
-    let mut state = TemporalRenderGraphState::default();
-    let mut graph = RenderGraph::new();
-    state
-        .get_or_create_temporal(&mut graph, "hist", image(), || Ok(7))
-        .unwrap();
-    state.export_temporal(&mut graph).unwrap();
-    // 下一帧请求后放弃构图（不导出、不编译）。
-    let mut graph = RenderGraph::new();
-    state
-        .get_or_create_temporal(&mut graph, "hist", image(), || panic!("must reuse"))
-        .unwrap();
-    drop(graph);
-    // 同一帧内重复请求仍按原合同报错。
-    let mut same = RenderGraph::new();
-    assert!(matches!(
-        state.get_or_create_temporal(&mut same, "hist", image(), || Ok(8)),
-        Err(TemporalError::AlreadyRequested(_))
-    ));
-    state.begin_frame();
-    let mut graph = RenderGraph::new();
-    let again = state
-        .get_or_create_temporal(&mut graph, "hist", image(), || panic!("must reuse"))
-        .unwrap();
-    assert!(again.reused);
-    assert_eq!(again.resource.token, 7);
-}
-
-#[test]
-fn render_graph_state_begin_frame_releases_abandoned_requests() {
-    let mut state = RenderGraphState::default();
-    let mut graph = state.begin_frame();
-    state
-        .temporal
-        .get_or_create_temporal(&mut graph, "hist", image(), || Ok(7))
-        .unwrap();
-    drop(graph);
-    let mut graph = state.begin_frame();
-    let lookup = state
-        .temporal
-        .get_or_create_temporal(&mut graph, "hist", image(), || panic!("must reuse"))
-        .unwrap();
-    assert!(lookup.reused);
-    assert_eq!(
-        lookup.resource.access, 0,
-        "从未执行过的新资源首次使用仍是 undefined"
-    );
-}
-
-#[test]
-fn an_unexecuted_export_does_not_promote_a_new_resource_beyond_undefined() {
-    let mut state = TemporalRenderGraphState::default();
-    let mut graph = RenderGraph::new();
-    state
-        .get_or_create_temporal(&mut graph, "hist", image(), || Ok(7))
-        .unwrap();
-    state.export_temporal(&mut graph).unwrap();
-    // 原 export_temporal 写入 0x37。
-    assert_eq!(state.get("hist").unwrap().access, TEMPORAL_EXPORT_ACCESS);
-    // 本帧没有真正执行：放弃后回到 GPU 已确认的访问（新资源 = undefined）。
-    state.abandon_frame();
-    assert_eq!(state.get("hist").unwrap().access, 0);
-    assert_eq!(
-        state.record_state("hist"),
-        Some(TemporalRecordState::Exported)
-    );
-    // 执行确认后再放弃不回退。
-    let mut graph = RenderGraph::new();
-    state
-        .get_or_create_temporal(&mut graph, "hist", image(), || panic!("must reuse"))
-        .unwrap();
-    state.export_temporal(&mut graph).unwrap();
-    state.confirm_exports();
-    state.abandon_frame();
-    assert_eq!(state.get("hist").unwrap().access, TEMPORAL_EXPORT_ACCESS);
-}
-
 // ---------------------------------------------------------------- 7. pass 数上限
 
 #[test]
@@ -415,7 +682,7 @@ fn exceeding_the_pass_packing_domain_is_a_build_error() {
         graph.try_add_pass("overflow"),
         Err(BuildError::PassLimit)
     ));
-    let mut pass = graph.add_pass("overflow");
+    let mut pass = graph.add_pass("overflow").with_side_effect();
     assert!(matches!(
         pass.add_resource_access(resource, WRITE, 0),
         Err(BuildError::PassLimit)
@@ -427,11 +694,15 @@ fn malformed_declarations_fail_before_creating_resources() {
     use rhapsody::rg::graph::{AccessDeclaration, ExportDeclaration, PassDeclaration};
     let invalid_access = graph::GraphDeclaration {
         passes: vec![PassDeclaration {
+            queue_class: rhapsody::device::QueueClass::Graphics,
+            graph_id: None,
+            side_effect: false,
             name: "invalid".into(),
             accesses: vec![AccessDeclaration {
                 resource_index: u32::MAX,
                 synchronization_group: 0,
                 access_code: 0x34,
+                ..Default::default()
             }],
         }],
         ..Default::default()
@@ -441,6 +712,7 @@ fn malformed_declarations_fail_before_creating_resources() {
             tag: 0,
             resource_index: 0,
             access_code: 0x26,
+            range: rhapsody::rg::resource::AccessRange::Whole,
         }],
         ..Default::default()
     };
@@ -479,7 +751,8 @@ fn resource_creation_preserves_device_error_categories() {
             &mut backend,
             true,
         )
-        .unwrap_err();
+        .err()
+        .unwrap();
         assert_eq!(rhapsody::Error::from(error).kind(), expected);
         assert_eq!(
             backend.released,
@@ -487,4 +760,308 @@ fn resource_creation_preserves_device_error_categories() {
             "部分创建的资源在返回设备错误前仍须归还"
         );
     }
+}
+
+#[test]
+fn failed_submit_does_not_publish_a_point_or_pending_commands() {
+    let mut backend = Mock {
+        fail_submit_at: Some(1),
+        ..Default::default()
+    };
+    let mut chain = chain();
+    let mut pool = Pool::default();
+    let error = run(
+        &mut chain,
+        three_buffer_graph(true),
+        &mut pool,
+        &mut backend,
+        true,
+    )
+    .err()
+    .unwrap();
+    assert!(matches!(
+        error,
+        Error::Validation(rhapsody::Error::OutOfDeviceMemory)
+    ));
+    assert_eq!(chain.pending_command_count(), 0);
+    assert_eq!(chain.recording_command_count(), 0);
+    assert_eq!(backend.next_submit, 0);
+    assert!(backend.waits.borrow().is_empty());
+    assert_eq!(backend.abandoned, [1001]);
+    let execution = run(
+        &mut chain,
+        three_buffer_graph(true),
+        &mut pool,
+        &mut backend,
+        true,
+    )
+    .unwrap();
+    assert_eq!(execution.transaction.receipts()[0].value, 1);
+    assert_eq!(chain.pending_command_count(), 1);
+}
+
+#[test]
+fn partial_submit_failure_defers_published_points_and_abandons_the_rest() {
+    let mut backend = Mock {
+        fail_submit_at: Some(2),
+        ..Default::default()
+    };
+    let mut chain = chain();
+    let mut pool = Pool::default();
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    let resource = create(&mut graph, "scratch");
+    for name in ["first", "second"] {
+        let mut pass = graph.add_pass(name).with_side_effect();
+        pass.add_resource_access(resource, WRITE, 0).unwrap();
+        pass.render(|_| true);
+    }
+    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let error = chain
+        .execute_graph_with_context(
+            declaration,
+            &mut pool,
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        )
+        .err()
+        .unwrap();
+    let Error::PartialSubmission {
+        original,
+        execution,
+    } = error
+    else {
+        panic!("partial submission expected")
+    };
+    assert!(matches!(
+        *original,
+        Error::Validation(rhapsody::Error::OutOfDeviceMemory)
+    ));
+    assert!(
+        backend.waits.borrow().is_empty(),
+        "error cleanup must not block"
+    );
+    assert_eq!(execution.transaction.receipts().len(), 1);
+    assert_eq!(chain.pending_command_count(), 1);
+    assert_eq!(chain.completed_command_count(), 0);
+    assert_eq!(chain.recording_command_count(), 0);
+    assert_eq!(backend.abandoned, [1002]);
+}
+
+#[test]
+fn queue_domains_do_not_share_command_completion() {
+    let mut backend = Mock::default();
+    let mut chain = ExecutionChain::new(vk::Queue::null(), vec![vk::Queue::null()], 1);
+    let mut pool = Pool::default();
+    let first = run(
+        &mut chain,
+        three_buffer_graph(true),
+        &mut pool,
+        &mut backend,
+        true,
+    )
+    .unwrap();
+    backend.queue = Some(recording::Queue::Auxiliary(0));
+    let second = run(
+        &mut chain,
+        three_buffer_graph(true),
+        &mut pool,
+        &mut backend,
+        true,
+    )
+    .unwrap();
+    assert_ne!(
+        first.transaction.receipts()[0].queue,
+        second.transaction.receipts()[0].queue
+    );
+    assert_eq!(chain.pending_command_count(), 2);
+    // A third graph fails on its second batch; completing only its queue must
+    // leave the primary queue's earlier command pending.
+    backend.fail_submit_at = Some(4);
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    let resource = create(&mut graph, "scratch");
+    for name in ["first", "second"] {
+        let mut pass = graph.add_pass(name).with_side_effect();
+        pass.add_resource_access(resource, WRITE, 0).unwrap();
+        pass.render(|_| true);
+    }
+    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    assert!(
+        chain
+            .execute_graph_with_context(
+                declaration,
+                &mut pool,
+                &mut Dependency,
+                &mut backend,
+                &mut callbacks
+            )
+            .is_err()
+    );
+    assert_eq!(chain.pending_command_count(), 3);
+    assert_eq!(chain.completed_command_count(), 0);
+    assert!(backend.waits.borrow().is_empty());
+}
+
+#[test]
+fn partial_submit_never_attempts_a_failing_cleanup_wait() {
+    let mut backend = Mock {
+        fail_submit_at: Some(2),
+        fail_wait: true,
+        ..Default::default()
+    };
+    let mut chain = chain();
+    let mut pool = Pool::default();
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    let resource = create(&mut graph, "scratch");
+    for name in ["first", "second"] {
+        let mut pass = graph.add_pass(name).with_side_effect();
+        pass.add_resource_access(resource, WRITE, 0).unwrap();
+        pass.render(|_| true);
+    }
+    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let error = chain
+        .execute_graph_with_context(
+            declaration,
+            &mut pool,
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        )
+        .unwrap_err();
+    let Error::PartialSubmission {
+        original,
+        execution,
+    } = error
+    else {
+        panic!("partial execution must survive cleanup failure")
+    };
+    assert!(matches!(
+        *original,
+        Error::Validation(rhapsody::Error::OutOfDeviceMemory)
+    ));
+    assert_eq!(execution.transaction.receipts().len(), 1);
+    assert_eq!(chain.pending_command_count(), 1);
+    assert_eq!(chain.recording_command_count(), 0);
+    assert_eq!(backend.abandoned, [1002]);
+    assert!(
+        backend.released.is_empty(),
+        "GPU resources cannot be reclaimed on a failed wait"
+    );
+    assert_eq!(
+        execution
+            .completion()
+            .get(execution.transaction.receipts()[0].queue),
+        1
+    );
+}
+
+#[test]
+fn transaction_keeps_partial_import_state_and_does_not_publish_failed_exports() {
+    for failure in [Some(1), Some(2), None] {
+        let mut backend = Mock {
+            fail_submit_at: failure,
+            ..Default::default()
+        };
+        let mut graph = RenderGraph::new();
+        graph.batch_per_pass(true);
+        let resource = graph
+            .import_unowned("persistent", buffer(), 77, 0x25)
+            .unwrap();
+        for (name, code) in [("write", WRITE), ("read", 0x25)] {
+            let mut pass = graph.add_pass(name).with_side_effect();
+            pass.add_resource_access(resource, code, 0).unwrap();
+            pass.render(|_| true);
+        }
+        graph.export(resource, 0x26).unwrap();
+        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let result = chain().execute_graph_with_context(
+            declaration,
+            &mut Pool::default(),
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        );
+        let cells = backend.ranges.states[&77].cells();
+        assert_eq!(cells.len(), 1);
+        let state = cells[0].state;
+        match failure {
+            Some(1) => {
+                assert!(result.is_err());
+                assert_eq!(state.revision, 0);
+                assert_eq!(
+                    state.readers.combined().access,
+                    vk::AccessFlags::TRANSFER_READ
+                );
+                assert!(state.writer.points.is_empty());
+            }
+            Some(2) => {
+                let Error::PartialSubmission { execution, .. } = result.unwrap_err() else {
+                    panic!("partial")
+                };
+                assert!(state.writer.combined().write);
+                assert_eq!(
+                    state
+                        .writer
+                        .points
+                        .get(execution.transaction.receipts()[0].queue),
+                    1
+                );
+                assert!(
+                    state.readers.points.is_empty(),
+                    "failed export cannot publish a reader"
+                );
+                assert_eq!(execution.transaction.submitted_batches(), 1);
+            }
+            None => {
+                let execution = result.unwrap();
+                assert_eq!(
+                    state.readers.combined().access,
+                    vk::AccessFlags::MEMORY_READ
+                );
+                assert_eq!(
+                    state
+                        .readers
+                        .points
+                        .get(execution.transaction.receipts()[1].queue),
+                    2
+                );
+                assert_eq!(execution.transaction.submitted_batches(), 2);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[test]
+fn duplicate_imports_are_rejected_before_recording_or_allocation() {
+    let mut graph = RenderGraph::new();
+    graph.import_unowned("source", buffer(), 77, 0x25).unwrap();
+    graph
+        .import_unowned("other logical name", buffer(), 77, 0x25)
+        .unwrap();
+    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    assert!(matches!(
+        declaration.validate(),
+        Err(BuildError::AliasedImport(77))
+    ));
+    let mut backend = Mock::default();
+    let error = chain()
+        .execute_graph_with_context(
+            declaration,
+            &mut Pool::default(),
+            &mut Dependency,
+            &mut backend,
+            &mut callbacks,
+        )
+        .unwrap_err();
+    assert_eq!(
+        rhapsody::Error::from(error).kind(),
+        rhapsody::ErrorKind::InvalidUsage
+    );
+    assert_eq!(backend.creations, 0);
+    assert_eq!(backend.submit_attempts, 0);
+    assert_eq!(backend.next_command, 0);
 }

@@ -96,9 +96,6 @@ pub mod observed {
             registry::OBSERVED_ASPECTS[index as usize],
         ))
     }
-    pub fn vk_format_valid_aspect_flags(format: vk::Format) -> vk::ImageAspectFlags {
-        try_vk_format_valid_aspect_flags(format).expect("原构建不支持该格式的aspect查询")
-    }
     pub fn try_vk_format_info(format: vk::Format) -> Result<FormatInfo, FormatError> {
         let index = format.as_raw() as u32;
         if index >= 147 {
@@ -110,9 +107,6 @@ pub mod observed {
         bytes[8] = registry::OBSERVED_INFO_BYTE08[index as usize];
         bytes[9] = bytes[8];
         Ok(FormatInfo { bytes })
-    }
-    pub fn vk_format_info(format: vk::Format) -> FormatInfo {
-        try_vk_format_info(format).expect("原构建不支持该格式的info查询")
     }
     /// 名称来自原符号；原 1..130 返回 1，不能当标准每像素/压缩块字节数。
     /// 压缩分支只有 bitmask 指定子集，缺失分支保持原失败行为。
@@ -131,8 +125,5 @@ pub mod observed {
             }
         }
         Err(FormatError::UnsupportedBlockBytes(format.as_raw()))
-    }
-    pub fn vk_format_block_bytes(format: vk::Format) -> u32 {
-        try_vk_format_block_bytes(format).expect("原构建不支持该格式的block_bytes查询")
     }
 }

@@ -17,7 +17,6 @@ candidate-optimizations = []
 [dependencies]
 ash.workspace = true
 spirq.workspace = true
-ustr.workspace = true
 rspirv.workspace = true
 shader-pipeline.workspace = true
 shader-compiler.workspace = true
@@ -28,10 +27,15 @@ parking_lot.workspace = true
 log.workspace = true
 thiserror.workspace = true
 arc-swap = { workspace = true, features = ["weak"] }
-append-only-vec.workspace = true
 bevy_tasks.workspace = true
 gpu-allocator = { version = "=0.27.0", default-features = false, features = ["vulkan"], optional = true }
 slotmap.workspace = true
+bumpalo = "=3.18.1"
+smallvec = "=1.13.2"
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+winit = { git = "https://github.com/PounceLight/winit.git", rev = "d03de0a0a881be9422c360083151b0e7a8a2582e", default-features = false, features = ["rwh_06"] }
+objc = "=0.2.7"
 
 [lints]
 workspace = true

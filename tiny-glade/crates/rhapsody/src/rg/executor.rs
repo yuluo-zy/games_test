@@ -1,19 +1,28 @@
-// 候选实现迁移来源：reconstruction/render/execution.rs.
-// 这是行为重建，不是原作者源码。
-//! 将已恢复的私有 CPU 契约连成主链；Vulkan 创建、命令结束与提交交给后端。此入口为候选整合，不声称原函数 ABI。
-use crate::raw::managed::lifecycle as sequence;
+//! Graph recording and submission using typed CPU identities and actual queue completion points.
+use super::transaction::FrameTransaction;
+use crate::command::recording;
+use crate::command::{
+    CpuArenaLease, CpuArenaPool,
+    cpu_arena::{scratch_borrows, scratch_slice},
+};
 use crate::raw::submit;
 use crate::rg::recorder as record;
 use ash::vk::{self, Handle};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub struct ExecutionChain {
-    pub counters: sequence::DeviceCounters,
-    pub lifecycle: sequence::SequenceRuntime,
+    subgraph_cache: super::subgraph::SubgraphPlanCache,
+    plan_cache: super::cache::BoundedCache<
+        super::plan::GraphDefinition,
+        std::sync::Arc<super::plan::CompiledPlan>,
+    >,
+    plan_cache_enabled: bool,
+    recording_ids: recording::RecordingCounters,
+    pending_commands: Vec<(crate::sync::SyncPoint, recording::Command)>,
+    completed_commands: Vec<recording::Command>,
     queues: Vec<vk::Queue>,
-    command_snapshots: BTreeMap<u64, sequence::Command>,
-    recorded_sequences: Vec<u64>,
-    graph_queue_domain: Option<sequence::Queue>,
+    command_records: BTreeMap<u64, recording::Command>,
+    recorded_commands: u32,
     pool_family_count: u32,
     /// 并行录制配置；默认串行（与旧行为、原作开关关闭时一致）。
     pub parallel: crate::rg::parallel::ParallelRecording,
@@ -29,33 +38,42 @@ struct ChunkedBatch<'a, C> {
     first_pass: usize,
     chunks: &'a [std::ops::Range<usize>],
     final_batch: bool,
-    compiled: &'a crate::rg::graph::CompiledGraph,
-    logical_handles: &'a [Option<sequence::ResourceHandle>],
+    compiled: &'a crate::rg::graph::FrameInstance,
     managed: Option<&'a std::sync::Arc<crate::rg::pass_bindings::ManagedPassResources>>,
-    pass_names: &'a [PassPgoNameId],
+    pass_names: &'a [&'a std::sync::Arc<str>],
+    cpu: Option<&'a CpuArenaLease>,
     family: u32,
-    queue: sequence::Queue,
+    queue: recording::Queue,
 }
 /// 单块的独占工作单元。
 struct ChunkWork<'a, C> {
-    command: &'a sequence::Command,
+    command: &'a recording::Command,
     start: usize,
     callbacks: &'a mut [C],
+    durations: &'a mut [Option<u64>],
     transitions: &'a [Vec<ChunkTransition>],
+    gpu_timings: &'a [Option<super::profiling::GpuPassTimestamp>],
 }
 struct ChunkResult {
     ok: bool,
-    durations: Vec<PassPgoDuration>,
-    owners: Vec<crate::raw::binding::ResourceOwner>,
+    error: Option<crate::Error>,
+    recorded_durations: usize,
+    owners: super::owner_storage::ResourceOwners,
 }
 
 #[derive(Debug)]
 pub enum Error {
+    /// Some batches succeeded. The caller must retain the execution until its
+    /// completion set is reached; error cleanup never blocks or rolls back GPU work.
+    PartialSubmission {
+        original: Box<Error>,
+        execution: Box<GraphExecution>,
+    },
     /// 并行录制的分块或规划无效，或后端未提供并行视图。
     ChunkPlan,
     CallbackPanic,
-    Begin(sequence::BeginFailure),
-    Lifecycle(sequence::Failure),
+    Begin(recording::BeginFailure),
+    Lifecycle(recording::Failure),
     Record(record::Outcome),
     MissingCommand(u64),
     EmptyCommands,
@@ -65,7 +83,7 @@ pub enum Error {
     ResourceUnavailable(usize),
     CallbackCount,
     ManagedResourceUnresolved(usize),
-    QueueUnavailable(sequence::Queue),
+    QueueUnavailable(recording::Queue),
     InvalidSynchronization,
     UnsupportedQueueDomainSwitch,
     ResourceCountMismatch {
@@ -87,34 +105,26 @@ pub struct GraphTimelineSignal {
     pub semaphore: vk::Semaphore,
     pub value: u64,
 }
-/// 外部生产的批次同步与图命令分别生成，避免调用者手填内部 Command/sequence。
+/// 外部生产的批次同步与图命令分别生成，避免调用者手填CPU recording identities。
 #[derive(Clone, Debug, Default)]
 pub struct GraphBatchSync {
-    pub waits: Vec<GraphTimelineWait>,
-    pub signals: Vec<GraphTimelineSignal>,
+    pub waits: submit::SubmitArray<GraphTimelineWait>,
+    pub signals: submit::SubmitArray<GraphTimelineSignal>,
 }
 impl GraphBatchSync {
     fn valid(&self) -> bool {
-        let waits = self
-            .waits
-            .iter()
-            .map(|w| w.semaphore.as_raw())
-            .collect::<BTreeSet<_>>();
-        let signals = self
-            .signals
-            .iter()
-            .map(|s| s.semaphore.as_raw())
-            .collect::<BTreeSet<_>>();
-        waits.len() == self.waits.len()
-            && signals.len() == self.signals.len()
-            && self
-                .waits
-                .iter()
-                .all(|w| w.semaphore != vk::Semaphore::null() && !w.stage.is_empty())
-            && self
-                .signals
-                .iter()
-                .all(|s| s.semaphore != vk::Semaphore::null())
+        self.waits.iter().enumerate().all(|(index, wait)| {
+            wait.semaphore != vk::Semaphore::null()
+                && !wait.stage.is_empty()
+                && !self.waits[..index]
+                    .iter()
+                    .any(|previous| previous.semaphore == wait.semaphore)
+        }) && self.signals.iter().enumerate().all(|(index, signal)| {
+            signal.semaphore != vk::Semaphore::null()
+                && !self.signals[..index]
+                    .iter()
+                    .any(|previous| previous.semaphore == signal.semaphore)
+        })
     }
 }
 
@@ -122,19 +132,46 @@ impl GraphBatchSync {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkTransition {
     pub token: u64,
-    pub from: u8,
-    pub to: u8,
+    pub transition: super::sync_plan::BoundTransition,
 }
 
 /// 后端在并行段暴露的只读录制视图：多个块同时调用，每次只写入调用方独占的命令缓冲。
 pub trait ChunkRecorder: Sync {
-    /// 把一个 pass 的全部屏障合成一次屏障命令写入 `command`；返回 false 表示资源或访问码无效。
-    fn record_transitions(&self, command: u64, transitions: &[ChunkTransition]) -> bool;
+    /// # Safety
+    /// The command must be exclusively recording, and the pair must have been
+    /// reserved for this command by this backend in the current CPU recording scope.
+    unsafe fn write_pass_timestamp(
+        &self,
+        _command: u64,
+        _pair: super::profiling::GpuPassTimestamp,
+        _end: bool,
+    ) {
+    }
+    fn owner_storage_pool(
+        &self,
+    ) -> Option<&crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>>
+    {
+        None
+    }
+    fn cpu_arena_pool(&self) -> Option<&CpuArenaPool> {
+        None
+    }
+    /// Emit one pass's scope. Native/OOM errors retain their public categories.
+    fn record_transitions(
+        &self,
+        command: u64,
+        transitions: &[ChunkTransition],
+        owners: &mut super::owner_storage::ResourceOwners,
+    ) -> crate::Result<()>;
 }
 
 /// 一次图执行的阶段耗时与分块统计（性能追踪用）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ExecutionStats {
+    /// Commands successfully begun for this execution, including ownership preludes.
+    pub commands_recorded: u32,
+    pub plan_cache_hit: bool,
+    pub culled_passes: u32,
     pub compile_ns: u64,
     pub record_ns: u64,
     pub submit_ns: u64,
@@ -154,13 +191,104 @@ impl ExecutionStats {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct QueuePrelude {
+    pub domain: super::queue_schedule::QueueDomain,
+    pub tag: u64,
+}
+
 pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
+    /// Reserve before recording workers run. Disabled profiling returns None
+    /// and creates no query objects, owners or temporary heap allocations.
+    fn reserve_pass_timestamp(
+        &mut self,
+        _command: u64,
+        _pass: usize,
+    ) -> Option<super::profiling::GpuPassTimestamp> {
+        None
+    }
+    /// # Safety
+    /// The command must be exclusively recording, and the pair must have been
+    /// reserved for this command by this backend in the current CPU recording scope.
+    unsafe fn write_pass_timestamp(
+        &self,
+        _command: u64,
+        _pair: super::profiling::GpuPassTimestamp,
+        _end: bool,
+    ) {
+    }
+    fn requires_graph_completion(&self, _batch: usize, _total: usize) -> bool {
+        false
+    }
+    fn select_queue_domain(
+        &mut self,
+        domain: super::queue_schedule::QueueDomain,
+    ) -> crate::Result<()> {
+        let context = self.plan_context();
+        if context.queue_domain(crate::device::QueueClass::Graphics) != domain {
+            return Err(crate::Error::unsupported(
+                "backend does not support the requested queue domain",
+            ));
+        }
+        Ok(())
+    }
+    fn next_queue_prelude(
+        &mut self,
+        _compiled: &crate::rg::graph::FrameInstance,
+        _batch: usize,
+    ) -> crate::Result<Option<QueuePrelude>> {
+        Ok(None)
+    }
+    fn record_queue_prelude(&mut self, _command: u64, _prelude: QueuePrelude) -> crate::Result<()> {
+        Ok(())
+    }
+    fn select_main_batch(
+        &mut self,
+        _compiled: &crate::rg::graph::FrameInstance,
+        _batch: usize,
+    ) -> crate::Result<()> {
+        Ok(())
+    }
+    fn timeline_wait(&self, _point: crate::sync::SyncPoint) -> crate::Result<GraphTimelineWait> {
+        Err(crate::Error::unsupported(
+            "backend has no device-owned queue timeline",
+        ))
+    }
+
+    fn cpu_arena_pool(&self) -> Option<&CpuArenaPool> {
+        None
+    }
+    fn plan_context(&self) -> super::plan::PlanContext {
+        let (queue, family) = self.graph_queue();
+        super::plan::PlanContext {
+            queue_family: family,
+            queue_index: match queue {
+                recording::Queue::Primary => 0,
+                recording::Queue::Auxiliary(i) => i + 1,
+            },
+            ..Default::default()
+        }
+    }
+    /// Shared preflight for sessions and direct execution. Runs before allocation,
+    /// recording, or submission; production backends repair partial-frame imports
+    /// and validate physical identity, ownership and synchronization here.
+    fn prepare_declaration(
+        &mut self,
+        declaration: &mut crate::rg::graph::GraphDeclaration,
+    ) -> crate::Result<()> {
+        declaration.validate().map_err(Into::into)
+    }
+    /// The same bounded projection drives serial, parallel and ownership recording.
+    fn synchronization_plan(&self) -> std::sync::Arc<super::sync_plan::SynchronizationPlanner>;
+    /// Attach pre-reserved physical state deltas to the actual raw batch before
+    /// submission. Batch references resolve only to successful actual receipts.
+    fn prepare_batch_submission(&mut self, commands: &[u64], batch: usize) -> crate::Result<()>;
     /// 兼容录制器 bool/生命周期接口期间，取出设备调用的原始错误，避免丢失错误类别。
     fn take_error(&mut self) -> Option<crate::Error> {
         None
     }
     /// 包括 Pool 命中与导入资源；运行回调前重新发布真实物理映射。
-    fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::CompiledGraph) -> bool {
+    fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::FrameInstance) -> bool {
         true
     }
     /// 物理对象与 generation 由本次后端解析；未提供时 callback 明确看到 None。
@@ -169,41 +297,40 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     ) -> Option<std::sync::Arc<crate::rg::pass_bindings::ManagedPassResources>> {
         None
     }
-    fn command_started(&mut self, _command: &sequence::Command) -> Result<(), sequence::Failure> {
-        Ok(())
+    fn owner_storage_pool(
+        &self,
+    ) -> Option<&crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>>
+    {
+        None
     }
     fn retain_command_owners(
         &mut self,
         _handle: u64,
-        owners: Vec<crate::raw::binding::ResourceOwner>,
+        owners: &mut super::owner_storage::ResourceOwners,
     ) -> bool {
         owners.is_empty()
     }
-    fn collect_managed_waste(&mut self) -> bool {
-        true
-    }
-    fn graph_queue(&self) -> (sequence::Queue, u32) {
-        (sequence::Queue::Primary, 0)
+    fn graph_queue(&self) -> (recording::Queue, u32) {
+        (recording::Queue::Primary, 0)
     }
     fn batch_synchronization(&self, _index: usize, _total: usize) -> GraphBatchSync {
         GraphBatchSync::default()
     }
-    /// 物理注册表使用 u64 token。托管对象分配与 generation 须由后端明确提供；无法解析时返回 None。
-    fn managed_resource(
-        &mut self,
-        token: u64,
-        lifecycle: &mut sequence::SequenceRuntime,
-    ) -> Option<sequence::ResourceHandle>;
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
-    fn command_handle(&mut self) -> Result<u64, sequence::Failure>;
+    fn command_handle(&mut self) -> Result<u64, recording::Failure>;
     /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块来自不同命令池。
-    fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, sequence::Failure> {
+    fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, recording::Failure> {
         self.command_handle()
     }
-    fn begin_command(&mut self, handle: u64) -> Result<(), sequence::Failure>;
+    fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure>;
     fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
     /// CPU 后端可只记录投影；实际后端必须发出 Vulkan 屏障。
-    fn transition(&mut self, _command: u64, _token: u64, _from: u8, _to: u8) -> bool {
+    fn transition(
+        &mut self,
+        _command: u64,
+        _token: u64,
+        _transition: &super::sync_plan::BoundTransition,
+    ) -> bool {
         true
     }
     fn flush_barriers(&mut self, _command: u64) -> bool {
@@ -220,49 +347,145 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
     /// 失败路径：已分配或已开始、但不会提交的命令交还后端（它从未进入 GPU）。默认不做任何事。
     fn abandon_command(&mut self, _handle: u64) {}
-    fn wait_submission(&self, _receipt: sequence::SubmissionReceipt) -> crate::Result<()> {
+    fn wait_submission(&self, _receipt: crate::sync::SyncPoint) -> crate::Result<()> {
         Ok(())
     }
 }
 
 pub struct GraphExecution {
-    pub compiled: crate::rg::graph::CompiledGraph,
-    pub receipts: Vec<sequence::SubmissionReceipt>,
-    pub resources: Vec<sequence::ResourceHandle>,
-    pub command_sequences: Vec<u64>,
+    pub compiled: crate::rg::graph::FrameInstance,
+    pub transaction: FrameTransaction,
     pub stats: ExecutionStats,
+}
+
+impl std::fmt::Debug for GraphExecution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GraphExecution")
+            .field("transaction", &self.transaction)
+            .field("stats", &self.stats)
+            .finish_non_exhaustive()
+    }
+}
+impl GraphExecution {
+    pub fn completion(&self) -> crate::sync::SyncSet {
+        self.transaction.completion()
+    }
 }
 
 /// 本次录制的命令和编译图；绑定消费者不能另外分配序号或重新构造资源映射。
 pub struct PassContext<'a> {
     pub pass_index: usize,
-    pub command: &'a sequence::Command,
-    pub compiled: &'a crate::rg::graph::CompiledGraph,
-    pub logical_resources: &'a [Option<sequence::ResourceHandle>],
+    /// CPU-only scratch, valid through this callback; never GPU upload backing.
+    pub cpu: Option<&'a CpuArenaLease>,
+    pub command: &'a recording::Command,
+    pub compiled: &'a crate::rg::graph::FrameInstance,
     pub managed: Option<&'a crate::rg::pass_bindings::ManagedPassResources>,
     /// 由 recorder 收集并交给同一命令拥有者，callback 返回后仍需保活。
-    pub owners: &'a std::cell::RefCell<Vec<crate::raw::binding::ResourceOwner>>,
+    pub owners: &'a std::cell::RefCell<super::owner_storage::ResourceOwners>,
+    pub errors: &'a std::cell::RefCell<Option<crate::Error>>,
 }
 impl PassContext<'_> {
-    pub fn command_state(&self) -> crate::raw::managed::tracking::CommandState {
-        crate::raw::managed::tracking::CommandState {
-            tag: self.command.state(),
-            sequence: self.command.sequence().0,
+    pub fn history_valid(&self, texture: crate::rg::resource::TextureId) -> crate::Result<bool> {
+        self.named_history_valid(texture.raw(), true)
+    }
+    pub fn buffer_history_valid(
+        &self,
+        buffer: crate::rg::resource::BufferId,
+    ) -> crate::Result<bool> {
+        self.named_history_valid(buffer.raw(), false)
+    }
+    fn named_history_valid(
+        &self,
+        handle: crate::rg::resource::ResourceHandle,
+        image: bool,
+    ) -> crate::Result<bool> {
+        let graph = &self.compiled.declarations;
+        if graph
+            .passes
+            .get(self.pass_index)
+            .and_then(|pass| pass.graph_id)
+            != Some(handle.graph_id())
+        {
+            return Err(crate::Error::invalid_usage(
+                "history handle belongs to another graph",
+            ));
         }
+        let index = handle.raw() as usize;
+        let declaration = graph
+            .resources
+            .get(index)
+            .ok_or_else(|| crate::Error::invalid_usage("history handle is out of range"))?;
+        if matches!(
+            declaration.descriptor,
+            crate::rg::graph::Descriptor::Image(_)
+        ) != image
+        {
+            return Err(crate::Error::invalid_usage(
+                "history handle has the wrong resource type",
+            ));
+        }
+        self.compiled
+            .history_validity
+            .as_ref()
+            .and_then(|validity| validity.get(index))
+            .copied()
+            .flatten()
+            .ok_or_else(|| {
+                crate::Error::invalid_usage("resource is not a session-owned named resource")
+            })
     }
-    pub fn keep_alive<T: Send + Sync + 'static>(&self, owner: std::sync::Arc<T>) {
-        self.owners.borrow_mut().push(owner);
-    }
-}
 
-fn access(
-    record: &crate::rg::graph::ResourceAccessRecord,
-    write: bool,
-) -> crate::raw::barrier::Access {
-    crate::raw::barrier::Access {
-        code: record.access_code,
-        group: record.synchronization_group,
-        write,
+    pub fn report_error(&self, error: crate::Error) {
+        self.errors.borrow_mut().get_or_insert(error);
+    }
+    /// Retain a pipeline, query or other native object with no image/buffer
+    /// memory domain. Graph memory must be declared before recording begins.
+    pub fn retain_object<T: crate::resource::GpuUse + 'static>(
+        &self,
+        owner: std::sync::Arc<T>,
+    ) -> crate::Result<()> {
+        let result = owner
+            .visit_uses(&mut |cell| {
+                if cell.ownership_range().is_some() {
+                    Err(crate::Error::invalid_usage(
+                        "graph memory references require a declared resource access",
+                    ))
+                } else {
+                    Ok(())
+                }
+            })
+            .and_then(|()| self.owners.borrow_mut().add_object(owner));
+        self.retention_result(result)
+    }
+    /// # Safety
+    /// Every native memory reference must be covered by this pass's validated
+    /// declarations or the formal immutable upload protocol.
+    pub(crate) unsafe fn retain_recorded<T: crate::resource::GpuUse + 'static>(
+        &self,
+        owner: std::sync::Arc<T>,
+    ) -> crate::Result<()> {
+        let result = self.owners.borrow_mut().add_recorded(owner);
+        self.retention_result(result)
+    }
+    pub(crate) fn retain_upload_read(
+        &self,
+        buffer: std::sync::Arc<crate::raw::buffer::Buffer>,
+        offset: u64,
+        size: u64,
+        scope: crate::resource::range_state::AccessScope,
+    ) -> crate::Result<()> {
+        let result = self
+            .owners
+            .borrow_mut()
+            .add_upload_read(buffer, offset, size, scope);
+        self.retention_result(result)
+    }
+    fn retention_result(&self, result: crate::Result<()>) -> crate::Result<()> {
+        result.map_err(|error| {
+            let shared = std::sync::Arc::new(error);
+            self.report_error(shared.clone().into());
+            shared.into()
+        })
     }
 }
 
@@ -283,7 +506,7 @@ impl ExecutionChain {
         self.execute_graph_with_context(graph, pool, dependency, backend, &mut contextual)
     }
 
-    /// 在 compiled→record 的同一调用中提供真实 CommandState 和 managed 注册表。
+    /// Supply the recorded command and physical resource registry together.
     pub fn execute_graph_with_context(
         &mut self,
         graph: crate::rg::graph::GraphDeclaration,
@@ -304,7 +527,7 @@ impl ExecutionChain {
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
+        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let result =
             self.execute_graph_inner(graph, pool, dependency, backend, callbacks, validate);
@@ -315,44 +538,100 @@ impl ExecutionChain {
 
     fn execute_graph_inner(
         &mut self,
-        graph: crate::rg::graph::GraphDeclaration,
+        mut graph: crate::rg::graph::GraphDeclaration,
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        validate: impl FnOnce(&crate::rg::graph::CompiledGraph) -> crate::Result<()>,
+        validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
-        self.recorded_sequences.clear();
+        self.recorded_commands = 0;
         let mut stats = ExecutionStats::default();
         if callbacks.len() != graph.passes.len() {
             return Err(Error::CallbackCount);
         }
+        backend
+            .prepare_declaration(&mut graph)
+            .map_err(Error::Validation)?;
         let (queue, family) = backend.graph_queue();
         if family >= self.pool_family_count {
-            return Err(Error::Lifecycle(sequence::Failure::PoolFamilyBounds));
+            return Err(Error::Lifecycle(recording::Failure::PoolFamilyBounds));
         }
-        if matches!(queue, sequence::Queue::Auxiliary(i) if i as usize + 1 >= self.queues.len()) {
+        if matches!(queue, recording::Queue::Auxiliary(i) if i as usize + 1 >= self.queues.len()) {
             return Err(Error::QueueUnavailable(queue));
         }
-        // 已恢复的 resource bucket key 仍为全局 u64。跨队列同号可能冲突，不能伪造域映射。
-        if self
-            .graph_queue_domain
-            .is_some_and(|previous| previous != queue)
-        {
-            return Err(Error::UnsupportedQueueDomainSwitch);
-        }
-        self.graph_queue_domain = Some(queue);
         let compile_start = std::time::Instant::now();
-        // population 失败时 compile_graph 已归还本次取出/新建的资源。
-        let mut compiled = crate::rg::graph::compile_graph(graph, pool, backend, dependency)
-            .map_err(Error::Compile)?;
+        let context = backend.plan_context();
+        let cached = if self.plan_cache_enabled {
+            self.plan_cache
+                .try_get_matching(|definition| {
+                    definition.matches_declaration(&graph, dependency, context)
+                })
+                .map_err(Error::Compile)?
+                .cloned()
+        } else {
+            self.plan_cache
+                .record_bypass(super::cache::CacheReason::Disabled);
+            None
+        };
+        let plan = if let Some(plan) = cached {
+            stats.plan_cache_hit = true;
+            plan
+        } else {
+            let definition =
+                super::plan::GraphDefinition::from_declaration(&graph, dependency, context)
+                    .map_err(Error::Compile)?;
+            if self.plan_cache_enabled {
+                let reason = self
+                    .plan_cache
+                    .iter()
+                    .map(|(old, _)| old.differing_key_reason(&definition))
+                    .min_by_key(|reason| *reason as usize)
+                    .unwrap_or(super::cache::CacheReason::Cold);
+                self.plan_cache.classify_miss(reason);
+            }
+            let plan = std::sync::Arc::new(
+                super::plan::compile_with_subgraphs(definition.clone(), &mut self.subgraph_cache)
+                    .map_err(Error::Compile)?,
+            );
+            if self.plan_cache_enabled {
+                // Count both the normalized key and the immutable plan's storage.
+                let bytes = plan.estimated_bytes().saturating_mul(2);
+                self.plan_cache.insert(definition, plan.clone(), bytes);
+            }
+            plan
+        };
+        stats.culled_passes = graph
+            .passes
+            .len()
+            .saturating_sub(plan.retained_passes.len()) as u32;
+        let cpu_arena = backend
+            .cpu_arena_pool()
+            .map(CpuArenaPool::checkout)
+            .transpose()
+            .map_err(Error::Validation)?;
+        let mut selected_callbacks = {
+            let mut selected = callbacks
+                .iter_mut()
+                .enumerate()
+                .filter(|(i, _)| plan.retained_passes.binary_search(i).is_ok())
+                .map(|(_, callback)| callback);
+            scratch_borrows(cpu_arena.as_ref(), plan.retained_passes.len(), |_| {
+                selected.next().expect("validated retained callback index")
+            })
+            .map_err(Error::Validation)?
+        };
+        // Allocation is a frame binding operation, never part of plan compilation.
+        let mut compiled =
+            crate::rg::graph::instantiate_validated_plan(plan, graph, pool, backend, dependency)
+                .map_err(Error::Compile)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
         let existing = self
-            .command_snapshots
+            .command_records
             .keys()
             .copied()
             .collect::<BTreeSet<_>>();
-        let mut receipts = Vec::new();
+        let mut transaction = FrameTransaction::default();
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             validate(&compiled)
                 .map_err(Error::Validation)
@@ -361,36 +640,42 @@ impl ExecutionChain {
                         &compiled,
                         dependency,
                         backend,
-                        callbacks,
+                        &mut selected_callbacks,
+                        cpu_arena.as_ref(),
                         (queue, family),
                         &mut stats,
-                        &mut receipts,
+                        &mut transaction,
                     )
                 })
         }))
         .unwrap_or(Err(Error::CallbackPanic));
+        stats.commands_recorded = self.recorded_commands;
         match result {
-            Ok(resources) => Ok(GraphExecution {
+            Ok(()) => Ok(GraphExecution {
                 compiled,
-                receipts,
-                resources,
-                command_sequences: self.recorded_sequences.clone(),
+                transaction,
                 stats,
             }),
             Err(error) => {
                 let error = backend.take_error().map(Error::Validation).unwrap_or(error);
-                // 已经成功提交的批次先完成，再回滚本次资源；未提交命令直接取消。
-                for receipt in &receipts {
-                    backend
-                        .wait_submission(*receipt)
-                        .map_err(Error::Validation)?;
-                    self.complete(receipt.queue, receipt.last_timeline)?;
-                }
+                // Unsubmitted commands are always abandoned, even if waiting for
+                // earlier successful batches fails. Never release their resources
+                // or replace the primary error merely because cleanup also failed.
                 self.abandon_unsubmitted(&error, &existing, backend);
+                if !transaction.receipts().is_empty() {
+                    return Err(Error::PartialSubmission {
+                        original: Box::new(error),
+                        execution: Box::new(GraphExecution {
+                            compiled,
+                            transaction,
+                            stats,
+                        }),
+                    });
+                }
                 crate::rg::graph::reclaim_failed_resources(
-                    &mut compiled.registry,
+                    &mut compiled.tables.registry,
                     &compiled.declarations.resources,
-                    &compiled.snapshot.pool_hits,
+                    &compiled.tables.snapshot.pool_hits,
                     pool,
                     backend,
                 );
@@ -407,15 +692,13 @@ impl ExecutionChain {
         backend: &mut impl ExecutionBackend,
     ) {
         let mut handles = self
-            .command_snapshots
+            .command_records
             .keys()
             .copied()
             .filter(|handle| !existing.contains(handle))
             .collect::<Vec<_>>();
         for handle in &handles {
-            if let Some(command) = self.command_snapshots.remove(handle) {
-                let _ = self.lifecycle.abandon(&command);
-            }
+            self.command_records.remove(handle);
         }
         if let Error::Begin(failure) = error
             && !handles.contains(&failure.command.handle())
@@ -431,48 +714,24 @@ impl ExecutionChain {
     #[allow(clippy::too_many_arguments)]
     fn record_compiled(
         &mut self,
-        compiled: &crate::rg::graph::CompiledGraph,
-        dependency: &mut impl crate::rg::graph::AccessDependency,
+        compiled: &crate::rg::graph::FrameInstance,
+        _dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
-        (queue, family): (sequence::Queue, u32),
+        cpu_arena: Option<&CpuArenaLease>,
+        (_queue, _family): (recording::Queue, u32),
         stats: &mut ExecutionStats,
-        receipts: &mut Vec<sequence::SubmissionReceipt>,
-    ) -> Result<Vec<sequence::ResourceHandle>, Error> {
-        let pass_names = compiled
-            .declarations
-            .passes
-            .iter()
-            .map(|pass| PassPgoNameId::from_name(&pass.name))
-            .collect::<Vec<_>>();
+        transaction: &mut FrameTransaction,
+    ) -> Result<(), Error> {
+        *transaction = FrameTransaction::prepare(compiled).map_err(Error::Validation)?;
+        let pass_names = scratch_slice(cpu_arena, compiled.declarations.passes.len(), |index| {
+            &compiled.declarations.passes[index].name
+        })
+        .map_err(Error::Validation)?;
         if !backend.prepare_compiled_resources(compiled) {
             return Err(Error::ResourceUnavailable(usize::MAX));
         }
         let managed = backend.managed_pass_resources();
-        let synchronization = (0..compiled.snapshot.batches.len())
-            .map(|i| backend.batch_synchronization(i, compiled.snapshot.batches.len()))
-            .collect::<Vec<_>>();
-        if synchronization.iter().any(|s| !s.valid()) {
-            return Err(Error::InvalidSynchronization);
-        }
-        // 读写分类按访问码查一次，闭包里不再借用 dependency。
-        let writes: Vec<bool> = compiled
-            .info
-            .accesses
-            .iter()
-            .map(|record| dependency.is_write(record.access_code))
-            .collect();
-        let resolve_access = |index: u32| {
-            (index != crate::rg::graph::NO_ACCESS).then(|| {
-                access(
-                    &compiled.info.accesses[index as usize],
-                    writes[index as usize],
-                )
-            })
-        };
-        let mut resources = Vec::new();
-        let mut logical_handles = Vec::new();
-        let mut logical = Vec::new();
         for (id, lifetime) in compiled.info.lifetimes.iter().enumerate() {
             let mapping = &compiled.registry.resources[id];
             // 首次命令 begin 前校验资源映射；有访问或导出的资源必须存在。
@@ -490,106 +749,106 @@ impl ExecutionChain {
             {
                 return Err(Error::ResourceUnavailable(id));
             }
-            // 未访问且未导出的 create 资源已被编译器裁剪；保留逻辑索引但不创建虚假托管对象。
-            let handle = match payload.and_then(|r| crate::rg::graph::payload_projection(r).1) {
-                Some(token) => Some(
-                    backend
-                        .managed_resource(token, &mut self.lifecycle)
-                        .ok_or(Error::ManagedResourceUnresolved(id))?,
-                ),
-                None => None,
-            };
-            resources.extend(handle);
-            logical_handles.push(handle);
-            logical.push(record::LogicalResource {
-                metadata: crate::raw::barrier::Resource {
-                    kind: compiled.declarations.resources[id].descriptor.kind_code(),
-                    initial: compiled.registry.resource_initial_access[id],
-                    reused: mapping.reused,
-                    validity: 0,
-                },
-                first: resolve_access(lifetime.first_access_index),
-                last: resolve_access(lifetime.last_access_index),
-                export_access: compiled
-                    .declarations
-                    .exports
-                    .iter()
-                    .find(|e| e.resource_index as usize == id)
-                    .map(|e| e.access_code),
-                last_command_sequence: 0,
-            });
         }
-        let mut passes = compiled
-            .info
-            .pass_access_ranges
-            .iter()
-            .map(|(start, end)| record::Pass {
-                accesses: compiled.info.accesses[start.0 as usize..end.0 as usize]
-                    .iter()
-                    .enumerate()
-                    .map(|(offset, current)| record::PassAccess {
-                        resource: current.resource_index as usize,
-                        previous: resolve_access(current.previous_access_index),
-                        current: access(current, writes[start.0 as usize + offset]),
-                    })
-                    .collect(),
+        let mut passes = scratch_slice(cpu_arena, compiled.info.pass_access_ranges.len(), |_| {
+            record::Pass {
                 callback_present: true,
-            })
-            .collect::<Vec<_>>();
+            }
+        })
+        .map_err(Error::Validation)?;
         if compiled.snapshot.batches.is_empty() {
-            return Ok(resources);
+            return Ok(());
         }
-        let first_handle = backend.command_handle().map_err(Error::Lifecycle)?;
-        let first = self.begin(
-            first_handle,
-            family,
-            queue,
-            backend.begin_command(first_handle),
-        )?;
-        backend.command_started(&first).map_err(Error::Lifecycle)?;
         let mut recorder = record::Recorder {
-            resources: logical,
-            pending_initial: compiled
-                .pending_initial
-                .iter()
-                .map(|i| *i as usize)
-                .collect(),
-            commands: vec![first.record_command()],
+            synchronization: backend.synchronization_plan(),
+            batch: 0,
+            first_pass: 0,
+            commands: Default::default(),
         };
+        let mut batch_points = scratch_slice(cpu_arena, compiled.snapshot.batches.len(), |_| None)
+            .map_err(Error::Validation)?;
         for (batch_index, batch) in compiled.snapshot.batches.iter().enumerate() {
-            let synchronization = synchronization[batch_index].clone();
-            // 初始屏障消费上一条活动命令；新命令分配前更新已恢复的跟踪状态。
-            if let Some(active) = recorder.commands.last() {
-                let original = &self.command_snapshots[&active.handle];
-                for &id in &recorder.pending_initial {
-                    if recorder.resources[id].first.is_some()
-                        && !recorder.resources[id].metadata.reused
+            self.submit_queue_preludes(compiled, batch_index, backend, transaction, stats)?;
+            backend
+                .select_main_batch(compiled, batch_index)
+                .map_err(Error::Validation)?;
+            let domain = compiled.plan.queue_schedule.domains[batch_index];
+            backend
+                .select_queue_domain(domain)
+                .map_err(Error::Validation)?;
+            let family = domain.family;
+            let queue = if domain.queue_index == 0 {
+                recording::Queue::Primary
+            } else {
+                recording::Queue::Auxiliary(domain.queue_index - 1)
+            };
+            let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+            let first = self.begin(handle, family, queue, backend.begin_command(handle))?;
+            recorder.commands.push(first.clone());
+            recorder.batch = batch_index;
+            recorder.first_pass = batch.pass_range.start;
+            let mut synchronization =
+                backend.batch_synchronization(batch_index, compiled.snapshot.batches.len());
+            if !synchronization.valid() {
+                return Err(Error::InvalidSynchronization);
+            }
+            for &source in &compiled.plan.queue_schedule.dependencies[batch_index] {
+                let point = batch_points[source].ok_or(Error::InvalidSynchronization)?;
+                let wait = backend.timeline_wait(point).map_err(Error::Validation)?;
+                if let Some(old) = synchronization
+                    .waits
+                    .iter_mut()
+                    .find(|old| old.semaphore == wait.semaphore)
+                {
+                    old.value = old.value.max(wait.value);
+                    old.stage |= wait.stage;
+                } else {
+                    synchronization.waits.push(wait);
+                }
+            }
+            if backend.requires_graph_completion(batch_index, compiled.snapshot.batches.len()) {
+                for (source, point) in batch_points[..batch_index].iter().enumerate() {
+                    if compiled.plan.queue_schedule.domains[source].queue_index
+                        == domain.queue_index
                     {
-                        self.lifecycle
-                            .track(
-                                logical_handles[id].ok_or(Error::ResourceUnavailable(id))?,
-                                original,
-                            )
-                            .map_err(Error::Lifecycle)?;
+                        continue;
+                    }
+                    let wait = backend
+                        .timeline_wait(point.ok_or(Error::InvalidSynchronization)?)
+                        .map_err(Error::Validation)?;
+                    if let Some(old) = synchronization
+                        .waits
+                        .iter_mut()
+                        .find(|old| old.semaphore == wait.semaphore)
+                    {
+                        old.value = old.value.max(wait.value);
+                        old.stage |= wait.stage;
+                    } else {
+                        synchronization.waits.push(wait);
                     }
                 }
             }
             let record_start = std::time::Instant::now();
             stats.batches += 1;
-            let worth_it = self.pgo.previous.total_ns() >= self.parallel.min_total_ns
+            let worth_it = !matches!(
+                self.parallel.strategy,
+                crate::rg::parallel::ChunkStrategy::Serial
+            ) && self.pgo.previous.total_ns() >= self.parallel.min_total_ns
                 && (self.parallel.min_total_ns == 0 || !self.pgo.previous.is_empty());
-            let chunks = if worth_it && backend.chunk_recorder().is_some() {
-                crate::rg::parallel::plan_chunks(
-                    self.parallel.strategy,
-                    &pass_names[batch.pass_range.clone()],
-                    &self.pgo.previous,
-                    // 候选约束位：当前每个图 pass 自成完整 render pass 实例，任意边界都可切。
-                    &[],
-                )
-            } else {
-                std::iter::once(0..batch.pass_range.len()).collect()
-            };
-            let last_command = if chunks.len() > 1 {
+            let chunks: smallvec::SmallVec<[_; 8]> =
+                if worth_it && backend.chunk_recorder().is_some() {
+                    crate::rg::parallel::plan_chunks(
+                        self.parallel.strategy,
+                        &pass_names[batch.pass_range.clone()],
+                        &self.pgo.previous,
+                        // 候选约束位：当前每个图 pass 自成完整 render pass 实例，任意边界都可切。
+                        &[],
+                    )
+                    .into()
+                } else {
+                    std::iter::once(0..batch.pass_range.len()).collect()
+                };
+            if chunks.len() > 1 {
                 stats.parallel_batches += 1;
                 stats.chunks += chunks.len() as u32;
                 let outcome = self.record_chunked_batch(
@@ -601,111 +860,122 @@ impl ExecutionChain {
                         chunks: &chunks,
                         final_batch: batch.export_barriers,
                         compiled,
-                        logical_handles: &logical_handles,
                         managed: managed.as_ref(),
                         pass_names: &pass_names,
+                        cpu: cpu_arena,
                         family,
                         queue,
                     },
                     backend,
                 )?;
                 stats.count_barriers(&outcome.1);
-                outcome.0
             } else {
                 let new = if matches!(
                     self.parallel.strategy,
                     crate::rg::parallel::ChunkStrategy::Serial
                 ) {
                     let handle = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
-                    self.command_snapshots
+                    self.command_records
                         .get(&handle)
                         .ok_or(Error::MissingCommand(handle))?
                         .clone()
                 } else {
                     let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-                    let command =
-                        self.begin(handle, family, queue, backend.begin_command(handle))?;
-                    backend
-                        .command_started(&command)
-                        .map_err(Error::Lifecycle)?;
-                    command
+                    self.begin(handle, family, queue, backend.begin_command(handle))?
                 };
                 let handle = new.handle();
                 let start = batch.pass_range.start;
-                let owners = std::cell::RefCell::new(Vec::new());
-                let mut durations = Vec::new();
-                if let Some(resources) = &managed {
-                    owners
-                        .borrow_mut()
-                        .push(resources.clone() as crate::raw::binding::ResourceOwner);
-                }
-                let outcome = self.record_optional_resources(
+                let owners = std::cell::RefCell::new(
+                    super::owner_storage::ResourceOwners::new(backend.owner_storage_pool())
+                        .map_err(Error::Validation)?,
+                );
+                let errors = std::cell::RefCell::new(None);
+                let mut durations = scratch_slice(cpu_arena, batch.pass_range.len(), |_| None)
+                    .map_err(Error::Validation)?;
+                let mut duration_count = 0;
+                let outcome = self.record(
                     &mut recorder,
                     &mut passes[batch.pass_range.clone()],
                     batch.export_barriers,
                     &new,
-                    &logical_handles,
                     |action| match action {
                         record::RecordAction::Pass(offset) => {
                             if !backend.flush_barriers(handle) {
                                 return false;
                             }
                             let pass_index = start + offset;
+                            if let Some(resources) = &managed
+                                && let Err(error) = resources.retain_pass_resources(
+                                    &compiled.declarations.passes[pass_index],
+                                    &mut owners.borrow_mut(),
+                                )
+                            {
+                                errors.borrow_mut().get_or_insert(error);
+                                return false;
+                            }
+                            let gpu = backend.reserve_pass_timestamp(handle, pass_index);
+                            if let Some(pair) = gpu {
+                                // SAFETY: this pair was reserved for this exclusively recording command.
+                                unsafe { backend.write_pass_timestamp(handle, pair, false) };
+                            }
                             let timer = std::time::Instant::now();
                             let ok = callbacks[pass_index](PassContext {
                                 pass_index,
+                                cpu: cpu_arena,
                                 command: &new,
                                 compiled,
-                                logical_resources: &logical_handles,
                                 managed: managed.as_deref(),
                                 owners: &owners,
+                                errors: &errors,
                             });
-                            durations.push(PassPgoDuration::new(
-                                pass_names[pass_index],
-                                timer.elapsed().as_nanos() as u64,
-                            ));
-                            ok
+                            if let Some(pair) = gpu {
+                                // SAFETY: the same command and reserved pair remain exclusively owned.
+                                unsafe { backend.write_pass_timestamp(handle, pair, true) };
+                            }
+                            durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
+                            duration_count += 1;
+                            ok && errors.borrow().is_none()
                         }
                         record::RecordAction::End(command) => {
                             backend.end_command(vk::CommandBuffer::from_raw(command))
                         }
                         record::RecordAction::Transition {
                             command,
-                            resource,
-                            from,
-                            to,
+                            transition,
                         } => {
-                            let backing = compiled.registry.resources[resource].backing_index;
+                            let backing = compiled.registry.resources[transition.resource as usize]
+                                .backing_index;
                             let token = crate::rg::graph::payload_projection(
                                 &compiled.registry.backing_resources[backing as usize],
                             )
                             .1
                             .unwrap();
-                            backend.transition(command, token, from, to)
+                            backend.transition(command, token, &transition)
                         }
                     },
                 );
-                if !backend.retain_command_owners(handle, owners.into_inner()) {
+                if !backend.retain_command_owners(handle, &mut owners.into_inner()) {
                     return Err(Error::MissingCommand(handle));
                 }
-                self.pgo.current.extend(durations);
+                self.pgo
+                    .current
+                    .extend(durations[..duration_count].iter().enumerate().map(
+                        |(offset, duration)| {
+                            PassPgoDuration::new(
+                                PassPgoNameId::from_shared(std::sync::Arc::clone(
+                                    pass_names[start + offset],
+                                )),
+                                duration.expect("recorded pass duration"),
+                            )
+                        },
+                    ));
+                if let Some(error) = errors.into_inner() {
+                    return Err(Error::Validation(error));
+                }
                 let outcome = outcome?;
                 stats.count_barriers(&outcome);
-                new
             };
             stats.record_ns += record_start.elapsed().as_nanos() as u64;
-            if batch.export_barriers {
-                for export in &compiled.declarations.exports {
-                    self.lifecycle
-                        .track(
-                            logical_handles[export.resource_index as usize].ok_or(
-                                Error::ResourceUnavailable(export.resource_index as usize),
-                            )?,
-                            &last_command,
-                        )
-                        .map_err(Error::Lifecycle)?;
-                }
-            }
             // 各批次之间提交；保留批次中最后一条开放命令，并恢复 end 后的提交数组构造。
             let ended = recorder
                 .commands
@@ -722,6 +992,13 @@ impl ExecutionChain {
                 .iter()
                 .map(|c| vk::CommandBuffer::from_raw(c.handle))
                 .collect();
+            let state_commands = commands
+                .iter()
+                .map(|command| command.handle)
+                .collect::<smallvec::SmallVec<[_; 8]>>();
+            backend
+                .prepare_batch_submission(&state_commands, batch_index)
+                .map_err(Error::Validation)?;
             let prepared = submit::PreparedSubmit {
                 commands: handles,
                 wait_semaphores: synchronization.waits.iter().map(|w| w.semaphore).collect(),
@@ -735,140 +1012,202 @@ impl ExecutionChain {
                 signal_values: synchronization.signals.iter().map(|s| s.value).collect(),
             };
             let raw_queue = match queue {
-                sequence::Queue::Primary => self.queues[0],
-                sequence::Queue::Auxiliary(index) => self.queues[index as usize + 1],
+                recording::Queue::Primary => self.queues[0],
+                recording::Queue::Auxiliary(index) => self.queues[index as usize + 1],
             };
+            // Reserve before entering the driver. Successful submission publishes only
+            // prevalidated commands and a completion point; this path cannot allocate.
+            self.pending_commands
+                .try_reserve(commands.len())
+                .map_err(|_| Error::Validation(crate::Error::OutOfHostMemory))?;
+            for command in &commands {
+                if !self.command_records.contains_key(&command.handle) {
+                    return Err(Error::MissingCommand(command.handle));
+                }
+            }
+            transaction.reserve_receipt().map_err(Error::Validation)?;
             let point = backend
                 .submit(raw_queue, &[prepared])
                 .map_err(Error::Validation)?;
-            let receipt = sequence::SubmissionReceipt {
-                queue,
-                last_timeline: sequence::Timeline(point.value),
-            };
-            let pending = commands
-                .iter()
-                .map(|c| {
-                    let mut command = self
-                        .command_snapshots
-                        .remove(&c.handle)
-                        .expect("本批命令已登记");
-                    command.set_state(3);
-                    sequence::PendingCommand {
-                        command,
-                        threshold: sequence::Timeline(point.value),
-                    }
-                })
-                .collect();
-            self.lifecycle.accept_submission(receipt, pending);
+            for recorded in commands {
+                let mut command = self
+                    .command_records
+                    .remove(&recorded.handle)
+                    .expect("validated before submission");
+                command.state = recording::CommandState::Submitted;
+                self.pending_commands.push((point, command));
+            }
             stats.submit_ns += submit_start.elapsed().as_nanos() as u64;
-            receipts.push(receipt);
-            if !backend.collect_managed_waste() {
-                return Err(Error::ManagedResourceUnresolved(usize::MAX));
-            }
-            if !batch.export_barriers {
-                let handle = backend.command_handle().map_err(Error::Lifecycle)?;
-                let active = self.begin(handle, family, queue, backend.begin_command(handle))?;
-                backend.command_started(&active).map_err(Error::Lifecycle)?;
-                recorder.commands.push(active.record_command());
-            }
+            transaction.publish(point);
+            batch_points[batch_index] = Some(point);
         }
-        Ok(resources)
+        Ok(())
+    }
+    fn submit_queue_preludes(
+        &mut self,
+        compiled: &crate::rg::graph::FrameInstance,
+        batch: usize,
+        backend: &mut impl ExecutionBackend,
+        transaction: &mut FrameTransaction,
+        stats: &mut ExecutionStats,
+    ) -> Result<(), Error> {
+        let limit = compiled
+            .declarations
+            .resources
+            .len()
+            .saturating_mul(4)
+            .saturating_add(1);
+        for _ in 0..limit {
+            let Some(prelude) = backend
+                .next_queue_prelude(compiled, batch)
+                .map_err(Error::Validation)?
+            else {
+                return Ok(());
+            };
+            backend
+                .select_queue_domain(prelude.domain)
+                .map_err(Error::Validation)?;
+            let queue = if prelude.domain.queue_index == 0 {
+                recording::Queue::Primary
+            } else {
+                recording::Queue::Auxiliary(prelude.domain.queue_index - 1)
+            };
+            let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+            let command = self.begin(
+                handle,
+                prelude.domain.family,
+                queue,
+                backend.begin_command(handle),
+            )?;
+            backend
+                .record_queue_prelude(handle, prelude)
+                .map_err(Error::Validation)?;
+            if !backend.end_command(vk::CommandBuffer::from_raw(handle)) {
+                return Err(Error::EndFailed);
+            }
+            self.command_records
+                .get_mut(&handle)
+                .ok_or(Error::MissingCommand(handle))?
+                .state = recording::CommandState::Recorded;
+            self.pending_commands
+                .try_reserve(1)
+                .map_err(|_| Error::Validation(crate::Error::OutOfHostMemory))?;
+            transaction.reserve_receipt().map_err(Error::Validation)?;
+            let prepared = submit::PreparedSubmit {
+                commands: [vk::CommandBuffer::from_raw(handle)].into_iter().collect(),
+                ..Default::default()
+            };
+            let raw_queue = *self
+                .queues
+                .get(prelude.domain.queue_index as usize)
+                .ok_or(Error::InvalidSynchronization)?;
+            let start = std::time::Instant::now();
+            let point = backend
+                .submit(raw_queue, &[prepared])
+                .map_err(Error::Validation)?;
+            let mut snapshot = self
+                .command_records
+                .remove(&command.handle())
+                .expect("prevalidated ownership command");
+            snapshot.state = recording::CommandState::Submitted;
+            self.pending_commands.push((point, snapshot));
+            transaction.publish_auxiliary(point);
+            stats.submit_ns += start.elapsed().as_nanos() as u64;
+        }
+        Err(Error::Validation(crate::Error::invalid_usage(
+            "ownership prelude did not converge",
+        )))
     }
     pub fn new(primary: vk::Queue, auxiliary: Vec<vk::Queue>, family_count: u32) -> Self {
         let auxiliary_count = auxiliary.len() as u32;
         Self {
-            counters: sequence::DeviceCounters::new(auxiliary_count),
-            lifecycle: sequence::SequenceRuntime::new(family_count),
+            subgraph_cache: super::subgraph::SubgraphPlanCache::default(),
+            plan_cache: super::cache::BoundedCache::new(128, 16 * 1024 * 1024),
+            plan_cache_enabled: true,
+            recording_ids: recording::RecordingCounters::new(auxiliary_count),
+            pending_commands: Vec::new(),
+            completed_commands: Vec::new(),
             queues: std::iter::once(primary).chain(auxiliary).collect(),
-            command_snapshots: BTreeMap::new(),
-            recorded_sequences: Vec::new(),
-            graph_queue_domain: None,
+            command_records: BTreeMap::new(),
+            recorded_commands: 0,
             pool_family_count: family_count,
             parallel: Default::default(),
             pgo: Default::default(),
         }
     }
 
+    pub fn set_plan_cache_enabled(&mut self, enabled: bool) {
+        self.plan_cache_enabled = enabled;
+        if !enabled {
+            self.plan_cache
+                .clear_with_reason(super::cache::CacheReason::Disabled);
+        }
+    }
+    pub fn set_subgraph_cache_enabled(&mut self, enabled: bool) {
+        self.subgraph_cache.set_enabled(enabled);
+    }
+    pub fn subgraph_cache_stats(&self) -> super::subgraph::SubgraphCacheStats {
+        self.subgraph_cache.stats()
+    }
+    pub fn plan_cache_stats(&self) -> super::cache::CacheStats {
+        self.plan_cache.stats()
+    }
+    pub fn plan_cache_bytes(&self) -> usize {
+        self.plan_cache.bytes()
+    }
+
     pub fn begin(
         &mut self,
         handle: u64,
         family: u32,
-        queue: sequence::Queue,
-        backend: Result<(), sequence::Failure>,
-    ) -> Result<sequence::Command, Error> {
-        let command = self
-            .lifecycle
-            .begin_after_backend(
-                &self.counters,
-                sequence::Command::new(handle, family),
-                queue,
-                backend,
-            )
-            .map_err(Error::Begin)?;
-        self.recorded_sequences.push(command.sequence().0);
-        self.command_snapshots.insert(handle, command.clone());
+        queue: recording::Queue,
+        backend: Result<(), recording::Failure>,
+    ) -> Result<recording::Command, Error> {
+        let mut command = recording::Command::new(handle, family, queue);
+        if let Err(reason) = backend {
+            return Err(Error::Begin(recording::BeginFailure { reason, command }));
+        }
+        let recording_id = self.recording_ids.next_id(queue).ok_or_else(|| {
+            Error::Begin(recording::BeginFailure {
+                reason: recording::Failure::CounterBounds,
+                command: command.clone(),
+            })
+        })?;
+        command.state = recording::CommandState::Recording;
+        command.recording_id = recording_id;
+        self.recorded_commands = self.recorded_commands.saturating_add(1);
+        self.command_records.insert(handle, command.clone());
         Ok(command)
     }
 
-    /// 图声明驱动真实命令序号、顺序录制器和资源消费者。
+    /// Record graph commands with CPU recording identities and actual resource owners.
     pub fn record(
         &mut self,
         recorder: &mut record::Recorder,
         passes: &mut [record::Pass],
         final_batch: bool,
-        command: &sequence::Command,
-        resources: &[sequence::ResourceHandle],
+        command: &recording::Command,
         boundary: impl FnMut(record::RecordAction) -> bool,
     ) -> Result<record::Outcome, Error> {
-        let resources = resources.iter().copied().map(Some).collect::<Vec<_>>();
-        self.record_optional_resources(recorder, passes, final_batch, command, &resources, boundary)
+        let outcome = recorder.record_batch(passes, final_batch, command.clone(), boundary);
+        self.finish_record(recorder, outcome)
     }
 
-    fn record_optional_resources(
-        &mut self,
-        recorder: &mut record::Recorder,
-        passes: &mut [record::Pass],
-        final_batch: bool,
-        command: &sequence::Command,
-        resources: &[Option<sequence::ResourceHandle>],
-        boundary: impl FnMut(record::RecordAction) -> bool,
-    ) -> Result<record::Outcome, Error> {
-        // zip 不允许静默截断，否则托管对象会与图内逻辑槽错位并漏掉 GPU 跟踪。
-        if resources.len() != recorder.resources.len() {
-            return Err(Error::ResourceCountMismatch {
-                expected: recorder.resources.len(),
-                actual: resources.len(),
-            });
-        }
-        let outcome =
-            recorder.record_batch(passes, final_batch, command.record_command(), boundary);
-        self.finish_record(recorder, outcome, resources)
-    }
-
-    /// 录制后处理：导入资源跟踪（回调失败也不回滚）、panic 转错误、同步命令状态快照。
+    /// Propagate callback failure and synchronize the typed CPU command states.
     fn finish_record(
         &mut self,
         recorder: &record::Recorder,
         outcome: record::Outcome,
-        resources: &[Option<sequence::ResourceHandle>],
     ) -> Result<record::Outcome, Error> {
-        for (logical, handle) in recorder.resources.iter().zip(resources) {
-            let Some(handle) = handle else {
-                continue;
-            };
-            self.lifecycle
-                .import_record_tracker(*handle, sequence::Sequence(logical.last_command_sequence))
-                .map_err(Error::Lifecycle)?;
-        }
         if outcome.panic {
             return Err(Error::Record(outcome));
         }
         for recorded in &recorder.commands {
             let snapshot = self
-                .command_snapshots
+                .command_records
                 .get_mut(&recorded.handle)
                 .ok_or(Error::MissingCommand(recorded.handle))?;
-            snapshot.set_state(recorded.state);
+            snapshot.state = recorded.state;
         }
         Ok(outcome)
     }
@@ -879,7 +1218,7 @@ impl ExecutionChain {
         &mut self,
         batch: ChunkedBatch<'_, C>,
         backend: &mut impl ExecutionBackend,
-    ) -> Result<(sequence::Command, record::Outcome), Error>
+    ) -> Result<(recording::Command, record::Outcome), Error>
     where
         C: FnMut(PassContext<'_>) -> bool + Send,
     {
@@ -891,9 +1230,9 @@ impl ExecutionChain {
             chunks,
             final_batch,
             compiled,
-            logical_handles,
             managed,
             pass_names,
+            cpu,
             family,
             queue,
         } = batch;
@@ -917,12 +1256,9 @@ impl ExecutionChain {
                 .chunk_command_handle(index)
                 .map_err(Error::Lifecycle)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
-            backend
-                .command_started(&command)
-                .map_err(Error::Lifecycle)?;
             begun.push(command);
         }
-        let record_commands = begun.iter().map(|c| c.record_command()).collect::<Vec<_>>();
+        let record_commands = begun.to_vec();
         let mut chunk_of_pass = vec![0usize; passes.len()];
         for (index, range) in chunks.iter().enumerate() {
             for pass in range.clone() {
@@ -935,15 +1271,17 @@ impl ExecutionChain {
                 match action {
                     record::RecordAction::Transition {
                         command,
-                        resource,
-                        from,
-                        to,
-                    } => backend.transition(command, token_of(resource), from, to),
+                        transition,
+                    } => backend.transition(
+                        command,
+                        token_of(transition.resource as usize),
+                        &transition,
+                    ),
                     _ => true,
                 }
             });
         if outcome.panic {
-            self.finish_record(recorder, outcome, logical_handles)?;
+            self.finish_record(recorder, outcome)?;
             return Err(Error::ChunkPlan);
         }
         let transitions = plan
@@ -951,77 +1289,154 @@ impl ExecutionChain {
             .map(|list| {
                 list.iter()
                     .map(|t| ChunkTransition {
-                        token: token_of(t.resource),
-                        from: t.from,
-                        to: t.to,
+                        token: token_of(t.resource as usize),
+                        transition: *t,
                     })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
         // 并行：块间互不重叠，各自独占命令缓冲、回调切片与 owner 列表。
         let mut work = Vec::with_capacity(chunks.len());
+        let mut durations =
+            scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
+        let mut gpu_timings =
+            scratch_slice(cpu, callbacks.len(), |_| None).map_err(Error::Validation)?;
+        for (range, command) in chunks.iter().zip(&begun) {
+            for index in range.clone() {
+                gpu_timings[index] =
+                    backend.reserve_pass_timestamp(command.handle(), first_pass + index);
+            }
+        }
+        let mut remaining_durations = &mut *durations;
         let mut rest = callbacks;
         for (range, command) in chunks.iter().zip(&begun) {
             let (head, tail) = std::mem::take(&mut rest).split_at_mut(range.len());
             rest = tail;
+            let (duration_slice, duration_tail) =
+                std::mem::take(&mut remaining_durations).split_at_mut(range.len());
+            remaining_durations = duration_tail;
             work.push(ChunkWork {
                 command,
                 start: range.start,
                 callbacks: head,
+                durations: duration_slice,
                 transitions: &transitions[range.clone()],
+                gpu_timings: &gpu_timings[range.clone()],
             });
         }
         let results = {
             let view = backend.chunk_recorder().ok_or(Error::ChunkPlan)?;
             let view = &*view;
             self.parallel.runner.map_chunks(&mut work, |_, work| {
-                let owners = std::cell::RefCell::new(Vec::new());
-                if let Some(resources) = managed {
-                    owners
-                        .borrow_mut()
-                        .push(resources.clone() as crate::raw::binding::ResourceOwner);
-                }
-                let mut durations = Vec::new();
+                let owners =
+                    match super::owner_storage::ResourceOwners::new(view.owner_storage_pool()) {
+                        Ok(owners) => std::cell::RefCell::new(owners),
+                        Err(error) => {
+                            return ChunkResult {
+                                ok: false,
+                                error: Some(error),
+                                recorded_durations: 0,
+                                owners: super::owner_storage::ResourceOwners::empty(),
+                            };
+                        }
+                    };
+                let errors = std::cell::RefCell::new(None);
+                let cpu = match view
+                    .cpu_arena_pool()
+                    .map(CpuArenaPool::checkout)
+                    .transpose()
+                {
+                    Ok(cpu) => cpu,
+                    Err(error) => {
+                        return ChunkResult {
+                            ok: false,
+                            error: Some(error),
+                            recorded_durations: 0,
+                            owners: super::owner_storage::ResourceOwners::empty(),
+                        };
+                    }
+                };
+                let mut duration_count = 0;
                 let mut ok = true;
                 for (offset, callback) in work.callbacks.iter_mut().enumerate() {
-                    if !view.record_transitions(work.command.handle(), &work.transitions[offset]) {
+                    if let Err(error) = view.record_transitions(
+                        work.command.handle(),
+                        &work.transitions[offset],
+                        &mut owners.borrow_mut(),
+                    ) {
+                        errors.borrow_mut().get_or_insert(error);
                         ok = false;
                         break;
                     }
                     let pass_index = first_pass + work.start + offset;
+                    if let Some(resources) = managed
+                        && let Err(error) = resources.retain_pass_resources(
+                            &compiled.declarations.passes[pass_index],
+                            &mut owners.borrow_mut(),
+                        )
+                    {
+                        errors.borrow_mut().get_or_insert(error);
+                        ok = false;
+                        break;
+                    }
+                    let gpu = work.gpu_timings[offset];
+                    if let Some(pair) = gpu {
+                        // SAFETY: each worker owns its command and its disjoint reserved query pairs.
+                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, false) };
+                    }
                     let timer = std::time::Instant::now();
                     let good = callback(PassContext {
                         pass_index,
+                        cpu: cpu.as_ref(),
                         command: work.command,
                         compiled,
-                        logical_resources: logical_handles,
                         managed: managed.map(|m| &**m),
                         owners: &owners,
+                        errors: &errors,
                     });
-                    durations.push(PassPgoDuration::new(
-                        pass_names[pass_index],
-                        timer.elapsed().as_nanos() as u64,
-                    ));
-                    if !good {
+                    if let Some(pair) = gpu {
+                        // SAFETY: the callback has returned on the same exclusive worker command.
+                        unsafe { view.write_pass_timestamp(work.command.handle(), pair, true) };
+                    }
+                    work.durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
+                    duration_count += 1;
+                    if !good || errors.borrow().is_some() {
                         ok = false;
                         break;
                     }
                 }
                 ChunkResult {
                     ok,
-                    durations,
+                    error: errors.into_inner(),
+                    recorded_durations: duration_count,
                     owners: owners.into_inner(),
                 }
             })
         };
         // 串行：按块顺序合并耗时与 owner。
         let mut failed = false;
-        for (command, result) in begun.iter().zip(results) {
-            self.pgo.current.extend(result.durations);
-            if !backend.retain_command_owners(command.handle(), result.owners) {
+        let mut callback_error = None;
+        for ((command, work), mut result) in begun.iter().zip(&work).zip(results) {
+            self.pgo.current.extend(
+                work.durations[..result.recorded_durations]
+                    .iter()
+                    .enumerate()
+                    .map(|(offset, duration)| {
+                        PassPgoDuration::new(
+                            PassPgoNameId::from_shared(std::sync::Arc::clone(
+                                pass_names[first_pass + work.start + offset],
+                            )),
+                            duration.expect("recorded pass duration"),
+                        )
+                    }),
+            );
+            if !backend.retain_command_owners(command.handle(), &mut result.owners) {
                 return Err(Error::MissingCommand(command.handle()));
             }
             failed |= !result.ok;
+            if let Some(error) = result.error {
+                callback_error.get_or_insert(error);
+            }
         }
         if failed {
             outcome.panic = true;
@@ -1033,72 +1448,82 @@ impl ExecutionChain {
                     }
                     record::RecordAction::Transition {
                         command,
-                        resource,
-                        from,
-                        to,
-                    } => backend.transition(command, token_of(resource), from, to),
+                        transition,
+                    } => backend.transition(
+                        command,
+                        token_of(transition.resource as usize),
+                        &transition,
+                    ),
                     record::RecordAction::Pass(_) => true,
                 }
             });
         }
-        let outcome = self.finish_record(recorder, outcome, logical_handles)?;
+        let outcome = self.finish_record(recorder, outcome);
+        if let Some(error) = callback_error {
+            return Err(Error::Validation(error));
+        }
+        let outcome = outcome?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
         Ok((last, outcome))
     }
 
-    pub fn complete(
-        &mut self,
-        queue: sequence::Queue,
-        value: sequence::Timeline,
-    ) -> Result<(), Error> {
-        self.lifecycle.observe_timeline(queue, value);
-        self.lifecycle
-            .reclaim_ready(queue)
-            .map_err(Error::Lifecycle)
+    /// Called only after the backend has observed this queue completion.
+    fn complete(&mut self, point: crate::sync::SyncPoint) {
+        let mut index = 0;
+        while index < self.pending_commands.len() {
+            let (required, _) = &self.pending_commands[index];
+            if required.queue == point.queue && required.value <= point.value {
+                let (_, command) = self.pending_commands.swap_remove(index);
+                self.completed_commands.push(command);
+            } else {
+                index += 1;
+            }
+        }
+    }
+    pub(crate) fn observe_completion(&mut self, point: crate::sync::SyncPoint) {
+        self.complete(point);
+    }
+    pub(crate) fn recycle(&mut self) -> Option<recording::Command> {
+        self.completed_commands.pop()
+    }
+    pub fn pending_command_count(&self) -> usize {
+        self.pending_commands.len()
+    }
+    pub fn recording_command_count(&self) -> usize {
+        self.command_records.len()
+    }
+    pub fn completed_command_count(&self) -> usize {
+        self.completed_commands.len()
     }
 }
 
-/// PGO 名称→编号映射。原作 `PassPgoNameId` 就是 pass 名 `&'static str` 的指针，
-/// `from_name` 恒等（0x14067dd80 `mov rax,rcx; ret`，ICF 折叠；record_batch 0x1402c22ba 把
-/// `(pass+0x18, pass+0x20)` 这个 `&str` 的指针直接当键），哈希发生在统计表 `hash_one`（0x1405b0d70），
-/// 桶比较的也只是这个 u64（0x140bea270 `cmp [r14], rsi`）。
-///
-/// 这里 pass 名是自有 `String`，自身指针跨帧不稳定，所以用**驻留池**：同名字符串只保留一份
-/// `&'static str`（首次见到时泄漏一份 `Box<str>`，上限为不同 pass 名的个数），`PassPgoNameId` 取该份的
-/// 数据指针。因此同名跨帧稳定、不同名必不同，且与原版一样是指针恒等；数值本身仍无原版对应物。
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PassPgoNameId(pub usize);
-fn intern_pass_name(name: &str, stat: Option<&'static str>) -> &'static str {
-    use std::collections::HashSet;
-    use std::sync::{Mutex, OnceLock};
-    static POOL: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
-    let mut pool = POOL
-        .get_or_init(|| Mutex::new(HashSet::new()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(existing) = pool.get(name) {
-        return existing;
-    }
-    let interned: &'static str = match stat {
-        Some(s) => s,
-        None => Box::leak(name.to_owned().into_boxed_str()),
-    };
-    pool.insert(interned);
-    interned
-}
+/// Owned full-content PGO identity. Cloning a declaration's name shares the
+/// existing allocation, and names disappear with the last plan or observation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PassPgoNameId(std::sync::Arc<str>);
 impl PassPgoNameId {
-    /// 原版调用形态：传入 `&'static str`，不分配、不泄漏。
-    pub fn from_static(name: &'static str) -> Self {
-        Self(intern_pass_name(name, Some(name)).as_ptr() as usize)
+    pub fn from_shared(name: std::sync::Arc<str>) -> Self {
+        Self(name)
     }
-    /// 自有 `String`/`&str` 入口：经驻留池取稳定指针。
+    /// Cold-path convenience; production recording shares the declaration Arc.
+    pub fn from_static(name: &'static str) -> Self {
+        Self(name.into())
+    }
     pub fn from_name(name: &str) -> Self {
-        Self(intern_pass_name(name, None).as_ptr() as usize)
+        Self(name.into())
     }
 }
-
-/// 单个 pass 的一次 PGO 时长观测。
-#[derive(Clone, Copy, Debug)]
+impl AsRef<str> for PassPgoNameId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl std::borrow::Borrow<str> for PassPgoNameId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+#[derive(Clone, Debug)]
 pub struct PassPgoDuration {
     pub name: PassPgoNameId,
     pub duration_ns: u64,
@@ -1108,9 +1533,8 @@ impl PassPgoDuration {
         Self { name, duration_ns }
     }
 }
-
-/// 一帧的 pass PGO 统计。原作布局（0x40 字节）：按名字的耗时表、`total_ns@0x30`、`max_ns@0x38`；
-/// `record_batch` 读上一帧统计做分块，合并各块耗时时 `total += d`、`max = max(max, d)`。
+/// One frame's observations. Repeated names keep their final duration; totals
+/// include every recorded invocation. Reset releases names while reusing backing.
 #[derive(Clone, Debug, Default)]
 pub struct PassPgoStats {
     counts: std::collections::HashMap<PassPgoNameId, u64>,
@@ -1119,36 +1543,25 @@ pub struct PassPgoStats {
     max_ns: u64,
 }
 impl PassPgoStats {
-    /// 对应 `end_frame`（0x140bec400）里对新 `current` 的就地清空：控制字节 memset 0xff、`len = 0`、
-    /// 重算 `growth_left`，并把 `total_ns@0x30`、`max_ns@0x38` 置 0——哈希种子（`+0x20..0x30`）保留。
-    /// `counts` 是候选实现自加的辅助表，原 0x40 字节结构里没有。
     pub fn reset(&mut self) {
         self.counts.clear();
         self.durations.clear();
         self.total_ns = 0;
         self.max_ns = 0;
     }
-    /// ✅ 原 `extend` 无独立符号，是 `record_batch`（0x1402c1d40）里的内联循环（0x1402c2xxx / 0x1402c2f..，
-    /// 串行与并行两条路径各一份）：对块返回的每个 `(name:u64, d:u64)`（16 字节 `PassPgoDuration`）依次
-    /// ① `FUN_1402ca150(current, name, d)`——hashbrown `insert`，命中时**覆盖**旧值（机器码
-    /// `0x1402ca255: mov rdx,[r15-8]; ...; 0x1402ca2a1: mov [r15],rsi`，不是累加）；
-    /// ② `total@0x30 += d`；③ `max@0x38 = max(max, d)`。
     pub fn extend(&mut self, durations: impl IntoIterator<Item = PassPgoDuration>) {
         for duration in durations {
             self.record(duration);
         }
     }
-    /// 原 `duration_ns`（0x140bea1e0）实返 `Option<u64>`（命中时 rax=1、rdx=桶内值；Ghidra 伪代码把它写成了
-    /// bool，是丢了 rdx）。唯一调用点 record_batch 0x1402c22ce 做 `unwrap_or(0)`，这里的 `u64` 版就是该折叠；
-    /// 需要原 `Option` 形态用 [`Self::get`]。
-    pub fn duration_ns(&self, id: PassPgoNameId) -> u64 {
+    pub fn duration_ns(&self, id: impl AsRef<str>) -> u64 {
         self.get(id).unwrap_or(0)
     }
-    pub fn get(&self, id: PassPgoNameId) -> Option<u64> {
-        self.durations.get(&id).copied()
+    pub fn get(&self, id: impl AsRef<str>) -> Option<u64> {
+        self.durations.get(id.as_ref()).copied()
     }
-    pub fn call_count(&self, id: PassPgoNameId) -> u64 {
-        self.counts.get(&id).copied().unwrap_or(0)
+    pub fn call_count(&self, id: impl AsRef<str>) -> u64 {
+        self.counts.get(id.as_ref()).copied().unwrap_or(0)
     }
     pub fn is_empty(&self) -> bool {
         self.durations.is_empty()
@@ -1159,18 +1572,16 @@ impl PassPgoStats {
     pub fn max_ns(&self) -> u64 {
         self.max_ns
     }
-    /// 单条记录 = `record_batch` 内联体的一次迭代：`insert`（覆盖，不累加）+ `total += d` + `max = max(max, d)`。
-    /// 同名 pass 一帧内出现多次时，表里只留最后一次，`total` 仍累加全部；`counts` 是候选辅助表（原版没有）。
     pub fn record(&mut self, duration: PassPgoDuration) {
-        *self.counts.entry(duration.name).or_default() += 1;
+        *self.counts.entry(duration.name.clone()).or_default() += 1;
         self.durations.insert(duration.name, duration.duration_ns);
         self.total_ns = self.total_ns.wrapping_add(duration.duration_ns);
         self.max_ns = self.max_ns.max(duration.duration_ns);
     }
 }
 
-/// 原 `GraphExecutionRecorder::end_frame`（0x140bec400）交换两份统计并清空新的本帧：
-/// 分块严格依据上一帧，统计不跨帧累积。
+/// Chunk planning reads the preceding frame. At frame end the buffers swap
+/// and the new current observations are cleared, releasing obsolete names.
 #[derive(Clone, Debug, Default)]
 pub struct PassPgoFrames {
     pub previous: PassPgoStats,

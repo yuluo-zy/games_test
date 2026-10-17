@@ -3,20 +3,21 @@ use rhapsody::rg::pass_api::{Command, CommandBackend, PassApiError, PipelineKind
 use serde_json::{Value, json};
 
 #[derive(Default)]
-struct Capture(Vec<Value>);
+struct Capture(Vec<Value>, bool);
 
 impl CommandBackend for Capture {
+    fn supports_dynamic_rendering(&self) -> bool {
+        self.1
+    }
     fn dispatch(&mut self, cb: vk::CommandBuffer, command: Command<'_>) {
         let call = match command {
-            Command::BeginRenderPass(info) => json!([
-                "begin",
-                info.render_pass.as_raw(),
-                info.framebuffer.as_raw(),
-                info.render_area.extent.width,
-                info.render_area.extent.height,
-                info.clear_value_count
+            Command::BeginRendering(info) => json!([
+                "begin_dynamic",
+                info.color_attachment_count,
+                info.layer_count,
+                info.view_mask
             ]),
-            Command::EndRenderPass => json!(["end"]),
+            Command::EndRendering => json!(["end_dynamic"]),
             Command::SetViewport(v) => json!([
                 "viewport",
                 v.x,
@@ -164,22 +165,21 @@ impl CommandBackend for Capture {
 }
 
 #[test]
-fn command_sequence_binary_fixture() {
-    let mut backend = Capture::default();
+fn dynamic_command_sequence_keeps_draw_state_and_copy_parameters() {
+    let mut backend = Capture(Vec::new(), true);
     {
         let mut api = RenderPassApi::new(&mut backend, vk::CommandBuffer::from_raw(100), 0, true);
         let extent = vk::Extent2D {
             width: 1920,
             height: 1080,
         };
-        let info = vk::RenderPassBeginInfo::default()
-            .render_pass(vk::RenderPass::from_raw(10))
-            .framebuffer(vk::Framebuffer::from_raw(11))
+        let info = vk::RenderingInfo::default()
+            .layer_count(1)
             .render_area(vk::Rect2D {
                 offset: vk::Offset2D::default(),
                 extent,
             });
-        api.begin_render_pass(&info);
+        api.begin_dynamic_rendering(&info).unwrap();
         api.set_default_view_and_scissor(extent);
         api.set_stencil_ref(0);
         api.set_stencil_ref(255);
@@ -243,8 +243,6 @@ fn command_sequence_binary_fixture() {
         json!(["viewport", 0.0, 1080.0, 1920.0, -1080.0, 0.0, 1.0])
     );
     assert_eq!(backend.0[3]["call"], json!(["stencil", 3, 255]));
-    // 该输出用于限定原入口差分；候选测试本身不代表执行过原二进制。
-    println!("PASS_API_FIXTURE={}", json!(backend.0));
 }
 
 #[test]
@@ -276,5 +274,37 @@ fn negative_zero_height_and_existing_stencil_cache() {
     assert_eq!(
         backend.0[0]["call"][4].as_f64().unwrap().to_bits(),
         (-0.0f64).to_bits()
+    );
+}
+
+#[test]
+fn dynamic_rendering_dispatch_has_matching_end_and_capability_guard() {
+    struct DynamicCapture(Capture);
+    impl CommandBackend for DynamicCapture {
+        fn dispatch(&mut self, cb: vk::CommandBuffer, command: Command<'_>) {
+            self.0.dispatch(cb, command);
+        }
+        fn supports_dynamic_rendering(&self) -> bool {
+            true
+        }
+    }
+    let info = vk::RenderingInfo::default().layer_count(1).view_mask(0);
+    let mut unsupported = Capture::default();
+    let mut api = RenderPassApi::new(&mut unsupported, vk::CommandBuffer::from_raw(100), 0, false);
+    assert_eq!(
+        api.begin_dynamic_rendering(&info).unwrap_err().kind(),
+        rhapsody::ErrorKind::Unsupported
+    );
+    assert!(unsupported.0.is_empty());
+    let mut supported = DynamicCapture(Capture::default());
+    let mut api = RenderPassApi::new(&mut supported, vk::CommandBuffer::from_raw(100), 0, false);
+    api.begin_dynamic_rendering(&info).unwrap();
+    api.end_render_pass();
+    assert_eq!(
+        supported.0.0,
+        vec![
+            json!({"cb":100,"call":["begin_dynamic",0,1,0]}),
+            json!({"cb":100,"call":["end_dynamic"]})
+        ]
     );
 }

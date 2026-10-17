@@ -10,6 +10,7 @@ use crate::error::{Error, Result};
 use ash::vk;
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::Instant;
 
 /// 时间线相关的设备调用；真实实现为 `ash::Device`，测试可替换。
 pub trait TimelineApi: Send + Sync {
@@ -59,6 +60,37 @@ struct QueueTimeline {
     submitted: AtomicU64,
     /// 已观测到的完成值缓存。
     completed: AtomicU64,
+    lock_acquisitions: AtomicU64,
+    lock_wait_ns: AtomicU64,
+    lock_wait_max_ns: AtomicU64,
+}
+/// Wall time to acquire a queue's external synchronization lock. Includes the
+/// uncontended mutex/clock overhead; does not include the Vulkan operation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+pub struct QueueLockStats {
+    pub queue: usize,
+    pub acquisitions: u64,
+    pub total_wait_ns: u64,
+    pub maximum_wait_ns: u64,
+}
+impl QueueTimeline {
+    fn lock(&self) -> parking_lot::MutexGuard<'_, u64> {
+        let started = Instant::now();
+        let guard = self.submit.lock();
+        let elapsed = started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+        let _ =
+            self.lock_acquisitions
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                    Some(value.saturating_add(1))
+                });
+        let _ = self
+            .lock_wait_ns
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                Some(value.saturating_add(elapsed))
+            });
+        self.lock_wait_max_ns.fetch_max(elapsed, Ordering::Relaxed);
+        guard
+    }
 }
 
 pub struct Timelines<A> {
@@ -85,6 +117,9 @@ impl<A: TimelineApi> Timelines<A> {
                     submit: Mutex::new(0),
                     submitted: AtomicU64::new(0),
                     completed: AtomicU64::new(0),
+                    lock_acquisitions: AtomicU64::new(0),
+                    lock_wait_ns: AtomicU64::new(0),
+                    lock_wait_max_ns: AtomicU64::new(0),
                 })
                 .collect(),
             device_lost: AtomicBool::new(false),
@@ -96,6 +131,16 @@ impl<A: TimelineApi> Timelines<A> {
     }
     pub fn queue_count(&self) -> usize {
         self.queues.len()
+    }
+    pub fn queue_lock_stats(&self) -> [Option<QueueLockStats>; MAX_QUEUES] {
+        std::array::from_fn(|index| {
+            self.queues.get(index).map(|queue| QueueLockStats {
+                queue: index,
+                acquisitions: queue.lock_acquisitions.load(Ordering::Relaxed),
+                total_wait_ns: queue.lock_wait_ns.load(Ordering::Relaxed),
+                maximum_wait_ns: queue.lock_wait_max_ns.load(Ordering::Relaxed),
+            })
+        })
     }
     pub fn semaphore(&self, queue: QueueId) -> Result<vk::Semaphore> {
         Ok(self.queue(queue)?.semaphore)
@@ -139,7 +184,7 @@ impl<A: TimelineApi> Timelines<A> {
     ) -> Result<(SyncPoint, R)> {
         self.check_alive()?;
         let timeline = self.queue(queue)?;
-        let mut last = timeline.submit.lock();
+        let mut last = timeline.lock();
         self.check_alive()?;
         let value = last
             .checked_add(1)
@@ -160,14 +205,14 @@ impl<A: TimelineApi> Timelines<A> {
         operation: impl FnOnce() -> Result<R>,
     ) -> Result<R> {
         self.check_alive()?;
-        let _guard = self.queue(queue)?.submit.lock();
+        let _guard = self.queue(queue)?.lock();
         self.check_alive()?;
         self.observe(operation())
     }
 
     /// 整设备 idle 需要同步所有 VkQueue；按稳定的 QueueId 顺序取锁。
     pub fn with_all_queues<R>(&self, operation: impl FnOnce() -> Result<R>) -> Result<R> {
-        let _guards: Vec<_> = self.queues.iter().map(|q| q.submit.lock()).collect();
+        let _guards: Vec<_> = self.queues.iter().map(QueueTimeline::lock).collect();
         self.check_alive()?;
         self.observe(operation())
     }
@@ -221,12 +266,21 @@ impl<A: TimelineApi> Timelines<A> {
         if set.is_reached(&completed) {
             return Ok(());
         }
-        let (semaphores, values): (Vec<_>, Vec<_>) = set
+        let mut semaphores = [vk::Semaphore::default(); MAX_QUEUES];
+        let mut values = [0; MAX_QUEUES];
+        let mut count = 0;
+        for point in set
             .points()
             .filter(|point| point.value > completed.get(point.queue))
-            .map(|point| (self.queues[point.queue.index()].semaphore, point.value))
-            .unzip();
-        if !self.observe(self.api.wait_all(&semaphores, &values, timeout_ns))? {
+        {
+            semaphores[count] = self.queues[point.queue.index()].semaphore;
+            values[count] = point.value;
+            count += 1;
+        }
+        if !self.observe(
+            self.api
+                .wait_all(&semaphores[..count], &values[..count], timeout_ns),
+        )? {
             return Err(Error::Timeout);
         }
         for point in set.points() {

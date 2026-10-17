@@ -1,33 +1,26 @@
 //! Vulkan 调试名称和命令标签候选实现，原作命名策略尚未对照。
-use crate::raw::device::VulkanDevice;
+use crate::raw::device::Device;
 use ash::{vk, vk::Handle};
-use std::{
-    ffi::{CString, NulError},
-    sync::Arc,
-};
+use std::{ffi::CString, sync::Arc};
 
 pub struct DebugUtils {
-    pub device: Arc<VulkanDevice>,
+    pub device: Arc<Device>,
     loader: ash::ext::debug_utils::Device,
 }
 impl DebugUtils {
     /// 仅在实例启用了 EXT_debug_utils 时创建。
-    pub fn new(instance: &ash::Instance, device: Arc<VulkanDevice>) -> Self {
+    pub fn new(instance: &ash::Instance, device: Arc<Device>) -> Self {
         let loader = ash::ext::debug_utils::Device::new(instance, &device.device);
         Self { device, loader }
     }
     /// # Safety
     /// handle 必须是本设备的存活对象；实例必须启用该扩展。
-    pub unsafe fn set_object_name<T: Handle>(
-        &self,
-        handle: T,
-        name: &str,
-    ) -> Result<(), vk::Result> {
-        let name = CString::new(name).map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+    pub unsafe fn set_object_name<T: Handle>(&self, handle: T, name: &str) -> crate::Result<()> {
+        let name = CString::new(name).map_err(|_| crate::Error::invalid_usage("调试名称含 NUL"))?;
         let info = vk::DebugUtilsObjectNameInfoEXT::default()
             .object_handle(handle)
             .object_name(&name);
-        unsafe { self.loader.set_debug_utils_object_name(&info) }
+        unsafe { self.loader.set_debug_utils_object_name(&info) }.map_err(Into::into)
     }
     /// # Safety
     /// command 必须处于有效录制状态，且扩展已启用。
@@ -36,8 +29,8 @@ impl DebugUtils {
         command: vk::CommandBuffer,
         name: &str,
         color: [f32; 4],
-    ) -> Result<(), NulError> {
-        let name = CString::new(name)?;
+    ) -> crate::Result<()> {
+        let name = CString::new(name).map_err(|_| crate::Error::invalid_usage("调试标签含 NUL"))?;
         let info = vk::DebugUtilsLabelEXT::default()
             .label_name(&name)
             .color(color);

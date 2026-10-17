@@ -1,12 +1,10 @@
 // 候选实现迁移来源：reconstruction/render/graph.rs.
 // 这是行为重建，不是原作者源码。
-use crate::rg::resource_info::OriginKind;
 pub use crate::rg::resource_info::{AccessDeclaration, ExportDeclaration, ResourceInfo};
 pub use crate::rg::resource_registry::{
     Buffer, BufferDesc, RegistryResource, ResourceExports, ResourcePool, ResourceRegistry,
     ResourceReuseInfo, Texture, TextureDesc,
 };
-use crate::rg::resource_rules::PassResourceAccessType;
 pub use crate::rg::resource_rules::{NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord};
 use std::ops::Range;
 
@@ -15,7 +13,7 @@ pub type Registry = ResourceRegistry<u64, u64, ()>;
 pub type Pool = ResourcePool<u64, u64>;
 pub type Exports = ResourceExports<u64, u64, ()>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Descriptor {
     Image(TextureDesc),
     Buffer(BufferDesc),
@@ -54,6 +52,7 @@ pub enum OriginSource {
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResourceDeclaration {
+    pub sharing: crate::resource::ResourceSharing,
     pub name: String,
     pub descriptor: Descriptor,
     pub source: OriginSource,
@@ -75,42 +74,18 @@ impl ExportableResource {
         self.handle.raw()
     }
 }
-impl ResourceDeclaration {
-    fn info_origin(&self) -> OriginKind {
-        match self.source {
-            OriginSource::Create => OriginKind::Tag0 {
-                descriptor_code: if self.descriptor.kind_code() == 1 {
-                    7
-                } else {
-                    0
-                },
-                image_creation_flags: if self.descriptor.kind_code() == 0 {
-                    self.descriptor.usage()
-                } else {
-                    0
-                },
-                buffer_creation_flags: if self.descriptor.kind_code() == 1 {
-                    self.descriptor.usage()
-                } else {
-                    0
-                },
-            },
-            OriginSource::ImportUnowned { .. } => OriginKind::Tag1 {
-                type_code: self.descriptor.kind_code(),
-            },
-            OriginSource::ImportOwned { .. } => OriginKind::Tag2 {
-                type_code: self.descriptor.kind_code(),
-            },
-        }
-    }
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PassDeclaration {
-    pub name: String,
+    pub queue_class: crate::device::QueueClass,
+    pub graph_id: Option<super::resource::GraphId>,
+    pub name: std::sync::Arc<str>,
     pub accesses: Vec<AccessDeclaration>,
+    /// Keeps externally observable work even when none of its outputs is exported.
+    pub side_effect: bool,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GraphDeclaration {
+    pub subgraphs: Vec<super::subgraph::SubgraphDeclaration>,
     pub resources: Vec<ResourceDeclaration>,
     pub passes: Vec<PassDeclaration>,
     pub exports: Vec<ExportDeclaration>,
@@ -119,11 +94,37 @@ pub struct GraphDeclaration {
 impl GraphDeclaration {
     /// 在资源分配和索引打包之前检查调用方可直接构造的声明。
     pub fn validate(&self) -> Result<(), BuildError> {
-        if self.resources.len() > 65536 {
+        if self.resources.len() > usize::from(u16::MAX) {
             return Err(BuildError::ResourceLimit);
         }
         if self.passes.len() > MAX_PASSES {
             return Err(BuildError::PassLimit);
+        }
+        // Common frame graphs have only a few external resources. Keep their
+        // identity check on the stack; larger declarations retain the ordered
+        // set bound rather than turning validation into an unbounded quadratic scan.
+        let mut inline_imports = [0u64; 32];
+        let mut inline_count = 0usize;
+        let mut imports = std::collections::BTreeSet::new();
+        for resource in &self.resources {
+            if let OriginSource::ImportOwned { token, .. }
+            | OriginSource::ImportUnowned { token, .. } = resource.source
+            {
+                if inline_count < inline_imports.len() {
+                    if inline_imports[..inline_count].contains(&token) {
+                        return Err(BuildError::AliasedImport(token));
+                    }
+                    inline_imports[inline_count] = token;
+                    inline_count += 1;
+                } else {
+                    if imports.is_empty() {
+                        imports.extend(inline_imports);
+                    }
+                    if !imports.insert(token) {
+                        return Err(BuildError::AliasedImport(token));
+                    }
+                }
+            }
         }
         let mut count = 0usize;
         for pass in &self.passes {
@@ -147,6 +148,12 @@ impl GraphDeclaration {
             if export.tag != resource.descriptor.kind_code() {
                 return Err(BuildError::ResourceKindMismatch(export.resource_index));
             }
+            export
+                .range
+                .validate(resource.descriptor)
+                .map_err(|error| {
+                    super::resource_contracts::range_error(export.resource_index, error)
+                })?;
         }
         Ok(())
     }
@@ -155,6 +162,29 @@ impl GraphDeclaration {
 pub trait AccessDependency {
     fn access_mask(&mut self, code: u8) -> u32;
     fn is_write(&mut self, code: u8) -> bool;
+    /// Custom CPU policies may omit native details. Their conservative scope
+    /// cannot be reused for a policy with different Vulkan stages or layouts.
+    fn native_semantics(
+        &mut self,
+        code: u8,
+    ) -> (
+        crate::resource::range_state::AccessScope,
+        ash::vk::ImageLayout,
+    ) {
+        let write = self.is_write(code);
+        (
+            crate::resource::range_state::AccessScope {
+                stages: ash::vk::PipelineStageFlags::ALL_COMMANDS,
+                access: if write {
+                    ash::vk::AccessFlags::MEMORY_READ | ash::vk::AccessFlags::MEMORY_WRITE
+                } else {
+                    ash::vk::AccessFlags::MEMORY_READ
+                },
+                write,
+            },
+            ash::vk::ImageLayout::GENERAL,
+        )
+    }
 }
 
 /// 渲染回调须为 `Send`：并行录制时不同块的回调在任务池线程上执行（原作 `par_chunk_map_mut`）。
@@ -163,6 +193,11 @@ pub type RetireCallback = Box<dyn FnOnce()>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BuildError {
+    WrongGraph {
+        expected: super::resource::GraphId,
+        actual: super::resource::GraphId,
+    },
+    Contract(super::resource::ResourceContractError),
     IncompatibleAccess(super::access_ledger::IncompatibleAccess),
     ResourceLimit,
     InvalidHandle(u32),
@@ -170,9 +205,17 @@ pub enum BuildError {
     AccessLimit,
     MissingTemporal(String),
     DuplicateResourceName(String),
+    AliasedImport(u64),
     ResourceCreationFailed(String),
+    BackendFailure(crate::error::SharedError),
     /// pass 数超过生命周期事件的打包域（pass 下标左移 17 位存入 u32，见 `MAX_PASSES`）。
     PassLimit,
+}
+
+impl From<crate::Error> for BuildError {
+    fn from(error: crate::Error) -> Self {
+        Self::BackendFailure(error.into())
+    }
 }
 
 /// 生命周期事件把 pass 下标左移 17 位打包进 u32（`resource_rules::calculate_lifetime_events`），
@@ -186,14 +229,26 @@ impl std::fmt::Display for BuildError {
 impl std::error::Error for BuildError {}
 
 /// 由原始函数名与编译调用链组织的候选接口；不宣称原作 ABI 已恢复。
-#[derive(Default)]
 pub struct RenderGraph {
+    pub(crate) graph_id: super::resource::GraphId,
     pub(crate) declaration: GraphDeclaration,
     pub(crate) callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
 }
 
+impl Default for RenderGraph {
+    fn default() -> Self {
+        Self {
+            graph_id: super::resource::GraphId::next(),
+            declaration: GraphDeclaration::default(),
+            callbacks: Vec::new(),
+            retire_callbacks: Vec::new(),
+        }
+    }
+}
+
 pub struct BuiltGraph {
+    graph_id: super::resource::GraphId,
     pub declaration: GraphDeclaration,
     pub callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
@@ -213,9 +268,12 @@ impl RenderGraph {
         if self.declaration.resources.len() >= usize::from(u16::MAX) {
             return Err(BuildError::ResourceLimit);
         }
-        let handle =
-            super::resource::ResourceHandle::from_raw(self.declaration.resources.len() as u32);
+        let handle = super::resource::ResourceHandle::scoped(
+            self.graph_id,
+            self.declaration.resources.len() as u32,
+        );
         self.declaration.resources.push(ResourceDeclaration {
+            sharing: crate::resource::ResourceSharing::Exclusive,
             name: name.into(),
             descriptor: origin.descriptor,
             source: origin.source,
@@ -236,21 +294,50 @@ impl RenderGraph {
         &self,
         handle: super::resource::ResourceHandle,
     ) -> Result<(), BuildError> {
-        if (handle.raw() as usize) < self.declaration.resources.len() {
-            Ok(())
-        } else {
-            Err(BuildError::InvalidHandle(handle.raw()))
+        if (handle.raw() as usize) >= self.declaration.resources.len() {
+            return Err(BuildError::InvalidHandle(handle.raw()));
         }
+        if handle.graph_id() != self.graph_id {
+            return Err(BuildError::WrongGraph {
+                expected: self.graph_id,
+                actual: handle.graph_id(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Bind a stored logical index to this graph after checking its declaration.
+    pub fn resource_handle(
+        &self,
+        index: u32,
+    ) -> Result<super::resource::ResourceHandle, BuildError> {
+        let handle = super::resource::ResourceHandle::scoped(self.graph_id, index);
+        self.check_handle(handle)?;
+        Ok(handle)
+    }
+
+    pub fn graph_id(&self) -> super::resource::GraphId {
+        self.graph_id
+    }
+    pub fn declaration(&self) -> &GraphDeclaration {
+        &self.declaration
     }
 
     /// 不检查 pass 上限，保持既有调用面；超限会在 `PassBuilder::add_resource_access` 返回
     /// [`BuildError::PassLimit`]，需要在拿到 builder 前就得到错误时用 [`Self::try_add_pass`]。
-    pub fn add_pass(&mut self, name: impl Into<String>) -> super::pass_builder::PassBuilder<'_> {
+    pub fn add_pass(
+        &mut self,
+        name: impl Into<std::sync::Arc<str>>,
+    ) -> super::pass_builder::PassBuilder<'_> {
+        let graph_id = self.graph_id;
         super::pass_builder::PassBuilder {
             graph: self,
             declaration: PassDeclaration {
+                queue_class: crate::device::QueueClass::Graphics,
+                graph_id: Some(graph_id),
                 name: name.into(),
                 accesses: vec![],
+                side_effect: false,
             },
         }
     }
@@ -258,7 +345,7 @@ impl RenderGraph {
     /// 带 pass 上限检查的 `add_pass`：已有 [`MAX_PASSES`] 个 pass 时返回 [`BuildError::PassLimit`]。
     pub fn try_add_pass(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<std::sync::Arc<str>>,
     ) -> Result<super::pass_builder::PassBuilder<'_>, BuildError> {
         self.check_pass_capacity()?;
         Ok(self.add_pass(name))
@@ -277,12 +364,26 @@ impl RenderGraph {
         handle: super::resource::ResourceHandle,
         access_code: u8,
     ) -> Result<(), BuildError> {
+        self.export_range(handle, access_code, super::resource::AccessRange::Whole)
+    }
+
+    /// Publish the boundary state of exactly this initialized range.
+    pub fn export_range(
+        &mut self,
+        handle: super::resource::ResourceHandle,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<(), BuildError> {
         self.check_handle(handle)?;
         let resource = &self.declaration.resources[handle.raw() as usize];
+        range
+            .validate(resource.descriptor)
+            .map_err(|error| super::resource_contracts::range_error(handle.raw(), error))?;
         self.declaration.exports.push(ExportDeclaration {
             tag: resource.descriptor.kind_code(),
             resource_index: handle.raw(),
             access_code,
+            range,
         });
         Ok(())
     }
@@ -293,8 +394,14 @@ impl RenderGraph {
     pub fn on_retire(&mut self, callback: impl FnOnce() + 'static) {
         self.retire_callbacks.push(Box::new(callback));
     }
+    pub(crate) fn reserve_retirement_callback(&mut self) -> crate::Result<()> {
+        self.retire_callbacks
+            .try_reserve(1)
+            .map_err(|_| crate::Error::OutOfHostMemory)
+    }
     pub fn build(self) -> BuiltGraph {
         BuiltGraph {
+            graph_id: self.graph_id,
             declaration: self.declaration,
             callbacks: self.callbacks,
             retire_callbacks: self.retire_callbacks,
@@ -303,6 +410,18 @@ impl RenderGraph {
 }
 
 impl BuiltGraph {
+    pub(crate) fn into_graph(self) -> RenderGraph {
+        RenderGraph {
+            graph_id: self.graph_id,
+            declaration: self.declaration,
+            callbacks: self.callbacks,
+            retire_callbacks: self.retire_callbacks,
+        }
+    }
+
+    pub fn graph_id(&self) -> super::resource::GraphId {
+        self.graph_id
+    }
     /// 将退役回调交给完成回执的持有者；提交成功不代表 GPU 已完成。
     pub fn into_parts(self) -> (GraphDeclaration, Vec<RenderCallback>, Vec<RetireCallback>) {
         (self.declaration, self.callbacks, self.retire_callbacks)
@@ -311,6 +430,37 @@ impl BuiltGraph {
 /// 资源创建错误保留设备丢失、显存不足等类别。
 pub type BackendFailure = crate::Error;
 pub trait ResourceBackend {
+    fn frame_storage_pool(&self) -> Option<&super::frame_storage::FrameStoragePool> {
+        None
+    }
+
+    fn history_validity(&self, _token: u64) -> Option<bool> {
+        None
+    }
+
+    fn prepare_transient_resources(
+        &mut self,
+        _plan: &super::plan::CompiledPlan,
+        _graph: &GraphDeclaration,
+    ) -> crate::Result<()> {
+        Ok(())
+    }
+    fn has_prepared_resource(&self, _name: &str) -> bool {
+        false
+    }
+    fn is_transient_alias(&self, _token: u64) -> bool {
+        false
+    }
+    fn resource_matches_sharing(
+        &self,
+        _token: u64,
+        _sharing: crate::resource::ResourceSharing,
+    ) -> bool {
+        true
+    }
+    fn device_generation(&self) -> Option<crate::device::DeviceGeneration> {
+        None
+    }
     fn create_without_initial_data(
         &mut self,
         descriptor: Descriptor,
@@ -373,7 +523,6 @@ impl ResourceBackend for EventBackend {
 }
 pub struct Population {
     pub registry: Registry,
-    pub remaining_origins: Vec<Option<ResourceDeclaration>>,
     pub pool_hits: Vec<u32>,
 }
 pub struct PopulationFailure {
@@ -400,23 +549,76 @@ pub fn populate_resources(
     backend: &mut impl ResourceBackend,
 ) -> Result<Population, PopulationFailure> {
     let mut population = Population {
-        registry: Registry {
-            resources: vec![ResourceReuseInfo::default(); declarations.len()],
-            resource_initial_access: vec![0; declarations.len()],
-            backing_resources: Vec::new(),
-            exported_logical_handles: info.exported_indices.clone(),
-        },
-        remaining_origins: declarations.iter().cloned().map(Some).collect(),
+        registry: Registry::default(),
         pool_hits: Vec::new(),
     };
+    if let Err(error) = populate_resources_into(
+        info,
+        declarations,
+        pool,
+        backend,
+        &mut population.registry,
+        &mut population.pool_hits,
+    ) {
+        return Err(PopulationFailure {
+            error,
+            partial: Box::new(population),
+        });
+    }
+    Ok(population)
+}
+
+fn populate_resources_into(
+    info: &ResourceInfo,
+    declarations: &[ResourceDeclaration],
+    pool: &mut Pool,
+    backend: &mut impl ResourceBackend,
+    registry: &mut Registry,
+    pool_hits: &mut Vec<u32>,
+) -> crate::Result<()> {
+    // Declarations remain frame-owned. Borrowing the origin avoids cloning
+    // every name and descriptor when the immutable plan is already cached.
+    fn reserve<T>(values: &mut Vec<T>, len: usize) -> crate::Result<()> {
+        if values.capacity() < len {
+            values
+                .try_reserve_exact(len.saturating_sub(values.len()))
+                .map_err(|_| crate::Error::OutOfHostMemory)?;
+        }
+        Ok(())
+    }
+    reserve(&mut registry.resources, declarations.len())?;
+    reserve(&mut registry.resource_initial_access, declarations.len())?;
+    reserve(&mut registry.backing_resources, declarations.len())?;
+    reserve(
+        &mut registry.exported_logical_handles,
+        info.exported_indices.len(),
+    )?;
+    reserve(pool_hits, declarations.len())?;
+    registry.resources.clear();
+    registry
+        .resources
+        .resize(declarations.len(), ResourceReuseInfo::default());
+    registry.resource_initial_access.clear();
+    registry
+        .resource_initial_access
+        .resize(declarations.len(), 0);
+    registry.backing_resources.clear();
+    registry.exported_logical_handles.clear();
+    registry
+        .exported_logical_handles
+        .extend(info.exported_indices.iter().copied());
+    pool_hits.clear();
     for event in &info.lifetime_events {
         if event & 0x1_0000 != 0 {
             continue;
         }
         let logical = (event & 0xffff) as usize;
-        let declaration = population.remaining_origins[logical]
-            .take()
-            .expect("origin already consumed");
+        let declaration = &declarations[logical];
+        assert_eq!(
+            registry.resources[logical].backing_index,
+            u16::MAX,
+            "origin already consumed"
+        );
         let initial_access = match declaration.source {
             OriginSource::Create => 0,
             OriginSource::ImportOwned { initial_access, .. }
@@ -432,16 +634,24 @@ pub fn populate_resources(
                 if usage == 0 {
                     RegistryResource::Empty
                 } else {
-                    let pooled = match descriptor {
-                        Descriptor::Image(desc) => {
-                            pool.take_texture(&desc).map(RegistryResource::OwnedTexture)
-                        }
-                        Descriptor::Buffer(desc) => {
-                            pool.take_buffer(&desc).map(RegistryResource::OwnedBuffer)
+                    let pooled = if backend.has_prepared_resource(&declaration.name) {
+                        None
+                    } else {
+                        match descriptor {
+                            Descriptor::Image(desc) => pool
+                                .take_texture_where(&desc, |token| {
+                                    backend.resource_matches_sharing(*token, declaration.sharing)
+                                })
+                                .map(RegistryResource::OwnedTexture),
+                            Descriptor::Buffer(desc) => pool
+                                .take_buffer_where(&desc, |token| {
+                                    backend.resource_matches_sharing(*token, declaration.sharing)
+                                })
+                                .map(RegistryResource::OwnedBuffer),
                         }
                     };
                     let resource = if let Some(resource) = pooled {
-                        population.pool_hits.push(logical as u32);
+                        pool_hits.push(logical as u32);
                         resource
                     } else {
                         let token = match backend
@@ -449,10 +659,7 @@ pub fn populate_resources(
                         {
                             Ok(token) => token,
                             Err(error) => {
-                                return Err(PopulationFailure {
-                                    error,
-                                    partial: Box::new(population),
-                                });
+                                return Err(error);
                             }
                         };
                         match descriptor {
@@ -497,139 +704,19 @@ pub fn populate_resources(
             },
         };
         assert!(
-            population.registry.backing_resources.len() < 65536,
+            registry.backing_resources.len() < 65536,
             "physical backing index exceeds u16"
         );
-        population.registry.resources[logical] = ResourceReuseInfo {
-            backing_index: population.registry.backing_resources.len() as u16,
+        registry.resources[logical] = ResourceReuseInfo {
+            backing_index: registry.backing_resources.len() as u16,
             reused: false,
         };
-        population.registry.resource_initial_access[logical] = initial_access;
-        population.registry.backing_resources.push(resource);
+        registry.resource_initial_access[logical] = initial_access;
+        registry.backing_resources.push(resource);
     }
-    population.remaining_origins.clear();
-    Ok(population)
+    Ok(())
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Transition {
-    pub resource: u32,
-    pub physical: u16,
-    pub from: u8,
-    pub to: u8,
-}
-fn transition(registry: &Registry, logical: u32, from: u8, to: u8) -> Transition {
-    let (payload, _, _) = registry.resource(logical);
-    assert!(
-        matches!(
-            payload,
-            RegistryResource::OwnedTexture(_)
-                | RegistryResource::UnownedTexture(_)
-                | RegistryResource::OwnedBuffer(_)
-                | RegistryResource::UnownedBuffer(_)
-        ),
-        "barrier resource kind is unsupported"
-    );
-    Transition {
-        resource: logical,
-        physical: registry.resources[logical as usize].backing_index,
-        from,
-        to,
-    }
-}
-pub fn initial_transitions(
-    info: &ResourceInfo,
-    registry: &Registry,
-    pending: &mut Vec<u32>,
-) -> Vec<Transition> {
-    let indices = std::mem::take(pending);
-    let mut transitions = Vec::new();
-    for logical in indices {
-        let first = info.lifetimes[logical as usize].first_access_index;
-        if first == NO_ACCESS {
-            continue;
-        }
-        let (_, initial_access, reused) = registry.resource(logical);
-        if !reused {
-            transitions.push(transition(
-                registry,
-                logical,
-                initial_access,
-                info.accesses[first as usize].access_code,
-            ));
-        }
-    }
-    transitions
-}
-pub fn pre_pass_transitions(
-    info: &ResourceInfo,
-    registry: &Registry,
-    range: Range<usize>,
-    dependency: &mut impl AccessDependency,
-) -> Vec<Transition> {
-    let mut transitions = Vec::new();
-    for current in &info.accesses[range] {
-        let (_, initial_access, reused) = registry.resource(current.resource_index);
-        let from = if current.previous_access_index == NO_ACCESS {
-            if !reused {
-                continue;
-            }
-            assert_eq!(initial_access, 0, "reused first-access state must be zero");
-            0
-        } else {
-            let previous = &info.accesses[current.previous_access_index as usize];
-            let current_type = PassResourceAccessType {
-                synchronization_group: current.synchronization_group,
-                access: current.access_code,
-            };
-            let previous_type = PassResourceAccessType {
-                synchronization_group: previous.synchronization_group,
-                access: previous.access_code,
-            };
-            if current_type
-                .can_be_concurrent_with(&previous_type, |code| dependency.is_write(*code))
-            {
-                continue;
-            }
-            previous.access_code
-        };
-        transitions.push(transition(
-            registry,
-            current.resource_index,
-            from,
-            current.access_code,
-        ));
-    }
-    transitions
-}
-pub fn export_transitions(
-    graph: &GraphDeclaration,
-    info: &ResourceInfo,
-    registry: &Registry,
-) -> Vec<Transition> {
-    graph
-        .exports
-        .iter()
-        // 只导出、从未被 pass 访问的 Create 资源没有生命周期事件，也就没有物理映射；
-        // 这里不发屏障，由执行器的资源映射校验以 `ResourceUnavailable` 拒绝，而不是越界 panic。
-        .filter(|export| registry.is_populated(export.resource_index))
-        .map(|export| {
-            let payload = registry.resource(export.resource_index).0;
-            let buffer = matches!(
-                payload,
-                RegistryResource::OwnedBuffer(_) | RegistryResource::UnownedBuffer(_)
-            );
-            assert_eq!(buffer, export.tag & 1 != 0, "export resource kind mismatch");
-            let lifetime = info.lifetimes[export.resource_index as usize];
-            let from = if lifetime.last_access_index == NO_ACCESS {
-                registry.resource(export.resource_index).1
-            } else {
-                info.accesses[lifetime.last_access_index as usize].access_code
-            };
-            transition(registry, export.resource_index, from, export.access_code)
-        })
-        .collect()
-}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PhysicalMapping {
     pub logical: u32,
@@ -640,7 +727,7 @@ pub struct PhysicalMapping {
     pub token: Option<u64>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Snapshot {
+pub struct SnapshotStatic {
     pub pass_order: Vec<String>,
     pub pass_ranges: Vec<Range<usize>>,
     pub accesses: Vec<ResourceAccessRecord>,
@@ -648,158 +735,277 @@ pub struct Snapshot {
     pub image_usage: Vec<u32>,
     pub buffer_usage: Vec<u32>,
     pub lifetime_events: Vec<u32>,
-    pub physical_mapping: Vec<PhysicalMapping>,
-    pub pending_initial: Vec<u32>,
-    pub initial: Vec<Transition>,
-    pub pre: Vec<Vec<Transition>>,
-    pub export: Vec<Transition>,
     pub batches: Vec<batch_state::Batch>,
     pub imports: Vec<u32>,
     pub exports: Vec<u16>,
-    pub pool_hits: Vec<u32>,
 }
-pub struct CompiledGraph {
-    pub declarations: GraphDeclaration,
-    pub info: ResourceInfo,
-    pub registry: Registry,
-    pub snapshot: Snapshot,
-    pub pending_initial: Vec<u32>,
-}
-impl CompiledGraph {
-    pub fn into_exports(self) -> Exports {
-        self.registry.into_exports()
+impl SnapshotStatic {
+    pub(crate) fn from_plan(
+        definition: &super::plan::GraphDefinition,
+        retained: &[usize],
+        info: &ResourceInfo,
+        batches: &[batch_state::Batch],
+    ) -> Self {
+        let mut exports = info.exported_indices.iter().copied().collect::<Vec<_>>();
+        exports.sort_unstable();
+        Self {
+            pass_order: retained
+                .iter()
+                .map(|&index| definition.passes[index].name.to_string())
+                .collect(),
+            pass_ranges: info
+                .pass_access_ranges
+                .iter()
+                .map(|(start, end)| start.0 as usize..end.0 as usize)
+                .collect(),
+            accesses: info.accesses.clone(),
+            lifetimes: info.lifetimes.clone(),
+            image_usage: info.image_usage_flags.clone(),
+            buffer_usage: info.buffer_usage_flags.clone(),
+            lifetime_events: info.lifetime_events.clone(),
+            batches: batches.to_vec(),
+            imports: definition
+                .resources
+                .iter()
+                .enumerate()
+                .filter_map(|(index, resource)| resource.is_external().then_some(index as u32))
+                .collect(),
+            exports,
+        }
+    }
+    pub(crate) fn estimated_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self
+                .pass_order
+                .iter()
+                .map(|name| std::mem::size_of::<String>() + name.capacity())
+                .sum::<usize>()
+            + self.pass_ranges.capacity() * std::mem::size_of::<Range<usize>>()
+            + self.accesses.capacity() * std::mem::size_of::<ResourceAccessRecord>()
+            + self.lifetimes.capacity() * std::mem::size_of::<ResourceLifetimeRecord>()
+            + (self.image_usage.capacity()
+                + self.buffer_usage.capacity()
+                + self.lifetime_events.capacity()
+                + self.imports.capacity())
+                * std::mem::size_of::<u32>()
+            + self.batches.capacity() * std::mem::size_of::<batch_state::Batch>()
+            + self.exports.capacity() * std::mem::size_of::<u16>()
     }
 }
+/// Immutable plan data is shared by frame receipts. Physical resource mappings
+/// remain owned by the individual frame.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Snapshot {
+    pub shared: std::sync::Arc<SnapshotStatic>,
+    pub physical_mapping: Vec<PhysicalMapping>,
+    pub pool_hits: Vec<u32>,
+}
+impl std::ops::Deref for Snapshot {
+    type Target = SnapshotStatic;
+    fn deref(&self) -> &Self::Target {
+        &self.shared
+    }
+}
+impl std::ops::DerefMut for Snapshot {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        std::sync::Arc::make_mut(&mut self.shared)
+    }
+}
+pub struct FrameInstance {
+    pub plan: std::sync::Arc<super::plan::CompiledPlan>,
+    pub declarations: GraphDeclaration,
+    pub info: std::sync::Arc<ResourceInfo>,
+    pub(crate) tables: FrameInstanceTables,
+    storage: Option<super::frame_storage::FrameStorageLease>,
+}
+/// Read-only dynamic frame metadata. Capacity growth is admitted before the
+/// frame is published; public callers cannot mutate or move pooled vectors.
+pub struct FrameInstanceTables {
+    pub registry: Registry,
+    pub snapshot: Snapshot,
+    pub(crate) history_validity: Option<Vec<Option<bool>>>,
+}
+impl std::ops::Deref for FrameInstance {
+    type Target = FrameInstanceTables;
+    fn deref(&self) -> &Self::Target {
+        &self.tables
+    }
+}
+
+impl Drop for FrameInstance {
+    fn drop(&mut self) {
+        if let Some(mut storage) = self.storage.take() {
+            storage.return_tables(super::frame_storage::FrameTables {
+                registry: std::mem::take(&mut self.tables.registry),
+                physical_mapping: std::mem::take(&mut self.tables.snapshot.physical_mapping),
+                pool_hits: std::mem::take(&mut self.tables.snapshot.pool_hits),
+                history_validity: self.tables.history_validity.take().unwrap_or_default(),
+            });
+        }
+    }
+}
+
 pub fn compile_graph(
     graph: GraphDeclaration,
     pool: &mut Pool,
     backend: &mut impl ResourceBackend,
     dependency: &mut impl AccessDependency,
-) -> crate::Result<CompiledGraph> {
-    graph.validate()?;
-    let origins = graph
-        .resources
-        .iter()
-        .map(ResourceDeclaration::info_origin)
-        .collect::<Vec<_>>();
-    let pass_slices = graph
-        .passes
-        .iter()
-        .map(|pass| pass.accesses.as_slice())
-        .collect::<Vec<_>>();
-    let mut info = ResourceInfo::default();
-    info.calculate(&origins, &graph.exports, &pass_slices, |code| {
-        dependency.access_mask(code)
-    });
-    let population = match populate_resources(&info, &graph.resources, pool, backend) {
-        Ok(population) => population,
-        Err(mut failure) => {
-            // 候选编译入口的失败归还；原 populate_resources 本身不回滚，`partial` 的其余状态原样保留。
-            reclaim_failed_resources(
-                &mut failure.partial.registry,
-                &graph.resources,
-                &failure.partial.pool_hits,
-                pool,
-                backend,
-            );
-            return Err(failure.error);
+) -> crate::Result<FrameInstance> {
+    let definition = super::plan::GraphDefinition::from_declaration(
+        &graph,
+        dependency,
+        super::plan::PlanContext::default(),
+    )?;
+    let plan = std::sync::Arc::new(super::plan::compile_definition(definition)?);
+    instantiate_validated_plan(plan, graph, pool, backend, dependency)
+}
+
+/// Bind physical resources and dynamic import states to an immutable plan.
+/// The complete normalized declaration must match, even if its hash collides.
+pub fn instantiate_plan(
+    plan: std::sync::Arc<super::plan::CompiledPlan>,
+    graph: GraphDeclaration,
+    pool: &mut Pool,
+    backend: &mut impl ResourceBackend,
+    dependency: &mut impl AccessDependency,
+) -> crate::Result<FrameInstance> {
+    if plan.definition.context.device_generation != 0
+        && backend.device_generation().map(|g| g.value())
+            != Some(plan.definition.context.device_generation)
+    {
+        return Err(crate::Error::invalid_usage(
+            "compiled plan belongs to a different device generation",
+        ));
+    }
+    let definition = super::plan::GraphDefinition::from_declaration(
+        &graph,
+        dependency,
+        plan.definition.context,
+    )?;
+    if definition != plan.definition {
+        return Err(crate::Error::invalid_usage(
+            "frame declaration differs from compiled plan",
+        ));
+    }
+    super::plan_check::check_plan(&definition, &plan)?;
+    instantiate_validated_plan(plan, graph, pool, backend, dependency)
+}
+
+pub(crate) fn instantiate_validated_plan(
+    plan: std::sync::Arc<super::plan::CompiledPlan>,
+    graph: GraphDeclaration,
+    pool: &mut Pool,
+    backend: &mut impl ResourceBackend,
+    dependency: &mut impl AccessDependency,
+) -> crate::Result<FrameInstance> {
+    let storage = backend
+        .frame_storage_pool()
+        .map(|pool| pool.checkout(&plan))
+        .transpose()?;
+    instantiate_with_storage(plan, graph, pool, backend, dependency, storage)
+}
+
+pub(crate) fn instantiate_with_storage(
+    plan: std::sync::Arc<super::plan::CompiledPlan>,
+    mut graph: GraphDeclaration,
+    pool: &mut Pool,
+    backend: &mut impl ResourceBackend,
+    _dependency: &mut impl AccessDependency,
+    mut storage: Option<super::frame_storage::FrameStorageLease>,
+) -> crate::Result<FrameInstance> {
+    let mut original = 0usize;
+    let mut retained = plan.retained_passes.iter().copied().peekable();
+    graph.passes.retain_mut(|pass| {
+        let index = original;
+        original += 1;
+        if retained.peek() != Some(&index) {
+            return false;
         }
+        retained.next();
+        pass.accesses
+            .copy_from_slice(&plan.definition.passes[index].accesses);
+        true
+    });
+    backend.prepare_transient_resources(&plan, &graph)?;
+    let mut tables = storage.as_mut().map_or_else(
+        super::frame_storage::FrameTables::default,
+        super::frame_storage::FrameStorageLease::take_tables,
+    );
+    // Public CPU backends without a recycler use the same allocation/failure
+    // path. Vulkan has already admitted and reserved these exact table sizes.
+    if storage.is_none() {
+        tables.reserve_plan(&plan)?;
+    }
+    let info = plan.info.clone();
+    let mut frame = FrameInstance {
+        tables: FrameInstanceTables {
+            snapshot: Snapshot {
+                shared: plan.snapshot.clone(),
+                physical_mapping: tables.physical_mapping,
+                pool_hits: tables.pool_hits,
+            },
+            registry: tables.registry,
+            history_validity: Some(tables.history_validity),
+        },
+        storage,
+        plan,
+        declarations: graph,
+        info,
     };
-    let registry = population.registry;
-    let pending_initial = info
-        .lifetimes
-        .iter()
-        .enumerate()
-        .filter_map(|(index, lifetime)| {
-            (lifetime.first_access_index != NO_ACCESS).then_some(index as u32)
-        })
-        .collect::<Vec<_>>();
-    let mut pending_for_snapshot = pending_initial.clone();
-    let initial = initial_transitions(&info, &registry, &mut pending_for_snapshot);
-    let pre = info
-        .pass_access_ranges
-        .iter()
-        .map(|(start, end)| {
-            pre_pass_transitions(
-                &info,
-                &registry,
-                start.0 as usize..end.0 as usize,
-                dependency,
-            )
-        })
-        .collect();
-    let mut compiler = batch_state::BatchCompiler::new();
-    if graph.batch_per_pass {
-        for pass in 0..graph.passes.len() {
-            compiler.flush_batch(pass);
+    if let Err(error) = populate_resources_into(
+        &frame.info,
+        &frame.declarations.resources,
+        pool,
+        backend,
+        &mut frame.tables.registry,
+        &mut frame.tables.snapshot.pool_hits,
+    ) {
+        reclaim_failed_resources(
+            &mut frame.tables.registry,
+            &frame.declarations.resources,
+            &frame.tables.snapshot.pool_hits,
+            pool,
+            backend,
+        );
+        return Err(error);
+    }
+    let registry = &mut frame.tables.registry;
+    let validity = frame
+        .tables
+        .history_validity
+        .as_mut()
+        .expect("frame validity table");
+    validity.resize(frame.declarations.resources.len(), None);
+    for (logical, mapping) in registry.resources.iter().enumerate() {
+        if let Some(payload) = registry
+            .backing_resources
+            .get(mapping.backing_index as usize)
+            && let (_, Some(token)) = payload_projection(payload)
+        {
+            validity[logical] = backend.history_validity(token);
         }
     }
-    let batches = compiler.finish(graph.passes.len());
-    let export = if batches.last().is_some_and(|batch| batch.export_barriers) {
-        export_transitions(&graph, &info, &registry)
-    } else {
-        Vec::new()
-    };
-    let physical_mapping = registry
-        .resources
-        .iter()
-        .enumerate()
-        .map(|(logical, reuse)| {
-            let (payload_tag, token) =
-                if (reuse.backing_index as usize) < registry.backing_resources.len() {
-                    payload_projection(&registry.backing_resources[reuse.backing_index as usize])
-                } else {
-                    (255, None)
-                };
-            PhysicalMapping {
+    for (logical, mapping) in registry.resources.iter().enumerate() {
+        let (payload_tag, token) = registry
+            .backing_resources
+            .get(mapping.backing_index as usize)
+            .map_or((255, None), payload_projection);
+        frame
+            .tables
+            .snapshot
+            .physical_mapping
+            .push(PhysicalMapping {
                 logical: logical as u32,
-                physical: reuse.backing_index,
-                reused: reuse.reused,
+                physical: mapping.backing_index,
+                reused: mapping.reused,
                 initial_access: registry.resource_initial_access[logical],
                 payload_tag,
                 token,
-            }
-        })
-        .collect();
-    let mut exports = info.exported_indices.iter().copied().collect::<Vec<_>>();
-    exports.sort_unstable();
-    let snapshot = Snapshot {
-        pass_order: graph.passes.iter().map(|pass| pass.name.clone()).collect(),
-        pass_ranges: info
-            .pass_access_ranges
-            .iter()
-            .map(|(start, end)| start.0 as usize..end.0 as usize)
-            .collect(),
-        accesses: info.accesses.clone(),
-        lifetimes: info.lifetimes.clone(),
-        image_usage: info.image_usage_flags.clone(),
-        buffer_usage: info.buffer_usage_flags.clone(),
-        lifetime_events: info.lifetime_events.clone(),
-        physical_mapping,
-        pending_initial: pending_initial.clone(),
-        initial,
-        pre,
-        export,
-        batches,
-        imports: graph
-            .resources
-            .iter()
-            .enumerate()
-            .filter_map(|(index, declaration)| {
-                (!matches!(declaration.source, OriginSource::Create)).then_some(index as u32)
-            })
-            .collect(),
-        exports,
-        pool_hits: population.pool_hits,
-    };
-    Ok(CompiledGraph {
-        declarations: graph,
-        info,
-        registry,
-        snapshot,
-        pending_initial,
-    })
+            });
+    }
+    Ok(frame)
 }
+
 /// 失败路径归还（候选，原链未见回滚）：本图 Create 资源中取自资源池的放回资源池，
 /// 本次新建的经 [`ResourceBackend::release_created_resource`] 交还后端；导入资源不动。
 /// 已归还的物理槽置为 `Empty`，避免同一资源被再次取出。只能在 GPU 不会再使用这些资源时调用。

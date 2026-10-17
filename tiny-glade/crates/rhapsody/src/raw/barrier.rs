@@ -1,216 +1,413 @@
-// 候选实现迁移来源：reconstruction/render/work-packages/barrier-record-r5/src/lib.rs.
-// 这是行为重建，不是原作者源码。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Access {
-    pub code: u8,
-    pub group: u32,
-    /// 访问码的读写分类，由图的 `AccessDependency::is_write` 提供（原版取自 vk-sync 的类型表）。
-    pub write: bool,
-}
-
+//! Native synchronization scopes and capability-selected Vulkan dispatch.
 /// 一个原同步scope汇总三类数组与阶段掩码，在phase边界一次提交。
 pub struct SynchronizationScope {
-    pub memory: Vec<ash::vk::MemoryBarrier<'static>>,
-    pub buffers: Vec<ash::vk::BufferMemoryBarrier<'static>>,
-    pub images: Vec<ash::vk::ImageMemoryBarrier<'static>>,
+    pub memory: smallvec::SmallVec<[ash::vk::MemoryBarrier<'static>; 1]>,
+    pub buffers: smallvec::SmallVec<[ash::vk::BufferMemoryBarrier<'static>; 4]>,
+    pub images: smallvec::SmallVec<[ash::vk::ImageMemoryBarrier<'static>; 4]>,
     pub source_stages: ash::vk::PipelineStageFlags,
     pub destination_stages: ash::vk::PipelineStageFlags,
 }
 impl Default for SynchronizationScope {
     fn default() -> Self {
         Self {
-            memory: Vec::new(),
-            buffers: Vec::new(),
-            images: Vec::new(),
+            memory: smallvec::SmallVec::new(),
+            buffers: smallvec::SmallVec::new(),
+            images: smallvec::SmallVec::new(),
             source_stages: ash::vk::PipelineStageFlags::from_raw(1),
             destination_stages: ash::vk::PipelineStageFlags::from_raw(0x2000),
         }
     }
 }
 impl SynchronizationScope {
+    pub(crate) fn new(
+        source_stages: ash::vk::PipelineStageFlags,
+        destination_stages: ash::vk::PipelineStageFlags,
+    ) -> Self {
+        Self {
+            source_stages,
+            destination_stages,
+            ..Default::default()
+        }
+    }
     pub fn is_empty(&self) -> bool {
         self.memory.is_empty() && self.buffers.is_empty() && self.images.is_empty()
     }
-}
-
-/// 一条 buffer 内存屏障；ownership/queue 字段默认 EXCLUSIVE。
-#[derive(Clone, Copy, Debug)]
-pub struct BufferBarrier(pub ash::vk::BufferMemoryBarrier<'static>);
-impl BufferBarrier {
-    pub fn new(
-        src_access: ash::vk::AccessFlags,
-        dst_access: ash::vk::AccessFlags,
-        buffer: ash::vk::Buffer,
-        offset: u64,
-        size: u64,
-    ) -> Self {
-        Self(
-            ash::vk::BufferMemoryBarrier::default()
-                .src_access_mask(src_access)
-                .dst_access_mask(dst_access)
-                .src_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .buffer(buffer)
-                .offset(offset)
-                .size(size),
+    fn legacy_stages(&self) -> (ash::vk::PipelineStageFlags, ash::vk::PipelineStageFlags) {
+        use ash::vk::PipelineStageFlags;
+        // synchronization2 NONE has an empty execution scope. Legacy barriers
+        // cannot use zero masks without that feature: TOP as a source and
+        // BOTTOM as a destination preserve those empty scopes respectively.
+        (
+            if self.source_stages.is_empty() {
+                PipelineStageFlags::TOP_OF_PIPE
+            } else {
+                self.source_stages
+            },
+            if self.destination_stages.is_empty() {
+                PipelineStageFlags::BOTTOM_OF_PIPE
+            } else {
+                self.destination_stages
+            },
         )
     }
 }
 
-/// 一条 image 内存屏障；layout 迁移语义由调用方阶段决定。
-#[derive(Clone, Copy, Debug)]
-pub struct ImageBarrier(pub ash::vk::ImageMemoryBarrier<'static>);
-impl ImageBarrier {
-    pub fn new(
-        src_access: ash::vk::AccessFlags,
-        dst_access: ash::vk::AccessFlags,
-        old_layout: ash::vk::ImageLayout,
-        new_layout: ash::vk::ImageLayout,
-        image: ash::vk::Image,
-        subresource_range: ash::vk::ImageSubresourceRange,
-    ) -> Self {
-        Self(
-            ash::vk::ImageMemoryBarrier::default()
-                .src_access_mask(src_access)
-                .dst_access_mask(dst_access)
-                .old_layout(old_layout)
-                .new_layout(new_layout)
-                .src_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(ash::vk::QUEUE_FAMILY_IGNORED)
-                .image(image)
-                .subresource_range(subresource_range),
-        )
-    }
+/// Cache the actual enabled API once, without loading extension entry points
+/// for every pass. No Device owner is retained by this Copy dispatcher.
+#[derive(Clone, Copy)]
+pub(crate) struct BarrierDispatch {
+    generation: crate::device::DeviceGeneration,
+    cmd_pipeline_barrier2: Option<ash::vk::PFN_vkCmdPipelineBarrier2>,
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Resource {
-    pub kind: u8,
-    pub initial: u8,
-    pub reused: bool,
-    pub validity: u8,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Transition {
-    pub kind: u8,
-    pub from: u8,
-    pub to: u8,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Outcome {
-    pub transitions: Vec<Transition>,
-    pub panic: Option<&'static str>,
-    pub pending_length: usize,
-    pub tracked: usize,
-    pub emitted: usize,
-    pub resets: usize,
-}
-
-/// 原 0x140bece70 `can_be_concurrent_with`：双方都不写时只要求访问码相同；
-/// 有写时还要求同步组非零且相等。
-pub fn concurrent(current: Access, previous: Access) -> bool {
-    if !current.write && !previous.write {
-        current.code == previous.code
-    } else {
-        current.code == previous.code && current.group != 0 && current.group == previous.group
-    }
-}
-
-fn validate(resource: Resource) -> Result<(), &'static str> {
-    if resource.kind > 1 {
-        return Err("kind");
-    }
-    match resource.validity {
-        1 => Err("device"),
-        2 => Err("managed-kind"),
-        3 => Err("generation"),
-        _ => Ok(()),
-    }
-}
-
-pub fn pre(resource: Resource, previous: Option<Access>, current: Access) -> Outcome {
-    let mut outcome = Outcome::default();
-    let from = match previous {
-        Some(previous) => {
-            if resource.kind > 1 {
-                outcome.panic = Some("kind");
-                return outcome;
-            }
-            if concurrent(current, previous) {
-                return outcome;
-            }
-            previous.code
+impl BarrierDispatch {
+    pub(crate) fn new(device: &super::device::Device) -> Self {
+        let cmd_pipeline_barrier2 = device
+            .caps()
+            .is_enabled(crate::device::Feature::Synchronization2)
+            .then(|| {
+                if device
+                    .enabled_extensions
+                    .iter()
+                    .any(|name| name == "VK_KHR_synchronization2")
+                {
+                    ash::khr::synchronization2::Device::new(
+                        &device.instance.instance,
+                        &device.device,
+                    )
+                    .fp()
+                    .cmd_pipeline_barrier2_khr
+                } else {
+                    device.device.fp_v1_3().cmd_pipeline_barrier2
+                }
+            });
+        Self {
+            generation: device.generation(),
+            cmd_pipeline_barrier2,
         }
-        None => {
-            if !resource.reused {
-                return outcome;
-            }
-            if resource.initial != 0 {
-                outcome.panic = Some("initial-nonzero");
-                return outcome;
-            }
-            0
-        }
-    };
-    if let Err(panic) = validate(resource) {
-        outcome.panic = Some(panic);
-        return outcome;
     }
-    outcome.transitions.push(Transition {
-        kind: resource.kind,
-        from,
-        to: current.code,
-    });
-    outcome
+    /// # Safety
+    /// `command` must be recording on this device with a compatible family;
+    /// every resource in the scope must remain owned through its real last use.
+    pub(crate) unsafe fn issue(
+        &self,
+        device: &super::device::Device,
+        command: ash::vk::CommandBuffer,
+        scope: &SynchronizationScope,
+    ) -> crate::Result<()> {
+        use ash::vk;
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        if self.generation != device.generation() || command == vk::CommandBuffer::null() {
+            return Err(crate::Error::invalid_usage(
+                "barrier command or device does not match",
+            ));
+        }
+        if let Some(cmd_pipeline_barrier2) = self.cmd_pipeline_barrier2 {
+            let barriers = Barrier2Scope::new(scope, &device.allocator_stats)?;
+            let dependency = vk::DependencyInfo::default()
+                .memory_barriers(&barriers.memory)
+                .buffer_memory_barriers(&barriers.buffers)
+                .image_memory_barriers(&barriers.images);
+            unsafe {
+                cmd_pipeline_barrier2(command, &dependency);
+            }
+        } else {
+            let (source, destination) = scope.legacy_stages();
+            unsafe {
+                device.device.cmd_pipeline_barrier(
+                    command,
+                    source,
+                    destination,
+                    vk::DependencyFlags::empty(),
+                    &scope.memory,
+                    &scope.buffers,
+                    &scope.images,
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
-pub fn initial(pending: &mut Vec<(Resource, Option<Access>)>, command_present: bool) -> Outcome {
-    let mut outcome = Outcome::default();
-    if !command_present {
-        outcome.panic = Some("command-empty");
-        outcome.pending_length = pending.len();
-        return outcome;
-    }
-    let drained = std::mem::take(pending);
-    for (resource, first) in drained {
-        let Some(first) = first else { continue };
-        if resource.reused {
-            continue;
+/// API conversion only: all access/layout/range/ownership decisions have already
+/// been made in the shared symbolic scope. Larger batches spill fallibly and
+/// keep their actual CPU capacity charged through the native call.
+struct Barrier2Scope {
+    memory: super::submit::SubmitScratch<[ash::vk::MemoryBarrier2<'static>; 1]>,
+    buffers: super::submit::SubmitScratch<[ash::vk::BufferMemoryBarrier2<'static>; 4]>,
+    images: super::submit::SubmitScratch<[ash::vk::ImageMemoryBarrier2<'static>; 4]>,
+}
+impl Barrier2Scope {
+    fn new(
+        scope: &SynchronizationScope,
+        stats: &std::sync::Arc<super::allocator::AllocatorStats>,
+    ) -> crate::Result<Self> {
+        use ash::vk;
+        if scope.memory.iter().any(|barrier| !barrier.p_next.is_null())
+            || scope
+                .buffers
+                .iter()
+                .any(|barrier| !barrier.p_next.is_null())
+            || scope.images.iter().any(|barrier| !barrier.p_next.is_null())
+        {
+            return Err(crate::Error::unsupported(
+                "extended legacy barrier structures cannot be converted",
+            ));
         }
-        if let Err(panic) = validate(resource) {
-            outcome.panic = Some(panic);
-            return outcome;
+        // A legacy stage-only execution dependency needs an access-free memory
+        // barrier in synchronization2; an empty DependencyInfo would do nothing.
+        let execution_only = scope.is_empty();
+        let memory_count = scope.memory.len().max(usize::from(execution_only));
+        for count in [memory_count, scope.buffers.len(), scope.images.len()] {
+            u32::try_from(count)
+                .map_err(|_| crate::Error::invalid_usage("barrier count exceeds Vulkan limits"))?;
         }
-        outcome.tracked += 1;
-        outcome.transitions.push(Transition {
-            kind: resource.kind,
-            from: resource.initial,
-            to: first.code,
-        });
+        let source = vk::PipelineStageFlags2::from_raw(u64::from(scope.source_stages.as_raw()));
+        let destination =
+            vk::PipelineStageFlags2::from_raw(u64::from(scope.destination_stages.as_raw()));
+        let access = |flags: vk::AccessFlags| vk::AccessFlags2::from_raw(u64::from(flags.as_raw()));
+        let memory = super::submit::SubmitScratch::try_collect(
+            memory_count,
+            stats,
+            scope
+                .memory
+                .iter()
+                .map(|barrier| {
+                    Ok(vk::MemoryBarrier2::default()
+                        .src_stage_mask(source)
+                        .dst_stage_mask(destination)
+                        .src_access_mask(access(barrier.src_access_mask))
+                        .dst_access_mask(access(barrier.dst_access_mask)))
+                })
+                .chain(execution_only.then(|| {
+                    Ok(vk::MemoryBarrier2::default()
+                        .src_stage_mask(source)
+                        .dst_stage_mask(destination))
+                })),
+        )?;
+        let buffers = super::submit::SubmitScratch::try_collect(
+            scope.buffers.len(),
+            stats,
+            scope.buffers.iter().map(|barrier| {
+                Ok(vk::BufferMemoryBarrier2::default()
+                    .src_stage_mask(source)
+                    .dst_stage_mask(destination)
+                    .src_access_mask(access(barrier.src_access_mask))
+                    .dst_access_mask(access(barrier.dst_access_mask))
+                    .src_queue_family_index(barrier.src_queue_family_index)
+                    .dst_queue_family_index(barrier.dst_queue_family_index)
+                    .buffer(barrier.buffer)
+                    .offset(barrier.offset)
+                    .size(barrier.size))
+            }),
+        )?;
+        let images = super::submit::SubmitScratch::try_collect(
+            scope.images.len(),
+            stats,
+            scope.images.iter().map(|barrier| {
+                Ok(vk::ImageMemoryBarrier2::default()
+                    .src_stage_mask(source)
+                    .dst_stage_mask(destination)
+                    .src_access_mask(access(barrier.src_access_mask))
+                    .dst_access_mask(access(barrier.dst_access_mask))
+                    .old_layout(barrier.old_layout)
+                    .new_layout(barrier.new_layout)
+                    .src_queue_family_index(barrier.src_queue_family_index)
+                    .dst_queue_family_index(barrier.dst_queue_family_index)
+                    .image(barrier.image)
+                    .subresource_range(barrier.subresource_range))
+            }),
+        )?;
+        Ok(Self {
+            memory,
+            buffers,
+            images,
+        })
     }
-    outcome.emitted = usize::from(!outcome.transitions.is_empty());
-    outcome.resets = 1;
-    outcome
 }
 
-pub fn export(resource: Resource, last: Option<Access>, target: u8, final_batch: bool) -> Outcome {
-    let mut outcome = Outcome::default();
-    if !final_batch {
-        return outcome;
+#[cfg(test)]
+mod synchronization2_tests {
+    use super::*;
+    use ash::vk::{self, Handle};
+    use std::sync::Arc;
+
+    #[test]
+    fn conversion_preserves_accesses_layouts_ranges_and_ownership_pairs() {
+        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
+        let mut scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER | vk::PipelineStageFlags::HOST,
+            vk::PipelineStageFlags::COMPUTE_SHADER,
+        );
+        scope.memory.push(
+            vk::MemoryBarrier::default()
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(vk::AccessFlags::SHADER_READ),
+        );
+        scope.buffers.push(
+            vk::BufferMemoryBarrier::default()
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(vk::AccessFlags::SHADER_READ)
+                .src_queue_family_index(1)
+                .dst_queue_family_index(3)
+                .buffer(vk::Buffer::from_raw(101))
+                .offset(123)
+                .size(456),
+        );
+        scope.images.push(
+            vk::ImageMemoryBarrier::default()
+                .src_access_mask(vk::AccessFlags::SHADER_WRITE)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .old_layout(vk::ImageLayout::GENERAL)
+                .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+                .src_queue_family_index(3)
+                .dst_queue_family_index(1)
+                .image(vk::Image::from_raw(202))
+                .subresource_range(
+                    vk::ImageSubresourceRange::default()
+                        .aspect_mask(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL)
+                        .base_mip_level(1)
+                        .level_count(2)
+                        .base_array_layer(3)
+                        .layer_count(4),
+                ),
+        );
+        let converted = Barrier2Scope::new(&scope, &stats).unwrap();
+        assert_eq!(
+            converted.memory[0].src_stage_mask.as_raw(),
+            u64::from(scope.source_stages.as_raw())
+        );
+        assert_eq!(
+            converted.memory[0].dst_stage_mask,
+            vk::PipelineStageFlags2::COMPUTE_SHADER
+        );
+        assert_eq!(
+            converted.memory[0].src_access_mask,
+            vk::AccessFlags2::TRANSFER_WRITE
+        );
+        assert_eq!(
+            converted.memory[0].dst_access_mask,
+            vk::AccessFlags2::SHADER_READ
+        );
+        let buffer = converted.buffers[0];
+        assert_eq!(buffer.buffer.as_raw(), 101);
+        assert_eq!(
+            (buffer.src_queue_family_index, buffer.dst_queue_family_index),
+            (1, 3)
+        );
+        assert_eq!((buffer.offset, buffer.size), (123, 456));
+        assert_eq!(buffer.src_access_mask, vk::AccessFlags2::TRANSFER_WRITE);
+        assert_eq!(buffer.dst_access_mask, vk::AccessFlags2::SHADER_READ);
+        let image = converted.images[0];
+        assert_eq!(image.image.as_raw(), 202);
+        assert_eq!(
+            (image.src_queue_family_index, image.dst_queue_family_index),
+            (3, 1)
+        );
+        assert_eq!(
+            (image.old_layout, image.new_layout),
+            (
+                vk::ImageLayout::GENERAL,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL
+            )
+        );
+        assert_eq!(image.src_access_mask, vk::AccessFlags2::SHADER_WRITE);
+        assert_eq!(image.dst_access_mask, vk::AccessFlags2::TRANSFER_READ);
+        let range = image.subresource_range;
+        assert_eq!(
+            range.aspect_mask,
+            vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL
+        );
+        assert_eq!(
+            (
+                range.base_mip_level,
+                range.level_count,
+                range.base_array_layer,
+                range.layer_count
+            ),
+            (1, 2, 3, 4)
+        );
+        assert_eq!(
+            stats.cpu_memory_usage().total(),
+            0,
+            "common barriers remain inline"
+        );
     }
-    if let Err(panic) = validate(resource) {
-        outcome.panic = Some(panic);
-        return outcome;
+
+    #[test]
+    fn stage_only_scope_retains_a_real_execution_dependency() {
+        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
+        let scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::ALL_COMMANDS,
+            vk::PipelineStageFlags::ALL_COMMANDS,
+        );
+        let converted = Barrier2Scope::new(&scope, &stats).unwrap();
+        assert_eq!(converted.memory.len(), 1);
+        assert_eq!(
+            converted.memory[0].src_stage_mask,
+            vk::PipelineStageFlags2::ALL_COMMANDS
+        );
+        assert_eq!(
+            converted.memory[0].dst_stage_mask,
+            vk::PipelineStageFlags2::ALL_COMMANDS
+        );
+        assert!(converted.memory[0].src_access_mask.is_empty());
+        assert!(converted.memory[0].dst_access_mask.is_empty());
     }
-    outcome.tracked = 1;
-    outcome.transitions.push(Transition {
-        kind: resource.kind,
-        from: last.map_or(resource.initial, |access| access.code),
-        to: target,
-    });
-    outcome.emitted = 1;
-    outcome.resets = 1;
-    outcome
+
+    #[test]
+    fn legacy_none_scopes_use_legal_empty_scope_equivalents() {
+        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
+        let scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::empty(),
+            vk::PipelineStageFlags::empty(),
+        );
+        assert_eq!(
+            scope.legacy_stages(),
+            (
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+            )
+        );
+        let converted = Barrier2Scope::new(&scope, &stats).unwrap();
+        assert!(converted.memory[0].src_stage_mask.is_empty());
+        assert!(converted.memory[0].dst_stage_mask.is_empty());
+        let scope = SynchronizationScope::new(
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::COMPUTE_SHADER,
+        );
+        assert_eq!(
+            scope.legacy_stages(),
+            (scope.source_stages, scope.destination_stages)
+        );
+    }
+
+    #[test]
+    fn later_spill_admission_failure_releases_already_prepared_capacity() {
+        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
+        let mut scope = SynchronizationScope::default();
+        scope
+            .buffers
+            .extend([vk::BufferMemoryBarrier::default(); 5]);
+        scope.images.extend([vk::ImageMemoryBarrier::default(); 5]);
+        stats
+            .set_total_budget((5 * size_of::<vk::BufferMemoryBarrier2<'static>>()) as u64)
+            .unwrap();
+        assert!(matches!(
+            Barrier2Scope::new(&scope, &stats),
+            Err(crate::Error::OutOfHostMemory)
+        ));
+        assert_eq!(stats.cpu_memory_usage().total(), 0);
+        stats.set_total_budget(4096).unwrap();
+        let converted = Barrier2Scope::new(&scope, &stats).unwrap();
+        assert!(
+            stats.cpu_memory_usage().live
+                >= (5
+                    * (size_of::<vk::BufferMemoryBarrier2<'static>>()
+                        + size_of::<vk::ImageMemoryBarrier2<'static>>())) as u64
+        );
+        drop(converted);
+        assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
 }

@@ -23,9 +23,10 @@ pub const fn buffer_access_mask_to_usage_flags(access_mask: u32) -> BufferUsageF
 /// 原函数符号：`rhapsody::rg::resource_info::image_access_mask_to_usage_flags`
 /// 原机器码地址：`0x140bd49d0`.
 ///
-/// 图片转换匹配整个掩码；未列出的组合触发 panic，不将独立用途简单取并集。panic 格式与栈 ABI 尚未恢复。
-pub fn image_access_mask_to_usage_flags(access_mask: u32) -> ImageUsageFlags {
-    match access_mask {
+/// Unsupported image access masks are invalid declarations, not device failures.
+pub fn image_access_mask_to_usage_flags(access_mask: u32) -> crate::Result<ImageUsageFlags> {
+    Ok(match access_mask {
+        0 => ImageUsageFlags::empty(),
         0x20 => ImageUsageFlags::SAMPLED,
         0x40 | 0x18000 => ImageUsageFlags::STORAGE,
         0x80 | 0x100 | 0x180 => ImageUsageFlags::COLOR_ATTACHMENT,
@@ -33,6 +34,10 @@ pub fn image_access_mask_to_usage_flags(access_mask: u32) -> ImageUsageFlags {
         0x220 => ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT | ImageUsageFlags::SAMPLED,
         0x800 => ImageUsageFlags::TRANSFER_SRC,
         0x1000 => ImageUsageFlags::TRANSFER_DST,
-        _ => panic!("unsupported original image access mask: {access_mask:#x}"),
-    }
+        _ => {
+            return Err(crate::Error::invalid_usage(format!(
+                "unsupported image access mask: {access_mask:#x}"
+            )));
+        }
+    })
 }

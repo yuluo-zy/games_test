@@ -261,6 +261,7 @@ impl EmbeddedDxcRequest {
 
 // 公共预处理器、反射和原格式打包的完整构建入口。
 pub mod build;
+pub mod bindless;
 pub mod pack;
 pub mod preprocess;
 pub mod reflect;

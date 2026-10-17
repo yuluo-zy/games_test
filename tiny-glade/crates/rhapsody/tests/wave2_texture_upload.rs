@@ -1,8 +1,9 @@
 //! 第二批：纹理初值上传的剩余分支（`init_texture_data` 2/3 号目标 + `update_texture_impl`）。
 //! 纯函数部分不需要设备；GPU 部分上传已知数据后经 `vkCmdCopyImageToBuffer` 读回逐字节比对（lavapipe 可跑）。
+mod gpu_test_support;
 use ash::vk;
 use rhapsody::raw::{
-    device::GraphicsDevice,
+    device::Device,
     init::create_headless_device,
     setup::TextureInitialData,
     texture::TextureDesc,
@@ -13,10 +14,32 @@ use rhapsody::raw::{
 };
 use std::sync::Arc;
 
-fn device() -> Option<Arc<GraphicsDevice>> {
-    create_headless_device()
-        .ok()
-        .map(GraphicsDevice::from_device)
+fn device() -> Option<Arc<Device>> {
+    gpu_test_support::initialize("texture upload device", create_headless_device())
+}
+
+fn supports_bc(device: &Device, format: vk::Format) -> bool {
+    let result = unsafe {
+        device
+            .instance
+            .instance
+            .get_physical_device_image_format_properties(
+                device.physical,
+                format,
+                vk::ImageType::TYPE_2D,
+                vk::ImageTiling::OPTIMAL,
+                readable() | vk::ImageUsageFlags::TRANSFER_DST,
+                vk::ImageCreateFlags::empty(),
+            )
+    };
+    match result {
+        Ok(_) => true,
+        Err(vk::Result::ERROR_FORMAT_NOT_SUPPORTED) => {
+            eprintln!("SKIP BC format {format:?}: image format explicitly unsupported");
+            false
+        }
+        Err(error) => panic!("BC format capability query failed: {error:?}"),
+    }
 }
 
 // ---------------------------------------------------------------- MipChainIter / 区域生成（纯函数）
@@ -177,9 +200,11 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
     }
     assert_eq!(plan.copies[1].image_subresource.mip_level, 1);
     assert_eq!(plan.copies[1].image_extent.width, 2);
-    // 偏移 16 对 block_bytes=16 OK，对 32 不是整数倍（第二块起点 16 % 32 != 0）。
+    // Each copy is aligned independently; explicit padding is part of staging size.
     assert!(plan_texture_copies(&regions, 16, vk::ImageAspectFlags::COLOR).is_ok());
-    assert!(plan_texture_copies(&regions, 32, vk::ImageAspectFlags::COLOR).is_err());
+    let padded = plan_texture_copies(&regions, 32, vk::ImageAspectFlags::COLOR).unwrap();
+    assert_eq!(padded.copies[1].buffer_offset, 32);
+    assert_eq!(padded.total, 40);
     // 总长 0：`assert!(size > 0)`。
     let empty = [TextureUpdateRegion {
         data: &[],
@@ -199,41 +224,61 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
 
 /// 把（mip, layer）的子资源读回成连续字节：屏障 → `vkCmdCopyImageToBuffer` → 读缓冲。
 fn read_back(
-    gd: &GraphicsDevice,
-    texture: &rhapsody::raw::texture::Texture,
+    gd: &Arc<Device>,
+    texture: Arc<rhapsody::raw::texture::Texture>,
     mip: u32,
     layer: u32,
     extent: [u32; 3],
     bytes: u64,
 ) -> Vec<u8> {
-    use rhapsody::raw::buffer::{Buffer, BufferDesc};
-    let buffer = Buffer::new(
-        gd.inner.clone(),
-        &BufferDesc::new_gpu_to_cpu(bytes, vk::BufferUsageFlags::TRANSFER_DST),
-    )
-    .unwrap();
-    let range = vk::ImageSubresourceRange::default()
-        .aspect_mask(vk::ImageAspectFlags::COLOR)
-        .level_count(vk::REMAINING_MIP_LEVELS)
-        .layer_count(vk::REMAINING_ARRAY_LAYERS);
-    gd.with_setup_cb(|cb| unsafe {
-        let device = &gd.inner.device;
-        let to_src = [vk::ImageMemoryBarrier::default()
-            .src_access_mask(vk::AccessFlags::SHADER_READ)
-            .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
-            .old_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-            .image(texture.handle)
-            .subresource_range(range)];
-        device.cmd_pipeline_barrier(
-            cb,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::PipelineStageFlags::TRANSFER,
-            vk::DependencyFlags::empty(),
-            &[],
-            &[],
-            &to_src,
-        );
+    use rhapsody::{
+        raw::{
+            buffer::{Buffer, BufferDesc},
+            resource_access::{buffer_access, image_access},
+            setup::with_setup_command,
+        },
+        resource::{OwnershipRange, range_state::AccessScope},
+    };
+    let buffer = Arc::new(
+        Buffer::new(
+            gd.clone(),
+            &BufferDesc::new_gpu_to_cpu(bytes, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let range = OwnershipRange::Image {
+        aspects: vk::ImageAspectFlags::COLOR.as_raw(),
+        base_mip: mip,
+        mip_count: 1,
+        base_layer: layer,
+        layer_count: 1,
+    };
+    let queue = gd.queue(rhapsody::device::QueueClass::Graphics).unwrap();
+    with_setup_command(gd, |command| unsafe {
+        image_access(
+            command,
+            texture.clone(),
+            queue,
+            range,
+            AccessScope {
+                stages: vk::PipelineStageFlags::TRANSFER,
+                access: vk::AccessFlags::TRANSFER_READ,
+                write: false,
+            },
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        )?;
+        buffer_access(
+            command,
+            buffer.clone(),
+            queue,
+            0,
+            bytes,
+            AccessScope {
+                stages: vk::PipelineStageFlags::TRANSFER,
+                access: vk::AccessFlags::TRANSFER_WRITE,
+                write: true,
+            },
+        )?;
         let region = [vk::BufferImageCopy::default()
             .image_subresource(vk::ImageSubresourceLayers {
                 aspect_mask: vk::ImageAspectFlags::COLOR,
@@ -246,29 +291,41 @@ fn read_back(
                 height: extent[1],
                 depth: extent[2],
             })];
-        device.cmd_copy_image_to_buffer(
-            cb,
+        gd.device.cmd_copy_image_to_buffer(
+            command.handle,
             texture.handle,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
             buffer.handle,
             &region,
         );
-        let back = [vk::ImageMemoryBarrier::default()
-            .src_access_mask(vk::AccessFlags::TRANSFER_READ)
-            .dst_access_mask(vk::AccessFlags::SHADER_READ)
-            .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-            .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            .image(texture.handle)
-            .subresource_range(range)];
-        device.cmd_pipeline_barrier(
-            cb,
-            vk::PipelineStageFlags::TRANSFER,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::DependencyFlags::empty(),
-            &[],
-            &[],
-            &back,
-        );
+        // These fixtures create and update through upload_regions, whose actual
+        // postcondition is ShaderReadOnly. Restore only the copied subresource;
+        // image_access reads its true old layout and publishes the same patch
+        // protocol that subsequent updates consume.
+        image_access(
+            command,
+            texture.clone(),
+            queue,
+            range,
+            AccessScope {
+                stages: vk::PipelineStageFlags::ALL_COMMANDS,
+                access: vk::AccessFlags::SHADER_READ,
+                write: false,
+            },
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        )?;
+        buffer_access(
+            command,
+            buffer.clone(),
+            queue,
+            0,
+            bytes,
+            AccessScope {
+                stages: vk::PipelineStageFlags::HOST,
+                access: vk::AccessFlags::HOST_READ,
+                write: false,
+            },
+        )
     })
     .unwrap();
     let mut out = vec![0u8; bytes as usize];
@@ -308,7 +365,7 @@ fn gpu_multi_mip_multi_layer_linear_upload_reads_back_exactly() {
         .create_texture_with_data(&desc, "multi", TextureInitialData::Linear(&data))
         .unwrap();
     for (mip, layer, extent, chunk) in expect {
-        let got = read_back(&gd, &t, mip, layer, extent, chunk.len() as u64);
+        let got = read_back(&gd, t.shared(), mip, layer, extent, chunk.len() as u64);
         assert_eq!(got, chunk, "mip {mip} layer {layer}");
     }
 }
@@ -320,8 +377,11 @@ fn gpu_create_texture_with_plain_slice_is_linear_and_rejects_wrong_sizes() {
     let desc = TextureDesc::new_2d(4, 4, f).mip_levels(3).usage(readable());
     let full = pattern(64 + 16 + 4, 7);
     let t = gd.create_texture(&desc, "linear", &full[..]).unwrap();
-    assert_eq!(read_back(&gd, &t, 1, 0, [2, 2, 1], 16), full[64..80]);
-    assert_eq!(read_back(&gd, &t, 2, 0, [1, 1, 1], 4), full[80..84]);
+    assert_eq!(
+        read_back(&gd, t.shared(), 1, 0, [2, 2, 1], 16),
+        full[64..80]
+    );
+    assert_eq!(read_back(&gd, t.shared(), 2, 0, [1, 1, 1], 4), full[80..84]);
     assert!(gd.create_texture(&desc, "short", &full[..83]).is_err());
     assert!(
         gd.create_texture(&desc, "long", &pattern(85, 0)[..])
@@ -347,7 +407,7 @@ fn gpu_per_mip_slices_upload_reads_back_exactly() {
     let dims = [[8, 8, 1], [4, 4, 1], [2, 2, 1], [1, 1, 1]];
     for (mip, (extent, chunk)) in dims.iter().zip(&chunks).enumerate() {
         assert_eq!(
-            read_back(&gd, &t, mip as u32, 0, *extent, chunk.len() as u64),
+            read_back(&gd, t.shared(), mip as u32, 0, *extent, chunk.len() as u64),
             *chunk,
             "mip {mip}"
         );
@@ -374,8 +434,8 @@ fn gpu_per_mip_slices_upload_reads_back_exactly() {
 fn gpu_per_mip_rejects_block_compressed_formats() {
     let Some(gd) = device() else { return };
     let desc = TextureDesc::new_2d(8, 8, vk::Format::BC1_RGB_UNORM_BLOCK).usage(readable());
-    if gd.create_texture(&desc, "probe", ()).is_err() {
-        return; // 设备不支持 BC：跳过。
+    if !supports_bc(&gd, desc.format) {
+        return;
     }
     let data = vec![0u8; 32];
     let slices: [&[u8]; 1] = [&data];
@@ -388,18 +448,20 @@ fn gpu_per_mip_rejects_block_compressed_formats() {
 #[test]
 fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
     let Some(gd) = device() else { return };
-    // 原 block_bytes 表只放行 BC1_RGB(8B) / BC3(16B) / BC4_UNORM(8B) / BC5(16B) / BC7(16B)。
-    for (format, block_bytes) in [
-        (vk::Format::BC1_RGB_UNORM_BLOCK, 8usize),
-        (vk::Format::BC3_UNORM_BLOCK, 16),
-        (vk::Format::BC7_UNORM_BLOCK, 16),
-    ] {
+    // Every BC variant uses the public Vulkan block layout, including signed
+    // formats and BC1 RGBA/BC2 that the old private table rejected.
+    for code in 131..=146 {
+        let format = vk::Format::from_raw(code);
+        let block_bytes = if (131..=134).contains(&code) || (139..=140).contains(&code) {
+            8usize
+        } else {
+            16
+        };
         let desc = TextureDesc::new_2d(16, 8, format)
             .mip_levels(3)
             .usage(readable());
-        if gd.create_texture(&desc, "probe", ()).is_err() {
-            eprintln!("跳过 {format:?}：设备不支持");
-            continue; // 设备不支持该 BC 格式：跳过。
+        if !supports_bc(&gd, format) {
+            continue;
         }
         // 16x8：4x2 块；8x4：2x1 块；4x2：1 块。
         let blocks = [8usize, 2, 1];
@@ -415,7 +477,7 @@ fn gpu_block_compressed_mip_chain_uploads_and_reads_back_exactly() {
             .create_texture_with_data(&desc, "bc", TextureInitialData::Linear(&data))
             .unwrap();
         for (mip, (extent, chunk)) in extents.iter().zip(&chunks).enumerate() {
-            let got = read_back(&gd, &t, mip as u32, 0, *extent, chunk.len() as u64);
+            let got = read_back(&gd, t.shared(), mip as u32, 0, *extent, chunk.len() as u64);
             assert_eq!(got, *chunk, "{format:?} mip {mip}");
         }
     }
@@ -432,7 +494,7 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     let t = gd.create_texture(&desc, "upd", &base[..]).unwrap();
     let patch = pattern(16, 200);
     rhapsody::raw::setup::update_texture_regions(
-        &gd.inner,
+        &gd,
         &t,
         &[TextureUpdateRegion {
             data: &patch,
@@ -443,11 +505,20 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     )
     .unwrap();
     // 被更新的（mip 1, layer 1）变成补丁，其余保持原值。
-    assert_eq!(read_back(&gd, &t, 1, 1, [2, 2, 1], 16), patch);
-    assert_eq!(read_back(&gd, &t, 1, 0, [2, 2, 1], 16), base[64..80]);
-    assert_eq!(read_back(&gd, &t, 0, 1, [4, 4, 1], 64), base[80..144]);
+    assert_eq!(read_back(&gd, t.shared(), 1, 1, [2, 2, 1], 16), patch);
+    assert_eq!(
+        read_back(&gd, t.shared(), 1, 0, [2, 2, 1], 16),
+        base[64..80]
+    );
+    assert_eq!(
+        read_back(&gd, t.shared(), 0, 1, [4, 4, 1], 64),
+        base[80..144]
+    );
     // update_texture（整张线性）也支持多 mip 多层。
     let all = pattern(2 * (64 + 16), 77);
     gd.update_texture(&t, &all).unwrap();
-    assert_eq!(read_back(&gd, &t, 1, 1, [2, 2, 1], 16), all[144..160]);
+    assert_eq!(
+        read_back(&gd, t.shared(), 1, 1, [2, 2, 1], 16),
+        all[144..160]
+    );
 }

@@ -1,16 +1,20 @@
 # rhapsody 架构与详细设计
 
-本文是 rhapsody 重构的目标架构与各模块详细设计，进度与阶段见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)。
+本文只定义 rhapsody 重构的目标架构、接口职责与正确性不变量。开发任务见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)，实际实现与验证状态只登记在 [REFACTOR_PROGRESS.md](REFACTOR_PROGRESS.md)。
 
 逐版交付范围、M0–M9 里程碑、窗口 demo 与验收门槛见 [DELIVERY_PLAN.md](DELIVERY_PLAN.md)。
 
-**唯一标准：正确性与高性能。** 原版 Tiny Glade 的地址、内存布局、panic 行为与错误文案不再约束设计；原版 oracle 测试已删除；对外 API 允许破坏性变更（下游只有 `tiny-glade`、`tg-text`，随改随迁）。
+**唯一标准：正确性与高性能。** 原版 Tiny Glade 的地址、内存布局、panic 行为与错误文案不再约束设计；原版 oracle 测试清理记录见进度文档；对外 API 允许破坏性变更（下游 `tiny-glade`、`tg-text` 及实际调用 rhapsody 的 `country-core` 宿主接口，随改随迁）。
 
-2026-10-16 设计升级：补入帧提交事务、呈现完成域、图计划与帧实例分离、子图缓存、瞬态内存着色、分层分配、预算与有界后台任务。本文描述目标设计，新增接口及验收项不代表已实现；实施顺序见 §4.9 与 `REFACTOR_PLAN.md` 的“设计升级实施表”。
+2026-10-16 设计升级：补入帧提交事务、呈现完成域、图计划与帧实例分离、子图缓存、瞬态内存着色、分层分配、预算与有界后台任务。本文的 P0–P7 是技术领域索引，不是开发顺序或验收状态；实施与交付统一按 `DELIVERY_PLAN.md` 的 V0–V9。V2 提前闭合帧事务与呈现，V4 完成帧局部池，V5–V8 依次交付缓存、着色、管线与多队列。
+
+本文代码块是目标接口草图，不保证与迁移中的公开签名一致。类型存在、能力已启用或局部单测通过，均不代表对应交付版本已验收。完整范围以 `DELIVERY_PLAN.md` §1 为准；GPU 驱动渲染、mesh shader、程序化建模迁到 compute、descriptor buffer、GPL、shader object 作为后续可选实验。
 
 ---
 
-## 1. 现状问题（重构动机）
+## 1. 重构前问题（历史动机，不是当前缺陷清单）
+
+下表描述重构起点。已修复与仍开放的部分见 `REFACTOR_PROGRESS.md`，不据此重复恢复已删除的旧机制。
 
 | # | 问题 | 证据 |
 | --- | --- | --- |
@@ -31,13 +35,13 @@
 
 ```
 rhapsody
-├─ error.rs            统一错误 Error/ErrorKind/Result                       ✅ 已实现
-├─ sync/               GPU 完成的唯一真相源                                  ✅ 已实现
+├─ error.rs            统一错误 Error/ErrorKind/Result                       P1
+├─ sync/               GPU 完成的唯一真相源                                  P2/P3
 │  ├─ mod.rs           QueueId、SyncPoint、SyncSet、CompletedValues
 │  ├─ timeline.rs      Timelines：每队列提交锁 + 时间线
 │  └─ retire.rs        Retirement<T>：按 SyncSet 延迟回收
 ├─ device/             设备与队列
-│  ├─ queue_config.rs  QueueConfig、plan_queues                             ✅ 已实现
+│  ├─ queue_config.rs  QueueConfig、plan_queues                             P2
 │  ├─ mod.rs           Device（唯一设备对象）                                P2
 │  ├─ init.rs          实例/物理设备选择/逻辑设备创建（DeviceConfig）         P2
 │  └─ memory.rs        分配器封装（gpu-allocator，持久映射）                  P2
@@ -63,7 +67,7 @@ frame ─► graph ─► command ─► resource ─► device ─► sync ─�
 
 ## 3. 详细设计
 
-### 3.1 错误模型（`src/error.rs`，已实现）
+### 3.1 错误模型（`src/error.rs`，P1）
 
 ```rust
 pub enum Error {
@@ -90,7 +94,7 @@ pub enum ErrorKind { DeviceLost, OutOfMemory, SurfaceOutOfDate, SurfaceLost, Tim
 6. 帧失败取消未提交部分；已提交的 GPU 副作用不可回滚，按实际完成点收尾（§3.10）。仅 `DeviceLost` 使设备/会话永久不可用（粘滞）。
 7. 窗口最小化、交换链过期不是错误路径上的"误用"：由 `FrameOutcome::Skipped/Recreated` 表达，不记 error 日志。
 
-### 3.2 同步与完成（`src/sync/`，已实现）
+### 3.2 同步与完成（`src/sync/`，P2/P3）
 
 **数据类型**
 
@@ -144,7 +148,7 @@ impl<T> Retirement<T> {
 
 **锁顺序（全局唯一）**：交换链锁 → 队列提交锁 → 回收锁 → 分配器内部锁。提交锁内只做队列调用，不做阻塞等待、不做 `vkDestroy*`。
 
-### 3.3 队列规划（`src/device/queue_config.rs`，已实现）
+### 3.3 队列规划（`src/device/queue_config.rs`，P2）
 
 ```rust
 pub enum QueuePreference { Off, Prefer, Require }
@@ -262,7 +266,7 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
 **编译**
 
 1. 校验（`validate_declaration`）：资源/pass/访问数上限、句柄越界、导出类型一致；失败返回 `InvalidUsage`，不 panic。
-2. 生命周期与池分配；同帧内别名（非重叠生命周期共享物理资源）作为可选优化。
+2. 纯编译只计算符号化生命周期；实际 requirements 查询、池分配与物理绑定由后续放置/帧实例阶段负责。同帧内别名是受依赖与内存兼容性约束的可选优化，不把 Vulkan 分配塞回可缓存的编译计划。
 3. 屏障规划：每个 pass 前一次 `vkCmdPipelineBarrier2`（`VkDependencyInfo` 批量），由"前一访问 → 当前访问"导出 stage/access/layout；整个 crate 只保留**一份**屏障计算。
 4. 队列调度（P6）：pass 的 `QueueClass` 经 `QueuePlan` 映射到 `QueueId`；按队列切分批次；跨队列依赖插入 `Wait::Timeline{point}`（由上游批次提交返回的 `SyncPoint`）；资源跨队列族时按 `SharingPolicy`：
    - `Exclusive`：上游批次末尾 release 屏障（`srcQueueFamily`→`dstQueueFamily`），下游批次开头 acquire 屏障；
@@ -280,7 +284,7 @@ graph.add_pass("taa", QueueClass::Graphics)?            // add_pass 返回 Resul
 
 ### 3.7 命令录制（`src/command/`，P3/P7）
 
-- `FrameRing { slots: [FrameSlot; frames_in_flight] }`，`FrameSlot { pools: per (thread × queue family) VkCommandPool, done: SyncSet }`。
+- 图后端按 `FramePoolKey { frame_slot, worker, family }` 管理真实 `FrameCommandPool`，动态支持配置的 1–3 个帧槽；命令池保留相关提交的完成集合，不再另设未接线的 CPU FrameRing 模型。
 - `begin_frame` 选下一个槽：等待 `slot.done`（`Device::wait`）→ `vkResetCommandPool` 整池复位 → 复用其中已分配的命令缓冲。取代逐个命令缓冲回收、`pool_sequences`、销毁桶。
 - 描述符：bindless 落地后（§3.5），pass 只通过 push constant 传参数结构索引或设备地址，不再分配描述符集；过渡期每槽一个 `VkDescriptorPool`、帧开始整池 reset，取代每次 dispatch 分配瞬时集。
 - 动态常量/上传：每槽一块持久映射的线性分配环（bump allocator），帧完成后整块复用。
@@ -361,7 +365,7 @@ impl FrameLoop {
 
 ## 4. 性能路线图
 
-§3 的重构主要解决正确性与结构问题，性能只拿到"去掉明显浪费"一层（命令缓冲 3→1、去掉 graveyard 空提交、稳态零堆分配），且**尚未测量**。下列方向的收益是待验证假设；图计划分层、缓存边界、内存着色接口随 P4 设计，优化默认启用须满足 §4.9 的验收条件。
+§3 的重构解决正确性与结构问题，同时以减少命令缓冲、移除额外退役提交、稳态零临时分配为性能目标。是否已实现及实测结果见 `REFACTOR_PROGRESS.md`；稳态零分配仍须独立测量。下列方向的收益是待验证假设，优化默认启用须满足 §4.9 的验收条件。
 
 | # | 方向 | 预期收益 | 代价 | 决策 |
 | --- | --- | --- | --- | --- |
@@ -479,8 +483,9 @@ impl FrameLoop {
 ### 4.9 硬件要求与顺序
 
 - 依赖较新特性：descriptor indexing、buffer device address、dynamic rendering、synchronization2、timeline semaphore（Vulkan 1.2/1.3 核心，lavapipe 支持）；descriptor buffer、graphics pipeline library、shader object、mesh shader 为可选，需按设备探测（lavapipe 不支持 mesh shader，其余需实测）。目标硬件的最低要求尚未确定，须在 4.2/4.3 动工前确认。
-- 基础顺序：P2 能力策略与通用子分配 → P3 帧局部池、区间完成点与预算计数 → P4 图计划/帧实例分离、资源版本/子图边界、整图缓存、单队列瞬态着色 → P5 提交事务与呈现完成域 → P6 多队列偏序校验与别名规划。部分提交收尾与独立检查模型需在对应功能启用前完成，不等到 P5/P7 才补正确性。
-- 后续优化：剖析和异步管线编译先行；子图编译缓存、结果缓存依据重复率与脏数据分布启用；bindless、动态渲染按 P4 集成；GPU 驱动、复杂异步计算与为省内存而增加串行依赖须经真机 A/B 验证。
+- 交付顺序：V0 可重复窗口基线 → V1 设备/完成/精确回收 → V2 提交事务与呈现闭环 → V3 图分层与资源契约 → V4 帧局部池/传输/预算 → V5 整图/子图/结果缓存 → V6 单队列瞬态着色 → V7 管线/描述符 → V8 多队列 → V9 全链路验收。P 编号仅用于映射上述技术领域。
+- V1 先按真实完成点回收现有命令分配；V2 引入满足事务安全的最小帧槽；V4 再完成 worker/family 池隔离与整池复位优化，不能把回收正确性拖到 V4。V3 建立独立检查器，V6/V8 扩展别名和多队列规则。
+- 剖析从 V0 开始贯穿各版；异步管线编译在 V7 正式交付。子图和结果缓存是 V5 必做功能，是否默认启用依据重复率与管理成本决定。bindless、动态渲染在 V7 交付；GPU 驱动、自动关键路径迁移和为省内存新增串行依赖按真机 A/B 决定启用。
 - 每项优化保留关闭路径；相同负载下比较 CPU/GPU 的 p50/p95/p99、峰值显存、稳态分配数、等待时长及长跑计数。未证明收益的策略保持可选，不把“实现了”当成“默认更快”。测试记录硬件、驱动、构建配置和负载；无对应硬件时标记未验证，不外推 lavapipe 结果。
 
 ---
@@ -503,7 +508,7 @@ impl FrameLoop {
 | 阶段 | 新增 | 删除 |
 | --- | --- | --- |
 | P2 | `device::{Device, DeviceConfig, init, memory}`、能力策略与设备代际 | `raw::device::{VulkanDevice, GraphicsDevice}`、`queue_lock`、`raw::init` 中的原版排序/白名单 |
-| P3 | `command::FrameRing`、worker 局部池、`Device::retire/collect_garbage`、`Doomed`、预算计数与帧事务基础 | `raw::graveyard`、`raw::managed::lifecycle::SequenceRuntime`、`raw::submit::SubmissionEngine/DeviceState`、`raw::disposal`、`CommandBufferSeqTracker`、`ManagedResources` 退役记录、`events` |
+| P3 | 图后端帧槽与 worker/family 命令池、CPU arena、`Device::retire/collect_garbage`、`Doomed`、预算计数与帧事务基础 | `raw::graveyard`、`raw::managed::lifecycle::SequenceRuntime`、`raw::submit::SubmissionEngine/DeviceState`、`raw::disposal`、`CommandBufferSeqTracker`、`ManagedResources` 退役记录、`events`、未接线的 CPU FrameRing |
 | P4 | `resource::*`、类型化/命名资源、bindless、动态渲染、图计划/帧实例分层、资源版本、子图边界、整图缓存、单队列瞬态着色、传输 ticket | `raw::managed::*` 句柄与 checksum、`rg::temporal` token 方案、`VulkanGraphBackend` 的 u64 resolver、`raw::render_pass`/`raw::framebuffer` 及其缓存、每次 dispatch 的瞬时描述符集 |
 | P5 | `swapchain`、`frame::FrameLoop`、帧事务闭合、图像租约与呈现完成域 | `raw::swapchain` 租约表、`rg::frame` 原版阶段检查器、`rg::state` |
 | P6 | 图内 `QueueClass` 调度、`SharingPolicy`、偏序驱动别名规划 | 跨队列族"拒绝提交"分支 |

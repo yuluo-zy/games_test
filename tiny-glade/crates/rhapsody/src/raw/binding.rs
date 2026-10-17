@@ -1,10 +1,23 @@
-//! 描述符写入与管线绑定的可运行候选接口；原反射/managed 解析尚未全量核对。
-use crate::raw::device::VulkanDevice;
+//! 原生描述符写入、管线绑定及受控命令资源租约。
+use crate::raw::device::Device;
 use ash::vk;
 use std::sync::Arc;
 
-/// 延长资源宿主对象的生命期；实际提交链还需持有此对象直至 GPU 完成。
-pub type ResourceOwner = Arc<dyn Send + Sync>;
+/// 实际资源所有者，由命令登记访问并持有至真实 GPU 完成。
+pub type ResourceOwner = Arc<dyn crate::resource::GpuUse>;
+
+/// Private recording leases. Graph objects never enter an opaque access path.
+pub struct RetainedResource(pub(crate) Retention);
+pub(crate) enum Retention {
+    Object(ResourceOwner),
+    Recorded(ResourceOwner),
+    UploadRead {
+        buffer: Arc<super::buffer::Buffer>,
+        offset: u64,
+        size: u64,
+        scope: crate::resource::range_state::AccessScope,
+    },
+}
 
 #[derive(Clone)]
 pub enum DescriptorSetBinding {
@@ -31,10 +44,12 @@ impl DescriptorSetBinding {
             Self::Buffer { ty, .. } | Self::Image { ty, .. } | Self::TexelBuffer { ty, .. } => *ty,
         }
     }
-    pub fn owners(&self) -> Vec<ResourceOwner> {
+    pub(crate) fn owner_refs(&self) -> &[ResourceOwner] {
         match self {
-            Self::Buffer { owner, .. } | Self::TexelBuffer { owner, .. } => vec![owner.clone()],
-            Self::Image { owners, .. } => owners.clone(),
+            Self::Buffer { owner, .. } | Self::TexelBuffer { owner, .. } => {
+                std::slice::from_ref(owner)
+            }
+            Self::Image { owners, .. } => owners,
         }
     }
     /// # Safety
@@ -42,11 +57,14 @@ impl DescriptorSetBinding {
     /// 更新时该 set 不得被 GPU 或其他宿主线程访问（除布局允许的更新情况）。
     pub unsafe fn write(
         &self,
-        device: &VulkanDevice,
+        device: &Device,
         set: vk::DescriptorSet,
         binding: u32,
         array_element: u32,
-    ) {
+    ) -> crate::Result<()> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
         let write = vk::WriteDescriptorSet::default()
             .dst_set(set)
             .dst_binding(binding)
@@ -69,13 +87,14 @@ impl DescriptorSetBinding {
             }
         }
         count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(())
     }
 }
 
 /// # Safety
 /// command_buffer、pipeline 必须有效且满足 Vulkan 录制状态要求。
 pub unsafe fn bind_pipeline(
-    device: &VulkanDevice,
+    device: &Device,
     command_buffer: vk::CommandBuffer,
     point: vk::PipelineBindPoint,
     pipeline: vk::Pipeline,
@@ -90,7 +109,7 @@ pub unsafe fn bind_pipeline(
 /// # Safety
 /// descriptor sets 必须与布局兼容；调用者持有其宿主及资源至提交完成。
 pub unsafe fn bind_persistent_descriptor_set(
-    device: &VulkanDevice,
+    device: &Device,
     command_buffer: vk::CommandBuffer,
     point: vk::PipelineBindPoint,
     layout: vk::PipelineLayout,
@@ -113,7 +132,7 @@ pub unsafe fn bind_persistent_descriptor_set(
 /// # Safety
 /// 与 `bind_persistent_descriptor_set` 同一底层绑定；保留原名供非持久路径调用。
 pub unsafe fn bind_descriptor_set(
-    device: &VulkanDevice,
+    device: &Device,
     command_buffer: vk::CommandBuffer,
     point: vk::PipelineBindPoint,
     layout: vk::PipelineLayout,
@@ -134,7 +153,7 @@ pub unsafe fn bind_descriptor_set(
     }
 }
 
-/// 原 `GraphicsDevice::bind_persistent_descriptor_set`（0x140bee150）逐字形态：
+/// 原 `Device::bind_persistent_descriptor_set`（0x140bee150）逐字形态：
 /// `get_tracked` 解析句柄 → 命令缓冲状态必须是 1（recording，否则 panic）→
 /// `vkCmdBindDescriptorSets(cmd=[rec+0x48], bindPoint=[pipeline+0x30], layout=[pipeline+0x20],
 /// firstSet=参数, setCount=1, &set, dynamicOffsetCount=0, null)`（机器码 0x140bee187..0x140bee1c1）。
@@ -143,7 +162,7 @@ pub unsafe fn bind_descriptor_set(
 /// # Safety
 /// 与 `bind_persistent_descriptor_set` 相同。
 pub unsafe fn bind_persistent_descriptor_set_single(
-    device: &VulkanDevice,
+    device: &Device,
     command_buffer: vk::CommandBuffer,
     point: vk::PipelineBindPoint,
     layout: vk::PipelineLayout,

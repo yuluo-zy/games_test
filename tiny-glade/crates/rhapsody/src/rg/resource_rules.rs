@@ -38,36 +38,6 @@ pub struct ResourceLifetimeRecord {
     pub last_access_index: u32,
 }
 
-/// 同步规则调用原 vk_sync_fork::AccessType::is_write；本地依赖版本未核实，故显式接收分类器，不擅自发明原枚举。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PassResourceAccessType<A> {
-    pub synchronization_group: u32,
-    pub access: A,
-}
-
-impl<A: PartialEq> PassResourceAccessType<A> {
-    pub fn new(synchronization_group: u32, access: A) -> Self {
-        Self {
-            synchronization_group,
-            access,
-        }
-    }
-    /// 原私有函数 0x140bece70；保持分类器调用顺序和短路逻辑。
-    pub fn can_be_concurrent_with(
-        &self,
-        other: &Self,
-        mut is_write: impl FnMut(&A) -> bool,
-    ) -> bool {
-        if !is_write(&self.access) && !is_write(&other.access) {
-            self.access == other.access
-        } else {
-            self.access == other.access
-                && self.synchronization_group != 0
-                && self.synchronization_group == other.synchronization_group
-        }
-    }
-}
-
 /// 原 0x140bd47d0 将前访问链接至当前访问，不清空无后继 next；重复前驱按遍历顺序覆盖，越界保留此前写入。
 pub fn link_up_next_access_chains(accesses: &mut [ResourceAccessRecord]) {
     for current in 0..accesses.len() {

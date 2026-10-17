@@ -1,20 +1,16 @@
 //! rg 缺陷修复的 lavapipe 回归：会话失败路径的资源归还、wait_frame 出错时仍完成清理、提交捕获有界、
 //! temporal 导出 + 编译导出校验接入会话帧路径（ping-pong 多帧）。没有 Vulkan 设备时跳过。
+mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::raw::{
     buffer::{Buffer, BufferDesc},
     init::create_headless_device,
-    managed::lifecycle::ResourceHandle,
     texture::TextureDesc,
 };
 use rhapsody::rg::{
     executor::PassContext,
     graph::RenderGraph,
-    temporal::TemporalRenderGraphState,
-    vulkan::{
-        AccessTable, GpuResource, ResourceSpec, TemporalGpuResources, VulkanGraphBackend,
-        VulkanGraphSession,
-    },
+    vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
 };
 use std::sync::{
     Arc,
@@ -28,8 +24,11 @@ const TIMEOUT: u64 = 10_000_000_000;
 const SIZE: u32 = 4;
 
 fn session() -> Option<VulkanGraphSession> {
-    let device = create_headless_device().ok()?;
-    let backend = VulkanGraphBackend::new(device, AccessTable::original()).ok()?;
+    let device = gpu_test_support::initialize("graph regression device", create_headless_device())?;
+    let backend = gpu_test_support::initialize(
+        "graph regression backend",
+        VulkanGraphBackend::new(device, AccessTable::original()),
+    )?;
     Some(VulkanGraphSession::new(backend))
 }
 
@@ -46,6 +45,7 @@ fn recording_failures_and_panics_roll_back_and_allow_the_next_frame() {
         eprintln!("skip: no Vulkan device");
         return;
     };
+    let mut warm_commands = None;
     for panic_callback in [false, true] {
         for _ in 0..4 {
             let mut graph = session.begin_frame().unwrap();
@@ -53,7 +53,7 @@ fn recording_failures_and_panics_roll_back_and_allow_the_next_frame() {
                 .backend
                 .declare(&mut graph, "failed", scratch())
                 .unwrap();
-            let mut pass = graph.add_pass("fail");
+            let mut pass = graph.add_pass("fail").with_side_effect();
             pass.add_resource_access(a, TRANSFER_WRITE, 0).unwrap();
             pass.render(move |_| {
                 assert!(!panic_callback, "injected callback panic");
@@ -67,21 +67,31 @@ fn recording_failures_and_panics_roll_back_and_allow_the_next_frame() {
             assert!(retired.load(Ordering::SeqCst));
             assert!(!session.is_poisoned());
             assert_eq!(session.pending_frame_count(), 0);
-            assert!(session.chain.lifecycle.bucket_keys().is_empty());
+            assert!(session.chain.recording_command_count() == 0);
             let (graph, _) = scratch_frame(&mut session, false);
             let receipt = session.execute_frame(graph.build()).unwrap();
-            assert_eq!(receipt.command_sequences.len(), 1);
+            assert_eq!(receipt.stats.commands_recorded as usize, 1);
             session.wait_submits_done(TIMEOUT).unwrap();
+            let count = session.command_count();
+            assert!(count <= session.backend.device.frames_in_flight() as usize);
+            if let Some(warm) = warm_commands {
+                assert_eq!(
+                    count, warm,
+                    "failed recording must reuse its frame pool after warmup"
+                );
+            } else {
+                warm_commands = Some(count);
+            }
         }
     }
-    assert_eq!(session.command_count(), 1, "失败帧命令缓冲必须可复用");
+    assert!(session.backend.command_pool_reset_count() > 0);
 }
 
 /// 声明 `a`（被 pass 写入）；`export_only` 时再声明一个只导出、从未被访问的 `b`。
 fn scratch_frame(session: &mut VulkanGraphSession, export_only: bool) -> (RenderGraph, u32) {
     let mut graph = session.begin_frame().unwrap();
     let a = session.backend.declare(&mut graph, "a", scratch()).unwrap();
-    let mut pass = graph.add_pass("write a");
+    let mut pass = graph.add_pass("write a").with_side_effect();
     pass.add_resource_access(a, TRANSFER_WRITE, 0).unwrap();
     pass.render(|_| true);
     if export_only {
@@ -122,13 +132,16 @@ fn a_rejected_export_only_resource_keeps_the_session_usable_and_returns_resource
 }
 
 #[test]
-fn wait_frame_finishes_cleanup_even_when_a_step_fails() {
+fn wait_frame_retires_resources_and_runs_callbacks() {
     let Some(mut session) = session() else { return };
     let device = session.backend.device.clone();
     let desc = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER);
-    let token = session.backend.bind_import(GpuResource::Buffer(Arc::new(
-        Buffer::new(device, &desc).unwrap(),
-    )));
+    let token = session
+        .backend
+        .bind_import(GpuResource::Buffer(Arc::new(
+            Buffer::new(device, &desc).unwrap(),
+        )))
+        .unwrap();
     let (mut graph, _) = scratch_frame(&mut session, false);
     let imported = graph
         .import_unowned(
@@ -138,7 +151,7 @@ fn wait_frame_finishes_cleanup_even_when_a_step_fails() {
             0,
         )
         .unwrap();
-    let mut pass = graph.add_pass("touch import");
+    let mut pass = graph.add_pass("touch import").with_side_effect();
     pass.add_resource_access(imported, TRANSFER_WRITE, 0)
         .unwrap();
     pass.render(|_| true);
@@ -148,14 +161,9 @@ fn wait_frame_finishes_cleanup_even_when_a_step_fails() {
     session.execute_frame(graph.build()).unwrap();
     let commands = session.command_count();
 
-    // 让 wait_frame 的 drop_handle 失败：提前把导入资源的引用全部释放。
-    let handle = ResourceHandle {
-        id: token,
-        generation: 1,
-    };
-    session.chain.lifecycle.drop_handle(handle).unwrap();
-    session.chain.lifecycle.drop_handle(handle).unwrap();
-    assert!(session.wait_submits_done(TIMEOUT).is_err());
+    // Completion retires real command/resource ownership without a second
+    // synthetic reference count that callers could corrupt.
+    session.wait_submits_done(TIMEOUT).unwrap();
 
     assert_eq!(
         session.pending_frame_count(),
@@ -169,12 +177,21 @@ fn wait_frame_finishes_cleanup_even_when_a_step_fails() {
         receipt.snapshot.pool_hits.contains(&a),
         "创建的资源必须回到资源池"
     );
-    assert_eq!(
-        session.command_count(),
-        commands,
-        "完成帧的命令缓冲必须回收复用"
-    );
+    let bound = commands * session.backend.device.frames_in_flight() as usize;
+    assert!(session.command_count() <= bound);
     session.wait_submits_done(TIMEOUT).unwrap();
+    let warm_commands = session.command_count();
+    for _ in 0..session.backend.device.frames_in_flight() * 3 {
+        let (graph, _) = scratch_frame(&mut session, false);
+        session.execute_frame(graph.build()).unwrap();
+        session.wait_submits_done(TIMEOUT).unwrap();
+        assert_eq!(
+            session.command_count(),
+            warm_commands,
+            "completed commands must stabilize across every frame slot"
+        );
+    }
+    assert!(session.backend.command_pool_reset_count() > 0);
 }
 
 #[test]
@@ -182,7 +199,7 @@ fn submission_captures_stay_bounded_without_begin_frame() {
     let Some(mut session) = session() else { return };
     for _ in 0..6 {
         let mut graph = RenderGraph::new();
-        graph.add_pass("noop").render(|_| true);
+        graph.add_pass("noop").with_side_effect().render(|_| true);
         session.execute_frame(graph.build()).unwrap();
         session.wait_submits_done(TIMEOUT).unwrap();
     }
@@ -201,24 +218,34 @@ fn clear_value(frame: usize) -> [u8; 4] {
 fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
     let Some(mut session) = session() else { return };
     let device = session.backend.device.clone();
-    let mut temporal_state = TemporalRenderGraphState::default();
-    let mut temporal = TemporalGpuResources::new(device.clone());
     let mut desc = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);
     desc.usage |= vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
-    let descriptor = temporal.register("hist:0", ResourceSpec::Image(desc));
-    temporal.register("hist:1", ResourceSpec::Image(desc));
     let readback_desc = BufferDesc::new_gpu_to_cpu(
         u64::from(SIZE * SIZE * 4),
         vk::BufferUsageFlags::TRANSFER_DST,
     );
     let mut previous_tokens = None;
     for frame in 0..4 {
-        let mut graph = session.begin_temporal_frame(&mut temporal_state).unwrap();
-        let pair = temporal_state
-            .get_or_create_owned_pair(&mut graph, "hist", descriptor, &mut temporal)
-            .unwrap();
-        assert_eq!(pair.both_reused, frame > 0);
-        let tokens = (pair.first.resource.token, pair.second.resource.token);
+        let mut graph = session.begin_frame().unwrap();
+        let pair = session.temporal_texture(&mut graph, "hist", desc).unwrap();
+        assert_eq!(
+            [pair.current_history_valid(), pair.history_valid()],
+            [frame >= 2, frame > 0]
+        );
+        assert_eq!(
+            (pair.current_history_valid() && pair.history_valid()),
+            frame >= 2
+        );
+        let tokens = (
+            session
+                .named_texture_resource(&graph, pair.current())
+                .unwrap()
+                .handle,
+            session
+                .named_texture_resource(&graph, pair.previous())
+                .unwrap()
+                .handle,
+        );
         if let Some((first, second)) = previous_tokens {
             assert_eq!(tokens, (second, first), "pair 每帧交换");
         }
@@ -226,19 +253,27 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
         // 写入本帧历史。
         {
             let raw = device.clone();
-            let index = pair.first.handle.raw();
+            let index = pair.current().raw().raw();
             let color = clear_value(frame).map(|c| f32::from(c) / 255.0);
-            let mut pass = graph.add_pass("write history");
-            pass.add_resource_access(pair.first.handle, TRANSFER_WRITE, 0)
+            let mut pass = graph.add_pass("write history").with_side_effect();
+            pass.add_resource_access(pair.current().raw(), TRANSFER_WRITE, 0)
                 .unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
+                assert_eq!(
+                    ctx.history_valid(pair.current()).unwrap(),
+                    pair.current_history_valid()
+                );
+                assert_eq!(
+                    ctx.history_valid(pair.previous()).unwrap(),
+                    pair.history_valid()
+                );
                 let Some(managed) = ctx.managed else {
                     return false;
                 };
                 let Ok(image) = managed.texture_for(index) else {
                     return false;
                 };
-                ctx.keep_alive(Arc::new(image.clone()));
+
                 unsafe {
                     raw.device.cmd_clear_color_image(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
@@ -259,7 +294,8 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
             let buffer = Arc::new(Buffer::new(device.clone(), &readback_desc).unwrap());
             let token = session
                 .backend
-                .bind_import(GpuResource::Buffer(buffer.clone()));
+                .bind_import(GpuResource::Buffer(buffer.clone()))
+                .unwrap();
             let rb = graph
                 .import_unowned(
                     "readback",
@@ -269,9 +305,9 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 )
                 .unwrap();
             let raw = device.clone();
-            let (history, target) = (pair.second.handle.raw(), rb.raw());
-            let mut pass = graph.add_pass("read history");
-            pass.add_resource_access(pair.second.handle, TRANSFER_READ, 0)
+            let (history, target) = (pair.previous().raw().raw(), rb.raw());
+            let mut pass = graph.add_pass("read history").with_side_effect();
+            pass.add_resource_access(pair.previous().raw(), TRANSFER_READ, 0)
                 .unwrap();
             pass.add_resource_access(rb, TRANSFER_WRITE, 0).unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
@@ -283,8 +319,7 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
                 else {
                     return false;
                 };
-                ctx.keep_alive(Arc::new(image.clone()));
-                ctx.keep_alive(Arc::new(out.clone()));
+
                 unsafe {
                     raw.device.cmd_copy_image_to_buffer(
                         vk::CommandBuffer::from_raw(ctx.command.handle()),
@@ -312,18 +347,22 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
             graph.export(rb, HOST_READ).unwrap();
             (buffer, token)
         });
-        let receipt = session
-            .execute_temporal_frame(graph, &mut temporal_state, &temporal)
-            .unwrap();
-        for lookup in [pair.first, pair.second] {
-            assert!(
-                receipt
-                    .snapshot
-                    .exports
-                    .contains(&(lookup.handle.raw() as u16)),
-                "temporal 资源自动导出"
-            );
-        }
+        let receipt = session.execute_frame(graph.build()).unwrap();
+        assert!(
+            receipt
+                .snapshot
+                .exports
+                .contains(&(pair.current().raw().raw() as u16)),
+            "本帧已写历史自动导出"
+        );
+        assert_eq!(
+            receipt
+                .snapshot
+                .exports
+                .contains(&(pair.previous().raw().raw() as u16)),
+            frame > 0,
+            "尚未写入的首帧 previous 不得发布为可读历史"
+        );
         session.wait_submits_done(TIMEOUT).unwrap();
         if let Some((buffer, token)) = readback {
             let mut pixels = vec![0u8; (SIZE * SIZE * 4) as usize];
@@ -339,27 +378,23 @@ fn a_temporal_pair_ping_pongs_through_the_session_frame_path() {
         }
     }
     // 放弃构图：请求 temporal 后丢弃图，下一帧仍可再次请求。
-    let mut graph = session.begin_temporal_frame(&mut temporal_state).unwrap();
-    temporal_state
-        .get_or_create_owned_pair(&mut graph, "hist", descriptor, &mut temporal)
-        .unwrap();
+    let mut graph = session.begin_frame().unwrap();
+    session.temporal_texture(&mut graph, "hist", desc).unwrap();
     drop(graph);
-    let mut graph = session.begin_temporal_frame(&mut temporal_state).unwrap();
-    let pair = temporal_state
-        .get_or_create_owned_pair(&mut graph, "hist", descriptor, &mut temporal)
-        .unwrap();
-    assert!(pair.both_reused);
-    graph.add_pass("noop").render(|_| true);
-    session
-        .execute_temporal_frame(graph, &mut temporal_state, &temporal)
-        .unwrap();
+    let mut graph = session.begin_frame().unwrap();
+    let pair = session.temporal_texture(&mut graph, "hist", desc).unwrap();
+    assert!((pair.current_history_valid() && pair.history_valid()));
+    graph.add_pass("noop").with_side_effect().render(|_| true);
+    session.execute_frame(graph.build()).unwrap();
     session.wait_submits_done(TIMEOUT).unwrap();
 }
 
 #[test]
 fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
     let Some(mut session) = session() else { return };
+    let mut warm_commands = None;
     for _ in 0..8 {
+        let resources_before = session.resource_count();
         let mut graph = session.begin_frame().unwrap();
         graph.batch_per_pass(true);
         for (name, ok) in [("submitted", true), ("abandoned", false)] {
@@ -367,7 +402,7 @@ fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
                 .backend
                 .declare(&mut graph, name, scratch())
                 .unwrap();
-            let mut pass = graph.add_pass(name);
+            let mut pass = graph.add_pass(name).with_side_effect();
             pass.add_resource_access(buffer, TRANSFER_WRITE, 0).unwrap();
             pass.render(move |_| ok);
         }
@@ -376,16 +411,52 @@ fn partial_submission_failure_recycles_all_commands_and_runs_retire_once() {
         graph.on_retire(move || {
             flag.fetch_add(1, Ordering::SeqCst);
         });
-        assert!(session.execute_frame(graph.build()).is_err());
+        let error = session.execute_frame(graph.build()).unwrap_err();
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        // The first batch entered the GPU. Error cleanup cancels only the
+        // second command; retirement belongs to the retained execution until
+        // its real completion is observed, even if the GPU finishes quickly.
+        assert_eq!(retired.load(Ordering::SeqCst), 0);
+        assert_eq!(session.pending_frame_count(), 1);
+        assert_eq!(session.chain.pending_command_count(), 1);
+        assert_eq!(session.chain.recording_command_count(), 0);
+        assert_eq!(session.backend.submissions.len(), 1);
+        assert_eq!(session.resource_count(), 2);
+        assert!(!session.is_poisoned());
+
+        session.wait_submits_done(TIMEOUT).unwrap();
         assert_eq!(retired.load(Ordering::SeqCst), 1);
         assert_eq!(session.pending_frame_count(), 0);
-        assert!(session.chain.lifecycle.bucket_keys().is_empty());
-        assert!(!session.is_poisoned());
+        assert_eq!(session.chain.pending_command_count(), 0);
+        assert_eq!(session.chain.completed_command_count(), 0);
+        assert_eq!(session.resource_count(), resources_before);
+        session.wait_submits_done(TIMEOUT).unwrap();
+        assert_eq!(
+            retired.load(Ordering::SeqCst),
+            1,
+            "retirement cannot run twice"
+        );
+
+        let (graph, _) = scratch_frame(&mut session, false);
+        session.execute_frame(graph.build()).unwrap();
+        session.wait_submits_done(TIMEOUT).unwrap();
+        assert_eq!(
+            retired.load(Ordering::SeqCst),
+            1,
+            "the next frame cannot retire an old frame again"
+        );
+        let count = session.command_count();
+        assert!(count <= 2 * session.backend.device.frames_in_flight() as usize);
+        if let Some(warm) = warm_commands {
+            assert_eq!(
+                count, warm,
+                "submitted and abandoned commands must stabilize after warming all frame slots"
+            );
+        } else {
+            warm_commands = Some(count);
+        }
     }
-    assert_eq!(session.command_count(), 2, "已提交和未提交的命令都应回收");
-    let (graph, _) = scratch_frame(&mut session, false);
-    session.execute_frame(graph.build()).unwrap();
-    session.wait_submits_done(TIMEOUT).unwrap();
+    assert!(session.backend.command_pool_reset_count() > 0);
 }
 
 #[test]
@@ -406,7 +477,7 @@ fn two_sessions_share_the_device_submission_timeline() {
         };
         let (graph, _) = scratch_frame(session, false);
         let receipt = session.execute_frame(graph.build()).unwrap();
-        let value = receipt.receipts.last().unwrap().last_timeline.0;
+        let value = receipt.receipts.last().unwrap().value;
         assert_eq!(value, previous + 1);
         previous = value;
         session.wait_submits_done(TIMEOUT).unwrap();
@@ -457,4 +528,108 @@ fn raw_submission_cannot_signal_the_owned_device_timeline() {
         "设备拥有的时间线不能经外部信号数组再次 signal"
     );
     assert_eq!(device.timelines.submitted(id).unwrap(), previous);
+}
+
+#[test]
+fn named_slots_validate_scope_initialization_resize_and_reset() {
+    let Some(mut session) = session() else { return };
+    let mut graph = session.begin_frame().unwrap();
+    let mut foreign = rhapsody::rg::graph::RenderGraph::new();
+    let desc = BufferDesc::new_gpu_only(
+        64,
+        vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC,
+    );
+    assert_eq!(
+        session
+            .named_buffer(&mut foreign, "slot", desc)
+            .unwrap_err()
+            .kind(),
+        rhapsody::ErrorKind::InvalidUsage
+    );
+    assert_eq!(session.named_resource_count(), 0);
+    // Invalid requests must not permanently consume the bounded name table.
+    for attempt in 0..1025 {
+        let invalid = TextureDesc::new_2d(0, 4, vk::Format::R8G8B8A8_UNORM);
+        assert_eq!(
+            session
+                .named_texture(&mut graph, &format!("invalid-{attempt}"), invalid)
+                .unwrap_err()
+                .kind(),
+            rhapsody::ErrorKind::InvalidUsage
+        );
+    }
+    let fresh = session.named_buffer(&mut graph, "slot", desc).unwrap();
+    assert!(!fresh.history_valid);
+    let mut pass = graph.add_pass("undefined named read").with_side_effect();
+    pass.add_resource_access(fresh.buffer.raw(), TRANSFER_READ, 0)
+        .unwrap();
+    pass.render(|_| true);
+    assert_eq!(
+        session.execute_frame(graph.build()).unwrap_err().kind(),
+        rhapsody::ErrorKind::InvalidUsage
+    );
+    assert!(session.backend.submissions.is_empty());
+
+    let mut prior_token = None;
+    for frame in 0..4 {
+        if frame == 2 {
+            session.reset_temporal("slot").unwrap();
+        }
+        let mut graph = session.begin_frame().unwrap();
+        let current_desc = if frame == 3 {
+            BufferDesc { size: 128, ..desc }
+        } else {
+            desc
+        };
+        let named = session
+            .named_buffer(&mut graph, "slot", current_desc)
+            .unwrap();
+        assert_eq!(named.history_valid, frame == 1);
+        assert!(
+            session.reset_temporal("slot").is_err(),
+            "reset must reject an active request"
+        );
+        let device = session.backend.device.clone();
+        let mut pass = graph.add_pass("initialize named slot");
+        pass.add_resource_access(named.buffer.raw(), TRANSFER_WRITE, 0)
+            .unwrap();
+        pass.render_with_result_context(move |ctx: PassContext<'_>| {
+            assert_eq!(ctx.buffer_history_valid(named.buffer)?, named.history_valid);
+            let managed = ctx
+                .managed
+                .ok_or_else(|| rhapsody::Error::invalid_usage("named managed resources absent"))?;
+            let buffer = managed
+                .buffer_for(named.buffer.raw().raw())
+                .map_err(|error| {
+                    rhapsody::Error::invalid_usage_with("named buffer resolution", error)
+                })?;
+            unsafe {
+                device.device.cmd_fill_buffer(
+                    vk::CommandBuffer::from_raw(ctx.command.handle()),
+                    buffer.raw(),
+                    0,
+                    current_desc.size,
+                    7,
+                );
+            }
+            Ok(())
+        });
+        let receipt = session.execute_frame(graph.build()).unwrap();
+        let token = receipt.snapshot.physical_mapping[named.buffer.raw().raw() as usize]
+            .token
+            .unwrap();
+        if let Some(prior) = prior_token {
+            assert_eq!(
+                token == prior,
+                frame != 3,
+                "reset retains allocation; resize replaces it"
+            );
+        }
+        prior_token = Some(token);
+        session.wait_frame(receipt.frame, TIMEOUT).unwrap();
+    }
+    // Replaced physical owners are removed once their last pending frame completes.
+    let _ = session.begin_frame().unwrap();
+    assert_eq!(session.named_resource_count(), 1);
+    assert_eq!(session.resource_count(), 1);
 }

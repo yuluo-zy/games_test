@@ -3,115 +3,66 @@
 //! 原作的 setup 命令缓冲是设备内的独占状态（`device+0x9f8`，锁 `+0x9f0`）：初始化类命令先写进它，
 //! 提交前补一条 `ALL_COMMANDS→ALL_COMMANDS` 的全量内存屏障并 end，作为“一条命令、无 wait/signal”的
 //! 提交信息排在图命令之前（见 evidence/render-recovery/p4-sync-setup-cb/FINDINGS.md）。
-//! 这里保留“结尾全量屏障”的语义，但先提供**同步**版本：录制 → 屏障 → end → 提交 → 等 fence。
+//! 这里保留“结尾全量屏障”的语义，但先提供**同步**版本：录制 → 屏障 → end → 提交 → 等设备时间线。
 //! 与原作“并入下一次图提交、不等待”的流水线形态不同，属于已记录的候选偏差。
 use super::{
     buffer::{Buffer, BufferDesc},
-    command_buffer::VulkanCommandPool,
-    device::VulkanDevice,
+    command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
+    device::Device,
     error::{Error, Result},
-    format::{observed, vk_format_info},
+    format::vk_format_info,
+    resource_access::{buffer_access_borrowed, image_access_borrowed},
     texture::Texture,
     texture_upload::{
         TextureUpdateRegion, copy_format_params, linear_regions, per_mip_regions,
         plan_texture_copies,
     },
 };
+use crate::resource::range_state::AccessScope;
 use ash::vk;
 use std::sync::Arc;
 
-/// 访问码（`access_table`，原 0x140c10dd0 三张表）驱动的整图屏障：与原 `update_texture_impl` /
-/// zero-fill 闭包里 `get_image_memory_barrier` 的用法一致。三个码：`0` Nothing（无 stage/access，
-/// layout 0）、`0x34` TransferWrite（TRANSFER/TRANSFER_WRITE/TRANSFER_DST_OPTIMAL）、
-/// `0x22`（ALL_COMMANDS/SHADER_READ/SHADER_READ_ONLY_OPTIMAL，即公开版 AnyShaderReadSampledImage）。
-pub(crate) fn code_image_barrier(
-    previous: u8,
-    next: u8,
-    image: vk::Image,
-    range: vk::ImageSubresourceRange,
-) -> (
-    vk::PipelineStageFlags,
-    vk::PipelineStageFlags,
-    vk::ImageMemoryBarrier<'static>,
-) {
-    use super::access_table::{BarrierLayout, ImageBarrier, get_image_memory_barrier};
-    get_image_memory_barrier(&ImageBarrier {
-        previous: &[previous],
-        next: &[next],
-        previous_layout: BarrierLayout::Optimal,
-        next_layout: BarrierLayout::Optimal,
-        discard_contents: false,
-        src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-        dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-        image,
-        range,
+/// 录制 `body` 到一条一次性命令缓冲，补全量屏障后提交并等待完成。
+pub fn with_setup_resources<R>(
+    device: &Arc<Device>,
+    resources: &[&dyn crate::resource::GpuUse],
+    body: impl FnOnce(vk::CommandBuffer) -> R,
+) -> Result<R> {
+    with_setup_command(device, |command| {
+        for resource in resources {
+            // The synchronous setup call retains these borrows until its real wait.
+            unsafe {
+                command.retain_borrowed_opaque(*resource)?;
+            }
+        }
+        Ok(body(command.handle))
     })
 }
 
-fn cmd_code_barrier(
-    device: &VulkanDevice,
-    cb: vk::CommandBuffer,
-    (src, dst, barrier): (
-        vk::PipelineStageFlags,
-        vk::PipelineStageFlags,
-        vk::ImageMemoryBarrier<'static>,
-    ),
-) {
-    unsafe {
-        device.device.cmd_pipeline_barrier(
-            cb,
-            src,
-            dst,
-            vk::DependencyFlags::empty(),
-            &[],
-            &[],
-            &[barrier],
-        );
-    }
-}
-
-/// 录制 `body` 到一条一次性命令缓冲，补全量屏障后提交并等待完成。
-pub fn with_setup_cb<R>(
-    device: &Arc<VulkanDevice>,
-    body: impl FnOnce(vk::CommandBuffer) -> R,
+/// Record initialization through the same raw range-access API as asynchronous
+/// uploads, then submit and wait for this command's real completion point.
+pub fn with_setup_command<R>(
+    device: &Arc<Device>,
+    body: impl FnOnce(&mut VulkanCommandBuffer) -> Result<R>,
 ) -> Result<R> {
     let pool = VulkanCommandPool::new(Arc::clone(device))?;
     let mut command = pool.allocate()?;
     command.begin()?;
-    let result = body(command.handle);
-    let barrier = [vk::MemoryBarrier::default()
+    let result = body(&mut command)?;
+    let barrier = vk::MemoryBarrier::default()
         .src_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE)
-        .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE)];
+        .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE);
+    let mut scope = super::barrier::SynchronizationScope::new(
+        vk::PipelineStageFlags::ALL_COMMANDS,
+        vk::PipelineStageFlags::ALL_COMMANDS,
+    );
+    scope.memory.push(barrier);
     unsafe {
-        device.device.cmd_pipeline_barrier(
-            command.handle,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::DependencyFlags::empty(),
-            &barrier,
-            &[],
-            &[],
-        );
+        super::barrier::BarrierDispatch::new(device).issue(device, command.handle, &scope)?;
     }
     command.end()?;
-    let fence = unsafe {
-        device
-            .device
-            .create_fence(&vk::FenceCreateInfo::default(), None)?
-    };
-    let submitted = device.submit_prepared(
-        device.queue,
-        &[super::submit::PreparedSubmit {
-            commands: vec![command.handle],
-            ..Default::default()
-        }],
-        fence,
-    );
-    let waited = submitted.and_then(|_| {
-        unsafe { device.device.wait_for_fences(&[fence], true, u64::MAX) }.map_err(Error::from)
-    });
-    unsafe { device.device.destroy_fence(fence, None) };
-    waited?;
+    let pending = command.submit()?;
+    pending.wait(u64::MAX)?;
     Ok(result)
 }
 
@@ -136,53 +87,126 @@ pub enum TextureInitialData<'a> {
 /// 经 setup 命令缓冲：整图（level/layer 全量）屏障 → `vkCmdCopyBufferToImage`（TRANSFER_DST_OPTIMAL）→ 屏障
 /// （0x140c08830）。同步版本，见模块说明。
 pub fn upload_regions(
-    device: &Arc<VulkanDevice>,
+    device: &Arc<Device>,
     texture: &Texture,
     regions: &[TextureUpdateRegion<'_>],
     old_layout: vk::ImageLayout,
 ) -> Result<()> {
+    if regions.is_empty()
+        || !texture
+            .desc
+            .usage
+            .contains(vk::ImageUsageFlags::TRANSFER_DST)
+        || texture.desc.samples() != vk::SampleCountFlags::TYPE_1
+    {
+        return Err(Error::invalid_usage(
+            "texture upload requires regions and a single-sampled transfer destination",
+        ));
+    }
     let (block_bytes, aspect) = copy_format_params(texture.desc.format)?;
+    if !matches!(
+        old_layout,
+        vk::ImageLayout::UNDEFINED | vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+    ) {
+        return Err(Error::invalid_usage(
+            "texture upload old layout is unsupported",
+        ));
+    }
+    let info = vk_format_info(texture.desc.format)
+        .ok_or_else(|| Error::unsupported("texture format has no copy layout"))?;
+    let layers = texture.desc.array_layers()?;
+    for region in regions {
+        if region.mip_level >= u32::from(texture.desc.mip_levels) || region.array_layer >= layers {
+            return Err(Error::invalid_usage(
+                "texture upload subresource is out of range",
+            ));
+        }
+        let full = [texture.desc.width, texture.desc.height, texture.desc.depth]
+            .map(|size| (size >> region.mip_level).max(1));
+        if region.extent.contains(&0)
+            || region.extent.iter().zip(full).zip(info.block_extent).any(
+                |((&size, full), block)| size > full || size != full && !size.is_multiple_of(block),
+            )
+        {
+            return Err(Error::invalid_usage(
+                "texture upload extent violates texel-block boundaries",
+            ));
+        }
+        let required = region
+            .extent
+            .iter()
+            .zip(info.block_extent)
+            .try_fold(u64::from(info.block_bytes), |bytes, (&size, block)| {
+                bytes.checked_mul(u64::from(size.div_ceil(block)))
+            })
+            .ok_or_else(|| Error::invalid_usage("texture upload size overflows"))?;
+        if region.data.len() as u64 != required {
+            return Err(Error::invalid_usage(
+                "texture upload byte count differs from its region",
+            ));
+        }
+    }
     let plan = plan_texture_copies(regions, block_bytes, aspect)?;
     let staging = Buffer::new(
         Arc::clone(device),
         &BufferDesc::new_cpu_to_gpu_low_prio(plan.total, vk::BufferUsageFlags::TRANSFER_SRC),
     )?;
     // 暂存缓冲刚创建，GPU 尚未访问，写入无需等待在飞工作。
-    let mut offset = 0u64;
-    for region in regions {
-        staging.write_bytes_unsynchronized(offset, region.data)?;
-        offset += region.data.len() as u64;
+    for (region, copy) in regions.iter().zip(&plan.copies) {
+        staging.write_bytes_unsynchronized(copy.buffer_offset, region.data)?;
     }
-    let range = vk::ImageSubresourceRange::default()
-        .aspect_mask(aspect)
-        .base_mip_level(0)
-        .level_count(vk::REMAINING_MIP_LEVELS)
-        .base_array_layer(0)
-        .layer_count(vk::REMAINING_ARRAY_LAYERS);
-    with_setup_cb(device, |cb| unsafe {
-        // 访问码 old(0 或 0x22) → 0x34；old 非 UNDEFINED 时用 0x22（静止布局 SHADER_READ_ONLY_OPTIMAL）。
-        let old_code = if old_layout == vk::ImageLayout::UNDEFINED {
-            0
-        } else {
-            0x22
-        };
-        cmd_code_barrier(
-            device,
-            cb,
-            code_image_barrier(old_code, 0x34, texture.handle, range),
-        );
-        device.device.cmd_copy_buffer_to_image(
-            cb,
-            staging.handle,
-            texture.handle,
+    let queue = device.queue(crate::device::QueueClass::Graphics)?;
+    let range = Texture::ownership_range(&texture.desc)?;
+    with_setup_command(device, |command| {
+        for (region, copy) in regions.iter().zip(&plan.copies) {
+            buffer_access_borrowed(
+                command,
+                &staging,
+                queue,
+                copy.buffer_offset,
+                region.data.len() as u64,
+                AccessScope {
+                    stages: vk::PipelineStageFlags::TRANSFER,
+                    access: vk::AccessFlags::TRANSFER_READ,
+                    write: false,
+                },
+            )?;
+        }
+        image_access_borrowed(
+            command,
+            texture,
+            queue,
+            range,
+            AccessScope {
+                stages: vk::PipelineStageFlags::TRANSFER,
+                access: vk::AccessFlags::TRANSFER_WRITE,
+                write: true,
+            },
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            &plan.copies,
-        );
-        cmd_code_barrier(
-            device,
-            cb,
-            code_image_barrier(0x34, 0x22, texture.handle, range),
-        );
+            Some(old_layout),
+        )?;
+        unsafe {
+            device.device.cmd_copy_buffer_to_image(
+                command.handle,
+                staging.handle,
+                texture.handle,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &plan.copies,
+            );
+        }
+        image_access_borrowed(
+            command,
+            texture,
+            queue,
+            range,
+            AccessScope {
+                stages: vk::PipelineStageFlags::ALL_COMMANDS,
+                access: vk::AccessFlags::SHADER_READ,
+                write: false,
+            },
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
+        )
     })
 }
 
@@ -193,15 +217,22 @@ fn linear_regions_for<'a>(
     bytes: &'a [u8],
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
-    let info = observed::try_vk_format_info(desc.format)
-        .map_err(|_| Error::unsupported("原构建不支持该格式的 info 查询"))?;
+    let info = vk_format_info(desc.format)
+        .ok_or_else(|| Error::unsupported("texture format has no copy layout"))?;
+    copy_format_params(desc.format)?;
+    let block = [
+        u8::try_from(info.block_extent[0])
+            .map_err(|_| Error::unsupported("copy block width is unsupported"))?,
+        u8::try_from(info.block_extent[1])
+            .map_err(|_| Error::unsupported("copy block height is unsupported"))?,
+    ];
     linear_regions(
         bytes,
         [desc.width, desc.height, desc.depth],
         desc.mip_levels,
-        desc.array_elements,
-        info.word_at_04(),
-        [info.byte_at_08(), info.byte_at_09()],
+        desc.array_layers()?,
+        info.block_bytes,
+        block,
     )
 }
 
@@ -211,11 +242,11 @@ fn per_mip_regions_for<'a>(
     slices: &[&'a [u8]],
 ) -> Result<Vec<TextureUpdateRegion<'a>>> {
     let desc = &texture.desc;
-    let block_bytes = observed::try_vk_format_block_bytes(desc.format)
-        .map_err(|_| Error::unsupported("原构建不支持该格式的 block_bytes 查询"))?;
-    if block_bytes != 1 {
-        return Err(Error::invalid_usage(
-            "assertion `left == right` failed: TODO（逐 mip 数据不支持块压缩格式）",
+    let info = vk_format_info(desc.format)
+        .ok_or_else(|| Error::unsupported("texture format has no copy layout"))?;
+    if info.block_extent != [1, 1, 1] || desc.array_layers()? != 1 {
+        return Err(Error::unsupported(
+            "per-mip slices require an uncompressed single layer; use linear data for compressed/cube/array textures",
         ));
     }
     let texel = vk_format_info(desc.format)
@@ -250,18 +281,14 @@ fn require_sampled(texture: &Texture) -> Result<()> {
 
 /// 首次上传（`TextureInitialData::Linear`，3 号目标）：图像当前布局为 UNDEFINED，完成后进入
 /// SHADER_READ_ONLY_OPTIMAL。多 mip、多层、块压缩纹理按原版 `MipChainIter` / 层主序切片。
-pub fn init_texture_data(
-    device: &Arc<VulkanDevice>,
-    texture: &Texture,
-    bytes: &[u8],
-) -> Result<()> {
+pub fn init_texture_data(device: &Arc<Device>, texture: &Texture, bytes: &[u8]) -> Result<()> {
     init_texture_data_with(device, texture, TextureInitialData::Linear(bytes))
 }
 
 /// `init_texture_data`（0x140bfe270）的完整分派：先 `desc.usage.contains(SAMPLED)`，再按
 /// `TextureInitialData` 判别走 1/2/3 号目标。
 pub fn init_texture_data_with(
-    device: &Arc<VulkanDevice>,
+    device: &Arc<Device>,
     texture: &Texture,
     data: TextureInitialData<'_>,
 ) -> Result<()> {
@@ -287,53 +314,23 @@ pub fn init_texture_data_with(
 /// 最后 `0x34 → 0x22` 屏障。
 ///
 /// 偏差：原版 `layer_count` 取 `desc.array_elements`，这里取 `array_layers()`（cube 才不会漏面）。
-pub fn init_texture_zero_fill(device: &Arc<VulkanDevice>, texture: &Texture) -> Result<()> {
+pub fn init_texture_zero_fill(device: &Arc<Device>, texture: &Texture) -> Result<()> {
     require_sampled(texture)?;
-    let desc = &texture.desc;
-    let aspect = vk_format_info(desc.format)
-        .map(|info| info.aspect)
-        .unwrap_or(vk::ImageAspectFlags::COLOR);
-    let range = vk::ImageSubresourceRange::default()
-        .aspect_mask(aspect)
-        .base_mip_level(0)
-        .level_count(u32::from(desc.mip_levels))
-        .base_array_layer(0)
-        .layer_count(desc.array_layers());
-    with_setup_cb(device, |cb| unsafe {
-        cmd_code_barrier(
-            device,
-            cb,
-            code_image_barrier(0, 0x34, texture.handle, range),
-        );
-        if !aspect.intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
-            device.device.cmd_clear_color_image(
-                cb,
-                texture.handle,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &vk::ClearColorValue::default(),
-                &[range],
-            );
-        } else {
-            device.device.cmd_clear_depth_stencil_image(
-                cb,
-                texture.handle,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &vk::ClearDepthStencilValue::default(),
-                &[range],
-            );
-        }
-        cmd_code_barrier(
-            device,
-            cb,
-            code_image_barrier(0x34, 0x22, texture.handle, range),
-        );
+    let queue = device.queue(crate::device::QueueClass::Graphics)?;
+    with_setup_command(device, |command| {
+        super::texture_upload::record_zero_fill_borrowed(
+            command,
+            texture,
+            queue,
+            Some(vk::ImageLayout::UNDEFINED),
+        )
     })
 }
 
 /// 更新已初始化纹理：前提是图像处于 SHADER_READ_ONLY_OPTIMAL（`init_texture_data` 之后的静止布局）。
 /// `bytes` 与首次上传的线性数据同形（整张纹理、层主序、mip 次序）；缺少 TRANSFER_DST 用途直接拒绝
 /// （原版 `update_texture_impl` 不查，Vulkan 要求）。
-pub fn update_texture(device: &Arc<VulkanDevice>, texture: &Texture, bytes: &[u8]) -> Result<()> {
+pub fn update_texture(device: &Arc<Device>, texture: &Texture, bytes: &[u8]) -> Result<()> {
     if !texture
         .desc
         .usage
@@ -352,7 +349,7 @@ pub fn update_texture(device: &Arc<VulkanDevice>, texture: &Texture, bytes: &[u8
 
 /// 用显式区域表更新已初始化纹理（`update_texture_impl` 的直接入口，旧布局 SHADER_READ_ONLY_OPTIMAL）。
 pub fn update_texture_regions(
-    device: &Arc<VulkanDevice>,
+    device: &Arc<Device>,
     texture: &Texture,
     regions: &[TextureUpdateRegion<'_>],
 ) -> Result<()> {
@@ -369,50 +366,4 @@ pub fn update_texture_regions(
         regions,
         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
     )
-}
-
-#[cfg(test)]
-mod access_code_tests {
-    use super::*;
-
-    fn range() -> vk::ImageSubresourceRange {
-        vk::ImageSubresourceRange::default()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .level_count(vk::REMAINING_MIP_LEVELS)
-            .layer_count(vk::REMAINING_ARRAY_LAYERS)
-    }
-
-    /// 访问码 0 → 0x34：TOP_OF_PIPE → TRANSFER，UNDEFINED → TRANSFER_DST_OPTIMAL，src access 空。
-    #[test]
-    fn code_0_to_0x34_is_undefined_to_transfer_dst() {
-        let (src, dst, b) = code_image_barrier(0, 0x34, vk::Image::null(), range());
-        assert_eq!(src, vk::PipelineStageFlags::TOP_OF_PIPE);
-        assert_eq!(dst, vk::PipelineStageFlags::TRANSFER);
-        assert_eq!(b.src_access_mask, vk::AccessFlags::empty());
-        assert_eq!(b.dst_access_mask, vk::AccessFlags::TRANSFER_WRITE);
-        assert_eq!(b.old_layout, vk::ImageLayout::UNDEFINED);
-        assert_eq!(b.new_layout, vk::ImageLayout::TRANSFER_DST_OPTIMAL);
-    }
-
-    /// 0x34 → 0x22：TRANSFER → ALL_COMMANDS，TRANSFER_WRITE → SHADER_READ，7 → SHADER_READ_ONLY_OPTIMAL。
-    #[test]
-    fn code_0x34_to_0x22_is_transfer_to_shader_read() {
-        let (src, dst, b) = code_image_barrier(0x34, 0x22, vk::Image::null(), range());
-        assert_eq!(src, vk::PipelineStageFlags::TRANSFER);
-        assert_eq!(dst, vk::PipelineStageFlags::ALL_COMMANDS);
-        assert_eq!(b.src_access_mask, vk::AccessFlags::TRANSFER_WRITE);
-        assert_eq!(b.dst_access_mask, vk::AccessFlags::SHADER_READ);
-        assert_eq!(b.old_layout, vk::ImageLayout::TRANSFER_DST_OPTIMAL);
-        assert_eq!(b.new_layout, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-    }
-
-    /// 0x22 → 0x34（带旧内容的更新）：ALL_COMMANDS → TRANSFER，读不产生 src access。
-    #[test]
-    fn code_0x22_to_0x34_has_no_src_access() {
-        let (src, dst, b) = code_image_barrier(0x22, 0x34, vk::Image::null(), range());
-        assert_eq!(src, vk::PipelineStageFlags::ALL_COMMANDS);
-        assert_eq!(dst, vk::PipelineStageFlags::TRANSFER);
-        assert_eq!(b.src_access_mask, vk::AccessFlags::empty());
-        assert_eq!(b.old_layout, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-    }
 }

@@ -50,6 +50,37 @@ pub enum Error {
     Vulkan(vk::Result),
 }
 
+/// Cloneable diagnostic identity for protocols which implement Eq. Failures
+/// are not part of graph-plan cache keys.
+#[derive(Clone, Debug)]
+pub struct SharedError(std::sync::Arc<Error>);
+impl SharedError {
+    pub fn into_owned(self) -> Error {
+        self.0.into()
+    }
+}
+impl From<Error> for SharedError {
+    fn from(error: Error) -> Self {
+        Self(std::sync::Arc::new(error))
+    }
+}
+impl PartialEq for SharedError {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl Eq for SharedError {}
+impl std::fmt::Display for SharedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.0.as_ref(), f)
+    }
+}
+impl std::error::Error for SharedError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.0.as_ref())
+    }
+}
+
 /// [`Error`] 的类别，便于 `match` 而不必关心携带的数据。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
@@ -61,6 +92,24 @@ pub enum ErrorKind {
     Unsupported,
     InvalidUsage,
     Vulkan,
+}
+impl From<std::sync::Arc<Error>> for Error {
+    fn from(error: std::sync::Arc<Error>) -> Self {
+        match error.as_ref() {
+            Self::DeviceLost => Self::DeviceLost,
+            Self::OutOfDeviceMemory => Self::OutOfDeviceMemory,
+            Self::OutOfHostMemory => Self::OutOfHostMemory,
+            Self::SurfaceOutOfDate => Self::SurfaceOutOfDate,
+            Self::SurfaceLost => Self::SurfaceLost,
+            Self::Timeout => Self::Timeout,
+            Self::Unsupported(what) => Self::Unsupported(what.clone()),
+            Self::Vulkan(code) => Self::Vulkan(*code),
+            Self::InvalidUsage { what, .. } => Self::InvalidUsage {
+                what: what.clone(),
+                source: Some(Box::new(error.clone())),
+            },
+        }
+    }
 }
 
 impl Error {
@@ -111,9 +160,7 @@ impl From<vk::Result> for Error {
     fn from(result: vk::Result) -> Self {
         match result {
             vk::Result::ERROR_DEVICE_LOST => Self::DeviceLost,
-            vk::Result::ERROR_OUT_OF_DEVICE_MEMORY | vk::Result::ERROR_OUT_OF_POOL_MEMORY => {
-                Self::OutOfDeviceMemory
-            }
+            vk::Result::ERROR_OUT_OF_DEVICE_MEMORY => Self::OutOfDeviceMemory,
             vk::Result::ERROR_OUT_OF_HOST_MEMORY => Self::OutOfHostMemory,
             vk::Result::ERROR_OUT_OF_DATE_KHR
             | vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => Self::SurfaceOutOfDate,
@@ -142,16 +189,31 @@ macro_rules! usage_error {
     )+};
 }
 usage_error!(
-    crate::rg::graph::BuildError,
-    crate::rg::binding::MipRangeError,
-    crate::raw::managed::lifecycle::Failure,
-    crate::raw::managed::tracking::Failure,
-    crate::rg::temporal::TemporalError,
+    crate::raw::buffer::BufferUpdateError,
+    crate::command::recording::Failure,
 );
+
+impl From<crate::rg::graph::BuildError> for Error {
+    fn from(error: crate::rg::graph::BuildError) -> Self {
+        match error {
+            crate::rg::graph::BuildError::BackendFailure(error) => error.into_owned(),
+            other => Self::invalid_usage_with("graph declaration", other),
+        }
+    }
+}
+impl From<crate::rg::temporal::TemporalError> for Error {
+    fn from(error: crate::rg::temporal::TemporalError) -> Self {
+        match error {
+            crate::rg::temporal::TemporalError::Backend(error) => error.into(),
+            other => Self::invalid_usage_with("temporal declaration", other),
+        }
+    }
+}
 
 impl From<crate::rg::executor::Error> for Error {
     fn from(error: crate::rg::executor::Error) -> Self {
         match error {
+            crate::rg::executor::Error::PartialSubmission { original, .. } => (*original).into(),
             crate::rg::executor::Error::Validation(error)
             | crate::rg::executor::Error::Compile(error) => error,
             other => Self::invalid_usage_with("图执行失败", other),
@@ -162,6 +224,41 @@ impl From<crate::rg::executor::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn temporal_backend_errors_preserve_driver_categories_and_shared_identity() {
+        for original in [
+            Error::DeviceLost,
+            Error::OutOfHostMemory,
+            Error::OutOfDeviceMemory,
+            Error::Timeout,
+            Error::unsupported("test capability"),
+            Error::Vulkan(vk::Result::ERROR_UNKNOWN),
+        ] {
+            let kind = original.kind();
+            let message = original.to_string();
+            let build = crate::rg::graph::BuildError::from(original);
+            assert_eq!(build, build.clone());
+            let actual = Error::from(crate::rg::temporal::TemporalError::Backend(build));
+            assert_eq!(actual.kind(), kind);
+            assert_eq!(actual.to_string(), message);
+        }
+        let first = SharedError::from(Error::DeviceLost);
+        assert_eq!(first, first.clone());
+        assert_ne!(first, SharedError::from(Error::DeviceLost));
+    }
+
+    #[test]
+    fn descriptor_pool_exhaustion_is_distinct_from_device_memory_exhaustion() {
+        assert!(matches!(
+            Error::from(vk::Result::ERROR_OUT_OF_POOL_MEMORY),
+            Error::Vulkan(vk::Result::ERROR_OUT_OF_POOL_MEMORY)
+        ));
+        assert!(matches!(
+            Error::from(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY),
+            Error::OutOfDeviceMemory
+        ));
+    }
 
     #[test]
     fn vulkan_results_map_to_actionable_categories() {

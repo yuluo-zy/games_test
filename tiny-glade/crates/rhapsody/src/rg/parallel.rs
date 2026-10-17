@@ -7,7 +7,7 @@
 //!
 //! [`ChunkStrategy::Original`] 逐条复刻原作的预算与贪心切分；[`ChunkStrategy::Balanced`]
 //! 是候选改进（块数上限、未知耗时按均值估计、最小化最大块），默认不启用。
-use super::executor::{PassPgoNameId, PassPgoStats};
+use super::executor::PassPgoStats;
 use std::ops::Range;
 
 /// 一个 pass 的上一帧耗时；`None` 表示上一帧没有该 pass 的记录。
@@ -110,13 +110,13 @@ pub fn balanced_chunks(
 }
 
 /// 按策略切分一个 batch；`names` 是 batch 内各 pass 的 PGO 名。
-pub fn plan_chunks(
+pub fn plan_chunks<N: AsRef<str>>(
     strategy: ChunkStrategy,
-    names: &[PassPgoNameId],
+    names: &[N],
     previous: &PassPgoStats,
     split_allowed: &[bool],
 ) -> Vec<Range<usize>> {
-    let costs: Vec<PassCost> = names.iter().map(|&name| previous.get(name)).collect();
+    let costs: Vec<PassCost> = names.iter().map(|name| previous.get(name)).collect();
     match strategy {
         ChunkStrategy::Serial => std::iter::once(0..names.len()).collect(),
         ChunkStrategy::Original => original_chunks(

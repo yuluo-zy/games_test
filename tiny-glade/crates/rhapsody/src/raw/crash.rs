@@ -6,7 +6,7 @@ use serde::Serialize;
 use super::{
     buffer::{Buffer, BufferDesc},
     command_buffer::VulkanCommandBuffer,
-    device::VulkanDevice,
+    device::Device,
     error::{Error, Result},
 };
 use ash::vk;
@@ -52,7 +52,9 @@ pub fn parse_gpu_debug_info(
     let available = (words.len() - 4) / 4;
     let count = (header[1] as usize).min(available);
     let records = words[4..4 + count * 4]
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|words| {
             let kind = (words[0] >> 24) as u8;
             let left = words[2];
@@ -169,8 +171,10 @@ impl GpuCrashDiagnostics {
         let mut bytes = vec![0; self.debug_words * 4];
         self.debug_buffer.read_bytes(0, &mut bytes)?;
         let words: Vec<_> = bytes
-            .chunks_exact(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|bytes| u32::from_le_bytes(*bytes))
             .collect();
         let debug = parse_gpu_debug_info(&words, source_names)?;
         log_debug_records(&debug);
@@ -182,12 +186,12 @@ impl GpuCrashDiagnostics {
 pub struct GpuCrashDiagnostics {
     pub marker_buffer: Arc<Buffer>,
     pub debug_buffer: Arc<Buffer>,
-    device: Arc<VulkanDevice>,
+    device: Arc<Device>,
     history: Mutex<MarkerHistory>,
     debug_words: usize,
 }
 impl GpuCrashDiagnostics {
-    pub fn new(device: Arc<VulkanDevice>, record_capacity: u32) -> Result<Self> {
+    pub fn new(device: Arc<Device>, record_capacity: u32) -> Result<Self> {
         let debug_words = (record_capacity as usize)
             .checked_mul(4)
             .and_then(|n| n.checked_add(4))
@@ -241,7 +245,7 @@ impl GpuCrashDiagnostics {
                 label: label.into(),
             },
         );
-        command.keep_alive(self.marker_buffer.clone());
+        command.retain_opaque(self.marker_buffer.clone())?;
         unsafe {
             self.device
                 .device
@@ -250,8 +254,8 @@ impl GpuCrashDiagnostics {
         Ok(id)
     }
     /// 让调试 buffer 存活至命令释放；shader 使用该 buffer 产生实际诊断数据。
-    pub fn keep_debug_buffer(&self, command: &mut VulkanCommandBuffer) {
-        command.keep_alive(self.debug_buffer.clone());
+    pub fn retain_debug_buffer(&self, command: &mut VulkanCommandBuffer) -> Result<()> {
+        command.retain_opaque(self.debug_buffer.clone())
     }
     /// 调用者的 shader/transfer 写入后，建立 host 可读的 Vulkan 内存依赖。
     pub fn make_host_readable(&self, command: &mut VulkanCommandBuffer) -> Result<()> {
@@ -261,8 +265,8 @@ impl GpuCrashDiagnostics {
         {
             return Err(Error::invalid_usage("诊断屏障的命令设备或录制状态不匹配"));
         }
-        command.keep_alive(self.marker_buffer.clone());
-        command.keep_alive(self.debug_buffer.clone());
+        command.retain_opaque(self.marker_buffer.clone())?;
+        command.retain_opaque(self.debug_buffer.clone())?;
         let barriers: Vec<_> = [self.marker_buffer.handle, self.debug_buffer.handle]
             .iter()
             .map(|buffer| {
@@ -308,8 +312,10 @@ impl GpuCrashDiagnostics {
         let mut bytes = vec![0; self.debug_words * 4];
         self.debug_buffer.read_bytes(0, &mut bytes)?;
         let words: Vec<_> = bytes
-            .chunks_exact(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|bytes| u32::from_le_bytes(*bytes))
             .collect();
         Ok(GpuCrashSnapshot {
             observed_marker,

@@ -52,23 +52,11 @@ impl<R> FrameThrottle<R> {
         }
         Ok(())
     }
-    /// 原版形态的 `begin_frame` 排空：承接弹出项的是容量 [`crate::rg::frame::BEGIN_FRAME_DRAIN_CAPACITY`]（=2）的
-    /// ArrayVec（0x140beabd0：先 `if 1 < n { panic }` 再存入），所以单次最多排出 2 项；
-    /// 在途 ≥ 4 时第三次弹出会 panic。正常运行在途最多 2（begin 排到 1、end 再入 1），不会触发。
-    pub fn begin_frame_bounded<E>(
-        &mut self,
-        mut wait: impl FnMut(&R) -> Result<(), E>,
-    ) -> Result<Vec<R>, E> {
-        let mut drained = Vec::with_capacity(crate::rg::frame::BEGIN_FRAME_DRAIN_CAPACITY);
-        while self.pending.len() > 1 {
-            wait(self.pending.front().expect("len > 1"))?;
-            assert!(
-                drained.len() < crate::rg::frame::BEGIN_FRAME_DRAIN_CAPACITY,
-                "begin_frame drained more in-flight submissions than the original ArrayVec holds"
-            );
-            drained.push(self.pending.pop_front().expect("len > 1"));
-        }
-        Ok(drained)
+    /// Reserve the in-flight entry before any irreversible GPU submission.
+    pub fn reserve_frame(&mut self) -> crate::Result<()> {
+        self.pending
+            .try_reserve(1)
+            .map_err(|_| crate::Error::OutOfHostMemory)
     }
     /// 本帧已提交：登记回执。
     pub fn end_frame(&mut self, receipt: R) {
@@ -102,25 +90,6 @@ mod tests {
         .unwrap();
         assert_eq!(waited, [0, 1, 2]);
         assert_eq!(t.in_flight(), 1);
-    }
-
-    #[test]
-    fn bounded_begin_frame_drains_up_to_two_and_panics_on_a_third() {
-        let mut t = FrameThrottle::new();
-        for i in 0..3 {
-            t.end_frame(i);
-        }
-        let drained = t.begin_frame_bounded::<()>(|_| Ok(())).unwrap();
-        assert_eq!(drained, [0, 1]);
-        assert_eq!(t.in_flight(), 1);
-        let mut t = FrameThrottle::new();
-        for i in 0..4 {
-            t.end_frame(i);
-        }
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _ = t.begin_frame_bounded::<()>(|_| Ok(()));
-        }));
-        assert!(result.is_err());
     }
 
     #[test]

@@ -102,7 +102,7 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
         (1, 0, 0),
         "串行：1 个 batch、无并行分块"
     );
-    let serial_commands = serial.run.receipt.command_sequences.len();
+    let serial_commands = serial.run.receipt.stats.commands_recorded as usize;
     // 初始屏障和 pass 复用同一命令缓冲。
     assert_eq!(serial_commands, 1, "串行：每批次一条命令缓冲");
 
@@ -130,9 +130,7 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
     );
     println!(
         "无统计：并行分块 {} 块，命令缓冲 {}，涉及线程 {}",
-        s.chunks,
-        first.run.receipt.command_sequences.len(),
-        first.threads
+        s.chunks, first.run.receipt.stats.commands_recorded as usize, first.threads
     );
 
     // 4. 原作分块 + 预置统计：15 块。ComputePool 与 Inline 两种 runner 都要一致。
@@ -155,7 +153,7 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
         );
         // 命令缓冲数 = 块数 + 1（执行器先开的首命令，并行批次另开每块一条）。
         assert_eq!(
-            seeded.run.receipt.command_sequences.len(),
+            seeded.run.receipt.stats.commands_recorded as usize,
             hand.len() + 1,
             "{runner:?} 命令缓冲数"
         );
@@ -169,7 +167,7 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
         println!(
             "{runner:?}：{} 块、{} 条命令缓冲、屏障命令 {}、转换 {}、涉及线程 {}",
             s.chunks,
-            seeded.run.receipt.command_sequences.len(),
+            seeded.run.receipt.stats.commands_recorded as usize,
             s.barrier_commands,
             s.barrier_transitions,
             seeded.threads
@@ -192,7 +190,7 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
     // 第一帧结束：end_frame 把本帧测得的耗时换成 previous，覆盖全部 40 个 pass。
     let previous = &session.chain.pgo.previous;
     assert!(
-        names.iter().all(|&n| previous.get(n).is_some()),
+        names.iter().all(|n| previous.get(n).is_some()),
         "上一帧统计必须包含全部 pass"
     );
     let planned = plan_chunks(ChunkStrategy::Original, &names, previous, &[]);
@@ -257,13 +255,16 @@ fn balanced_and_adaptive_candidates_match_the_serial_bytes() {
         if seeded.is_some() {
             let mut probe = rhapsody::rg::executor::PassPgoStats::default();
             for (n, d) in names.iter().zip(&seed) {
-                probe.record(rhapsody::rg::executor::PassPgoDuration::new(*n, d.unwrap()));
+                probe.record(rhapsody::rg::executor::PassPgoDuration::new(
+                    n.clone(),
+                    d.unwrap(),
+                ));
             }
             let planned = plan_chunks(parallel.strategy, &names, &probe, &[]);
             assert_eq!(s.chunks as usize, planned.len());
         }
         assert_eq!(
-            run.run.receipt.command_sequences.len(),
+            run.run.receipt.stats.commands_recorded as usize,
             s.chunks as usize + 1
         );
         println!("Balanced {label}：{} 块，线程 {}", s.chunks, run.threads);

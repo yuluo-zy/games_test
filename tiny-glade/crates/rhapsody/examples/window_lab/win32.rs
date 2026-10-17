@@ -1,7 +1,11 @@
 //! Minimal single-window host. No renderer state is accessed from the window callback.
+use super::fixture::Result;
+use rhapsody::raw::{instance::VulkanInstance, swapchain::Surface};
 use std::{
-    ffi::c_void,
+    ffi::{CString, c_void},
+    sync::Arc,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
+    time::{Duration, Instant},
 };
 
 type Handle = *mut c_void;
@@ -10,6 +14,13 @@ static KEYS: AtomicU32 = AtomicU32::new(0);
 pub const PAUSE: u32 = 1;
 pub const NEXT: u32 = 2;
 pub const STEP: u32 = 4;
+pub const BACKEND: &str = "Win32 / Vulkan";
+
+pub fn required_extensions() -> Vec<CString> {
+    ["VK_KHR_surface", "VK_KHR_win32_surface"]
+        .map(|name| CString::new(name).expect("static extension"))
+        .to_vec()
+}
 
 #[repr(C)]
 #[derive(Default)]
@@ -172,6 +183,30 @@ impl Window {
                 class,
             })
         }
+    }
+    pub fn create_surface(&self, instance: Arc<VulkanInstance>) -> Result<Arc<Surface>> {
+        Ok(unsafe { Surface::from_win32(instance, self.instance as _, self.handle as _) }?)
+    }
+    pub fn run(
+        &self,
+        fps: u32,
+        mut frame: impl FnMut(&Self, u32, bool) -> Result<bool>,
+    ) -> Result<()> {
+        while let Some(keys) = self.poll() {
+            let started = Instant::now();
+            if !frame(self, keys, true)? {
+                break;
+            }
+            let target = if self.extent() == (0, 0) {
+                Duration::from_millis(10)
+            } else {
+                Duration::from_secs_f64(1.0 / f64::from(fps))
+            };
+            if let Some(wait) = target.checked_sub(started.elapsed()) {
+                std::thread::sleep(wait);
+            }
+        }
+        Ok(())
     }
     pub fn poll(&self) -> Option<u32> {
         let mut msg = Message::default();

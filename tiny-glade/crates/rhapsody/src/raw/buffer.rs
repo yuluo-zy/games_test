@@ -1,7 +1,7 @@
 //! Buffer 创建、内存绑定、映射读写候选；`BufferDesc` 对齐原 16 字节描述符布局。
 use super::{
     allocator::MemoryBlock,
-    device::VulkanDevice,
+    device::Device,
     error::{Error, Result},
     graveyard::Doomed,
 };
@@ -95,40 +95,6 @@ pub mod create_failure {
     pub const SET_DEBUG_UTILS_OBJECT_NAME: &str = "set_debug_utils_object_name";
 }
 
-/// 原版 `Buffer` 的 40 字节值布局（`create_buffer` 的 Ok 载荷，0x140bee6d1 / 0x140c035af 机器码）。
-/// 游戏侧（`TypedStorageBuffer`/`MappedStorageBuffer`）整块搬运它；rhapsody 内部的 [`Buffer`]
-/// 自带 `Arc` 所有权，两者之间用 [`Buffer::record`] 转换。
-/// `ctx`/`slot` 在原版是 `ManagedResources` 与槽位的裸指针；这里由调用方的槽表给出标识。
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct BufferRecord {
-    /// `*(context)`：退役队列头指针（游戏面称 id）。
-    pub ctx: u64,
-    /// 槽位（`ManagedResource<ManagedBuffer>`）。
-    pub slot: u64,
-    /// 分配内偏移（`*(slot+0xc)`）。
-    pub offset: u32,
-    /// owning_device 代号（`*(context+0xa50)`）。
-    pub device_id: u16,
-    /// 恒为 1（valid/ready）。
-    pub ready: u8,
-    pub _pad: u8,
-    pub size: u64,
-    /// `BufferDesc+0x08..0x10`：`{usage u32, alignment u16, memory_location u8, pad}`。
-    pub desc_tail: u64,
-}
-const _: () = assert!(std::mem::size_of::<BufferRecord>() == 40);
-impl BufferRecord {
-    pub fn usage(&self) -> vk::BufferUsageFlags {
-        vk::BufferUsageFlags::from_raw(self.desc_tail as u32)
-    }
-    pub fn alignment(&self) -> u16 {
-        (self.desc_tail >> 32) as u16
-    }
-    pub fn memory_location(&self) -> Option<MemoryLocation> {
-        MemoryLocation::from_raw((self.desc_tail >> 48) as u8)
-    }
-}
 /// `create_buffer_impl`（0x140bee200）里对 `BufferDesc.usage` 做的唯一原始位测试：`usage & 0x400`。
 /// 该位在公开 Vulkan 枚举里没有名字（0x140bee2b0 附近 `test r?, 0x400`），保持原始数值，不赋语义。
 pub const USAGE_ALIGN_64_BIT_RAW: u32 = 0x400;
@@ -146,89 +112,13 @@ pub fn buffer_alignment(requirement_alignment: u64, desc_alignment: u16, usage: 
         .max(floor)
 }
 
-/// 原版 `slot`（`ManagedResource<ManagedBuffer>`，`inner`）里被各消费函数读取的字段视图。
-/// 偏移来自 0x140bd4c00 / 0x140bd4cd0 / 0x140beec30 / 0x140beefa0 的机器码读取点：
-/// `+0x0c` 偏移、`+0x10/+0x18` 名字 `&str`、`+0x20` 容量、`+0x28` `{usage,align,mem}`、
-/// `+0x30` **VkBuffer**（device_address 与命名都把它当缓冲句柄）、`+0x38` 内存块、`+0x7c` 分配状态字节。
-#[derive(Clone, Copy, Debug)]
-pub struct BufferSlotView {
-    /// `inner+0x0c`。
-    pub offset: u32,
-    /// `inner+0x20`：`BufferDesc.size`。
-    pub capacity: u64,
-    /// `inner+0x28`：`BufferDesc+0x08..0x10`，低 32 位是 usage。
-    pub desc_tail: u64,
-    /// `inner+0x30`。
-    pub vk_buffer: vk::Buffer,
-    /// `0x140c113b0(inner+0x38)`：分配的主机映射指针，空表示不可映射。
-    pub mapped_ptr: *mut u8,
-    /// `0x140c02280(inner+0x38)`（= 块 `+0x10`）：分配块大小。
-    pub block_size: u64,
-    /// `inner+0x7c`；`2` 表示槽里的分配已被取走（Option 空位的 niche，见报告 U#4）。
-    pub allocation_state: u8,
-}
-/// `inner+0x7c == 2` 的哨兵。机器码证据：`inner+0x38` 起是内存块（`0x140c02280(inner+0x38)` 读 `+0x10` 块大小），
-/// `+0x7c` 恰是该块的 `+0x44` 字节；创建纹理（0x140bdc2d0）时对同一字节的判据是
-/// `*(byte*)(allocation + 0x44) != 2`（为 2 则跳过分配释放、纹理里写 3 的状态字节在 `+0xbc = 0x78+0x44`），
-/// 所以它是 `Option<分配>` 的 niche：值域 `{0,1,…}` 为有分配、`2` 为 `None`。
-/// 取走后调 `mapped_slice_mut` 走 `managed/buffer.rs:40:34` 的单参 `unwrap_failed`（0x140bd4dc9，`rcx=0x142d02388`）。
-/// 全 .text 扫描：没有任何 `mov byte/dword [reg+0x7c], 2` 立即数写入槽（只有 5 处写栈局部），
-/// 所以“谁把它置成 2”（取走分配的函数）未定位；这里只落“读判据”。
-pub const SLOT_ALLOCATION_TAKEN: u8 = 2;
-impl BufferSlotView {
-    /// `inner+0x28 & 2`：`update_buffer_bytes` 的门控位 = `usage` 的 `TRANSFER_DST`，不是内存属性。
-    pub fn has_transfer_dst(&self) -> bool {
-        self.desc_tail & u64::from(vk::BufferUsageFlags::TRANSFER_DST.as_raw()) != 0
-    }
-}
-
-/// 句柄/槽校验失败（原版是 panic；这里返回错误，检查顺序与原版一致）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BufferAccessError {
-    /// `Buffer+0x14 != device.context+0xa50`。
-    DeviceMismatch { handle: u16, device: u16 },
-    /// `Buffer+0x16 != 1`。
-    NotReady { flag: u8 },
-    /// `inner+0x0c != Buffer+0x10`（槽被复用）。
-    StaleSlot { handle: u32, slot: u32 },
-    /// `inner+0x7c == 2`。
-    AllocationTaken,
-    /// `Buffer+0x18 > 块大小`（`slice_end_index_len_fail`）。
-    SizeExceedsBlock { size: u64, block: u64 },
-}
-impl std::fmt::Display for BufferAccessError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DeviceMismatch { handle, device } => {
-                write!(f, "缓冲句柄设备代号 {handle} 与设备 {device} 不一致")
-            }
-            Self::NotReady { flag } => write!(f, "缓冲句柄 flag={flag}，应为 1"),
-            Self::StaleSlot { handle, slot } => {
-                write!(f, "缓冲槽偏移 {slot} 与句柄偏移 {handle} 不一致")
-            }
-            Self::AllocationTaken => f.write_str("缓冲槽的分配已被取走"),
-            Self::SizeExceedsBlock { size, block } => {
-                write!(f, "缓冲大小 {size} 超过内存块 {block}")
-            }
-        }
-    }
-}
-impl std::error::Error for BufferAccessError {}
-
 /// `update_buffer_bytes`（0x140beefa0）的断言失败，文本取自原 .rdata。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BufferUpdateError {
-    Access(BufferAccessError),
     /// 区间 `start > end`。
-    RangeInverted {
-        start: usize,
-        end: usize,
-    },
+    RangeInverted { start: usize, end: usize },
     /// 区间 `end > src_data.len()`。
-    RangeOutOfData {
-        end: usize,
-        len: usize,
-    },
+    RangeOutOfData { end: usize, len: usize },
     /// `assert!(total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size)`（0x142b15b00）。
     ExceedsCapacity {
         total: u64,
@@ -243,7 +133,6 @@ pub enum BufferUpdateError {
 impl std::fmt::Display for BufferUpdateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Access(e) => e.fmt(f),
             Self::RangeInverted { start, end } => write!(f, "更新区间 {start}..{end} 起点大于终点"),
             Self::RangeOutOfData { end, len } => write!(f, "更新区间终点 {end} 超过源数据长度 {len}"),
             Self::ExceedsCapacity { total, dst_offset, capacity } => write!(
@@ -258,29 +147,6 @@ impl std::fmt::Display for BufferUpdateError {
     }
 }
 impl std::error::Error for BufferUpdateError {}
-impl BufferUpdateError {
-    /// 供 `Error::invalid_usage(&'static str)` 使用的固定文本（`Error` 不带动态消息变体）。
-    pub fn static_text(&self) -> &'static str {
-        match self {
-            Self::Access(_) => "缓冲句柄/槽校验失败",
-            Self::RangeInverted { .. } => "更新区间起点大于终点",
-            Self::RangeOutOfData { .. } => "更新区间越过源数据",
-            Self::ExceedsCapacity { .. } => {
-                "assertion failed: total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size"
-            }
-            Self::MissingTransferDst => {
-                "Buffer must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"
-            }
-            Self::Empty => "assertion failed: size > 0",
-        }
-    }
-}
-impl From<BufferAccessError> for BufferUpdateError {
-    fn from(e: BufferAccessError) -> Self {
-        Self::Access(e)
-    }
-}
-
 /// 一条 `vkCmdCopyBuffer` 区域（`VkBufferCopy` 的 `{src,dst,size}`，不带 `Eq` 依赖）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BufferRegion {
@@ -299,121 +165,69 @@ pub struct BufferUpdatePlan {
     pub regions: Vec<BufferRegion>,
 }
 
-/// 原版 `update_buffer_bytes` 的判定顺序：句柄三查 → 逐区间（`start<=end`、`end<=data_len`、累计后
-/// `total + dst_offset <= capacity`）→ `TRANSFER_DST` → `total > 0`。
-///
-/// 原版只比较 `total + dst_offset`，不核对每个区域的 `dst_end`；这里**额外**拒绝
-/// `dst_offset + range.end > capacity`（那会让 `vkCmdCopyBuffer` 越界），属于有意的超集。
+/// Validate sparse updates against the actual buffer description before staging.
+/// Source ranges preserve their destination positions; staging bytes are packed.
 pub fn plan_buffer_update(
-    record: &BufferRecord,
-    device_id: u16,
-    slot: &BufferSlotView,
+    desc: &BufferDesc,
     data_len: usize,
     ranges: &[std::ops::Range<usize>],
     dst_offset: u64,
-) -> std::result::Result<BufferUpdatePlan, BufferUpdateError> {
-    record.validate(device_id, slot)?;
+) -> Result<BufferUpdatePlan> {
     let mut total = 0u64;
-    let mut regions = Vec::with_capacity(ranges.len());
+    let mut regions = Vec::new();
+    regions
+        .try_reserve(ranges.len())
+        .map_err(|_| Error::OutOfHostMemory)?;
     for r in ranges {
         if r.start > r.end {
             return Err(BufferUpdateError::RangeInverted {
                 start: r.start,
                 end: r.end,
-            });
+            }
+            .into());
         }
         if r.end > data_len {
             return Err(BufferUpdateError::RangeOutOfData {
                 end: r.end,
                 len: data_len,
-            });
+            }
+            .into());
         }
         let len = (r.end - r.start) as u64;
-        regions.push(BufferRegion {
-            src_offset: total,
-            dst_offset: r.start as u64 + dst_offset,
-            size: len,
-        });
-        total += len;
-        if total.saturating_add(dst_offset) > slot.capacity
-            || (r.end as u64).saturating_add(dst_offset) > slot.capacity
+        let exceeds = || BufferUpdateError::ExceedsCapacity {
+            total: total.saturating_add(len),
+            dst_offset,
+            capacity: desc.size,
+        };
+        let next = total
+            .checked_add(len)
+            .ok_or_else(|| Error::from(exceeds()))?;
+        if next
+            .checked_add(dst_offset)
+            .is_none_or(|end| end > desc.size)
         {
-            return Err(BufferUpdateError::ExceedsCapacity {
-                total,
-                dst_offset,
-                capacity: slot.capacity,
+            return Err(exceeds().into());
+        }
+        let dst_end = (r.end as u64)
+            .checked_add(dst_offset)
+            .filter(|&end| end <= desc.size)
+            .ok_or_else(|| Error::from(exceeds()))?;
+        if len != 0 {
+            regions.push(BufferRegion {
+                src_offset: total,
+                dst_offset: dst_end - len,
+                size: len,
             });
         }
+        total = next;
     }
-    if !slot.has_transfer_dst() {
-        return Err(BufferUpdateError::MissingTransferDst);
+    if !desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST) {
+        return Err(BufferUpdateError::MissingTransferDst.into());
     }
     if total == 0 {
-        return Err(BufferUpdateError::Empty);
+        return Err(BufferUpdateError::Empty.into());
     }
     Ok(BufferUpdatePlan { total, regions })
-}
-
-impl BufferRecord {
-    /// 三查（0x140bd4c00 / 0x140bd4cd0 / 0x140beefa0 开头一致）：设备代号 → `flag == 1` → 槽偏移。
-    pub fn validate(
-        &self,
-        device_id: u16,
-        slot: &BufferSlotView,
-    ) -> std::result::Result<(), BufferAccessError> {
-        if self.device_id != device_id {
-            return Err(BufferAccessError::DeviceMismatch {
-                handle: self.device_id,
-                device: device_id,
-            });
-        }
-        if self.ready != 1 {
-            return Err(BufferAccessError::NotReady { flag: self.ready });
-        }
-        if slot.offset != self.offset {
-            return Err(BufferAccessError::StaleSlot {
-                handle: self.offset,
-                slot: slot.offset,
-            });
-        }
-        Ok(())
-    }
-
-    /// `Buffer::device_address`（0x140bd4c00）：三查后以 `inner+0x30` 的 VkBuffer 构造
-    /// `VkBufferDeviceAddressInfo`（sType 1000244001）并调 `device+0x508`（`vkGetBufferDeviceAddress`）。
-    /// **没有**缓存：每次都走设备函数（修正旧注“inner+0x30 缓存地址”）。
-    pub fn device_address(
-        &self,
-        device_id: u16,
-        slot: &BufferSlotView,
-        get_buffer_device_address: impl FnOnce(vk::Buffer) -> vk::DeviceAddress,
-    ) -> std::result::Result<vk::DeviceAddress, BufferAccessError> {
-        self.validate(device_id, slot)?;
-        Ok(get_buffer_device_address(slot.vk_buffer))
-    }
-
-    /// `Buffer::mapped_slice_mut`（0x140bd4cd0）：三查 → `inner+0x7c == 2` 失败 → 取块映射指针，
-    /// 空指针返回 `None` → `Buffer+0x18 > 块大小` 失败 → 返回 `(ptr, Buffer+0x18)` 全长切片。
-    pub fn mapped_slice_parts(
-        &self,
-        device_id: u16,
-        slot: &BufferSlotView,
-    ) -> std::result::Result<Option<(*mut u8, usize)>, BufferAccessError> {
-        self.validate(device_id, slot)?;
-        if slot.allocation_state == SLOT_ALLOCATION_TAKEN {
-            return Err(BufferAccessError::AllocationTaken);
-        }
-        if slot.mapped_ptr.is_null() {
-            return Ok(None);
-        }
-        if self.size > slot.block_size {
-            return Err(BufferAccessError::SizeExceedsBlock {
-                size: self.size,
-                block: slot.block_size,
-            });
-        }
-        Ok(Some((slot.mapped_ptr, self.size as usize)))
-    }
 }
 
 /// `create_mapped_buffer`（0x140beea80）的返回值：40B Buffer + 映射 `(ptr, len)`（0x40B = tag 8 +
@@ -424,7 +238,11 @@ pub struct MappedBufferParts {
 }
 
 pub struct Buffer {
-    pub device: Arc<VulkanDevice>,
+    dynamic_constants_page: bool,
+    pub(crate) sharing: crate::resource::ResourceSharing,
+    allocation_use: Option<Arc<crate::resource::SyncCell>>,
+    pub(crate) last_use: Arc<crate::resource::SyncCell>,
+    pub device: Arc<Device>,
     pub handle: vk::Buffer,
     pub size: u64,
     pub usage: vk::BufferUsageFlags,
@@ -433,24 +251,135 @@ pub struct Buffer {
     allocation: std::mem::ManuallyDrop<MemoryBlock>,
     mapped_ptr: Option<usize>,
     host_access: parking_lot::Mutex<()>,
+    _memory: super::allocator::CpuMemoryReservation,
 }
-impl Buffer {
-    /// 转成原版 40 字节记录；`ctx`/`slot`/`offset`/`device_id` 由托管槽表提供。
-    pub fn record(&self, ctx: u64, slot: u64, offset: u32, device_id: u16) -> BufferRecord {
-        BufferRecord {
-            ctx,
-            slot,
-            offset,
-            device_id,
-            ready: 1,
-            _pad: 0,
-            size: self.size,
-            desc_tail: u64::from(self.usage.as_raw())
-                | (u64::from(self.desc.alignment) << 32)
-                | (u64::from(self.desc.memory_location.as_raw()) << 48),
+enum HostTransfer<'a> {
+    Read(&'a mut [u8]),
+    Write(&'a [u8]),
+}
+struct HostRangeState<'a> {
+    cell: &'a crate::resource::SyncCell,
+    accessed: bool,
+}
+impl Drop for HostRangeState<'_> {
+    fn drop(&mut self) {
+        if self.accessed {
+            self.cell.publish_buffer_host_range();
+        } else {
+            self.cell.cancel_range_state();
         }
     }
-    pub fn new(device: Arc<VulkanDevice>, desc: &BufferDesc) -> Result<Self> {
+}
+impl HostTransfer<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Read(bytes) => bytes.len(),
+            Self::Write(bytes) => bytes.len(),
+        }
+    }
+}
+impl Buffer {
+    pub(crate) fn into_dynamic_constants_page(mut self) -> Self {
+        self.dynamic_constants_page = true;
+        self
+    }
+    pub(crate) fn is_dynamic_constants_page(&self) -> bool {
+        self.dynamic_constants_page
+    }
+    pub(crate) fn allocation_bytes(&self) -> u64 {
+        self.allocation.size
+    }
+    pub(crate) fn allocation_id(&self) -> u64 {
+        self.allocation.accounting_id()
+    }
+    /// The caller owns an already-bound handle and transfers its sole raw-object ownership.
+    pub(crate) unsafe fn from_bound_transient(
+        device: Arc<Device>,
+        desc: BufferDesc,
+        handle: vk::Buffer,
+        allocation: MemoryBlock,
+        sharing: crate::resource::ResourceSharing,
+        storage: crate::resource::tracked::ResourceStorage,
+    ) -> Self {
+        let allocation_use = allocation.shared_use();
+        let last_use = (if sharing.is_concurrent() {
+            crate::resource::SyncCell::for_device(device.generation())
+                .with_concurrent_families(match sharing {
+                    crate::resource::ResourceSharing::Concurrent(families) => families,
+                    _ => unreachable!("concurrent branch"),
+                })
+                .with_ownership_range(crate::resource::OwnershipRange::Buffer {
+                    offset: 0,
+                    size: desc.size,
+                })
+        } else {
+            crate::resource::SyncCell::for_device(device.generation()).with_ownership_range(
+                crate::resource::OwnershipRange::Buffer {
+                    offset: 0,
+                    size: desc.size,
+                },
+            )
+        })
+        .into_reserved_arc(storage.synchronization);
+        Self {
+            dynamic_constants_page: false,
+            _memory: storage.object,
+            sharing,
+            allocation_use,
+            last_use,
+            device,
+            handle,
+            size: desc.size,
+            usage: desc.usage,
+            desc,
+            allocation: std::mem::ManuallyDrop::new(allocation),
+            mapped_ptr: None,
+            host_access: parking_lot::Mutex::new(()),
+        }
+    }
+    pub fn new(device: Arc<Device>, desc: &BufferDesc) -> Result<Self> {
+        Self::new_with_memory(
+            device,
+            desc,
+            false,
+            crate::resource::ResourceSharing::Exclusive,
+        )
+    }
+    pub(crate) fn new_dedicated(device: Arc<Device>, desc: &BufferDesc) -> Result<Self> {
+        Self::new_with_memory(
+            device,
+            desc,
+            true,
+            crate::resource::ResourceSharing::Exclusive,
+        )
+    }
+    pub fn new_concurrent(
+        device: Arc<Device>,
+        desc: &BufferDesc,
+        families: &[u32],
+    ) -> Result<Self> {
+        Self::new_with_memory(
+            device,
+            desc,
+            false,
+            crate::resource::ResourceSharing::Concurrent(crate::resource::QueueFamilies::new(
+                families,
+            )?),
+        )
+    }
+    pub fn sharing(&self) -> crate::resource::ResourceSharing {
+        self.sharing
+    }
+    fn new_with_memory(
+        device: Arc<Device>,
+        desc: &BufferDesc,
+        dedicated: bool,
+        sharing: crate::resource::ResourceSharing,
+    ) -> Result<Self> {
+        if device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        sharing.validate_device(&device)?;
         if desc.size == 0 {
             return Err(Error::invalid_usage("缓冲区大小不能为零"));
         }
@@ -461,12 +390,33 @@ impl Buffer {
         {
             return Err(Error::unsupported("此路径未启用 bufferDeviceAddress"));
         }
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let memory = device.allocator_stats.reserve_cpu_bytes(
+            super::allocator::shared_cpu_bytes::<Self>()?,
+            crate::device::BudgetCategory::Live,
+        )?;
         let info = vk::BufferCreateInfo::default()
             .size(desc.size)
             .usage(desc.usage)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
-        let handle = unsafe { device.device.create_buffer(&info, None) }?;
-        let mut requirements = unsafe { device.device.get_buffer_memory_requirements(handle) };
+            .sharing_mode(if sharing.is_concurrent() {
+                vk::SharingMode::CONCURRENT
+            } else {
+                vk::SharingMode::EXCLUSIVE
+            })
+            .queue_family_indices(sharing.families());
+        let handle = super::error::observe_vulkan(&device, unsafe {
+            device.device.create_buffer(&info, None)
+        })?;
+        let mut dedicated_requirements = vk::MemoryDedicatedRequirements::default();
+        let mut requirements2 =
+            vk::MemoryRequirements2::default().push_next(&mut dedicated_requirements);
+        unsafe {
+            device.device.get_buffer_memory_requirements2(
+                &vk::BufferMemoryRequirementsInfo2::default().buffer(handle),
+                &mut requirements2,
+            );
+        }
+        let mut requirements = requirements2.memory_requirements;
         // 0x140bee200：max(memreq.alignment, desc.alignment, usage&0x400 ? 0x40 : 0x10)。
         requirements.alignment =
             buffer_alignment(requirements.alignment, desc.alignment, desc.usage.as_raw());
@@ -479,13 +429,34 @@ impl Buffer {
             vk::MemoryAllocateFlags::empty()
         };
         let (required_memory, preferred_memory) = desc.memory_location.memory_properties();
-        let allocation = match MemoryBlock::allocate_with_flags(
-            Arc::clone(&device),
-            requirements,
-            required_memory,
-            preferred_memory,
-            flags,
-        ) {
+        let allocated = if dedicated_requirements.requires_dedicated_allocation != 0 {
+            MemoryBlock::allocate_for_resource(
+                device.clone(),
+                requirements,
+                required_memory,
+                preferred_memory,
+                flags,
+                handle,
+                vk::Image::null(),
+            )
+        } else if dedicated {
+            MemoryBlock::allocate_dedicated(
+                device.clone(),
+                requirements,
+                required_memory,
+                preferred_memory,
+                flags,
+            )
+        } else {
+            MemoryBlock::allocate_with_flags(
+                Arc::clone(&device),
+                requirements,
+                required_memory,
+                preferred_memory,
+                flags,
+            )
+        };
+        let allocation = match allocated {
             Ok(value) => value,
             Err(error) => {
                 unsafe {
@@ -493,6 +464,47 @@ impl Buffer {
                 }
                 return Err(error);
             }
+        };
+        let last_use = if sharing.is_concurrent() {
+            crate::resource::SyncCell::for_allocation(
+                device.generation(),
+                device.allocator_stats.clone(),
+                allocation.accounting_id(),
+            )
+            .with_concurrent_families(match sharing {
+                crate::resource::ResourceSharing::Concurrent(families) => families,
+                _ => unreachable!("concurrent branch"),
+            })
+            .with_ownership_range(crate::resource::OwnershipRange::Buffer {
+                offset: 0,
+                size: desc.size,
+            })
+        } else {
+            crate::resource::SyncCell::for_allocation(
+                device.generation(),
+                device.allocator_stats.clone(),
+                allocation.accounting_id(),
+            )
+            .with_ownership_range(crate::resource::OwnershipRange::Buffer {
+                offset: 0,
+                size: desc.size,
+            })
+        };
+        let last_use = if allocation
+            .properties
+            .contains(vk::MemoryPropertyFlags::HOST_VISIBLE)
+        {
+            match last_use.with_host_buffer_ranges(desc.size, &device.allocator_stats) {
+                Ok(cell) => cell,
+                Err(error) => {
+                    unsafe {
+                        device.device.destroy_buffer(handle, None);
+                    }
+                    return Err(error);
+                }
+            }
+        } else {
+            last_use
         };
         if let Err(error) = unsafe {
             device
@@ -502,7 +514,7 @@ impl Buffer {
             unsafe {
                 device.device.destroy_buffer(handle, None);
             }
-            return Err(error.into());
+            return super::error::observe_vulkan(&device, Err(error));
         }
         // 原版缓冲创建时就取得映射指针（0x140bee5f0 `0x140c113d0(block)` 返回 ptr+len），
         // 主机可见的专用分配在这里一次性映射；子分配沿用 gpu-allocator 式持久映射。
@@ -522,13 +534,18 @@ impl Buffer {
                 Ok(pointer) => Some(pointer as usize),
                 Err(error) => {
                     unsafe { device.device.destroy_buffer(handle, None) };
-                    return Err(error.into());
+                    return super::error::observe_vulkan(&device, Err(error));
                 }
             }
         } else {
             None
         };
         Ok(Self {
+            dynamic_constants_page: false,
+            _memory: memory,
+            sharing,
+            allocation_use: None,
+            last_use: last_use.into_reserved_arc(sync_storage),
             device,
             handle,
             size: desc.size,
@@ -540,41 +557,44 @@ impl Buffer {
         })
     }
 
-    /// 槽视图（见 [`BufferSlotView`]）；`offset` 是调用方槽表里的分配内偏移（`inner+0x0c`）。
-    pub fn slot_view(&self, offset: u32) -> BufferSlotView {
-        let mapped = self
-            .allocation
-            .host_ptr()
-            .or(self.mapped_ptr.map(|a| a as *mut u8))
-            .unwrap_or(std::ptr::null_mut());
-        BufferSlotView {
-            offset,
-            capacity: self.size,
-            desc_tail: u64::from(self.desc.usage.as_raw())
-                | (u64::from(self.desc.alignment) << 32)
-                | (u64::from(self.desc.memory_location.as_raw()) << 48),
-            vk_buffer: self.handle,
-            mapped_ptr: mapped,
-            block_size: self.allocation.size,
-            allocation_state: 0,
-        }
-    }
-
     /// 原版 `Buffer::mapped_slice_mut`（0x140bd4cd0）的全长形态：不可映射（设备本地内存）返回
     /// `None`，否则返回覆盖整个缓冲（`desc.size`）的切片。原签名是 `&self → &mut [u8]`，
     /// 别名纪律由调用方保证（与原版一致）。旧的 `(offset,size)` 形态见 [`Self::mapped_slice_mut`]。
+    /// # Safety
+    /// The caller must exclude all host/GPU accesses for the returned borrow,
+    /// wait for previous uses, and flush non-coherent writes before submission.
     #[allow(clippy::mut_from_ref)]
-    pub fn mapped_full_slice_mut(&self) -> Option<&mut [u8]> {
-        let record = self.record(0, 0, 0, 0);
-        let slot = self.slot_view(0);
-        let parts = record.mapped_slice_parts(0, &slot).ok()??;
-        // SAFETY: 指针来自本缓冲仍存活的持久映射，长度 = desc.size <= 块大小（mapped_slice_parts 已校验）。
-        Some(unsafe { std::slice::from_raw_parts_mut(parts.0, parts.1) })
+    pub unsafe fn mapped_full_slice_mut(&self) -> Option<&mut [u8]> {
+        if self.device.is_device_lost() {
+            return None;
+        }
+        if self.allocation.is_shared() {
+            return None;
+        }
+        let len = usize::try_from(self.size).ok()?;
+        if self.size > self.allocation.size {
+            return None;
+        }
+        let ptr = self.persistent_host_ptr()?;
+        // SAFETY: The mapping covers this live allocation; the caller provides
+        // exclusive host/GPU access and non-coherent visibility.
+        Some(unsafe { std::slice::from_raw_parts_mut(ptr, len) })
     }
 
     /// 请求持久映射；首次调用建立映射并保留到 `drop`（或下一次 `unmap`）。
     /// 返回的可变切片在下次映射/释放前保持有效，调用者负责同步边界。
-    pub fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
+    /// # Safety
+    /// The caller must establish GPU completion and non-coherent visibility,
+    /// and prevent submissions from using the mapped region during this borrow.
+    pub unsafe fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
+        if self.device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        if self.allocation.is_shared() {
+            return Err(Error::unsupported(
+                "graph transient memory cannot be mapped",
+            ));
+        }
         let end = offset
             .checked_add(size)
             .ok_or(Error::invalid_usage("映射范围上溢"))?;
@@ -595,15 +615,15 @@ impl Buffer {
                 self.allocation.host_ptr().map_or(0, |p| p as usize)
             }
             None => {
-                self.device.wait_submitted()?;
-                let pointer = unsafe {
+                self.device.wait(&self.last_use.snapshot(), u64::MAX)?;
+                let pointer = super::error::observe_vulkan(&self.device, unsafe {
                     self.device.device.map_memory(
                         self.allocation.handle,
                         0,
                         vk::WHOLE_SIZE,
                         vk::MemoryMapFlags::empty(),
                     )
-                }?;
+                })?;
                 let address = pointer as usize;
                 self.mapped_ptr = Some(address);
                 address
@@ -620,7 +640,13 @@ impl Buffer {
     /// 同源（原版缓冲恒持久映射）。专用分配或不可映射内存返回 `None`。
     /// 调用者负责同步，并保证指针只在本缓冲存活期间使用。
     pub fn persistent_host_ptr(&self) -> Option<*mut u8> {
-        self.allocation.host_ptr().map(|p| p.cast())
+        if self.device.is_device_lost() {
+            return None;
+        }
+        self.allocation
+            .host_ptr()
+            .map(|p| p.cast())
+            .or(self.mapped_ptr.map(|address| address as *mut u8))
     }
 
     /// 释放持久映射；不撤销借用（调用者必须先结束对切片的借用）。
@@ -639,6 +665,9 @@ impl Buffer {
     }
     /// 地址只能用于具有 DEVICE_ADDRESS 分配标记且设备已启用 BDA 的缓冲。
     pub fn device_address(&self) -> Result<vk::DeviceAddress> {
+        if self.device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
         if !self.device.capabilities.buffer_device_address
             || !self
                 .usage
@@ -649,9 +678,19 @@ impl Buffer {
         let info = vk::BufferDeviceAddressInfo::default().buffer(self.handle);
         Ok(unsafe { self.device.device.get_buffer_device_address(&info) })
     }
-    fn transfer(&self, offset: u64, bytes: &mut [u8], write: bool, sync: bool) -> Result<()> {
+    fn transfer(&self, offset: u64, mut transfer: HostTransfer<'_>, sync: bool) -> Result<()> {
+        if self.device.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        if self.allocation.is_shared() {
+            return Err(Error::unsupported(
+                "graph transient memory cannot be mapped",
+            ));
+        }
+        let write = matches!(transfer, HostTransfer::Write(_));
+        let len = transfer.len();
         if offset
-            .checked_add(bytes.len() as u64)
+            .checked_add(len as u64)
             .is_none_or(|end| end > self.size)
         {
             return Err(Error::invalid_usage("映射访问越过缓冲区边界"));
@@ -663,11 +702,47 @@ impl Buffer {
         {
             return Err(Error::unsupported("内存不可映射"));
         }
+        if len == 0 {
+            return Ok(());
+        }
+        let coherent = self
+            .allocation
+            .properties
+            .contains(vk::MemoryPropertyFlags::HOST_COHERENT);
+        let host_range = self.allocation.host_subrange(
+            self.size,
+            offset,
+            len as u64,
+            if coherent {
+                1
+            } else {
+                self.device.limits().non_coherent_atom_size.max(1)
+            },
+        )?;
 
         let _host = self.host_access.lock();
+        let _reservation = self.last_use.lock_submission();
+        let completed = self.device.poll()?;
+        let last_use = self.last_use.buffer_range_snapshot(
+            host_range.buffer_offset,
+            host_range.buffer_size,
+            write,
+            &completed,
+        )?;
         if sync {
-            self.device.wait_submitted()?;
+            self.device.wait(&last_use, u64::MAX)?;
+        } else if !last_use.is_reached(&completed) {
+            return Err(Error::Timeout);
         }
+        self.last_use.prepare_buffer_host_range(
+            host_range.buffer_offset,
+            host_range.buffer_size,
+            write,
+        )?;
+        let mut host_state = HostRangeState {
+            cell: &self.last_use,
+            accessed: false,
+        };
         // 子分配直接用已持久映射的指针；专用分配每次自己 map/unmap。
         let shared_pointer = self
             .allocation
@@ -675,62 +750,63 @@ impl Buffer {
             .or(self.mapped_ptr.map(|a| a as *mut u8));
         let pointer = match shared_pointer {
             Some(pointer) => pointer.cast(),
-            None => unsafe {
+            None => super::error::observe_vulkan(&self.device, unsafe {
                 self.device.device.map_memory(
                     self.allocation.handle,
                     0,
                     vk::WHOLE_SIZE,
                     vk::MemoryMapFlags::empty(),
                 )
-            }?,
+            })?,
         };
-        let (range_offset, range_size) = self.allocation.host_range();
         let range = [vk::MappedMemoryRange::default()
             .memory(self.allocation.handle)
-            .offset(range_offset)
-            .size(range_size)];
+            .offset(host_range.memory_offset)
+            .size(host_range.memory_size)];
         let unmap = || {
             if shared_pointer.is_none() {
                 unsafe { self.device.device.unmap_memory(self.allocation.handle) };
             }
         };
-        let coherent = self
-            .allocation
-            .properties
-            .contains(vk::MemoryPropertyFlags::HOST_COHERENT);
         let result = if !write && !coherent {
             unsafe { self.device.device.invalidate_mapped_memory_ranges(&range) }
         } else {
             Ok(())
         };
-        if let Err(error) = result {
+        if let Err(error) = super::error::observe_vulkan(&self.device, result) {
             unmap();
-            return Err(error.into());
+            return Err(error);
         }
         unsafe {
             let region = pointer.cast::<u8>().add(offset as usize);
-            if write {
-                std::ptr::copy_nonoverlapping(bytes.as_ptr(), region, bytes.len());
-            } else {
-                std::ptr::copy_nonoverlapping(region, bytes.as_mut_ptr(), bytes.len());
+            match &mut transfer {
+                HostTransfer::Write(bytes) => {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), region, len)
+                }
+                HostTransfer::Read(bytes) => {
+                    std::ptr::copy_nonoverlapping(region, bytes.as_mut_ptr(), len)
+                }
             }
         }
+        // A failing flush does not undo the CPU copy. Publish the conservative
+        // host revision even on that error, so bound native programs go stale.
+        host_state.accessed = true;
         let result = if write && !coherent {
             unsafe { self.device.device.flush_mapped_memory_ranges(&range) }
         } else {
             Ok(())
         };
         unmap();
-        Ok(result?)
+        super::error::observe_vulkan(&self.device, result)
     }
     pub fn write_bytes(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.transfer(offset, &mut bytes.to_vec(), true, true)
+        self.transfer(offset, HostTransfer::Write(bytes), true)
     }
     /// 不等待在飞 GPU 工作的写入。
     ///
-    /// 仅用于刚创建、GPU 从未访问过的缓冲（如上传暂存缓冲）；对可能被 GPU 使用的缓冲请用 `write_bytes`。
+    /// 未完成的重叠 GPU 使用（未知范围按整缓冲处理）返回 Timeout；非 coherent 内存按原子粒度检查。
     pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
-        self.transfer(offset, &mut bytes.to_vec(), true, false)
+        self.transfer(offset, HostTransfer::Write(bytes), false)
     }
     /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
     ///
@@ -739,10 +815,10 @@ impl Buffer {
     /// 并保证复制期间没有其他 GPU 或宿主并发访问。GPU 写入还需已建立 HOST_READ 可见性。
     /// 此调用只依赖本缓冲完成，不推进设备全局完成 epoch。
     pub unsafe fn read_bytes_after_completion(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
-        self.transfer(offset, bytes, false, false)
+        self.transfer(offset, HostTransfer::Read(bytes), false)
     }
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
-        self.transfer(offset, bytes, false, true)
+        self.transfer(offset, HostTransfer::Read(bytes), true)
     }
 }
 impl Drop for Buffer {
@@ -754,40 +830,20 @@ impl Drop for Buffer {
         }
         // SAFETY: allocation 只在此处取出一次，之后不会再被访问。
         let memory = unsafe { std::mem::ManuallyDrop::take(&mut self.allocation) }.into_deferred();
-        self.device.bury(Doomed::Buffer(self.handle, memory));
+        self.device.retire(
+            self.last_use.snapshot(),
+            Doomed::Buffer(self.handle, memory),
+        );
     }
 }
 
-#[cfg(test)]
-mod record_tests {
-    use super::*;
-    use std::mem::offset_of;
+impl crate::resource::GpuUse for Buffer {
+    fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
+        visitor(&self.last_use)?;
+        if let Some(cell) = &self.allocation_use {
+            visitor(cell)?;
+        }
 
-    #[test]
-    fn buffer_record_offsets_match_the_exe() {
-        assert_eq!(offset_of!(BufferRecord, ctx), 0x00);
-        assert_eq!(offset_of!(BufferRecord, slot), 0x08);
-        assert_eq!(offset_of!(BufferRecord, offset), 0x10);
-        assert_eq!(offset_of!(BufferRecord, device_id), 0x14);
-        assert_eq!(offset_of!(BufferRecord, ready), 0x16);
-        assert_eq!(offset_of!(BufferRecord, size), 0x18);
-        assert_eq!(offset_of!(BufferRecord, desc_tail), 0x20);
-    }
-
-    #[test]
-    fn desc_tail_packs_usage_alignment_location() {
-        let r = BufferRecord {
-            ctx: 0,
-            slot: 0,
-            offset: 0,
-            device_id: 0,
-            ready: 1,
-            _pad: 0,
-            size: 0,
-            desc_tail: 0x0002_0010_0000_0020,
-        };
-        assert_eq!(r.usage().as_raw(), 0x20);
-        assert_eq!(r.alignment(), 0x10);
-        assert_eq!(r.memory_location(), Some(MemoryLocation::CpuToGpu));
+        Ok(())
     }
 }

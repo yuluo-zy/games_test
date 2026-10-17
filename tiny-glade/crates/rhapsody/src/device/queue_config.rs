@@ -5,10 +5,12 @@
 //!
 //! 选择规则：
 //! - **Graphics**：必需。必须同时支持 compute 的族，保证类别别名有效；`require_present` 时必须能呈现。
-//! - **Compute**：优先专用族（有 COMPUTE、无 GRAPHICS）；否则用 graphics 族里的第二个队列；
-//!   都没有时 `Prefer`/`Off` 别名到 graphics，`Require` 报 [`Error::Unsupported`]。
-//! - **Transfer**：优先专用 DMA 族（只有 TRANSFER，且图像传输粒度为 1×1×1）；否则用专用
-//!   compute 族的空闲队列；都没有时别名到 graphics（graphics/compute 族都隐含传输能力）。
+//! - **Compute**：优先专用族（有 COMPUTE、无 GRAPHICS），其次 graphics 族的空闲队列，
+//!   然后是其它支持 COMPUTE 的可用族。
+//! - **Transfer**：优先专用 DMA 族，其次专用 compute 族的空闲队列、graphics 族的空闲队列，
+//!   最后是其它支持传输的可用族。图像传输粒度须为 1×1×1；graphics/compute 隐含传输能力。
+//! - 无可用独立队列时 `Prefer` 别名到 graphics，`Require` 报 [`Error::Unsupported`]。
+//!   `Off` 始终别名到 graphics。
 //!
 //! 别名队列共用同一个 `VkQueue` 和时间线，语义上等价于单队列，结果与"关闭"一致。
 use crate::error::{Error, Result};
@@ -198,7 +200,8 @@ pub fn plan_queues(families: &[FamilyInfo], config: &QueueConfig) -> Result<Queu
         preference => {
             let dedicated = alloc
                 .first(|f| f.has(vk::QueueFlags::COMPUTE) && !f.has(vk::QueueFlags::GRAPHICS))
-                .or_else(|| alloc.free(graphics_family).then_some(graphics_family));
+                .or_else(|| alloc.free(graphics_family).then_some(graphics_family))
+                .or_else(|| alloc.first(|f| f.has(vk::QueueFlags::COMPUTE)));
             match dedicated {
                 Some(family) => alloc.take(family),
                 None if preference == QueuePreference::Require => {
@@ -225,7 +228,24 @@ pub fn plan_queues(families: &[FamilyInfo], config: &QueueConfig) -> Result<Queu
                         && f.fine_grained_transfer()
                 })
             };
-            match dma.or_else(spare_compute) {
+            let spare_graphics = || {
+                (alloc.free(graphics_family) && families[graphics_family].fine_grained_transfer())
+                    .then_some(graphics_family)
+            };
+            let other_transfer = || {
+                alloc.first(|f| {
+                    f.flags.intersects(
+                        vk::QueueFlags::GRAPHICS
+                            | vk::QueueFlags::COMPUTE
+                            | vk::QueueFlags::TRANSFER,
+                    ) && f.fine_grained_transfer()
+                })
+            };
+            match dma
+                .or_else(spare_compute)
+                .or_else(spare_graphics)
+                .or_else(other_transfer)
+            {
                 Some(family) => alloc.take(family),
                 None if preference == QueuePreference::Require => {
                     return Err(Error::unsupported("没有可用的独立传输队列"));
@@ -389,8 +409,88 @@ mod tests {
     }
 
     #[test]
+    fn transfer_uses_a_spare_graphics_queue_before_other_general_families() {
+        let families = [family(G | C | T, 3, true), family(G | C | T, 1, false)];
+        let plan = plan_queues(&families, &QueueConfig::prefer_all()).unwrap();
+        assert_eq!(plan.physical(QueueClass::Compute), pq(0, 1));
+        assert_eq!(plan.physical(QueueClass::Transfer), pq(0, 2));
+        assert_eq!(plan.create_counts(), [(0, 3)]);
+        let plan = plan_queues(
+            &families,
+            &QueueConfig {
+                transfer: QueuePreference::Require,
+                ..QueueConfig::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.physical(QueueClass::Transfer), pq(0, 1));
+    }
+
+    #[test]
+    fn separate_general_families_supply_independent_compute_and_transfer_queues() {
+        // MoltenVK can expose multiple one-queue universal families with no
+        // dedicated COMPUTE or DMA flags. They are still distinct VkQueues.
+        let families = [family(G | C | T, 1, true); 4];
+        for preference in [QueuePreference::Prefer, QueuePreference::Require] {
+            let plan = plan_queues(
+                &families,
+                &QueueConfig {
+                    async_compute: preference,
+                    transfer: preference,
+                    require_present: true,
+                },
+            )
+            .unwrap();
+            assert_eq!(plan.queues, [pq(0, 0), pq(1, 0), pq(2, 0)]);
+            assert_eq!(plan.create_counts(), [(0, 1), (1, 1), (2, 1)]);
+            assert!(!plan.is_aliased(QueueClass::Compute));
+            assert!(!plan.is_aliased(QueueClass::Transfer));
+            assert_ne!(
+                plan.queue(QueueClass::Compute),
+                plan.queue(QueueClass::Transfer)
+            );
+        }
+        let off = plan_queues(&families, &QueueConfig::default()).unwrap();
+        assert_eq!(off.queues, [pq(0, 0)]);
+    }
+
+    #[test]
+    fn compute_prefers_the_graphics_familys_second_queue_before_another_general_family() {
+        let families = [family(G | C | T, 2, true), family(G | C | T, 1, false)];
+        let plan = plan_queues(&families, &QueueConfig::prefer_all()).unwrap();
+        assert_eq!(plan.physical(QueueClass::Compute), pq(0, 1));
+        assert_eq!(plan.physical(QueueClass::Transfer), pq(1, 0));
+    }
+
+    #[test]
+    fn exhausted_general_families_alias_prefer_and_reject_only_unavailable_requirements() {
+        let families = [family(G | C | T, 1, true), family(G | C | T, 1, false)];
+        let plan = plan_queues(&families, &QueueConfig::prefer_all()).unwrap();
+        assert_eq!(plan.physical(QueueClass::Compute), pq(1, 0));
+        assert!(plan.is_aliased(QueueClass::Transfer));
+        let require_both = QueueConfig {
+            async_compute: QueuePreference::Require,
+            transfer: QueuePreference::Require,
+            ..QueueConfig::default()
+        };
+        assert_eq!(
+            plan_queues(&families, &require_both).unwrap_err().kind(),
+            ErrorKind::Unsupported
+        );
+        let transfer_only = plan_queues(
+            &families,
+            &QueueConfig {
+                transfer: QueuePreference::Require,
+                ..QueueConfig::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(transfer_only.physical(QueueClass::Transfer), pq(1, 0));
+    }
+
+    #[test]
     fn transfer_requirement_without_any_candidate_fails() {
-        let families = [family(G | C | T, 4, true)];
+        let families = [family(G | C | T, 1, true)];
         let config = QueueConfig {
             transfer: QueuePreference::Require,
             ..QueueConfig::default()

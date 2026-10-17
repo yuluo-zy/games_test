@@ -11,33 +11,33 @@ pub mod descriptor_binding;
 pub mod descriptor_set;
 pub mod device;
 pub mod device_api;
-pub mod disposal;
 pub mod dynamic_constants;
 pub mod error;
 pub mod format;
-pub mod framebuffer;
 pub mod graveyard;
 pub mod init;
 pub mod instance;
 pub mod managed;
 pub mod physical_device;
 pub mod profiler;
-pub mod render_pass;
 pub mod sampler;
 pub mod semaphore;
 pub mod setup;
 pub mod shader;
+pub(crate) mod shader_interface;
 pub mod stats;
 #[cfg(feature = "suballocation")]
 pub mod suballoc;
 pub mod submit;
 pub mod swapchain;
 pub mod temp_list;
+pub mod temp_list_pool;
 pub mod texture;
+pub mod transient_backing;
 
 pub mod resource_usage;
+pub mod resource_access;
 
 pub mod aftermath;
 pub mod dxgi;
-pub mod gpu_profiler;
 pub mod texture_upload;

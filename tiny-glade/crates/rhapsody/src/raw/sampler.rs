@@ -1,28 +1,64 @@
 //! 原 built-in sampler 的策略未恢复；此接口接受明确 Vulkan 描述符。
-use super::{device::VulkanDevice, error::Result};
+use super::{device::Device, error::Result};
 use ash::vk;
 use std::sync::Arc;
 pub struct Sampler {
-    pub device: Arc<VulkanDevice>,
+    pub(crate) last_use: Arc<crate::resource::SyncCell>,
+    pub device: Arc<Device>,
     pub handle: vk::Sampler,
+    _shared_storage: Option<Arc<SamplerStorage>>,
+}
+pub(crate) struct SamplerStorage {
+    _memory: super::allocator::CpuMemoryReservation,
 }
 impl Sampler {
-    pub fn new(device: Arc<VulkanDevice>, info: &vk::SamplerCreateInfo<'_>) -> Result<Self> {
-        let handle = unsafe { device.device.create_sampler(info, None) }?;
-        Ok(Self { device, handle })
+    pub(crate) fn new_builtin(
+        device: Arc<Device>,
+        info: &vk::SamplerCreateInfo<'_>,
+    ) -> Result<(Arc<Self>, Arc<SamplerStorage>)> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        let memory = super::allocator::reserve_shared_cpu_metadata::<Self>(
+            &device.allocator_stats,
+            super::allocator::shared_cpu_bytes::<SamplerStorage>()?,
+        )?;
+        let storage = Arc::new(SamplerStorage { _memory: memory });
+        let mut sampler = Self::new(device, info)?;
+        sampler._shared_storage = Some(storage.clone());
+        Ok((Arc::new(sampler), storage))
+    }
+
+    pub fn new(device: Arc<Device>, info: &vk::SamplerCreateInfo<'_>) -> Result<Self> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let handle = super::error::observe_vulkan(&device, unsafe {
+            device.device.create_sampler(info, None)
+        })?;
+        Ok(Self {
+            last_use: crate::resource::SyncCell::for_device(device.generation())
+                .into_reserved_arc(sync_storage),
+            device,
+            handle,
+            _shared_storage: None,
+        })
     }
 }
 impl Drop for Sampler {
     fn drop(&mut self) {
-        self.device
-            .bury(super::graveyard::Doomed::Sampler(self.handle));
+        self.device.retire(
+            self.last_use.snapshot(),
+            super::graveyard::Doomed::Sampler(self.handle),
+        );
     }
 }
 
 /// 发行版 404 个编译 shader 的反射里出现的内置采样器名（`inc/samplers.hlsl`，名字/set 来自
-/// raw-per-bin 反射，O）。原版 `GraphicsDevice` 在 `+0x680` 持有 `HashMap<name, vk::Sampler>`，
+/// raw-per-bin 反射，O）。原版 `Device` 在 `+0x680` 持有 `HashMap<name, vk::Sampler>`，
 /// `get_built_in_sampler`（0x140bfc5b0）按名字查找，缺失时 `panic!("Sampler not found: {name}")`
-/// （sampler.rs:201）。创建参数见 [`BUILTIN_SAMPLER_SPECS`]（`GraphicsDevice::create`
+/// （sampler.rs:201）。创建参数见 [`BUILTIN_SAMPLER_SPECS`]（`Device::create`
 /// 0x140bf2560 内联的 create_samplers，名字池 0x142b16b42，状态逐字节读自 0x140bf5208..0x140bf5823）。
 /// 本数组只列出 shader 反射里出现的 9 个名字；原版实际创建 13 个（另有 4 个 `_iso` 变体）。
 pub const BUILTIN_SAMPLER_NAMES: [&str; 9] = [
@@ -277,4 +313,12 @@ pub const SAMPLER_NOT_FOUND_PREFIX: &str = "Sampler not found: ";
 /// 按名字查规格（原 `HashMap<name, vk::Sampler>` 的键集）。
 pub fn builtin_sampler_spec(name: &str) -> Option<&'static BuiltinSamplerSpec> {
     BUILTIN_SAMPLER_SPECS.iter().find(|s| s.name == name)
+}
+
+impl crate::resource::GpuUse for Sampler {
+    fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
+        visitor(&self.last_use)?;
+
+        Ok(())
+    }
 }

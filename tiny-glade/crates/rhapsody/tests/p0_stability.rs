@@ -4,6 +4,7 @@
 //! 在稳态的同一相位取两组样本比较（热身后 vs 结束前）：一组在两次排空回收之间（有帧在飞、资源池非空），
 //! 一组刚做完排空回收。
 //! 没有 Vulkan 设备时跳过。
+mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::raw::{
     buffer::{Buffer, BufferDesc},
@@ -33,45 +34,37 @@ const SIZE: u32 = 16;
 /// 会话内部账本的一次快照。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Bookkeeping {
-    lifecycle_resources: usize,
+    retirement_pending: usize,
     pending_frames: usize,
     resources: usize,
     commands: usize,
-    lifecycle_pending: usize,
-    lifecycle_pool: usize,
-    lifecycle_buckets: usize,
-    store_pending_disposals: usize,
-    store_pending_destroy: usize,
-    buffer_retained_submissions: usize,
-    texture_retained_submissions: usize,
+    pending_commands: usize,
+    completed_commands: usize,
+    recording_commands: usize,
     submission_captures: usize,
     imports_waiting_release: usize,
 }
 
 fn sample(session: &VulkanGraphSession, imports_waiting_release: usize) -> Bookkeeping {
-    let queue = session.backend.selected_queue();
-    let lifecycle = &session.chain.lifecycle;
-    let stores = &session.backend.stores;
     Bookkeeping {
-        lifecycle_resources: lifecycle.resource_count(),
+        retirement_pending: session.backend.device.garbage_stats().pending,
         pending_frames: session.pending_frame_count(),
         resources: session.resource_count(),
         commands: session.command_count(),
-        lifecycle_pending: lifecycle.pending_len(queue),
-        lifecycle_pool: lifecycle.pool_sequences().len(),
-        lifecycle_buckets: lifecycle.bucket_keys().len(),
-        store_pending_disposals: stores.pending_disposals(),
-        store_pending_destroy: stores.pending_destroy(),
-        buffer_retained_submissions: stores.buffers.retained_submission_count(),
-        texture_retained_submissions: stores.textures.retained_submission_count(),
+        pending_commands: session.chain.pending_command_count(),
+        completed_commands: session.chain.completed_command_count(),
+        recording_commands: session.chain.recording_command_count(),
         submission_captures: session.backend.submissions.len(),
         imports_waiting_release,
     }
 }
 
 fn session() -> Option<VulkanGraphSession> {
-    let device = create_headless_device().ok()?;
-    let backend = VulkanGraphBackend::new(device, AccessTable::original()).ok()?;
+    let device = gpu_test_support::initialize("stability device", create_headless_device())?;
+    let backend = gpu_test_support::initialize(
+        "stability graph backend",
+        VulkanGraphBackend::new(device, AccessTable::original()),
+    )?;
     Some(VulkanGraphSession::new(backend))
 }
 
@@ -98,7 +91,10 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
     uniform
         .write_bytes_unsynchronized(0, &[frame as u8; UNIFORM_BYTES as usize])
         .unwrap();
-    let token = session.backend.bind_import(GpuResource::Buffer(uniform));
+    let token = session
+        .backend
+        .bind_import(GpuResource::Buffer(uniform))
+        .unwrap();
     let ub = graph
         .import_unowned(
             "uniform",
@@ -112,7 +108,7 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
         let raw = device.clone();
         let index = color.raw();
         let value = [frame as f32 / FRAMES as f32, 0.5, 0.25, 1.0];
-        let mut pass = graph.add_pass("clear color");
+        let mut pass = graph.add_pass("clear color").with_side_effect();
         pass.add_resource_access(color, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
             let Some(managed) = ctx.managed else {
@@ -121,8 +117,8 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
             let Ok(image) = managed.texture_for(index) else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(image.clone()));
-            // SAFETY: 命令缓冲处于录制状态；图已把纹理转到 TRANSFER_DST_OPTIMAL，资源由 keep_alive 保活。
+
+            // SAFETY: 命令缓冲处于录制状态；图已把纹理转到 TRANSFER_DST_OPTIMAL，资源由图的实际命令拥有者保活。
             unsafe {
                 raw.device.cmd_clear_color_image(
                     vk::CommandBuffer::from_raw(ctx.command.handle()),
@@ -141,7 +137,7 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
     {
         let raw = device.clone();
         let (src, dst) = (ub.raw(), scratch.raw());
-        let mut pass = graph.add_pass("upload uniform");
+        let mut pass = graph.add_pass("upload uniform").with_side_effect();
         pass.add_resource_access(ub, TRANSFER_READ, 0).unwrap();
         pass.add_resource_access(scratch, TRANSFER_WRITE, 0)
             .unwrap();
@@ -152,8 +148,7 @@ fn run_frame(session: &mut VulkanGraphSession, frame: usize) -> u64 {
             let (Ok(src), Ok(dst)) = (managed.buffer_for(src), managed.buffer_for(dst)) else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(src.clone()));
-            ctx.keep_alive(Arc::new(dst.clone()));
+
             // SAFETY: 同上；两个缓冲都由图声明了相应访问。
             unsafe {
                 raw.device.cmd_copy_buffer(
@@ -236,35 +231,19 @@ fn assert_bookkeeping_bounded(warm: &Bookkeeping, end: &Bookkeeping) {
     bounded("resources", warm.resources, end.resources);
     bounded("commands", warm.commands, end.commands);
     bounded(
-        "lifecycle_pending",
-        warm.lifecycle_pending,
-        end.lifecycle_pending,
-    );
-    bounded("lifecycle_pool", warm.lifecycle_pool, end.lifecycle_pool);
-    bounded(
-        "lifecycle_buckets",
-        warm.lifecycle_buckets,
-        end.lifecycle_buckets,
+        "pending_commands",
+        warm.pending_commands,
+        end.pending_commands,
     );
     bounded(
-        "store_pending_disposals",
-        warm.store_pending_disposals,
-        end.store_pending_disposals,
+        "completed_commands",
+        warm.completed_commands,
+        end.completed_commands,
     );
     bounded(
-        "store_pending_destroy",
-        warm.store_pending_destroy,
-        end.store_pending_destroy,
-    );
-    bounded(
-        "buffer_retained_submissions",
-        warm.buffer_retained_submissions,
-        end.buffer_retained_submissions,
-    );
-    bounded(
-        "texture_retained_submissions",
-        warm.texture_retained_submissions,
-        end.texture_retained_submissions,
+        "recording_commands",
+        warm.recording_commands,
+        end.recording_commands,
     );
     bounded(
         "submission_captures",
@@ -287,10 +266,10 @@ fn lifecycle_metadata_stays_bounded_over_many_frames() {
     };
     for (warm, end) in [samples.mid, samples.collected] {
         assert!(
-            end.lifecycle_resources <= warm.lifecycle_resources,
+            end.retirement_pending <= warm.retirement_pending,
             "lifecycle resources 增长: {} -> {}",
-            warm.lifecycle_resources,
-            end.lifecycle_resources
+            warm.retirement_pending,
+            end.retirement_pending
         );
     }
 }

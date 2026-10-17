@@ -1,4 +1,5 @@
 //! raw-init 域：设备排序 / 内存门槛 / missing_devices / 预算快照 / 厂商句柄匹配。
+mod gpu_test_support;
 use ash::vk;
 use rhapsody::raw::init::{
     AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics, DxgiAdapter, GraphicsInstance,
@@ -336,21 +337,28 @@ fn performance_info_text_follows_the_original_sections() {
 }
 
 #[test]
-fn create_by_uuid_selects_that_device_and_panics_when_absent() {
-    let Ok(graphics) = GraphicsInstance::new() else {
+fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
+    let Some(graphics) = gpu_test_support::initialize("UUID instance", GraphicsInstance::new())
+    else {
         return;
     };
-    let Ok(surface) = graphics.available_for_surface(None, Default::default()) else {
+    let Some(surface) = gpu_test_support::initialize(
+        "UUID physical device selection",
+        graphics.available_for_surface(None, Default::default()),
+    ) else {
         return;
     };
-    let Some(first) = surface.available_devices().into_iter().next() else {
-        return;
-    };
+    let first = surface
+        .available_devices()
+        .into_iter()
+        .next()
+        .expect("an available GPU is required");
     // 物化 Vec：克隆而非借用。
     assert_eq!(surface.available_devices().len(), surface.available.len());
     let device = surface
         .create_device_by_uuid(&graphics, first.device_uuid)
         .expect("按 uuid 选中的设备应能创建");
+    assert_eq!(device.device_uuid(), first.device_uuid);
     drop(device);
     let missing_uuid = [0xEE; 16];
     if surface
@@ -358,12 +366,15 @@ fn create_by_uuid_selects_that_device_and_panics_when_absent() {
         .iter()
         .all(|d| d.device_uuid != missing_uuid)
     {
-        let result = std::panic::catch_unwind(|| {
-            let _ = surface.create_device_by_uuid(&graphics, missing_uuid);
-        });
-        assert!(
-            result.is_err(),
-            "缺候选必须 panic（原 Option::unwrap on None）"
-        );
+        let error = surface
+            .create_device_by_uuid(&graphics, missing_uuid)
+            .err()
+            .expect("missing UUID must be rejected");
+        assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported);
+        // Rejection does not mutate the candidate list or poison later creation.
+        let retried = surface
+            .create_device_by_uuid(&graphics, first.device_uuid)
+            .unwrap();
+        assert_eq!(retried.device_uuid(), first.device_uuid);
     }
 }

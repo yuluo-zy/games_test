@@ -54,7 +54,7 @@ impl<T> Generationed<T> {
 
     /// 代际匹配才交出只读引用；否则返回 [`crate::Error::InvalidUsage`]。
     pub fn check(&self, current: DeviceGeneration) -> crate::Result<&T> {
-        if self.generation == current {
+        if current.is_valid() && self.generation == current {
             Ok(&self.value)
         } else {
             Err(crate::Error::invalid_usage("资源代际与当前设备不符"))
@@ -63,7 +63,7 @@ impl<T> Generationed<T> {
 
     /// 代际匹配才交出所有权；否则返回 [`crate::Error::InvalidUsage`]。
     pub fn into_value(self, current: DeviceGeneration) -> crate::Result<T> {
-        if self.generation == current {
+        if current.is_valid() && self.generation == current {
             Ok(self.value)
         } else {
             Err(crate::Error::invalid_usage("资源代际与当前设备不符"))
@@ -106,6 +106,21 @@ mod tests {
         assert_eq!(error.kind(), ErrorKind::InvalidUsage);
         assert_eq!(
             stale.into_value(other).unwrap_err().kind(),
+            ErrorKind::InvalidUsage
+        );
+    }
+
+    #[test]
+    fn uninitialized_generations_do_not_authorize_access() {
+        let item = Generationed::new(42, DeviceGeneration::INVALID);
+        assert_eq!(
+            item.check(DeviceGeneration::INVALID).unwrap_err().kind(),
+            ErrorKind::InvalidUsage
+        );
+        assert_eq!(
+            item.into_value(DeviceGeneration::INVALID)
+                .unwrap_err()
+                .kind(),
             ErrorKind::InvalidUsage
         );
     }

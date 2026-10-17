@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 pub struct VulkanInstance {
+    pub api_version: u32,
     pub entry: Entry,
     pub instance: ash::Instance,
     pub enabled_extensions: Vec<String>,
@@ -173,21 +174,7 @@ impl InstanceBuilder {
                 entry.enumerate_instance_extension_properties(Some(layer.as_c_str()))
             }?);
         }
-        for extension in DEFAULT_INSTANCE_EXTENSIONS
-            .iter()
-            .map(|name| CString::new(*name).unwrap())
-            .chain(self.extensions.iter().cloned())
-        {
-            if !available.iter().any(
-                |p| unsafe { CStr::from_ptr(p.extension_name.as_ptr()) } == extension.as_c_str(),
-            ) {
-                return Err(Error::unsupported(format!(
-                    "请求instance扩展不可用: {}",
-                    extension.to_string_lossy()
-                )));
-            }
-        }
-        let extensions = effective_extensions(&self.extensions, &available);
+        let (extensions, flags) = plan_instance_extensions(&self.extensions, &available)?;
         let extension_ptrs: Vec<_> = extensions.iter().map(|v| v.as_ptr()).collect();
         let layers: Vec<_> = self.layers.iter().map(|v| v.as_ptr()).collect();
         let app = vk::ApplicationInfo::default()
@@ -195,11 +182,13 @@ impl InstanceBuilder {
             .engine_name(c"rhapsody")
             .api_version(self.api_version);
         let info = vk::InstanceCreateInfo::default()
+            .flags(flags)
             .application_info(&app)
             .enabled_extension_names(&extension_ptrs)
             .enabled_layer_names(&layers);
         let instance = unsafe { entry.create_instance(&info, None) }?;
         Ok(Arc::new(VulkanInstance {
+            api_version: self.api_version,
             entry,
             instance,
             enabled_extensions: extensions
@@ -276,7 +265,8 @@ pub const DEFAULT_INSTANCE_EXTENSIONS: [&str; 2] = [
 /// 可用则 info 日志并追加启用（0x142b19210），不可用则 info 日志跳过，二者都不致命。
 pub const LAYER_SETTINGS_EXTENSION: &str = "VK_EXT_layer_settings";
 
-/// 默认扩展 + 调用方扩展（去重，保序）+ 探测到的 `VK_EXT_layer_settings`。
+/// 默认扩展、调用方扩展及所需依赖（去重，保序），再加入可用的可选扩展。
+/// Portability 枚举可用时自动启用，让标准 loader 暴露 MoltenVK 等 portability 设备。
 pub fn effective_extensions(
     requested: &[CString],
     available: &[vk::ExtensionProperties],
@@ -289,6 +279,44 @@ pub fn effective_extensions(
     {
         if !out.contains(&name) {
             out.push(name);
+        }
+    }
+    // Surface dependencies alone do not opt a headless instance into the WSI
+    // maintenance path; only an explicitly requested surface does that.
+    let present = out
+        .iter()
+        .any(|name| name.as_c_str() == ash::khr::surface::NAME);
+    // VK_KHR_get_surface_capabilities2 requires VK_KHR_surface even for an
+    // instance that is currently used only for headless work.
+    if out
+        .iter()
+        .any(|name| name.as_c_str() == ash::khr::get_surface_capabilities2::NAME)
+        && !out
+            .iter()
+            .any(|name| name.as_c_str() == ash::khr::surface::NAME)
+    {
+        out.push(ash::khr::surface::NAME.to_owned());
+    }
+    if available.iter().any(|property| unsafe { CStr::from_ptr(property.extension_name.as_ptr()) } == ash::khr::portability_enumeration::NAME)
+        && !out.iter().any(|name| name.as_c_str() == ash::khr::portability_enumeration::NAME)
+    {
+        out.push(ash::khr::portability_enumeration::NAME.to_owned());
+    }
+    let optional = [
+        ash::khr::get_surface_capabilities2::NAME,
+        ash::ext::surface_maintenance1::NAME,
+    ];
+    if present
+        && optional.iter().all(|name| {
+            available.iter().any(
+                |property| unsafe { CStr::from_ptr(property.extension_name.as_ptr()) } == *name,
+            )
+        })
+    {
+        for name in optional {
+            if !out.iter().any(|old| old.as_c_str() == name) {
+                out.push(name.to_owned());
+            }
         }
     }
     let layer_settings = CString::new(LAYER_SETTINGS_EXTENSION).unwrap();
@@ -304,6 +332,30 @@ pub fn effective_extensions(
         log::info!("{LAYER_SETTINGS_EXTENSION} is not available");
     }
     out
+}
+
+/// Keep the extension/flag dependency contract in the same CPU planning path
+/// used by real instance creation. Optional detection never hides a missing
+/// explicitly requested extension or a missing dependency.
+fn plan_instance_extensions(
+    requested: &[CString],
+    available: &[vk::ExtensionProperties],
+) -> Result<(Vec<CString>, vk::InstanceCreateFlags)> {
+    let extensions = effective_extensions(requested, available);
+    for extension in &extensions {
+        if !available.iter().any(|property| unsafe { CStr::from_ptr(property.extension_name.as_ptr()) } == extension.as_c_str()) {
+            return Err(Error::unsupported(format!("请求instance扩展或依赖不可用: {}", extension.to_string_lossy())));
+        }
+    }
+    let flags = if extensions
+        .iter()
+        .any(|name| name.as_c_str() == ash::khr::portability_enumeration::NAME)
+    {
+        vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR
+    } else {
+        vk::InstanceCreateFlags::empty()
+    };
+    Ok((extensions, flags))
 }
 
 /// `VK_LOADER_LAYERS_ALLOW` 的值（0x140c0a530 前半段，机器码证实）：入参是 `GraphicsInstanceLayerAllowlist`
@@ -591,6 +643,90 @@ mod extension_tests {
         p
     }
 
+    fn native_extensions() -> Vec<vk::ExtensionProperties> {
+        DEFAULT_INSTANCE_EXTENSIONS
+            .iter()
+            .copied()
+            .chain(["VK_KHR_surface"])
+            .map(props)
+            .collect()
+    }
+
+    #[test]
+    fn portability_devices_are_enumerated_only_with_the_matching_extension_and_flag() {
+        let mut available = native_extensions();
+        let (native, flags) = plan_instance_extensions(&[], &available).unwrap();
+        assert!(flags.is_empty());
+        assert!(
+            !native
+                .iter()
+                .any(|name| name.as_c_str() == ash::khr::portability_enumeration::NAME)
+        );
+        available.push(props("VK_KHR_portability_enumeration"));
+        let (portable, flags) = plan_instance_extensions(&[], &available).unwrap();
+        assert!(flags.contains(vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR));
+        assert_eq!(
+            portable
+                .iter()
+                .filter(|name| name.as_c_str() == ash::khr::portability_enumeration::NAME)
+                .count(),
+            1
+        );
+        let requested = [
+            ash::khr::portability_enumeration::NAME.to_owned(),
+            ash::khr::portability_enumeration::NAME.to_owned(),
+        ];
+        let (explicit, _) = plan_instance_extensions(&requested, &available).unwrap();
+        assert_eq!(
+            explicit
+                .iter()
+                .filter(|name| name.as_c_str() == ash::khr::portability_enumeration::NAME)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn surface_dependency_does_not_implicitly_enable_headless_wsi_maintenance() {
+        let mut available = native_extensions();
+        available.push(props("VK_EXT_surface_maintenance1"));
+        let (headless, _) = plan_instance_extensions(&[], &available).unwrap();
+        assert!(
+            !headless
+                .iter()
+                .any(|name| name.as_c_str() == ash::ext::surface_maintenance1::NAME)
+        );
+        let (windowed, _) =
+            plan_instance_extensions(&[ash::khr::surface::NAME.to_owned()], &available).unwrap();
+        assert!(
+            windowed
+                .iter()
+                .any(|name| name.as_c_str() == ash::ext::surface_maintenance1::NAME)
+        );
+    }
+
+    #[test]
+    fn instance_planning_rejects_missing_requested_extensions_and_surface_dependency() {
+        let missing_surface: Vec<_> = DEFAULT_INSTANCE_EXTENSIONS
+            .iter()
+            .copied()
+            .map(props)
+            .collect();
+        assert_eq!(
+            plan_instance_extensions(&[], &missing_surface)
+                .unwrap_err()
+                .kind(),
+            crate::ErrorKind::Unsupported
+        );
+        let missing_portability = [ash::khr::portability_enumeration::NAME.to_owned()];
+        assert_eq!(
+            plan_instance_extensions(&missing_portability, &native_extensions())
+                .unwrap_err()
+                .kind(),
+            crate::ErrorKind::Unsupported
+        );
+    }
+
     #[test]
     fn defaults_first_then_requested_deduped_and_layer_settings_only_when_available() {
         let requested = [
@@ -608,7 +744,8 @@ mod extension_tests {
             [
                 "VK_KHR_get_physical_device_properties2",
                 "VK_KHR_get_surface_capabilities2",
-                "VK_EXT_debug_utils"
+                "VK_EXT_debug_utils",
+                "VK_KHR_surface"
             ]
         );
         let with = effective_extensions(&requested, &[props("VK_EXT_layer_settings")]);
@@ -616,7 +753,7 @@ mod extension_tests {
         // 前缀相同但更长的名字不算命中（原版按整个 22 字节含 NUL 比较）。
         assert_eq!(
             effective_extensions(&[], &[props("VK_EXT_layer_settings2")]).len(),
-            2
+            3
         );
     }
 }

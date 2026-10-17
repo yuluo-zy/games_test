@@ -2,18 +2,21 @@
 mod draw_support;
 mod wave3_support;
 use ash::vk::{self, Handle};
-use rhapsody::raw::managed::lifecycle::Queue;
+use rhapsody::command::recording::Queue;
+use rhapsody::resource::{OwnershipRange, range_state::RangeOwner};
 use rhapsody::{
     raw::buffer::{Buffer, BufferDesc},
     rg::{
-        executor::PassContext,
+        executor::{ExecutionBackend, PassContext},
+        graph::RenderGraph,
+        sync_plan::{BarrierKind, DependencyRef},
         vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
     },
 };
 use std::sync::Arc;
 use wave3_support::*;
 
-fn families(device: &rhapsody::raw::device::VulkanDevice) -> Vec<vk::QueueFamilyProperties> {
+fn families(device: &rhapsody::raw::device::Device) -> Vec<vk::QueueFamilyProperties> {
     unsafe {
         device
             .instance
@@ -44,7 +47,7 @@ fn configured_queue_plan_matches_created_handles_and_timeline_slots() {
             .map(|props| FamilyInfo::from_properties(props, false))
             .collect::<Vec<_>>();
         let expected = plan_queues(&families, &config).unwrap();
-        assert_eq!(device.queue_plan.as_ref(), Some(&expected));
+        assert_eq!(device.queue_plan, expected);
         assert_eq!(device.timelines.queue_count(), expected.queues.len());
         assert_eq!(device.additional_queues.len() + 1, expected.queues.len());
         for (index, physical) in expected.queues.iter().enumerate() {
@@ -64,40 +67,289 @@ fn configured_queue_plan_matches_created_handles_and_timeline_slots() {
     }
 }
 
-#[test]
-fn an_import_owned_by_another_queue_family_is_rejected_without_a_release_acquire_plan() {
-    let Some(env) = validated_env() else { return };
-    let backend = VulkanGraphBackend::new(env.device.clone(), AccessTable::original()).unwrap();
-    let mut session = VulkanGraphSession::new(backend);
-    let desc = BufferDesc::new_gpu_to_cpu(BUF_BYTES, vk::BufferUsageFlags::TRANSFER_DST);
-    let buffer = Arc::new(Buffer::new(env.device.clone(), &desc).unwrap());
-    // 归属于一个不是图队列族的族号（不要求该族真的存在：规则只比较归属与图所在族）。
-    let foreign = env.device.queue_family + 1;
-    let token = session
+fn execute_checked(
+    session: &mut VulkanGraphSession,
+    graph: RenderGraph,
+) -> rhapsody::rg::vulkan::SessionFrameReceipt {
+    let built = graph.build();
+    let context = session.backend.plan_context();
+    let definition = rhapsody::rg::plan::GraphDefinition::from_declaration(
+        &built.declaration,
+        &mut session.backend.accesses,
+        context,
+    )
+    .unwrap();
+    let plan = rhapsody::rg::plan::compile_definition(definition).unwrap();
+    let receipt = session.execute_frame(built).unwrap();
+    rhapsody::rg::plan_check::check_bound_synchronization(
+        &plan.range_program,
+        session.last_synchronization(),
+    )
+    .unwrap();
+    receipt
+}
+
+/// Establish ownership by a real primary-queue submission, then let the graph
+/// perform the exact release/acquire and copy on the selected auxiliary queue.
+/// A family hint on a never-used buffer cannot establish physical ownership.
+fn copy_from_actual_primary_owner(
+    env: &ValidatedEnv,
+    destination: &mut VulkanGraphSession,
+    auxiliary: rhapsody::raw::device::DeviceQueue,
+) {
+    let device = &env.device;
+    assert_ne!(auxiliary.family, device.queue_family);
+    let primary_queue = device.queue_id(device.queue).unwrap();
+    let destination_queue = device.queue_id(auxiliary.handle).unwrap();
+    let desc = BufferDesc::new_gpu_to_cpu(
+        BUF_BYTES,
+        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+    );
+    let source = Arc::new(Buffer::new(device.clone(), &desc).unwrap());
+    let output = Arc::new(Buffer::new(device.clone(), &desc).unwrap());
+    let spec = ResourceSpec::Buffer(desc).descriptor();
+    let mut primary = VulkanGraphSession::new(
+        VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
+    );
+    let token = primary
         .backend
-        .bind_import_owned_by(GpuResource::Buffer(buffer), foreign);
-    let mut graph = session.begin_frame().unwrap();
-    let handle = graph
-        .import_unowned(
-            "foreign",
-            ResourceSpec::Buffer(desc).descriptor(),
-            token,
-            HOST_READ,
-        )
+        .bind_import(GpuResource::Buffer(source.clone()))
         .unwrap();
-    let index = handle.raw();
-    let mut pass = graph.add_pass("touch");
-    pass.add_resource_access(handle, TRANSFER_WRITE, 0).unwrap();
-    pass.render_with_context(move |_: PassContext<'_>| {
-        let _ = index;
-        true
+    let mut graph = primary.begin_frame().unwrap();
+    let src = graph
+        .import_unowned("primary actual owner", spec, token, HOST_READ)
+        .unwrap();
+    let mut fill = graph.add_pass("primary fill establishes real ownership");
+    fill.add_resource_access(src, TRANSFER_WRITE, 0).unwrap();
+    let raw = device.clone();
+    fill.render_with_result_context(move |ctx| {
+        let buffer = ctx.managed.unwrap().buffer_for(src.raw())?;
+        unsafe {
+            raw.device.cmd_fill_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                buffer.raw(),
+                0,
+                BUF_BYTES,
+                0x1A2B_3C4D,
+            );
+        }
+        Ok(())
     });
-    graph.export(handle, HOST_READ).unwrap();
-    let error = session
-        .execute_frame(graph.build())
-        .expect_err("跨族归属必须拒绝");
-    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
-    assert!(!session.is_poisoned(), "校验阶段拒绝不应使会话停止");
+    graph.export(src, TRANSFER_READ).unwrap();
+    let source_receipt = execute_checked(&mut primary, graph);
+    let source_point = *source_receipt
+        .receipts
+        .iter()
+        .find(|point| point.queue == primary_queue)
+        .unwrap();
+    assert!(source_point.value > 0);
+    primary
+        .backend
+        .resource_native_state(token, |cells| {
+            assert!(
+                cells
+                    .iter()
+                    .all(|cell| cell.state.owner == RangeOwner::Owned(device.queue_family))
+            );
+            assert!(
+                cells
+                    .iter()
+                    .all(|cell| cell.state.dependencies(true).get(primary_queue)
+                        >= source_point.value)
+            );
+        })
+        .unwrap();
+
+    let input_token = destination
+        .backend
+        .bind_import(GpuResource::Buffer(source.clone()))
+        .unwrap();
+    let output_token = destination
+        .backend
+        .bind_import_owned_by(GpuResource::Buffer(output.clone()), auxiliary.family)
+        .unwrap();
+    let mut graph = destination.begin_frame().unwrap();
+    let input = graph
+        .import_unowned("real primary source", spec, input_token, TRANSFER_READ)
+        .unwrap();
+    let output_handle = graph
+        .import_unowned("auxiliary readback", spec, output_token, HOST_READ)
+        .unwrap();
+    let mut copy = graph.add_pass("automatic primary to auxiliary handoff");
+    copy.add_resource_access(input, TRANSFER_READ, 0).unwrap();
+    copy.add_resource_access(output_handle, TRANSFER_WRITE, 0)
+        .unwrap();
+    let raw = device.clone();
+    copy.render_with_result_context(move |ctx| {
+        let managed = ctx.managed.unwrap();
+        unsafe {
+            raw.device.cmd_copy_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                managed.buffer_for(input.raw())?.raw(),
+                managed.buffer_for(output_handle.raw())?.raw(),
+                &[vk::BufferCopy {
+                    src_offset: 0,
+                    dst_offset: 0,
+                    size: BUF_BYTES,
+                }],
+            );
+        }
+        Ok(())
+    });
+    graph.export(input, HOST_READ).unwrap();
+    graph.export(output_handle, HOST_READ).unwrap();
+    let receipt = execute_checked(destination, graph);
+    let point = *receipt
+        .receipts
+        .iter()
+        .filter(|point| point.queue == destination_queue)
+        .max_by_key(|point| point.value)
+        .unwrap();
+    assert!(point.value > 0);
+    let bound = destination.last_synchronization();
+    let whole = OwnershipRange::Buffer {
+        offset: 0,
+        size: BUF_BYTES,
+    };
+    let release = bound
+        .transitions()
+        .iter()
+        .find(|transition| {
+            transition.resource == input.raw()
+                && transition.range == whole
+                && matches!(transition.kind, BarrierKind::Release { .. })
+                && transition.source_family == device.queue_family
+                && transition.destination_family == auxiliary.family
+        })
+        .unwrap();
+    let BarrierKind::Release { pair } = release.kind else {
+        unreachable!()
+    };
+    assert_eq!(
+        bound.batches()[release.batch].domain.queue_index,
+        primary_queue.index() as u32
+    );
+    let acquire = bound
+        .transitions()
+        .iter()
+        .find(|transition| {
+            transition.resource == input.raw()
+                && transition.range == whole
+                && transition.kind == BarrierKind::Acquire { pair }
+                && transition.source_family == release.source_family
+                && transition.destination_family == release.destination_family
+        })
+        .unwrap();
+    assert_eq!(
+        bound.batches()[acquire.batch].domain.queue_index,
+        destination_queue.index() as u32
+    );
+    assert!(bound.waits().iter().any(|wait| wait.batch == acquire.batch
+        && wait.dependency == DependencyRef::Batch(release.batch)
+        && !wait.stages.is_empty()));
+    // Check native queue submissions too: the destination really waits on the
+    // primary release signal, rather than only drawing a symbolic pair.
+    let primary_semaphore = device.timelines.semaphore(primary_queue).unwrap();
+    let captures = &destination.backend.submissions;
+    assert!(captures.iter().any(|capture| {
+        capture.queue == device.queue
+            && capture.result == 0
+            && capture
+                .batches
+                .iter()
+                .any(|batch| !batch.commands.is_empty())
+    }));
+    // Device::submit_prepared appends its own timeline signal only inside the
+    // native call; it is intentionally absent from the caller-owned capture.
+    // The returned successful-submit receipt is its authoritative real value.
+    let release_point = *receipt
+        .receipts
+        .iter()
+        .filter(|point| point.queue == primary_queue)
+        .max_by_key(|point| point.value)
+        .expect("the actual primary ownership release must publish a receipt");
+    assert!(device.timelines.submitted(primary_queue).unwrap() >= release_point.value);
+    let release_value = release_point.value;
+    assert!(release_value > source_point.value);
+    assert!(
+        captures
+            .iter()
+            .any(|capture| capture.queue == auxiliary.handle
+                && capture.result == 0
+                && capture.batches.iter().any(|batch| batch
+                    .wait_semaphores
+                    .iter()
+                    .zip(&batch.wait_values)
+                    .any(|(semaphore, value)| *semaphore == primary_semaphore
+                        && *value >= release_value)))
+    );
+    destination.wait_submits_done(10_000_000_000).unwrap();
+    let expected = 0x1A2B_3C4Du32.to_le_bytes().repeat(BUF_BYTES as usize / 4);
+    for buffer in [&source, &output] {
+        let mut bytes = vec![0; BUF_BYTES as usize];
+        unsafe {
+            buffer.read_bytes_after_completion(0, &mut bytes).unwrap();
+        }
+        assert_eq!(bytes, expected);
+    }
+    for token in [input_token, output_token] {
+        destination
+            .backend
+            .resource_native_state(token, |cells| {
+                assert!(
+                    cells
+                        .iter()
+                        .all(|cell| cell.state.owner == RangeOwner::Owned(auxiliary.family))
+                );
+                assert!(cells.iter().all(
+                    |cell| cell.state.dependencies(true).get(destination_queue) >= point.value
+                ));
+            })
+            .unwrap();
+    }
+    primary.wait_submits_done(10_000_000_000).unwrap();
+    assert!(!destination.is_poisoned());
+}
+
+#[test]
+fn a_real_primary_owner_is_released_and_acquired_before_an_auxiliary_copy() {
+    let Some(env) = validated_env_configured(&rhapsody::device::QueueConfig {
+        require_present: false,
+        ..rhapsody::device::QueueConfig::prefer_all()
+    }) else {
+        return;
+    };
+    let Some((index, auxiliary)) = env
+        .device
+        .additional_queues
+        .iter()
+        .copied()
+        .enumerate()
+        .find(|(_, queue)| queue.family != env.device.queue_family)
+    else {
+        eprintln!("SKIP actual ownership handoff: no configured auxiliary family");
+        return;
+    };
+    let mut destination = VulkanGraphSession::new(
+        VulkanGraphBackend::new_for_queue(
+            env.device.clone(),
+            AccessTable::original(),
+            Queue::Auxiliary(index as u32),
+        )
+        .unwrap(),
+    );
+    copy_from_actual_primary_owner(&env, &mut destination, auxiliary);
+    drop(destination);
+    assert!(
+        env.messenger.collector.errors().is_empty(),
+        "{:?}",
+        env.messenger.collector.errors()
+    );
+    assert!(
+        env.messenger.collector.warnings().is_empty(),
+        "{:?}",
+        env.messenger.collector.warnings()
+    );
 }
 
 #[test]
@@ -130,7 +382,8 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
         (
             session
                 .backend
-                .bind_import_owned_by(GpuResource::Buffer(buffer.clone()), aux.family),
+                .bind_import_owned_by(GpuResource::Buffer(buffer.clone()), aux.family)
+                .unwrap(),
             buffer,
         )
     };
@@ -148,14 +401,14 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
     let (si, di) = (s.raw(), d.raw());
     {
         let raw = raw.clone();
-        let mut pass = graph.add_pass("aux_fill");
+        let mut pass = graph.add_pass("aux_fill").with_side_effect();
         pass.add_resource_access(s, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
             let Some(m) = ctx.managed else { return false };
             let Ok(b) = m.buffer_for(si) else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(b.clone()));
+
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 raw.device
@@ -165,7 +418,7 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
         });
     }
     {
-        let mut pass = graph.add_pass("aux_copy");
+        let mut pass = graph.add_pass("aux_copy").with_side_effect();
         pass.add_resource_access(s, TRANSFER_READ, 0).unwrap();
         pass.add_resource_access(d, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
@@ -173,8 +426,7 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
             let (Ok(a), Ok(b)) = (m.buffer_for(si), m.buffer_for(di)) else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(a.clone()));
-            ctx.keep_alive(Arc::new(b.clone()));
+
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 raw.device.cmd_copy_buffer(
@@ -193,7 +445,21 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
     }
     graph.export(s, HOST_READ).unwrap();
     graph.export(d, HOST_READ).unwrap();
-    session.execute_frame(graph.build()).expect("辅助队列提交");
+    let receipt = execute_checked(&mut session, graph);
+    let auxiliary_queue = device.queue_id(aux.handle).unwrap();
+    assert!(
+        receipt
+            .receipts
+            .iter()
+            .any(|point| point.queue == auxiliary_queue && point.value > 0)
+    );
+    assert!(
+        session
+            .backend
+            .submissions
+            .iter()
+            .any(|capture| capture.queue == aux.handle && capture.result == 0)
+    );
     session.wait_submits_done(10_000_000_000).unwrap();
     let want = 0xA5A5_1234u32.to_le_bytes().repeat(BUF_BYTES as usize / 4);
     for buffer in [&src, &dst] {
@@ -207,22 +473,18 @@ fn a_graph_runs_on_the_auxiliary_queue_when_the_device_has_one() {
         .unwrap();
     let value = unsafe { device.device.get_semaphore_counter_value(timeline) }.unwrap();
     assert!(value > 0, "辅助队列时间线必须推进");
-    if aux.family == device.queue_family {
-        return;
+    if aux.family != device.queue_family {
+        copy_from_actual_primary_owner(&env, &mut session, aux);
     }
-    // 不同族之间尚未提供 release/acquire 计划，必须拒绝。
-    let primary_buffer = Arc::new(Buffer::new(device.clone(), &desc).unwrap());
-    let token = session
-        .backend
-        .bind_import(GpuResource::Buffer(primary_buffer));
-    let mut graph = session.begin_frame().unwrap();
-    let h = graph.import_unowned("p", spec, token, HOST_READ).unwrap();
-    let mut pass = graph.add_pass("bad");
-    pass.add_resource_access(h, TRANSFER_WRITE, 0).unwrap();
-    pass.render_with_context(|_: PassContext<'_>| true);
-    graph.export(h, HOST_READ).unwrap();
-    assert_eq!(
-        session.execute_frame(graph.build()).unwrap_err().kind(),
-        rhapsody::ErrorKind::InvalidUsage
+    drop(session);
+    assert!(
+        env.messenger.collector.errors().is_empty(),
+        "{:?}",
+        env.messenger.collector.errors()
+    );
+    assert!(
+        env.messenger.collector.warnings().is_empty(),
+        "{:?}",
+        env.messenger.collector.warnings()
     );
 }

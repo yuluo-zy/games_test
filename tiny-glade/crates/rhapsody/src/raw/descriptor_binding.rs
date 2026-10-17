@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 // 原 sparse descriptor 键、资源 tag/数组/动态 offset 和 compute tuple 绑定闭包。
 // 来源 render/work-packages/descriptor-binding-r8；图物理资源 producer 接线独立验收。
 use crate::raw::descriptor_set::{
-    Binding, Error, LayoutPlan, PersistentPoolPlan, descriptor_set_layout, persistent_pool_plan,
+    Binding, LayoutPlan, PersistentPoolPlan, descriptor_set_layout, persistent_pool_plan,
     with_compute_pipeline_layout,
 };
 
@@ -24,7 +24,7 @@ pub fn sparse_descriptor_set_layout(
     entries: &[SparseBinding],
     stage: vk::ShaderStageFlags,
     device_limit: u32,
-) -> Result<LayoutPlan, Error> {
+) -> crate::Result<LayoutPlan> {
     let mut output = LayoutPlan {
         flags: 0,
         binding_flags: Vec::with_capacity(entries.len()),
@@ -231,9 +231,9 @@ pub struct PreparedComputePass {
     pub bind_plan: BindPlan,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum PrepareError {
-    Layout(Error),
+    Layout(crate::Error),
     Binding(WriteError),
 }
 

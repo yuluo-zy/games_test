@@ -20,7 +20,7 @@ fn typed_refs_register_access_and_preserve_original_upgrade_records() {
             },
         )
         .unwrap();
-    let mut pass = graph.add_pass("读取");
+    let mut pass = graph.add_pass("读取").with_side_effect();
     let a = pass
         .buffer_ref(buffer, 0x1a, 3)
         .unwrap()
@@ -57,7 +57,7 @@ fn typed_ref_rejects_wrong_kind_before_registration() {
             },
         )
         .unwrap();
-    let mut pass = graph.add_pass("类型检查");
+    let mut pass = graph.add_pass("类型检查").with_side_effect();
     assert!(matches!(
         pass.buffer_ref(texture, 4, 0),
         Err(PassBindingError::WrongResourceKind)

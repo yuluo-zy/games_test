@@ -58,6 +58,8 @@ impl AccessLedgerEntry {
             resource_index: self.resource_index,
             synchronization_group: self.synchronization_group,
             access_code: self.access_code,
+            reads_previous: matches!(self.access_code, 0x36 | 0x37),
+            ..Default::default()
         }
     }
 }
@@ -89,15 +91,37 @@ pub fn collect_resource_access(
     access_code: u8,
     synchronization_group: u32,
 ) -> Result<LedgerUpdate, IncompatibleAccess> {
-    let Some(previous_index) = entries
-        .iter()
-        .rposition(|entry| entry.resource_index == resource_index)
-    else {
+    collect_resource_access_range(
+        entries,
+        resource_index,
+        access_code,
+        synchronization_group,
+        super::resource::AccessRange::Whole,
+        super::resource::AccessVersion::Automatic,
+        matches!(access_code, 0x36 | 0x37),
+    )
+}
+
+pub fn collect_resource_access_range(
+    entries: &mut Vec<AccessDeclaration>,
+    resource_index: u32,
+    access_code: u8,
+    synchronization_group: u32,
+    range: super::resource::AccessRange,
+    version: super::resource::AccessVersion,
+    reads_previous: bool,
+) -> Result<LedgerUpdate, IncompatibleAccess> {
+    let Some(previous_index) = entries.iter().rposition(|entry| {
+        entry.resource_index == resource_index && entry.range == range && entry.version == version
+    }) else {
         let index = entries.len();
         entries.push(AccessDeclaration {
             resource_index,
             synchronization_group,
             access_code,
+            range,
+            version,
+            reads_previous,
         });
         return Ok(LedgerUpdate::Appended { index });
     };
@@ -134,11 +158,15 @@ pub fn collect_resource_access(
     if matches!(previous.access_code, 0x19 | 0x1a) && access_code == 0x37 {
         entries[previous_index].access_code = 0x37;
         entries[previous_index].synchronization_group = 0;
+        entries[previous_index].reads_previous = true;
         let appended = entries.len();
         entries.push(AccessDeclaration {
             resource_index,
             synchronization_group: 0,
             access_code: 0x37,
+            range,
+            version,
+            reads_previous: true,
         });
         return Ok(LedgerUpdate::UpgradedAndAppended {
             previous: previous_index,
@@ -233,7 +261,7 @@ mod tests {
         );
         let origins = [OriginKind::Tag1 { type_code: 1 }; 2];
         let mut info = ResourceInfo::default();
-        info.calculate(&origins, &[], &[entries], |_| 0);
+        info.calculate(&origins, &[], &[entries], |_| 0).unwrap();
         assert_eq!(info.accesses.len(), 3);
         assert_eq!(info.accesses[2].previous_access_index, 0);
         assert_eq!(info.accesses[0].next_access_index, 2);

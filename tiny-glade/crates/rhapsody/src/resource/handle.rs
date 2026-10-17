@@ -139,6 +139,15 @@ impl<T> ResourceStore<T> {
         self.slots.capacity()
     }
 
+    /// Fallible capacity reservation used before publishing managed resources.
+    /// Insertion after a successful reservation does not grow the slot table.
+    pub fn try_reserve(
+        &mut self,
+        additional: usize,
+    ) -> Result<(), std::collections::TryReserveError> {
+        self.slots.try_reserve(additional)
+    }
+
     /// 存入资源，返回指向它的句柄。
     pub fn insert(&mut self, value: T) -> Handle<T> {
         Handle {

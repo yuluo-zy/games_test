@@ -1,11 +1,14 @@
-//! 交换链修复回归（lavapipe + `VK_EXT_headless_surface`）：零尺寸跳帧、acquire 超时与锁、格式回退用途校验。
+//! 交换链修复回归（VK_EXT_headless_surface）：零尺寸跳帧、合法首个零超时 acquire 与队列锁隔离。
+//! 不通过超额获取来制造耗尽：规范要求当前已获取数超过 S-minImageCount 后不应继续 acquire。
+//! MoltenVK 不能由本测试认证“图像耗尽后的实际 timeout”路径，该部分仍未验证。
+mod gpu_test_support;
 use ash::vk;
 use rhapsody::raw::{
-    device::VulkanDevice,
+    device::Device,
     init::{DeviceSelectionPolicy, GraphicsInstance},
-    instance::InstanceBuilder,
+    instance::{GraphicsInstanceLoader, InstanceBuilder},
     physical_device::enumerate_physical_devices,
-    swapchain::{Surface, Swapchain},
+    swapchain::{Surface, Swapchain, SwapchainPolicy},
 };
 use std::{
     ffi::CString,
@@ -19,7 +22,17 @@ const EXTENT: vk::Extent2D = vk::Extent2D {
 };
 
 /// 不支持 headless surface 的环境返回 None（测试跳过）。
-fn headless() -> Option<(Arc<VulkanDevice>, Arc<Surface>)> {
+fn headless() -> Option<(Arc<Device>, Arc<Surface>)> {
+    let loader =
+        gpu_test_support::initialize("headless surface loader", GraphicsInstanceLoader::new())?;
+    if !loader
+        .extensions
+        .iter()
+        .any(|extension| extension == "VK_EXT_headless_surface")
+    {
+        eprintln!("UNSUPPORTED headless presentation: VK_EXT_headless_surface is unavailable");
+        return None;
+    }
     let builder = InstanceBuilder {
         extensions: vec![
             CString::new("VK_KHR_surface").unwrap(),
@@ -27,39 +40,47 @@ fn headless() -> Option<(Arc<VulkanDevice>, Arc<Surface>)> {
         ],
         ..Default::default()
     };
-    let instance = builder.build().ok()?;
-    let devices = enumerate_physical_devices(instance.clone())
-        .ok()?
-        .into_iter()
-        .map(Arc::new)
-        .collect();
+    let instance = gpu_test_support::initialize(
+        "headless surface instance",
+        builder.build_with_loader(loader),
+    )?;
+    let devices = gpu_test_support::initialize(
+        "headless surface GPU enumeration",
+        enumerate_physical_devices(instance.clone()),
+    )?
+    .into_iter()
+    .map(Arc::new)
+    .collect();
     let graphics = GraphicsInstance {
         instance: instance.clone(),
         devices,
     };
     let loader = ash::ext::headless_surface::Instance::new(&instance.entry, &instance.instance);
-    let handle = unsafe {
+    let handle = gpu_test_support::initialize("headless surface creation", unsafe {
         loader.create_headless_surface(&vk::HeadlessSurfaceCreateInfoEXT::default(), None)
-    }
-    .ok()?;
+    })?;
     let surface = Arc::new(unsafe { Surface::from_raw(instance.clone(), handle, true) });
-    let device = graphics
-        .available_for_surface(Some(handle), DeviceSelectionPolicy::default())
-        .ok()?
-        .create_device(&graphics)
-        .ok()?;
+    let selected = gpu_test_support::initialize(
+        "headless present device selection",
+        graphics.available_for_surface(Some(handle), DeviceSelectionPolicy::default()),
+    )?;
+    let device = gpu_test_support::initialize(
+        "headless present logical device",
+        selected.create_device(&graphics),
+    )?;
     Some((device, surface))
 }
 
-fn chain(device: &Arc<VulkanDevice>, surface: &Arc<Surface>) -> Arc<Swapchain> {
+fn chain(device: &Arc<Device>, surface: &Arc<Surface>) -> Arc<Swapchain> {
     Arc::new(
         unsafe {
-            Swapchain::new(
+            Swapchain::new_with_policy(
                 device.clone(),
                 surface.clone(),
                 EXTENT,
                 true,
                 vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                SwapchainPolicy::AcquireOnly,
             )
         }
         .expect("swapchain"),
@@ -70,6 +91,7 @@ fn chain(device: &Arc<VulkanDevice>, surface: &Arc<Surface>) -> Arc<Swapchain> {
 #[test]
 fn zero_extent_skips_frames_instead_of_erroring() {
     let Some((device, surface)) = headless() else {
+        eprintln!("SKIP: Vulkan headless presentation environment unavailable");
         return;
     };
     let mut chain = chain(&device, &surface);
@@ -90,37 +112,17 @@ fn zero_extent_skips_frames_instead_of_erroring() {
     device.wait_idle().unwrap();
 }
 
-/// `acquire_next_image` 的 timeout 参数必须生效；且阻塞的 acquire 不能持有全局 `queue_lock`。
+/// A legal first acquire with timeout zero must return without taking the
+/// graphics queue lock. This tests rhapsody's forwarding/locking contract,
+/// without assuming that every WSI implementation can emulate exhaustion.
 #[test]
-fn acquire_next_image_honors_timeout_and_does_not_take_queue_lock() {
+fn first_zero_timeout_acquire_does_not_take_the_graphics_queue_lock() {
     let Some((device, surface)) = headless() else {
+        eprintln!("SKIP: Vulkan headless presentation environment unavailable");
         return;
     };
     let chain = chain(&device, &surface);
     let fence_info = vk::FenceCreateInfo::default();
-    let mut fences = Vec::new();
-    let mut leases = Vec::new();
-    // 不呈现地取尽可取的图像；之后再取只能等待（有限超时合法）。
-    let started = Instant::now();
-    let exhausted = loop {
-        let fence = unsafe { device.device.create_fence(&fence_info, None) }.unwrap();
-        match chain.acquire_next_image(0, vk::Semaphore::null(), fence) {
-            Ok(lease) => {
-                fences.push(fence);
-                leases.push(lease);
-            }
-            Err(error) => {
-                unsafe { device.device.destroy_fence(fence, None) };
-                break error;
-            }
-        }
-        assert!(leases.len() <= chain.images.len());
-    };
-    assert!(
-        started.elapsed() < Duration::from_millis(1500),
-        "timeout = 0 却阻塞了 {:?}（{exhausted:?}）",
-        started.elapsed()
-    );
     // 持有 queue_lock 时，另一线程的 acquire（timeout = 0）应立即返回而不是等锁。
     let (sender, receiver) = mpsc::channel();
     let worker_chain = chain.clone();
@@ -130,44 +132,65 @@ fn acquire_next_image_honors_timeout_and_does_not_take_queue_lock() {
         .timelines
         .with_queue(device.queue_id(device.queue).unwrap(), || {
             let worker = std::thread::spawn(move || {
-                let fence =
-                    unsafe { worker_device.device.create_fence(&fence_info, None) }.unwrap();
-                let result = worker_chain.acquire_next_image(0, vk::Semaphore::null(), fence);
+                let fence = match unsafe { worker_device.device.create_fence(&fence_info, None) } {
+                    Ok(fence) => fence,
+                    Err(error) => return Err(rhapsody::Error::from(error)),
+                };
+                let started = Instant::now();
+                let result =
+                    unsafe { worker_chain.acquire_next_image(0, vk::Semaphore::null(), fence) };
+                let elapsed = started.elapsed();
                 let _ = sender.send(());
-                let lease = result.ok();
-                if lease.is_none() {
-                    unsafe { worker_device.device.destroy_fence(fence, None) };
-                }
-                lease.map(|lease| (fence, lease))
+                Ok((fence, result, elapsed))
             });
             let returned = receiver.recv_timeout(Duration::from_secs(2)).is_ok();
             Ok((worker, returned))
         })
         .unwrap();
-    if let Some((fence, lease)) = worker.join().unwrap() {
-        fences.push(fence);
-        leases.push(lease);
-    }
-    assert!(returned, "acquire 在等待 queue_lock");
-    // 只剩成功 acquire 的 fence（失败的从未挂起，已销毁）；等其 signal 后再销毁。
-    if !fences.is_empty() {
-        unsafe { device.device.wait_for_fences(&fences, true, 1_000_000_000) }.unwrap();
-    }
-    drop(leases);
-    device.wait_idle().unwrap();
-    for fence in fences {
-        unsafe { device.device.destroy_fence(fence, None) };
+    let (mut fence_wait, mut acquisition_error, mut duration) = (Ok(()), None, None);
+    let worker_error = match worker.join() {
+        Ok(Ok((fence, result, elapsed))) => {
+            duration = Some(elapsed);
+            if result.is_ok() {
+                // Successful acquire can return before its fence signals.
+                // A first acquisition is within the forward-progress bound.
+                fence_wait = unsafe { device.device.wait_for_fences(&[fence], true, u64::MAX) };
+            }
+            acquisition_error = result.err(); // return a successful lease before teardown
+            unsafe { device.device.destroy_fence(fence, None) };
+            None
+        }
+        Ok(Err(error)) => Some(format!("fence creation failed: {error}")),
+        Err(_) => Some("acquire worker panicked".into()),
+    };
+    let idle = device.wait_idle();
+    // All successful acquisition signals and test-owned fences are retired
+    // before any assertion, including when the queue-lock regression fails.
+    assert!(worker_error.is_none(), "{worker_error:?}");
+    fence_wait.expect("successful acquire fence");
+    idle.unwrap();
+    assert!(returned, "acquire 在等待 graphics queue lock");
+    assert!(
+        duration.unwrap() < Duration::from_millis(1500),
+        "zero-timeout acquire blocked: {duration:?}"
+    );
+    if let Some(error) = acquisition_error {
+        assert!(
+            matches!(error, rhapsody::Error::Vulkan(vk::Result::NOT_READY)),
+            "unexpected acquire error: {error}"
+        );
     }
 }
 
-/// 托管包装的 acquire 不能同时给空信号量与空栅栏（VUID-vkAcquireNextImageKHR-semaphore-01780）。
+/// The canonical acquisition entry rejects absent completion synchronization.
 #[test]
-fn managed_acquire_rejects_null_semaphore_and_fence() {
+fn canonical_acquire_rejects_null_semaphore_and_fence() {
     let Some((device, surface)) = headless() else {
+        eprintln!("SKIP: Vulkan headless presentation environment unavailable");
         return;
     };
-    let inner = rhapsody::raw::managed::swapchain::SwapchainInner::new(chain(&device, &surface));
-    let result = inner.acquire_next_image(0, vk::Semaphore::null(), vk::Fence::null());
+    let inner = chain(&device, &surface);
+    let result = unsafe { inner.acquire_next_image(0, vk::Semaphore::null(), vk::Fence::null()) };
     assert!(matches!(
         result,
         Err(rhapsody::raw::error::Error::InvalidUsage { .. })

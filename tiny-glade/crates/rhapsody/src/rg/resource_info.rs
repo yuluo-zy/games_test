@@ -83,35 +83,40 @@ pub enum OriginKind {
 }
 
 impl OriginKind {
-    fn type_code(self) -> u8 {
-        match self {
+    fn type_code(self) -> crate::Result<u8> {
+        Ok(match self {
             Self::Tag0 {
                 descriptor_code: 7, ..
             } => 1,
             Self::Tag0 {
                 descriptor_code: 8, ..
-            } => panic!("unsupported descriptor type"),
+            } => return Err(crate::Error::invalid_usage("unsupported descriptor type")),
             Self::Tag0 { .. } => 0,
             Self::Tag1 { type_code } | Self::Tag2 { type_code } => type_code,
-        }
+        })
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AccessDeclaration {
     pub resource_index: u32,
     pub synchronization_group: u32,
     pub access_code: u8,
+    pub range: super::resource::AccessRange,
+    pub version: super::resource::AccessVersion,
+    /// LOAD and in-place updates consume the contents of the previous version.
+    pub reads_previous: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExportDeclaration {
     pub tag: u8,
     pub resource_index: u32,
     pub access_code: u8,
+    pub range: super::resource::AccessRange,
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct ResourceInfo {
     pub accesses: Vec<ResourceAccessRecord>,
     pub pass_access_ranges: Vec<(ResourceAccessIndex, ResourceAccessIndex)>,
@@ -139,7 +144,61 @@ impl ResourceInfo {
         exports: &[ExportDeclaration],
         passes: &[&[AccessDeclaration]],
         mut dependency_access_mask: impl FnMut(u8) -> u32,
-    ) {
+    ) -> crate::Result<()> {
+        // Validate every caller-controlled index and usage before mutating the
+        // current metadata. The same checks protect the public CPU entry point.
+        if origins.len() > usize::from(u16::MAX) || passes.len() > super::graph::MAX_PASSES {
+            return Err(crate::Error::invalid_usage(
+                "resource/pass count exceeds graph limits",
+            ));
+        }
+        let mut access_count = 0usize;
+        let mut masks = [None; crate::raw::access_table::ACCESS_CODE_COUNT];
+        for origin in origins {
+            origin.type_code()?;
+        }
+        for pass in passes {
+            access_count = access_count
+                .checked_add(pass.len())
+                .filter(|count| *count < NO_ACCESS as usize)
+                .ok_or_else(|| {
+                    crate::Error::invalid_usage("resource access count exceeds graph limits")
+                })?;
+            for access in *pass {
+                let origin = origins.get(access.resource_index as usize).ok_or_else(|| {
+                    crate::Error::invalid_usage("resource access index is out of bounds")
+                })?;
+                let mask = masks
+                    .get_mut(usize::from(access.access_code))
+                    .ok_or_else(|| {
+                        crate::Error::invalid_usage("resource access code is out of bounds")
+                    })?;
+                let mask = *mask.get_or_insert_with(|| dependency_access_mask(access.access_code));
+                if origin.type_code()? == 0 {
+                    image_access_mask_to_usage_flags(mask)?;
+                }
+            }
+        }
+        for export in exports {
+            let origin = origins.get(export.resource_index as usize).ok_or_else(|| {
+                crate::Error::invalid_usage("export resource index is out of bounds")
+            })?;
+            if export.tag != origin.type_code()? {
+                return Err(crate::Error::invalid_usage(
+                    "export resource kind differs from its declaration",
+                ));
+            }
+            let mask = masks
+                .get_mut(usize::from(export.access_code))
+                .ok_or_else(|| {
+                    crate::Error::invalid_usage("export access code is out of bounds")
+                })?;
+            let mask = *mask.get_or_insert_with(|| dependency_access_mask(export.access_code));
+            if export.tag == 0 {
+                image_access_mask_to_usage_flags(mask)?;
+            }
+        }
+        let mut dependency_access_mask = |code: u8| masks[usize::from(code)].unwrap_or(0);
         self.clear();
         self.lifetimes.reserve(origins.len());
         for origin in origins {
@@ -164,17 +223,18 @@ impl ResourceInfo {
         self.image_usage_flags.resize(origins.len(), 0);
         self.buffer_usage_flags.resize(origins.len(), 0);
         self.extract_creation_flags(origins);
-        self.extend_usage_flags_for_exports(exports, &mut dependency_access_mask);
+        self.extend_usage_flags_for_exports(exports, &mut dependency_access_mask)?;
         for (pass_index, pass) in passes.iter().enumerate() {
             self.extract_pass_resource_access(
                 PassIndex::from(pass_index),
                 pass,
                 origins,
                 &mut dependency_access_mask,
-            );
+            )?;
         }
         link_up_next_access_chains(&mut self.accesses);
         calculate_lifetime_events(&self.lifetimes, &mut self.lifetime_events);
+        Ok(())
     }
 
     /// 原入口前段：把 create 来源（Tag0）声明的创建期 usage 位写入对应资源表。
@@ -202,7 +262,7 @@ impl ResourceInfo {
         &mut self,
         exports: &[ExportDeclaration],
         dependency_access_mask: &mut impl FnMut(u8) -> u32,
-    ) {
+    ) -> crate::Result<()> {
         for export in exports {
             let access_mask = dependency_access_mask(export.access_code);
             let resource_index =
@@ -211,13 +271,14 @@ impl ResourceInfo {
             if access_mask != 0 {
                 if export.tag & 1 == 0 {
                     let usage = &mut self.image_usage_flags[usize::from(resource_index)];
-                    *usage |= image_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
                 } else {
                     let usage = &mut self.buffer_usage_flags[usize::from(resource_index)];
                     *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
                 }
             }
         }
+        Ok(())
     }
 
     /// 原入口后段：按单个 pass 的访问声明产出 access 记录、串联资源生命周期的
@@ -228,7 +289,7 @@ impl ResourceInfo {
         pass: &[AccessDeclaration],
         origins: &[OriginKind],
         dependency_access_mask: &mut impl FnMut(u8) -> u32,
-    ) {
+    ) -> crate::Result<()> {
         let start = self.accesses.len();
         for declaration in pass {
             let resource_index = declaration.resource_index as usize;
@@ -262,7 +323,7 @@ impl ResourceInfo {
             }
             lifetime.last_access_index = access_index;
             let access_mask = dependency_access_mask(declaration.access_code);
-            match origins[resource_index].type_code() {
+            match origins[resource_index].type_code()? {
                 1 => {
                     let usage = &mut self.buffer_usage_flags[resource_index];
                     *usage |= buffer_access_mask_to_usage_flags(access_mask).as_raw();
@@ -270,7 +331,7 @@ impl ResourceInfo {
                 2 => {}
                 _ => {
                     let usage = &mut self.image_usage_flags[resource_index];
-                    *usage |= image_access_mask_to_usage_flags(access_mask).as_raw();
+                    *usage |= image_access_mask_to_usage_flags(access_mask)?.as_raw();
                 }
             }
         }
@@ -278,5 +339,6 @@ impl ResourceInfo {
             ResourceAccessIndex::from(start),
             ResourceAccessIndex::from(self.accesses.len()),
         ));
+        Ok(())
     }
 }

@@ -58,6 +58,19 @@ pub enum Feature {
     StorageBufferUpdateAfterBind = 18,
     /// `shaderSampledImageArrayNonUniformIndexing`。
     ShaderSampledImageArrayNonUniformIndexing = 19,
+    SwapchainMaintenance1 = 20,
+    /// `descriptorBindingStorageImageUpdateAfterBind`.
+    StorageImageUpdateAfterBind = 21,
+    ShaderStorageImageArrayNonUniformIndexing = 22,
+    ShaderStorageBufferArrayNonUniformIndexing = 23,
+    /// Core `shaderStorageBufferArrayDynamicIndexing`.
+    ShaderStorageBufferArrayDynamicIndexing = 24,
+    /// Core `shaderSampledImageArrayDynamicIndexing`.
+    ShaderSampledImageArrayDynamicIndexing = 25,
+    /// Core `shaderStorageImageArrayDynamicIndexing`.
+    ShaderStorageImageArrayDynamicIndexing = 26,
+    /// Core `imageCubeArray` for cube-array views.
+    ImageCubeArray = 27,
 }
 
 impl Feature {
@@ -67,7 +80,7 @@ impl Feature {
     }
 
     /// 全部已建模能力。位下标必须与 `repr(u8)` 判别值一一对应。
-    pub const ALL: [Feature; 20] = [
+    pub const ALL: [Feature; 28] = [
         Self::TimelineSemaphore,
         Self::Synchronization2,
         Self::DynamicRendering,
@@ -88,6 +101,14 @@ impl Feature {
         Self::SampledImageUpdateAfterBind,
         Self::StorageBufferUpdateAfterBind,
         Self::ShaderSampledImageArrayNonUniformIndexing,
+        Self::SwapchainMaintenance1,
+        Self::StorageImageUpdateAfterBind,
+        Self::ShaderStorageImageArrayNonUniformIndexing,
+        Self::ShaderStorageBufferArrayNonUniformIndexing,
+        Self::ShaderStorageBufferArrayDynamicIndexing,
+        Self::ShaderSampledImageArrayDynamicIndexing,
+        Self::ShaderStorageImageArrayDynamicIndexing,
+        Self::ImageCubeArray,
     ];
 }
 

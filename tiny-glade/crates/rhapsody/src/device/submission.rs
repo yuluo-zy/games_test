@@ -1,10 +1,221 @@
 //! 所有生产队列调用的共同入口：每队列锁、成功提交后确认时间线。
-use crate::raw::{device::VulkanDevice, submit::PreparedSubmit};
+use crate::raw::{
+    device::Device,
+    submit::{PreparedSubmit, SubmitScratch},
+};
 use crate::sync::{QueueId, SyncPoint};
 use crate::{Error, Result};
 use ash::vk;
 
-impl VulkanDevice {
+#[derive(Clone, Copy, Debug)]
+pub enum Wait {
+    Binary {
+        semaphore: vk::Semaphore,
+        stage: vk::PipelineStageFlags,
+    },
+    Timeline {
+        point: SyncPoint,
+        stage: vk::PipelineStageFlags,
+    },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Signal {
+    Binary(vk::Semaphore),
+}
+
+pub struct SubmitBatch<'a> {
+    pub waits: &'a [Wait],
+    pub commands: &'a [vk::CommandBuffer],
+    pub signals: &'a [Signal],
+}
+
+impl Device {
+    pub fn queue(&self, class: crate::device::QueueClass) -> Result<QueueId> {
+        Ok(self.queue_plan.queue(class))
+    }
+
+    pub fn poll(&self) -> Result<crate::sync::CompletedValues> {
+        let completed = self.timelines.poll()?;
+        self.allocator_stats.observe_completed(&completed);
+        #[cfg(feature = "suballocation")]
+        if self.allocator_stats.budget_action() == crate::device::BudgetAction::EvictCache
+            && let Some(suballocator) = &self.suballocator
+        {
+            suballocator.trim_unused();
+        }
+        Ok(completed)
+    }
+
+    pub fn memory_budget_usage(&self) -> Result<crate::device::BudgetUsage> {
+        let _ = self.poll()?;
+        Ok(self.allocator_stats.budget_usage())
+    }
+
+    pub fn wait(&self, set: &crate::sync::SyncSet, timeout_ns: u64) -> Result<()> {
+        self.timelines.wait(set, timeout_ns)
+    }
+
+    pub fn is_device_lost(&self) -> bool {
+        self.timelines.is_device_lost()
+    }
+
+    pub(crate) fn add_timeline_waits(
+        &self,
+        queue: vk::Queue,
+        prepared: &mut [PreparedSubmit],
+        dependencies: &crate::sync::SyncSet,
+    ) -> Result<()> {
+        let queue_id = self.queue_id(queue)?;
+        let Some(first) = prepared.first_mut() else {
+            return if dependencies.is_empty() {
+                Ok(())
+            } else {
+                Err(Error::invalid_usage(
+                    "timeline dependencies require a submission batch",
+                ))
+            };
+        };
+        for point in dependencies
+            .points()
+            .filter(|point| point.queue != queue_id)
+        {
+            let semaphore = self.timelines.semaphore(point.queue)?;
+            if let Some(index) = first
+                .wait_semaphores
+                .iter()
+                .position(|&wait| wait == semaphore)
+            {
+                let value = first
+                    .wait_values
+                    .get_mut(index)
+                    .ok_or_else(|| Error::invalid_usage("invalid wait value array"))?;
+                *value = (*value).max(point.value);
+                let stage = first
+                    .wait_stages
+                    .get_mut(index)
+                    .ok_or_else(|| Error::invalid_usage("invalid wait stage array"))?;
+                *stage |= vk::PipelineStageFlags::ALL_COMMANDS;
+            } else {
+                first
+                    .wait_semaphores
+                    .try_reserve(1)
+                    .map_err(|_| Error::OutOfHostMemory)?;
+                first
+                    .wait_values
+                    .try_reserve(1)
+                    .map_err(|_| Error::OutOfHostMemory)?;
+                first
+                    .wait_stages
+                    .try_reserve(1)
+                    .map_err(|_| Error::OutOfHostMemory)?;
+                first.wait_semaphores.push(semaphore);
+                first.wait_values.push(point.value);
+                first.wait_stages.push(vk::PipelineStageFlags::ALL_COMMANDS);
+            }
+        }
+        Ok(())
+    }
+
+    /// 提交前检查设备时间线等待值；成功后返回同一设备完成域中的真实完成点。
+    ///
+    /// # Safety
+    /// 命令必须已录制结束且来自此队列族；二值信号量必须属于此设备并满足 Vulkan
+    /// 的信号/等待状态约束。命令、信号量及引用资源须保留至返回的完成点达成。
+    pub unsafe fn submit(&self, queue: QueueId, batches: &[SubmitBatch<'_>]) -> Result<SyncPoint> {
+        if self.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
+        let raw = if queue.index() == 0 {
+            self.queue
+        } else {
+            self.additional_queues
+                .get(queue.index() - 1)
+                .ok_or_else(|| Error::invalid_usage("提交队列不属于设备"))?
+                .handle
+        };
+        let nested_bytes = batches.iter().try_fold(0usize, |sum, batch| {
+            sum.checked_add(PreparedSubmit::heap_bytes_for_counts(
+                batch.waits.len(),
+                batch.signals.len(),
+                batch.commands.len(),
+            )?)
+            .ok_or_else(|| Error::invalid_usage("submission adapter storage overflows"))
+        })?;
+        // Both outer and nested storage are admitted before input collection.
+        // This ticket precedes `prepared`, so actual arrays are freed first on
+        // success and every validation/allocation/driver error.
+        let mut nested_memory = if nested_bytes == 0 {
+            None
+        } else {
+            Some(
+                self.allocator_stats
+                    .reserve_cpu_bytes(nested_bytes as u64, crate::device::BudgetCategory::Live)?,
+            )
+        };
+        let prepared = SubmitScratch::<[PreparedSubmit; 1]>::try_collect(
+            batches.len(),
+            &self.allocator_stats,
+            batches.iter().map(|batch| {
+                fn reserve<T>(
+                    values: &mut crate::raw::submit::SubmitArray<T>,
+                    count: usize,
+                ) -> Result<()> {
+                    values
+                        .try_reserve_exact(count)
+                        .map_err(|_| Error::OutOfHostMemory)
+                }
+                let mut output = PreparedSubmit::default();
+                reserve(&mut output.commands, batch.commands.len())?;
+                reserve(&mut output.wait_semaphores, batch.waits.len())?;
+                reserve(&mut output.wait_values, batch.waits.len())?;
+                reserve(&mut output.wait_stages, batch.waits.len())?;
+                reserve(&mut output.signal_semaphores, batch.signals.len())?;
+                reserve(&mut output.signal_values, batch.signals.len())?;
+                output.commands.extend_from_slice(batch.commands);
+                for wait in batch.waits {
+                    let (semaphore, value, stage) = match *wait {
+                        Wait::Binary { semaphore, stage } => (semaphore, 0, stage),
+                        Wait::Timeline { point, stage } => {
+                            if point.value > self.timelines.submitted(point.queue)? {
+                                return Err(Error::invalid_usage("等待的时间线值尚未提交"));
+                            }
+                            (self.timelines.semaphore(point.queue)?, point.value, stage)
+                        }
+                    };
+                    if semaphore == vk::Semaphore::null()
+                        || stage.is_empty()
+                        || output.wait_semaphores.contains(&semaphore)
+                    {
+                        return Err(Error::invalid_usage(
+                            "提交等待信号量为空、重复或等待阶段为空",
+                        ));
+                    }
+                    output.wait_semaphores.push(semaphore);
+                    output.wait_values.push(value);
+                    output.wait_stages.push(stage);
+                }
+                for &Signal::Binary(semaphore) in batch.signals {
+                    if semaphore == vk::Semaphore::null()
+                        || output.signal_semaphores.contains(&semaphore)
+                    {
+                        return Err(Error::invalid_usage("提交信号量为空或重复"));
+                    }
+                    output.signal_semaphores.push(semaphore);
+                    output.signal_values.push(0);
+                }
+                Ok(output)
+            }),
+        )?;
+        if let Some(memory) = &mut nested_memory {
+            let observed = prepared.iter().try_fold(0usize, |sum, batch| {
+                sum.checked_add(batch.heap_capacity_bytes())
+                    .ok_or_else(|| Error::invalid_usage("submission adapter capacity overflows"))
+            })?;
+            memory.resize(observed as u64)?;
+        }
+        self.submit_prepared(raw, &prepared, vk::Fence::null())
+    }
     pub fn queue_id(&self, queue: vk::Queue) -> Result<QueueId> {
         let index = if queue == self.queue {
             0
@@ -24,65 +235,240 @@ impl VulkanDevice {
         batches: &[PreparedSubmit],
         fence: vk::Fence,
     ) -> Result<SyncPoint> {
+        if self.is_device_lost() {
+            return Err(Error::DeviceLost);
+        }
         let id = self.queue_id(queue)?;
         for batch in batches {
-            for semaphore in &batch.signal_semaphores {
-                for index in 0..self.timelines.queue_count() {
-                    let own = self
-                        .timelines
-                        .semaphore(QueueId::new(index).expect("已验证的队列数"))?;
-                    if *semaphore == own {
-                        return Err(Error::invalid_usage(
-                            "设备时间线只允许由统一提交入口 signal",
-                        ));
-                    }
-                }
-            }
-            if batch.wait_semaphores.len() != batch.wait_values.len()
-                || batch.wait_semaphores.len() != batch.wait_stages.len()
-                || batch.signal_semaphores.len() != batch.signal_values.len()
-                || batch.wait_stages.iter().any(|stage| stage.is_empty())
-            {
-                return Err(Error::invalid_usage("提交的信号量/值/阶段数量不匹配"));
-            }
+            batch.validate(&self.timelines)?;
         }
+        if self
+            .caps()
+            .is_enabled(crate::device::Feature::Synchronization2)
+        {
+            return self.submit_prepared2(queue, id, batches, fence);
+        }
+        let count = batches.len().max(1);
+        let signal_count = batches.iter().try_fold(1usize, |sum, batch| {
+            sum.checked_add(batch.signal_semaphores.len())
+                .ok_or_else(|| Error::invalid_usage("submission signal count overflows"))
+        })?;
+        let mut signals = SubmitScratch::<[vk::Semaphore; 8]>::try_collect(
+            signal_count,
+            &self.allocator_stats,
+            batches
+                .iter()
+                .flat_map(|batch| batch.signal_semaphores.iter().copied())
+                .chain(std::iter::once(vk::Semaphore::null()))
+                .map(Ok),
+        )?;
+        let mut values = SubmitScratch::<[u64; 8]>::try_collect(
+            signal_count,
+            &self.allocator_stats,
+            batches
+                .iter()
+                .flat_map(|batch| batch.signal_values.iter().copied())
+                .chain(std::iter::once(0))
+                .map(Ok),
+        )?;
+        let signals_ptr = signals.as_mut_ptr();
+        let values_ptr = values.as_mut_ptr();
+        let mut signal_start = 0usize;
+        // Views contain only raw Vulkan pointers into the stable scratch arrays.
+        // No array grows or moves after these views are built. The queue call is
+        // the only consumer and all backing owners outlive it.
+        let timelines =
+            SubmitScratch::<[vk::TimelineSemaphoreSubmitInfo<'static>; 1]>::try_collect(
+                count,
+                &self.allocator_stats,
+                (0..count).map(|index| {
+                    let batch = batches.get(index);
+                    let signal_len = batch.map_or(0, |batch| batch.signal_values.len())
+                        + usize::from(index + 1 == count);
+                    let view = vk::TimelineSemaphoreSubmitInfo {
+                        wait_semaphore_value_count: native_count(
+                            batch.map_or(0, |batch| batch.wait_values.len()),
+                        )?,
+                        p_wait_semaphore_values: batch
+                            .map_or(std::ptr::null(), |batch| batch.wait_values.as_ptr()),
+                        signal_semaphore_value_count: native_count(signal_len)?,
+                        p_signal_semaphore_values: values_ptr.wrapping_add(signal_start),
+                        ..Default::default()
+                    };
+                    signal_start += signal_len;
+                    Ok(view)
+                }),
+            )?;
+        signal_start = 0;
+        let infos = SubmitScratch::<[vk::SubmitInfo<'static>; 1]>::try_collect(
+            count,
+            &self.allocator_stats,
+            (0..count).map(|index| {
+                let batch = batches.get(index);
+                let signal_len = batch.map_or(0, |batch| batch.signal_semaphores.len())
+                    + usize::from(index + 1 == count);
+                let view = vk::SubmitInfo {
+                    p_next: std::ptr::from_ref(&timelines[index]).cast(),
+                    wait_semaphore_count: native_count(
+                        batch.map_or(0, |batch| batch.wait_semaphores.len()),
+                    )?,
+                    p_wait_semaphores: batch
+                        .map_or(std::ptr::null(), |batch| batch.wait_semaphores.as_ptr()),
+                    p_wait_dst_stage_mask: batch
+                        .map_or(std::ptr::null(), |batch| batch.wait_stages.as_ptr()),
+                    command_buffer_count: native_count(
+                        batch.map_or(0, |batch| batch.commands.len()),
+                    )?,
+                    p_command_buffers: batch
+                        .map_or(std::ptr::null(), |batch| batch.commands.as_ptr()),
+                    signal_semaphore_count: native_count(signal_len)?,
+                    p_signal_semaphores: signals_ptr.wrapping_add(signal_start),
+                    ..Default::default()
+                };
+                signal_start += signal_len;
+                Ok(view)
+            }),
+        )?;
+        native_count(infos.len())?;
         let (point, ()) = self.timelines.submit(id, |signal| {
-            let mut batches = batches.to_vec();
-            if batches.is_empty() {
-                batches.push(PreparedSubmit::default());
+            // SAFETY: validated batches, fixed-capacity arrays and their Vulkan
+            // views above remain alive and unmoved throughout this queue call.
+            // Write through the same raw exclusive pointers used by the views;
+            // no competing Rust reference or driver read exists at this point.
+            unsafe {
+                signals_ptr.add(signal_count - 1).write(signal.semaphore);
+                values_ptr.add(signal_count - 1).write(signal.value);
+                self.device.queue_submit(queue, &infos, fence)
             }
-            // 同一次提交的最后一个批次附带时间线，不额外插入空 SubmitInfo。
-            let last = batches.last_mut().expect("空输入已补入同步批次");
-            last.signal_semaphores.push(signal.semaphore);
-            last.signal_values.push(signal.value);
-            let mut timelines = batches
-                .iter()
-                .map(|b| {
-                    vk::TimelineSemaphoreSubmitInfo::default()
-                        .wait_semaphore_values(&b.wait_values)
-                        .signal_semaphore_values(&b.signal_values)
-                })
-                .collect::<Vec<_>>();
-            let infos = batches
-                .iter()
-                .zip(&mut timelines)
-                .map(|(b, t)| {
-                    vk::SubmitInfo::default()
-                        .wait_semaphores(&b.wait_semaphores)
-                        .wait_dst_stage_mask(&b.wait_stages)
-                        .signal_semaphores(&b.signal_semaphores)
-                        .command_buffers(&b.commands)
-                        .push_next(t)
-                })
-                .collect::<Vec<_>>();
-            unsafe { self.device.queue_submit(queue, &infos, fence) }.map_err(Into::into)
+            .map_err(Into::into)
         })?;
         Ok(point)
     }
 
-    pub(crate) fn queue_wait_idle(&self, queue: vk::Queue) -> Result<()> {
-        self.timelines.with_queue(self.queue_id(queue)?, || {
-            unsafe { self.device.queue_wait_idle(queue) }.map_err(Into::into)
-        })
+    fn submit_prepared2(
+        &self,
+        queue: vk::Queue,
+        id: QueueId,
+        batches: &[PreparedSubmit],
+        fence: vk::Fence,
+    ) -> Result<SyncPoint> {
+        // All owned arrays and views are prepared before acquiring the queue
+        // lock. Flat arrays avoid an allocation for every batch's small lists.
+        let count = batches.len().max(1);
+        let counts = batches.iter().try_fold(
+            (0usize, 0usize, 1usize),
+            |(commands, waits, signals), batch| {
+                Ok::<_, Error>((
+                    commands.checked_add(batch.commands.len()).ok_or_else(|| {
+                        Error::invalid_usage("submission command count overflows")
+                    })?,
+                    waits
+                        .checked_add(batch.wait_semaphores.len())
+                        .ok_or_else(|| Error::invalid_usage("submission wait count overflows"))?,
+                    signals
+                        .checked_add(batch.signal_semaphores.len())
+                        .ok_or_else(|| Error::invalid_usage("submission signal count overflows"))?,
+                ))
+            },
+        )?;
+        let commands = SubmitScratch::<[vk::CommandBufferSubmitInfo<'static>; 8]>::try_collect(
+            counts.0,
+            &self.allocator_stats,
+            batches
+                .iter()
+                .flat_map(|batch| &batch.commands)
+                .map(|&command| Ok(vk::CommandBufferSubmitInfo::default().command_buffer(command))),
+        )?;
+        let waits = SubmitScratch::<[vk::SemaphoreSubmitInfo<'static>; 8]>::try_collect(
+            counts.1,
+            &self.allocator_stats,
+            batches
+                .iter()
+                .flat_map(|batch| {
+                    batch
+                        .wait_semaphores
+                        .iter()
+                        .zip(&batch.wait_values)
+                        .zip(&batch.wait_stages)
+                })
+                .map(|((&semaphore, &value), &stage)| {
+                    Ok(vk::SemaphoreSubmitInfo::default()
+                        .semaphore(semaphore)
+                        .value(value)
+                        .stage_mask(vk::PipelineStageFlags2::from_raw(u64::from(stage.as_raw()))))
+                }),
+        )?;
+        let mut signals = SubmitScratch::<[vk::SemaphoreSubmitInfo<'static>; 8]>::try_collect(
+            counts.2,
+            &self.allocator_stats,
+            batches
+                .iter()
+                .flat_map(|batch| batch.signal_semaphores.iter().zip(&batch.signal_values))
+                .map(|(&semaphore, &value)| {
+                    Ok(vk::SemaphoreSubmitInfo::default()
+                        .semaphore(semaphore)
+                        .value(value)
+                        .stage_mask(vk::PipelineStageFlags2::ALL_COMMANDS))
+                })
+                .chain(std::iter::once(Ok(vk::SemaphoreSubmitInfo::default()
+                    .stage_mask(vk::PipelineStageFlags2::ALL_COMMANDS)))),
+        )?;
+        let signals_ptr = signals.as_mut_ptr();
+        let (mut command_start, mut wait_start, mut signal_start) = (0usize, 0usize, 0usize);
+        // These raw pointer views are consumed only by queue_submit2 below. The
+        // three owning scratch arrays have their final capacities and locations.
+        let infos = SubmitScratch::<[vk::SubmitInfo2<'static>; 1]>::try_collect(
+            count,
+            &self.allocator_stats,
+            (0..count).map(|index| {
+                let batch = batches.get(index);
+                let command_len = batch.map_or(0, |batch| batch.commands.len());
+                let wait_len = batch.map_or(0, |batch| batch.wait_semaphores.len());
+                let signal_len = batch.map_or(0, |batch| batch.signal_semaphores.len())
+                    + usize::from(index + 1 == count);
+                let view = vk::SubmitInfo2 {
+                    command_buffer_info_count: native_count(command_len)?,
+                    p_command_buffer_infos: commands.as_ptr().wrapping_add(command_start),
+                    wait_semaphore_info_count: native_count(wait_len)?,
+                    p_wait_semaphore_infos: waits.as_ptr().wrapping_add(wait_start),
+                    signal_semaphore_info_count: native_count(signal_len)?,
+                    p_signal_semaphore_infos: signals_ptr.wrapping_add(signal_start),
+                    ..Default::default()
+                };
+                command_start += command_len;
+                wait_start += wait_len;
+                signal_start += signal_len;
+                Ok(view)
+            }),
+        )?;
+        native_count(infos.len())?;
+        let extension = self
+            .enabled_extensions
+            .iter()
+            .any(|name| name == "VK_KHR_synchronization2")
+            .then(|| {
+                ash::khr::synchronization2::Device::new(&self.instance.instance, &self.device)
+            });
+        let (point, ()) = self.timelines.submit(id, |signal| {
+            // SAFETY: all arrays are owned by this call, all counts are checked,
+            // and no backing can grow or move while the driver reads the views.
+            unsafe {
+                let last = signals_ptr.add(counts.2 - 1);
+                std::ptr::addr_of_mut!((*last).semaphore).write(signal.semaphore);
+                std::ptr::addr_of_mut!((*last).value).write(signal.value);
+                if let Some(extension) = &extension {
+                    extension.queue_submit2(queue, &infos, fence)
+                } else {
+                    self.device.queue_submit2(queue, &infos, fence)
+                }
+            }
+            .map_err(Into::into)
+        })?;
+        Ok(point)
     }
+}
+
+fn native_count(count: usize) -> Result<u32> {
+    u32::try_from(count)
+        .map_err(|_| Error::invalid_usage("Vulkan submission array exceeds u32 count"))
 }

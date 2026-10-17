@@ -4,6 +4,39 @@ use super::{
     resource::{ResourceHandle, ResourceOrigin},
 };
 impl RenderGraph {
+    pub fn import_unowned_with_sharing(
+        &mut self,
+        name: impl Into<String>,
+        descriptor: Descriptor,
+        token: u64,
+        initial_access: u8,
+        sharing: crate::resource::ResourceSharing,
+    ) -> Result<ResourceHandle, BuildError> {
+        let handle = self.import_unowned(name, descriptor, token, initial_access)?;
+        self.set_resource_sharing(handle, sharing)?;
+        Ok(handle)
+    }
+    pub fn import_owned_with_sharing(
+        &mut self,
+        name: impl Into<String>,
+        descriptor: Descriptor,
+        token: u64,
+        initial_access: u8,
+        sharing: crate::resource::ResourceSharing,
+    ) -> Result<ResourceHandle, BuildError> {
+        let handle = self.import_owned(name, descriptor, token, initial_access)?;
+        self.set_resource_sharing(handle, sharing)?;
+        Ok(handle)
+    }
+    pub fn set_resource_sharing(
+        &mut self,
+        handle: ResourceHandle,
+        sharing: crate::resource::ResourceSharing,
+    ) -> Result<(), BuildError> {
+        self.check_handle(handle)?;
+        self.declaration.resources[handle.raw() as usize].sharing = sharing;
+        Ok(())
+    }
     pub fn import_unowned(
         &mut self,
         name: impl Into<String>,
@@ -132,37 +165,6 @@ impl ImportExportToRenderGraph for PhysicalBuffer {
     }
 }
 
-/// `Buffer::import_unowned`（0x140bd4fc0）的返回值，20 字节：
-/// `{size: u64 @0, desc_tail: u64 @8, resource_index: u32 @0x10}`。
-/// 前两个 qword 取自 `BufferRecord` 的 `+0x18`（size）/`+0x20`（`BufferDesc` 尾 8 字节：usage、对齐、内存位置），
-/// 末尾 u32 是新建图资源条目的下标（= `graph.resources.len()` 在 push 前的值）。
-/// 同函数还把 `BufferRecord` 全体（`ctx` / `slot`，并对 slot 的引用计数 `lock inc [slot+8]`）搬进 0x48 字节的
-/// `ResourceOrigin`（tag 1 = ImportUnowned，`+8` 字节 = {buffer=1, initial_access}），并向 `+0x30` 的访问 Vec
-/// 追加一个 `{0xffffffff, 0}`（16 字节）空条目。
-/// Texture 版 0x140bd60a0 同形，返回 36 字节 `{index u32, 4×u64}`；此处未建模。
-///
-/// ⚠️ 任务描述里"`+0xe = 5` 为未导入判别"在这两个函数的机器码里没有出现：`+0xe` 不在 20 字节返回值的字段边界上。
-/// `5` 只在 `ResourceRegistry` 的后备资源 tag 里出现（5 = Empty，见 ALGORITHMS §1.2），未导出/已剥离的槽才是 5，
-/// 与 `ImportedBuffer` 无关，所以这里不引入该判别。
-#[repr(C, packed(4))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ImportedBuffer {
-    pub size: u64,
-    pub desc_tail: u64,
-    pub resource_index: u32,
-}
-const _: () = assert!(std::mem::size_of::<ImportedBuffer>() == 20);
-impl ImportedBuffer {
-    pub const ORIGINAL_BYTES: usize = 20;
-    pub fn from_record(record: &crate::raw::buffer::BufferRecord, handle: ResourceHandle) -> Self {
-        Self {
-            size: record.size,
-            desc_tail: record.desc_tail,
-            resource_index: handle.raw(),
-        }
-    }
-}
-
 /// 原 trait 名 `IntoSampledRenderGraphTexture`（0x140bd6470 的 `into_sampled_rg_texture` 所属，
 /// 不是 `ImportExportToRenderGraph`）。
 pub trait IntoSampledRenderGraphTexture {
@@ -185,29 +187,6 @@ impl IntoSampledRenderGraphTexture for Ref<'_, '_, TextureRef> {
 #[cfg(test)]
 mod trait_tests {
     use super::*;
-
-    #[test]
-    fn imported_buffer_is_twenty_bytes_with_the_original_offsets() {
-        assert_eq!(
-            std::mem::size_of::<ImportedBuffer>(),
-            ImportedBuffer::ORIGINAL_BYTES
-        );
-        let record = crate::raw::buffer::BufferRecord {
-            ctx: 1,
-            slot: 2,
-            offset: 3,
-            device_id: 4,
-            ready: 1,
-            _pad: 0,
-            size: 0x1234,
-            desc_tail: 0xabcd,
-        };
-        let imported = ImportedBuffer::from_record(&record, ResourceHandle::from_raw(7));
-        let bytes: [u8; 20] = unsafe { std::mem::transmute(imported) };
-        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 0x1234);
-        assert_eq!(u64::from_le_bytes(bytes[8..16].try_into().unwrap()), 0xabcd);
-        assert_eq!(u32::from_le_bytes(bytes[16..20].try_into().unwrap()), 7);
-    }
 
     use crate::rg::graph::OriginSource;
 

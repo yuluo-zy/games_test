@@ -4,7 +4,7 @@ use super::physical_device::{
     DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, PerformanceInfo,
 };
 use super::{
-    device::VulkanDevice,
+    device::Device,
     error::{Error, Result},
     instance::{InstanceBuilder, VulkanInstance},
     physical_device::{PhysicalDevice, enumerate_physical_devices},
@@ -522,26 +522,26 @@ impl GraphicsDevicesForSurface {
     }
     /// 原 `create_device`（0x140bdb940，O）：在 available 里**按 16B 键**找第一个设备（缺失即
     /// `Option::unwrap` panic，init.rs:822），记 info "Attempting to use device .. driver .. uuid .." 与
-    /// debug "Physical device properties: .."，克隆实例 Arc 后只对这一个设备调用 `GraphicsDevice::create`，
+    /// debug "Physical device properties: .."，克隆实例 Arc 后只对这一个设备调用 `Device::create`，
     /// 不做逐候选回退。回退版见 [`Self::create_device`]（候选）。
     pub fn create_device_by_uuid(
         &self,
         graphics: &GraphicsInstance,
         uuid: [u8; 16],
-    ) -> Result<Arc<VulkanDevice>> {
+    ) -> Result<Arc<Device>> {
         let (physical, family, strings) = self.uuid_choice(graphics, uuid)?;
-        let names = strings.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
+        let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
         graphics.create_device(&physical, family, &names)
     }
-    /// `create_device_by_uuid` 的完整路径：创建 `GraphicsDevice` 并挂接物理设备包装
-    /// （原 `GraphicsDevice+0x658`），使 `refresh_memory_budget` 真正委托。
+    /// `create_device_by_uuid` 的完整路径：创建 `Device` 并挂接物理设备包装
+    /// （原 `Device+0x658`），使 `refresh_memory_budget` 真正委托。
     pub fn create_graphics_device_by_uuid(
         &self,
         graphics: &GraphicsInstance,
         uuid: [u8; 16],
-    ) -> Result<Arc<super::device::GraphicsDevice>> {
+    ) -> Result<Arc<super::device::Device>> {
         let (physical, family, strings) = self.uuid_choice(graphics, uuid)?;
-        let names = strings.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
+        let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
         graphics.create_graphics_device(&physical, family, &names)
     }
     /// 按 16B 键选出 (物理设备包装, 图形队列族, 扩展名)；日志与 panic 语义同 `create_device_by_uuid`。
@@ -555,7 +555,7 @@ impl GraphicsDevicesForSurface {
             .iter()
             .map(|index| &self.devices[*index])
             .find(|d| d.device_uuid == uuid)
-            .expect("called `Option::unwrap()` on a `None` value");
+            .ok_or_else(|| Error::unsupported("请求的设备 UUID 不在可用清单中"))?;
         let physical = graphics
             .devices
             .get(candidate.index)
@@ -593,10 +593,7 @@ impl GraphicsDevicesForSurface {
             .map_err(|_| Error::invalid_usage("扩展名含 NUL"))?;
         Ok((physical, family, strings))
     }
-    pub fn create_device(
-        &self,
-        graphics: &GraphicsInstance,
-    ) -> std::result::Result<Arc<VulkanDevice>, Vec<String>> {
+    pub fn create_device(&self, graphics: &GraphicsInstance) -> Result<Arc<Device>> {
         self.create_device_configured(
             graphics,
             &crate::device::QueueConfig {
@@ -610,7 +607,7 @@ impl GraphicsDevicesForSurface {
         &self,
         graphics: &GraphicsInstance,
         config: &crate::device::QueueConfig,
-    ) -> std::result::Result<Arc<VulkanDevice>, Vec<String>> {
+    ) -> Result<Arc<Device>> {
         let mut errors = self
             .missing
             .iter()
@@ -631,8 +628,8 @@ impl GraphicsDevicesForSurface {
                 .iter()
                 .map(|s| std::ffi::CString::new(s.as_str()))
                 .collect::<std::result::Result<Vec<_>, _>>()
-                .map_err(|e| vec![e.to_string()])?;
-            let names = strings.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
+                .map_err(|_| Error::invalid_usage("扩展名含 NUL"))?;
+            let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
             match graphics.create_device_configured(
                 physical,
                 &names,
@@ -640,16 +637,19 @@ impl GraphicsDevicesForSurface {
                 candidate.present_families.as_deref().unwrap_or(&[]),
             ) {
                 Ok(device) => return Ok(device),
-                Err(error) => errors.push(format!("{}: {error}", candidate.name)),
+                Err(error @ Error::Unsupported(_)) => {
+                    errors.push(format!("{}: {error}", candidate.name))
+                }
+                Err(error) => return Err(error),
             }
         }
-        Err(errors)
+        Err(Error::unsupported(errors.join("; ")))
     }
 }
 pub struct GraphicsInstance {
     pub instance: Arc<VulkanInstance>,
-    /// 物理设备包装可共享（`Arc`）：创建的 `GraphicsDevice` 经 `attach_physical_device_info` 持有同一份
-    /// （原 `GraphicsDevice+0x658` 指向物理设备包装）。
+    /// 物理设备包装可共享（`Arc`）：创建的 `Device` 经 `attach_physical_device_info` 持有同一份
+    /// （原 `Device+0x658` 指向物理设备包装）。
     pub devices: Vec<Arc<PhysicalDevice>>,
 }
 impl GraphicsInstance {
@@ -761,32 +761,29 @@ impl GraphicsInstance {
     fn wrap_devices(devices: Vec<PhysicalDevice>) -> Vec<Arc<PhysicalDevice>> {
         devices.into_iter().map(Arc::new).collect()
     }
-    /// 原 `GraphicsDevice::create`（0x140bf2560）完整路径：Vulkan 设备创建段 + 创建尾段（分配器日志 /
+    /// 原 `Device::create`（0x140bf2560）完整路径：Vulkan 设备创建段 + 创建尾段（分配器日志 /
     /// crash tracking buffer / 管线缓存），并把 `physical` 挂到设备上（`attach_physical_device_info`）。
-    /// 旧入口 [`Self::create_device`]（只返回 `VulkanDevice`）保留。
+    /// 旧入口 [`Self::create_device`]（只返回 `Device`）保留。
     pub fn create_graphics_device(
         &self,
         physical: &Arc<PhysicalDevice>,
         queue_family: u32,
-        extensions: &[*const std::ffi::c_char],
-    ) -> Result<Arc<super::device::GraphicsDevice>> {
+        extensions: &[&std::ffi::CStr],
+    ) -> Result<Arc<super::device::Device>> {
         let device = self.create_device(physical, queue_family, extensions)?;
-        let graphics =
-            super::device::GraphicsDevice::finish_creation(device).map_err(Error::from)?;
+        let graphics = device;
         graphics
             .attach_physical_device_info(Arc::clone(physical))
             .map_err(|_| Error::invalid_usage("物理设备包装已挂接"))?;
         Ok(graphics)
     }
-    /// 原 `GraphicsDevice::create`（0x140bf2560）的 Vulkan 设备创建段：
-    /// 必需扩展/特性逐项校验（缺失即带名字的错误）、`maxDescriptorSetUpdateAfterBindSampledImages >= 8192`、
-    /// 通用队列 1 个（优先级 0.5）+ 独立 compute 族全部队列（优先级 1.0）。
+    /// 保留显式物理设备与图形族选择，特性协商统一走 DeviceConfig 创建入口。
     pub fn create_device(
         &self,
         physical: &PhysicalDevice,
         queue_family: u32,
-        extensions: &[*const std::ffi::c_char],
-    ) -> Result<Arc<VulkanDevice>> {
+        extensions: &[&std::ffi::CStr],
+    ) -> Result<Arc<Device>> {
         let mut families = physical
             .queues
             .iter()
@@ -814,10 +811,10 @@ impl GraphicsInstance {
     pub fn create_device_configured(
         &self,
         physical: &PhysicalDevice,
-        extensions: &[*const std::ffi::c_char],
+        extensions: &[&std::ffi::CStr],
         config: &crate::device::QueueConfig,
         present_families: &[u32],
-    ) -> Result<Arc<VulkanDevice>> {
+    ) -> Result<Arc<Device>> {
         let families = physical
             .queues
             .iter()
@@ -836,256 +833,34 @@ impl GraphicsInstance {
     fn create_device_with_plan(
         &self,
         physical: &PhysicalDevice,
-        extensions: &[*const std::ffi::c_char],
+        extensions: &[&std::ffi::CStr],
         plan: crate::device::QueuePlan,
-    ) -> Result<Arc<VulkanDevice>> {
-        if physical.properties.api_version < vk::API_VERSION_1_2 {
-            return Err(Error::unsupported("设备不支持 Vulkan 1.2"));
+    ) -> Result<Arc<Device>> {
+        if !Arc::ptr_eq(&physical.instance, &self.instance) {
+            return Err(Error::invalid_usage("物理设备不属于此实例"));
         }
-        let available = physical.extension_names()?;
-        if let Some(missing) = REQUIRED_DEVICE_EXTENSIONS
-            .iter()
-            .find(|name| !available.iter().any(|a| a == *name))
-        {
-            return Err(Error::unsupported(format!("缺少必需设备扩展 {missing}")));
-        }
-        // 原版先取 properties（descriptor-indexing 上限），再取特性。
-        let sampled = physical_sampled_image_update_after_bind_limit(self, physical);
-        if sampled < MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES {
-            return Err(Error::unsupported(format!(
-                "maxDescriptorSetUpdateAfterBindSampledImages is too low ({sampled}). Must be at least {MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES}"
-            )));
-        }
-        let mut supported12 = vk::PhysicalDeviceVulkan12Features::default();
-        let mut supported_demote =
-            vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures::default();
-        let mut features = vk::PhysicalDeviceFeatures2::default()
-            .push_next(&mut supported12)
-            .push_next(&mut supported_demote);
-        unsafe {
-            self.instance
-                .instance
-                .get_physical_device_features2(physical.handle, &mut features);
-        }
-        let core_supported = features.features;
-        if let Some((group, name)) =
-            first_missing_required_feature(&core_supported, &supported12, &supported_demote)
-        {
-            return Err(Error::unsupported(format!("缺少必需特性 {group}.{name}")));
-        }
-        let counts = plan.create_counts();
-        let priorities = counts
-            .iter()
-            .map(|(_, count)| vec![1.0; *count as usize])
-            .collect::<Vec<_>>();
-        let queues = counts
-            .iter()
-            .zip(&priorities)
-            .map(|((family, _), priorities)| {
-                vk::DeviceQueueCreateInfo::default()
-                    .queue_family_index(*family)
-                    .queue_priorities(priorities)
-            })
-            .collect::<Vec<_>>();
-        let core = vk::PhysicalDeviceFeatures::default()
-            .robust_buffer_access(true)
-            .draw_indirect_first_instance(true)
-            .fill_mode_non_solid(true)
-            .sampler_anisotropy(true)
-            .texture_compression_bc(true)
-            .shader_storage_image_extended_formats(true)
-            .shader_storage_image_write_without_format(true)
-            .dual_src_blend(true)
-            .multi_draw_indirect(true)
-            .fragment_stores_and_atomics(true)
-            .vertex_pipeline_stores_and_atomics(true)
-            // 以下不在原必需链里，保持“支持才开”：宽线由 `[device+0xad9]` 门控。
-            .wide_lines(core_supported.wide_lines != 0);
-        let mut enabled12 = vk::PhysicalDeviceVulkan12Features::default()
-            .timeline_semaphore(true)
-            .descriptor_indexing(true)
-            .descriptor_binding_partially_bound(true)
-            .descriptor_binding_sampled_image_update_after_bind(true)
-            .shader_sampled_image_array_non_uniform_indexing(true)
-            .descriptor_binding_update_unused_while_pending(true)
-            .descriptor_binding_variable_descriptor_count(true)
-            .runtime_descriptor_array(true)
-            .buffer_device_address(true)
-            // 非原必需链：原作用 storage-buffer 路径时才需要，支持才开。
-            .descriptor_binding_storage_buffer_update_after_bind(
-                supported12.descriptor_binding_storage_buffer_update_after_bind != 0,
-            )
-            .shader_storage_buffer_array_non_uniform_indexing(
-                supported12.shader_storage_buffer_array_non_uniform_indexing != 0,
-            );
-        let mut enabled_demote =
-            vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures::default()
-                .shader_demote_to_helper_invocation(true);
-        // 调用者额外要求的扩展 + 原版可选扩展（支持才启用）。
-        let mut names: Vec<std::ffi::CString> = vec![];
-        let mut push = |name: &str| {
-            let c = std::ffi::CString::new(name).unwrap();
-            if !names.contains(&c) {
-                names.push(c);
-            }
-        };
-        for name in REQUIRED_DEVICE_EXTENSIONS {
-            push(name);
-        }
-        for name in OPTIONAL_DEVICE_EXTENSIONS {
-            if available.iter().any(|a| a == name) {
-                push(name);
-            }
-        }
-        for &ptr in extensions {
-            push(&unsafe { std::ffi::CStr::from_ptr(ptr) }.to_string_lossy());
-        }
-        let name_ptrs = names.iter().map(|n| n.as_ptr()).collect::<Vec<_>>();
-        let info = vk::DeviceCreateInfo::default()
-            .queue_create_infos(&queues)
-            .enabled_extension_names(&name_ptrs)
-            .enabled_features(&core)
-            .push_next(&mut enabled12)
-            .push_next(&mut enabled_demote);
-        Ok(VulkanDevice::create_planned(
-            Arc::clone(&self.instance),
+        crate::device::init::create_candidate(
+            self.instance.clone(),
             physical.handle,
-            &info,
-            plan,
-        )?)
+            physical.properties,
+            None,
+            &crate::device::DeviceConfig::headless(),
+            Some(plan),
+            extensions,
+        )
     }
 }
 
-/// 原版 `GraphicsDevice::create` 的 8 个必需设备扩展（字符串池 0x142b16726..，按序）。
-pub const REQUIRED_DEVICE_EXTENSIONS: [&str; 8] = [
-    "VK_KHR_swapchain",
-    "VK_KHR_maintenance1",
-    "VK_KHR_maintenance2",
-    "VK_KHR_maintenance3",
-    "VK_EXT_descriptor_indexing",
-    "VK_KHR_image_format_list",
-    "VK_EXT_shader_demote_to_helper_invocation",
-    "VK_KHR_buffer_device_address",
-];
-/// 原版经 `FUN_140bf8fb0` 探测“支持才启用”的扩展。`VK_NV_device_diagnostic_checkpoints`
-/// 另受设置字节门控（崩溃诊断选项），这里无该选项，故不列入。
-pub const OPTIONAL_DEVICE_EXTENSIONS: [&str; 4] = [
-    "VK_EXT_full_screen_exclusive",
-    "VK_EXT_memory_budget",
-    "VK_EXT_subgroup_size_control",
-    "VK_KHR_external_memory_win32",
-];
-/// `if (maxDescriptorSetUpdateAfterBindSampledImages < 0x2000)` 报错的下限。
-pub const MIN_UPDATE_AFTER_BIND_SAMPLED_IMAGES: u32 = 0x2000;
-
-fn physical_sampled_image_update_after_bind_limit(
-    graphics: &GraphicsInstance,
-    physical: &PhysicalDevice,
-) -> u32 {
-    let mut indexing = vk::PhysicalDeviceDescriptorIndexingProperties::default();
-    let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut indexing);
-    unsafe {
-        graphics
-            .instance
-            .instance
-            .get_physical_device_properties2(physical.handle, &mut properties);
-    }
-    indexing.max_descriptor_set_update_after_bind_sampled_images
-}
-
-/// 原版必需特性链的校验顺序：core 11 项 → Vulkan12 9 项 → demote。
-/// 返回第一个缺失项的 `(组名, 字段名)`，字段名即原字符串池里的 Rust 字段名。
-pub fn first_missing_required_feature(
-    core: &vk::PhysicalDeviceFeatures,
-    v12: &vk::PhysicalDeviceVulkan12Features<'_>,
-    demote: &vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures<'_>,
-) -> Option<(&'static str, &'static str)> {
-    let core_checks: [(&str, vk::Bool32); 11] = [
-        ("robust_buffer_access", core.robust_buffer_access),
-        (
-            "draw_indirect_first_instance",
-            core.draw_indirect_first_instance,
-        ),
-        ("fill_mode_non_solid", core.fill_mode_non_solid),
-        ("sampler_anisotropy", core.sampler_anisotropy),
-        ("texture_compression_bc", core.texture_compression_bc),
-        (
-            "shader_storage_image_extended_formats",
-            core.shader_storage_image_extended_formats,
-        ),
-        (
-            "shader_storage_image_write_without_format",
-            core.shader_storage_image_write_without_format,
-        ),
-        ("dual_src_blend", core.dual_src_blend),
-        ("multi_draw_indirect", core.multi_draw_indirect),
-        (
-            "fragment_stores_and_atomics",
-            core.fragment_stores_and_atomics,
-        ),
-        (
-            "vertex_pipeline_stores_and_atomics",
-            core.vertex_pipeline_stores_and_atomics,
-        ),
-    ];
-    if let Some((name, _)) = core_checks.iter().find(|(_, v)| *v == 0) {
-        return Some(("core", name));
-    }
-    let v12_checks: [(&str, vk::Bool32); 9] = [
-        ("timeline_semaphore", v12.timeline_semaphore),
-        ("descriptor_indexing", v12.descriptor_indexing),
-        (
-            "descriptor_binding_partially_bound",
-            v12.descriptor_binding_partially_bound,
-        ),
-        (
-            "descriptor_binding_sampled_image_update_after_bind",
-            v12.descriptor_binding_sampled_image_update_after_bind,
-        ),
-        (
-            "shader_sampled_image_array_non_uniform_indexing",
-            v12.shader_sampled_image_array_non_uniform_indexing,
-        ),
-        (
-            "descriptor_binding_update_unused_while_pending",
-            v12.descriptor_binding_update_unused_while_pending,
-        ),
-        (
-            "descriptor_binding_variable_descriptor_count",
-            v12.descriptor_binding_variable_descriptor_count,
-        ),
-        ("runtime_descriptor_array", v12.runtime_descriptor_array),
-        ("buffer_device_address", v12.buffer_device_address),
-    ];
-    if let Some((name, _)) = v12_checks.iter().find(|(_, v)| *v == 0) {
-        return Some(("PhysicalDeviceVulkan12Features", name));
-    }
-    if demote.shader_demote_to_helper_invocation == 0 {
-        return Some((
-            "PhysicalDeviceShaderDemoteToHelperInvocationFeatures",
-            "shader_demote_to_helper_invocation",
-        ));
-    }
-    None
-}
-pub fn create_headless_device() -> Result<Arc<VulkanDevice>> {
-    let graphics = GraphicsInstance::new()?;
-    graphics
-        .available_for_surface(None, DeviceSelectionPolicy::default())?
-        .create_device(&graphics)
-        .map_err(|errors| Error::unsupported(errors.join("\n")))
+pub fn create_headless_device() -> Result<Arc<Device>> {
+    Device::new_headless(&crate::device::DeviceConfig::headless())
 }
 
 /// 创建离屏设备；拒绝 require_present，避免把没有 surface 的配置悄悄改写。
 pub fn create_headless_device_configured(
     config: &crate::device::QueueConfig,
-) -> Result<Arc<VulkanDevice>> {
-    if config.require_present {
-        return Err(Error::invalid_usage("离屏设备不能要求 surface 呈现支持"));
-    }
-    let graphics = GraphicsInstance::new()?;
-    graphics
-        .available_for_surface(None, DeviceSelectionPolicy::default())?
-        .create_device_configured(&graphics, config)
-        .map_err(|errors| Error::unsupported(errors.join("\n")))
+) -> Result<Arc<Device>> {
+    Device::new_headless(&crate::device::DeviceConfig {
+        queues: *config,
+        ..crate::device::DeviceConfig::headless()
+    })
 }

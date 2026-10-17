@@ -6,16 +6,15 @@ use rhapsody::{
     raw::{
         buffer::{Buffer, BufferDesc},
         command_buffer::VulkanCommandPool,
-        device::{GraphicsDevice, VulkanDevice},
+        device::Device,
         init::{
             DeviceSelectionPolicy, GraphicsInstance, GraphicsInstanceLayerAllowlist,
             GraphicsInstanceLayerAllowlistEntry,
         },
         instance::{InstanceBuilder, KHRONOS_VALIDATION_LAYER, ValidationMessenger},
-        render_pass::RenderPassAttachmentDesc,
         shader::{
-            PipelineCache, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts, ShaderModule,
-            VulkanPipeline,
+            DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc,
+            RasterPipelineOpts, ShaderModule, VulkanPipeline,
         },
     },
     rg::{
@@ -32,7 +31,7 @@ pub struct ValidatedEnv {
     pub graphics: GraphicsInstance,
     pub messenger: ValidationMessenger,
     pub layer_enabled: bool,
-    pub device: Arc<VulkanDevice>,
+    pub device: Arc<Device>,
 }
 
 /// 带 debug utils 收集器的实例；Khronos 校验层可用时一并启用。无 Vulkan 时返回 None。
@@ -44,8 +43,9 @@ pub fn validated_env() -> Option<ValidatedEnv> {
 }
 
 pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Option<ValidatedEnv> {
+    use crate::draw_support::gpu_test_support::initialize;
     let mut builder = InstanceBuilder::default();
-    let layer_enabled = builder.enable_validation().ok()?;
+    let layer_enabled = initialize("validation layer enumeration", builder.enable_validation())?;
     let mut allowlist = GraphicsInstanceLayerAllowlist::default();
     if layer_enabled {
         allowlist
@@ -54,13 +54,22 @@ pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Optio
                 KHRONOS_VALIDATION_LAYER.into(),
             ));
     }
-    let graphics = GraphicsInstance::new_with_allowlist(&builder, &allowlist).ok()?;
-    let messenger = ValidationMessenger::new(&graphics.instance).ok()?;
-    let device = graphics
-        .available_for_surface(None, DeviceSelectionPolicy::default())
-        .ok()?
-        .create_device_configured(&graphics, config)
-        .ok()?;
+    let graphics = initialize(
+        "validated instance",
+        GraphicsInstance::new_with_allowlist(&builder, &allowlist),
+    )?;
+    let messenger = initialize(
+        "validation messenger",
+        ValidationMessenger::new(&graphics.instance),
+    )?;
+    let selected = initialize(
+        "validated physical device selection",
+        graphics.available_for_surface(None, DeviceSelectionPolicy::default()),
+    )?;
+    let device = initialize(
+        "validated logical device",
+        selected.create_device_configured(&graphics, config),
+    )?;
     Some(ValidatedEnv {
         graphics,
         messenger,
@@ -70,13 +79,8 @@ pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Optio
 }
 
 /// 与 `Rig::new` 相同的构造，但使用调用方给的设备。
-pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
-    let gd = GraphicsDevice::from_device(device.clone());
-    let pass = gd
-        .create_render_pass(&[
-            RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()
-        ])
-        .unwrap();
+pub fn rig_on(device: Arc<Device>) -> Rig {
+    let gd = device.clone();
     let (vs, fs) = draw_support::shaders();
     let vertex = ShaderModule::from_spirv(device.clone(), &vs).unwrap();
     let fragment = ShaderModule::from_spirv(device.clone(), &fs).unwrap();
@@ -85,8 +89,7 @@ pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
     let mut desc = RasterPipelineDesc::new(vertex, layout);
     desc.fragment = Some(fragment);
     desc.fragment_entry = Some(std::ffi::CString::new("ps_main").unwrap());
-    desc.render_pass = pass.raw();
-    desc.render_pass_owner = Arc::new(pass.clone());
+    desc.use_dynamic_rendering(DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM));
     desc.vertex_bindings = vec![vk::VertexInputBindingDescription {
         binding: 0,
         stride: 16,
@@ -98,13 +101,12 @@ pub fn rig_on(device: Arc<VulkanDevice>) -> Rig {
         format: vk::Format::R32G32B32A32_SFLOAT,
         offset: 0,
     }];
-    RasterPipelineOpts(0).apply_to(&mut desc, 1);
+    RasterPipelineOpts(0).apply_to(&mut desc, 1).unwrap();
     let pipeline = VulkanPipeline::create_raster_pipeline(&cache, desc).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     Rig {
         device,
         gd,
-        pass,
         pipeline,
         pool,
     }
@@ -143,7 +145,8 @@ impl BigBuffers {
             (
                 session
                     .backend
-                    .bind_import(GpuResource::Buffer(buffer.clone())),
+                    .bind_import(GpuResource::Buffer(buffer.clone()))
+                    .unwrap(),
                 buffer,
             )
         };
@@ -253,7 +256,7 @@ pub fn run_big_graph(
         let device = device.clone();
         let index = handle.raw();
         let word = fill_word(i, salt);
-        let mut pass = graph.add_pass(fill_pass_name(i));
+        let mut pass = graph.add_pass(fill_pass_name(i)).with_side_effect();
         pass.add_resource_access(handle, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
             let Some(managed) = ctx.managed else {
@@ -262,7 +265,7 @@ pub fn run_big_graph(
             let Ok(buffer) = managed.buffer_for(index) else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(buffer.clone()));
+
             THREADS.lock().push(std::thread::current().id());
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
@@ -277,7 +280,7 @@ pub fn run_big_graph(
         let device = device.clone();
         let (src, dst) = (fills[2 * k], out);
         let (src_index, dst_index) = (src.raw(), dst.raw());
-        let mut pass = graph.add_pass(copy_pass_name(k));
+        let mut pass = graph.add_pass(copy_pass_name(k)).with_side_effect();
         pass.add_resource_access(src, TRANSFER_READ, 0).unwrap();
         pass.add_resource_access(dst, TRANSFER_WRITE, 0).unwrap();
         pass.render_with_context(move |ctx: PassContext<'_>| {
@@ -288,8 +291,7 @@ pub fn run_big_graph(
             else {
                 return false;
             };
-            ctx.keep_alive(Arc::new(from.clone()));
-            ctx.keep_alive(Arc::new(to.clone()));
+
             let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 device.device.cmd_copy_buffer(
@@ -318,7 +320,7 @@ pub fn run_big_graph(
 }
 
 /// 新会话 + 并行配置。
-pub fn new_session(device: &Arc<VulkanDevice>, parallel: ParallelRecording) -> VulkanGraphSession {
+pub fn new_session(device: &Arc<Device>, parallel: ParallelRecording) -> VulkanGraphSession {
     let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     let mut session = VulkanGraphSession::new(backend);
     session.chain.parallel = parallel;
@@ -337,7 +339,7 @@ pub fn seed_pgo(
                 .chain
                 .pgo
                 .previous
-                .record(PassPgoDuration::new(*name, *d));
+                .record(PassPgoDuration::new(name.clone(), *d));
         }
     }
 }

@@ -230,7 +230,7 @@ pub fn write_ppm(path: &Path, rgba: &[u8]) -> Result<()> {
     use std::io::Write;
     let mut out = std::io::BufWriter::new(std::fs::File::create(path)?);
     write!(out, "P6\n{WIDTH} {HEIGHT}\n255\n")?;
-    for pixel in rgba.chunks_exact(4) {
+    for pixel in rgba.as_chunks::<4>().0 {
         out.write_all(&pixel[..3])?;
     }
     out.flush()?;

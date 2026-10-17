@@ -4,50 +4,20 @@
 #![allow(clippy::single_range_in_vec_init, clippy::reversed_empty_ranges)]
 use ash::vk;
 use rhapsody::raw::{
-    buffer::{
-        BufferAccessError, BufferDesc, BufferRecord, BufferRegion, BufferSlotView,
-        BufferUpdateError, MemoryLocation, SLOT_ALLOCATION_TAKEN, buffer_alignment,
-        plan_buffer_update,
-    },
-    device::GraphicsDevice,
+    buffer::{BufferDesc, BufferRegion, MemoryLocation, buffer_alignment, plan_buffer_update},
+    device::Device,
     init::create_headless_device,
     texture::{
-        OptionU32, TextureDesc, TextureKind, TextureViewDescRaw, get_image_create_info_with_data,
+        TextureDesc, TextureKind, TextureViewDesc, get_image_create_info_with_data,
         image_aspect_mask_from_format,
     },
 };
 
-fn device() -> Option<std::sync::Arc<GraphicsDevice>> {
-    create_headless_device()
-        .ok()
-        .map(GraphicsDevice::from_device)
+fn device() -> Option<std::sync::Arc<Device>> {
+    create_headless_device().ok()
 }
 
 // ---------------------------------------------------------------- Buffer：判据
-
-fn record(device_id: u16, ready: u8, offset: u32, size: u64, usage: u32) -> BufferRecord {
-    BufferRecord {
-        ctx: 0,
-        slot: 0,
-        offset,
-        device_id,
-        ready,
-        _pad: 0,
-        size,
-        desc_tail: u64::from(usage) | (2u64 << 48),
-    }
-}
-fn slot(offset: u32, capacity: u64, usage: u32) -> BufferSlotView {
-    BufferSlotView {
-        offset,
-        capacity,
-        desc_tail: u64::from(usage),
-        vk_buffer: vk::Buffer::null(),
-        mapped_ptr: std::ptr::null_mut(),
-        block_size: capacity,
-        allocation_state: 0,
-    }
-}
 
 #[test]
 fn alignment_is_max_of_requirement_desc_and_usage_floor() {
@@ -64,91 +34,9 @@ fn alignment_is_max_of_requirement_desc_and_usage_floor() {
 }
 
 #[test]
-fn buffer_handle_checks_follow_original_order() {
-    let s = slot(7, 64, 2);
-    // 0x140bd4c00 / 0x140bd4cd0 / 0x140beefa0：设备代号 → flag==1 → 槽偏移。
-    assert_eq!(
-        record(1, 0, 9, 64, 2).validate(2, &s),
-        Err(BufferAccessError::DeviceMismatch {
-            handle: 1,
-            device: 2
-        }),
-        "设备代号先于 flag 与偏移"
-    );
-    assert_eq!(
-        record(2, 0, 9, 64, 2).validate(2, &s),
-        Err(BufferAccessError::NotReady { flag: 0 }),
-        "flag 先于偏移"
-    );
-    assert_eq!(
-        record(2, 1, 9, 64, 2).validate(2, &s),
-        Err(BufferAccessError::StaleSlot { handle: 9, slot: 7 })
-    );
-    assert_eq!(record(2, 1, 7, 64, 2).validate(2, &s), Ok(()));
-}
-
-#[test]
-fn device_address_is_not_cached_and_uses_slot_vk_buffer() {
-    use ash::vk::Handle;
-    let mut s = slot(7, 64, 2);
-    s.vk_buffer = vk::Buffer::from_raw(0xabcd);
-    let r = record(3, 1, 7, 64, 2);
-    let mut calls = 0;
-    let mut query = |b: vk::Buffer| {
-        calls += 1;
-        b.as_raw() + calls
-    };
-    assert_eq!(r.device_address(3, &s, &mut query), Ok(0xabcd + 1));
-    assert_eq!(
-        r.device_address(3, &s, &mut query),
-        Ok(0xabcd + 2),
-        "每次都走设备函数"
-    );
-    assert!(
-        r.device_address(4, &s, |_| 0).is_err(),
-        "校验失败不调用设备函数"
-    );
-}
-
-#[test]
-fn mapped_slice_parts_follow_0x140bd4cd0() {
-    let mut backing = [0u8; 32];
-    let r = record(1, 1, 7, 24, 2);
-    let mut s = slot(7, 24, 2);
-    // 不可映射：块指针为空 → None（不是错误）。
-    assert_eq!(r.mapped_slice_parts(1, &s), Ok(None));
-    s.mapped_ptr = backing.as_mut_ptr();
-    s.block_size = 32;
-    assert_eq!(
-        r.mapped_slice_parts(1, &s),
-        Ok(Some((backing.as_mut_ptr(), 24))),
-        "全长 = Buffer+0x18"
-    );
-    // 缓冲大小超过块大小：原版 slice_end_index_len_fail。
-    s.block_size = 16;
-    assert_eq!(
-        r.mapped_slice_parts(1, &s),
-        Err(BufferAccessError::SizeExceedsBlock {
-            size: 24,
-            block: 16
-        })
-    );
-    // inner+0x7c == 2：分配已被取走，原版直接 panic（先于指针检查）。
-    s.allocation_state = SLOT_ALLOCATION_TAKEN;
-    s.mapped_ptr = std::ptr::null_mut();
-    assert_eq!(
-        r.mapped_slice_parts(1, &s),
-        Err(BufferAccessError::AllocationTaken)
-    );
-}
-
-#[test]
-fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
-    let usage_dst = vk::BufferUsageFlags::TRANSFER_DST.as_raw();
-    let r = record(1, 1, 7, 64, usage_dst);
-    let s = slot(7, 64, usage_dst);
-    // 区域 = {src 累计, dst = start + dst_offset, size}；暂存大小 = 区间长度之和。
-    let plan = plan_buffer_update(&r, 1, &s, 8, &[0..2, 4..6, 6..8], 10).unwrap();
+fn sparse_update_plan_preserves_destinations_and_rejects_invalid_ranges() {
+    let desc = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::TRANSFER_DST);
+    let plan = plan_buffer_update(&desc, 8, &[0..2, 4..6, 6..8], 10).unwrap();
     assert_eq!(plan.total, 6);
     assert_eq!(
         plan.regions,
@@ -170,74 +58,67 @@ fn update_plan_matches_0x140beefa0_and_closure_0x140c03a00() {
             },
         ]
     );
-    // 区间合法性：先 start<=end，再 end<=data.len。
-    assert!(matches!(
-        plan_buffer_update(&r, 1, &s, 8, &[5..3], 0),
-        Err(BufferUpdateError::RangeInverted { start: 5, end: 3 })
-    ));
-    assert!(matches!(
-        plan_buffer_update(&r, 1, &s, 4, &[0..5], 0),
-        Err(BufferUpdateError::RangeOutOfData { end: 5, len: 4 })
-    ));
-    // total + dst_offset 超过容量。
-    assert!(matches!(
-        plan_buffer_update(&r, 1, &s, 8, &[0..8], 60),
-        Err(BufferUpdateError::ExceedsCapacity {
-            total: 8,
-            dst_offset: 60,
-            capacity: 64
-        })
-    ));
-    // 稀疏区间：原版只比较 total+offset，这里额外拒绝 dst_end 越界（有意超集）。
-    assert!(matches!(
-        plan_buffer_update(&r, 1, &s, 64, &[60..62], 8),
-        Err(BufferUpdateError::ExceedsCapacity { .. })
-    ));
-    // inner+0x28 & 2 = usage.TRANSFER_DST；没有它 panic 文案 "must be created with ...TRANSFER_DST"。
-    let no_dst = slot(7, 64, vk::BufferUsageFlags::STORAGE_BUFFER.as_raw());
-    assert_eq!(
-        plan_buffer_update(&r, 1, &no_dst, 8, &[0..2], 0),
-        Err(BufferUpdateError::MissingTransferDst)
-    );
-    // 合计 0：`assert!(size > 0)`；顺序在 TRANSFER_DST 检查之后。
-    assert_eq!(
-        plan_buffer_update(&r, 1, &s, 8, &[], 0),
-        Err(BufferUpdateError::Empty)
-    );
-    assert_eq!(
-        plan_buffer_update(&r, 1, &s, 8, &[3..3], 0),
-        Err(BufferUpdateError::Empty)
-    );
-    assert_eq!(
-        plan_buffer_update(&r, 1, &no_dst, 8, &[], 0),
-        Err(BufferUpdateError::MissingTransferDst)
-    );
-    // 句柄校验先于一切。
-    assert!(matches!(
-        plan_buffer_update(&r, 2, &s, 8, &[0..2], 0),
-        Err(BufferUpdateError::Access(
-            BufferAccessError::DeviceMismatch { .. }
-        ))
-    ));
+    let no_dst = BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::STORAGE_BUFFER);
+    for error in [
+        plan_buffer_update(&desc, 8, &[5..3], 0).unwrap_err(),
+        plan_buffer_update(&desc, 4, &[0..5], 0).unwrap_err(),
+        plan_buffer_update(&desc, 8, &[0..8], 60).unwrap_err(),
+        plan_buffer_update(&desc, 64, &[60..62], 8).unwrap_err(),
+        plan_buffer_update(&desc, 8, &[0..2], u64::MAX).unwrap_err(),
+        plan_buffer_update(&no_dst, 8, &[0..2], 0).unwrap_err(),
+        plan_buffer_update(&desc, 8, &[], 0).unwrap_err(),
+        plan_buffer_update(&desc, 8, &[3..3], 0).unwrap_err(),
+    ] {
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+    }
+    // Empty source ranges never reach vkCmdCopyBuffer as zero-size regions.
+    let plan = plan_buffer_update(&desc, 4, &[0..0, 0..4, 4..4], 0).unwrap();
+    assert_eq!(plan.regions.len(), 1);
+    assert_eq!(plan.total, 4);
 }
 
-// ---------------------------------------------------------------- Texture：描述符
-
 #[test]
-fn texture_view_desc_raw_builders() {
-    let d = TextureViewDescRaw::new()
-        .format(37)
-        .level_count(3)
-        .base_layer(2)
-        .bind_individual_mips(true);
-    assert_eq!(d.format, OptionU32 { tag: 1, value: 37 });
-    assert_eq!(d.level_count, OptionU32 { tag: 1, value: 3 });
-    assert_eq!(d.view_type.get(), None);
-    assert_eq!((d.base_layer, d.bind_individual_mips), (2, 1));
-    // 候选解析：缺省的层数取 base 之后的剩余。
-    let tex = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3);
-    let r = d.resolve(&tex);
-    assert_eq!((r.level_count, r.layer_count, r.base_layer), (3, 2, 2));
+fn texture_view_ranges_check_exact_remainders_zero_and_overflow() {
+    let texture = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3);
+    let full = TextureViewDesc::new(&texture).unwrap();
+    assert!(full.validate(&texture).is_ok());
+    let mut view = full;
+    view.base_layer = 2;
+    view.layer_count = 2;
+    view.base_mip_level = 1;
+    view.level_count = 2;
+    assert!(view.validate(&texture).is_ok());
+    for invalid in [
+        TextureViewDesc {
+            layer_count: 0,
+            ..view
+        },
+        TextureViewDesc {
+            level_count: 0,
+            ..view
+        },
+        TextureViewDesc {
+            base_layer: u32::MAX,
+            ..view
+        },
+        TextureViewDesc {
+            base_mip_level: u32::MAX,
+            ..view
+        },
+        TextureViewDesc {
+            layer_count: 3,
+            ..view
+        },
+        TextureViewDesc {
+            level_count: 3,
+            ..view
+        },
+    ] {
+        assert_eq!(
+            invalid.validate(&texture).unwrap_err().kind(),
+            rhapsody::ErrorKind::InvalidUsage
+        );
+    }
 }
 
 #[test]
@@ -256,9 +137,9 @@ fn desc_builders_follow_machine_code() {
     assert_eq!((h2.width, h2.height, h2.depth), (1, 1, 1));
     // 0x140bd55e0 div_up_extent：ceil，至少 1；0x140bd56a0 div_extent：floor，至少 1。
     let e = TextureDesc::new_3d(17, 3, 1, vk::Format::R8_UNORM);
-    let up = e.div_up_extent_by([8, 8, 1]);
+    let up = e.div_up_extent_by([8, 8, 1]).unwrap();
     assert_eq!((up.width, up.height, up.depth), (3, 1, 1));
-    let dn = e.div_extent_by([8, 8, 2]);
+    let dn = e.div_extent_by([8, 8, 2]).unwrap();
     assert_eq!(
         (dn.width, dn.height, dn.depth),
         (2, 1, 1),
@@ -285,25 +166,70 @@ fn desc_builders_follow_machine_code() {
 }
 
 #[test]
-#[should_panic(expected = "divide by zero")]
-fn div_up_extent_panics_on_zero_divisor() {
-    let _ = TextureDesc::new_2d(4, 4, vk::Format::R8_UNORM).div_up_extent_by([2, 0, 1]);
+fn invalid_texture_builder_inputs_return_invalid_usage() {
+    let desc = TextureDesc::new_2d(4, 4, vk::Format::R8_UNORM);
+    let errors = [
+        desc.div_up_extent_by([2, 0, 1]).unwrap_err(),
+        desc.div_extent_by([0, 1, 1]).unwrap_err(),
+        desc.div_up_extent(0).unwrap_err(),
+        desc.div_extent(0).unwrap_err(),
+        desc.array_elements(2).unwrap_err(),
+        desc.array_elements(0).unwrap_err(),
+        TextureDesc::new(desc.extent(), TextureKind::CubeArray, desc.format)
+            .array_elements(u32::MAX)
+            .unwrap_err(),
+    ];
+    for error in errors {
+        assert_eq!(error.kind(), rhapsody::error::ErrorKind::InvalidUsage);
+    }
 }
 
 #[test]
-fn image_create_info_follows_0x140bd5ed0() {
+fn malformed_public_layer_fields_are_rejected_by_every_descriptor_entry() {
+    let mut desc = TextureDesc::new(
+        vk::Extent3D {
+            width: 4,
+            height: 4,
+            depth: 1,
+        },
+        TextureKind::CubeArray,
+        vk::Format::R8G8B8A8_UNORM,
+    )
+    .sampled();
+    desc.array_elements = u32::MAX / 6;
+    assert_eq!(desc.array_layers().unwrap(), (u32::MAX / 6) * 6);
+    desc.array_elements += 1;
+    for error in [
+        desc.array_layers().unwrap_err(),
+        desc.validate().unwrap_err(),
+        get_image_create_info_with_data(&desc, false).unwrap_err(),
+        rhapsody::raw::texture::TextureViewDesc::new(&desc).unwrap_err(),
+    ] {
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+    }
+    desc.array_elements = 0;
+    assert_eq!(
+        desc.array_layers().unwrap_err().kind(),
+        rhapsody::ErrorKind::InvalidUsage
+    );
+}
+
+#[test]
+fn optimal_image_creation_uses_staging_compatible_layout_and_expected_shape() {
     let f = vk::Format::R8G8B8A8_UNORM;
-    // initialLayout = has_data << 3（PREINITIALIZED = 8）。
+    // Initial pixels are staged after creation; OPTIMAL images always begin UNDEFINED.
     let d2 = TextureDesc::new_2d(16, 8, f).sampled();
     assert_eq!(
-        get_image_create_info_with_data(&d2, false).initial_layout,
+        get_image_create_info_with_data(&d2, false)
+            .unwrap()
+            .initial_layout,
         vk::ImageLayout::UNDEFINED
     );
     assert_eq!(
         get_image_create_info_with_data(&d2, true)
-            .initial_layout
-            .as_raw(),
-        8
+            .unwrap()
+            .initial_layout,
+        vk::ImageLayout::UNDEFINED
     );
     // extent 随 kind：1D → (w,1,1)；2D → (w,h,1)；3D → (w,h,d)。
     let d1 = TextureDesc::new(
@@ -315,12 +241,12 @@ fn image_create_info_follows_0x140bd5ed0() {
         TextureKind::D1,
         f,
     );
-    let e = get_image_create_info_with_data(&d1, false).extent;
+    let e = get_image_create_info_with_data(&d1, false).unwrap().extent;
     assert_eq!((e.width, e.height, e.depth), (9, 1, 1));
-    let e = get_image_create_info_with_data(&d2, false).extent;
+    let e = get_image_create_info_with_data(&d2, false).unwrap().extent;
     assert_eq!((e.width, e.height, e.depth), (16, 8, 1));
     let d3 = TextureDesc::new_3d(4, 5, 6, f);
-    let info3 = get_image_create_info_with_data(&d3, false);
+    let info3 = get_image_create_info_with_data(&d3, false).unwrap();
     assert_eq!(
         (info3.extent.depth, info3.image_type),
         (6, vk::ImageType::TYPE_3D)
@@ -336,7 +262,9 @@ fn image_create_info_follows_0x140bd5ed0() {
         f,
     );
     assert_eq!(
-        get_image_create_info_with_data(&cube, false).array_layers,
+        get_image_create_info_with_data(&cube, false)
+            .unwrap()
+            .array_layers,
         6
     );
     let carr = TextureDesc::new(
@@ -348,9 +276,12 @@ fn image_create_info_follows_0x140bd5ed0() {
         TextureKind::CubeArray,
         f,
     )
-    .array_elements(3);
+    .array_elements(3)
+    .unwrap();
     assert_eq!(
-        get_image_create_info_with_data(&carr, false).array_layers,
+        get_image_create_info_with_data(&carr, false)
+            .unwrap()
+            .array_layers,
         18
     );
     // 其余固定字段：tiling OPTIMAL、sharing EXCLUSIVE、sType 14。
@@ -386,7 +317,10 @@ fn create_buffer_initial_data_paths() {
     let init: &[u8] = &[1, 2, 3, 4];
     let mapped = gd.create_buffer(&desc, "mapped", init).unwrap();
     assert!(mapped.usage.contains(vk::BufferUsageFlags::TRANSFER_DST));
-    assert_eq!(&gd.buffer_mapped_slice_mut(&mapped).unwrap()[..4], init);
+    assert_eq!(
+        &unsafe { gd.buffer_mapped_slice_mut(&mapped) }.unwrap()[..4],
+        init
+    );
     // 数据超过 desc.size：断言失败。
     let too_big = vec![0u8; 33];
     assert!(gd.create_buffer(&desc, "big", too_big.as_slice()).is_err());
@@ -395,8 +329,8 @@ fn create_buffer_initial_data_paths() {
     let g = gd.create_buffer(&gpu, "gpu", init).unwrap();
     // lavapipe/UMA 的 DEVICE_LOCAL 内存同时 HOST_VISIBLE，所以只断言“有无映射 ⇔ 有无切片”。
     assert_eq!(
-        gd.buffer_mapped_slice_mut(&g).is_none(),
-        g.slot_view(0).mapped_ptr.is_null()
+        unsafe { gd.buffer_mapped_slice_mut(&g) }.is_none(),
+        g.persistent_host_ptr().is_none()
     );
 }
 
@@ -405,7 +339,7 @@ fn mapped_slice_is_full_length_and_follows_slot_pointer() {
     let Some(gd) = device() else { return };
     let cpu = BufferDesc::new_cpu_to_gpu(48, vk::BufferUsageFlags::UNIFORM_BUFFER);
     let b = gd.create_buffer(&cpu, "m", ()).unwrap();
-    let slice = gd.buffer_mapped_slice_mut(&b).unwrap();
+    let slice = unsafe { gd.buffer_mapped_slice_mut(&b) }.unwrap();
     assert_eq!(slice.len(), 48, "全长 = desc.size");
     slice.fill(0x5a);
     let mut out = [0u8; 48];
@@ -414,8 +348,8 @@ fn mapped_slice_is_full_length_and_follows_slot_pointer() {
     let gpu = BufferDesc::new_gpu_only(48, vk::BufferUsageFlags::UNIFORM_BUFFER);
     let g = gd.create_buffer(&gpu, "g", ()).unwrap();
     assert_eq!(
-        gd.buffer_mapped_slice_mut(&g).is_none(),
-        g.slot_view(0).mapped_ptr.is_null()
+        unsafe { gd.buffer_mapped_slice_mut(&g) }.is_none(),
+        g.persistent_host_ptr().is_none()
     );
 }
 
@@ -432,10 +366,11 @@ fn create_mapped_buffer_requires_host_visible_locations() {
     let low = BufferDesc::new_cpu_to_gpu_low_prio(8, vk::BufferUsageFlags::TRANSFER_SRC);
     let gpu = BufferDesc::new_gpu_only(8, vk::BufferUsageFlags::TRANSFER_SRC);
     for bad in [low, gpu] {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let _ = gd.create_mapped_buffer(&bad, "bad");
-        }));
-        assert!(result.is_err(), "memory_location ∉ {{2,4}} 必须断言失败");
+        let error = gd
+            .create_mapped_buffer(&bad, "bad")
+            .err()
+            .expect("无效memory_location必须返回错误");
+        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     }
 }
 

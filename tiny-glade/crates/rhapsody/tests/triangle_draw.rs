@@ -1,7 +1,6 @@
 //! 三角形绘制 + 像素读回 demo（rhapsody 内部、无窗口，lavapipe 可跑）。
 //!
-//! 走的全是 rhapsody 自己的接口：`GraphicsDevice::create_render_pass`（`RenderPassDesc` 缓存）、
-//! `create_framebuffer`、`VulkanPipeline::create_raster_pipeline`（`RasterPipelineOpts` 位域给固定状态）、
+//! 使用正式动态渲染、`VulkanPipeline::create_raster_pipeline` 与附件视图，
 //! `create_buffer`（顶点上传）、`VulkanCommandPool`/`PendingCommand`（录制与提交），最后把附件拷回缓冲逐像素检查。
 //! `cargo test -p rhapsody --test triangle_draw -- --nocapture` 会打印一张 ASCII 预览。
 //! 没有 Vulkan 设备时跳过。

@@ -8,17 +8,100 @@
 //! - 查找用 `HashMap`（哈希只决定桶），命中的最终判定是 `K: Eq` 的完整比较。即使两个
 //!   不同键哈希到同一桶，也不会误命中；调用方绝不能把 64 位哈希值本身当键用。
 //!
-//! LRU 用“代际戳 + 双端队列”实现：每次访问把键连同新戳压入队尾，逐出时从队头弹出、
-//! 跳过戳已过期的陈旧记录，摊销 O(1)、无需每命中 O(n) 移动。统计（命中/未命中/插入/
-//! 逐出/拒绝超大项）只增不减，供缓存 A/B 与失效原因观测。
+//! LRU keeps one key per live entry. Hits move the existing key without cloning
+//! it or allocating; the bounded scan also avoids an ever-growing access log.
 
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::hash::Hash;
 
+/// Fixed diagnostics, recorded without retaining caller names or growing logs.
+/// When several key fields change, owners report the first differing field in
+/// their documented comparison order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[repr(usize)]
+pub enum CacheReason {
+    Cold,
+    Disabled,
+    UnknownDependencies,
+    DependencyVersion,
+    Parameters,
+    ShaderImplementation,
+    ShaderInterface,
+    Descriptor,
+    Sharing,
+    DeviceGeneration,
+    QueuePolicy,
+    SubgraphInterface,
+    GraphStructure,
+    AccessSemantics,
+    CompilerVersion,
+    MetadataLimit,
+    ExplicitClear,
+    ExplicitRemoval,
+    CapacityEntries,
+    CapacityBytes,
+    CapacityChanged,
+    Pressure,
+    AbortedFrame,
+}
+impl CacheReason {
+    pub const ALL: [Self; 23] = [
+        Self::Cold,
+        Self::Disabled,
+        Self::UnknownDependencies,
+        Self::DependencyVersion,
+        Self::Parameters,
+        Self::ShaderImplementation,
+        Self::ShaderInterface,
+        Self::Descriptor,
+        Self::Sharing,
+        Self::DeviceGeneration,
+        Self::QueuePolicy,
+        Self::SubgraphInterface,
+        Self::GraphStructure,
+        Self::AccessSemantics,
+        Self::CompilerVersion,
+        Self::MetadataLimit,
+        Self::ExplicitClear,
+        Self::ExplicitRemoval,
+        Self::CapacityEntries,
+        Self::CapacityBytes,
+        Self::CapacityChanged,
+        Self::Pressure,
+        Self::AbortedFrame,
+    ];
+}
+const CACHE_REASON_COUNT: usize = CacheReason::AbortedFrame as usize + 1;
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CacheDiagnostics {
+    misses: [u64; CACHE_REASON_COUNT],
+    invalidations: [u64; CACHE_REASON_COUNT],
+}
+impl CacheDiagnostics {
+    pub fn misses(self, reason: CacheReason) -> u64 {
+        self.misses[reason as usize]
+    }
+    pub fn invalidations(self, reason: CacheReason) -> u64 {
+        self.invalidations[reason as usize]
+    }
+    pub(crate) fn miss(&mut self, reason: CacheReason) {
+        self.misses[reason as usize] += 1;
+    }
+    pub(crate) fn invalidate(&mut self, reason: CacheReason, count: usize) {
+        self.invalidations[reason as usize] += count as u64;
+    }
+    pub(crate) fn merge_invalidations(&mut self, other: Self) {
+        for (target, count) in self.invalidations.iter_mut().zip(other.invalidations) {
+            *target += count;
+        }
+    }
+}
+
 /// 缓存运行统计（累计）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CacheStats {
+    pub diagnostics: CacheDiagnostics,
     pub hits: u64,
     pub misses: u64,
     pub insertions: u64,
@@ -39,16 +122,12 @@ pub enum Inserted<V> {
 struct Entry<V> {
     value: V,
     bytes: usize,
-    /// 最近一次访问的代际戳，与 `order` 里的戳配对以跳过陈旧记录。
-    stamp: u64,
 }
 
 /// 有界 LRU 缓存。
 pub struct BoundedCache<K, V> {
     map: HashMap<K, Entry<V>>,
-    /// (key, stamp) 的访问顺序队列；陈旧记录在逐出时惰性清理。
-    order: VecDeque<(K, u64)>,
-    next_stamp: u64,
+    order: VecDeque<K>,
     max_entries: usize,
     max_bytes: usize,
     total_bytes: usize,
@@ -61,7 +140,6 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
         Self {
             map: HashMap::new(),
             order: VecDeque::new(),
-            next_stamp: 0,
             max_entries,
             max_bytes,
             total_bytes: 0,
@@ -72,6 +150,7 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     pub fn get(&mut self, key: &K) -> Option<&V> {
         if !self.map.contains_key(key) {
             self.stats.misses += 1;
+            self.stats.diagnostics.miss(CacheReason::Cold);
             return None;
         }
         self.stats.hits += 1;
@@ -82,11 +161,82 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         if !self.map.contains_key(key) {
             self.stats.misses += 1;
+            self.stats.diagnostics.miss(CacheReason::Cold);
             return None;
         }
         self.stats.hits += 1;
         self.touch(key);
         self.map.get_mut(key).map(|entry| &mut entry.value)
+    }
+
+    /// Compare a borrowed input with complete keys without constructing an owned
+    /// key. The bounded LRU is scanned newest first; a hit moves the existing key
+    /// and does not clone its owned strings or vectors. A failed validation does
+    /// not publish a hit or change recency.
+    pub fn try_get_matching<E>(
+        &mut self,
+        mut matches: impl FnMut(&K) -> Result<bool, E>,
+    ) -> Result<Option<&V>, E> {
+        for index in (0..self.order.len()).rev() {
+            if matches(&self.order[index])? {
+                let key = self.order.remove(index).expect("live cache LRU entry");
+                self.order.push_back(key);
+                self.stats.hits += 1;
+                return Ok(self
+                    .map
+                    .get(self.order.back().expect("matched cache key"))
+                    .map(|entry| &entry.value));
+            }
+        }
+        self.stats.misses += 1;
+        self.stats.diagnostics.miss(CacheReason::Cold);
+        Ok(None)
+    }
+
+    /// Refine an enabled lookup's generic miss after the owner has constructed
+    /// and compared its complete key. This is never called on the hit path.
+    pub(crate) fn classify_miss(&mut self, reason: CacheReason) {
+        if reason != CacheReason::Cold {
+            let cold = &mut self.stats.diagnostics.misses[CacheReason::Cold as usize];
+            debug_assert!(*cold != 0);
+            *cold = cold.saturating_sub(1);
+            self.stats.diagnostics.miss(reason);
+        }
+    }
+    pub(crate) fn record_bypass(&mut self, reason: CacheReason) {
+        self.stats.diagnostics.miss(reason);
+    }
+
+    /// Read-only traversal for bounded dependency invalidation and accounting.
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.map.iter().map(|(key, entry)| (key, &entry.value))
+    }
+
+    /// Preserve recency when an owner replaces cache backing during admission.
+    pub(crate) fn iter_lru(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.order
+            .iter()
+            .filter_map(|key| self.map.get(key).map(|entry| (key, &entry.value)))
+    }
+
+    /// Return the oldest entry that may be evicted without changing recency.
+    /// A cache owner uses this to keep externally held or in-flight values live.
+    pub(crate) fn lru_key_where(&self, mut ready: impl FnMut(&V) -> bool) -> Option<K> {
+        self.order.iter().find_map(|key| {
+            self.map
+                .get(key)
+                .filter(|entry| ready(&entry.value))
+                .map(|_| key.clone())
+        })
+    }
+
+    /// Reserve optional-cache publication storage before any GPU submission.
+    pub fn try_reserve(
+        &mut self,
+        additional: usize,
+    ) -> Result<(), std::collections::TryReserveError> {
+        self.map.try_reserve(additional)?;
+        self.order.try_reserve(additional)
     }
 
     /// 插入或替换，随后按预算逐出 LRU 条目。单条字节数超过整库字节预算时拒绝并退回。
@@ -102,8 +252,13 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
+        self.remove_with_reason(key, CacheReason::ExplicitRemoval)
+    }
+    pub(crate) fn remove_with_reason(&mut self, key: &K, reason: CacheReason) -> Option<V> {
         let entry = self.map.remove(key)?;
         self.total_bytes -= entry.bytes;
+        self.order.retain(|queued| queued != key);
+        self.stats.diagnostics.invalidate(reason, 1);
         Some(entry.value)
     }
 
@@ -112,6 +267,10 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     }
 
     pub fn clear(&mut self) {
+        self.clear_with_reason(CacheReason::ExplicitClear);
+    }
+    pub(crate) fn clear_with_reason(&mut self, reason: CacheReason) {
+        self.stats.diagnostics.invalidate(reason, self.map.len());
         self.map.clear();
         self.order.clear();
         self.total_bytes = 0;
@@ -142,43 +301,23 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     }
 
     fn replace(&mut self, key: K, value: V, bytes: usize) -> Option<V> {
-        self.next_stamp = self.next_stamp.wrapping_add(1);
-        let stamp = self.next_stamp;
-        if let Some(old) = self.map.remove(&key) {
-            self.total_bytes -= old.bytes;
-            self.map.insert(
-                key.clone(),
-                Entry {
-                    value,
-                    bytes,
-                    stamp,
-                },
-            );
-            self.total_bytes += bytes;
-            self.order.push_back((key, stamp));
-            Some(old.value)
-        } else {
-            self.map.insert(
-                key.clone(),
-                Entry {
-                    value,
-                    bytes,
-                    stamp,
-                },
-            );
-            self.total_bytes += bytes;
-            self.order.push_back((key, stamp));
-            None
+        let old = self.map.remove(&key);
+        if let Some(entry) = &old {
+            self.total_bytes -= entry.bytes;
+            self.order.retain(|queued| queued != &key);
         }
+        self.order.push_back(key.clone());
+        self.map.insert(key, Entry { value, bytes });
+        self.total_bytes += bytes;
+        old.map(|entry| entry.value)
     }
 
     fn touch(&mut self, key: &K) {
-        self.next_stamp = self.next_stamp.wrapping_add(1);
-        let stamp = self.next_stamp;
-        if let Some(entry) = self.map.get_mut(key) {
-            entry.stamp = stamp;
+        if let Some(index) = self.order.iter().position(|queued| queued == key)
+            && let Some(existing) = self.order.remove(index)
+        {
+            self.order.push_back(existing);
         }
-        self.order.push_back((key.clone(), stamp));
     }
 
     fn evict_to_limits(&mut self) {
@@ -188,17 +327,23 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
             if !over_entries && !over_bytes {
                 return;
             }
-            let Some((key, stamp)) = self.order.pop_front() else {
+            let Some(key) = self.order.pop_front() else {
                 return;
             };
-            let is_current = matches!(self.map.get(&key), Some(entry) if entry.stamp == stamp);
-            if !is_current {
+            let Some(entry) = self.map.remove(&key) else {
                 continue;
-            }
-            let entry = self.map.remove(&key).expect("刚校验过条目仍存在");
+            };
             self.total_bytes -= entry.bytes;
             self.stats.evictions += 1;
             self.stats.evicted_bytes += entry.bytes;
+            self.stats.diagnostics.invalidate(
+                if over_entries {
+                    CacheReason::CapacityEntries
+                } else {
+                    CacheReason::CapacityBytes
+                },
+                1,
+            );
         }
     }
 }
@@ -218,6 +363,72 @@ impl<K: Clone + Eq + Hash, V> fmt::Debug for BoundedCache<K, V> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diagnostics_distinguish_key_misses_capacity_and_explicit_invalidation() {
+        let mut entries = BoundedCache::new(1, 100);
+        entries.insert(1, 1, 8);
+        entries.insert(2, 2, 8);
+        assert_eq!(
+            entries
+                .stats()
+                .diagnostics
+                .invalidations(CacheReason::CapacityEntries),
+            1
+        );
+        assert!(entries.get(&3).is_none());
+        entries.classify_miss(CacheReason::Descriptor);
+        assert_eq!(entries.stats().diagnostics.misses(CacheReason::Cold), 0);
+        assert_eq!(
+            entries.stats().diagnostics.misses(CacheReason::Descriptor),
+            1
+        );
+        entries.clear();
+        assert_eq!(
+            entries
+                .stats()
+                .diagnostics
+                .invalidations(CacheReason::ExplicitClear),
+            1
+        );
+        entries.record_bypass(CacheReason::Disabled);
+        assert_eq!(entries.stats().diagnostics.misses(CacheReason::Disabled), 1);
+        let mut bytes = BoundedCache::new(8, 10);
+        bytes.insert(1, 1, 6);
+        bytes.insert(2, 2, 6);
+        assert_eq!(
+            bytes
+                .stats()
+                .diagnostics
+                .invalidations(CacheReason::CapacityBytes),
+            1
+        );
+        bytes.remove_with_reason(&2, CacheReason::DependencyVersion);
+        assert_eq!(
+            bytes
+                .stats()
+                .diagnostics
+                .invalidations(CacheReason::DependencyVersion),
+            1
+        );
+    }
+
+    #[test]
+    fn eligible_eviction_skips_held_values_and_observes_lru_order() {
+        let mut cache = BoundedCache::new(3, 3);
+        cache.insert(1, (false, 10), 1);
+        cache.insert(2, (true, 20), 1);
+        cache.insert(3, (true, 30), 1);
+        assert_eq!(cache.lru_key_where(|value| value.0), Some(2));
+        assert_eq!(cache.get(&2), Some(&(true, 20)));
+        assert_eq!(cache.lru_key_where(|value| value.0), Some(3));
+        assert_eq!(
+            cache.iter_lru().map(|(key, _)| *key).collect::<Vec<_>>(),
+            vec![1, 3, 2]
+        );
+        assert_eq!(cache.lru_key_where(|_| false), None);
+        assert_eq!(cache.len(), 3);
+    }
 
     #[test]
     fn insert_get_remove_round_trip() {
@@ -323,5 +534,45 @@ mod tests {
         assert!(cache.is_empty());
         assert_eq!(cache.bytes(), 0);
         assert_eq!(cache.stats().insertions, 1);
+    }
+
+    #[test]
+    fn repeated_hits_keep_lru_metadata_bounded() {
+        let mut cache = BoundedCache::new(2, 128);
+        cache.insert("first", 1u32, 4);
+        cache.insert("second", 2, 4);
+        for _ in 0..10_000 {
+            assert_eq!(cache.get(&"first"), Some(&1));
+        }
+        assert_eq!(cache.order.len(), 2);
+        cache.insert("third", 3, 4);
+        assert!(!cache.contains(&"second"));
+        assert_eq!(cache.get(&"first"), Some(&1));
+    }
+
+    #[test]
+    fn borrowed_lookup_preserves_lru_and_errors_do_not_publish_hits() {
+        let mut cache = BoundedCache::new(2, 128);
+        cache.insert(String::from("first"), 1, 4);
+        cache.insert(String::from("second"), 2, 4);
+        let error = cache.try_get_matching(|_| Err::<bool, _>("invalid frame"));
+        assert_eq!(error, Err("invalid frame"));
+        assert_eq!(cache.stats().hits, 0);
+        assert_eq!(cache.stats().misses, 0);
+        for _ in 0..1000 {
+            assert_eq!(
+                cache.try_get_matching(|key| Ok::<_, ()>(key == "first")),
+                Ok(Some(&1))
+            );
+        }
+        assert_eq!(cache.order.len(), 2);
+        cache.insert(String::from("third"), 3, 4);
+        assert!(!cache.contains(&String::from("second")));
+        assert_eq!(
+            cache.try_get_matching(|key| Ok::<_, ()>(key == "missing")),
+            Ok(None)
+        );
+        assert_eq!(cache.stats().hits, 1000);
+        assert_eq!(cache.stats().misses, 1);
     }
 }

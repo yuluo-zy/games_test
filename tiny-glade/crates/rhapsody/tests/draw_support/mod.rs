@@ -1,21 +1,20 @@
 //! 三角形绘制测试的公共装置：着色器、渲染通道、管线、命令录制与读回。全部走 rhapsody 自己的接口。
 #![allow(dead_code)]
+#[path = "../gpu_test_support/mod.rs"]
+pub mod gpu_test_support;
 use ash::vk;
 use rhapsody::raw::{
     buffer::BufferDesc,
     command_buffer::{PendingCommand, VulkanCommandPool},
-    device::{GraphicsDevice, VulkanDevice},
+    device::Device,
     init::create_headless_device,
     managed::{
         buffer::ManagedBuffer,
-        framebuffer::ManagedFramebuffer,
-        render_pass::ManagedRenderPass,
         texture::{ManagedTexture, ManagedTextureView},
     },
-    render_pass::RenderPassAttachmentDesc,
     shader::{
-        PipelineCache, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts, ShaderModule,
-        VulkanPipeline,
+        DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc,
+        RasterPipelineOpts, ShaderModule, VulkanPipeline,
     },
     texture::{TextureDesc, TextureViewDesc},
 };
@@ -140,28 +139,26 @@ fn image_barrier(
 pub struct Target {
     pub texture: ManagedTexture,
     pub view: ManagedTextureView,
-    pub framebuffer: ManagedFramebuffer,
     pub readback: ManagedBuffer,
 }
 
 pub struct Rig {
-    pub device: Arc<VulkanDevice>,
-    pub gd: Arc<GraphicsDevice>,
-    pub pass: ManagedRenderPass,
+    pub device: Arc<Device>,
+    pub gd: Arc<Device>,
     pub pipeline: Arc<VulkanPipeline>,
     pub pool: Arc<VulkanCommandPool>,
 }
 
 impl Rig {
-    /// 无 Vulkan 设备时返回 `None`（测试跳过）。
+    /// 无 Vulkan 设备时返回 None；严格 GPU 作业中的初始化错误直接失败。
     pub fn new() -> Option<Self> {
-        let device = create_headless_device().ok()?;
-        let gd = GraphicsDevice::from_device(device.clone());
-        let pass = gd
-            .create_render_pass(&[
-                RenderPassAttachmentDesc::new(vk::Format::R8G8B8A8_UNORM).clear_input()
-            ])
-            .unwrap();
+        let device = gpu_test_support::initialize("triangle device", create_headless_device())?;
+        Some(Self::with_device(device))
+    }
+
+    /// 用调用方配置好 `frames_in_flight`/队列的设备构造同一套场景装置。
+    pub fn with_device(device: Arc<Device>) -> Self {
+        let gd = device.clone();
         let (vs, fs) = shaders();
         let vertex = ShaderModule::from_spirv(device.clone(), &vs).unwrap();
         let fragment = ShaderModule::from_spirv(device.clone(), &fs).unwrap();
@@ -170,8 +167,7 @@ impl Rig {
         let mut desc = RasterPipelineDesc::new(vertex, layout);
         desc.fragment = Some(fragment);
         desc.fragment_entry = Some(std::ffi::CString::new("ps_main").unwrap());
-        desc.render_pass = pass.raw();
-        desc.render_pass_owner = Arc::new(pass.clone());
+        desc.use_dynamic_rendering(DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM));
         desc.vertex_bindings = vec![vk::VertexInputBindingDescription {
             binding: 0,
             stride: 16,
@@ -184,16 +180,15 @@ impl Rig {
             offset: 0,
         }];
         // 位域全 0 = TRIANGLE_LIST、cull NONE、depth LESS、写/测试关、无模板、混合模式 0（不混合）。
-        RasterPipelineOpts(0).apply_to(&mut desc, 1);
+        RasterPipelineOpts(0).apply_to(&mut desc, 1).unwrap();
         let pipeline = VulkanPipeline::create_raster_pipeline(&cache, desc).unwrap();
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
-        Some(Self {
+        Self {
             device,
             gd,
-            pass,
             pipeline,
             pool,
-        })
+        }
     }
 
     pub fn new_target(&self, name: &str) -> Target {
@@ -203,15 +198,7 @@ impl Rig {
         let texture = self.gd.create_texture(&desc, name, ()).unwrap();
         let view = self
             .gd
-            .get_vk_image_view(&texture, &TextureViewDesc::new(&desc))
-            .unwrap();
-        let extent = vk::Extent2D {
-            width: SIZE,
-            height: SIZE,
-        };
-        let framebuffer = self
-            .gd
-            .create_framebuffer(&self.pass, vec![view.view.clone()], extent, 1)
+            .get_vk_image_view(&texture, &TextureViewDesc::new(&desc).unwrap())
             .unwrap();
         let readback = self
             .gd
@@ -227,7 +214,6 @@ impl Rig {
         Target {
             texture,
             view,
-            framebuffer,
             readback,
         }
     }
@@ -282,19 +268,25 @@ impl Rig {
                 float32: clear.map(|c| f32::from(c) / 255.0),
             },
         }];
+        let colors = [vk::RenderingAttachmentInfo::default()
+            .image_view(target.view.raw())
+            .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+            .load_op(vk::AttachmentLoadOp::CLEAR)
+            .store_op(vk::AttachmentStoreOp::STORE)
+            .clear_value(clear_value[0])];
+        let info = vk::RenderingInfo::default()
+            .render_area(vk::Rect2D {
+                offset: vk::Offset2D::default(),
+                extent,
+            })
+            .layer_count(1)
+            .color_attachments(&colors);
+        let mut backend =
+            unsafe { rhapsody::rg::pass_api::AshCommandBackend::new_for_device(&self.device) };
+        let mut rendering =
+            rhapsody::rg::pass_api::RenderPassApi::new(&mut backend, handle, 1, false);
+        rendering.begin_dynamic_rendering(&info).unwrap();
         unsafe {
-            raw.cmd_begin_render_pass(
-                handle,
-                &vk::RenderPassBeginInfo::default()
-                    .render_pass(self.pass.raw())
-                    .framebuffer(target.framebuffer.raw())
-                    .render_area(vk::Rect2D {
-                        offset: vk::Offset2D::default(),
-                        extent,
-                    })
-                    .clear_values(&clear_value),
-                vk::SubpassContents::INLINE,
-            );
             raw.cmd_set_viewport(
                 handle,
                 0,
@@ -323,7 +315,7 @@ impl Rig {
             );
             raw.cmd_bind_vertex_buffers(handle, 0, &[gd.get_vk_buffer(&vbuf).unwrap()], &[0]);
             raw.cmd_draw(handle, 3, 1, 0, 0);
-            raw.cmd_end_render_pass(handle);
+            rendering.end_render_pass();
         }
         image_barrier(
             raw,
@@ -385,12 +377,11 @@ impl Rig {
             );
         }
         // 命令缓冲引用的对象必须存活到执行完。
-        cb.keep_alive(Arc::new(self.pass.clone()));
-        cb.keep_alive(Arc::new(target.framebuffer.clone()));
-        cb.keep_alive(Arc::new(target.texture.clone()));
-        cb.keep_alive(Arc::new(target.readback.clone()));
-        cb.keep_alive(self.pipeline.clone());
-        cb.keep_alive(Arc::new(vbuf));
+        cb.retain_opaque(target.view.view.clone()).unwrap();
+        cb.retain_opaque(Arc::new(target.texture.clone())).unwrap();
+        cb.retain_opaque(Arc::new(target.readback.clone())).unwrap();
+        cb.retain_object(self.pipeline.clone()).unwrap();
+        cb.retain_opaque(Arc::new(vbuf)).unwrap();
         cb.end().unwrap();
         cb.submit().unwrap()
     }

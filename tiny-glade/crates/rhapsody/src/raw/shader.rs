@@ -1,12 +1,17 @@
 //! shader 资产选择、原容器存储反射布局生产、管线与缓存的可运行候选。
 //! SPIR-V 解析复用原锁 rspirv；反射 schema 复用原 spirq fork 已保存目录。
 //! 原资产键到 country-core pass 的关联、完整原缓存策略与 ABI 仍未全部对齐。
-use crate::raw::binding::ResourceOwner;
+use super::allocator::{
+    AllocatorStats, CpuMemoryReservation, cpu_vec_bytes, reserve_shared_cpu_metadata,
+    shared_cpu_bytes,
+};
+use super::temp_list::TempList;
+use crate::Result;
 use crate::raw::descriptor_set::VulkanDescriptorSetLayout;
-use crate::raw::descriptor_set::{Binding, DescriptorSetState, LayoutPlan, descriptor_set_layout};
-use crate::raw::device::VulkanDevice;
+use crate::raw::descriptor_set::{Binding, LayoutPlan, descriptor_set_layout};
+use crate::raw::device::Device;
 use ash::vk;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -15,20 +20,80 @@ use std::{
     sync::Arc,
 };
 
+fn invalid_shader() -> crate::Error {
+    crate::Error::invalid_usage("着色器数据、SPIR-V 入口或反射无效")
+}
+fn observe_vulkan<T>(device: &Device, result: std::result::Result<T, vk::Result>) -> Result<T> {
+    result.map_err(|error| {
+        if error == vk::Result::ERROR_DEVICE_LOST {
+            device.timelines.mark_device_lost();
+        }
+        crate::Error::from(error)
+    })
+}
+
+/// Releases owned CPU buffers before returning their reservation on any
+/// pre-native failure as well as when the final published object is dropped.
+struct BudgetedMetadata<T> {
+    data: T,
+    memory: CpuMemoryReservation,
+}
 pub struct ShaderModule {
-    pub device: Arc<VulkanDevice>,
+    pub device: Arc<Device>,
     pub handle: vk::ShaderModule,
+    interfaces: Arc<[super::shader_interface::EntryContract]>,
+    _memory: CpuMemoryReservation,
 }
 impl ShaderModule {
-    pub fn from_spirv(device: Arc<VulkanDevice>, bytes: &[u8]) -> Result<Arc<Self>, vk::Result> {
-        let words = ash::util::read_spv(&mut Cursor::new(bytes))
-            .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
-        if words.first().copied() != Some(0x07230203) {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+    pub fn from_spirv(device: Arc<Device>, bytes: &[u8]) -> Result<Arc<Self>> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
         }
+        let mut words_memory = device.allocator_stats.reserve_cpu_bytes(
+            cpu_vec_bytes::<u32>(bytes.len() / 4)?,
+            crate::device::BudgetCategory::Live,
+        )?;
+        let words = ash::util::read_spv(&mut Cursor::new(bytes)).map_err(|_| invalid_shader())?;
+        words_memory.resize(cpu_vec_bytes::<u32>(words.capacity())?)?;
+        if words.len() < 5 || words.first().copied() != Some(0x07230203) {
+            return Err(invalid_shader());
+        }
+        let interfaces = super::shader_interface::contracts(&words)?;
+        let (interface_layout, _) = std::alloc::Layout::new::<[usize; 2]>()
+            .extend(
+                std::alloc::Layout::array::<super::shader_interface::EntryContract>(
+                    interfaces.len(),
+                )
+                .map_err(|_| crate::Error::OutOfHostMemory)?,
+            )
+            .map_err(|_| crate::Error::OutOfHostMemory)?;
+        let interface_bytes = interfaces.iter().try_fold(
+            interface_layout.pad_to_align().size() as u64,
+            |bytes, entry| {
+                bytes
+                    .checked_add(entry.bytes() as u64)
+                    .ok_or(crate::Error::OutOfHostMemory)
+            },
+        )?;
+        let memory = reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, interface_bytes)?;
+        let interfaces = BudgetedMetadata {
+            data: interfaces,
+            memory,
+        };
         let info = vk::ShaderModuleCreateInfo::default().code(&words);
-        let handle = unsafe { device.device.create_shader_module(&info, None) }?;
-        Ok(Arc::new(Self { device, handle }))
+        let handle =
+            unsafe { device.device.create_shader_module(&info, None) }.map_err(|error| {
+                if error == vk::Result::ERROR_DEVICE_LOST {
+                    device.timelines.mark_device_lost();
+                }
+                crate::Error::from(error)
+            })?;
+        Ok(Arc::new(Self {
+            device,
+            handle,
+            interfaces: interfaces.data,
+            _memory: interfaces.memory,
+        }))
     }
 }
 impl Drop for ShaderModule {
@@ -40,19 +105,50 @@ impl Drop for ShaderModule {
 }
 
 pub struct PipelineLayout {
-    pub device: Arc<VulkanDevice>,
+    pub(crate) last_use: Arc<crate::resource::SyncCell>,
+    pub device: Arc<Device>,
     pub handle: vk::PipelineLayout,
-    pub sets: Vec<Arc<VulkanDescriptorSetLayout>>,
-    pub push_constants: Vec<vk::PushConstantRange>,
+    pub(crate) sets: Vec<Arc<VulkanDescriptorSetLayout>>,
+    pub(crate) push_constants: Vec<vk::PushConstantRange>,
+    bindless_abi: Option<Arc<crate::bindless::BindlessShaderAbi>>,
+    _memory: CpuMemoryReservation,
 }
 impl PipelineLayout {
+    pub fn sets(&self) -> &[Arc<VulkanDescriptorSetLayout>] {
+        &self.sets
+    }
+    pub fn push_constants(&self) -> &[vk::PushConstantRange] {
+        &self.push_constants
+    }
     pub fn new(
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         sets: Vec<Arc<VulkanDescriptorSetLayout>>,
         push_constants: Vec<vk::PushConstantRange>,
-    ) -> Result<Arc<Self>, vk::Result> {
+    ) -> Result<Arc<Self>> {
+        Self::create(device, sets, push_constants, None)
+    }
+    pub(crate) fn new_bindless(
+        device: Arc<Device>,
+        sets: Vec<Arc<VulkanDescriptorSetLayout>>,
+        push_constants: Vec<vk::PushConstantRange>,
+        abi: Arc<crate::bindless::BindlessShaderAbi>,
+    ) -> Result<Arc<Self>> {
+        Self::create(device, sets, push_constants, Some(abi))
+    }
+    pub fn bindless_abi(&self) -> Option<&Arc<crate::bindless::BindlessShaderAbi>> {
+        self.bindless_abi.as_ref()
+    }
+    fn create(
+        device: Arc<Device>,
+        sets: Vec<Arc<VulkanDescriptorSetLayout>>,
+        push_constants: Vec<vk::PushConstantRange>,
+        bindless_abi: Option<Arc<crate::bindless::BindlessShaderAbi>>,
+    ) -> Result<Arc<Self>> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
         if sets.iter().any(|s| !Arc::ptr_eq(&device, &s.device)) {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
         let limits = unsafe {
             device
@@ -73,82 +169,330 @@ impl PipelineLayout {
                         .is_none_or(|end| end > limits.max_push_constants_size)
             })
         {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
         for (index, range) in push_constants.iter().enumerate() {
             if push_constants[..index]
                 .iter()
                 .any(|prior| prior.stage_flags.intersects(range.stage_flags))
             {
-                return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+                return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
             }
         }
-        let raw: Vec<_> = sets.iter().map(|s| s.handle).collect();
+        let bytes = cpu_vec_bytes::<Arc<VulkanDescriptorSetLayout>>(sets.capacity())?
+            .checked_add(cpu_vec_bytes::<vk::PushConstantRange>(
+                push_constants.capacity(),
+            )?)
+            .ok_or(crate::Error::OutOfHostMemory)?;
+        let memory = reserve_shared_cpu_metadata::<Self>(&device.allocator_stats, bytes)?;
+        let arrays = BudgetedMetadata {
+            data: (sets, push_constants),
+            memory,
+        };
+        let mut raw = TempList::new(arrays.data.0.len().max(1), device.allocator_stats.clone())?;
+        raw.reserve(arrays.data.0.len())?;
+        for set in &arrays.data.0 {
+            raw.add(set.handle)?;
+        }
         let info = vk::PipelineLayoutCreateInfo::default()
-            .set_layouts(&raw)
-            .push_constant_ranges(&push_constants);
-        let handle = unsafe { device.device.create_pipeline_layout(&info, None) }?;
+            .set_layouts(raw.as_slice())
+            .push_constant_ranges(&arrays.data.1);
+        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.allocator_stats)?;
+        let handle = observe_vulkan(&device, unsafe {
+            device.device.create_pipeline_layout(&info, None)
+        })?;
         Ok(Arc::new(Self {
+            last_use: crate::resource::SyncCell::for_device(device.generation())
+                .into_reserved_arc(sync_storage),
             device,
             handle,
-            sets,
-            push_constants,
+            sets: arrays.data.0,
+            push_constants: arrays.data.1,
+            bindless_abi,
+            _memory: arrays.memory,
         }))
     }
 }
 impl Drop for PipelineLayout {
     fn drop(&mut self) {
-        self.device
-            .bury(super::graveyard::Doomed::PipelineLayout(self.handle));
+        self.device.retire(
+            self.last_use.snapshot(),
+            super::graveyard::Doomed::PipelineLayout(self.handle),
+        );
     }
 }
 
-/// Vulkan 驱动缓存。`VkPipelineCache` 未带 EXTERNALLY_SYNCHRONIZED 标志创建，规范规定其内部同步，
-/// 所以不同键的管线可以并行创建；`lock` 只保护 `get_pipeline_cache_data` 的读取。
+/// Vulkan driver cache with bounded object tables. Parallel creations use a
+/// shared guard; cache-data extraction takes an exclusive guard so it cannot
+/// overlap creation. Each key has a separate creation slot.
 ///
-/// 每个键一个槽位：map 只在查找/插入槽位时短暂持锁，创建在槽位锁内进行——同键的并发调用者
+/// 每个键一个槽位：有界表只在查找/插入时短暂持锁，创建在槽位锁内进行——同键的并发调用者
 /// 排队等待同一次创建（去重），不同键互不阻塞；创建失败不缓存，下次调用重试。
 type ComputePipelineKey = (u64, u64, Vec<u8>);
-type PipelineSlot = Arc<Mutex<Option<Arc<VulkanPipeline>>>>;
-pub struct PipelineCache {
-    pub device: Arc<VulkanDevice>,
-    handle: vk::PipelineCache,
-    lock: Mutex<()>,
-    compute: Mutex<BTreeMap<ComputePipelineKey, PipelineSlot>>,
-    raster: Mutex<BTreeMap<Vec<u64>, PipelineSlot>>,
+type PipelineSlot = Arc<Mutex<PipelineSlotState>>;
+struct PipelineSlotState {
+    pipeline: Option<Arc<VulkanPipeline>>,
+    _memory: CpuMemoryReservation,
 }
-/// 取（或插入）键对应的槽位；map 锁在返回前释放。
-fn slot_for<K: Ord>(map: &Mutex<BTreeMap<K, PipelineSlot>>, key: K) -> PipelineSlot {
-    map.lock().entry(key).or_default().clone()
+struct BudgetedKey<K> {
+    value: K,
+    memory: CpuMemoryReservation,
+}
+struct PipelineCacheEntry<K> {
+    key: K,
+    slot: PipelineSlot,
+    _key_memory: CpuMemoryReservation,
+}
+pub struct PipelineCache {
+    pub device: Arc<Device>,
+    handle: vk::PipelineCache,
+    lock: RwLock<()>,
+    capacity: usize,
+    compute: Mutex<TempList<PipelineCacheEntry<ComputePipelineKey>>>,
+    raster: Mutex<TempList<PipelineCacheEntry<Vec<u64>>>>,
+}
+/// Driver cache bytes retain their CPU budget until the last payload owner is
+/// dropped, including when a caller keeps them after the cache itself is gone.
+pub struct PipelineCacheData {
+    bytes: Vec<u8>,
+    _memory: super::allocator::CpuMemoryReservation,
+}
+impl PipelineCacheData {
+    pub(crate) fn zeroed(
+        budget: &Arc<super::allocator::AllocatorStats>,
+        size: usize,
+    ) -> Result<Self> {
+        let mut memory =
+            budget.reserve_cpu_bytes(size as u64, crate::device::BudgetCategory::Live)?;
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(size)
+            .map_err(|_| crate::Error::OutOfHostMemory)?;
+        memory.resize(bytes.capacity() as u64)?;
+        bytes.resize(size, 0);
+        Ok(Self {
+            bytes,
+            _memory: memory,
+        })
+    }
+    pub(crate) fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut self.bytes
+    }
+}
+impl std::ops::Deref for PipelineCacheData {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+/// Full borrowed equality is checked before allocating a key. Slot metadata is
+/// owned by the final Arc, including compilers that outlive table eviction.
+fn slot_for<K>(
+    table: &Mutex<TempList<PipelineCacheEntry<K>>>,
+    matches: impl Fn(&K) -> bool,
+    create_key: impl FnOnce() -> Result<BudgetedKey<K>>,
+    capacity: usize,
+    budget: &Arc<AllocatorStats>,
+) -> Result<PipelineSlot> {
+    let mut slots = table.lock();
+    if let Some(entry) = slots.as_slice().iter().find(|entry| matches(&entry.key)) {
+        return Ok(entry.slot.clone());
+    }
+    let victim = if slots.as_slice().len() >= capacity {
+        Some(
+            slots
+                .as_slice()
+                .iter()
+                .position(|entry| {
+                    Arc::strong_count(&entry.slot) == 1 && entry.slot.try_lock().is_some()
+                })
+                .ok_or(crate::Error::Timeout)?,
+        )
+    } else {
+        let needed = slots.as_slice().len() + 1;
+        slots.reserve(needed)?;
+        None
+    };
+    // All fallible admission precedes eviction. Failure preserves every old key.
+    let key = create_key()?;
+    let memory = reserve_shared_cpu_metadata::<Mutex<PipelineSlotState>>(budget, 0)?;
+    let slot = Arc::new(Mutex::new(PipelineSlotState {
+        pipeline: None,
+        _memory: memory,
+    }));
+    if let Some(victim) = victim {
+        let mut index = 0;
+        slots.retain(|_| {
+            let keep = index != victim;
+            index += 1;
+            keep
+        });
+    }
+    slots.add(PipelineCacheEntry {
+        key: key.value,
+        slot: slot.clone(),
+        _key_memory: key.memory,
+    })?;
+    Ok(slot)
+}
+fn budgeted_key_vec<T: Copy>(
+    budget: &Arc<AllocatorStats>,
+    values: &[T],
+) -> Result<BudgetedKey<Vec<T>>> {
+    let mut memory = budget.reserve_cpu_bytes(
+        cpu_vec_bytes::<T>(values.len())?,
+        crate::device::BudgetCategory::Live,
+    )?;
+    let mut key = Vec::new();
+    key.try_reserve_exact(values.len())
+        .map_err(|_| crate::Error::OutOfHostMemory)?;
+    memory.resize(cpu_vec_bytes::<T>(key.capacity())?)?;
+    key.extend_from_slice(values);
+    Ok(BudgetedKey { value: key, memory })
+}
+fn budgeted_raster_key(
+    budget: &Arc<AllocatorStats>,
+    desc: &RasterPipelineDesc,
+) -> Result<BudgetedKey<Vec<u64>>> {
+    let size = raster_pipeline_key_len(desc);
+    let mut memory = budget.reserve_cpu_bytes(
+        cpu_vec_bytes::<u64>(size)?,
+        crate::device::BudgetCategory::Live,
+    )?;
+    let mut key = Vec::new();
+    key.try_reserve_exact(size)
+        .map_err(|_| crate::Error::OutOfHostMemory)?;
+    memory.resize(cpu_vec_bytes::<u64>(key.capacity())?)?;
+    visit_raster_pipeline_key(desc, &mut |word| key.push(word));
+    Ok(BudgetedKey { value: key, memory })
 }
 impl PipelineCache {
-    pub fn new(device: Arc<VulkanDevice>, initial_data: &[u8]) -> Result<Self, vk::Result> {
+    pub fn new(device: Arc<Device>, initial_data: &[u8]) -> Result<Self> {
+        Self::with_capacity(device, initial_data, 256)
+    }
+    /// Bounds each in-memory pipeline table, independently of driver cache data.
+    pub fn with_capacity(
+        device: Arc<Device>,
+        initial_data: &[u8],
+        capacity: usize,
+    ) -> Result<Self> {
+        if device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        if capacity == 0 || capacity > 65_536 {
+            return Err(crate::Error::invalid_usage(
+                "pipeline cache capacity must be in 1..=65536",
+            ));
+        }
+        if !initial_data.is_empty() && !valid_pipeline_cache_data(&device, initial_data) {
+            return Err(crate::Error::invalid_usage(
+                "pipeline cache header does not match this device",
+            ));
+        }
+        let compute = TempList::new(capacity, device.allocator_stats.clone())?;
+        let raster = TempList::new(capacity, device.allocator_stats.clone())?;
         let info = vk::PipelineCacheCreateInfo::default().initial_data(initial_data);
-        let handle = unsafe { device.device.create_pipeline_cache(&info, None) }?;
+        let handle = observe_vulkan(&device, unsafe {
+            device.device.create_pipeline_cache(&info, None)
+        })?;
         Ok(Self {
             device,
             handle,
-            lock: Mutex::new(()),
-            compute: Mutex::new(BTreeMap::new()),
-            raster: Mutex::new(BTreeMap::new()),
+            lock: RwLock::new(()),
+            capacity,
+            compute: Mutex::new(compute),
+            raster: Mutex::new(raster),
         })
     }
-    pub fn data(&self) -> Result<Vec<u8>, vk::Result> {
-        let _lock = self.lock.lock();
-        unsafe { self.device.device.get_pipeline_cache_data(self.handle) }
+    pub fn data(&self) -> Result<PipelineCacheData> {
+        if self.device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
+        let _lock = self.lock.write();
+        let get = self.device.device.fp_v1_0().get_pipeline_cache_data;
+        // Query and copy under the same exclusive cache lock. Native creation
+        // holds a read guard, so a compiler cannot invalidate the queried size.
+        for _ in 0..3 {
+            let mut size = 0;
+            let result = unsafe {
+                get(
+                    self.device.device.handle(),
+                    self.handle,
+                    &mut size,
+                    std::ptr::null_mut(),
+                )
+            };
+            observe_vulkan(&self.device, result.result())?;
+            if size > 64 << 20 {
+                return Err(crate::Error::invalid_usage(
+                    "pipeline cache data exceeds its byte limit",
+                ));
+            }
+            let mut data = PipelineCacheData::zeroed(&self.device.allocator_stats, size)?;
+            let mut written = size;
+            let result = unsafe {
+                get(
+                    self.device.device.handle(),
+                    self.handle,
+                    &mut written,
+                    data.bytes.as_mut_ptr().cast(),
+                )
+            };
+            if result == vk::Result::INCOMPLETE {
+                continue;
+            }
+            observe_vulkan(&self.device, result.result())?;
+            if written > size {
+                return Err(crate::Error::invalid_usage(
+                    "pipeline cache returned an invalid data length",
+                ));
+            }
+            data.bytes.truncate(written);
+            return Ok(data);
+        }
+        Err(crate::Error::Timeout)
     }
     /// 管线缓存持有布局与 shader；显式失效后已有提交仍由外部 Arc 保持有效。
     pub fn invalidate(&self) {
-        self.compute.lock().clear();
-        self.raster.lock().clear();
+        self.compute
+            .lock()
+            .retain(|entry| Arc::strong_count(&entry.slot) > 1 || entry.slot.try_lock().is_none());
+        self.raster
+            .lock()
+            .retain(|entry| Arc::strong_count(&entry.slot) > 1 || entry.slot.try_lock().is_none());
     }
     pub fn cached_compute_count(&self) -> usize {
         self.compute
             .lock()
-            .values()
-            .filter(|slot| slot.lock().is_some())
+            .as_slice()
+            .iter()
+            .filter(|entry| entry.slot.lock().pipeline.is_some())
             .count()
     }
+}
+pub(crate) fn valid_pipeline_cache_data(device: &Device, bytes: &[u8]) -> bool {
+    if bytes.len() < 32 || bytes.len() > 64 << 20 {
+        return false;
+    }
+    let word = |offset| {
+        u32::from_le_bytes(
+            bytes[offset..offset + 4]
+                .try_into()
+                .expect("checked Vulkan cache header"),
+        )
+    };
+    let properties = unsafe {
+        device
+            .instance
+            .instance
+            .get_physical_device_properties(device.physical)
+    };
+    word(0) >= 32
+        && word(0) as usize <= bytes.len()
+        && word(4) == vk::PipelineCacheHeaderVersion::ONE.as_raw() as u32
+        && word(8) == properties.vendor_id
+        && word(12) == properties.device_id
+        && bytes[16..32] == properties.pipeline_cache_uuid
 }
 impl Drop for PipelineCache {
     fn drop(&mut self) {
@@ -156,6 +500,7 @@ impl Drop for PipelineCache {
     }
 }
 
+#[derive(Clone)]
 pub struct ComputePipelineDesc {
     pub shader: Arc<ShaderModule>,
     pub entry: CString,
@@ -165,13 +510,84 @@ impl ComputePipelineDesc {
     pub fn new(shader: Arc<ShaderModule>, layout: Arc<PipelineLayout>) -> Self {
         Self {
             shader,
-            entry: CString::new("main").unwrap(),
+            entry: c"main".to_owned(),
             layout,
         }
     }
 }
 
 /// 图形状态显式交给调用者；不猜原作各材质的默认深度、混合或剔除规则。
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DynamicRenderingFormats {
+    pub colors: Vec<vk::Format>,
+    pub depth: vk::Format,
+    pub stencil: vk::Format,
+    /// Multiview is deliberately not enabled by this implementation yet.
+    pub view_mask: u32,
+}
+impl DynamicRenderingFormats {
+    pub fn color(format: vk::Format) -> Self {
+        Self {
+            colors: vec![format],
+            depth: vk::Format::UNDEFINED,
+            stencil: vk::Format::UNDEFINED,
+            view_mask: 0,
+        }
+    }
+    pub fn validate(&self, max_colors: u32) -> Result<()> {
+        if self.view_mask != 0 {
+            return Err(crate::Error::unsupported(
+                "dynamic rendering multiview is not enabled",
+            ));
+        }
+        if self.colors.len() > max_colors as usize {
+            return Err(crate::Error::invalid_usage(
+                "dynamic rendering color count exceeds maxColorAttachments",
+            ));
+        }
+        for &format in &self.colors {
+            if format != vk::Format::UNDEFINED
+                && super::format::vk_format_valid_aspect_flags(format)
+                    != vk::ImageAspectFlags::COLOR
+            {
+                return Err(crate::Error::invalid_usage(
+                    "dynamic rendering color format has depth/stencil aspects",
+                ));
+            }
+        }
+        for (format, aspect) in [
+            (self.depth, vk::ImageAspectFlags::DEPTH),
+            (self.stencil, vk::ImageAspectFlags::STENCIL),
+        ] {
+            if format != vk::Format::UNDEFINED
+                && !super::format::vk_format_valid_aspect_flags(format).contains(aspect)
+            {
+                return Err(crate::Error::invalid_usage(
+                    "dynamic rendering depth/stencil format lacks its aspect",
+                ));
+            }
+        }
+        if self.depth != vk::Format::UNDEFINED
+            && self.stencil != vk::Format::UNDEFINED
+            && self.depth != self.stencil
+        {
+            return Err(crate::Error::invalid_usage(
+                "dynamic depth and stencil formats must match the shared attachment",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RasterTargetSignature {
+    Dynamic {
+        formats: DynamicRenderingFormats,
+        samples: vk::SampleCountFlags,
+    },
+}
+
+#[derive(Clone)]
 pub struct RasterPipelineDesc {
     pub vertex: Arc<ShaderModule>,
     pub fragment: Option<Arc<ShaderModule>>,
@@ -179,9 +595,8 @@ pub struct RasterPipelineDesc {
     /// 原发行 vertex/fragment 入口通常分别为 vs_main/ps_main，不能误用同一名称。
     pub fragment_entry: Option<CString>,
     pub layout: Arc<PipelineLayout>,
-    pub render_pass: vk::RenderPass,
-    pub render_pass_owner: ResourceOwner,
-    pub subpass: u32,
+    /// Required color/depth/stencil signature for dynamic rendering.
+    pub dynamic_rendering: Option<DynamicRenderingFormats>,
     pub vertex_bindings: Vec<vk::VertexInputBindingDescription>,
     pub vertex_attributes: Vec<vk::VertexInputAttributeDescription>,
     pub topology: vk::PrimitiveTopology,
@@ -192,7 +607,6 @@ pub struct RasterPipelineDesc {
     pub depth_test: bool,
     pub depth_write: bool,
     pub depth_compare: vk::CompareOp,
-    /// 模板测试；front/back 共用 `stencil`（原 0x1416a3720 两份同值）。
     pub stencil_test: bool,
     pub stencil: vk::StencilOpState,
     pub blend_attachments: Vec<vk::PipelineColorBlendAttachmentState>,
@@ -203,12 +617,10 @@ impl RasterPipelineDesc {
         Self {
             vertex,
             fragment: None,
-            entry: CString::new("vs_main").unwrap_or_default(),
+            entry: c"vs_main".to_owned(),
             fragment_entry: None,
             layout,
-            render_pass: vk::RenderPass::null(),
-            render_pass_owner: Arc::from(Box::new(()) as Box<dyn Send + Sync>),
-            subpass: 0,
+            dynamic_rendering: None,
             vertex_bindings: Vec::new(),
             vertex_attributes: Vec::new(),
             topology: vk::PrimitiveTopology::TRIANGLE_LIST,
@@ -224,30 +636,11 @@ impl RasterPipelineDesc {
             blend_attachments: Vec::new(),
         }
     }
+    pub fn use_dynamic_rendering(&mut self, formats: DynamicRenderingFormats) {
+        self.dynamic_rendering = Some(formats);
+    }
 }
 
-/// 原 `RasterPipelineOpts`：4 字节位域，同时是 `RasterPipelineKey.selector`（+0x18）。
-///
-/// 位分配读自 `create_raster_pipeline`（O 0x1416a3720，0x1416a3d08..0x1416a3f2f）和混合表函数
-/// 0x140be67f0（B patched）；本轮对照机器码逐位重核（跳转表 0x142c88ff0 / 0x142c89000 逐项解出）：
-///
-/// | 字节 | 位 | 含义（原机器码里的用途） |
-/// |---|---|---|
-/// | b0 | 0–1 | 图元拓扑：0 三角列表 / 1 线列表 / 2 线条带（跳转表 0x142c88ff0，3 不可达） |
-/// | b0 | 2–3 | 剔除模式（直接作 `VkCullModeFlags`） |
-/// | b0 | 4–5 | 深度比较：0 LESS / 1 GREATER / 2 EQUAL（跳转表 0x142c89000，3 不可达） |
-/// | b0 | 6 | 深度写 |
-/// | b0 | 7 | 深度测试 |
-/// | b1 | 0 | 模板测试 |
-/// | b1 | 1–3 | 模板 fail op |
-/// | b1 | 4–6 | 模板 pass op |
-/// | b1 bit7 + b2 bit0–1 | 3 位 | 模板 depth-fail op（`b1>>7 + (b2&3)*2`） |
-/// | b2 | 2–4 | 模板 compare op |
-/// | b2 bit5–7 + b3 bit0–4 | 8 位 | 模板 compare mask（`(b3<<3 | b2>>5) & 0xff`） |
-/// | b3 | 5–6 | 混合模式（`get_vk_blend_mode`） |
-/// | b3 | 7 | 多边形模式：1 = LINE |
-///
-/// 模板 write mask 恒 `0xffffffff`、reference 0（动态，`STENCIL_REFERENCE`），front/back 同值。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RasterPipelineOpts(pub u32);
 impl RasterPipelineOpts {
@@ -261,23 +654,29 @@ impl RasterPipelineOpts {
         let mask = ((1u32 << width) - 1) << shift;
         self.0 = (self.0 & !mask) | ((value << shift) & mask);
     }
-    pub fn topology(self) -> vk::PrimitiveTopology {
+    pub fn topology(self) -> Result<vk::PrimitiveTopology> {
         match self.byte(0) & 3 {
-            0 => vk::PrimitiveTopology::TRIANGLE_LIST,
-            1 => vk::PrimitiveTopology::LINE_LIST,
-            2 => vk::PrimitiveTopology::LINE_STRIP,
-            // 原跳转表 case 3 不可达（`b1 b7 a1 fe` 指向 unreachable 块）。
-            _ => unreachable!("RasterPipelineOpts topology value 3"),
+            0 => Ok(vk::PrimitiveTopology::TRIANGLE_LIST),
+            1 => Ok(vk::PrimitiveTopology::LINE_LIST),
+            2 => Ok(vk::PrimitiveTopology::LINE_STRIP),
+            _ => Err(crate::Error::invalid_usage(
+                "RasterPipelineOpts 拓扑编码无效",
+            )),
         }
     }
-    pub fn set_topology(&mut self, value: vk::PrimitiveTopology) {
+    pub fn set_topology(&mut self, value: vk::PrimitiveTopology) -> Result<()> {
         let code = match value {
             vk::PrimitiveTopology::TRIANGLE_LIST => 0,
             vk::PrimitiveTopology::LINE_LIST => 1,
             vk::PrimitiveTopology::LINE_STRIP => 2,
-            other => panic!("RasterPipelineOpts 不支持拓扑 {other:?}"),
+            other => {
+                return Err(crate::Error::invalid_usage(format!(
+                    "RasterPipelineOpts 不支持拓扑 {other:?}"
+                )));
+            }
         };
         self.set_bits(0, 2, code);
+        Ok(())
     }
     pub fn cull_mode(self) -> vk::CullModeFlags {
         vk::CullModeFlags::from_raw((self.byte(0) >> 2) & 3)
@@ -285,22 +684,29 @@ impl RasterPipelineOpts {
     pub fn set_cull_mode(&mut self, value: vk::CullModeFlags) {
         self.set_bits(2, 2, value.as_raw());
     }
-    pub fn depth_compare_op(self) -> vk::CompareOp {
+    pub fn depth_compare_op(self) -> Result<vk::CompareOp> {
         match (self.byte(0) >> 4) & 3 {
-            0 => vk::CompareOp::LESS,
-            1 => vk::CompareOp::GREATER,
-            2 => vk::CompareOp::EQUAL,
-            _ => unreachable!("RasterPipelineOpts depth compare value 3"),
+            0 => Ok(vk::CompareOp::LESS),
+            1 => Ok(vk::CompareOp::GREATER),
+            2 => Ok(vk::CompareOp::EQUAL),
+            _ => Err(crate::Error::invalid_usage(
+                "RasterPipelineOpts 深度比较编码无效",
+            )),
         }
     }
-    pub fn set_depth_compare_op(&mut self, value: vk::CompareOp) {
+    pub fn set_depth_compare_op(&mut self, value: vk::CompareOp) -> Result<()> {
         let code = match value {
             vk::CompareOp::LESS => 0,
             vk::CompareOp::GREATER => 1,
             vk::CompareOp::EQUAL => 2,
-            other => panic!("RasterPipelineOpts 不支持深度比较 {other:?}"),
+            other => {
+                return Err(crate::Error::invalid_usage(format!(
+                    "RasterPipelineOpts 不支持深度比较 {other:?}"
+                )));
+            }
         };
         self.set_bits(4, 2, code);
+        Ok(())
     }
     pub fn depth_write(self) -> bool {
         (self.byte(0) >> 6) & 1 != 0
@@ -368,13 +774,18 @@ impl RasterPipelineOpts {
             vk::PolygonMode::FILL
         }
     }
-    pub fn set_polygon_mode(&mut self, value: vk::PolygonMode) {
+    pub fn set_polygon_mode(&mut self, value: vk::PolygonMode) -> Result<()> {
         let code = match value {
             vk::PolygonMode::FILL => 0,
             vk::PolygonMode::LINE => 1,
-            other => panic!("RasterPipelineOpts 不支持多边形模式 {other:?}"),
+            other => {
+                return Err(crate::Error::invalid_usage(format!(
+                    "RasterPipelineOpts 不支持多边形模式 {other:?}"
+                )));
+            }
         };
         self.set_bits(31, 1, code);
+        Ok(())
     }
     /// front/back 共用的模板状态；write mask 恒 `0xffffffff`，reference 0（动态）。
     pub fn stencil_state(self) -> vk::StencilOpState {
@@ -389,48 +800,108 @@ impl RasterPipelineOpts {
     }
     /// 把位域展开到管线描述（固定状态部分；`front_face` 恒 COUNTER_CLOCKWISE=0，线宽 1.0）。
     /// 混合附件状态对每个颜色附件复制同一份（原版把同一个 32 字节状态写满 `color_attachments` 份）。
-    pub fn apply_to(self, desc: &mut RasterPipelineDesc, color_attachments: usize) {
-        desc.topology = self.topology();
+    pub fn apply_to(self, desc: &mut RasterPipelineDesc, color_attachments: usize) -> Result<()> {
+        // Decode every fallible field before mutating the caller's description.
+        let topology = self.topology()?;
+        let depth_compare = self.depth_compare_op()?;
+        desc.topology = topology;
         desc.polygon_mode = self.polygon_mode();
         desc.cull_mode = self.cull_mode();
         desc.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
         desc.depth_test = self.depth_test();
         desc.depth_write = self.depth_write();
-        desc.depth_compare = self.depth_compare_op();
+        desc.depth_compare = depth_compare;
         desc.stencil_test = self.stencil_test();
         desc.stencil = self.stencil_state();
         desc.blend_attachments = vec![get_vk_blend_mode(self.blend_mode() << 5); color_attachments];
+        Ok(())
     }
 }
+struct PipelineArrays {
+    shaders: Vec<Arc<ShaderModule>>,
+    entries: Vec<usize>,
+    formats: Option<DynamicRenderingFormats>,
+    target: Option<RasterTargetSignature>,
+}
 pub struct VulkanPipeline {
-    pub device: Arc<VulkanDevice>,
+    pub(crate) last_use: Arc<crate::resource::SyncCell>,
+    pub device: Arc<Device>,
     pub handle: vk::Pipeline,
     pub layout: Arc<PipelineLayout>,
     pub point: vk::PipelineBindPoint,
     shaders: Vec<Arc<ShaderModule>>,
-    render_pass_owner: Option<ResourceOwner>,
+    shader_entries: Vec<usize>,
+    dynamic_rendering: Option<DynamicRenderingFormats>,
+    raster_target: Option<RasterTargetSignature>,
+    _memory: CpuMemoryReservation,
 }
 impl VulkanPipeline {
     pub fn create_compute_pipeline(
         cache: &PipelineCache,
         desc: ComputePipelineDesc,
-    ) -> Result<Arc<Self>, vk::Result> {
+    ) -> Result<Arc<Self>> {
+        if cache.device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
         if !Arc::ptr_eq(&cache.device, &desc.layout.device)
             || !Arc::ptr_eq(&cache.device, &desc.shader.device)
         {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
+        let shader_entry = super::shader_interface::validate(
+            &desc.shader.interfaces,
+            &desc.entry,
+            vk::ShaderStageFlags::COMPUTE,
+            &desc.layout,
+        )?;
         use ash::vk::Handle;
-        let key = (
-            desc.shader.handle.as_raw(),
-            desc.layout.handle.as_raw(),
-            desc.entry.as_bytes().to_vec(),
-        );
-        let slot = slot_for(&cache.compute, key);
+        let shader = desc.shader.handle.as_raw();
+        let layout = desc.layout.handle.as_raw();
+        let slot = slot_for(
+            &cache.compute,
+            |key| key.0 == shader && key.1 == layout && key.2.as_slice() == desc.entry.as_bytes(),
+            || {
+                let key = budgeted_key_vec(&cache.device.allocator_stats, desc.entry.as_bytes())?;
+                Ok(BudgetedKey {
+                    value: (shader, layout, key.value),
+                    memory: key.memory,
+                })
+            },
+            cache.capacity,
+            &cache.device.allocator_stats,
+        )?;
         let mut created = slot.lock();
-        if let Some(pipeline) = created.as_ref() {
+        if let Some(pipeline) = created.pipeline.as_ref() {
             return Ok(pipeline.clone());
         }
+        let count = 1;
+        let mut memory = reserve_shared_cpu_metadata::<Self>(
+            &cache.device.allocator_stats,
+            pipeline_array_bytes(count, count, 0, 0)?,
+        )?;
+        let mut shaders = try_vec(count)?;
+        shaders.push(desc.shader.clone());
+        let mut shader_entries = try_vec(count)?;
+        shader_entries.push(shader_entry);
+        memory.resize(
+            shared_cpu_bytes::<Self>()?
+                .checked_add(pipeline_array_bytes(
+                    shaders.capacity(),
+                    shader_entries.capacity(),
+                    0,
+                    0,
+                )?)
+                .ok_or(crate::Error::OutOfHostMemory)?,
+        )?;
+        let metadata = BudgetedMetadata {
+            data: PipelineArrays {
+                shaders,
+                entries: shader_entries,
+                formats: None,
+                target: None,
+            },
+            memory,
+        };
         let stage = vk::PipelineShaderStageCreateInfo::default()
             .stage(vk::ShaderStageFlags::COMPUTE)
             .module(desc.shader.handle)
@@ -438,6 +909,9 @@ impl VulkanPipeline {
         let info = vk::ComputePipelineCreateInfo::default()
             .stage(stage)
             .layout(desc.layout.handle);
+        let sync_storage =
+            crate::resource::SyncCell::reserve_arc_storage(&cache.device.allocator_stats)?;
+        let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
                 .device
@@ -446,20 +920,28 @@ impl VulkanPipeline {
         };
         let handle = finish_pipeline(&cache.device, result)?;
         let pipeline = Arc::new(Self {
+            last_use: crate::resource::SyncCell::for_device(cache.device.generation())
+                .into_reserved_arc(sync_storage),
             device: cache.device.clone(),
             handle,
             layout: desc.layout,
             point: vk::PipelineBindPoint::COMPUTE,
-            shaders: vec![desc.shader],
-            render_pass_owner: None,
+            shaders: metadata.data.shaders,
+            shader_entries: metadata.data.entries,
+            dynamic_rendering: metadata.data.formats,
+            raster_target: metadata.data.target,
+            _memory: metadata.memory,
         });
-        *created = Some(pipeline.clone());
+        created.pipeline = Some(pipeline.clone());
         Ok(pipeline)
     }
     pub fn create_raster_pipeline(
         cache: &PipelineCache,
         desc: RasterPipelineDesc,
-    ) -> Result<Arc<Self>, vk::Result> {
+    ) -> Result<Arc<Self>> {
+        if cache.device.is_device_lost() {
+            return Err(crate::Error::DeviceLost);
+        }
         if !Arc::ptr_eq(&cache.device, &desc.layout.device)
             || !Arc::ptr_eq(&cache.device, &desc.vertex.device)
             || desc
@@ -467,28 +949,173 @@ impl VulkanPipeline {
                 .as_ref()
                 .is_some_and(|s| !Arc::ptr_eq(&cache.device, &s.device))
         {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
-        let key = raster_pipeline_key(&desc);
-        let slot = slot_for(&cache.raster, key);
+        let vertex_entry = super::shader_interface::validate(
+            &desc.vertex.interfaces,
+            &desc.entry,
+            vk::ShaderStageFlags::VERTEX,
+            &desc.layout,
+        )?;
+        let fragment_entry = desc
+            .fragment
+            .as_ref()
+            .map(|fragment| {
+                super::shader_interface::validate(
+                    &fragment.interfaces,
+                    desc.fragment_entry.as_deref().unwrap_or(&desc.entry),
+                    vk::ShaderStageFlags::FRAGMENT,
+                    &desc.layout,
+                )
+            })
+            .transpose()?;
+        {
+            let formats = desc.dynamic_rendering.as_ref().ok_or_else(|| {
+                crate::Error::invalid_usage("raster pipeline requires dynamic attachment formats")
+            })?;
+            if !cache
+                .device
+                .caps()
+                .is_enabled(crate::device::Feature::DynamicRendering)
+            {
+                return Err(crate::Error::unsupported(
+                    "dynamicRendering feature was not enabled",
+                ));
+            }
+            let properties = unsafe {
+                cache
+                    .device
+                    .instance
+                    .instance
+                    .get_physical_device_properties(cache.device.physical)
+            };
+            if properties
+                .api_version
+                .min(cache.device.instance.api_version)
+                < vk::API_VERSION_1_3
+                && !cache
+                    .device
+                    .enabled_extensions
+                    .iter()
+                    .any(|extension| extension == "VK_KHR_dynamic_rendering")
+            {
+                return Err(crate::Error::unsupported(
+                    "dynamic rendering needs effective Vulkan 1.3 or enabled VK_KHR_dynamic_rendering",
+                ));
+            }
+            let limits = properties.limits;
+            formats.validate(limits.max_color_attachments)?;
+            if formats.colors.len() != desc.blend_attachments.len() {
+                return Err(crate::Error::invalid_usage(
+                    "dynamic rendering color formats and blend attachments differ",
+                ));
+            }
+            if (desc.depth_test || desc.depth_write) && formats.depth == vk::Format::UNDEFINED {
+                return Err(crate::Error::invalid_usage(
+                    "depth-enabled dynamic pipeline has no depth format",
+                ));
+            }
+            if desc.stencil_test && formats.stencil == vk::Format::UNDEFINED {
+                return Err(crate::Error::invalid_usage(
+                    "stencil-enabled dynamic pipeline has no stencil format",
+                ));
+            }
+            if desc.samples.as_raw().count_ones() != 1
+                || (!formats.colors.is_empty()
+                    && !limits
+                        .framebuffer_color_sample_counts
+                        .contains(desc.samples))
+                || (formats.depth != vk::Format::UNDEFINED
+                    && !limits
+                        .framebuffer_depth_sample_counts
+                        .contains(desc.samples))
+                || (formats.stencil != vk::Format::UNDEFINED
+                    && !limits
+                        .framebuffer_stencil_sample_counts
+                        .contains(desc.samples))
+            {
+                return Err(crate::Error::unsupported(
+                    "dynamic rendering sample count exceeds framebuffer limits",
+                ));
+            }
+        }
+        let slot = slot_for(
+            &cache.raster,
+            |key| raster_pipeline_key_matches(&desc, key),
+            || budgeted_raster_key(&cache.device.allocator_stats, &desc),
+            cache.capacity,
+            &cache.device.allocator_stats,
+        )?;
         let mut created = slot.lock();
-        if let Some(pipeline) = created.as_ref() {
+        if let Some(pipeline) = created.pipeline.as_ref() {
             return Ok(pipeline.clone());
         }
-        let mut stages = vec![stage(
+        let count = 1 + usize::from(desc.fragment.is_some());
+        let formats = desc
+            .dynamic_rendering
+            .as_ref()
+            .expect("validated dynamic formats");
+        let mut memory = reserve_shared_cpu_metadata::<Self>(
+            &cache.device.allocator_stats,
+            pipeline_array_bytes(
+                count,
+                count,
+                formats.colors.capacity(),
+                formats.colors.len(),
+            )?,
+        )?;
+        let mut shaders = try_vec(count)?;
+        shaders.push(desc.vertex.clone());
+        let mut shader_entries = try_vec(count)?;
+        shader_entries.push(vertex_entry);
+        let mut stages = smallvec::SmallVec::<[vk::PipelineShaderStageCreateInfo<'_>; 2]>::new();
+        stages.push(stage(
             desc.vertex.handle,
             vk::ShaderStageFlags::VERTEX,
             &desc.entry,
-        )];
-        let mut shaders = vec![desc.vertex.clone()];
-        if let Some(fragment) = desc.fragment {
+        ));
+        if let Some(fragment) = &desc.fragment {
             stages.push(stage(
                 fragment.handle,
                 vk::ShaderStageFlags::FRAGMENT,
                 desc.fragment_entry.as_deref().unwrap_or(&desc.entry),
             ));
-            shaders.push(fragment);
+            shaders.push(fragment.clone());
+            shader_entries.push(fragment_entry.expect("validated fragment entry"));
         }
+        // The public target signature owns a distinct color Vec. Construct and
+        // charge both actual allocations before entering Vulkan.
+        let mut colors = try_vec(formats.colors.len())?;
+        colors.extend_from_slice(&formats.colors);
+        let target_formats = DynamicRenderingFormats {
+            colors,
+            depth: formats.depth,
+            stencil: formats.stencil,
+            view_mask: formats.view_mask,
+        };
+        memory.resize(
+            shared_cpu_bytes::<Self>()?
+                .checked_add(pipeline_array_bytes(
+                    shaders.capacity(),
+                    shader_entries.capacity(),
+                    formats.colors.capacity(),
+                    target_formats.colors.capacity(),
+                )?)
+                .ok_or(crate::Error::OutOfHostMemory)?,
+        )?;
+        let raster_target = Some(RasterTargetSignature::Dynamic {
+            formats: target_formats,
+            samples: desc.samples,
+        });
+        let metadata = BudgetedMetadata {
+            data: PipelineArrays {
+                shaders,
+                entries: shader_entries,
+                formats: desc.dynamic_rendering,
+                target: raster_target,
+            },
+            memory,
+        };
         let vertex = vk::PipelineVertexInputStateCreateInfo::default()
             .vertex_binding_descriptions(&desc.vertex_bindings)
             .vertex_attribute_descriptions(&desc.vertex_attributes);
@@ -515,12 +1142,8 @@ impl VulkanPipeline {
             .max_depth_bounds(1.0);
         let blend =
             vk::PipelineColorBlendStateCreateInfo::default().attachments(&desc.blend_attachments);
-        // 原 0x142c88b20 / 0x142c88b2c：{VIEWPORT, SCISSOR, STENCIL_REFERENCE[, LINE_WIDTH]}，
-        // 个数 `3 + [device+0xad9]`；该字节在 `GraphicsDevice::create`（0x140bf3a6d `setne`，
-        // 源 `[rbp+0x22fc]` = 启用特性链里 wideLines 槽）里写入，所以由设备“实际启用 wideLines”
-        // 决定，而不是 desc 字段。
         let line_width_dynamic = cache.device.capabilities.wide_lines;
-        let mut dynamic_values = vec![
+        let mut dynamic_values: smallvec::SmallVec<[vk::DynamicState; 4]> = smallvec::smallvec![
             vk::DynamicState::VIEWPORT,
             vk::DynamicState::SCISSOR,
             vk::DynamicState::STENCIL_REFERENCE,
@@ -529,7 +1152,7 @@ impl VulkanPipeline {
             dynamic_values.push(vk::DynamicState::LINE_WIDTH);
         }
         let dynamic = vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_values);
-        let info = vk::GraphicsPipelineCreateInfo::default()
+        let mut info = vk::GraphicsPipelineCreateInfo::default()
             .stages(&stages)
             .vertex_input_state(&vertex)
             .input_assembly_state(&assembly)
@@ -539,9 +1162,19 @@ impl VulkanPipeline {
             .depth_stencil_state(&depth)
             .color_blend_state(&blend)
             .dynamic_state(&dynamic)
-            .layout(desc.layout.handle)
-            .render_pass(desc.render_pass)
-            .subpass(desc.subpass);
+            .layout(desc.layout.handle);
+        let mut rendering = vk::PipelineRenderingCreateInfo::default();
+        if let Some(formats) = &metadata.data.formats {
+            rendering = rendering
+                .color_attachment_formats(&formats.colors)
+                .depth_attachment_format(formats.depth)
+                .stencil_attachment_format(formats.stencil)
+                .view_mask(formats.view_mask);
+            info = info.push_next(&mut rendering);
+        }
+        let sync_storage =
+            crate::resource::SyncCell::reserve_arc_storage(&cache.device.allocator_stats)?;
+        let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
                 .device
@@ -550,14 +1183,19 @@ impl VulkanPipeline {
         };
         let handle = finish_pipeline(&cache.device, result)?;
         let pipeline = Arc::new(Self {
+            last_use: crate::resource::SyncCell::for_device(cache.device.generation())
+                .into_reserved_arc(sync_storage),
             device: cache.device.clone(),
             handle,
             layout: desc.layout,
             point: vk::PipelineBindPoint::GRAPHICS,
-            shaders,
-            render_pass_owner: Some(desc.render_pass_owner),
+            shaders: metadata.data.shaders,
+            shader_entries: metadata.data.entries,
+            raster_target: metadata.data.target,
+            dynamic_rendering: metadata.data.formats,
+            _memory: metadata.memory,
         });
-        *created = Some(pipeline.clone());
+        created.pipeline = Some(pipeline.clone());
         Ok(pipeline)
     }
     /// # Safety
@@ -572,9 +1210,42 @@ impl VulkanPipeline {
     pub fn shader_count(&self) -> usize {
         self.shaders.len()
     }
-    pub fn retains_render_pass(&self) -> bool {
-        self.render_pass_owner.is_some()
+    pub fn raster_target_signature(&self) -> Option<&RasterTargetSignature> {
+        self.raster_target.as_ref()
     }
+    pub(crate) fn has_same_shader_interface(&self, other: &Self) -> bool {
+        self.shaders.len() == other.shaders.len()
+            && self
+                .shaders
+                .iter()
+                .zip(&self.shader_entries)
+                .zip(other.shaders.iter().zip(&other.shader_entries))
+                .all(|((shader, &entry), (old, &old_entry))| {
+                    shader.interfaces[entry].same_interface(&old.interfaces[old_entry])
+                })
+    }
+    pub fn dynamic_rendering_formats(&self) -> Option<&DynamicRenderingFormats> {
+        self.dynamic_rendering.as_ref()
+    }
+}
+fn try_vec<T>(capacity: usize) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(capacity)
+        .map_err(|_| crate::Error::OutOfHostMemory)?;
+    Ok(values)
+}
+fn pipeline_array_bytes(
+    shaders: usize,
+    entries: usize,
+    formats: usize,
+    target_formats: usize,
+) -> Result<u64> {
+    cpu_vec_bytes::<Arc<ShaderModule>>(shaders)?
+        .checked_add(cpu_vec_bytes::<usize>(entries)?)
+        .and_then(|bytes| bytes.checked_add(cpu_vec_bytes::<vk::Format>(formats).ok()?))
+        .and_then(|bytes| bytes.checked_add(cpu_vec_bytes::<vk::Format>(target_formats).ok()?))
+        .ok_or(crate::Error::OutOfHostMemory)
 }
 fn stage<'a>(
     module: vk::ShaderModule,
@@ -587,33 +1258,94 @@ fn stage<'a>(
         .name(entry)
 }
 fn finish_pipeline(
-    device: &VulkanDevice,
+    device: &Device,
     result: Result<Vec<vk::Pipeline>, (Vec<vk::Pipeline>, vk::Result)>,
-) -> Result<vk::Pipeline, vk::Result> {
+) -> Result<vk::Pipeline> {
     match result {
         Ok(values) => values
             .first()
             .copied()
-            .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED),
+            .ok_or_else(|| crate::Error::invalid_usage("着色器资源、接口或设备不匹配")),
         Err((values, error)) => {
+            if error == vk::Result::ERROR_DEVICE_LOST {
+                device.timelines.mark_device_lost();
+            }
             for handle in values {
                 unsafe { device.device.destroy_pipeline(handle, None) }
             }
-            Err(error)
+            Err(error.into())
         }
     }
 }
+#[cfg(test)]
+fn append_dynamic_rendering_key(key: &mut Vec<u64>, formats: Option<&DynamicRenderingFormats>) {
+    match formats {
+        None => key.push(0),
+        Some(formats) => {
+            key.extend([1, u64::from(formats.view_mask), formats.colors.len() as u64]);
+            key.extend(formats.colors.iter().map(|format| format.as_raw() as u64));
+            key.extend([
+                formats.depth.as_raw() as u64,
+                formats.stencil.as_raw() as u64,
+            ]);
+        }
+    }
+}
+
 /// 键覆盖本候选 RasterPipelineDesc 所有会影响 Vulkan 管线的字段；不使用不稳定 Debug 字串或哈希碰撞替代相等性。
-fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
+pub(crate) fn raster_pipeline_key_len(desc: &RasterPipelineDesc) -> usize {
+    let fragment = desc.fragment_entry.as_deref().unwrap_or(&desc.entry);
+    // Nineteen fixed state words and four following sequence lengths. Native
+    // render-pass/subpass fields were removed with the dynamic-only contract.
+    23usize
+        .saturating_add(
+            desc.dynamic_rendering
+                .as_ref()
+                .map_or(1, |f| 5usize.saturating_add(f.colors.len())),
+        )
+        .saturating_add(desc.entry.as_bytes().len())
+        .saturating_add(fragment.to_bytes().len())
+        .saturating_add(desc.vertex_bindings.len().saturating_mul(3))
+        .saturating_add(desc.vertex_attributes.len().saturating_mul(4))
+        .saturating_add(desc.blend_attachments.len().saturating_mul(8))
+}
+pub(crate) fn raster_pipeline_key_matches(desc: &RasterPipelineDesc, key: &[u64]) -> bool {
+    if key.len() != raster_pipeline_key_len(desc) {
+        return false;
+    }
+    let mut index = 0;
+    let mut equal = true;
+    visit_raster_pipeline_key(desc, &mut |word| {
+        equal &= key[index] == word;
+        index += 1;
+    });
+    equal
+}
+pub(crate) fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
+    let mut key = Vec::with_capacity(raster_pipeline_key_len(desc));
+    visit_raster_pipeline_key(desc, &mut |word| key.push(word));
+    key
+}
+fn visit_raster_pipeline_key(desc: &RasterPipelineDesc, emit: &mut dyn FnMut(u64)) {
+    struct Writer<'a>(&'a mut dyn FnMut(u64));
+    impl Writer<'_> {
+        fn push(&mut self, value: u64) {
+            (self.0)(value);
+        }
+        fn extend(&mut self, values: impl IntoIterator<Item = u64>) {
+            for value in values {
+                self.push(value);
+            }
+        }
+    }
     use ash::vk::Handle;
-    let mut key = vec![
+    let mut key = Writer(emit);
+    key.extend([
         desc.vertex.handle.as_raw(),
         desc.fragment
             .as_ref()
             .map_or(0, |shader| shader.handle.as_raw()),
         desc.layout.handle.as_raw(),
-        desc.render_pass.as_raw(),
-        u64::from(desc.subpass),
         desc.topology.as_raw() as u64,
         desc.polygon_mode.as_raw() as u64,
         u64::from(desc.cull_mode.as_raw()),
@@ -628,8 +1360,20 @@ fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
         desc.stencil.depth_fail_op.as_raw() as u64,
         desc.stencil.compare_op.as_raw() as u64,
         u64::from(desc.stencil.compare_mask),
+        u64::from(desc.stencil.write_mask),
         desc.entry.as_bytes().len() as u64,
-    ];
+    ]);
+    match desc.dynamic_rendering.as_ref() {
+        None => key.push(0),
+        Some(formats) => {
+            key.extend([1, u64::from(formats.view_mask), formats.colors.len() as u64]);
+            key.extend(formats.colors.iter().map(|format| format.as_raw() as u64));
+            key.extend([
+                formats.depth.as_raw() as u64,
+                formats.stencil.as_raw() as u64,
+            ]);
+        }
+    }
     key.extend(desc.entry.as_bytes().iter().map(|byte| u64::from(*byte)));
     let fragment_entry = desc.fragment_entry.as_deref().unwrap_or(&desc.entry);
     key.push(fragment_entry.to_bytes().len() as u64);
@@ -669,12 +1413,13 @@ fn raster_pipeline_key(desc: &RasterPipelineDesc) -> Vec<u64> {
             u64::from(blend.color_write_mask.as_raw()),
         ]);
     }
-    key
 }
 impl Drop for VulkanPipeline {
     fn drop(&mut self) {
-        self.device
-            .bury(super::graveyard::Doomed::Pipeline(self.handle));
+        self.device.retire(
+            self.last_use.snapshot(),
+            super::graveyard::Doomed::Pipeline(self.handle),
+        );
     }
 }
 
@@ -683,6 +1428,11 @@ impl Drop for VulkanPipeline {
 pub struct ReflectedEntry {
     pub entry_point: String,
     pub stage: String,
+    /// Concrete default workgroup dimensions for this compute entry. None
+    /// means no supported execution-size contract was resolved; hot reload
+    /// cannot assume compatibility for such an entry.
+    #[serde(default)]
+    pub local_size: Option<[u32; 3]>,
     pub descriptors: Vec<ReflectedDescriptor>,
     #[serde(default)]
     pub push_constants: Vec<ReflectedPushConstant>,
@@ -733,26 +1483,16 @@ pub enum InterfaceError {
     /// 原 compute 管线创建 shader.rs:460:60 `.expect("a valid group size")`（`local_size` 为 None）。
     MissingGroupSize,
 }
-/// 原 `rhapsody/src/raw/shader.rs` 管线创建路径的 panic 文案（`.rne` 0x1416a3720 / 0x1416a4f1a 冷尾段读出）。
 pub mod original_panics {
-    /// 0x1416a4f21（shader.rs:397:9，字串 0x142c88c30，55 字节）。
     pub const COMPUTE_INPUTS_NOT_EMPTY: &str =
         "assertion failed: compiled.reflection.inputs.is_empty()";
-    /// 0x1416a50ed（shader.rs:460:60，字串 0x142c88cf8，18 字节）。
     pub const VALID_GROUP_SIZE: &str = "a valid group size";
-    /// 0x1416a50d1（shader.rs:453:39，片段 0x142c88d50）：`"Failed creating shader pipeline {name}: {err}"`。
     pub const FAILED_CREATING_SHADER_PIPELINE_PREFIX: &str = "Failed creating shader pipeline ";
     pub const FAILED_CREATING_SHADER_PIPELINE_SEP: &str = ": ";
-    /// 0x1416a46c4（shader.rs:972:18，字串 0x142c88b3c，34 字节）：raster 管线 `.expect(..)`，Err 为 ash 的
-    /// `(Vec<Pipeline>, vk::Result)`。
     pub const UNABLE_TO_CREATE_GRAPHICS_PIPELINE: &str = "Unable to create graphics pipeline";
-    /// 0x1416a451d（shader.rs:840:47，字串 0x142c88b78，30 字节）。
     pub const VERTEX_INPUT_ATTRIB_BYTE_COUNT: &str = "vertex input attrib byte count";
-    /// 0x1416a458c（shader.rs:838:26，片段 0x142c88be0，35 字节）。
     pub const UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX: &str =
         "Unsupported vertex attribute type: ";
-    /// `Result::unwrap()` 失败的固定前缀（0x142c88708，43 字节），用于 shader.rs:796:18（vkCreatePipelineLayout，
-    /// 调用 `[device+0x210]`）、426:18 / 437:18 / 428:78（compute 路径的 vkCreate*）。
     pub const UNWRAP_ON_ERR: &str = "called `Result::unwrap()` on an `Err` value";
 
     /// compute 管线创建失败（453:39）的完整 panic 文本。
@@ -766,13 +1506,13 @@ pub mod original_panics {
 /// 先 assert 再取 local_size）。
 pub fn validate_compute_reflection(
     reflection: &crate::shader_pipeline::reflection::ShaderReflection,
-) -> Result<[u32; 3], InterfaceError> {
+) -> Result<[u32; 3]> {
     if !reflection.vertex_inputs.is_empty() {
-        return Err(InterfaceError::ComputeHasVertexInputs);
+        return Err(InterfaceError::ComputeHasVertexInputs.into());
     }
     reflection
         .local_size
-        .ok_or(InterfaceError::MissingGroupSize)
+        .ok_or_else(|| InterfaceError::MissingGroupSize.into())
 }
 impl std::fmt::Display for InterfaceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -789,25 +1529,29 @@ impl std::fmt::Display for InterfaceError {
             }
             Self::ComputeHasVertexInputs => f.write_str(original_panics::COMPUTE_INPUTS_NOT_EMPTY),
             Self::MissingGroupSize => f.write_str(original_panics::VALID_GROUP_SIZE),
-            // 原 `get_built_in_sampler`（0x140bfc5b0，源 sampler.rs:201）：`panic!("Sampler not found: {name}")`。
             Self::MissingSampler(name) => write!(f, "Sampler not found: {name}"),
             _ => write!(f, "着色器接口无效：{self:?}"),
         }
     }
 }
 impl std::error::Error for InterfaceError {}
+impl From<InterfaceError> for crate::Error {
+    fn from(source: InterfaceError) -> Self {
+        Self::invalid_usage_with("着色器接口无效", source)
+    }
+}
 
 pub struct ShaderInterfacePlan {
     /// 保留原反射 set/binding 编号；缺失的 set 用空布局填充，绝不重新枚举 sparse binding。
     pub sets: Vec<LayoutPlan>,
     pub push_constants: Vec<vk::PushConstantRange>,
 }
-fn reflected_stage(stage: &str) -> Result<vk::ShaderStageFlags, InterfaceError> {
+pub(super) fn reflected_stage(stage: &str) -> Result<vk::ShaderStageFlags> {
     match stage {
         "GLCompute" => Ok(vk::ShaderStageFlags::COMPUTE),
         "Vertex" => Ok(vk::ShaderStageFlags::VERTEX),
         "Fragment" => Ok(vk::ShaderStageFlags::FRAGMENT),
-        other => Err(InterfaceError::Stage(other.to_owned())),
+        other => Err(InterfaceError::Stage(other.to_owned()).into()),
     }
 }
 impl ShaderInterfacePlan {
@@ -815,7 +1559,7 @@ impl ShaderInterfacePlan {
         entries: &[ReflectedEntry],
         immutable_samplers: &BTreeMap<String, u64>,
         runtime_device_scalar: u32,
-    ) -> Result<Self, InterfaceError> {
+    ) -> Result<Self> {
         if let (Some(vertex), Some(fragment)) = (
             entries.iter().find(|entry| entry.stage == "Vertex"),
             entries.iter().find(|entry| entry.stage == "Fragment"),
@@ -835,7 +1579,8 @@ impl ShaderInterfacePlan {
                     return Err(InterfaceError::IncompatibleLocation(
                         input.location,
                         input.component,
-                    ));
+                    )
+                    .into());
                 }
             }
         }
@@ -851,7 +1596,7 @@ impl ShaderInterfacePlan {
                     "StorageImage(ReadWrite)" | "StorageImage(ReadOnly)" => 3,
                     "SampledImage" => 4,
                     "Sampler" => 5,
-                    other => return Err(InterfaceError::Descriptor(other.to_owned())),
+                    other => return Err(InterfaceError::Descriptor(other.to_owned()).into()),
                 };
                 let sampler = if tag == 5 {
                     *immutable_samplers
@@ -883,7 +1628,8 @@ impl ShaderInterfacePlan {
                             return Err(InterfaceError::IncompatibleBinding(
                                 descriptor.set,
                                 descriptor.binding,
-                            ));
+                            )
+                            .into());
                         }
                         *stages |= stage;
                     }
@@ -905,7 +1651,7 @@ impl ShaderInterfacePlan {
             .max()
             .map_or(0, |set| set as usize + 1);
         if set_count > 32 {
-            return Err(InterfaceError::InvalidLayout);
+            return Err(InterfaceError::InvalidLayout.into());
         }
         let mut sets = (0..set_count)
             .map(|_| LayoutPlan {
@@ -931,7 +1677,8 @@ impl ShaderInterfacePlan {
                     return Err(InterfaceError::RuntimeBindingNotLast(
                         set as u32,
                         plan.bindings[index].binding,
-                    ));
+                    )
+                    .into());
                 }
             }
         }
@@ -969,15 +1716,11 @@ impl ShaderInterfacePlan {
     }
     pub fn create_descriptor_set_layouts(
         &self,
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         samplers: &[Arc<crate::raw::sampler::Sampler>],
-    ) -> Result<Vec<Arc<VulkanDescriptorSetLayout>>, vk::Result> {
-        // 原 0x140be60a0：`assert!(set_count <= MAX_DESCRIPTOR_SETS)`（panic）；这里返回错误。
-        // 原版没有布局缓存：每个 set 每次调用都 `vkCreateDescriptorSetLayout`（+0x230），
-        // 空 set 也建一个空布局（sType 32，bindingCount 0）。0x140d4d740 是 std `RandomState` 的
-        // 线程局部 KEYS（为空 set 的 HashMap 记录取 seed），不是布局缓存。
+    ) -> Result<Vec<Arc<VulkanDescriptorSetLayout>>> {
         if self.sets.len() > super::descriptor_set::MAX_DESCRIPTOR_SETS {
-            return Err(vk::Result::ERROR_TOO_MANY_OBJECTS);
+            return Err(crate::Error::invalid_usage("描述符集合数超过模块上限"));
         }
         self.sets
             .iter()
@@ -990,26 +1733,17 @@ impl ShaderInterfacePlan {
             })
             .collect()
     }
-    /// 原 `create_descriptor_set_states`（0x140be66c0）：每个布局一个状态，池容量固定 100。
-    pub fn create_descriptor_set_states(
-        layouts: &[Arc<VulkanDescriptorSetLayout>],
-    ) -> Result<Vec<DescriptorSetState>, vk::Result> {
-        layouts
-            .iter()
-            .map(|layout| DescriptorSetState::for_layout(layout.clone()))
-            .collect()
-    }
     pub fn create_pipeline_layout(
         &self,
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         samplers: &[Arc<crate::raw::sampler::Sampler>],
-    ) -> Result<Arc<PipelineLayout>, vk::Result> {
+    ) -> Result<Arc<PipelineLayout>> {
         let layouts = self.create_descriptor_set_layouts(device.clone(), samplers)?;
         PipelineLayout::new(device, layouts, self.push_constants.clone())
     }
 }
 /// 去掉反射调试名字后比较结构；仅处理已有 schema，不解析 SPIR-V 或重写公开反射库。
-fn canonical_type(value: &serde_json::Value) -> serde_json::Value {
+pub(super) fn canonical_type(value: &serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Object(fields) => serde_json::Value::Object(
             fields
@@ -1043,41 +1777,29 @@ pub fn get_vk_blend_mode(encoded_raster_flags: u8) -> vk::PipelineColorBlendAtta
         .color_write_mask(vk::ColorComponentFlags::RGBA)
 }
 /// 原类型 tag 2/3/4 对应 32 位有符号/无符号/浮点，字节宽度仅允许 4/8/12/16。
-pub fn map_vertex_attribute_format(
-    type_tag: u32,
-    bytes: u64,
-) -> Result<vk::Format, InterfaceError> {
+pub fn map_vertex_attribute_format(type_tag: u32, bytes: u64) -> Result<vk::Format> {
     let base = match type_tag {
         2 => 99,
         3 => 98,
         4 => 100,
-        _ => return Err(InterfaceError::InvalidLayout),
+        _ => return Err(InterfaceError::InvalidLayout.into()),
     };
     if !(4..=16).contains(&bytes) || !bytes.is_multiple_of(4) {
-        return Err(InterfaceError::InvalidLayout);
+        return Err(InterfaceError::InvalidLayout.into());
     }
     Ok(vk::Format::from_raw(base + 3 * (bytes as i32 / 4 - 1)))
 }
 
-/// 反射里的顶点输入 → 每个 location 一个顶点绑定（binding == location，offset 0，
-/// stride = 类型字节数，输入率 VERTEX），读自 `create_raster_pipeline`（O 0x1416a3720，0x1416a3a60 起的循环）。
-/// 只接受 32 位标量/向量（`map_vertex_attribute_format` 的 tag 2/3/4 = 有符号/无符号/浮点）。
-/// 原版按 `hashbrown` 表顺序迭代（任意序），这里按 location 升序；Vulkan 语义等价。
 pub fn vertex_input_from_reflection(
     reflection: &crate::shader_pipeline::reflection::ShaderReflection,
-) -> Result<
-    (
-        Vec<vk::VertexInputBindingDescription>,
-        Vec<vk::VertexInputAttributeDescription>,
-    ),
-    InterfaceError,
-> {
+) -> Result<(
+    Vec<vk::VertexInputBindingDescription>,
+    Vec<vk::VertexInputAttributeDescription>,
+)> {
     use crate::shader_pipeline::reflection_ty::{ScalarType, Type};
     let mut bindings = Vec::new();
     let mut attributes = Vec::new();
     for input in reflection.effective_vertex_inputs().into_values() {
-        // 原版先 `ty.nbyte().expect("vertex input attrib byte count")`（0x1416a3ba2），
-        // 再按类型分派；非标量/向量 → `panic!("Unsupported vertex attribute type: {:?}")`。
         input
             .ty
             .nbyte()
@@ -1086,16 +1808,16 @@ pub fn vertex_input_from_reflection(
             Type::Scalar(s) => (s.clone(), 1),
             Type::Vector(v) => (v.scalar_ty.clone(), v.nscalar),
             other => {
-                return Err(InterfaceError::UnsupportedVertexAttributeType(format!(
-                    "{other:?}"
-                )));
+                return Err(
+                    InterfaceError::UnsupportedVertexAttributeType(format!("{other:?}")).into(),
+                );
             }
         };
         let tag = match scalar {
             ScalarType::Signed(32) => 2,
             ScalarType::Unsigned(32) => 3,
             ScalarType::Float(32) => 4,
-            _ => return Err(InterfaceError::InvalidLayout),
+            _ => return Err(InterfaceError::InvalidLayout.into()),
         };
         let bytes = u64::from(count) * 4;
         let format = map_vertex_attribute_format(tag, bytes)?;
@@ -1124,28 +1846,23 @@ pub struct ReflectedShader {
 }
 impl ReflectedShader {
     pub fn from_compiled_container(
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         container: &[u8],
         metadata: &serde_json::Value,
         entry_name: &str,
-    ) -> Result<Self, vk::Result> {
+    ) -> Result<Self> {
         let offset = metadata["offset"]
             .as_u64()
             .and_then(|v| usize::try_from(v).ok())
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         let len = metadata["word_count"]
             .as_u64()
             .and_then(|v| usize::try_from(v).ok())
             .and_then(|v| v.checked_mul(4))
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         let payload = container
-            .get(
-                offset
-                    ..offset
-                        .checked_add(len)
-                        .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?,
-            )
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .get(offset..offset.checked_add(len).ok_or_else(invalid_shader)?)
+            .ok_or_else(invalid_shader)?;
         let entry: ReflectedEntry = serde_json::from_value(
             metadata["entries"]
                 .as_array()
@@ -1155,20 +1872,23 @@ impl ReflectedShader {
                         .find(|entry| entry["entry_point"] == entry_name)
                 })
                 .cloned()
-                .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?,
+                .ok_or_else(invalid_shader)?,
         )
-        .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
-        let parsed =
-            rspirv::dr::load_bytes(payload).map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        .map_err(|_| invalid_shader())?;
+        let parsed = rspirv::dr::load_bytes(payload).map_err(|_| invalid_shader())?;
         let expected = match entry.stage.as_str() {
             "GLCompute" => rspirv::spirv::ExecutionModel::GLCompute,
             "Vertex" => rspirv::spirv::ExecutionModel::Vertex,
             "Fragment" => rspirv::spirv::ExecutionModel::Fragment,
-            _ => return Err(vk::Result::ERROR_INVALID_SHADER_NV),
+            _ => return Err(invalid_shader()),
         };
-        let present = parsed.entry_points.iter().any(|point| matches!((&point.operands[0], &point.operands[2]), (rspirv::dr::Operand::ExecutionModel(stage), rspirv::dr::Operand::LiteralString(name)) if *stage == expected && name == entry_name));
+        let present = parsed.entry_points.iter().any(|point| matches!(
+            (point.operands.first(), point.operands.get(2)),
+            (Some(rspirv::dr::Operand::ExecutionModel(stage)), Some(rspirv::dr::Operand::LiteralString(name)))
+            if *stage == expected && name == entry_name
+        ));
         if !present {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         Ok(Self {
             module: ShaderModule::from_spirv(device, payload)?,
@@ -1194,24 +1914,20 @@ pub struct RasterProgram {
 }
 impl RasterProgram {
     /// 图形固定状态仍由材质/附件消费者提供；shader/entry/layout 则由资产选择生产。
-    pub fn pipeline_desc(
-        &self,
-        mut state: RasterPipelineDesc,
-    ) -> Result<RasterPipelineDesc, vk::Result> {
+    pub fn pipeline_desc(&self, mut state: RasterPipelineDesc) -> Result<RasterPipelineDesc> {
         state.vertex = self.vertex.module.clone();
         state.fragment = Some(self.fragment.module.clone());
         state.layout = self.layout.clone();
-        state.entry = CString::new(self.vertex.entry.entry_point.as_str())
-            .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        state.entry =
+            CString::new(self.vertex.entry.entry_point.as_str()).map_err(|_| invalid_shader())?;
         state.fragment_entry = Some(
-            CString::new(self.fragment.entry.entry_point.as_str())
-                .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?,
+            CString::new(self.fragment.entry.entry_point.as_str()).map_err(|_| invalid_shader())?,
         );
         Ok(state)
     }
 }
 impl ShaderLibrary {
-    pub fn new(device: Arc<VulkanDevice>) -> Result<Self, vk::Result> {
+    pub fn new(device: Arc<Device>) -> Result<Self> {
         Ok(Self {
             cache: PipelineCache::new(device, &[])?,
             shaders: BTreeMap::new(),
@@ -1220,9 +1936,9 @@ impl ShaderLibrary {
             compiled_computes: BTreeMap::new(),
         })
     }
-    pub fn register(&mut self, key: String, shader: ReflectedShader) -> Result<(), vk::Result> {
+    pub fn register(&mut self, key: String, shader: ReflectedShader) -> Result<()> {
         if !Arc::ptr_eq(&self.cache.device, &shader.module.device) {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
         self.layouts.clear();
         self.cache.invalidate();
@@ -1236,7 +1952,7 @@ impl ShaderLibrary {
         &mut self,
         key: &str,
         samplers: &BTreeMap<String, Arc<crate::raw::sampler::Sampler>>,
-    ) -> Result<Arc<VulkanPipeline>, vk::Result> {
+    ) -> Result<Arc<VulkanPipeline>> {
         let runtime_device_scalar = self
             .cache
             .device
@@ -1246,14 +1962,11 @@ impl ShaderLibrary {
             .values()
             .any(|sampler| !Arc::ptr_eq(&self.cache.device, &sampler.device))
         {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
-        let shader = self
-            .shaders
-            .get(key)
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+        let shader = self.shaders.get(key).ok_or_else(invalid_shader)?;
         if shader.entry.stage != "GLCompute" {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         // sampler 句柄属于布局键；修改 sampler 配置不能复用旧 layout。
         let sampler_map = samplers
@@ -1266,24 +1979,23 @@ impl ShaderLibrary {
                 let handle = sampler_map
                     .get(&descriptor.name)
                     .copied()
-                    .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)?;
+                    .ok_or_else(|| crate::Error::invalid_usage("着色器资源、接口或设备不匹配"))?;
                 by_name.insert(descriptor.name.clone(), handle);
             }
         }
         let plan = if let Some(compiled) = self.compiled_computes.get(key) {
             // 原 compute 管线创建的两个检查（shader.rs:397 / 460）。
-            validate_compute_reflection(&compiled.reflection)
-                .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+            validate_compute_reflection(&compiled.reflection)?;
             ShaderInterfacePlan::from_compiled_pipeline(compiled, &by_name, runtime_device_scalar)?
         } else {
             ShaderInterfacePlan::from_reflection(
                 std::slice::from_ref(&shader.entry),
                 &by_name,
                 runtime_device_scalar,
-            )
-            .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?
+            )?
         };
-        let layout_key = serde_json::to_string(&(key, &plan.sets, runtime_device_scalar)).unwrap();
+        let layout_key = serde_json::to_string(&(key, &plan.sets, runtime_device_scalar))
+            .map_err(|error| crate::Error::invalid_usage_with("无法编码计算管线布局键", error))?;
         let layout = match self.layouts.get(&layout_key) {
             Some(layout) => layout.clone(),
             None => {
@@ -1298,7 +2010,7 @@ impl ShaderLibrary {
             ComputePipelineDesc {
                 shader: shader.module.clone(),
                 entry: CString::new(shader.entry.entry_point.as_str())
-                    .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?,
+                    .map_err(|_| invalid_shader())?,
                 layout,
             },
         )
@@ -1316,30 +2028,47 @@ impl ShaderLibrary {
         vertex_key: &str,
         fragment_key: &str,
         samplers: &BTreeMap<String, Arc<crate::raw::sampler::Sampler>>,
-    ) -> Result<RasterProgram, vk::Result> {
+    ) -> Result<RasterProgram> {
+        self.prepare_raster_program_with_runtime_limit(vertex_key, fragment_key, samplers, u32::MAX)
+    }
+    /// Bound runtime arrays to the consumer's real resolver capacity. The
+    /// device limit and Vulkan layout-support checks remain authoritative.
+    pub fn prepare_raster_program_with_runtime_limit(
+        &mut self,
+        vertex_key: &str,
+        fragment_key: &str,
+        samplers: &BTreeMap<String, Arc<crate::raw::sampler::Sampler>>,
+        max_runtime_descriptors: u32,
+    ) -> Result<RasterProgram> {
+        if max_runtime_descriptors == 0 {
+            return Err(crate::Error::invalid_usage(
+                "runtime descriptor capacity must be nonzero",
+            ));
+        }
         let runtime_device_scalar = self
             .cache
             .device
-            .max_descriptor_set_update_after_bind_sampled_images();
+            .max_descriptor_set_update_after_bind_sampled_images()
+            .min(max_runtime_descriptors.saturating_add(32));
         use ash::vk::Handle;
         if samplers
             .values()
             .any(|sampler| !Arc::ptr_eq(&self.cache.device, &sampler.device))
         {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
         let vertex = self
             .shaders
             .get(vertex_key)
             .cloned()
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         let fragment = self
             .shaders
             .get(fragment_key)
             .cloned()
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         if vertex.entry.stage != "Vertex" || fragment.entry.stage != "Fragment" {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         let sampler_map = samplers
             .iter()
@@ -1359,12 +2088,15 @@ impl ShaderLibrary {
                 &[vertex.entry.clone(), fragment.entry.clone()],
                 &sampler_map,
                 runtime_device_scalar,
-            )
-            .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?
+            )?
         };
-        let key =
-            serde_json::to_string(&(vertex_key, fragment_key, &plan.sets, runtime_device_scalar))
-                .unwrap();
+        let key = serde_json::to_string(&(
+            vertex_key,
+            fragment_key,
+            &plan.sets,
+            runtime_device_scalar,
+        ))
+        .map_err(|error| crate::Error::invalid_usage_with("无法编码图形管线布局键", error))?;
         let layout = match self.layouts.get(&key) {
             Some(layout) => layout.clone(),
             None => {
@@ -1381,20 +2113,163 @@ impl ShaderLibrary {
         })
     }
 }
-/// 复用原作锁定版本的公开反射库。容器保留原序列化反射尾段；
-/// 此处重新反射是已明确标记的候选接口，尚未证明原尾段schema与合并规则等价。
-pub fn reflect_spirv_entries(words: &[u32]) -> Result<Vec<ReflectedEntry>, vk::Result> {
+/// Reflect full module resource schemas using the shared SPIR-Q type/layout implementation.
+pub fn reflect_spirv_entries(words: &[u32]) -> Result<Vec<ReflectedEntry>> {
+    reflect_spirv_entries_with_resources(words, true)
+}
+pub(crate) fn reflect_spirv_entries_used(words: &[u32]) -> Result<Vec<ReflectedEntry>> {
+    use rspirv::{binary::Assemble, dr::Operand, spirv::Op};
+    use std::collections::{HashMap, HashSet};
+    let module = rspirv::dr::load_words(words).map_err(|_| invalid_shader())?;
+    let functions = module
+        .functions
+        .iter()
+        .map(|function| {
+            function
+                .def
+                .as_ref()
+                .and_then(|definition| definition.result_id)
+                .map(|id| (id, function))
+                .ok_or_else(invalid_shader)
+        })
+        .collect::<Result<HashMap<_, _>>>()?;
+    let globals = module
+        .types_global_values
+        .iter()
+        .filter(|instruction| instruction.class.opcode == Op::Variable)
+        .filter_map(|instruction| instruction.result_id)
+        .collect::<HashSet<_>>();
+    let mut result = Vec::new();
+    for entry in &module.entry_points {
+        let Some(Operand::IdRef(root)) = entry.operands.get(1) else {
+            return Err(invalid_shader());
+        };
+        let mut pending = vec![*root];
+        let mut reached = HashSet::new();
+        let mut used = HashSet::new();
+        while let Some(id) = pending.pop() {
+            if !reached.insert(id) {
+                continue;
+            }
+            let function = functions.get(&id).ok_or_else(invalid_shader)?;
+            for instruction in function.all_inst_iter() {
+                if instruction.class.opcode == Op::FunctionCall {
+                    let Some(Operand::IdRef(callee)) = instruction.operands.first() else {
+                        return Err(invalid_shader());
+                    };
+                    pending.push(*callee);
+                }
+                for operand in &instruction.operands {
+                    if let Operand::IdRef(id) = operand
+                        && globals.contains(id)
+                    {
+                        used.insert(*id);
+                    }
+                }
+            }
+        }
+        // The pinned SPIR-Q fork consumes function instructions in its definition
+        // scan, so ref_all_rscs(false) silently misses every static resource use.
+        // Select variables from the real call tree, then reuse its type/layout
+        // reflection on this private view. The driver's module stays unchanged.
+        let mut view = module.clone();
+        view.entry_points = vec![entry.clone()];
+        let interface = &mut view.entry_points[0].operands;
+        let mut position = 0;
+        interface.retain(|operand| {
+            position += 1;
+            position <= 3 || !matches!(operand, Operand::IdRef(id) if globals.contains(id) && !used.contains(id))
+        });
+        view.functions.retain(|function| {
+            function
+                .def
+                .as_ref()
+                .and_then(|definition| definition.result_id)
+                .is_some_and(|id| reached.contains(&id))
+        });
+        view.types_global_values.retain(|instruction| {
+            instruction.class.opcode != Op::Variable
+                || instruction.result_id.is_some_and(|id| used.contains(&id))
+        });
+        result.extend(reflect_spirv_entries_with_resources(
+            &view.assemble(),
+            true,
+        )?);
+    }
+    Ok(result)
+}
+fn reflect_spirv_entries_with_resources(
+    words: &[u32],
+    all_resources: bool,
+) -> Result<Vec<ReflectedEntry>> {
+    if words.len() < 5 || words.first().copied() != Some(0x07230203) {
+        return Err(invalid_shader());
+    }
+    // This pinned reflector seeks a name section before decorations and types.
+    // OpName is optional; add one to a reflection-only copy when absent.
+    let mut module = rspirv::dr::load_words(words).map_err(|_| invalid_shader())?;
+    let normalized;
+    let words = if module.debug_names.is_empty() {
+        let function = module
+            .entry_points
+            .first()
+            .and_then(|entry| entry.operands.get(1))
+            .and_then(|operand| {
+                if let rspirv::dr::Operand::IdRef(id) = operand {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(invalid_shader)?;
+        module.debug_names.push(rspirv::dr::Instruction::new(
+            rspirv::spirv::Op::Name,
+            None,
+            None,
+            vec![
+                rspirv::dr::Operand::IdRef(function),
+                rspirv::dr::Operand::LiteralString("rhapsody_reflection_entry".into()),
+            ],
+        ));
+        use rspirv::binary::Assemble;
+        normalized = module.assemble();
+        normalized.as_slice()
+    } else {
+        words
+    };
     use spirq::{ReflectConfig, SpirvBinary, Variable};
     let reflected = ReflectConfig::new()
         .spv(SpirvBinary::from(words))
-        .ref_all_rscs(true)
+        .ref_all_rscs(all_resources)
         .combine_img_samplers(false)
         .gen_unique_names(false)
         .reflect()
-        .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        .map_err(|_| invalid_shader())?;
     reflected
         .into_iter()
         .map(|entry| {
+            let mut local_size = None;
+            for mode in &entry.exec_modes {
+                if matches!(
+                    format!("{:?}", mode.exec_mode).as_str(),
+                    "LocalSize" | "LocalSizeId"
+                ) {
+                    if mode.operands.len() != 3 {
+                        return Err(invalid_shader());
+                    }
+                    // Pipeline descriptors currently supply no specialization
+                    // overrides, so reflected constant defaults are effective.
+                    let size = [
+                        mode.operands[0].value.to_u32(),
+                        mode.operands[1].value.to_u32(),
+                        mode.operands[2].value.to_u32(),
+                    ];
+                    if size.contains(&0) || local_size.is_some_and(|old| old != size) {
+                        return Err(invalid_shader());
+                    }
+                    local_size = Some(size);
+                }
+            }
             let mut descriptors = Vec::new();
             let mut inputs = Vec::new();
             let mut outputs = Vec::new();
@@ -1442,6 +2317,7 @@ pub fn reflect_spirv_entries(words: &[u32]) -> Result<Vec<ReflectedEntry>, vk::R
             Ok(ReflectedEntry {
                 entry_point: entry.name,
                 stage: format!("{:?}", entry.exec_model),
+                local_size,
                 descriptors,
                 inputs,
                 outputs,
@@ -1477,7 +2353,7 @@ fn reflected_type_json(ty: &spirq::ty::Type) -> serde_json::Value {
 /// 序列化stage/入口名与payload不一致时，在Vulkan对象创建前拒绝。
 pub fn compiled_pipeline_entries(
     compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
-) -> Result<Vec<ReflectedEntry>, vk::Result> {
+) -> Result<Vec<ReflectedEntry>> {
     use crate::shader_pipeline::compiled::ShaderStage;
     compiled
         .stages
@@ -1491,7 +2367,7 @@ pub fn compiled_pipeline_entries(
             reflect_spirv_entries(&stage.spirv)?
                 .into_iter()
                 .find(|entry| entry.entry_point == stage.entry_point && entry.stage == expected)
-                .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)
+                .ok_or_else(invalid_shader)
         })
         .collect()
 }
@@ -1502,7 +2378,7 @@ impl ShaderInterfacePlan {
         compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
         samplers: &BTreeMap<String, u64>,
         runtime_device_scalar: u32,
-    ) -> Result<Self, vk::Result> {
+    ) -> Result<Self> {
         use crate::shader_pipeline::{
             compiled::ShaderStage,
             reflection::{BindingArray, BindingKind},
@@ -1519,7 +2395,7 @@ impl ShaderInterfacePlan {
                 .iter()
                 .any(|stage| stage.stage == ShaderStage::Fragment);
         if !compute && !raster {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         for index in 0..compiled.stages.len() {
             stored_pipeline_entry(compiled, index)?;
@@ -1554,7 +2430,9 @@ impl ShaderInterfacePlan {
                         .get(&binding.name)
                         .copied()
                         .filter(|handle| *handle != 0)
-                        .ok_or(vk::Result::ERROR_INITIALIZATION_FAILED)?
+                        .ok_or_else(|| {
+                            crate::Error::invalid_usage("着色器资源、接口或设备不匹配")
+                        })?
                 } else {
                     0
                 };
@@ -1570,7 +2448,7 @@ impl ShaderInterfacePlan {
                     visibility,
                     runtime_device_scalar,
                 )
-                .map_err(|_| vk::Result::ERROR_INITIALIZATION_FAILED)?;
+                .map_err(|_| crate::Error::invalid_usage("着色器资源、接口或设备不匹配"))?;
                 set.flags |= plan.flags;
                 set.bindings.extend(plan.bindings);
                 set.binding_flags.extend(plan.binding_flags);
@@ -1579,14 +2457,14 @@ impl ShaderInterfacePlan {
                 if flags & vk::DescriptorBindingFlags::VARIABLE_DESCRIPTOR_COUNT.as_raw() != 0
                     && index + 1 != set.bindings.len()
                 {
-                    return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+                    return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
                 }
             }
             sets.push(set);
         }
         let size = compiled.reflection.push_constant_size;
         if !size.is_multiple_of(4) {
-            return Err(vk::Result::ERROR_INITIALIZATION_FAILED);
+            return Err(crate::Error::invalid_usage("着色器资源、接口或设备不匹配"));
         }
         let push_constants = if size == 0 {
             Vec::new()
@@ -1618,29 +2496,25 @@ fn serialized_stage_name(stage: crate::shader_pipeline::compiled::ShaderStage) -
 pub fn stored_pipeline_entry(
     compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
     index: usize,
-) -> Result<ReflectedEntry, vk::Result> {
+) -> Result<ReflectedEntry> {
     use crate::shader_pipeline::{
         compiled::ShaderStage,
         reflection::{BindingArray, BindingKind},
     };
-    let stage = compiled
-        .stages
-        .get(index)
-        .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+    let stage = compiled.stages.get(index).ok_or_else(invalid_shader)?;
     let expected = match stage.stage {
         ShaderStage::Compute => rspirv::spirv::ExecutionModel::GLCompute,
         ShaderStage::Vertex => rspirv::spirv::ExecutionModel::Vertex,
         ShaderStage::Fragment => rspirv::spirv::ExecutionModel::Fragment,
     };
-    let module =
-        rspirv::dr::load_words(&stage.spirv).map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+    let module = rspirv::dr::load_words(&stage.spirv).map_err(|_| invalid_shader())?;
     let present = module.entry_points.iter().any(|point| matches!(
         (point.operands.first(), point.operands.get(2)),
         (Some(rspirv::dr::Operand::ExecutionModel(model)), Some(rspirv::dr::Operand::LiteralString(name)))
         if *model == expected && name == &stage.entry_point
     ));
     if !present {
-        return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+        return Err(invalid_shader());
     }
     let mut descriptors = Vec::new();
     for (set, bindings) in compiled
@@ -1694,23 +2568,25 @@ pub fn stored_pipeline_entry(
             .effective_vertex_inputs()
             .into_values()
             .map(|input| {
-                let ty = input
-                    .ty
-                    .to_spirq()
-                    .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+                let ty = input.ty.to_spirq().ok_or_else(invalid_shader)?;
                 Ok(ReflectedLocation {
                     location: input.location,
                     component: 0,
                     reflected_type: reflected_type_json(&ty),
                 })
             })
-            .collect::<Result<Vec<_>, vk::Result>>()?
+            .collect::<Result<Vec<_>>>()?
     } else {
         Vec::new()
     };
     Ok(ReflectedEntry {
         entry_point: stage.entry_point.clone(),
         stage: serialized_stage_name(stage.stage).into(),
+        local_size: if stage.stage == ShaderStage::Compute {
+            compiled.reflection.local_size
+        } else {
+            None
+        },
         descriptors,
         push_constants,
         inputs,
@@ -1721,10 +2597,10 @@ pub fn stored_pipeline_entry(
 impl ReflectedShader {
     /// 运行时完整容器入口：消费真实stored reflection，不构造空尾段替身。
     pub fn from_compiled_pipeline_stage(
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         compiled: &crate::shader_pipeline::compiled::CompiledShaderPipeline,
         index: usize,
-    ) -> Result<Self, vk::Result> {
+    ) -> Result<Self> {
         let entry = stored_pipeline_entry(compiled, index)?;
         let bytes = compiled.stages[index].spirv_bytes();
         Ok(Self {
@@ -1736,16 +2612,11 @@ impl ReflectedShader {
 
 impl ShaderLibrary {
     /// 资产owner提供选择键；原存储字段保留至实际layout生产。
-    pub fn register_compiled_compute(
-        &mut self,
-        key: String,
-        bytes: &[u8],
-    ) -> Result<(), vk::Result> {
+    pub fn register_compiled_compute(&mut self, key: String, bytes: &[u8]) -> Result<()> {
         use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
-        let compiled = CompiledShaderPipeline::decode(bytes)
-            .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| invalid_shader())?;
         if compiled.stages.len() != 1 || compiled.stages[0].stage != ShaderStage::Compute {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         let shader =
             ReflectedShader::from_compiled_pipeline_stage(self.cache.device.clone(), &compiled, 0)?;
@@ -1759,23 +2630,22 @@ impl ShaderLibrary {
         vertex_key: String,
         fragment_key: String,
         bytes: &[u8],
-    ) -> Result<(), vk::Result> {
+    ) -> Result<()> {
         use crate::shader_pipeline::compiled::{CompiledShaderPipeline, ShaderStage};
-        let compiled = CompiledShaderPipeline::decode(bytes)
-            .map_err(|_| vk::Result::ERROR_INVALID_SHADER_NV)?;
+        let compiled = CompiledShaderPipeline::decode(bytes).map_err(|_| invalid_shader())?;
         if vertex_key == fragment_key || compiled.stages.len() != 2 {
-            return Err(vk::Result::ERROR_INVALID_SHADER_NV);
+            return Err(invalid_shader());
         }
         let vertex_index = compiled
             .stages
             .iter()
             .position(|stage| stage.stage == ShaderStage::Vertex)
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         let fragment_index = compiled
             .stages
             .iter()
             .position(|stage| stage.stage == ShaderStage::Fragment)
-            .ok_or(vk::Result::ERROR_INVALID_SHADER_NV)?;
+            .ok_or_else(invalid_shader)?;
         let vertex = ReflectedShader::from_compiled_pipeline_stage(
             self.cache.device.clone(),
             &compiled,
@@ -1794,21 +2664,315 @@ impl ShaderLibrary {
     }
 }
 
+impl crate::resource::GpuUse for PipelineLayout {
+    fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
+        visitor(&self.last_use)?;
+        for set in &self.sets {
+            set.visit_uses(visitor)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl crate::resource::GpuUse for VulkanPipeline {
+    fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
+        visitor(&self.last_use)?;
+        self.layout.visit_uses(visitor)?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod raster_opts_tests {
     use super::*;
 
-    /// 逐位核对：每个字段只落在原机器码解码的位上（0x1416a3d08..0x1416a3f2f）。
+    #[test]
+    fn cache_slots_charge_actual_owners_and_join_full_borrowed_keys() {
+        use std::cell::Cell;
+        let budget = Arc::new(AllocatorStats::default());
+        let table = Mutex::new(TempList::new(1, budget.clone()).unwrap());
+        let first = slot_for(
+            &table,
+            |key: &Vec<u8>| key.as_slice() == b"first",
+            || budgeted_key_vec(&budget, b"first"),
+            1,
+            &budget,
+        )
+        .unwrap();
+        let charged = budget.cpu_memory_usage().total();
+        let invoked = Cell::new(false);
+        budget.set_total_budget(charged).unwrap();
+        let same = slot_for(
+            &table,
+            |key| key.as_slice() == b"first",
+            || {
+                invoked.set(true);
+                budgeted_key_vec(&budget, b"first")
+            },
+            1,
+            &budget,
+        )
+        .unwrap();
+        assert!(Arc::ptr_eq(&same, &first));
+        assert!(
+            !invoked.get(),
+            "cache hit never allocates or builds an owned key"
+        );
+        assert_eq!(budget.cpu_memory_usage().total(), charged);
+        assert!(matches!(
+            slot_for(
+                &table,
+                |_| false,
+                || {
+                    invoked.set(true);
+                    budgeted_key_vec(&budget, b"other")
+                },
+                1,
+                &budget
+            ),
+            Err(crate::Error::Timeout)
+        ));
+        assert!(
+            !invoked.get(),
+            "an in-flight compiler slot is never evicted"
+        );
+        drop(same);
+        table.lock().clear();
+        drop(table);
+        assert!(
+            budget.cpu_memory_usage().total() > 0,
+            "external slot Arc retains its metadata credit"
+        );
+        drop(first);
+        assert_eq!(budget.cpu_memory_usage().total(), 0);
+    }
+
+    #[test]
+    fn cache_key_admission_failure_preserves_the_old_slot_and_credit() {
+        let budget = Arc::new(AllocatorStats::default());
+        let table = Mutex::new(TempList::new(1, budget.clone()).unwrap());
+        let first = slot_for(
+            &table,
+            |key: &Vec<u8>| key.as_slice() == b"first",
+            || budgeted_key_vec(&budget, b"first"),
+            1,
+            &budget,
+        )
+        .unwrap();
+        drop(first);
+        let charged = budget.cpu_memory_usage().total();
+        budget.set_total_budget(charged).unwrap();
+        assert!(matches!(
+            slot_for(
+                &table,
+                |_| false,
+                || budgeted_key_vec(&budget, b"second"),
+                1,
+                &budget
+            ),
+            Err(crate::Error::OutOfHostMemory)
+        ));
+        assert_eq!(budget.cpu_memory_usage().total(), charged);
+        assert_eq!(table.lock().as_slice()[0].key, b"first");
+        budget.set_total_budget(1 << 20).unwrap();
+        let next = slot_for(
+            &table,
+            |_| false,
+            || budgeted_key_vec(&budget, b"second"),
+            1,
+            &budget,
+        )
+        .unwrap();
+        assert_eq!(table.lock().as_slice()[0].key, b"second");
+        drop((next, table));
+        assert_eq!(budget.cpu_memory_usage().total(), 0);
+    }
+
+    #[test]
+    fn pipeline_array_accounting_includes_both_format_vectors_and_rejects_overflow() {
+        let bytes = pipeline_array_bytes(2, 2, 4, 3).unwrap();
+        assert_eq!(
+            bytes,
+            (2 * std::mem::size_of::<Arc<ShaderModule>>()
+                + 2 * std::mem::size_of::<usize>()
+                + 7 * std::mem::size_of::<vk::Format>()) as u64
+        );
+        assert!(matches!(
+            pipeline_array_bytes(usize::MAX, 0, 0, 0),
+            Err(crate::Error::OutOfHostMemory)
+        ));
+    }
+
+    #[test]
+    fn invalid_raster_options_return_usage_errors_without_changing_encoded_state() {
+        assert_eq!(
+            RasterPipelineOpts(3).topology().unwrap_err().kind(),
+            crate::ErrorKind::InvalidUsage
+        );
+        assert_eq!(
+            RasterPipelineOpts(3 << 4)
+                .depth_compare_op()
+                .unwrap_err()
+                .kind(),
+            crate::ErrorKind::InvalidUsage
+        );
+        let mut options = RasterPipelineOpts(0xa5a5_5a5a);
+        let original = options;
+        for error in [
+            options
+                .set_topology(vk::PrimitiveTopology::PATCH_LIST)
+                .unwrap_err(),
+            options
+                .set_depth_compare_op(vk::CompareOp::ALWAYS)
+                .unwrap_err(),
+            options
+                .set_polygon_mode(vk::PolygonMode::POINT)
+                .unwrap_err(),
+        ] {
+            assert_eq!(error.kind(), crate::ErrorKind::InvalidUsage);
+        }
+        assert_eq!(options, original);
+    }
+
+    #[test]
+    fn malformed_shader_and_reflection_use_public_error_categories() {
+        assert_eq!(
+            reflect_spirv_entries(&[]).unwrap_err().kind(),
+            crate::ErrorKind::InvalidUsage
+        );
+        let reflection = crate::shader_pipeline::reflection::ShaderReflection {
+            descriptor_sets: vec![],
+            uniform_block: None,
+            binding_names: vec![],
+            binding_name_hashes: vec![],
+            vertex_inputs: vec![],
+            local_size: None,
+            push_constant_size: 0,
+        };
+        let error = validate_compute_reflection(&reflection).unwrap_err();
+        assert_eq!(error.kind(), crate::ErrorKind::InvalidUsage);
+        assert!(matches!(
+            std::error::Error::source(&error)
+                .and_then(|source| source.downcast_ref::<InterfaceError>()),
+            Some(InterfaceError::MissingGroupSize)
+        ));
+    }
+
+    #[test]
+    fn dynamic_formats_validate_aspects_limits_and_multiview() {
+        let color = DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM);
+        color.validate(1).unwrap();
+        assert!(color.validate(0).is_err());
+        let mut value = color.clone();
+        value.colors[0] = vk::Format::D32_SFLOAT;
+        assert!(value.validate(1).is_err());
+        value = color.clone();
+        value.depth = vk::Format::R8G8B8A8_UNORM;
+        assert!(value.validate(1).is_err());
+        value.depth = vk::Format::D24_UNORM_S8_UINT;
+        value.stencil = vk::Format::D24_UNORM_S8_UINT;
+        value.validate(1).unwrap();
+        value.stencil = vk::Format::S8_UINT;
+        assert!(value.validate(1).is_err());
+        value = color;
+        value.view_mask = 1;
+        assert_eq!(
+            value.validate(1).unwrap_err().kind(),
+            crate::ErrorKind::Unsupported
+        );
+    }
+    #[test]
+    fn dynamic_cache_signature_includes_actual_target_and_all_formats() {
+        let key = |value: Option<&DynamicRenderingFormats>| {
+            let mut key = Vec::new();
+            append_dynamic_rendering_key(&mut key, value);
+            key
+        };
+        let color = DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM);
+        assert_ne!(key(None), key(Some(&color)));
+        for changed in 0..5 {
+            let mut value = color.clone();
+            match changed {
+                0 => value.colors[0] = vk::Format::B8G8R8A8_UNORM,
+                1 => value.colors.push(vk::Format::R8G8B8A8_UNORM),
+                2 => value.depth = vk::Format::D32_SFLOAT,
+                3 => value.stencil = vk::Format::S8_UINT,
+                _ => value.view_mask = 1,
+            }
+            assert_ne!(key(Some(&color)), key(Some(&value)));
+        }
+    }
+
+    #[test]
+    fn raster_cache_key_length_matches_the_actual_full_key_and_borrowed_lookup() {
+        let device = match crate::raw::init::create_headless_device() {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(
+                    std::env::var("RHAPSODY_REQUIRE_VULKAN").as_deref() != Ok("1"),
+                    "strict raster key fixture requires Vulkan: {error}"
+                );
+                eprintln!("SKIP Vulkan raster key fixture: {error}");
+                return;
+            }
+        };
+        // Keys only read these owned identities; no null shader/layout is ever
+        // passed to native pipeline creation by this metadata regression.
+        let module = Arc::new(ShaderModule {
+            device: device.clone(),
+            handle: vk::ShaderModule::null(),
+            interfaces: Arc::from([]),
+            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.allocator_stats, 16)
+                .unwrap(),
+        });
+        let layout = Arc::new(PipelineLayout {
+            last_use: crate::resource::SyncCell::for_device_budgeted(
+                device.generation(),
+                &device.allocator_stats,
+            )
+            .unwrap(),
+            device: device.clone(),
+            handle: vk::PipelineLayout::null(),
+            sets: Vec::new(),
+            push_constants: Vec::new(),
+            bindless_abi: None,
+            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.allocator_stats, 0)
+                .unwrap(),
+        });
+        let mut desc = RasterPipelineDesc::new(module, layout);
+        for index in 0..5 {
+            desc.entry = CString::new(format!("vertex_{index}")).unwrap();
+            desc.fragment_entry = Some(CString::new(format!("fragment_entry_{index}")).unwrap());
+            desc.dynamic_rendering = (index != 0).then(|| DynamicRenderingFormats {
+                colors: vec![vk::Format::R8G8B8A8_UNORM; index],
+                depth: vk::Format::UNDEFINED,
+                stencil: vk::Format::UNDEFINED,
+                view_mask: 0,
+            });
+            desc.vertex_bindings = vec![vk::VertexInputBindingDescription::default(); index];
+            desc.vertex_attributes =
+                vec![vk::VertexInputAttributeDescription::default(); index + 1];
+            desc.blend_attachments = vec![vk::PipelineColorBlendAttachmentState::default(); index];
+            let key = raster_pipeline_key(&desc);
+            assert_eq!(key.len(), raster_pipeline_key_len(&desc));
+            assert!(raster_pipeline_key_matches(&desc, &key));
+            desc.depth_write = !desc.depth_write;
+            assert!(!raster_pipeline_key_matches(&desc, &key));
+        }
+    }
+
     #[test]
     fn bit_positions_match_the_exe_decode() {
         let mut o = RasterPipelineOpts::new();
-        o.set_topology(vk::PrimitiveTopology::LINE_STRIP);
+        o.set_topology(vk::PrimitiveTopology::LINE_STRIP).unwrap();
         assert_eq!(o.0, 0b10);
         let mut o = RasterPipelineOpts::new();
         o.set_cull_mode(vk::CullModeFlags::BACK);
         assert_eq!(o.0, 0b10 << 2);
         let mut o = RasterPipelineOpts::new();
-        o.set_depth_compare_op(vk::CompareOp::EQUAL);
+        o.set_depth_compare_op(vk::CompareOp::EQUAL).unwrap();
         o.set_depth_write(true);
         o.set_depth_test_enable(true);
         assert_eq!(o.0, (2 << 4) | (1 << 6) | (1 << 7));
@@ -1832,7 +2996,7 @@ mod raster_opts_tests {
         assert_eq!(o.stencil_compare_mask(), 0xff);
         let mut o = RasterPipelineOpts::new();
         o.set_blend_mode(3);
-        o.set_polygon_mode(vk::PolygonMode::LINE);
+        o.set_polygon_mode(vk::PolygonMode::LINE).unwrap();
         assert_eq!(o.0, (3 << 29) | (1 << 31));
     }
 
@@ -1851,7 +3015,6 @@ mod raster_opts_tests {
         }
     }
 
-    /// 跳转表 0x142c88ff0 / 0x142c89000 逐项解出的枚举次序（不是 Vulkan 原值次序）。
     #[test]
     fn jump_table_enums_use_the_exe_ordering() {
         for (code, topology) in [
@@ -1859,14 +3022,17 @@ mod raster_opts_tests {
             (1, vk::PrimitiveTopology::LINE_LIST),
             (2, vk::PrimitiveTopology::LINE_STRIP),
         ] {
-            assert_eq!(RasterPipelineOpts(code).topology(), topology);
+            assert_eq!(RasterPipelineOpts(code).topology().unwrap(), topology);
         }
         for (code, op) in [
             (0, vk::CompareOp::LESS),
             (1, vk::CompareOp::GREATER),
             (2, vk::CompareOp::EQUAL),
         ] {
-            assert_eq!(RasterPipelineOpts(code << 4).depth_compare_op(), op);
+            assert_eq!(
+                RasterPipelineOpts(code << 4).depth_compare_op().unwrap(),
+                op
+            );
         }
     }
 
@@ -1879,21 +3045,31 @@ mod raster_opts_tests {
         let module = Arc::new(ShaderModule {
             device: device.clone(),
             handle: vk::ShaderModule::null(),
+            interfaces: Arc::from([]),
+            _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.allocator_stats, 16)
+                .unwrap(),
         });
         let layout = Arc::new(PipelineLayout {
-            device,
+            last_use: crate::resource::SyncCell::for_device_budgeted(
+                device.generation(),
+                &device.allocator_stats,
+            )
+            .unwrap(),
+            device: device.clone(),
             handle: vk::PipelineLayout::null(),
             sets: Vec::new(),
             push_constants: Vec::new(),
+            bindless_abi: None,
+            _memory: reserve_shared_cpu_metadata::<PipelineLayout>(&device.allocator_stats, 0)
+                .unwrap(),
         });
         let mut desc = RasterPipelineDesc::new(module, layout);
         let mut o = RasterPipelineOpts::new();
         o.set_blend_mode(2);
         o.set_stencil_test_enable(true);
         o.set_stencil_compare_mask(0x81);
-        o.apply_to(&mut desc, 3);
+        o.apply_to(&mut desc, 3).unwrap();
         assert_eq!(desc.blend_attachments.len(), 3);
-        // 原 0x140be67f0：模式 2 → dstColor/dstAlpha = ONE_MINUS_SRC_ALPHA(7)。
         assert_eq!(desc.blend_attachments[0].dst_color_blend_factor.as_raw(), 7);
         assert!(desc.stencil_test);
         assert_eq!(desc.stencil.compare_mask, 0x81);
@@ -1903,7 +3079,6 @@ mod raster_opts_tests {
 
     #[test]
     fn map_vertex_attribute_format_follows_the_exe_table() {
-        // 0x140be6850：`(bytes-4)/4*3 + base`，base：tag2→99(SINT) / tag3→98(UINT) / tag4→100(SFLOAT)。
         assert_eq!(
             map_vertex_attribute_format(4, 4).unwrap(),
             vk::Format::R32_SFLOAT

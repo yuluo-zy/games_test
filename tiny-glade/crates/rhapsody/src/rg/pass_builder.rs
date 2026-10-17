@@ -7,7 +7,34 @@ pub struct PassBuilder<'graph> {
     pub(crate) graph: &'graph mut RenderGraph,
     pub(crate) declaration: PassDeclaration,
 }
+#[derive(Clone, Copy)]
+enum AccessMode {
+    Read,
+    Write,
+    Discard,
+}
 impl PassBuilder<'_> {
+    pub fn on_queue(&mut self, class: crate::device::QueueClass) -> &mut Self {
+        self.declaration.queue_class = class;
+        self
+    }
+    pub fn with_queue(mut self, class: crate::device::QueueClass) -> Self {
+        self.on_queue(class);
+        self
+    }
+
+    /// Resolve legacy indices explicitly at the active graph boundary.
+    pub fn resource_handle(&self, index: u32) -> Result<ResourceHandle, BuildError> {
+        self.graph.resource_handle(index)
+    }
+    pub fn side_effect(&mut self) -> &mut Self {
+        self.declaration.side_effect = true;
+        self
+    }
+    pub fn with_side_effect(mut self) -> Self {
+        self.side_effect();
+        self
+    }
     /// 保留声明顺序与重复访问，交给编译模块处理访问链。
     pub fn add_resource_access(
         &mut self,
@@ -27,6 +54,236 @@ impl PassBuilder<'_> {
         .map_err(BuildError::IncompatibleAccess)?;
         Ok(self)
     }
+    /// Declare a bounded access through the same production ledger as raw calls.
+    pub fn add_resource_access_range(
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.add_versioned_access(
+            resource,
+            access_code,
+            synchronization_group,
+            range,
+            super::resource::AccessVersion::Automatic,
+            matches!(access_code, 0x36 | 0x37),
+        )?;
+        Ok(self)
+    }
+
+    fn add_versioned_access(
+        &mut self,
+        resource: ResourceHandle,
+        access_code: u8,
+        synchronization_group: u32,
+        range: super::resource::AccessRange,
+        version: super::resource::AccessVersion,
+        reads_previous: bool,
+    ) -> Result<(), BuildError> {
+        self.graph.check_pass_capacity()?;
+        self.graph.check_handle(resource)?;
+        range
+            .validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
+            .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
+        super::access_ledger::collect_resource_access_range(
+            &mut self.declaration.accesses,
+            resource.raw(),
+            access_code,
+            synchronization_group,
+            range,
+            version,
+            reads_previous,
+        )
+        .map_err(BuildError::IncompatibleAccess)?;
+        Ok(())
+    }
+
+    fn latest_version(&self, resource: ResourceHandle) -> Result<u32, BuildError> {
+        let mut version = self.graph.current_version(resource)?;
+        for access in self
+            .declaration
+            .accesses
+            .iter()
+            .filter(|access| access.resource_index == resource.raw())
+        {
+            match access.version {
+                super::resource::AccessVersion::Write { current, .. } => version = current,
+                super::resource::AccessVersion::Automatic
+                    if crate::raw::access_table::is_write(access.access_code) =>
+                {
+                    version = version.checked_add(1).ok_or(BuildError::Contract(
+                        super::resource::ResourceContractError::VersionOverflow(resource.raw()),
+                    ))?;
+                }
+                _ => {}
+            }
+        }
+        Ok(version)
+    }
+
+    fn typed_access(
+        &mut self,
+        resource: ResourceHandle,
+        version: u32,
+        access_code: u8,
+        range: super::resource::AccessRange,
+        mode: AccessMode,
+        texture: bool,
+    ) -> Result<u32, BuildError> {
+        let write = !matches!(mode, AccessMode::Read);
+        self.graph.check_handle(resource)?;
+        let descriptor = self.graph.declaration.resources[resource.raw() as usize].descriptor;
+        if matches!(descriptor, super::graph::Descriptor::Image(_)) != texture {
+            return Err(BuildError::ResourceKindMismatch(resource.raw()));
+        }
+        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::InvalidAccessCode(access_code),
+            ));
+        }
+        if crate::raw::access_table::is_write(access_code) != write {
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::WrongAccessMode {
+                    resource: resource.raw(),
+                    access_code,
+                },
+            ));
+        }
+        let expected = self.latest_version(resource)?;
+        if expected != version {
+            return Err(BuildError::Contract(
+                super::resource::ResourceContractError::StaleVersion {
+                    resource: resource.raw(),
+                    expected,
+                    actual: version,
+                },
+            ));
+        }
+        let next = if write {
+            version.checked_add(1).ok_or(BuildError::Contract(
+                super::resource::ResourceContractError::VersionOverflow(resource.raw()),
+            ))?
+        } else {
+            version
+        };
+        self.add_versioned_access(
+            resource,
+            access_code,
+            0,
+            range,
+            if write {
+                super::resource::AccessVersion::Write {
+                    previous: version,
+                    current: next,
+                }
+            } else {
+                super::resource::AccessVersion::Read(version)
+            },
+            !matches!(mode, AccessMode::Discard) && matches!(access_code, 0x36 | 0x37),
+        )?;
+        Ok(next)
+    }
+
+    pub fn read_texture(
+        &mut self,
+        texture: super::resource::TextureId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.typed_access(
+            texture.handle,
+            texture.version,
+            access_code,
+            range,
+            AccessMode::Read,
+            true,
+        )?;
+        Ok(self)
+    }
+    pub fn write_texture(
+        &mut self,
+        texture: super::resource::TextureId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<super::resource::TextureId, BuildError> {
+        let version = self.typed_access(
+            texture.handle,
+            texture.version,
+            access_code,
+            range,
+            AccessMode::Write,
+            true,
+        )?;
+        Ok(super::resource::TextureId { version, ..texture })
+    }
+    pub fn read_buffer(
+        &mut self,
+        buffer: super::resource::BufferId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<&mut Self, BuildError> {
+        self.typed_access(
+            buffer.handle,
+            buffer.version,
+            access_code,
+            range,
+            AccessMode::Read,
+            false,
+        )?;
+        Ok(self)
+    }
+    pub fn write_buffer(
+        &mut self,
+        buffer: super::resource::BufferId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<super::resource::BufferId, BuildError> {
+        let version = self.typed_access(
+            buffer.handle,
+            buffer.version,
+            access_code,
+            range,
+            AccessMode::Write,
+            false,
+        )?;
+        Ok(super::resource::BufferId { version, ..buffer })
+    }
+    /// Explicitly discard previous contents, even for a read/write Vulkan access mask.
+    pub fn write_texture_discard(
+        &mut self,
+        texture: super::resource::TextureId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<super::resource::TextureId, BuildError> {
+        let version = self.typed_access(
+            texture.handle,
+            texture.version,
+            access_code,
+            range,
+            AccessMode::Discard,
+            true,
+        )?;
+        Ok(super::resource::TextureId { version, ..texture })
+    }
+    /// Explicitly discard previous contents, even for a read/write Vulkan access mask.
+    pub fn write_buffer_discard(
+        &mut self,
+        buffer: super::resource::BufferId,
+        access_code: u8,
+        range: super::resource::AccessRange,
+    ) -> Result<super::resource::BufferId, BuildError> {
+        let version = self.typed_access(
+            buffer.handle,
+            buffer.version,
+            access_code,
+            range,
+            AccessMode::Discard,
+            false,
+        )?;
+        Ok(super::resource::BufferId { version, ..buffer })
+    }
     /// 完成一个 pass 才提交声明；丢弃 builder 不产生半成品 pass。
     pub fn render(self, callback: impl FnOnce(u64) -> bool + Send + 'static) {
         self.render_with_context(move |context| callback(context.command.handle()));
@@ -43,6 +300,21 @@ impl PassBuilder<'_> {
         });
         self.graph.declaration.passes.push(self.declaration);
         self.graph.callbacks.push(callback);
+    }
+    pub fn render_with_result_context(
+        self,
+        callback: impl FnOnce(super::executor::PassContext<'_>) -> crate::Result<()> + Send + 'static,
+    ) {
+        self.render_with_context(move |context| {
+            let errors = context.errors;
+            match callback(context) {
+                Ok(()) => true,
+                Err(error) => {
+                    errors.borrow_mut().get_or_insert(error);
+                    false
+                }
+            }
+        });
     }
 }
 
@@ -108,33 +380,5 @@ impl<'graph> PassBuilder<'graph> {
             group,
             kind: std::marker::PhantomData,
         })
-    }
-    /// 把本 pass 的访问声明和绑定计划一起捕获，callback 不需要再手填资源访问表。
-    pub fn render_bound(
-        self,
-        bindings: std::collections::BTreeMap<String, Vec<super::pass_bindings::PassBinding>>,
-        callback: impl FnOnce(u64, &super::pass_bindings::BoundPassBindings) -> bool + Send + 'static,
-    ) {
-        let plan = super::pass_bindings::BoundPassBindings {
-            pass: self.declaration.clone(),
-            bindings,
-        };
-        self.render(move |command| callback(command, &plan));
-    }
-    pub fn render_bound_with_context(
-        self,
-        bindings: std::collections::BTreeMap<String, Vec<super::pass_bindings::PassBinding>>,
-        callback: impl FnOnce(
-            super::executor::PassContext<'_>,
-            &super::pass_bindings::BoundPassBindings,
-        ) -> bool
-        + Send
-        + 'static,
-    ) {
-        let plan = super::pass_bindings::BoundPassBindings {
-            pass: self.declaration.clone(),
-            bindings,
-        };
-        self.render_with_context(move |context| callback(context, &plan));
     }
 }

@@ -1,7 +1,7 @@
 //! 检查会影响缓存正确性的兼容规则与原当前 pass 查找语义。
 use ash::vk;
 use rhapsody::{
-    raw::render_pass::{AttachmentKey, RenderPassKey},
+    rg::attachments::contract::{AttachmentKey, RenderPassKey},
     rg::{
         attachments::{DepthAccess, RenderPassAttachmentDesc},
         graph::{AccessDeclaration, PassDeclaration},
@@ -60,29 +60,34 @@ fn original_attachment_defaults_and_modifiers() {
 #[test]
 fn access_lookup_uses_current_pass_first_match() {
     let pass = PassDeclaration {
+        queue_class: rhapsody::device::QueueClass::Graphics,
+        graph_id: None,
         name: "当前".into(),
+        side_effect: false,
         accesses: vec![
             AccessDeclaration {
                 resource_index: 3,
                 synchronization_group: 0,
                 access_code: 4,
+                ..Default::default()
             },
             AccessDeclaration {
                 resource_index: 3,
                 synchronization_group: 1,
                 access_code: 40,
+                ..Default::default()
             },
         ],
     };
     assert_eq!(
-        RenderPassApi::<Noop>::find_resource_access_type(&pass, ResourceHandle::from_raw(3)),
+        RenderPassApi::<Noop>::find_resource_access_type(&pass, ResourceHandle::from_raw(3))
+            .unwrap(),
         4
     );
     assert!(
-        std::panic::catch_unwind(|| RenderPassApi::<Noop>::find_resource_access_type(
-            &pass,
-            ResourceHandle::from_raw(7)
-        ))
-        .is_err()
+        RenderPassApi::<Noop>::find_resource_access_type(&pass, ResourceHandle::from_raw(7))
+            .unwrap_err()
+            .kind()
+            == rhapsody::ErrorKind::InvalidUsage
     );
 }

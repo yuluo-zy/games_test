@@ -1,44 +1,14 @@
 //! 真实设备上验证 Timelines：提交值、失败不占用、等待与查询。
+mod gpu_test_support;
 use ash::vk;
 use rhapsody::error::ErrorKind;
 use rhapsody::sync::{QueueId, SyncSet, timeline::Timelines};
 
-struct Gpu {
-    _entry: ash::Entry,
-    instance: ash::Instance,
-    device: ash::Device,
-    queue: vk::Queue,
-}
-
-fn gpu() -> Option<Gpu> {
-    let entry = unsafe { ash::Entry::load() }.ok()?;
-    let app = vk::ApplicationInfo::default().api_version(vk::API_VERSION_1_2);
-    let instance = unsafe {
-        entry.create_instance(
-            &vk::InstanceCreateInfo::default().application_info(&app),
-            None,
-        )
-    }
-    .ok()?;
-    let physical = *unsafe { instance.enumerate_physical_devices() }
-        .ok()?
-        .first()?;
-    let priorities = [1.0];
-    let queue_info = [vk::DeviceQueueCreateInfo::default()
-        .queue_family_index(0)
-        .queue_priorities(&priorities)];
-    let mut timeline = vk::PhysicalDeviceVulkan12Features::default().timeline_semaphore(true);
-    let info = vk::DeviceCreateInfo::default()
-        .queue_create_infos(&queue_info)
-        .push_next(&mut timeline);
-    let device = unsafe { instance.create_device(physical, &info, None) }.ok()?;
-    let queue = unsafe { device.get_device_queue(0, 0) };
-    Some(Gpu {
-        _entry: entry,
-        instance,
-        device,
-        queue,
-    })
+fn gpu() -> Option<std::sync::Arc<rhapsody::raw::device::Device>> {
+    gpu_test_support::initialize(
+        "timeline production headless device",
+        rhapsody::raw::init::create_headless_device(),
+    )
 }
 
 #[test]
@@ -106,10 +76,8 @@ fn timelines_on_a_real_queue() {
     );
 
     drop(timelines);
+    gpu.wait_idle().unwrap();
     unsafe {
-        gpu.device.device_wait_idle().unwrap();
         gpu.device.destroy_semaphore(semaphore, None);
-        gpu.device.destroy_device(None);
-        gpu.instance.destroy_instance(None);
     }
 }

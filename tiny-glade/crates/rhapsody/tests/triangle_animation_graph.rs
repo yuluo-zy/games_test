@@ -3,7 +3,7 @@
 //! `VulkanGraphSession` 执行。除像素外还验证执行器的多帧链路：
 //! - `FrameThrottle`：在飞帧数峰值 = 2，`begin_frame` 排到只剩 1，超容量的 `execute_frame` 被拒绝；
 //! - 帧账本：`begin_frame` 清零、`execute_frame` 记提交并结束，全程没有账本告警；
-//! - 帧间资源复用：图内创建的颜色目标走资源池（命中次数断言）；历史纹理走 `TemporalGpuResources`
+//! - 帧间资源复用：图内创建的颜色目标走资源池（命中次数断言）；历史纹理由 Session 直接持有
 //!   （parity 翻转、物理纹理恒等、"上一帧的渲染结果"逐字节一致）；
 //! - 每帧新建的顶点缓冲在 `collect_after_completion` 后全部销毁；结束后 `wait_idle` 正常。
 //!
@@ -22,11 +22,7 @@ use rhapsody::{
         executor::PassContext,
         graph::RenderGraph,
         pass_api::{AshCommandBackend, RenderPassApi},
-        temporal::TemporalRenderGraphState,
-        vulkan::{
-            AccessTable, GpuResource, ResourceSpec, SessionFrameReceipt, TemporalGpuResources,
-            VulkanGraphBackend, VulkanGraphSession,
-        },
+        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
     },
 };
 use std::sync::{
@@ -111,10 +107,8 @@ struct Harness {
     rig: Rig,
     session: VulkanGraphSession,
     attachments: Arc<Mutex<AttachmentCache>>,
-    temporal_state: TemporalRenderGraphState,
-    temporal: TemporalGpuResources,
     color_spec: ResourceSpec,
-    hist_descriptor: rhapsody::rg::graph::Descriptor,
+    hist_desc: TextureDesc,
     readback: Vec<Slot>,
     history_readback: Vec<Slot>,
     /// 每帧新建的顶点缓冲，只留弱引用，用来证明退役后真的被销毁。
@@ -124,7 +118,7 @@ struct Harness {
 
 /// 一帧提交后的观测值。
 struct Submitted {
-    receipt: SessionFrameReceipt,
+    frame: u64,
     parity: u32,
     /// 本帧写入的历史纹理 / 读取的上一帧历史纹理的 token。
     hist_cur_token: u64,
@@ -142,7 +136,9 @@ fn new_slot(backend: &mut VulkanGraphBackend) -> Slot {
         vk::BufferUsageFlags::TRANSFER_DST,
     );
     let buffer = Arc::new(Buffer::new(backend.device.clone(), &desc).unwrap());
-    let token = backend.bind_import(GpuResource::Buffer(buffer.clone()));
+    let token = backend
+        .bind_import(GpuResource::Buffer(buffer.clone()))
+        .unwrap();
     Slot { token, buffer }
 }
 
@@ -153,22 +149,19 @@ impl Harness {
         let session = VulkanGraphSession::new(backend);
         // 提交引擎镜像：之后帧完成会回收设备侧的命令缓冲。
 
-        let attachments = Arc::new(Mutex::new(AttachmentCache::new(rig.device.clone())));
-        let mut temporal = TemporalGpuResources::new(rig.device.clone());
+        let attachments = Arc::new(Mutex::new(
+            AttachmentCache::new(rig.device.clone()).unwrap(),
+        ));
         let mut hist = TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM);
         hist.usage |= vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
-        let hist_descriptor = temporal.register("hist:0", ResourceSpec::Image(hist));
-        temporal.register("hist:1", ResourceSpec::Image(hist));
         let color_spec =
             ResourceSpec::Image(TextureDesc::new_2d(SIZE, SIZE, vk::Format::R8G8B8A8_UNORM));
         Some(Self {
             rig,
             session,
             attachments,
-            temporal_state: TemporalRenderGraphState::default(),
-            temporal,
             color_spec,
-            hist_descriptor,
+            hist_desc: hist,
             readback: vec![],
             history_readback: vec![],
             vertex_buffers: vec![],
@@ -192,18 +185,11 @@ impl Harness {
         let session = &mut self.session;
 
         // 1. 历史纹理（temporal 对）：必须在其他 bind_import 之前建立，两边的 token 空间是同一个 u64 域。
-        let pair = self
-            .temporal_state
-            .get_or_create_owned_pair(&mut graph, "hist", self.hist_descriptor, &mut self.temporal)
+        let pair = session
+            .temporal_texture(&mut graph, "hist", self.hist_desc)
             .expect("temporal pair");
-        for lookup in [pair.first, pair.second] {
-            let token = lookup.resource.token;
-            self.temporal
-                .import_into(&mut session.backend, &format!("hist-token-{token}"), token)
-                .unwrap();
-        }
-        // pair.first = 本帧写入的历史纹理；pair.second = 上一帧写入的那张。
-        let (hist_cur, hist_prev) = (pair.first.handle, pair.second.handle);
+        // 当前成员供本帧写入，previous 保留上一帧发布的内容。
+        let (hist_cur, hist_prev) = (pair.current().raw(), pair.previous().raw());
 
         // 2. 读回槽（首帧建立，之后按 frame % 2 复用）。
         if self.readback.is_empty() {
@@ -242,7 +228,8 @@ impl Harness {
         self.vertex_buffers.push(Arc::downgrade(&vertex_buffer));
         let vb_token = session
             .backend
-            .bind_import(GpuResource::Buffer(vertex_buffer));
+            .bind_import(GpuResource::Buffer(vertex_buffer))
+            .unwrap();
         let vb = graph
             .import_unowned(
                 "triangle vb",
@@ -269,7 +256,7 @@ impl Harness {
             let cache = self.attachments.clone();
             let clear = frame_clear_color(frame).map(|c| f32::from(c) / 255.0);
             let (color_index, vb_index) = (color.raw(), vb.raw());
-            let mut pass = graph.add_pass("triangle");
+            let mut pass = graph.add_pass("triangle").with_side_effect();
             pass.add_resource_access(vb, VERTEX_READ, 0).unwrap();
             pass.add_resource_access(color, COLOR_WRITE, 0).unwrap();
             pass.render_with_context(move |ctx: PassContext<'_>| {
@@ -282,19 +269,30 @@ impl Harness {
                 ) else {
                     return false;
                 };
-                let attachment = Attachment::color(texture.shared(), 0, Some(clear));
-                let Ok(prepared) = cache.lock().prepare(&[attachment], extent(), 1) else {
+                let Ok(attachment) = Attachment::color(texture.shared(), 0, Some(clear)) else {
                     return false;
                 };
-                ctx.keep_alive(prepared.framebuffer.clone());
-                ctx.keep_alive(pipeline.clone());
-                ctx.keep_alive(Arc::new(vertices.clone()));
+                let Ok(prepared) = cache.lock().prepare_for_rendering(
+                    &[attachment],
+                    extent(),
+                    1,
+                    rhapsody::rg::attachments::RenderingPolicy::RequireDynamic,
+                ) else {
+                    return false;
+                };
+                if let Err(error) = prepared.retain_for_pass(&ctx) {
+                    ctx.report_error(error);
+                    return false;
+                }
+
                 let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
-                // SAFETY: 命令缓冲处于录制状态，资源由 keep_alive / 执行器保活到执行完成。
-                let mut backend = unsafe { AshCommandBackend::new(&device.device) };
+                // SAFETY: 命令缓冲处于录制状态，资源由执行器保活到执行完成。
+                let mut backend = unsafe { AshCommandBackend::new_for_device(&device) };
                 // 初始 stencil 缓存值取 1，使下面的 set_stencil_ref(0) 一定发出（管线的 stencil 引用是动态状态）。
                 let mut api = RenderPassApi::new(&mut backend, cb, 1, false);
-                api.begin_attachments(&prepared);
+                if api.begin_prepared(&prepared).is_err() {
+                    return false;
+                }
                 api.set_default_view_and_scissor(extent());
                 api.set_stencil_ref(0);
                 // rg 的 RenderPassApi 没有 bind_pipeline（原版在 pass 之外绑定管线），这里直接用 ash。
@@ -315,7 +313,7 @@ impl Harness {
         {
             let device = self.rig.device.clone();
             let (color_index, rb_index, hist_index) = (color.raw(), rb.raw(), hist_cur.raw());
-            let mut pass = graph.add_pass("copy_out");
+            let mut pass = graph.add_pass("copy_out").with_side_effect();
             pass.add_resource_access(color, TRANSFER_READ, 0).unwrap();
             pass.add_resource_access(rb, TRANSFER_WRITE, 0).unwrap();
             pass.add_resource_access(hist_cur, TRANSFER_WRITE, 0)
@@ -331,9 +329,7 @@ impl Harness {
                 ) else {
                     return false;
                 };
-                ctx.keep_alive(Arc::new(texture.clone()));
-                ctx.keep_alive(Arc::new(history.clone()));
-                ctx.keep_alive(Arc::new(readback.clone()));
+
                 let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                 unsafe {
                     device.device.cmd_copy_image_to_buffer(
@@ -384,7 +380,7 @@ impl Harness {
                 .unwrap();
             let device = self.rig.device.clone();
             let (hist_index, hb_index) = (hist_prev.raw(), hb.raw());
-            let mut pass = graph.add_pass("history_readback");
+            let mut pass = graph.add_pass("history_readback").with_side_effect();
             pass.add_resource_access(hist_prev, TRANSFER_READ, 0)
                 .unwrap();
             pass.add_resource_access(hb, TRANSFER_WRITE, 0).unwrap();
@@ -398,8 +394,7 @@ impl Harness {
                 ) else {
                     return false;
                 };
-                ctx.keep_alive(Arc::new(history.clone()));
-                ctx.keep_alive(Arc::new(readback.clone()));
+
                 let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                 unsafe {
                     device.device.cmd_copy_image_to_buffer(
@@ -427,27 +422,35 @@ impl Harness {
         if let Some(hb) = hb {
             graph.export(hb, HOST_READ).unwrap();
         }
-        self.temporal_state.export_temporal(&mut graph).unwrap();
 
         let pending_before_execute = session.pending_frame_count();
         let receipt = session.execute_frame(graph.build()).expect("execute_frame");
         let color_index = color.raw() as usize;
         let mapping = &receipt.snapshot.physical_mapping[color_index];
-        for handle in [hist_cur, hist_prev] {
-            assert!(
-                receipt.snapshot.exports.contains(&(handle.raw() as u16)),
-                "temporal 纹理必须出现在本帧导出里"
-            );
-        }
+        assert!(
+            receipt.snapshot.exports.contains(&(hist_cur.raw() as u16)),
+            "本帧已写 temporal 纹理必须导出"
+        );
+        assert_eq!(
+            receipt.snapshot.exports.contains(&(hist_prev.raw() as u16)),
+            frame > 0,
+            "首帧尚未写入的 previous temporal 纹理不得导出"
+        );
         Submitted {
-            parity: pair.parity,
-            hist_cur_token: pair.first.resource.token,
-            hist_prev_token: pair.second.resource.token,
-            temporal_reused: [pair.first.reused, pair.second.reused],
+            parity: pair.parity(),
+            hist_cur_token: receipt.snapshot.physical_mapping[hist_cur.raw() as usize]
+                .token
+                .unwrap(),
+            hist_prev_token: receipt.snapshot.physical_mapping[hist_prev.raw() as usize]
+                .token
+                .unwrap(),
+            temporal_reused: [pair.current_history_valid(), pair.history_valid()],
             color_token: mapping.token.expect("颜色目标有物理资源"),
             color_reused: receipt.snapshot.pool_hits.contains(&color.raw()),
             pending_before_execute,
-            receipt,
+            // Keep only the observations used below, so a completed frame's
+            // immutable receipt can return to the bounded production pool.
+            frame: receipt.frame,
         }
     }
 
@@ -560,7 +563,7 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         // 账本：提交后本帧已结束且记到提交，全程无告警。
         assert!(harness.session.frame_ledger().has_ended());
         assert!(harness.session.frame_ledger().submissions() >= 1);
-        assert_eq!(sub.receipt.frame, frame as u64 + 1, "帧回执序号单调递增");
+        assert_eq!(sub.frame, frame as u64 + 1, "帧回执序号单调递增");
         max_pending = max_pending.max(harness.session.pending_frame_count());
         assert!(
             harness.session.pending_frame_count() <= 2,
@@ -589,7 +592,7 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         );
     }
 
-    // temporal：parity 0,1,0,1…；物理纹理恒等（本帧读的 = 上一帧写的）；首帧新建，其后全部命中。
+    // temporal：parity 0,1,0,1…；物理纹理恒等（本帧读的 = 上一帧写的）；两张纹理各写过后才都有有效历史。
     for (frame, s) in submitted.iter().enumerate() {
         assert_eq!(s.parity, (frame % 2) as u32, "第 {frame} 帧 parity");
         assert_ne!(s.hist_cur_token, s.hist_prev_token);
@@ -598,8 +601,8 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         } else {
             assert_eq!(
                 s.temporal_reused,
-                [true, true],
-                "第 {frame} 帧 temporal 纹理必须复用"
+                [frame >= 2, true],
+                "第 {frame} 帧只复用已经发布的 temporal 历史"
             );
             assert_eq!(
                 s.hist_prev_token,
@@ -617,8 +620,12 @@ fn a_rotating_triangle_renders_correctly_through_the_graph_executor() {
         .iter()
         .map(|s| s.temporal_reused.iter().filter(|&&r| r).count())
         .sum();
-    assert_eq!(temporal_hits, 2 * (FRAMES - 1));
-    assert_eq!(harness.temporal.len(), 2, "temporal 物理纹理全程只有 2 张");
+    assert_eq!(temporal_hits, 2 * (FRAMES - 1) - 1);
+    assert_eq!(
+        harness.session.named_resource_count(),
+        2,
+        "temporal 物理纹理全程只有 2 张"
+    );
 
     // 资源池：颜色目标图内创建。预热（首帧、次帧）和排空点后的头两帧必然未命中，其余全部命中。
     let pool_reused = submitted.iter().filter(|s| s.color_reused).count();
@@ -707,7 +714,7 @@ fn frame_throttle_and_wait_semantics_of_the_session() {
             "begin_frame 清零账本"
         );
         assert!(!session.frame_ledger().has_ended());
-        graph.add_pass("noop").render(|_| true);
+        graph.add_pass("noop").with_side_effect().render(|_| true);
         let receipt = session.execute_frame(graph.build()).unwrap();
         assert!(
             session.frame_ledger().has_ended(),

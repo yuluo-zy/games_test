@@ -1,8 +1,9 @@
-//! 命令录制与帧环基础设施（P3）。
+//! 命令录制与 CPU 临时内存基础设施。
 //!
-//! 目前只落地不依赖 Vulkan 的纯 CPU 部分：帧环 [`FrameRing`]。命令池的「帧 × worker ×
-//! 队列族」整池复位与 CPU arena 在后续接线时补齐。
+//! CPU arena 依赖 CPU lease；真实帧槽及其 Vulkan 命令池由图后端管理，
+//! 只有相关队列全部完成后才能复用。
 
-pub mod frame_ring;
+pub mod cpu_arena;
+pub mod recording;
 
-pub use frame_ring::{FrameRing, FrameRingError, FrameSlotState};
+pub use cpu_arena::{CpuArenaConfig, CpuArenaLease, CpuArenaPool, CpuArenaStats};

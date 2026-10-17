@@ -2,7 +2,7 @@
 use super::{handle::Managed, resources::ResourceManager};
 use crate::raw::{
     buffer::{Buffer, BufferDesc},
-    device::VulkanDevice,
+    device::Device,
     error::Result,
 };
 use ash::vk;
@@ -11,10 +11,10 @@ pub type ManagedBuffer = Managed<Buffer>;
 impl Managed<Buffer> {
     pub fn new_buffer(
         store: &ResourceManager<Buffer>,
-        device: Arc<VulkanDevice>,
+        device: Arc<Device>,
         desc: &BufferDesc,
     ) -> Result<Self> {
-        Ok(store.allocate(Buffer::new(device, desc)?))
+        store.allocate(Buffer::new(device, desc)?)
     }
     pub fn raw(&self) -> vk::Buffer {
         self.handle
@@ -22,15 +22,5 @@ impl Managed<Buffer> {
     /// 分配大小（字节）。
     pub fn allocation(&self) -> u64 {
         self.resource().size
-    }
-    /// 持久映射的可变切片（委托 raw Buffer 映射）。
-    /// 需要独占访问（无其他 clone 句柄）；共享句柄无法安全暴露 `&mut`。
-    pub fn mapped_slice_mut(&mut self, offset: u64, size: u64) -> Result<&mut [u8]> {
-        let inner = std::sync::Arc::get_mut(&mut self.0).ok_or(
-            crate::raw::error::Error::invalid_usage("句柄被共享，无法独占映射"),
-        )?;
-        let buffer = std::sync::Arc::get_mut(&mut inner.resource)
-            .ok_or(crate::raw::error::Error::invalid_usage("缓冲区被共享"))?;
-        buffer.mapped_slice_mut(offset, size)
     }
 }

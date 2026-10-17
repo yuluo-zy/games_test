@@ -3,9 +3,11 @@ use super::{
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
     error::{Error, Result},
-    format::observed,
+    format::vk_format_info,
+    resource_access::{buffer_access_borrowed, image_access_borrowed},
     texture::{Texture, TextureDesc},
 };
+use crate::{resource::range_state::AccessScope, sync::QueueId};
 use ash::vk;
 use std::sync::Arc;
 
@@ -28,7 +30,7 @@ pub fn validate_texture_regions(
     if desc.image_type() != vk::ImageType::TYPE_2D
         || desc.extent().depth != 1
         || desc.mip_levels != 1
-        || desc.array_layers() != 1
+        || desc.array_layers()? != 1
         || desc.samples() != vk::SampleCountFlags::TYPE_1
     {
         return Err(Error::unsupported("区域上传只支持二维单采样单 mip 单层"));
@@ -115,6 +117,7 @@ pub fn validate_texture_regions(
 /// 调用者负责提交同步与完成凭据；本函数持有资源，但不提交、等待或释放完成拥有者。
 pub unsafe fn record_texture_regions(
     command: &mut VulkanCommandBuffer,
+    queue: QueueId,
     texture: Arc<Texture>,
     staging: Arc<Buffer>,
     regions: &[vk::BufferImageCopy],
@@ -135,67 +138,165 @@ pub unsafe fn record_texture_regions(
         regions,
         old_layout,
     )?;
-    // 在发出第一条命令前持有资源，直到对应命令的 GPU 生命周期完成。
-    command.keep_alive(Arc::clone(&texture));
-    command.keep_alive(Arc::clone(&staging));
-    let range = vk::ImageSubresourceRange::default()
-        .aspect_mask(vk::ImageAspectFlags::COLOR)
-        .level_count(1)
-        .layer_count(1);
-    let first = [vk::ImageMemoryBarrier::default()
-        .src_access_mask(if old_layout == vk::ImageLayout::UNDEFINED {
-            vk::AccessFlags::empty()
-        } else {
-            vk::AccessFlags::SHADER_READ
-        })
-        .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-        .old_layout(old_layout)
-        .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-        .image(texture.handle)
-        .subresource_range(range)];
-    let last = [vk::ImageMemoryBarrier::default()
-        .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-        .dst_access_mask(vk::AccessFlags::SHADER_READ)
-        .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-        .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-        .image(texture.handle)
-        .subresource_range(range)];
-    let device = &command.pool.device.device;
     unsafe {
-        device.cmd_pipeline_barrier(
-            command.handle,
-            if old_layout == vk::ImageLayout::UNDEFINED {
-                vk::PipelineStageFlags::TOP_OF_PIPE
-            } else {
-                vk::PipelineStageFlags::ALL_COMMANDS
+        command.retain_recorded(Arc::clone(&texture))?;
+        command.retain_recorded(Arc::clone(&staging))?;
+    }
+    let range = Texture::ownership_range(&texture.desc)?;
+    for region in regions {
+        let row = if region.buffer_row_length == 0 {
+            region.image_extent.width
+        } else {
+            region.buffer_row_length
+        };
+        let size = (u64::from(region.image_extent.height - 1) * u64::from(row)
+            + u64::from(region.image_extent.width))
+            * 4;
+        buffer_access_borrowed(
+            command,
+            &staging,
+            queue,
+            region.buffer_offset,
+            size,
+            AccessScope {
+                stages: vk::PipelineStageFlags::TRANSFER,
+                access: vk::AccessFlags::TRANSFER_READ,
+                write: false,
             },
-            vk::PipelineStageFlags::TRANSFER,
-            vk::DependencyFlags::empty(),
-            &[],
-            &[],
-            &first,
-        );
-        device.cmd_copy_buffer_to_image(
+        )?;
+    }
+    image_access_borrowed(
+        command,
+        &texture,
+        queue,
+        range,
+        AccessScope {
+            stages: vk::PipelineStageFlags::TRANSFER,
+            access: vk::AccessFlags::TRANSFER_WRITE,
+            write: true,
+        },
+        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        Some(old_layout),
+    )?;
+    unsafe {
+        command.pool.device.device.cmd_copy_buffer_to_image(
             command.handle,
             staging.handle,
             texture.handle,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             regions,
         );
-        device.cmd_pipeline_barrier(
-            command.handle,
-            vk::PipelineStageFlags::TRANSFER,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::DependencyFlags::empty(),
-            &[],
-            &[],
-            &last,
-        );
     }
+    image_access_borrowed(
+        command,
+        &texture,
+        queue,
+        range,
+        AccessScope {
+            stages: vk::PipelineStageFlags::ALL_COMMANDS,
+            access: vk::AccessFlags::SHADER_READ,
+            write: false,
+        },
+        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
+    )
+}
+
+pub(crate) fn record_zero_fill_borrowed(
+    command: &mut VulkanCommandBuffer,
+    texture: &Texture,
+    queue: QueueId,
+    expected_layout: Option<vk::ImageLayout>,
+) -> Result<()> {
+    let format = vk_format_info(texture.desc.format)
+        .ok_or_else(|| Error::unsupported("texture format has no clear layout"))?;
+    if !texture
+        .desc
+        .usage
+        .contains(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+        || texture.desc.samples() != vk::SampleCountFlags::TYPE_1
+        || format.block_extent != [1, 1, 1]
+    {
+        return Err(Error::unsupported(
+            "texture clear requires an uncompressed single-sampled transfer destination",
+        ));
+    }
+    let aspect = format.aspect;
+    let range = Texture::ownership_range(&texture.desc)?;
+    image_access_borrowed(
+        command,
+        texture,
+        queue,
+        range,
+        AccessScope {
+            stages: vk::PipelineStageFlags::TRANSFER,
+            access: vk::AccessFlags::TRANSFER_WRITE,
+            write: true,
+        },
+        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        expected_layout,
+    )?;
+    let native = vk::ImageSubresourceRange::default()
+        .aspect_mask(aspect)
+        .level_count(u32::from(texture.desc.mip_levels))
+        .layer_count(texture.desc.array_layers()?);
+    unsafe {
+        if aspect.intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
+            command.pool.device.device.cmd_clear_depth_stencil_image(
+                command.handle,
+                texture.handle,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &vk::ClearDepthStencilValue::default(),
+                &[native],
+            );
+        } else {
+            command.pool.device.device.cmd_clear_color_image(
+                command.handle,
+                texture.handle,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &vk::ClearColorValue::default(),
+                &[native],
+            );
+        }
+    }
+    image_access_borrowed(
+        command,
+        texture,
+        queue,
+        range,
+        AccessScope {
+            stages: vk::PipelineStageFlags::ALL_COMMANDS,
+            access: vk::AccessFlags::SHADER_READ,
+            write: false,
+        },
+        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL),
+    )
+}
+
+/// Clear every image subresource and leave it ready for shader sampling.
+///
+/// # Safety
+/// Record outside rendering on a transfer/graphics capable queue. The image
+/// must support transfer destination and sampled access; submit on `queue`.
+pub unsafe fn record_texture_zero_fill(
+    command: &mut VulkanCommandBuffer,
+    texture: Arc<Texture>,
+    queue: QueueId,
+) -> Result<()> {
+    if !texture
+        .desc
+        .usage
+        .contains(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+    {
+        return Err(Error::invalid_usage(
+            "texture clear requires transfer destination and sampled usage",
+        ));
+    }
+    unsafe {
+        command.retain_recorded(texture.clone())?;
+    }
+    record_zero_fill_borrowed(command, &texture, queue, None)?;
     Ok(())
 }
 
@@ -321,8 +422,7 @@ impl Iterator for MipChainIter {
 /// 数据不够（"Texture initial data underflow"，0x1ff:21 / 0x203:37）、
 /// 数据多余（`"Texture initial data has incorrect size; more bytes supplied than necessary"`，0x214:17）。
 ///
-/// 原版的层数取 `desc.array_elements`（不是 Vulkan 层数）：Cube 的 `array_elements` 必为 1（0x140bd5f4d 校验），
-/// 所以 Cube 只会切出一层数据；这里照此保持。
+/// The caller supplies actual Vulkan layers, including every face of cube arrays.
 pub fn linear_regions(
     data: &[u8],
     extent: [u32; 3],
@@ -408,33 +508,38 @@ pub struct TextureCopyPlan {
     pub copies: Vec<vk::BufferImageCopy>,
 }
 
-/// 0x140bfeac0 + 逐区域闭包 0x1418b4080：
-/// * `total = Σ region.len`，`total == 0` → `assert!(size > 0)`（0x142b0f830）；
-/// * 区域依次紧排进暂存缓冲，`bufferOffset = 累计偏移`，每个偏移必须是 `block_bytes`
-///   （= `0x1417390e0(format)`，即 [`observed::try_vk_format_block_bytes`]）的整数倍，否则 `assert_eq!` 失败；
-/// * 每区域一条 `VkBufferImageCopy {bufferOffset, rowLength 0, imageHeight 0,
-///   subresource{aspect, mip, baseArrayLayer = layer, layerCount 1}, imageOffset 0, imageExtent}`。
-///   `aspect` 是 `0x141738fe0(format)` 的整表值（深度+模板格式会同时带两个位，原版如此）。
+/// 为每个区域生成一个紧密行布局的 Vulkan copy，并按 texel block 与四字节要求
+/// 对齐各区域的暂存偏移。`total` 包含对齐填充；调用方须按返回的 offset 写入数据。
+/// combined depth/stencil 和多平面格式须先拆成单 aspect 数据，不能在此隐式混合。
 pub fn plan_texture_copies(
     regions: &[TextureUpdateRegion<'_>],
     block_bytes: u32,
     aspect: vk::ImageAspectFlags,
 ) -> Result<TextureCopyPlan> {
-    let total = regions
-        .iter()
-        .try_fold(0u64, |acc, r| acc.checked_add(r.data.len() as u64))
-        .ok_or(Error::invalid_usage("暂存总长上溢"))?;
-    if total == 0 {
-        return Err(Error::invalid_usage("assertion failed: size > 0"));
+    if regions.is_empty() || block_bytes == 0 || aspect.as_raw().count_ones() != 1 {
+        return Err(Error::invalid_usage(
+            "texture copies require data, a texel block and one aspect",
+        ));
     }
+    let gcd = |mut a: u64, mut b: u64| {
+        while b != 0 {
+            let next = a % b;
+            a = b;
+            b = next;
+        }
+        a
+    };
+    let alignment = u64::from(block_bytes) / gcd(u64::from(block_bytes), 4) * 4;
     let mut offset = 0u64;
     let mut copies = Vec::with_capacity(regions.len());
     for region in regions {
-        if block_bytes == 0 || !offset.is_multiple_of(u64::from(block_bytes)) {
-            return Err(Error::invalid_usage(
-                "assertion `left == right` failed: 区域偏移不是 block_bytes 的整数倍",
-            ));
+        if region.data.is_empty() || region.extent.contains(&0) {
+            return Err(Error::invalid_usage("texture copy region is empty"));
         }
+        offset = offset
+            .checked_add(alignment - 1)
+            .and_then(|n| (n / alignment).checked_mul(alignment))
+            .ok_or_else(|| Error::invalid_usage("texture copy offset overflows"))?;
         copies.push(
             vk::BufferImageCopy::default()
                 .buffer_offset(offset)
@@ -450,16 +555,28 @@ pub fn plan_texture_copies(
                     depth: region.extent[2],
                 }),
         );
-        offset += region.data.len() as u64;
+        offset = offset
+            .checked_add(region.data.len() as u64)
+            .ok_or_else(|| Error::invalid_usage("texture staging size overflows"))?;
     }
-    Ok(TextureCopyPlan { total, copies })
+    Ok(TextureCopyPlan {
+        total: offset,
+        copies,
+    })
 }
 
-/// `block_bytes`（0x1417390e0）与 `aspect`（0x141738fe0）两张原表的 `Result` 化查询。
+/// Public Vulkan texel-block size and a single copy aspect, including every BC format.
 pub fn copy_format_params(format: vk::Format) -> Result<(u32, vk::ImageAspectFlags)> {
-    let block_bytes = observed::try_vk_format_block_bytes(format)
-        .map_err(|_| Error::unsupported("原构建不支持该格式的 block_bytes 查询"))?;
-    let aspect = observed::try_vk_format_valid_aspect_flags(format)
-        .map_err(|_| Error::unsupported("原构建不支持该格式的 aspect 查询"))?;
-    Ok((block_bytes, aspect))
+    let info = vk_format_info(format)
+        .ok_or_else(|| Error::unsupported("texture format has no copy layout"))?;
+    if !super::format::vk_format_planes(format).is_empty()
+        || info.aspect.as_raw().count_ones() != 1
+        || info.block_bytes == 0
+        || info.block_extent[2] != 1
+    {
+        return Err(Error::unsupported(
+            "texture upload requires one aspect and two-dimensional texel blocks",
+        ));
+    }
+    Ok((info.block_bytes, info.aspect))
 }

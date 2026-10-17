@@ -1,6 +1,6 @@
 // 候选实现迁移来源：reconstruction/render/work-packages/registry-pool/src/lib.rs.
 // 这是行为重建，不是原作者源码。
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
@@ -44,6 +44,38 @@ impl<TextureHandle, BufferHandle> Default for ResourcePool<TextureHandle, Buffer
 }
 
 impl<TextureHandle, BufferHandle> ResourcePool<TextureHandle, BufferHandle> {
+    /// Move only idle pool entries out; in-flight frame registries are separate.
+    pub fn drain(&mut self) -> (Vec<Texture<TextureHandle>>, Vec<Buffer<BufferHandle>>) {
+        let textures = self
+            .textures
+            .drain()
+            .flat_map(|(_, entries)| entries)
+            .collect();
+        let buffers = self
+            .buffers
+            .drain()
+            .flat_map(|(_, entries)| entries)
+            .collect();
+        (textures, buffers)
+    }
+    pub fn take_texture_where(
+        &mut self,
+        desc: &TextureDesc,
+        mut accepts: impl FnMut(&TextureHandle) -> bool,
+    ) -> Option<Texture<TextureHandle>> {
+        let entries = self.textures.get_mut(desc)?;
+        let index = entries.iter().rposition(|entry| accepts(&entry.handle))?;
+        Some(entries.swap_remove(index))
+    }
+    pub fn take_buffer_where(
+        &mut self,
+        desc: &BufferDesc,
+        mut accepts: impl FnMut(&BufferHandle) -> bool,
+    ) -> Option<Buffer<BufferHandle>> {
+        let entries = self.buffers.get_mut(desc)?;
+        let index = entries.iter().rposition(|entry| accepts(&entry.handle))?;
+        Some(entries.swap_remove(index))
+    }
     pub fn take_texture(&mut self, desc: &TextureDesc) -> Option<Texture<TextureHandle>> {
         self.textures.get_mut(desc).and_then(Vec::pop)
     }
@@ -96,7 +128,20 @@ pub struct ResourceRegistry<TextureHandle, BufferHandle, Other> {
     pub resources: Vec<ResourceReuseInfo>,
     pub resource_initial_access: Vec<u8>,
     pub backing_resources: Vec<RegistryResource<TextureHandle, BufferHandle, Other>>,
-    pub exported_logical_handles: HashSet<u16>,
+    pub exported_logical_handles: Vec<u16>,
+}
+
+impl<TextureHandle, BufferHandle, Other> Default
+    for ResourceRegistry<TextureHandle, BufferHandle, Other>
+{
+    fn default() -> Self {
+        Self {
+            resources: Vec::new(),
+            resource_initial_access: Vec::new(),
+            backing_resources: Vec::new(),
+            exported_logical_handles: Vec::new(),
+        }
+    }
 }
 
 pub struct ResourceExports<TextureHandle, BufferHandle, Other> {
@@ -166,6 +211,8 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
     }
 
     pub fn into_exports(mut self) -> ResourceExports<TextureHandle, BufferHandle, Other> {
+        self.exported_logical_handles.sort_unstable();
+        self.exported_logical_handles.dedup();
         let exported = self
             .exported_logical_handles
             .into_iter()

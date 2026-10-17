@@ -1,6 +1,16 @@
 # Window Lab V0 验收记录
 
-日期：2026-10-16。本文件仅登记有证据的结果；版本目标见 [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)。
+本文件保存窗口检查的报告入口。当前里程碑状态统一见 [REFACTOR_PROGRESS.md](../../REFACTOR_PROGRESS.md)，版本目标见 [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)。
+
+## 2026-10-17：macOS / Apple M3 / MoltenVK
+
+- [360 帧基线](../../reports/refactor/2026-10-17-moltenvk/window/report.json)：360 帧读回一致，4 素材、缩放及最小化恢复脚本完成，validation error/warning 0。
+- [1000 帧 WSI 压力](../../reports/refactor/2026-10-17-moltenvk/wsi-stress/report.json)：100 次实际 resize、20 次完整最小化/恢复，1000 帧读回一致，开启同步验证，error/warning 0。
+- [GPU 离屏读回图](../../reports/refactor/2026-10-17-moltenvk/window/readback.png)不作为最终屏幕截图。Computer Use 未授予权限，屏幕像素与键盘交互保持未验证；Windows 没有本轮运行结果。
+
+## 2026-10-16 历史记录
+
+以下为当日快照，不覆盖后续 macOS 实测。
 
 | 检查 | 状态 | 证据 / 限制 |
 | --- | --- | --- |

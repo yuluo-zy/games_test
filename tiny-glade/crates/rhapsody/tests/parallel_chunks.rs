@@ -18,7 +18,7 @@ fn stats(durations: &[Option<u64>]) -> (Vec<PassPgoNameId>, PassPgoStats) {
     let mut s = PassPgoStats::default();
     for (name, d) in names.iter().zip(durations) {
         if let Some(d) = d {
-            s.record(PassPgoDuration::new(*name, *d));
+            s.record(PassPgoDuration::new(name.clone(), *d));
         }
     }
     (names, s)
@@ -205,7 +205,9 @@ fn balanced_estimates_unknown_costs_from_the_known_mean_and_caps_chunks() {
 fn pgo_double_buffer_uses_only_the_previous_frame_and_never_accumulates() {
     let name = PassPgoNameId::from_name("a");
     let mut frames = PassPgoFrames::default();
-    frames.current.record(PassPgoDuration::new(name, 100));
+    frames
+        .current
+        .record(PassPgoDuration::new(name.clone(), 100));
     // 当前帧的数据在本帧内不可见于分块（分块读 previous）。
     assert_eq!(frames.previous.total_ns(), 0);
     frames.end_frame();
@@ -215,14 +217,16 @@ fn pgo_double_buffer_uses_only_the_previous_frame_and_never_accumulates() {
     );
     assert_eq!(frames.current.total_ns(), 0);
     // 下一帧结束：previous 变成第二帧的数据，第一帧的 100 不残留（统计不跨帧累积）。
-    frames.current.record(PassPgoDuration::new(name, 30));
+    frames
+        .current
+        .record(PassPgoDuration::new(name.clone(), 30));
     frames.end_frame();
     assert_eq!(
         (frames.previous.total_ns(), frames.previous.max_ns()),
         (30, 30)
     );
-    assert_eq!(frames.previous.duration_ns(name), 30);
-    assert_eq!(frames.current.call_count(name), 0);
+    assert_eq!(frames.previous.duration_ns(&name), 30);
+    assert_eq!(frames.current.call_count(&name), 0);
 }
 
 #[test]
@@ -232,14 +236,14 @@ fn stats_extend_overwrites_per_name_but_accumulates_total_and_max() {
     let b = PassPgoNameId::from_name("b");
     let mut s = PassPgoStats::default();
     s.extend([
-        PassPgoDuration::new(a, 10),
-        PassPgoDuration::new(b, 70),
-        PassPgoDuration::new(a, 5),
+        PassPgoDuration::new(a.clone(), 10),
+        PassPgoDuration::new(b.clone(), 70),
+        PassPgoDuration::new(a.clone(), 5),
     ]);
     assert_eq!(s.total_ns(), 85);
     assert_eq!(s.max_ns(), 70);
-    assert_eq!(s.duration_ns(a), 5, "同名后者覆盖前者（hashbrown insert）");
-    assert_eq!(s.duration_ns(b), 70);
+    assert_eq!(s.duration_ns(&a), 5, "同名后者覆盖前者（hashbrown insert）");
+    assert_eq!(s.duration_ns(&b), 70);
     s.extend(std::iter::empty());
     assert_eq!(s.total_ns(), 85);
 }

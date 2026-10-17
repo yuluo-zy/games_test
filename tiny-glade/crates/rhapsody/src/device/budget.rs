@@ -75,6 +75,11 @@ pub struct MemoryBudgetController {
     usage: BudgetUsage,
     under_pressure: bool,
 }
+impl Default for MemoryBudgetController {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
 
 impl MemoryBudgetController {
     /// 用默认水位（高 80%、低 60%）创建。`limit == 0` 表示不设上限。
@@ -108,15 +113,36 @@ impl MemoryBudgetController {
             category,
             BudgetCategory::Live | BudgetCategory::Cache
         ));
-        self.add(category, bytes);
-        if self.limit != 0 && self.usage.total() > self.limit {
-            self.sub(category, bytes);
+        let total = self
+            .usage
+            .live
+            .checked_add(self.usage.in_flight)
+            .and_then(|n| n.checked_add(self.usage.cache))
+            .and_then(|n| n.checked_add(self.usage.retiring))
+            .and_then(|n| n.checked_add(bytes));
+        if total.is_none_or(|n| self.limit != 0 && n > self.limit) {
             return Err(BudgetExceeded {
                 requested: bytes,
                 total: self.usage.total(),
                 limit: self.limit,
             });
         }
+        self.add(category, bytes);
+        self.refresh_pressure();
+        Ok(())
+    }
+
+    pub fn set_limit(&mut self, limit: u64) -> Result<(), BudgetExceeded> {
+        if limit != 0 && self.total() > limit {
+            return Err(BudgetExceeded {
+                requested: 0,
+                total: self.total(),
+                limit,
+            });
+        }
+        self.limit = limit;
+        self.high_water = (u128::from(limit) * 80 / 100) as u64;
+        self.low_water = (u128::from(limit) * 60 / 100) as u64;
         self.refresh_pressure();
         Ok(())
     }
@@ -134,6 +160,11 @@ impl MemoryBudgetController {
     /// 释放一块内存。
     pub fn release(&mut self, category: BudgetCategory, bytes: u64) {
         self.sub(category, bytes);
+        self.refresh_pressure();
+    }
+    pub(crate) fn reclassify(&mut self, from: BudgetCategory, to: BudgetCategory, bytes: u64) {
+        self.sub(from, bytes);
+        self.add(to, bytes);
         self.refresh_pressure();
     }
 
@@ -280,5 +311,16 @@ mod tests {
         let mut budget = MemoryBudgetController::new(0);
         assert!(budget.reserve(BudgetCategory::Live, u64::MAX / 2).is_ok());
         assert!(!budget.is_under_pressure());
+    }
+
+    #[test]
+    fn reclassifying_existing_memory_preserves_pressure_hysteresis() {
+        let mut budget = MemoryBudgetController::new_with_watermarks(100, 80, 60);
+        budget.reserve(BudgetCategory::Live, 90).unwrap();
+        budget.release(BudgetCategory::Live, 20);
+        assert!(budget.is_under_pressure());
+        budget.reclassify(BudgetCategory::Live, BudgetCategory::Cache, 70);
+        assert_eq!(budget.total(), 70);
+        assert!(budget.is_under_pressure());
     }
 }

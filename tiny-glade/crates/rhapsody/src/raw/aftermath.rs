@@ -7,7 +7,7 @@
 //!   这里的 [`AftermathApi`] 就是这 4 个入口的抽象；Windows 用 `raw-dylib` 绑定，其余平台只有注入实现。
 //! * `Aftermath::new<NvAftermathDelegate>`（0x140176e70）：把 0x38B delegate 装箱（**泄漏**，从不释放），再分配 16B
 //!   `{data, vtable}` 作 `pUserData`（同样泄漏），调 `EnableGpuCrashDumps(0x217, 2, 1, cb×4, userData)`，**不看返回值**。
-//!   游戏侧只在 `GraphicsDevice` 配置字节（`[cfg+0xbe]==1`）为真时调用（0x140593dbb..0x140593dfc）。
+//!   游戏侧只在 `Device` 配置字节（`[cfg+0xbe]==1`）为真时调用（0x140593dbb..0x140593dfc）。
 //! * `Drop`（0x140c107b0）= `jmp DisableGpuCrashDumps`（5B 尾调）；0x38B/16B 不在这里释放。
 //! * 回调（0x140c106c0 / 0x140c10710 / 0x140c10760）只是把 C 参数转到 delegate vtable `+0x18/+0x20/+0x28`；
 //!   vtable（0x1429603f8）槽位 = `dumped`(0x140244790) / `shader_debug_info`(0x140245340) / `description`(0x14003bb80=`ret`)。
