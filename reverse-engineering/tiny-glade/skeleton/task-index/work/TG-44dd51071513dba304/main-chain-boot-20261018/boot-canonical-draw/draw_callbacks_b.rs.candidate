@@ -714,12 +714,14 @@ pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 /// Historical pure input DTO field names are retained; there is no season resource projection.
 pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
     let cam = res::<MainCamera>(w);
+    let camera_mode = cam.mode_byte();
+    let lens_param = cam.read_f32(SEASON_OFFSETS[camera_mode as usize] + SEASON_FIELD_OFFSET);
     let wind = res::<Weather>(w).wind_strength;
     let blend = res::<TreeCanopyMaxCullDistance>(w).smoothstep;
     let inputs = TreeCanopyInputs {
         wind,
-        season_param: cam.read_f32(SEASON_OFFSETS[cam.mode_byte() as usize] + SEASON_FIELD_OFFSET),
-        season_is_3: cam.mode_byte() == 3,
+        season_param: lens_param,
+        season_is_3: camera_mode == 3,
         blend,
     };
     let w: &World = w;
@@ -753,10 +755,13 @@ pub fn roof_support_beam_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut W
 /// Original water_planes_draw: process bool and actual ActiveSession glade + SessionMeta mutators.
 /// `bind_ray_tracing<DrawBuilder>` 用 A4 的真实实现（`RtTriangles/RtTriangleMeta/RtBvh/WallColorId`）。
 pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
-    let skip = WATER_PLANES_DISABLED.load(Ordering::Relaxed);
+    if WATER_PLANES_DISABLED.load(Ordering::Relaxed) {
+        b.discard();
+        return;
+    }
     let s = res::<ActiveSession>(w);
     let inputs = WaterPlanesInputs {
-        skip,
+        skip: false,
         variant: s.meta.glade.native_tag(),
         all_set: s.meta.mutators.iter().all(|m| *m as u8 != 0),
     };
